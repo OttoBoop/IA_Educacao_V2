@@ -876,17 +876,15 @@ class StorageManagerV2:
         
         # Documentos base
         docs_base = [d for d in documentos if d.is_documento_base]
-        docs_base_detalhes: Dict[str, List[Dict[str, Any]]] = {}
+        docs_base_detalhes = {}
         for doc in docs_base:
             tipo = doc.tipo.value
             if tipo not in docs_base_detalhes:
-                docs_base_detalhes[tipo] = []
-            docs_base_detalhes[tipo].append({
-                "id": doc.id,
-                "nome_arquivo": doc.nome_arquivo,
-                "criado_em": doc.criado_em.isoformat(),
-                "criado_por": doc.criado_por
-            })
+                docs_base_detalhes[tipo] = {
+                    "id": doc.id,
+                    "nome_arquivo": doc.nome_arquivo,
+                    "criado_em": doc.criado_em.isoformat()
+                }
         tipos_base_existentes = [TipoDocumento(tipo) for tipo in docs_base_detalhes.keys()]
         
         docs_base_faltando = []
