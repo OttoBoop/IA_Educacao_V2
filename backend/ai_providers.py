@@ -23,6 +23,8 @@ class AIResponse:
     provider: str
     model: str
     tokens_used: int
+    input_tokens: int = 0
+    output_tokens: int = 0
     latency_ms: float
     input_tokens: int = 0
     output_tokens: int = 0
