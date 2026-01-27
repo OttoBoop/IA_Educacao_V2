@@ -876,7 +876,16 @@ class StorageManagerV2:
         
         # Documentos base
         docs_base = [d for d in documentos if d.is_documento_base]
-        tipos_base_existentes = [d.tipo for d in docs_base]
+        docs_base_detalhes = {}
+        for doc in docs_base:
+            tipo = doc.tipo.value
+            if tipo not in docs_base_detalhes:
+                docs_base_detalhes[tipo] = {
+                    "id": doc.id,
+                    "nome_arquivo": doc.nome_arquivo,
+                    "criado_em": doc.criado_em.isoformat()
+                }
+        tipos_base_existentes = [TipoDocumento(tipo) for tipo in docs_base_detalhes.keys()]
         
         docs_base_faltando = []
         for tipo in [TipoDocumento.ENUNCIADO, TipoDocumento.GABARITO]:
@@ -905,9 +914,10 @@ class StorageManagerV2:
         return {
             "atividade": atividade.to_dict(),
             "documentos_base": {
-                "existentes": [d.tipo.value for d in docs_base],
+                "existentes": [tipo.value for tipo in tipos_base_existentes],
                 "faltando": docs_base_faltando,
-                "aviso": "Falta gabarito para poder corrigir" if TipoDocumento.GABARITO.value in docs_base_faltando else None
+                "aviso": "Falta gabarito para poder corrigir" if TipoDocumento.GABARITO.value in docs_base_faltando else None,
+                "detalhes": docs_base_detalhes
             },
             "alunos": {
                 "total": len(alunos),
