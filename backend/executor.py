@@ -251,8 +251,9 @@ class PipelineExecutor:
             elif documento.extensao.lower() == '.pdf':
                 # Tentar extrair texto do PDF
                 try:
-                    import pypdf2
+                    import importlib
                     with open(arquivo, 'rb') as f:
+                        pypdf2 = importlib.import_module("PyPDF2")
                         reader = pypdf2.PdfReader(f)
                         text = ""
                         for page in reader.pages:
@@ -263,8 +264,9 @@ class PipelineExecutor:
             
             elif documento.extensao.lower() == '.docx':
                 try:
-                    from docx import Document
-                    doc = Document(arquivo)
+                    import importlib
+                    docx = importlib.import_module("docx")
+                    doc = docx.Document(arquivo)
                     text = "\n".join([p.text for p in doc.paragraphs])
                     return text
                 except:
