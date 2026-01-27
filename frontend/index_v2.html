@@ -808,13 +808,15 @@
                     <div class="upload-zone" id="upload-zone-modal">
                         <div class="upload-icon">📁</div>
                         <div class="upload-text">
-                            Arraste o arquivo aqui ou <strong>clique para selecionar</strong>
+                            Arraste o(s) arquivo(s) aqui ou <strong>clique para selecionar</strong>
                         </div>
-                        <input type="file" id="input-upload-file" hidden accept=".pdf,.docx,.doc,.png,.jpg,.jpeg">
+                        <input type="file" id="input-upload-file" hidden multiple accept=".pdf,.docx,.doc,.png,.jpg,.jpeg">
                     </div>
                     <div id="upload-file-name" style="margin-top: 8px; font-size: 0.85rem; color: var(--text-muted);"></div>
                 </div>
                 <input type="hidden" id="input-upload-atividade-id">
+                <input type="hidden" id="input-upload-documento-id">
+                <div id="upload-replace-info" style="display: none; margin-top: 8px; font-size: 0.85rem; color: var(--text-muted);"></div>
             </div>
             <div class="modal-footer">
                 <button class="btn" onclick="closeModal('modal-upload')">Cancelar</button>
@@ -1323,7 +1325,7 @@
                     showVisualizar,
                     showTrocar: Boolean(onAdicionar),
                     showExcluir: true,
-                    onTrocar: onAdicionar
+                    onTrocar: `openModalUploadSubstituir('${atividadeId}', '${tipo}', '${alunoId || ''}', '${doc.id}')`
                 })).join('')
                 : `<div class="doc-meta" style="padding: 8px 0;">Nenhum documento enviado.</div>`;
             return `
@@ -1667,8 +1669,16 @@
             openModal('modal-execucao');
         }
         
+        function resetUploadReplace() {
+            document.getElementById('input-upload-documento-id').value = '';
+            const replaceInfo = document.getElementById('upload-replace-info');
+            replaceInfo.style.display = 'none';
+            replaceInfo.textContent = '';
+        }
+
         function openModalUpload(atividadeId, modo) {
             document.getElementById('input-upload-atividade-id').value = atividadeId;
+            resetUploadReplace();
             const grupoAluno = document.getElementById('grupo-aluno-upload');
             const selectTipo = document.getElementById('input-upload-tipo');
             if (modo === 'aluno') {
@@ -1686,6 +1696,7 @@
             document.getElementById('input-upload-atividade-id').value = atividadeId;
             document.getElementById('input-upload-tipo').value = tipo;
             document.getElementById('grupo-aluno-upload').style.display = 'none';
+            resetUploadReplace();
             openModal('modal-upload');
         }
 
@@ -1693,6 +1704,7 @@
             document.getElementById('input-upload-atividade-id').value = atividadeId;
             document.getElementById('input-upload-tipo').value = tipo;
             document.getElementById('grupo-aluno-upload').style.display = 'block';
+            resetUploadReplace();
             if (!window._atividadeData || window._atividadeData?.atividade?.id !== atividadeId) {
                 try {
                     window._atividadeData = await api(`/atividades/${atividadeId}`);
@@ -1702,6 +1714,31 @@
             const selectAluno = document.getElementById('input-upload-aluno');
             if (selectAluno) {
                 selectAluno.value = alunoId || '';
+            }
+            openModal('modal-upload');
+        }
+
+        async function openModalUploadSubstituir(atividadeId, tipo, alunoId, documentoId) {
+            document.getElementById('input-upload-atividade-id').value = atividadeId;
+            document.getElementById('input-upload-tipo').value = tipo;
+            document.getElementById('input-upload-documento-id').value = documentoId || '';
+            const replaceInfo = document.getElementById('upload-replace-info');
+            replaceInfo.textContent = 'Substituir documento selecionado: o novo upload excluirá o arquivo anterior.';
+            replaceInfo.style.display = 'block';
+            if ((window._documentosBase || []).includes(tipo)) {
+                document.getElementById('grupo-aluno-upload').style.display = 'none';
+            } else {
+                document.getElementById('grupo-aluno-upload').style.display = 'block';
+                if (!window._atividadeData || window._atividadeData?.atividade?.id !== atividadeId) {
+                    try {
+                        window._atividadeData = await api(`/atividades/${atividadeId}`);
+                    } catch (e) {}
+                }
+                carregarAlunosParaUpload();
+                const selectAluno = document.getElementById('input-upload-aluno');
+                if (selectAluno) {
+                    selectAluno.value = alunoId || '';
+                }
             }
             openModal('modal-upload');
         }
@@ -1917,20 +1954,32 @@
             const atividadeId = document.getElementById('input-upload-atividade-id').value;
             const fileInput = document.getElementById('input-upload-file');
             const alunoId = document.getElementById('input-upload-aluno').value;
-            if (!fileInput.files.length) { showToast('Selecione um arquivo', 'error'); return; }
+            const replaceId = document.getElementById('input-upload-documento-id').value;
+            if (!fileInput.files.length) { showToast('Selecione ao menos um arquivo', 'error'); return; }
             const isBase = (window._documentosBase || []).includes(tipo);
             if (!isBase && !alunoId) { showToast('Selecione o aluno', 'error'); return; }
-            const formData = new FormData();
-            formData.append('file', fileInput.files[0]);
-            formData.append('tipo', tipo);
-            formData.append('atividade_id', atividadeId);
-            if (!isBase && alunoId) formData.append('aluno_id', alunoId);
             try {
-                await apiForm('/documentos/upload', formData);
-                showToast('Documento enviado!', 'success');
+                const files = Array.from(fileInput.files);
+                if (replaceId && files.length > 1) {
+                    showToast('Para substituir, selecione apenas um arquivo.', 'warning');
+                    return;
+                }
+                for (const file of files) {
+                    const formData = new FormData();
+                    formData.append('file', file);
+                    formData.append('tipo', tipo);
+                    formData.append('atividade_id', atividadeId);
+                    if (!isBase && alunoId) formData.append('aluno_id', alunoId);
+                    await apiForm('/documentos/upload', formData);
+                }
+                if (replaceId) {
+                    await api(`/documentos/${replaceId}`, { method: 'DELETE' });
+                }
+                showToast('Documento(s) enviado(s)!', 'success');
                 closeModal('modal-upload');
                 fileInput.value = '';
                 document.getElementById('upload-file-name').textContent = '';
+                resetUploadReplace();
                 refreshCurrentView();
             } catch (e) {}
         }
@@ -2185,11 +2234,25 @@
             zone.addEventListener('click', () => input.click());
             zone.addEventListener('dragover', (e) => { e.preventDefault(); zone.classList.add('dragover'); });
             zone.addEventListener('dragleave', () => zone.classList.remove('dragover'));
-            zone.addEventListener('drop', (e) => { e.preventDefault(); zone.classList.remove('dragover'); if (e.dataTransfer.files.length) { input.files = e.dataTransfer.files; fileName.textContent = '📎 ' + e.dataTransfer.files[0].name; } });
-            input.addEventListener('change', () => { if (input.files.length) fileName.textContent = '📎 ' + input.files[0].name; });
+            zone.addEventListener('drop', (e) => {
+                e.preventDefault();
+                zone.classList.remove('dragover');
+                if (e.dataTransfer.files.length) {
+                    input.files = e.dataTransfer.files;
+                    const names = Array.from(e.dataTransfer.files).map(file => file.name);
+                    fileName.textContent = `📎 ${names.join(', ')}`;
+                }
+            });
+            input.addEventListener('change', () => {
+                if (input.files.length) {
+                    const names = Array.from(input.files).map(file => file.name);
+                    fileName.textContent = `📎 ${names.join(', ')}`;
+                }
+            });
             document.getElementById('input-upload-tipo').addEventListener('change', (e) => {
                 const isBase = (window._documentosBase || []).includes(e.target.value);
                 document.getElementById('grupo-aluno-upload').style.display = isBase ? 'none' : 'block';
+                resetUploadReplace();
             });
         }
         
