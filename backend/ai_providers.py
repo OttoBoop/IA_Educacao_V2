@@ -17,14 +17,12 @@ from pathlib import Path
 
 
 @dataclass
-class AIResponse:s
+class AIResponse:
     """Resposta padronizada de qualquer provider de IA"""
     content: str
     provider: str
-    model: strS
+    model: str
     tokens_used: int
-    input_tokens: int = 0
-    output_tokens: int = 0
     latency_ms: float
     input_tokens: int = 0
     output_tokens: int = 0
@@ -40,7 +38,6 @@ class AIResponse:s
             "input_tokens": self.input_tokens,
             "output_tokens": self.output_tokens,
             "latency_ms": self.latency_ms,
-            "output_tokens": self.output_tokens,
             "timestamp": self.timestamp.isoformat(),
             "metadata": self.metadata
         }
