@@ -24,6 +24,8 @@ class AIResponse:
     model: str
     tokens_used: int
     latency_ms: float
+    input_tokens: int = 0
+    output_tokens: int = 0
     timestamp: datetime = field(default_factory=datetime.now)
     metadata: Dict[str, Any] = field(default_factory=dict)
     
@@ -33,10 +35,26 @@ class AIResponse:
             "provider": self.provider,
             "model": self.model,
             "tokens_used": self.tokens_used,
+            "input_tokens": self.input_tokens,
+            "output_tokens": self.output_tokens,
             "latency_ms": self.latency_ms,
             "timestamp": self.timestamp.isoformat(),
             "metadata": self.metadata
         }
+
+
+def _format_httpx_error(exc: "httpx.HTTPStatusError") -> str:
+    response = exc.response
+    request = exc.request
+    body = response.text.strip()
+    if len(body) > 2000:
+        body = f"{body[:2000]}... (truncado)"
+    request_id = response.headers.get("x-request-id") or response.headers.get("request-id")
+    request_id_info = f" request_id={request_id}" if request_id else ""
+    return (
+        f"Erro HTTP {response.status_code} em {request.method} {request.url}.{request_id_info} "
+        f"Resposta: {body}"
+    )
 
 
 class AIProvider(ABC):
@@ -91,22 +109,25 @@ class OpenAIProvider(AIProvider):
         messages.append({"role": "user", "content": prompt})
         
         async with httpx.AsyncClient() as client:
-            response = await client.post(
-                f"{self.base_url}/chat/completions",
-                headers={
-                    "Authorization": f"Bearer {self.api_key}",
-                    "Content-Type": "application/json"
-                },
-                json={
-                    "model": self.model,
-                    "messages": messages,
-                    "temperature": temperature,
-                    "max_tokens": max_tokens
-                },
-                timeout=120.0
-            )
-            response.raise_for_status()
-            data = response.json()
+            try:
+                response = await client.post(
+                    f"{self.base_url}/chat/completions",
+                    headers={
+                        "Authorization": f"Bearer {self.api_key}",
+                        "Content-Type": "application/json"
+                    },
+                    json={
+                        "model": self.model,
+                        "messages": messages,
+                        "temperature": temperature,
+                        "max_tokens": max_tokens
+                    },
+                    timeout=120.0
+                )
+                response.raise_for_status()
+                data = response.json()
+            except httpx.HTTPStatusError as exc:
+                raise RuntimeError(_format_httpx_error(exc)) from exc
         
         latency = (time.time() - start) * 1000
         
@@ -115,6 +136,8 @@ class OpenAIProvider(AIProvider):
             provider="openai",
             model=self.model,
             tokens_used=data["usage"]["total_tokens"],
+            input_tokens=data["usage"].get("prompt_tokens", 0),
+            output_tokens=data["usage"].get("completion_tokens", 0),
             latency_ms=latency,
             metadata={"finish_reason": data["choices"][0]["finish_reason"]}
         )
@@ -165,21 +188,24 @@ class OpenAIProvider(AIProvider):
             }]
         
         async with httpx.AsyncClient() as client:
-            response = await client.post(
-                f"{self.base_url}/chat/completions",
-                headers={
-                    "Authorization": f"Bearer {self.api_key}",
-                    "Content-Type": "application/json"
-                },
-                json={
-                    "model": self.model,
-                    "messages": messages,
-                    "max_tokens": 4096
-                },
-                timeout=120.0
-            )
-            response.raise_for_status()
-            data = response.json()
+            try:
+                response = await client.post(
+                    f"{self.base_url}/chat/completions",
+                    headers={
+                        "Authorization": f"Bearer {self.api_key}",
+                        "Content-Type": "application/json"
+                    },
+                    json={
+                        "model": self.model,
+                        "messages": messages,
+                        "max_tokens": 4096
+                    },
+                    timeout=120.0
+                )
+                response.raise_for_status()
+                data = response.json()
+            except httpx.HTTPStatusError as exc:
+                raise RuntimeError(_format_httpx_error(exc)) from exc
         
         latency = (time.time() - start) * 1000
         
@@ -188,6 +214,8 @@ class OpenAIProvider(AIProvider):
             provider="openai",
             model=self.model,
             tokens_used=data["usage"]["total_tokens"],
+            input_tokens=data["usage"].get("prompt_tokens", 0),
+            output_tokens=data["usage"].get("completion_tokens", 0),
             latency_ms=latency,
             metadata={
                 "file_analyzed": file_path,
@@ -243,18 +271,21 @@ class AnthropicProvider(AIProvider):
             payload["system"] = system_prompt
         
         async with httpx.AsyncClient() as client:
-            response = await client.post(
-                f"{self.base_url}/messages",
-                headers={
-                    "x-api-key": self.api_key,
-                    "anthropic-version": "2023-06-01",
-                    "Content-Type": "application/json"
-                },
-                json=payload,
-                timeout=120.0
-            )
-            response.raise_for_status()
-            data = response.json()
+            try:
+                response = await client.post(
+                    f"{self.base_url}/messages",
+                    headers={
+                        "x-api-key": self.api_key,
+                        "anthropic-version": "2023-06-01",
+                        "Content-Type": "application/json"
+                    },
+                    json=payload,
+                    timeout=120.0
+                )
+                response.raise_for_status()
+                data = response.json()
+            except httpx.HTTPStatusError as exc:
+                raise RuntimeError(_format_httpx_error(exc)) from exc
         
         latency = (time.time() - start) * 1000
         
@@ -263,6 +294,8 @@ class AnthropicProvider(AIProvider):
             provider="anthropic",
             model=self.model,
             tokens_used=data["usage"]["input_tokens"] + data["usage"]["output_tokens"],
+            input_tokens=data["usage"].get("input_tokens", 0),
+            output_tokens=data["usage"].get("output_tokens", 0),
             latency_ms=latency,
             metadata={"stop_reason": data["stop_reason"]}
         )
@@ -321,22 +354,25 @@ class AnthropicProvider(AIProvider):
             content = [{"type": "text", "text": f"{instruction}\n\n---\n{text_content}"}]
         
         async with httpx.AsyncClient() as client:
-            response = await client.post(
-                f"{self.base_url}/messages",
-                headers={
-                    "x-api-key": self.api_key,
-                    "anthropic-version": "2023-06-01",
-                    "Content-Type": "application/json"
-                },
-                json={
-                    "model": self.model,
-                    "max_tokens": 4096,
-                    "messages": [{"role": "user", "content": content}]
-                },
-                timeout=120.0
-            )
-            response.raise_for_status()
-            data = response.json()
+            try:
+                response = await client.post(
+                    f"{self.base_url}/messages",
+                    headers={
+                        "x-api-key": self.api_key,
+                        "anthropic-version": "2023-06-01",
+                        "Content-Type": "application/json"
+                    },
+                    json={
+                        "model": self.model,
+                        "max_tokens": 4096,
+                        "messages": [{"role": "user", "content": content}]
+                    },
+                    timeout=120.0
+                )
+                response.raise_for_status()
+                data = response.json()
+            except httpx.HTTPStatusError as exc:
+                raise RuntimeError(_format_httpx_error(exc)) from exc
         
         latency = (time.time() - start) * 1000
         
@@ -345,6 +381,8 @@ class AnthropicProvider(AIProvider):
             provider="anthropic",
             model=self.model,
             tokens_used=data["usage"]["input_tokens"] + data["usage"]["output_tokens"],
+            input_tokens=data["usage"].get("input_tokens", 0),
+            output_tokens=data["usage"].get("output_tokens", 0),
             latency_ms=latency,
             metadata={
                 "file_analyzed": file_path,
@@ -410,6 +448,8 @@ class LocalLLMProvider(AIProvider):
             provider="ollama",
             model=self.model,
             tokens_used=data.get("eval_count", 0) + data.get("prompt_eval_count", 0),
+            input_tokens=data.get("prompt_eval_count", 0),
+            output_tokens=data.get("eval_count", 0),
             latency_ms=latency,
             metadata={"done": data.get("done", True)}
         )
