@@ -1,0 +1,545 @@
+"""
+PROVA AI - Endpoints Adicionais v2.0
+
+Este arquivo contém endpoints extras que são importados pelo main_v2.py:
+- Operações em lote (importar alunos, upload múltiplo)
+- Busca e filtros avançados
+- Estatísticas e relatórios
+"""
+
+from fastapi import APIRouter, UploadFile, File, Form, HTTPException, Query
+from typing import Optional, List
+from pydantic import BaseModel
+from datetime import datetime
+import tempfile
+import os
+import csv
+import io
+from pathlib import Path
+
+from models import TipoDocumento
+from storage_v2 import storage_v2 as storage
+
+
+# Router para endpoints adicionais
+router = APIRouter()
+
+
+# ============================================================
+# MODELOS
+# ============================================================
+
+class AlunoImport(BaseModel):
+    nome: str
+    email: Optional[str] = None
+    matricula: Optional[str] = None
+
+class ImportarAlunosRequest(BaseModel):
+    alunos: List[AlunoImport]
+    turma_id: Optional[str] = None  # Se fornecido, já vincula
+
+class BuscaRequest(BaseModel):
+    termo: str
+    tipo: Optional[str] = None  # "aluno", "materia", "turma", "atividade"
+
+
+# ============================================================
+# IMPORTAÇÃO EM LOTE: ALUNOS
+# ============================================================
+
+@router.post("/api/alunos/importar", tags=["Lote"])
+async def importar_alunos(data: ImportarAlunosRequest):
+    """
+    Importa múltiplos alunos de uma vez.
+    Opcionalmente já vincula todos a uma turma.
+    """
+    criados = []
+    erros = []
+    
+    for aluno_data in data.alunos:
+        try:
+            aluno = storage.criar_aluno(
+                nome=aluno_data.nome,
+                email=aluno_data.email,
+                matricula=aluno_data.matricula
+            )
+            criados.append(aluno.to_dict())
+            
+            # Vincular à turma se especificado
+            if data.turma_id:
+                storage.vincular_aluno_turma(aluno.id, data.turma_id)
+                
+        except Exception as e:
+            erros.append({"aluno": aluno_data.nome, "erro": str(e)})
+    
+    return {
+        "success": True,
+        "criados": len(criados),
+        "erros": len(erros),
+        "alunos": criados,
+        "detalhes_erros": erros
+    }
+
+
+@router.post("/api/alunos/importar-csv", tags=["Lote"])
+async def importar_alunos_csv(
+    file: UploadFile = File(...),
+    turma_id: Optional[str] = Form(None)
+):
+    """
+    Importa alunos de um arquivo CSV.
+    
+    Formato esperado do CSV:
+    nome,email,matricula
+    João Silva,joao@email.com,2024001
+    Maria Santos,maria@email.com,2024002
+    
+    A primeira linha (cabeçalho) é ignorada.
+    """
+    content = await file.read()
+    
+    try:
+        # Decodificar CSV
+        text = content.decode('utf-8-sig')  # utf-8-sig remove BOM se existir
+        reader = csv.DictReader(io.StringIO(text))
+        
+        criados = []
+        erros = []
+        
+        for row in reader:
+            nome = row.get('nome', '').strip()
+            if not nome:
+                continue
+                
+            email = row.get('email', '').strip() or None
+            matricula = row.get('matricula', '').strip() or None
+            
+            try:
+                aluno = storage.criar_aluno(nome, email, matricula)
+                criados.append(aluno.to_dict())
+                
+                if turma_id:
+                    storage.vincular_aluno_turma(aluno.id, turma_id)
+                    
+            except Exception as e:
+                erros.append({"nome": nome, "erro": str(e)})
+        
+        return {
+            "success": True,
+            "arquivo": file.filename,
+            "criados": len(criados),
+            "erros": len(erros),
+            "alunos": criados,
+            "detalhes_erros": erros
+        }
+        
+    except Exception as e:
+        raise HTTPException(400, f"Erro ao processar CSV: {str(e)}")
+
+
+@router.post("/api/alunos/vincular-lote", tags=["Lote"])
+async def vincular_alunos_lote(
+    turma_id: str = Form(...),
+    aluno_ids: str = Form(...)  # IDs separados por vírgula
+):
+    """Vincula múltiplos alunos a uma turma de uma vez"""
+    ids = [id.strip() for id in aluno_ids.split(',') if id.strip()]
+    
+    sucesso = []
+    erros = []
+    
+    for aluno_id in ids:
+        try:
+            vinculo = storage.vincular_aluno_turma(aluno_id, turma_id)
+            if vinculo:
+                sucesso.append(aluno_id)
+            else:
+                erros.append({"aluno_id": aluno_id, "erro": "Já vinculado ou não encontrado"})
+        except Exception as e:
+            erros.append({"aluno_id": aluno_id, "erro": str(e)})
+    
+    return {
+        "success": True,
+        "vinculados": len(sucesso),
+        "erros": len(erros),
+        "detalhes_erros": erros
+    }
+
+
+# ============================================================
+# UPLOAD EM LOTE: DOCUMENTOS
+# ============================================================
+
+@router.post("/api/documentos/upload-lote", tags=["Lote"])
+async def upload_documentos_lote(
+    files: List[UploadFile] = File(...),
+    tipo: str = Form(...),
+    atividade_id: str = Form(...),
+    aluno_id: Optional[str] = Form(None)
+):
+    """
+    Upload de múltiplos documentos de uma vez.
+    Útil para subir várias provas de alunos.
+    """
+    try:
+        tipo_doc = TipoDocumento(tipo)
+    except ValueError:
+        raise HTTPException(400, f"Tipo inválido: {tipo}")
+    
+    salvos = []
+    erros = []
+    
+    for file in files:
+        try:
+            # Salvar temporário
+            with tempfile.NamedTemporaryFile(delete=False, suffix=Path(file.filename).suffix) as tmp:
+                content = await file.read()
+                tmp.write(content)
+                tmp_path = tmp.name
+            
+            # Salvar documento
+            documento = storage.salvar_documento(
+                arquivo_origem=tmp_path,
+                tipo=tipo_doc,
+                atividade_id=atividade_id,
+                aluno_id=aluno_id,
+                criado_por="usuario"
+            )
+            
+            os.unlink(tmp_path)
+            
+            if documento:
+                salvos.append(documento.to_dict())
+            else:
+                erros.append({"arquivo": file.filename, "erro": "Falha ao salvar"})
+                
+        except Exception as e:
+            erros.append({"arquivo": file.filename, "erro": str(e)})
+    
+    return {
+        "success": True,
+        "salvos": len(salvos),
+        "erros": len(erros),
+        "documentos": salvos,
+        "detalhes_erros": erros
+    }
+
+
+@router.post("/api/documentos/upload-provas-alunos", tags=["Lote"])
+async def upload_provas_alunos(
+    files: List[UploadFile] = File(...),
+    atividade_id: str = Form(...),
+    modo_nome: str = Form("matricula")  # "matricula" ou "nome"
+):
+    """
+    Upload inteligente de provas de alunos.
+    
+    O nome do arquivo deve conter a matrícula ou nome do aluno.
+    Exemplos:
+    - 2024001_prova.pdf → busca aluno com matrícula 2024001
+    - joao_silva_prova.pdf → busca aluno com nome "joao silva"
+    
+    modo_nome: "matricula" ou "nome"
+    """
+    atividade = storage.get_atividade(atividade_id)
+    if not atividade:
+        raise HTTPException(404, "Atividade não encontrada")
+    
+    turma = storage.get_turma(atividade.turma_id)
+    alunos_turma = storage.listar_alunos(turma.id)
+    
+    salvos = []
+    erros = []
+    
+    for file in files:
+        try:
+            # Extrair identificador do nome do arquivo
+            nome_arquivo = Path(file.filename).stem.lower()
+            
+            # Buscar aluno
+            aluno_encontrado = None
+            
+            if modo_nome == "matricula":
+                # Procura matrícula no nome do arquivo
+                for aluno in alunos_turma:
+                    if aluno.matricula and aluno.matricula.lower() in nome_arquivo:
+                        aluno_encontrado = aluno
+                        break
+            else:
+                # Procura nome no arquivo
+                for aluno in alunos_turma:
+                    nome_normalizado = aluno.nome.lower().replace(" ", "_")
+                    if nome_normalizado in nome_arquivo or nome_arquivo in nome_normalizado:
+                        aluno_encontrado = aluno
+                        break
+            
+            if not aluno_encontrado:
+                erros.append({
+                    "arquivo": file.filename,
+                    "erro": f"Aluno não encontrado. Nome do arquivo: {nome_arquivo}"
+                })
+                continue
+            
+            # Salvar temporário
+            with tempfile.NamedTemporaryFile(delete=False, suffix=Path(file.filename).suffix) as tmp:
+                content = await file.read()
+                tmp.write(content)
+                tmp_path = tmp.name
+            
+            # Salvar documento
+            documento = storage.salvar_documento(
+                arquivo_origem=tmp_path,
+                tipo=TipoDocumento.PROVA_RESPONDIDA,
+                atividade_id=atividade_id,
+                aluno_id=aluno_encontrado.id,
+                criado_por="usuario"
+            )
+            
+            os.unlink(tmp_path)
+            
+            if documento:
+                salvos.append({
+                    "documento": documento.to_dict(),
+                    "aluno": aluno_encontrado.nome
+                })
+            else:
+                erros.append({"arquivo": file.filename, "erro": "Falha ao salvar"})
+                
+        except Exception as e:
+            erros.append({"arquivo": file.filename, "erro": str(e)})
+    
+    return {
+        "success": True,
+        "salvos": len(salvos),
+        "erros": len(erros),
+        "documentos": salvos,
+        "detalhes_erros": erros,
+        "dica": "Certifique-se que o nome do arquivo contém a matrícula ou nome do aluno"
+    }
+
+
+# ============================================================
+# BUSCA GLOBAL
+# ============================================================
+
+@router.get("/api/busca", tags=["Busca"])
+async def busca_global(
+    q: str = Query(..., min_length=2, description="Termo de busca"),
+    tipo: Optional[str] = Query(None, description="Filtrar por tipo: aluno, materia, turma, atividade")
+):
+    """
+    Busca global em todo o sistema.
+    Retorna resultados organizados por tipo.
+    """
+    termo = q.lower()
+    resultados = {
+        "alunos": [],
+        "materias": [],
+        "turmas": [],
+        "atividades": []
+    }
+    
+    # Buscar alunos
+    if not tipo or tipo == "aluno":
+        for aluno in storage.listar_alunos():
+            if termo in aluno.nome.lower() or (aluno.matricula and termo in aluno.matricula.lower()):
+                resultados["alunos"].append({
+                    "id": aluno.id,
+                    "nome": aluno.nome,
+                    "matricula": aluno.matricula,
+                    "tipo": "aluno"
+                })
+    
+    # Buscar matérias
+    if not tipo or tipo == "materia":
+        for materia in storage.listar_materias():
+            if termo in materia.nome.lower():
+                resultados["materias"].append({
+                    "id": materia.id,
+                    "nome": materia.nome,
+                    "tipo": "materia"
+                })
+    
+    # Buscar turmas
+    if not tipo or tipo == "turma":
+        for turma in storage.listar_turmas():
+            if termo in turma.nome.lower():
+                materia = storage.get_materia(turma.materia_id)
+                resultados["turmas"].append({
+                    "id": turma.id,
+                    "nome": turma.nome,
+                    "materia": materia.nome if materia else None,
+                    "tipo": "turma"
+                })
+    
+    # Buscar atividades
+    if not tipo or tipo == "atividade":
+        for turma in storage.listar_turmas():
+            for atividade in storage.listar_atividades(turma.id):
+                if termo in atividade.nome.lower():
+                    resultados["atividades"].append({
+                        "id": atividade.id,
+                        "nome": atividade.nome,
+                        "turma": turma.nome,
+                        "tipo": "atividade"
+                    })
+    
+    total = sum(len(v) for v in resultados.values())
+    
+    return {
+        "termo": q,
+        "total": total,
+        "resultados": resultados
+    }
+
+
+# ============================================================
+# ESTATÍSTICAS
+# ============================================================
+
+@router.get("/api/estatisticas", tags=["Estatísticas"])
+async def get_estatisticas_gerais():
+    """Retorna estatísticas gerais do sistema"""
+    
+    materias = storage.listar_materias()
+    turmas = storage.listar_turmas()
+    alunos = storage.listar_alunos()
+    
+    total_atividades = 0
+    total_documentos = 0
+    atividades_sem_gabarito = 0
+    
+    for turma in turmas:
+        atividades = storage.listar_atividades(turma.id)
+        total_atividades += len(atividades)
+        
+        for ativ in atividades:
+            docs = storage.listar_documentos(ativ.id)
+            total_documentos += len(docs)
+            
+            tipos = [d.tipo for d in docs]
+            if TipoDocumento.GABARITO not in tipos:
+                atividades_sem_gabarito += 1
+    
+    return {
+        "total_materias": len(materias),
+        "total_turmas": len(turmas),
+        "total_alunos": len(alunos),
+        "total_atividades": total_atividades,
+        "total_documentos": total_documentos,
+        "alertas": {
+            "atividades_sem_gabarito": atividades_sem_gabarito
+        }
+    }
+
+
+@router.get("/api/estatisticas/turma/{turma_id}", tags=["Estatísticas"])
+async def get_estatisticas_turma(turma_id: str):
+    """Retorna estatísticas de uma turma específica"""
+    
+    turma = storage.get_turma(turma_id)
+    if not turma:
+        raise HTTPException(404, "Turma não encontrada")
+    
+    alunos = storage.listar_alunos(turma_id)
+    atividades = storage.listar_atividades(turma_id)
+    
+    stats_atividades = []
+    for ativ in atividades:
+        status = storage.get_status_atividade(ativ.id)
+        stats_atividades.append({
+            "id": ativ.id,
+            "nome": ativ.nome,
+            "alunos_com_prova": status["alunos"]["com_prova"],
+            "alunos_corrigidos": status["alunos"]["corrigidos"],
+            "docs_faltando": status["documentos_base"]["faltando"]
+        })
+    
+    return {
+        "turma": turma.to_dict(),
+        "total_alunos": len(alunos),
+        "total_atividades": len(atividades),
+        "atividades": stats_atividades
+    }
+
+
+# ============================================================
+# EXPORTAÇÃO
+# ============================================================
+
+@router.get("/api/exportar/alunos-csv", tags=["Exportação"])
+async def exportar_alunos_csv(turma_id: Optional[str] = None):
+    """Exporta lista de alunos em CSV"""
+    
+    alunos = storage.listar_alunos(turma_id)
+    
+    output = io.StringIO()
+    writer = csv.writer(output)
+    writer.writerow(["nome", "email", "matricula", "id"])
+    
+    for aluno in alunos:
+        writer.writerow([aluno.nome, aluno.email or "", aluno.matricula or "", aluno.id])
+    
+    content = output.getvalue()
+    
+    return {
+        "csv": content,
+        "total": len(alunos),
+        "dica": "Cole este conteúdo em um arquivo .csv"
+    }
+
+
+# ============================================================
+# DUPLICAÇÃO / CÓPIA
+# ============================================================
+
+@router.post("/api/atividades/{atividade_id}/duplicar", tags=["Utilitários"])
+async def duplicar_atividade(
+    atividade_id: str,
+    nova_turma_id: str = Form(...),
+    novo_nome: Optional[str] = Form(None)
+):
+    """
+    Duplica uma atividade para outra turma.
+    Copia os documentos base (enunciado, gabarito, critérios).
+    """
+    atividade_original = storage.get_atividade(atividade_id)
+    if not atividade_original:
+        raise HTTPException(404, "Atividade não encontrada")
+    
+    # Criar nova atividade
+    nova_atividade = storage.criar_atividade(
+        turma_id=nova_turma_id,
+        nome=novo_nome or f"{atividade_original.nome} (cópia)",
+        tipo=atividade_original.tipo,
+        nota_maxima=atividade_original.nota_maxima,
+        descricao=atividade_original.descricao
+    )
+    
+    if not nova_atividade:
+        raise HTTPException(400, "Turma destino não encontrada")
+    
+    # Copiar documentos base
+    docs_copiados = 0
+    docs_originais = storage.listar_documentos(atividade_id)
+    
+    for doc in docs_originais:
+        if doc.is_documento_base and Path(doc.caminho_arquivo).exists():
+            try:
+                novo_doc = storage.salvar_documento(
+                    arquivo_origem=doc.caminho_arquivo,
+                    tipo=doc.tipo,
+                    atividade_id=nova_atividade.id,
+                    criado_por="sistema_copia"
+                )
+                if novo_doc:
+                    docs_copiados += 1
+            except:
+                pass
+    
+    return {
+        "success": True,
+        "atividade_original": atividade_id,
+        "nova_atividade": nova_atividade.to_dict(),
+        "documentos_copiados": docs_copiados
+    }

@@ -1,0 +1,1307 @@
+<!-- 
+╔══════════════════════════════════════════════════════════════════╗
+║  PROVA AI - FRONTEND v2.0 - PARTE 1 de 2                        ║
+║                                                                  ║
+║  INSTRUÇÕES:                                                     ║
+║  1. Copie TODO o conteúdo deste arquivo                         ║
+║  2. Cole no VSCode                                               ║
+║  3. Depois, copie a PARTE 2 e cole NO FINAL deste arquivo       ║
+║  4. Salve como: frontend/index_v2.html                          ║
+╚══════════════════════════════════════════════════════════════════╝
+-->
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Prova AI v2.0</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-dark: #0f1117;
+            --bg-card: #1a1d24;
+            --bg-hover: #242830;
+            --bg-input: #242830;
+            --border: #2e3340;
+            --text: #e4e4e7;
+            --text-muted: #71717a;
+            --primary: #3b82f6;
+            --primary-hover: #2563eb;
+            --success: #22c55e;
+            --warning: #eab308;
+            --danger: #ef4444;
+            --purple: #a855f7;
+        }
+        
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        
+        body {
+            font-family: 'Inter', -apple-system, sans-serif;
+            background: var(--bg-dark);
+            color: var(--text);
+            min-height: 100vh;
+        }
+        
+        .app { display: flex; min-height: 100vh; }
+        
+        /* SIDEBAR */
+        .sidebar {
+            width: 280px;
+            background: var(--bg-card);
+            border-right: 1px solid var(--border);
+            display: flex;
+            flex-direction: column;
+            position: fixed;
+            height: 100vh;
+            overflow: hidden;
+        }
+        
+        .sidebar-header {
+            padding: 20px;
+            border-bottom: 1px solid var(--border);
+        }
+        
+        .logo {
+            font-size: 1.25rem;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .logo-icon {
+            width: 32px;
+            height: 32px;
+            background: linear-gradient(135deg, var(--primary), var(--purple));
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .nav-tree {
+            flex: 1;
+            overflow-y: auto;
+            padding: 12px;
+        }
+        
+        .tree-section { margin-bottom: 8px; }
+        
+        .tree-section-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 8px 12px;
+            font-size: 0.7rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: var(--text-muted);
+        }
+        
+        .tree-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 12px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.9rem;
+            transition: all 0.15s;
+        }
+        
+        .tree-item:hover { background: var(--bg-hover); }
+        .tree-item.active { background: var(--primary); color: white; }
+        
+        .tree-item-icon { opacity: 0.7; font-size: 1rem; }
+        .tree-item-name { flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .tree-item-count {
+            font-size: 0.75rem;
+            background: var(--bg-hover);
+            padding: 2px 8px;
+            border-radius: 10px;
+            color: var(--text-muted);
+        }
+        
+        .tree-children {
+            margin-left: 20px;
+            border-left: 1px solid var(--border);
+            padding-left: 8px;
+            display: none;
+        }
+        
+        .tree-children.expanded { display: block; }
+        
+        .tree-toggle {
+            width: 20px;
+            height: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            opacity: 0.5;
+            transition: transform 0.2s;
+        }
+        
+        .tree-toggle.expanded { transform: rotate(90deg); }
+        .tree-toggle.hidden { visibility: hidden; }
+        
+        .sidebar-footer {
+            padding: 12px;
+            border-top: 1px solid var(--border);
+        }
+        
+        /* MAIN CONTENT */
+        .main {
+            flex: 1;
+            margin-left: 280px;
+            display: flex;
+            flex-direction: column;
+            min-height: 100vh;
+        }
+        
+        .header {
+            background: var(--bg-card);
+            border-bottom: 1px solid var(--border);
+            padding: 16px 24px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            position: sticky;
+            top: 0;
+            z-index: 10;
+        }
+        
+        .breadcrumb {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 0.9rem;
+        }
+        
+        .breadcrumb-item {
+            color: var(--text-muted);
+            cursor: pointer;
+            transition: color 0.15s;
+        }
+        
+        .breadcrumb-item:hover { color: var(--text); }
+        .breadcrumb-item.current { color: var(--text); font-weight: 500; }
+        .breadcrumb-sep { color: var(--text-muted); opacity: 0.5; }
+        
+        .header-actions { display: flex; gap: 12px; }
+        
+        .content {
+            flex: 1;
+            padding: 24px;
+            overflow-y: auto;
+        }
+        
+        /* PAGE HEADER */
+        .page-header { margin-bottom: 24px; }
+        .page-title { font-size: 1.5rem; font-weight: 600; margin-bottom: 4px; }
+        .page-subtitle { color: var(--text-muted); font-size: 0.9rem; }
+        
+        /* CARDS */
+        .card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 16px;
+        }
+        
+        .card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 16px;
+        }
+        
+        .card-title { font-size: 1rem; font-weight: 600; }
+        
+        .card-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            gap: 16px;
+        }
+        
+        .card-grid-item {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 20px;
+            cursor: pointer;
+            transition: all 0.15s;
+        }
+        
+        .card-grid-item:hover {
+            border-color: var(--primary);
+            transform: translateY(-2px);
+        }
+        
+        .card-icon {
+            width: 48px;
+            height: 48px;
+            background: var(--bg-hover);
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
+            margin-bottom: 12px;
+        }
+        
+        .card-name { font-weight: 600; margin-bottom: 4px; }
+        .card-meta { font-size: 0.85rem; color: var(--text-muted); }
+        
+        /* BUTTONS */
+        .btn {
+            padding: 10px 16px;
+            border-radius: 8px;
+            border: 1px solid var(--border);
+            background: var(--bg-input);
+            color: var(--text);
+            font-family: inherit;
+            font-size: 0.875rem;
+            font-weight: 500;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            transition: all 0.15s;
+        }
+        
+        .btn:hover { background: var(--bg-hover); }
+        .btn-primary { background: var(--primary); border-color: var(--primary); color: white; }
+        .btn-primary:hover { background: var(--primary-hover); }
+        .btn-success { background: var(--success); border-color: var(--success); color: white; }
+        .btn-danger { background: var(--danger); border-color: var(--danger); color: white; }
+        .btn-sm { padding: 6px 12px; font-size: 0.8rem; }
+        
+        /* FORMS */
+        .form-group { margin-bottom: 16px; }
+        .form-label {
+            display: block;
+            font-size: 0.85rem;
+            font-weight: 500;
+            margin-bottom: 6px;
+            color: var(--text-muted);
+        }
+        
+        .form-input, .form-select, .form-textarea {
+            width: 100%;
+            padding: 10px 14px;
+            background: var(--bg-input);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            color: var(--text);
+            font-family: inherit;
+            font-size: 0.9rem;
+            transition: border-color 0.15s;
+        }
+        
+        .form-input:focus, .form-select:focus, .form-textarea:focus {
+            outline: none;
+            border-color: var(--primary);
+        }
+        
+        .form-textarea { min-height: 100px; resize: vertical; }
+        
+        /* TABLES */
+        .table-container { overflow-x: auto; }
+        table { width: 100%; border-collapse: collapse; }
+        th, td { padding: 12px 16px; text-align: left; border-bottom: 1px solid var(--border); }
+        th {
+            font-size: 0.8rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: var(--text-muted);
+        }
+        tr:hover { background: var(--bg-hover); }
+        
+        /* BADGES */
+        .badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            padding: 4px 10px;
+            border-radius: 20px;
+            font-size: 0.75rem;
+            font-weight: 500;
+        }
+        
+        .badge-primary { background: rgba(59, 130, 246, 0.2); color: var(--primary); }
+        .badge-success { background: rgba(34, 197, 94, 0.2); color: var(--success); }
+        .badge-warning { background: rgba(234, 179, 8, 0.2); color: var(--warning); }
+        .badge-danger { background: rgba(239, 68, 68, 0.2); color: var(--danger); }
+        .badge-purple { background: rgba(168, 85, 247, 0.2); color: var(--purple); }
+        
+        /* ALERTS */
+        .alert {
+            padding: 14px 18px;
+            border-radius: 8px;
+            margin-bottom: 16px;
+            display: flex;
+            align-items: flex-start;
+            gap: 12px;
+        }
+        
+        .alert-warning {
+            background: rgba(234, 179, 8, 0.1);
+            border: 1px solid rgba(234, 179, 8, 0.3);
+            color: var(--warning);
+        }
+        
+        .alert-danger {
+            background: rgba(239, 68, 68, 0.1);
+            border: 1px solid rgba(239, 68, 68, 0.3);
+            color: var(--danger);
+        }
+        
+        .alert-icon { font-size: 1.2rem; }
+        .alert-content { flex: 1; }
+        .alert-title { font-weight: 600; margin-bottom: 4px; }
+        .alert-text { font-size: 0.85rem; opacity: 0.9; }
+        
+        /* MODAL */
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.7);
+            justify-content: center;
+            align-items: center;
+            z-index: 100;
+            padding: 20px;
+        }
+        
+        .modal-overlay.active { display: flex; }
+        
+        .modal {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            width: 100%;
+            max-width: 500px;
+            max-height: 90vh;
+            overflow-y: auto;
+        }
+        
+        .modal-header {
+            padding: 20px;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .modal-title { font-size: 1.1rem; font-weight: 600; }
+        
+        .modal-close {
+            background: none;
+            border: none;
+            color: var(--text-muted);
+            font-size: 1.5rem;
+            cursor: pointer;
+            padding: 4px;
+        }
+        
+        .modal-close:hover { color: var(--text); }
+        .modal-body { padding: 20px; }
+        
+        .modal-footer {
+            padding: 16px 20px;
+            border-top: 1px solid var(--border);
+            display: flex;
+            justify-content: flex-end;
+            gap: 12px;
+        }
+        
+        /* UPLOAD ZONE */
+        .upload-zone {
+            border: 2px dashed var(--border);
+            border-radius: 12px;
+            padding: 40px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        
+        .upload-zone:hover {
+            border-color: var(--primary);
+            background: rgba(59, 130, 246, 0.05);
+        }
+        
+        .upload-zone.dragover {
+            border-color: var(--success);
+            background: rgba(34, 197, 94, 0.1);
+        }
+        
+        .upload-icon { font-size: 3rem; opacity: 0.5; margin-bottom: 16px; }
+        .upload-text { color: var(--text-muted); }
+        .upload-text strong { color: var(--primary); }
+        
+        /* DOC ITEM */
+        .doc-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 12px;
+            background: var(--bg-input);
+            border-radius: 8px;
+            margin-bottom: 8px;
+            cursor: pointer;
+        }
+        
+        .doc-item:hover { background: var(--bg-hover); }
+        
+        .doc-icon {
+            width: 40px;
+            height: 40px;
+            background: var(--bg-hover);
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.2rem;
+        }
+        
+        .doc-info { flex: 1; }
+        .doc-name { font-weight: 500; font-size: 0.9rem; }
+        .doc-meta { font-size: 0.8rem; color: var(--text-muted); }
+        
+        /* EMPTY STATE */
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+            color: var(--text-muted);
+        }
+        
+        .empty-icon { font-size: 4rem; opacity: 0.3; margin-bottom: 16px; }
+        .empty-title { font-size: 1.1rem; font-weight: 600; color: var(--text); margin-bottom: 8px; }
+        .empty-text { margin-bottom: 20px; }
+        
+        /* STATS GRID */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 16px;
+            margin-bottom: 24px;
+        }
+        
+        .stat-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 20px;
+        }
+        
+        .stat-value { font-size: 2rem; font-weight: 700; margin-bottom: 4px; }
+        .stat-label { font-size: 0.85rem; color: var(--text-muted); }
+        
+        /* TABS */
+        .tabs {
+            display: flex;
+            gap: 4px;
+            border-bottom: 1px solid var(--border);
+            margin-bottom: 20px;
+        }
+        
+        .tab {
+            padding: 12px 20px;
+            cursor: pointer;
+            font-size: 0.9rem;
+            color: var(--text-muted);
+            border-bottom: 2px solid transparent;
+            margin-bottom: -1px;
+            transition: all 0.15s;
+        }
+        
+        .tab:hover { color: var(--text); }
+        .tab.active { color: var(--primary); border-bottom-color: var(--primary); }
+        
+        /* TOAST */
+        .toast {
+            position: fixed;
+            bottom: 24px;
+            right: 24px;
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            padding: 16px 20px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            transform: translateY(100px);
+            opacity: 0;
+            transition: all 0.3s;
+            z-index: 200;
+            max-width: 400px;
+        }
+        
+        .toast.show { transform: translateY(0); opacity: 1; }
+        .toast.success { border-left: 4px solid var(--success); }
+        .toast.error { border-left: 4px solid var(--danger); }
+        
+        /* SCROLLBAR */
+        ::-webkit-scrollbar { width: 8px; height: 8px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: var(--text-muted); }
+    </style>
+</head>
+<body>
+    <div class="app">
+        <!-- Sidebar -->
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <div class="logo">
+                    <div class="logo-icon">📝</div>
+                    <span>Prova AI</span>
+                </div>
+            </div>
+            
+            <nav class="nav-tree" id="nav-tree">
+                <div class="tree-section">
+                    <div class="tree-section-header">
+                        <span>Navegação</span>
+                    </div>
+                    <div class="tree-item active" onclick="showDashboard()">
+                        <span class="tree-item-icon">🏠</span>
+                        <span class="tree-item-name">Início</span>
+                    </div>
+                    <div class="tree-item" onclick="showAlunos()">
+                        <span class="tree-item-icon">👥</span>
+                        <span class="tree-item-name">Todos os Alunos</span>
+                    </div>
+                </div>
+                
+                <div class="tree-section">
+                    <div class="tree-section-header">
+                        <span>Matérias</span>
+                        <button class="btn btn-sm" onclick="openModal('modal-materia')">+</button>
+                    </div>
+                    <div id="tree-materias"></div>
+                </div>
+            </nav>
+            
+            <div class="sidebar-footer">
+                <button class="btn btn-primary" style="width: 100%;" onclick="openModal('modal-materia')">
+                    + Nova Matéria
+                </button>
+            </div>
+        </aside>
+        
+        <!-- Main Content -->
+        <main class="main">
+            <header class="header">
+                <div class="breadcrumb" id="breadcrumb">
+                    <span class="breadcrumb-item current">Início</span>
+                </div>
+                <div class="header-actions">
+                    <button class="btn" onclick="openModal('modal-busca')">🔍 Buscar</button>
+                </div>
+            </header>
+            
+            <div class="content" id="content"></div>
+        </main>
+    </div>
+    
+    <!-- Modal: Nova Matéria -->
+    <div class="modal-overlay" id="modal-materia">
+        <div class="modal">
+            <div class="modal-header">
+                <h3 class="modal-title">Nova Matéria</h3>
+                <button class="modal-close" onclick="closeModal('modal-materia')">×</button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label class="form-label">Nome da Matéria *</label>
+                    <input type="text" class="form-input" id="input-materia-nome" placeholder="Ex: Matemática">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Descrição</label>
+                    <textarea class="form-textarea" id="input-materia-desc" placeholder="Descrição opcional"></textarea>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Nível de Ensino</label>
+                    <select class="form-select" id="input-materia-nivel">
+                        <option value="outro">Outro</option>
+                        <option value="fundamental_1">Fundamental I</option>
+                        <option value="fundamental_2">Fundamental II</option>
+                        <option value="medio">Ensino Médio</option>
+                        <option value="superior">Ensino Superior</option>
+                    </select>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn" onclick="closeModal('modal-materia')">Cancelar</button>
+                <button class="btn btn-primary" onclick="criarMateria()">Criar Matéria</button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Modal: Nova Turma -->
+    <div class="modal-overlay" id="modal-turma">
+        <div class="modal">
+            <div class="modal-header">
+                <h3 class="modal-title">Nova Turma</h3>
+                <button class="modal-close" onclick="closeModal('modal-turma')">×</button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label class="form-label">Nome da Turma *</label>
+                    <input type="text" class="form-input" id="input-turma-nome" placeholder="Ex: 9º Ano A">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Ano Letivo</label>
+                    <input type="number" class="form-input" id="input-turma-ano" placeholder="2024" value="2024">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Período</label>
+                    <input type="text" class="form-input" id="input-turma-periodo" placeholder="Ex: Manhã">
+                </div>
+                <input type="hidden" id="input-turma-materia-id">
+            </div>
+            <div class="modal-footer">
+                <button class="btn" onclick="closeModal('modal-turma')">Cancelar</button>
+                <button class="btn btn-primary" onclick="criarTurma()">Criar Turma</button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Modal: Nova Atividade -->
+    <div class="modal-overlay" id="modal-atividade">
+        <div class="modal">
+            <div class="modal-header">
+                <h3 class="modal-title">Nova Atividade</h3>
+                <button class="modal-close" onclick="closeModal('modal-atividade')">×</button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label class="form-label">Nome da Atividade *</label>
+                    <input type="text" class="form-input" id="input-ativ-nome" placeholder="Ex: Prova 1 - Bimestre 1">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Tipo</label>
+                    <select class="form-select" id="input-ativ-tipo">
+                        <option value="prova">Prova</option>
+                        <option value="trabalho">Trabalho</option>
+                        <option value="exercicio">Exercício</option>
+                        <option value="outro">Outro</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Nota Máxima</label>
+                    <input type="number" class="form-input" id="input-ativ-nota" value="10" step="0.5">
+                </div>
+                <input type="hidden" id="input-ativ-turma-id">
+            </div>
+            <div class="modal-footer">
+                <button class="btn" onclick="closeModal('modal-atividade')">Cancelar</button>
+                <button class="btn btn-primary" onclick="criarAtividade()">Criar Atividade</button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Modal: Novo Aluno -->
+    <div class="modal-overlay" id="modal-aluno">
+        <div class="modal">
+            <div class="modal-header">
+                <h3 class="modal-title">Novo Aluno</h3>
+                <button class="modal-close" onclick="closeModal('modal-aluno')">×</button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label class="form-label">Nome Completo *</label>
+                    <input type="text" class="form-input" id="input-aluno-nome" placeholder="Ex: João da Silva">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Matrícula</label>
+                    <input type="text" class="form-input" id="input-aluno-matricula" placeholder="Ex: 2024001">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Email</label>
+                    <input type="email" class="form-input" id="input-aluno-email" placeholder="email@exemplo.com">
+                </div>
+                <input type="hidden" id="input-aluno-turma-id">
+            </div>
+            <div class="modal-footer">
+                <button class="btn" onclick="closeModal('modal-aluno')">Cancelar</button>
+                <button class="btn btn-primary" onclick="criarAluno()">Criar Aluno</button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Modal: Upload Documento -->
+    <div class="modal-overlay" id="modal-upload">
+        <div class="modal">
+            <div class="modal-header">
+                <h3 class="modal-title">Upload de Documento</h3>
+                <button class="modal-close" onclick="closeModal('modal-upload')">×</button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label class="form-label">Tipo de Documento *</label>
+                    <select class="form-select" id="input-upload-tipo">
+                        <option value="enunciado">📄 Enunciado da Prova</option>
+                        <option value="gabarito">✅ Gabarito</option>
+                        <option value="criterios_correcao">📋 Critérios de Correção</option>
+                        <option value="prova_respondida">👤 Prova do Aluno</option>
+                    </select>
+                </div>
+                <div class="form-group" id="grupo-aluno-upload" style="display: none;">
+                    <label class="form-label">Aluno *</label>
+                    <select class="form-select" id="input-upload-aluno"></select>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Arquivo *</label>
+                    <div class="upload-zone" id="upload-zone-modal">
+                        <div class="upload-icon">📁</div>
+                        <div class="upload-text">
+                            Arraste o arquivo aqui ou <strong>clique para selecionar</strong>
+                        </div>
+                        <input type="file" id="input-upload-file" hidden accept=".pdf,.docx,.doc,.png,.jpg,.jpeg">
+                    </div>
+                    <div id="upload-file-name" style="margin-top: 8px; font-size: 0.85rem; color: var(--text-muted);"></div>
+                </div>
+                <input type="hidden" id="input-upload-atividade-id">
+            </div>
+            <div class="modal-footer">
+                <button class="btn" onclick="closeModal('modal-upload')">Cancelar</button>
+                <button class="btn btn-primary" onclick="uploadDocumento()">Fazer Upload</button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Modal: Busca -->
+    <div class="modal-overlay" id="modal-busca">
+        <div class="modal">
+            <div class="modal-header">
+                <h3 class="modal-title">Buscar</h3>
+                <button class="modal-close" onclick="closeModal('modal-busca')">×</button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <input type="text" class="form-input" id="input-busca" placeholder="Digite para buscar...">
+                </div>
+                <div id="resultados-busca"></div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Toast -->
+    <div class="toast" id="toast"></div>
+
+<!-- 
+╔══════════════════════════════════════════════════════════════════╗
+║  FIM DA PARTE 1 - CONTINUE COM A PARTE 2 ABAIXO                 ║
+╚══════════════════════════════════════════════════════════════════╝
+-->
+->
+
+    <script>
+        // ============================================================
+        // CONFIGURAÇÃO
+        // ============================================================
+        const API = 'http://localhost:8000/api';
+        
+        let currentView = 'dashboard';
+        let currentMateria = null;
+        let currentTurma = null;
+        let currentAtividade = null;
+        
+        // ============================================================
+        // INICIALIZAÇÃO
+        // ============================================================
+        document.addEventListener('DOMContentLoaded', () => {
+            loadNavTree();
+            showDashboard();
+            setupUploadZone();
+            setupBusca();
+        });
+        
+        // ============================================================
+        // API HELPERS
+        // ============================================================
+        async function api(endpoint, options = {}) {
+            try {
+                const response = await fetch(`${API}${endpoint}`, {
+                    ...options,
+                    headers: { 'Content-Type': 'application/json', ...options.headers }
+                });
+                if (!response.ok) {
+                    const error = await response.json();
+                    throw new Error(error.detail || 'Erro na requisição');
+                }
+                return await response.json();
+            } catch (error) {
+                console.error('API Error:', error);
+                showToast(error.message, 'error');
+                throw error;
+            }
+        }
+        
+        async function apiForm(endpoint, formData) {
+            try {
+                const response = await fetch(`${API}${endpoint}`, { method: 'POST', body: formData });
+                if (!response.ok) {
+                    const error = await response.json();
+                    throw new Error(error.detail || 'Erro na requisição');
+                }
+                return await response.json();
+            } catch (error) {
+                console.error('API Error:', error);
+                showToast(error.message, 'error');
+                throw error;
+            }
+        }
+        
+        // ============================================================
+        // NAVEGAÇÃO - ÁRVORE
+        // ============================================================
+        async function loadNavTree() {
+            try {
+                const data = await api('/navegacao/arvore');
+                renderNavTree(data.materias);
+            } catch (e) {
+                console.error('Erro ao carregar árvore:', e);
+            }
+        }
+        
+        function renderNavTree(materias) {
+            const container = document.getElementById('tree-materias');
+            if (materias.length === 0) {
+                container.innerHTML = '<div style="padding: 12px; color: var(--text-muted); font-size: 0.85rem;">Nenhuma matéria ainda</div>';
+                return;
+            }
+            
+            container.innerHTML = materias.map(materia => `
+                <div class="tree-item" onclick="showMateria('${materia.id}')">
+                    <span class="tree-toggle ${materia.turmas.length > 0 ? '' : 'hidden'}" onclick="event.stopPropagation(); toggleTree(this)">▶</span>
+                    <span class="tree-item-icon">📚</span>
+                    <span class="tree-item-name">${materia.nome}</span>
+                    <span class="tree-item-count">${materia.turmas.length}</span>
+                </div>
+                <div class="tree-children" id="tree-materia-${materia.id}">
+                    ${materia.turmas.map(turma => `
+                        <div class="tree-item" onclick="showTurma('${turma.id}')">
+                            <span class="tree-toggle ${turma.atividades.length > 0 ? '' : 'hidden'}" onclick="event.stopPropagation(); toggleTree(this)">▶</span>
+                            <span class="tree-item-icon">👥</span>
+                            <span class="tree-item-name">${turma.nome}</span>
+                            <span class="tree-item-count">${turma.total_alunos}</span>
+                        </div>
+                        <div class="tree-children" id="tree-turma-${turma.id}">
+                            ${turma.atividades.map(ativ => `
+                                <div class="tree-item" onclick="showAtividade('${ativ.id}')">
+                                    <span class="tree-item-icon">📝</span>
+                                    <span class="tree-item-name">${ativ.nome}</span>
+                                </div>
+                            `).join('')}
+                        </div>
+                    `).join('')}
+                </div>
+            `).join('');
+        }
+        
+        function toggleTree(el) {
+            el.classList.toggle('expanded');
+            const children = el.closest('.tree-item').nextElementSibling;
+            if (children && children.classList.contains('tree-children')) {
+                children.classList.toggle('expanded');
+            }
+        }
+        
+        // ============================================================
+        // VIEWS
+        // ============================================================
+        async function showDashboard() {
+            currentView = 'dashboard';
+            currentMateria = currentTurma = currentAtividade = null;
+            setBreadcrumb([{nome: 'Início', onclick: 'showDashboard()'}]);
+            
+            try {
+                const stats = await api('/estatisticas');
+                document.getElementById('content').innerHTML = `
+                    <div class="page-header">
+                        <h1 class="page-title">Dashboard</h1>
+                        <p class="page-subtitle">Visão geral do sistema</p>
+                    </div>
+                    <div class="stats-grid">
+                        <div class="stat-card"><div class="stat-value">${stats.total_materias}</div><div class="stat-label">Matérias</div></div>
+                        <div class="stat-card"><div class="stat-value">${stats.total_turmas}</div><div class="stat-label">Turmas</div></div>
+                        <div class="stat-card"><div class="stat-value">${stats.total_alunos}</div><div class="stat-label">Alunos</div></div>
+                        <div class="stat-card"><div class="stat-value">${stats.total_atividades}</div><div class="stat-label">Atividades</div></div>
+                    </div>
+                    ${stats.alertas.atividades_sem_gabarito > 0 ? `
+                        <div class="alert alert-warning">
+                            <span class="alert-icon">⚠️</span>
+                            <div class="alert-content">
+                                <div class="alert-title">Atenção</div>
+                                <div class="alert-text">${stats.alertas.atividades_sem_gabarito} atividade(s) sem gabarito</div>
+                            </div>
+                        </div>
+                    ` : ''}
+                    <div class="card">
+                        <div class="card-header">
+                            <h3 class="card-title">Matérias</h3>
+                            <button class="btn btn-primary btn-sm" onclick="openModal('modal-materia')">+ Nova</button>
+                        </div>
+                        <div class="card-grid" id="grid-materias"><div style="color: var(--text-muted);">Carregando...</div></div>
+                    </div>
+                `;
+                
+                const materiasData = await api('/materias');
+                const gridMaterias = document.getElementById('grid-materias');
+                if (materiasData.materias.length === 0) {
+                    gridMaterias.innerHTML = `<div class="empty-state" style="grid-column: 1/-1;"><div class="empty-icon">📚</div><div class="empty-title">Nenhuma matéria</div><div class="empty-text">Comece criando sua primeira matéria</div><button class="btn btn-primary" onclick="openModal('modal-materia')">+ Criar Matéria</button></div>`;
+                } else {
+                    gridMaterias.innerHTML = materiasData.materias.map(m => `<div class="card-grid-item" onclick="showMateria('${m.id}')"><div class="card-icon">📚</div><div class="card-name">${m.nome}</div><div class="card-meta">${m.descricao || 'Sem descrição'}</div></div>`).join('');
+                }
+            } catch (e) {
+                document.getElementById('content').innerHTML = `<div class="alert alert-danger"><span class="alert-icon">❌</span><div class="alert-content"><div class="alert-title">Erro ao carregar</div><div class="alert-text">Verifique se o servidor está rodando em localhost:8000</div></div></div>`;
+            }
+        }
+        
+        async function showMateria(materiaId) {
+            currentView = 'materia';
+            currentMateria = materiaId;
+            currentTurma = currentAtividade = null;
+            
+            try {
+                const data = await api(`/materias/${materiaId}`);
+                setBreadcrumb([{nome: 'Início', onclick: 'showDashboard()'}, {nome: data.materia.nome, onclick: `showMateria('${materiaId}')`}]);
+                
+                document.getElementById('content').innerHTML = `
+                    <div class="page-header"><h1 class="page-title">${data.materia.nome}</h1><p class="page-subtitle">${data.materia.descricao || 'Sem descrição'}</p></div>
+                    <div class="card">
+                        <div class="card-header"><h3 class="card-title">Turmas (${data.total_turmas})</h3><button class="btn btn-primary btn-sm" onclick="openModalTurma('${materiaId}')">+ Nova Turma</button></div>
+                        ${data.turmas.length === 0 ? `<div class="empty-state"><div class="empty-icon">👥</div><div class="empty-title">Nenhuma turma</div><div class="empty-text">Crie uma turma para começar</div></div>` : `<div class="card-grid">${data.turmas.map(t => `<div class="card-grid-item" onclick="showTurma('${t.id}')"><div class="card-icon">👥</div><div class="card-name">${t.nome}</div><div class="card-meta">${t.ano_letivo || ''} ${t.periodo || ''}</div></div>`).join('')}</div>`}
+                    </div>
+                `;
+            } catch (e) { showToast('Erro ao carregar matéria', 'error'); }
+        }
+        
+        async function showTurma(turmaId) {
+            currentView = 'turma';
+            currentTurma = turmaId;
+            currentAtividade = null;
+            
+            try {
+                const data = await api(`/turmas/${turmaId}`);
+                currentMateria = data.turma.materia_id;
+                setBreadcrumb([{nome: 'Início', onclick: 'showDashboard()'}, {nome: data.materia.nome, onclick: `showMateria('${data.materia.id}')`}, {nome: data.turma.nome, onclick: `showTurma('${turmaId}')`}]);
+                
+                document.getElementById('content').innerHTML = `
+                    <div class="page-header"><h1 class="page-title">${data.turma.nome}</h1><p class="page-subtitle">${data.materia.nome} • ${data.turma.ano_letivo || ''}</p></div>
+                    <div class="tabs">
+                        <div class="tab active" onclick="showTurmaTab('atividades', '${turmaId}')">Atividades (${data.total_atividades})</div>
+                        <div class="tab" onclick="showTurmaTab('alunos', '${turmaId}')">Alunos (${data.total_alunos})</div>
+                    </div>
+                    <div id="turma-content">
+                        <div class="card">
+                            <div class="card-header"><h3 class="card-title">Atividades</h3><button class="btn btn-primary btn-sm" onclick="openModalAtividade('${turmaId}')">+ Nova Atividade</button></div>
+                            ${data.atividades.length === 0 ? `<div class="empty-state"><div class="empty-icon">📝</div><div class="empty-title">Nenhuma atividade</div></div>` : `<div class="card-grid">${data.atividades.map(a => `<div class="card-grid-item" onclick="showAtividade('${a.id}')"><div class="card-icon">📝</div><div class="card-name">${a.nome}</div><div class="card-meta"><span class="badge badge-${a.tipo === 'prova' ? 'primary' : 'purple'}">${a.tipo || 'outro'}</span> Nota máx: ${a.nota_maxima}</div></div>`).join('')}</div>`}
+                        </div>
+                    </div>
+                `;
+                window._turmaData = data;
+            } catch (e) { showToast('Erro ao carregar turma', 'error'); }
+        }
+        
+        async function showTurmaTab(tab, turmaId) {
+            document.querySelectorAll('.tabs .tab').forEach((t, i) => t.classList.toggle('active', (tab === 'atividades' && i === 0) || (tab === 'alunos' && i === 1)));
+            const data = window._turmaData;
+            const container = document.getElementById('turma-content');
+            
+            if (tab === 'alunos') {
+                container.innerHTML = `
+                    <div class="card">
+                        <div class="card-header"><h3 class="card-title">Alunos</h3><button class="btn btn-primary btn-sm" onclick="openModalAluno('${data.turma.id}')">+ Novo Aluno</button></div>
+                        ${data.alunos.length === 0 ? `<div class="empty-state"><div class="empty-icon">👤</div><div class="empty-title">Nenhum aluno</div></div>` : `
+                            <div class="table-container"><table><thead><tr><th>Nome</th><th>Matrícula</th><th>Email</th><th>Ações</th></tr></thead><tbody>
+                                ${data.alunos.map(a => `<tr><td><strong>${a.nome}</strong></td><td>${a.matricula || '-'}</td><td>${a.email || '-'}</td><td><button class="btn btn-sm" onclick="showAluno('${a.id}')">Ver</button></td></tr>`).join('')}
+                            </tbody></table></div>
+                        `}
+                    </div>
+                `;
+            } else {
+                showTurma(turmaId);
+            }
+        }
+        
+        async function showAtividade(atividadeId) {
+            currentView = 'atividade';
+            currentAtividade = atividadeId;
+            
+            try {
+                const data = await api(`/atividades/${atividadeId}`);
+                const turma = await api(`/turmas/${data.atividade.turma_id}`);
+                currentTurma = turma.turma.id;
+                currentMateria = turma.materia.id;
+                
+                setBreadcrumb([{nome: 'Início', onclick: 'showDashboard()'}, {nome: turma.materia.nome, onclick: `showMateria('${turma.materia.id}')`}, {nome: turma.turma.nome, onclick: `showTurma('${turma.turma.id}')`}, {nome: data.atividade.nome, onclick: `showAtividade('${atividadeId}')`}]);
+                
+                let alertas = data.documentos_base.faltando.length > 0 ? `<div class="alert alert-warning"><span class="alert-icon">⚠️</span><div class="alert-content"><div class="alert-title">Documentos faltando</div><div class="alert-text">${data.documentos_base.faltando.map(d => `<span class="badge badge-warning">${d}</span>`).join(' ')}</div></div></div>` : '';
+                
+                document.getElementById('content').innerHTML = `
+                    <div class="page-header"><h1 class="page-title">${data.atividade.nome}</h1><p class="page-subtitle">${turma.turma.nome} • Nota máx: ${data.atividade.nota_maxima}</p></div>
+                    ${alertas}
+                    <div class="stats-grid" style="grid-template-columns: repeat(3, 1fr);">
+                        <div class="stat-card"><div class="stat-value">${data.alunos.total}</div><div class="stat-label">Alunos na turma</div></div>
+                        <div class="stat-card"><div class="stat-value">${data.alunos.com_prova}</div><div class="stat-label">Provas entregues</div></div>
+                        <div class="stat-card"><div class="stat-value">${data.alunos.corrigidos}</div><div class="stat-label">Corrigidos</div></div>
+                    </div>
+                    <div class="card">
+                        <div class="card-header"><h3 class="card-title">📄 Documentos da Atividade</h3><button class="btn btn-primary btn-sm" onclick="openModalUpload('${atividadeId}', 'base')">+ Upload</button></div>
+                        <div id="docs-base">${renderDocsBase(data.documentos_base.existentes, atividadeId)}</div>
+                    </div>
+                    <div class="card">
+                        <div class="card-header"><h3 class="card-title">👥 Provas dos Alunos</h3><button class="btn btn-primary btn-sm" onclick="openModalUpload('${atividadeId}', 'aluno')">+ Upload Prova</button></div>
+                        <div class="table-container"><table><thead><tr><th>Aluno</th><th>Prova</th><th>Correção</th><th>Relatório</th><th>Ações</th></tr></thead><tbody>
+                            ${data.alunos.detalhes.map(a => `<tr><td><strong>${a.aluno_nome}</strong></td><td>${a.tem_prova ? '<span class="badge badge-success">✓</span>' : '<span class="badge badge-danger">Falta</span>'}</td><td>${a.tem_correcao ? '<span class="badge badge-success">✓</span>' : '<span class="badge badge-warning">Pendente</span>'}</td><td>${a.tem_relatorio ? '<span class="badge badge-success">✓</span>' : '<span class="badge badge-warning">Pendente</span>'}</td><td><button class="btn btn-sm">Ver</button></td></tr>`).join('')}
+                        </tbody></table></div>
+                    </div>
+                `;
+                window._atividadeData = data;
+                window._turmaData = turma;
+            } catch (e) { showToast('Erro ao carregar atividade', 'error'); }
+        }
+        
+        function renderDocsBase(existentes, atividadeId) {
+            const tipos = ['enunciado', 'gabarito', 'criterios_correcao'];
+            const nomes = {'enunciado': '📄 Enunciado', 'gabarito': '✅ Gabarito', 'criterios_correcao': '📋 Critérios de Correção'};
+            return tipos.map(tipo => {
+                const existe = existentes.includes(tipo);
+                return `<div class="doc-item"><div class="doc-icon">${existe ? '✅' : '❌'}</div><div class="doc-info"><div class="doc-name">${nomes[tipo]}</div><div class="doc-meta">${existe ? 'Enviado' : 'Não enviado'}</div></div>${!existe ? `<button class="btn btn-sm btn-primary" onclick="openModalUploadTipo('${atividadeId}', '${tipo}')">Upload</button>` : ''}</div>`;
+            }).join('');
+        }
+        
+        async function showAlunos() {
+            currentView = 'alunos';
+            setBreadcrumb([{nome: 'Início', onclick: 'showDashboard()'}, {nome: 'Todos os Alunos', onclick: 'showAlunos()'}]);
+            
+            try {
+                const data = await api('/alunos');
+                document.getElementById('content').innerHTML = `
+                    <div class="page-header"><h1 class="page-title">Todos os Alunos</h1><p class="page-subtitle">${data.alunos.length} aluno(s)</p></div>
+                    <div class="card">
+                        <div class="card-header"><h3 class="card-title">Lista de Alunos</h3><button class="btn btn-primary btn-sm" onclick="openModal('modal-aluno')">+ Novo</button></div>
+                        ${data.alunos.length === 0 ? `<div class="empty-state"><div class="empty-icon">👥</div><div class="empty-title">Nenhum aluno</div></div>` : `
+                            <div class="table-container"><table><thead><tr><th>Nome</th><th>Matrícula</th><th>Email</th><th>Ações</th></tr></thead><tbody>
+                                ${data.alunos.map(a => `<tr><td><strong>${a.nome}</strong></td><td>${a.matricula || '-'}</td><td>${a.email || '-'}</td><td><button class="btn btn-sm" onclick="showAluno('${a.id}')">Ver Turmas</button></td></tr>`).join('')}
+                            </tbody></table></div>
+                        `}
+                    </div>
+                `;
+            } catch (e) { showToast('Erro ao carregar alunos', 'error'); }
+        }
+        
+        async function showAluno(alunoId) {
+            try {
+                const data = await api(`/alunos/${alunoId}`);
+                setBreadcrumb([{nome: 'Início', onclick: 'showDashboard()'}, {nome: 'Alunos', onclick: 'showAlunos()'}, {nome: data.aluno.nome, onclick: `showAluno('${alunoId}')`}]);
+                
+                document.getElementById('content').innerHTML = `
+                    <div class="page-header"><h1 class="page-title">${data.aluno.nome}</h1><p class="page-subtitle">Matrícula: ${data.aluno.matricula || 'Não informada'}</p></div>
+                    <div class="card">
+                        <div class="card-header"><h3 class="card-title">Turmas do Aluno (${data.total_turmas})</h3></div>
+                        ${data.turmas.length === 0 ? `<div class="empty-state"><div class="empty-icon">👥</div><div class="empty-title">Nenhuma turma</div></div>` : `
+                            <div class="table-container"><table><thead><tr><th>Matéria</th><th>Turma</th><th>Ano</th><th>Ações</th></tr></thead><tbody>
+                                ${data.turmas.map(t => `<tr><td><strong>${t.materia_nome}</strong></td><td>${t.nome}</td><td>${t.ano_letivo || '-'}</td><td><button class="btn btn-sm" onclick="showTurma('${t.id}')">Ver Turma</button></td></tr>`).join('')}
+                            </tbody></table></div>
+                        `}
+                    </div>
+                `;
+            } catch (e) { showToast('Erro ao carregar aluno', 'error'); }
+        }
+        
+        // ============================================================
+        // BREADCRUMB
+        // ============================================================
+        function setBreadcrumb(items) {
+            document.getElementById('breadcrumb').innerHTML = items.map((item, i) => `<span class="breadcrumb-item ${i === items.length - 1 ? 'current' : ''}" onclick="${item.onclick}">${item.nome}</span>${i < items.length - 1 ? '<span class="breadcrumb-sep">/</span>' : ''}`).join('');
+        }
+        
+        // ============================================================
+        // MODAIS
+        // ============================================================
+        function openModal(id) { document.getElementById(id).classList.add('active'); }
+        function closeModal(id) { document.getElementById(id).classList.remove('active'); }
+        function openModalTurma(materiaId) { document.getElementById('input-turma-materia-id').value = materiaId; openModal('modal-turma'); }
+        function openModalAtividade(turmaId) { document.getElementById('input-ativ-turma-id').value = turmaId; openModal('modal-atividade'); }
+        function openModalAluno(turmaId) { document.getElementById('input-aluno-turma-id').value = turmaId || ''; openModal('modal-aluno'); }
+        
+        function openModalUpload(atividadeId, modo) {
+            document.getElementById('input-upload-atividade-id').value = atividadeId;
+            const grupoAluno = document.getElementById('grupo-aluno-upload');
+            const selectTipo = document.getElementById('input-upload-tipo');
+            if (modo === 'aluno') {
+                selectTipo.value = 'prova_respondida';
+                grupoAluno.style.display = 'block';
+                carregarAlunosParaUpload();
+            } else {
+                selectTipo.value = 'enunciado';
+                grupoAluno.style.display = 'none';
+            }
+            openModal('modal-upload');
+        }
+        
+        function openModalUploadTipo(atividadeId, tipo) {
+            document.getElementById('input-upload-atividade-id').value = atividadeId;
+            document.getElementById('input-upload-tipo').value = tipo;
+            document.getElementById('grupo-aluno-upload').style.display = 'none';
+            openModal('modal-upload');
+        }
+        
+        function carregarAlunosParaUpload() {
+            const data = window._atividadeData;
+            if (data) {
+                document.getElementById('input-upload-aluno').innerHTML = data.alunos.detalhes.map(a => `<option value="${a.aluno_id}">${a.aluno_nome}</option>`).join('');
+            }
+        }
+        
+        // ============================================================
+        // CRUD OPERATIONS
+        // ============================================================
+        async function criarMateria() {
+            const nome = document.getElementById('input-materia-nome').value.trim();
+            const descricao = document.getElementById('input-materia-desc').value.trim();
+            const nivel = document.getElementById('input-materia-nivel').value;
+            if (!nome) { showToast('Digite o nome da matéria', 'error'); return; }
+            try {
+                await api('/materias', { method: 'POST', body: JSON.stringify({ nome, descricao, nivel }) });
+                showToast('Matéria criada!', 'success');
+                closeModal('modal-materia');
+                document.getElementById('input-materia-nome').value = '';
+                document.getElementById('input-materia-desc').value = '';
+                loadNavTree();
+                showDashboard();
+            } catch (e) {}
+        }
+        
+        async function criarTurma() {
+            const nome = document.getElementById('input-turma-nome').value.trim();
+            const anoLetivo = document.getElementById('input-turma-ano').value;
+            const periodo = document.getElementById('input-turma-periodo').value.trim();
+            const materiaId = document.getElementById('input-turma-materia-id').value;
+            if (!nome) { showToast('Digite o nome da turma', 'error'); return; }
+            try {
+                await api('/turmas', { method: 'POST', body: JSON.stringify({ materia_id: materiaId, nome, ano_letivo: anoLetivo ? parseInt(anoLetivo) : null, periodo: periodo || null }) });
+                showToast('Turma criada!', 'success');
+                closeModal('modal-turma');
+                document.getElementById('input-turma-nome').value = '';
+                loadNavTree();
+                showMateria(materiaId);
+            } catch (e) {}
+        }
+        
+        async function criarAtividade() {
+            const nome = document.getElementById('input-ativ-nome').value.trim();
+            const tipo = document.getElementById('input-ativ-tipo').value;
+            const notaMaxima = document.getElementById('input-ativ-nota').value;
+            const turmaId = document.getElementById('input-ativ-turma-id').value;
+            if (!nome) { showToast('Digite o nome da atividade', 'error'); return; }
+            try {
+                await api('/atividades', { method: 'POST', body: JSON.stringify({ turma_id: turmaId, nome, tipo, nota_maxima: parseFloat(notaMaxima) || 10 }) });
+                showToast('Atividade criada!', 'success');
+                closeModal('modal-atividade');
+                document.getElementById('input-ativ-nome').value = '';
+                loadNavTree();
+                showTurma(turmaId);
+            } catch (e) {}
+        }
+        
+        async function criarAluno() {
+            const nome = document.getElementById('input-aluno-nome').value.trim();
+            const matricula = document.getElementById('input-aluno-matricula').value.trim();
+            const email = document.getElementById('input-aluno-email').value.trim();
+            const turmaId = document.getElementById('input-aluno-turma-id').value;
+            if (!nome) { showToast('Digite o nome do aluno', 'error'); return; }
+            try {
+                const result = await api('/alunos', { method: 'POST', body: JSON.stringify({ nome, matricula: matricula || null, email: email || null }) });
+                if (turmaId && result.aluno) {
+                    await api('/alunos/vincular', { method: 'POST', body: JSON.stringify({ aluno_id: result.aluno.id, turma_id: turmaId }) });
+                }
+                showToast('Aluno criado!', 'success');
+                closeModal('modal-aluno');
+                document.getElementById('input-aluno-nome').value = '';
+                document.getElementById('input-aluno-matricula').value = '';
+                document.getElementById('input-aluno-email').value = '';
+                if (turmaId) showTurma(turmaId); else showAlunos();
+            } catch (e) {}
+        }
+        
+        async function uploadDocumento() {
+            const tipo = document.getElementById('input-upload-tipo').value;
+            const atividadeId = document.getElementById('input-upload-atividade-id').value;
+            const fileInput = document.getElementById('input-upload-file');
+            const alunoId = document.getElementById('input-upload-aluno').value;
+            if (!fileInput.files.length) { showToast('Selecione um arquivo', 'error'); return; }
+            const formData = new FormData();
+            formData.append('file', fileInput.files[0]);
+            formData.append('tipo', tipo);
+            formData.append('atividade_id', atividadeId);
+            if (tipo === 'prova_respondida' && alunoId) formData.append('aluno_id', alunoId);
+            try {
+                await apiForm('/documentos/upload', formData);
+                showToast('Documento enviado!', 'success');
+                closeModal('modal-upload');
+                fileInput.value = '';
+                document.getElementById('upload-file-name').textContent = '';
+                showAtividade(atividadeId);
+            } catch (e) {}
+        }
+        
+        // ============================================================
+        // UPLOAD ZONE
+        // ============================================================
+        function setupUploadZone() {
+            const zone = document.getElementById('upload-zone-modal');
+            const input = document.getElementById('input-upload-file');
+            const fileName = document.getElementById('upload-file-name');
+            zone.addEventListener('click', () => input.click());
+            zone.addEventListener('dragover', (e) => { e.preventDefault(); zone.classList.add('dragover'); });
+            zone.addEventListener('dragleave', () => zone.classList.remove('dragover'));
+            zone.addEventListener('drop', (e) => { e.preventDefault(); zone.classList.remove('dragover'); if (e.dataTransfer.files.length) { input.files = e.dataTransfer.files; fileName.textContent = '📎 ' + e.dataTransfer.files[0].name; } });
+            input.addEventListener('change', () => { if (input.files.length) fileName.textContent = '📎 ' + input.files[0].name; });
+            document.getElementById('input-upload-tipo').addEventListener('change', (e) => { document.getElementById('grupo-aluno-upload').style.display = e.target.value === 'prova_respondida' ? 'block' : 'none'; });
+        }
+        
+        // ============================================================
+        // BUSCA
+        // ============================================================
+        function setupBusca() {
+            const input = document.getElementById('input-busca');
+            let timeout;
+            input.addEventListener('input', () => { clearTimeout(timeout); timeout = setTimeout(() => buscar(input.value), 300); });
+        }
+        
+        async function buscar(termo) {
+            const container = document.getElementById('resultados-busca');
+            if (termo.length < 2) { container.innerHTML = '<div style="color: var(--text-muted); padding: 20px; text-align: center;">Digite pelo menos 2 caracteres</div>'; return; }
+            try {
+                const data = await api(`/busca?q=${encodeURIComponent(termo)}`);
+                if (data.total === 0) { container.innerHTML = '<div style="color: var(--text-muted); padding: 20px; text-align: center;">Nenhum resultado</div>'; return; }
+                let html = '';
+                if (data.resultados.alunos.length > 0) { html += '<div style="margin-bottom: 12px;"><strong>Alunos</strong></div>' + data.resultados.alunos.map(a => `<div class="doc-item" onclick="closeModal('modal-busca'); showAluno('${a.id}')"><div class="doc-icon">👤</div><div class="doc-info"><div class="doc-name">${a.nome}</div><div class="doc-meta">${a.matricula || ''}</div></div></div>`).join(''); }
+                if (data.resultados.materias.length > 0) { html += '<div style="margin: 12px 0;"><strong>Matérias</strong></div>' + data.resultados.materias.map(m => `<div class="doc-item" onclick="closeModal('modal-busca'); showMateria('${m.id}')"><div class="doc-icon">📚</div><div class="doc-info"><div class="doc-name">${m.nome}</div></div></div>`).join(''); }
+                if (data.resultados.turmas.length > 0) { html += '<div style="margin: 12px 0;"><strong>Turmas</strong></div>' + data.resultados.turmas.map(t => `<div class="doc-item" onclick="closeModal('modal-busca'); showTurma('${t.id}')"><div class="doc-icon">👥</div><div class="doc-info"><div class="doc-name">${t.nome}</div><div class="doc-meta">${t.materia || ''}</div></div></div>`).join(''); }
+                if (data.resultados.atividades.length > 0) { html += '<div style="margin: 12px 0;"><strong>Atividades</strong></div>' + data.resultados.atividades.map(a => `<div class="doc-item" onclick="closeModal('modal-busca'); showAtividade('${a.id}')"><div class="doc-icon">📝</div><div class="doc-info"><div class="doc-name">${a.nome}</div><div class="doc-meta">${a.turma || ''}</div></div></div>`).join(''); }
+                container.innerHTML = html;
+            } catch (e) { container.innerHTML = '<div style="color: var(--danger); padding: 20px;">Erro na busca</div>'; }
+        }
+        
+        // ============================================================
+        // TOAST
+        // ============================================================
+        function showToast(message, type = 'success') {
+            const toast = document.getElementById('toast');
+            toast.textContent = message;
+            toast.className = `toast ${type} show`;
+            setTimeout(() => toast.classList.remove('show'), 3000);
+        }
+    </script>
+</body>
+</html>
