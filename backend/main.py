@@ -27,6 +27,7 @@ from ai_providers import (
     OpenAIProvider, AnthropicProvider, LocalLLMProvider,
     setup_providers_from_env
 )
+import importlib
 from storage import (
     StorageManager, VectorStore, DocumentType,
     Questao, Correcao, storage, vector_store
@@ -53,6 +54,19 @@ app.add_middleware(
 FRONTEND_PATH = Path(__file__).parent.parent / "frontend"
 if FRONTEND_PATH.exists():
     app.mount("/static", StaticFiles(directory=str(FRONTEND_PATH)), name="static")
+
+def _try_import_router(module_name: str):
+    try:
+        module = importlib.import_module(module_name)
+    except ImportError:
+        return None
+    return getattr(module, "router", None)
+
+prompts_router = _try_import_router("routes_prompts")
+HAS_PROMPTS = prompts_router is not None
+
+if HAS_PROMPTS:
+    app.include_router(prompts_router)
 
 
 # ============== MODELOS PYDANTIC ==============
@@ -527,9 +541,10 @@ async def compare_providers(
 @app.get("/")
 async def serve_frontend():
     """Serve a página principal"""
-    frontend_file = FRONTEND_PATH / "index.html"
-    if frontend_file.exists():
-        return FileResponse(frontend_file)
+    for filename in ["index_v2.html", "index.html"]:
+        frontend_file = FRONTEND_PATH / filename
+        if frontend_file.exists():
+            return FileResponse(frontend_file)
     return {"message": "Frontend não encontrado. Use /api para acessar a API."}
 
 
