@@ -35,7 +35,6 @@ class TipoDocumento(Enum):
     
     # === DOCUMENTOS DO ALUNO (nível Aluno) ===
     PROVA_RESPONDIDA = "prova_respondida"      # Prova feita pelo aluno
-    CORRECAO_PROFESSOR = "correcao_professor"  # Correção feita pelo professor
     
     # === DOCUMENTOS GERADOS PELA IA (nível Aluno) ===
     EXTRACAO_QUESTOES = "extracao_questoes"    # Questões extraídas do enunciado
@@ -53,7 +52,7 @@ class TipoDocumento(Enum):
     @classmethod
     def documentos_aluno(cls) -> List['TipoDocumento']:
         """Retorna tipos que são uploads do aluno"""
-        return [cls.PROVA_RESPONDIDA, cls.CORRECAO_PROFESSOR]
+        return [cls.PROVA_RESPONDIDA]
     
     @classmethod
     def documentos_gerados(cls) -> List['TipoDocumento']:
