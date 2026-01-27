@@ -9,12 +9,14 @@ Endpoints para:
 5. Chat interativo com acesso aos documentos
 """
 
-from fastapi import FastAPI, UploadFile, File, Form, HTTPException, BackgroundTasks
+from fastapi import FastAPI, UploadFile, File, Form, HTTPException, BackgroundTasks, Request
+from fastapi.exceptions import RequestValidationError
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse, JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from typing import Optional, List, Dict, Any
+import uuid
 import os
 import json
 import shutil
@@ -40,6 +42,57 @@ app = FastAPI(
     description="Framework para experimentação com diferentes IAs na correção de provas",
     version="0.1.0"
 )
+
+# ============== TRACE ID & ERROR HANDLING ==============
+
+@app.middleware("http")
+async def add_trace_id(request: Request, call_next):
+    trace_id = request.headers.get("X-Trace-Id", str(uuid.uuid4()))
+    request.state.trace_id = trace_id
+    response = await call_next(request)
+    response.headers["X-Trace-Id"] = trace_id
+    return response
+
+
+def _error_payload(message: str, trace_id: str, details: Optional[Any] = None) -> Dict[str, Any]:
+    payload = {
+        "error": {
+            "message": message,
+            "trace_id": trace_id
+        }
+    }
+    if details is not None:
+        payload["error"]["details"] = details
+    return payload
+
+
+@app.exception_handler(HTTPException)
+async def http_exception_handler(request: Request, exc: HTTPException):
+    trace_id = getattr(request.state, "trace_id", str(uuid.uuid4()))
+    message = exc.detail if isinstance(exc.detail, str) else "Erro na requisição."
+    details = None if isinstance(exc.detail, str) else exc.detail
+    return JSONResponse(
+        status_code=exc.status_code,
+        content=_error_payload(message, trace_id, details)
+    )
+
+
+@app.exception_handler(RequestValidationError)
+async def validation_exception_handler(request: Request, exc: RequestValidationError):
+    trace_id = getattr(request.state, "trace_id", str(uuid.uuid4()))
+    return JSONResponse(
+        status_code=422,
+        content=_error_payload("Erro de validação.", trace_id, exc.errors())
+    )
+
+
+@app.exception_handler(Exception)
+async def unhandled_exception_handler(request: Request, exc: Exception):
+    trace_id = getattr(request.state, "trace_id", str(uuid.uuid4()))
+    return JSONResponse(
+        status_code=500,
+        content=_error_payload("Erro interno do servidor.", trace_id, str(exc))
+    )
 
 # CORS para permitir frontend local
 app.add_middleware(
