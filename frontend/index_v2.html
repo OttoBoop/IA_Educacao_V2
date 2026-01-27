@@ -468,6 +468,7 @@
         }
         
         .doc-info { flex: 1; }
+        .doc-actions { display: flex; gap: 8px; }
         .doc-name { font-weight: 500; font-size: 0.9rem; }
         .doc-meta { font-size: 0.8rem; color: var(--text-muted); }
         
@@ -1182,7 +1183,7 @@
                     </div>
                     <div class="card">
                         <div class="card-header"><h3 class="card-title">📄 Documentos da Atividade</h3><button class="btn btn-primary btn-sm" onclick="openModalUpload('${atividadeId}', 'base')">+ Upload</button></div>
-                        <div id="docs-base">${renderDocsBase(data.documentos_base.existentes, atividadeId)}</div>
+                        <div id="docs-base">${renderDocsBase(data.documentos_base.existentes, atividadeId, data.documentos_base.detalhes || {})}</div>
                     </div>
                     <div class="card">
                         <div class="card-header"><h3 class="card-title">👥 Provas dos Alunos</h3><button class="btn btn-primary btn-sm" onclick="openModalUpload('${atividadeId}', 'aluno')">+ Upload Prova</button></div>
@@ -1196,12 +1197,18 @@
             } catch (e) { showToast('Erro ao carregar atividade', 'error'); }
         }
         
-        function renderDocsBase(existentes, atividadeId) {
+        function renderDocsBase(existentes, atividadeId, detalhes = {}) {
             const tipos = ['enunciado', 'gabarito', 'criterios_correcao'];
             const nomes = {'enunciado': '📄 Enunciado', 'gabarito': '✅ Gabarito', 'criterios_correcao': '📋 Critérios de Correção'};
             return tipos.map(tipo => {
-                const existe = existentes.includes(tipo);
-                return `<div class="doc-item"><div class="doc-icon">${existe ? '✅' : '❌'}</div><div class="doc-info"><div class="doc-name">${nomes[tipo]}</div><div class="doc-meta">${existe ? 'Enviado' : 'Não enviado'}</div></div>${!existe ? `<button class="btn btn-sm btn-primary" onclick="openModalUploadTipo('${atividadeId}', '${tipo}')">Upload</button>` : ''}</div>`;
+                const detalhe = detalhes[tipo];
+                const existe = Boolean(detalhe) || existentes.includes(tipo);
+                const meta = existe ? (detalhe?.nome_arquivo ? `Enviado • ${detalhe.nome_arquivo}` : 'Enviado') : 'Não enviado';
+                const acaoAbrir = detalhe?.id ? `<button class="btn btn-sm" onclick="openDocumento('${detalhe.id}')">Abrir</button>` : '';
+                const acaoTrocar = existe
+                    ? `<button class="btn btn-sm btn-primary" onclick="openModalUploadTipo('${atividadeId}', '${tipo}')">Trocar</button>`
+                    : `<button class="btn btn-sm btn-primary" onclick="openModalUploadTipo('${atividadeId}', '${tipo}')">Upload</button>`;
+                return `<div class="doc-item"><div class="doc-icon">${existe ? '✅' : '❌'}</div><div class="doc-info"><div class="doc-name">${nomes[tipo]}</div><div class="doc-meta">${meta}</div></div><div class="doc-actions">${acaoAbrir}${acaoTrocar}</div></div>`;
             }).join('');
         }
         
@@ -1352,6 +1359,11 @@
         function openModalAtividade(turmaId) { document.getElementById('input-ativ-turma-id').value = turmaId; openModal('modal-atividade'); }
         function openModalAluno(turmaId) { document.getElementById('input-aluno-turma-id').value = turmaId || ''; openModal('modal-aluno'); }
         function openModalImportarCsv(turmaId) { document.getElementById('input-importar-turma-id').value = turmaId || ''; openModal('modal-importar-csv'); }
+
+        function openDocumento(documentoId) {
+            if (!documentoId) return;
+            window.open(`${API}/documentos/${documentoId}/download`, '_blank');
+        }
 
         function openModalUploadProvas(atividadeId) {
             document.getElementById('input-upload-provas-atividade-id').value = atividadeId;
