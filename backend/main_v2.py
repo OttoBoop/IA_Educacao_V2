@@ -32,7 +32,13 @@ from models import (
     verificar_dependencias
 )
 from storage_v2 import StorageManagerV2, storage_v2
-from ai_providers import ai_registry, setup_providers_from_env
+from ai_providers import (
+    ai_registry,
+    setup_providers_from_env,
+    OpenAIProvider,
+    AnthropicProvider,
+    LocalLLMProvider,
+)
 
 # Importar rotas extras (operações em lote, busca, estatísticas)
 try:
@@ -207,6 +213,14 @@ class DocumentoResponse(BaseModel):
     status: str
     criado_em: str
     versao: int
+
+# --- Providers ---
+class ProviderConfig(BaseModel):
+    name: str
+    provider_type: str  # "openai", "anthropic", "ollama"
+    model: str
+    api_key: Optional[str] = None
+    base_url: Optional[str] = None
 
 # --- Verificação ---
 class VerificacaoRequest(BaseModel):
@@ -682,6 +696,37 @@ async def listar_providers():
         "providers": ai_registry.get_provider_info(),
         "default": ai_registry.default_provider
     }
+
+
+@app.post("/api/providers", tags=["Providers"])
+async def adicionar_provider(config: ProviderConfig):
+    """Adiciona ou atualiza um provider de IA"""
+    try:
+        provider_type = config.provider_type.lower()
+        if provider_type == "openai":
+            provider = OpenAIProvider(
+                api_key=config.api_key or os.getenv("OPENAI_API_KEY", ""),
+                model=config.model
+            )
+        elif provider_type == "anthropic":
+            provider = AnthropicProvider(
+                api_key=config.api_key or os.getenv("ANTHROPIC_API_KEY", ""),
+                model=config.model
+            )
+        elif provider_type == "ollama":
+            provider = LocalLLMProvider(
+                base_url=config.base_url or "http://localhost:11434",
+                model=config.model
+            )
+        else:
+            raise HTTPException(400, f"Tipo de provider não suportado: {config.provider_type}")
+
+        ai_registry.register(config.name, provider)
+        return {"success": True, "name": config.name}
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(500, str(e))
 
 
 # ============================================================
