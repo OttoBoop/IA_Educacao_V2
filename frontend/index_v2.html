@@ -937,6 +937,38 @@
             </div>
         </div>
     </div>
+    
+    <!-- Modal: Pipeline Completo -->
+    <div class="modal-overlay" id="modal-pipeline-completo">
+        <div class="modal">
+            <div class="modal-header">
+                <h3 class="modal-title">Pipeline Completo</h3>
+                <button class="modal-close" onclick="closeModal('modal-pipeline-completo')">×</button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label class="form-label">Aluno *</label>
+                    <select class="form-select" id="input-pipeline-aluno"></select>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Provider padrão (opcional)</label>
+                    <select class="form-select" id="input-pipeline-provider-default"></select>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Providers por etapa</label>
+                    <div id="pipeline-provider-stages" style="display: flex; flex-direction: column; gap: 8px;"></div>
+                    <small style="color: var(--text-muted); display: block; margin-top: 6px;">
+                        Selecione um modelo diferente por etapa para personalizar a execução.
+                    </small>
+                </div>
+                <input type="hidden" id="input-pipeline-atividade-id">
+            </div>
+            <div class="modal-footer">
+                <button class="btn" onclick="closeModal('modal-pipeline-completo')">Cancelar</button>
+                <button class="btn btn-primary" onclick="executarPipelineCompleto()">Executar Pipeline</button>
+            </div>
+        </div>
+    </div>
 
     <!-- Modal: Preview Prompt -->
     <div class="modal-overlay" id="modal-prompt-preview">
@@ -1236,7 +1268,7 @@
                         <button class="btn" onclick="openModalUpload('${atividadeId}', 'aluno')">👥 Upload Prova</button>
                         <button class="btn" onclick="openModalUploadProvas('${atividadeId}')">📚 Upload Provas em Lote</button>
                         <button class="btn" onclick="openModalExecucao('${atividadeId}')">⚙️ Executar Etapa</button>
-                        <button class="btn btn-primary" onclick="executarPipelineCompleto('${atividadeId}')">⚡ Pipeline Completo</button>
+                        <button class="btn btn-primary" onclick="openModalPipelineCompleto('${atividadeId}')">⚡ Pipeline Completo</button>
                         <button class="btn" onclick="showStatusProcessamento('${atividadeId}')">🧾 Status Processamento</button>
                         <button class="btn" onclick="showRanking('${atividadeId}')">🏆 Ranking</button>
                         <button class="btn" onclick="showEstatisticasAtividade('${atividadeId}')">📈 Estatísticas</button>
@@ -1449,7 +1481,8 @@
                                             <th>Nome</th>
                                             <th>Etapa</th>
                                             <th>Matéria</th>
-                                            <th>Sistema</th>
+                                            <th>Prompt de Sistema</th>
+                                            <th>Prompt do Usuário</th>
                                             <th>Ações</th>
                                         </tr>
                                     </thead>
@@ -1459,7 +1492,8 @@
                                                 <td><strong>${p.nome}</strong></td>
                                                 <td>${p.etapa}</td>
                                                 <td>${p.materia_id ? (materiaMap[p.materia_id] || p.materia_id) : 'Global'}</td>
-                                                <td>${p.texto_sistema ? '<span class="badge badge-primary">Sim</span>' : '<span class="badge badge-warning">Não</span>'}</td>
+                                                <td title="${escapeHtml(p.texto_sistema || 'Sem prompt de sistema')}">${escapeHtml(truncateText(p.texto_sistema || '—', 80))}</td>
+                                                <td title="${escapeHtml(p.texto || '')}">${escapeHtml(truncateText(p.texto || '—', 80))}</td>
                                                 <td style="display: flex; gap: 8px; flex-wrap: wrap;">
                                                     <button class="btn btn-sm" onclick="openPromptPreview('${p.id}')">Preview</button>
                                                     <button class="btn btn-sm" onclick="duplicarPrompt('${p.id}')">Duplicar</button>
@@ -1483,6 +1517,7 @@
             setBreadcrumb([{nome: 'Início', onclick: 'showDashboard()'}, {nome: 'Modelos de LLM', onclick: 'showProviders()'}]);
             try {
                 const data = await api('/providers');
+                window._providersCache = data.providers || [];
                 document.getElementById('content').innerHTML = `
                     <div class="page-header">
                         <h1 class="page-title">Modelos de LLM</h1>
@@ -1531,6 +1566,7 @@
                                             <th>Tipo</th>
                                             <th>Modelo</th>
                                             <th>Identificador</th>
+                                            <th>Ações</th>
                                         </tr>
                                     </thead>
                                     <tbody>
@@ -1540,6 +1576,9 @@
                                                 <td>${p.provider_type}</td>
                                                 <td>${p.model}</td>
                                                 <td>${p.identifier}</td>
+                                                <td>
+                                                    <button class="btn btn-sm" onclick="editarProvider('${p.name}')">Editar</button>
+                                                </td>
                                             </tr>
                                         `).join('')}
                                     </tbody>
@@ -1654,6 +1693,31 @@
             }
         }
 
+        async function ensureAtividadeData(atividadeId) {
+            if (!atividadeId) return null;
+            if (!window._atividadeData || window._atividadeData?.atividade?.id !== atividadeId) {
+                try {
+                    window._atividadeData = await api(`/atividades/${atividadeId}`);
+                } catch (e) {
+                    window._atividadeData = null;
+                }
+            }
+            return window._atividadeData;
+        }
+
+        function renderAlunoOptions(alunos = [], includeEmpty = false) {
+            const options = alunos.map(a => {
+                const label = a.aluno_nome
+                    ? `${a.aluno_nome}${a.aluno_id ? ` • ${a.aluno_id}` : ''}`
+                    : (a.aluno_id || 'Aluno');
+                return `<option value="${a.aluno_id}">${label}</option>`;
+            });
+            if (includeEmpty) {
+                options.unshift('<option value="">Sem aluno</option>');
+            }
+            return options.join('');
+        }
+
         function openModalUploadProvas(atividadeId) {
             document.getElementById('input-upload-provas-atividade-id').value = atividadeId;
             openModal('modal-upload-provas');
@@ -1661,19 +1725,29 @@
 
         async function openModalExecucao(atividadeId) {
             document.getElementById('input-execucao-atividade-id').value = atividadeId;
+            await ensureAtividadeData(atividadeId);
             await carregarEtapasExecucao();
             await carregarProvidersExecucao();
             carregarAlunosExecucao();
             openModal('modal-execucao');
         }
+
+        async function openModalPipelineCompleto(atividadeId) {
+            document.getElementById('input-pipeline-atividade-id').value = atividadeId;
+            await ensureAtividadeData(atividadeId);
+            await carregarPipelineAlunos();
+            await carregarPipelineProviders();
+            openModal('modal-pipeline-completo');
+        }
         
-        function openModalUpload(atividadeId, modo) {
+        async function openModalUpload(atividadeId, modo) {
             document.getElementById('input-upload-atividade-id').value = atividadeId;
             const grupoAluno = document.getElementById('grupo-aluno-upload');
             const selectTipo = document.getElementById('input-upload-tipo');
             if (modo === 'aluno') {
                 selectTipo.value = 'prova_respondida';
                 grupoAluno.style.display = 'block';
+                await ensureAtividadeData(atividadeId);
                 carregarAlunosParaUpload();
             } else {
                 selectTipo.value = 'enunciado';
@@ -1682,10 +1756,11 @@
             openModal('modal-upload');
         }
         
-        function openModalUploadTipo(atividadeId, tipo) {
+        async function openModalUploadTipo(atividadeId, tipo) {
             document.getElementById('input-upload-atividade-id').value = atividadeId;
             document.getElementById('input-upload-tipo').value = tipo;
             document.getElementById('grupo-aluno-upload').style.display = 'none';
+            await ensureAtividadeData(atividadeId);
             openModal('modal-upload');
         }
 
@@ -1693,11 +1768,7 @@
             document.getElementById('input-upload-atividade-id').value = atividadeId;
             document.getElementById('input-upload-tipo').value = tipo;
             document.getElementById('grupo-aluno-upload').style.display = 'block';
-            if (!window._atividadeData || window._atividadeData?.atividade?.id !== atividadeId) {
-                try {
-                    window._atividadeData = await api(`/atividades/${atividadeId}`);
-                } catch (e) {}
-            }
+            await ensureAtividadeData(atividadeId);
             carregarAlunosParaUpload();
             const selectAluno = document.getElementById('input-upload-aluno');
             if (selectAluno) {
@@ -1708,8 +1779,11 @@
         
         function carregarAlunosParaUpload() {
             const data = window._atividadeData;
+            const select = document.getElementById('input-upload-aluno');
             if (data) {
-                document.getElementById('input-upload-aluno').innerHTML = data.alunos.detalhes.map(a => `<option value="${a.aluno_id}">${a.aluno_nome}</option>`).join('');
+                select.innerHTML = renderAlunoOptions(data.alunos?.detalhes || []);
+            } else if (select) {
+                select.innerHTML = '<option value="">Nenhum aluno encontrado</option>';
             }
         }
 
@@ -1718,7 +1792,7 @@
             const select = document.getElementById('input-execucao-aluno');
             if (!select) return;
             if (data && data.alunos?.detalhes) {
-                select.innerHTML = `<option value="">Sem aluno</option>` + data.alunos.detalhes.map(a => `<option value="${a.aluno_id}">${a.aluno_nome}</option>`).join('');
+                select.innerHTML = renderAlunoOptions(data.alunos.detalhes, true);
             } else {
                 select.innerHTML = `<option value="">Sem aluno</option>`;
             }
@@ -1734,7 +1808,61 @@
         async function carregarProvidersExecucao() {
             try {
                 const data = await api('/providers/disponiveis');
-                document.getElementById('input-execucao-provider').innerHTML = data.providers.map(p => `<option value="${p.name}">${p.name} (${p.model})</option>`).join('');
+                const options = data.providers.map(p => `<option value="${p.name}">${p.name} (${p.model})</option>`).join('');
+                document.getElementById('input-execucao-provider').innerHTML = `<option value="">Usar padrão</option>${options}`;
+            } catch (e) {}
+        }
+
+        async function carregarPipelineAlunos() {
+            const data = window._atividadeData;
+            const select = document.getElementById('input-pipeline-aluno');
+            if (!select) return;
+            if (data && data.alunos?.detalhes?.length) {
+                select.innerHTML = renderAlunoOptions(data.alunos.detalhes);
+            } else {
+                select.innerHTML = '<option value="">Nenhum aluno encontrado</option>';
+            }
+        }
+
+        async function carregarPipelineProviders() {
+            try {
+                const [etapasData, providersData] = await Promise.all([
+                    api('/prompts/etapas'),
+                    api('/providers/disponiveis')
+                ]);
+                const defaultProvider = providersData.default || '';
+                const providerOptions = providersData.providers.map(p => `<option value="${p.name}">${p.name} (${p.model})</option>`).join('');
+                const defaultSelect = document.getElementById('input-pipeline-provider-default');
+                defaultSelect.innerHTML = `<option value="">Usar padrão do sistema</option>${providerOptions}`;
+                if (defaultProvider) {
+                    defaultSelect.value = defaultProvider;
+                }
+
+                const etapasPermitidas = [
+                    'extrair_questoes',
+                    'extrair_gabarito',
+                    'extrair_respostas',
+                    'corrigir',
+                    'analisar_habilidades',
+                    'gerar_relatorio'
+                ];
+                const etapas = etapasData.etapas.filter(e => etapasPermitidas.includes(e.id));
+                const container = document.getElementById('pipeline-provider-stages');
+                container.innerHTML = etapas.map(etapa => `
+                    <div style="display: flex; gap: 12px; align-items: center;">
+                        <div style="flex: 1; font-size: 0.85rem; color: var(--text-muted);">${etapa.nome}</div>
+                        <select class="form-select" data-etapa="${etapa.id}" style="flex: 1;">
+                            <option value="">Usar padrão</option>
+                            ${providerOptions}
+                        </select>
+                    </div>
+                `).join('');
+
+                if (defaultProvider) {
+                    container.querySelectorAll('select').forEach(select => {
+                        select.value = defaultProvider;
+                    });
+                }
             } catch (e) {}
         }
         
@@ -1836,6 +1964,20 @@
             } catch (e) {
                 showToast('Erro ao salvar provider', 'error');
             }
+        }
+
+        function editarProvider(providerName) {
+            const provider = (window._providersCache || []).find(p => p.name === providerName);
+            if (!provider) {
+                showToast('Provider não encontrado', 'error');
+                return;
+            }
+            document.getElementById('input-provider-tipo').value = provider.provider_type;
+            document.getElementById('input-provider-nome').value = provider.name;
+            document.getElementById('input-provider-modelo').value = provider.model;
+            document.getElementById('input-provider-api-key').value = '';
+            document.getElementById('input-provider-base-url').value = '';
+            showToast('Atualize os campos e salve o provider', 'success');
         }
 
         async function criarPrompt() {
@@ -1980,17 +2122,33 @@
             } catch (e) {}
         }
 
-        async function executarPipelineCompleto(atividadeId) {
-            const alunoId = prompt('Informe o ID do aluno para executar o pipeline completo');
-            if (!alunoId) return;
+        async function executarPipelineCompleto() {
+            const atividadeId = document.getElementById('input-pipeline-atividade-id').value;
+            const alunoId = document.getElementById('input-pipeline-aluno').value;
+            const defaultProvider = document.getElementById('input-pipeline-provider-default').value;
+            if (!atividadeId || !alunoId) {
+                showToast('Selecione o aluno para executar o pipeline', 'error');
+                return;
+            }
+            const providers = {};
+            document.querySelectorAll('#pipeline-provider-stages select[data-etapa]').forEach(select => {
+                if (select.value && select.value !== defaultProvider) {
+                    providers[select.dataset.etapa] = select.value;
+                }
+            });
             const formData = new FormData();
             formData.append('atividade_id', atividadeId);
             formData.append('aluno_id', alunoId);
-            const provider = document.getElementById('input-execucao-provider')?.value;
-            if (provider) formData.append('provider', provider);
+            if (defaultProvider) {
+                formData.append('provider', defaultProvider);
+            }
+            if (Object.keys(providers).length) {
+                formData.append('providers', JSON.stringify(providers));
+            }
             try {
                 const result = await apiForm('/executar/pipeline-completo', formData);
                 showToast(result.sucesso ? 'Pipeline executado!' : 'Pipeline com falhas', result.sucesso ? 'success' : 'error');
+                closeModal('modal-pipeline-completo');
                 showAtividade(atividadeId);
             } catch (e) {}
         }
@@ -2258,6 +2416,12 @@
             const div = document.createElement('div');
             div.textContent = text;
             return div.innerHTML;
+        }
+
+        function truncateText(text, maxLength) {
+            if (!text) return '';
+            if (text.length <= maxLength) return text;
+            return `${text.slice(0, maxLength - 1)}…`;
         }
 
         function showToast(message, type = 'success') {

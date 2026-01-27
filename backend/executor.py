@@ -379,13 +379,18 @@ class PipelineExecutor:
         self,
         atividade_id: str,
         aluno_id: str,
-        provider_name: Optional[str] = None
+        provider_name: Optional[str] = None,
+        providers_map: Optional[Dict[str, str]] = None
     ) -> Dict[str, ResultadoExecucao]:
         """
         Executa o pipeline completo para um aluno.
         Retorna resultados de cada etapa.
         """
         resultados = {}
+        providers_map = providers_map or {}
+
+        def _resolve_provider(stage: EtapaProcessamento) -> Optional[str]:
+            return providers_map.get(stage.value) or provider_name
         
         # 1. Extrair questões (se não existir)
         docs = self.storage.listar_documentos(atividade_id)
@@ -393,7 +398,7 @@ class PipelineExecutor:
             resultado = await self.executar_etapa(
                 EtapaProcessamento.EXTRAIR_QUESTOES,
                 atividade_id,
-                provider_name=provider_name
+                provider_name=_resolve_provider(EtapaProcessamento.EXTRAIR_QUESTOES)
             )
             resultados["extrair_questoes"] = resultado
             if not resultado.sucesso:
@@ -404,7 +409,7 @@ class PipelineExecutor:
             resultado = await self.executar_etapa(
                 EtapaProcessamento.EXTRAIR_GABARITO,
                 atividade_id,
-                provider_name=provider_name
+                provider_name=_resolve_provider(EtapaProcessamento.EXTRAIR_GABARITO)
             )
             resultados["extrair_gabarito"] = resultado
         
@@ -415,7 +420,7 @@ class PipelineExecutor:
                 EtapaProcessamento.EXTRAIR_RESPOSTAS,
                 atividade_id,
                 aluno_id,
-                provider_name=provider_name
+                provider_name=_resolve_provider(EtapaProcessamento.EXTRAIR_RESPOSTAS)
             )
             resultados["extrair_respostas"] = resultado
             if not resultado.sucesso:
@@ -427,7 +432,7 @@ class PipelineExecutor:
                 EtapaProcessamento.CORRIGIR,
                 atividade_id,
                 aluno_id,
-                provider_name=provider_name
+                provider_name=_resolve_provider(EtapaProcessamento.CORRIGIR)
             )
             resultados["corrigir"] = resultado
             if not resultado.sucesso:
@@ -439,7 +444,7 @@ class PipelineExecutor:
                 EtapaProcessamento.ANALISAR_HABILIDADES,
                 atividade_id,
                 aluno_id,
-                provider_name=provider_name
+                provider_name=_resolve_provider(EtapaProcessamento.ANALISAR_HABILIDADES)
             )
             resultados["analisar_habilidades"] = resultado
         
@@ -449,7 +454,7 @@ class PipelineExecutor:
                 EtapaProcessamento.GERAR_RELATORIO,
                 atividade_id,
                 aluno_id,
-                provider_name=provider_name
+                provider_name=_resolve_provider(EtapaProcessamento.GERAR_RELATORIO)
             )
             resultados["gerar_relatorio"] = resultado
         
