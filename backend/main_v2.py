@@ -12,10 +12,11 @@ Endpoints organizados por recurso:
 - /api/status
 """
 
-from fastapi import FastAPI, UploadFile, File, Form, HTTPException, Query
+from fastapi import FastAPI, UploadFile, File, Form, HTTPException, Query, Request
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse, JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.exceptions import RequestValidationError
 from pydantic import BaseModel, Field
 from typing import Optional, List, Dict, Any
 from datetime import datetime
@@ -24,6 +25,7 @@ import os
 import json
 import tempfile
 import shutil
+import uuid
 
 # Importar nossos módulos
 from models import (
@@ -87,6 +89,60 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+
+@app.middleware("http")
+async def add_trace_id(request: Request, call_next):
+    request.state.trace_id = str(uuid.uuid4())
+    response = await call_next(request)
+    response.headers["X-Trace-Id"] = request.state.trace_id
+    return response
+
+
+@app.exception_handler(HTTPException)
+async def http_exception_handler(request: Request, exc: HTTPException):
+    trace_id = getattr(request.state, "trace_id", None)
+    return JSONResponse(
+        status_code=exc.status_code,
+        content={
+            "error": {
+                "message": exc.detail,
+                "status_code": exc.status_code,
+                "trace_id": trace_id,
+            }
+        },
+    )
+
+
+@app.exception_handler(RequestValidationError)
+async def validation_exception_handler(request: Request, exc: RequestValidationError):
+    trace_id = getattr(request.state, "trace_id", None)
+    return JSONResponse(
+        status_code=422,
+        content={
+            "error": {
+                "message": "Erro de validação",
+                "status_code": 422,
+                "trace_id": trace_id,
+                "details": exc.errors(),
+            }
+        },
+    )
+
+
+@app.exception_handler(Exception)
+async def unhandled_exception_handler(request: Request, exc: Exception):
+    trace_id = getattr(request.state, "trace_id", None)
+    return JSONResponse(
+        status_code=500,
+        content={
+            "error": {
+                "message": "Erro interno do servidor",
+                "status_code": 500,
+                "trace_id": trace_id,
+            }
+        },
+    )
 
 # Incluir rotas extras se disponíveis
 if HAS_EXTRAS:
@@ -617,6 +673,12 @@ async def get_arvore_navegacao():
     Retorna árvore completa para navegação.
     Estrutura: Matérias → Turmas → Atividades
     """
+    return storage.get_arvore_navegacao()
+
+
+@app.get("/api/navegacao/tree", tags=["Navegação"])
+async def get_tree_navegacao():
+    """Alias em inglês para /api/navegacao/arvore."""
     return storage.get_arvore_navegacao()
 
 

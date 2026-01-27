@@ -18,6 +18,19 @@ import json
 # ENUMS - Tipos e Categorias
 # ============================================================
 
+def _normalize_metadata(raw_metadata: Any) -> Dict[str, Any]:
+    if raw_metadata is None:
+        return {}
+    if isinstance(raw_metadata, dict):
+        return raw_metadata
+    if isinstance(raw_metadata, str):
+        try:
+            parsed = json.loads(raw_metadata)
+        except json.JSONDecodeError:
+            return {}
+        return parsed if isinstance(parsed, dict) else {}
+    return {}
+
 class TipoDocumento(Enum):
     """
     Tipos de documento no sistema.
@@ -119,7 +132,7 @@ class Materia:
             nivel=NivelEnsino(data.get("nivel", "outro")),
             criado_em=datetime.fromisoformat(data["criado_em"]) if "criado_em" in data else datetime.now(),
             atualizado_em=datetime.fromisoformat(data["atualizado_em"]) if "atualizado_em" in data else datetime.now(),
-            metadata=data.get("metadata", {})
+            metadata=_normalize_metadata(data.get("metadata"))
         )
 
 
@@ -165,7 +178,7 @@ class Turma:
             descricao=data.get("descricao"),
             criado_em=datetime.fromisoformat(data["criado_em"]) if "criado_em" in data else datetime.now(),
             atualizado_em=datetime.fromisoformat(data["atualizado_em"]) if "atualizado_em" in data else datetime.now(),
-            metadata=data.get("metadata", {})
+            metadata=_normalize_metadata(data.get("metadata"))
         )
 
 
@@ -205,7 +218,7 @@ class Aluno:
             matricula=data.get("matricula"),
             criado_em=datetime.fromisoformat(data["criado_em"]) if "criado_em" in data else datetime.now(),
             atualizado_em=datetime.fromisoformat(data["atualizado_em"]) if "atualizado_em" in data else datetime.now(),
-            metadata=data.get("metadata", {})
+            metadata=_normalize_metadata(data.get("metadata"))
         )
 
 
@@ -286,7 +299,7 @@ class Atividade:
             descricao=data.get("descricao"),
             criado_em=datetime.fromisoformat(data["criado_em"]) if "criado_em" in data else datetime.now(),
             atualizado_em=datetime.fromisoformat(data["atualizado_em"]) if "atualizado_em" in data else datetime.now(),
-            metadata=data.get("metadata", {})
+            metadata=_normalize_metadata(data.get("metadata"))
         )
 
 
@@ -382,7 +395,7 @@ class Documento:
             criado_por=data.get("criado_por"),
             versao=data.get("versao", 1),
             documento_origem_id=data.get("documento_origem_id"),
-            metadata=data.get("metadata", {})
+            metadata=_normalize_metadata(data.get("metadata"))
         )
     
     @property
