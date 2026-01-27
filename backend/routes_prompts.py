@@ -64,6 +64,7 @@ class ProcessarEtapaSimples(BaseModel):
 # ============================================================
 
 @router.get("/api/prompts", tags=["Prompts"])
+@router.get("/prompts", tags=["Prompts"], include_in_schema=False)
 async def listar_prompts(
     etapa: Optional[str] = None,
     materia_id: Optional[str] = None,
@@ -80,6 +81,9 @@ async def listar_prompts(
 
 
 @router.get("/api/prompts/etapas", tags=["Prompts"])
+@router.get("/api/etapas", tags=["Prompts"], include_in_schema=False)
+@router.get("/prompts/etapas", tags=["Prompts"], include_in_schema=False)
+@router.get("/etapas", tags=["Prompts"], include_in_schema=False)
 async def listar_etapas():
     """Lista todas as etapas disponíveis"""
     return {

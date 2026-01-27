@@ -676,7 +676,7 @@ async def get_arvore_navegacao():
     return storage.get_arvore_navegacao()
 
 
-@app.get("/api/navegacao/tree", tags=["Navegação"])
+@app.get("/api/navegacao/tree", tags=["Navegação"], include_in_schema=False)
 async def get_tree_navegacao():
     """Alias em inglês para /api/navegacao/arvore."""
     return storage.get_arvore_navegacao()
