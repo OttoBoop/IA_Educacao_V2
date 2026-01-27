@@ -29,6 +29,7 @@ class PromptCreate(BaseModel):
     nome: str
     etapa: str  # Valor do enum
     texto: str
+    texto_sistema: Optional[str] = None
     descricao: Optional[str] = None
     materia_id: Optional[str] = None
     variaveis: Optional[List[str]] = None
@@ -36,6 +37,7 @@ class PromptCreate(BaseModel):
 class PromptUpdate(BaseModel):
     nome: Optional[str] = None
     texto: Optional[str] = None
+    texto_sistema: Optional[str] = None
     descricao: Optional[str] = None
 
 class PromptRender(BaseModel):
@@ -132,6 +134,7 @@ async def criar_prompt(data: PromptCreate):
         nome=data.nome,
         etapa=etapa,
         texto=data.texto,
+        texto_sistema=data.texto_sistema,
         descricao=data.descricao,
         materia_id=data.materia_id,
         variaveis=data.variaveis
@@ -147,6 +150,7 @@ async def atualizar_prompt(prompt_id: str, data: PromptUpdate):
         prompt_id=prompt_id,
         texto=data.texto,
         nome=data.nome,
+        texto_sistema=data.texto_sistema,
         descricao=data.descricao
     )
     
@@ -196,11 +200,14 @@ async def renderizar_prompt(data: PromptRender):
         raise HTTPException(404, "Prompt não encontrado")
     
     texto_renderizado = prompt.render(**data.variaveis)
+    texto_sistema_renderizado = prompt.render_sistema(**data.variaveis)
     
     return {
         "prompt_id": data.prompt_id,
         "texto_original": prompt.texto,
         "texto_renderizado": texto_renderizado,
+        "texto_sistema_original": prompt.texto_sistema,
+        "texto_sistema_renderizado": texto_sistema_renderizado,
         "variaveis_usadas": data.variaveis
     }
 
