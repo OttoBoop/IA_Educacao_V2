@@ -24,6 +24,7 @@ class AIResponse:
     model: str
     tokens_used: int
     latency_ms: float
+    output_tokens: int = 0
     timestamp: datetime = field(default_factory=datetime.now)
     metadata: Dict[str, Any] = field(default_factory=dict)
     
@@ -34,6 +35,7 @@ class AIResponse:
             "model": self.model,
             "tokens_used": self.tokens_used,
             "latency_ms": self.latency_ms,
+            "output_tokens": self.output_tokens,
             "timestamp": self.timestamp.isoformat(),
             "metadata": self.metadata
         }
