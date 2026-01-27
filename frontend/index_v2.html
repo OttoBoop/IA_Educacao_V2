@@ -580,6 +580,10 @@
                         <span class="tree-item-icon">🧠</span>
                         <span class="tree-item-name">Prompts</span>
                     </div>
+                    <div class="tree-item" onclick="showProviders()">
+                        <span class="tree-item-icon">🤖</span>
+                        <span class="tree-item-name">Modelos de LLM</span>
+                    </div>
                 </div>
                 
                 <div class="tree-section">
@@ -891,7 +895,11 @@
                     <textarea class="form-textarea" id="input-prompt-variaveis" placeholder='{"materia":"Matemática","atividade":"Prova 1"}'></textarea>
                 </div>
                 <div class="form-group">
-                    <label class="form-label">Resultado</label>
+                    <label class="form-label">Prompt de Sistema (preview)</label>
+                    <textarea class="form-textarea" id="output-prompt-preview-sistema" readonly></textarea>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Prompt do Usuário (preview)</label>
                     <textarea class="form-textarea" id="output-prompt-preview" readonly></textarea>
                 </div>
                 <input type="hidden" id="input-prompt-id">
@@ -1277,8 +1285,12 @@
                             <input type="text" class="form-input" id="input-prompt-descricao" placeholder="Descrição opcional">
                         </div>
                         <div class="form-group">
-                            <label class="form-label">Texto do Prompt *</label>
-                            <textarea class="form-textarea" id="input-prompt-texto" placeholder="Digite o prompt aqui..."></textarea>
+                            <label class="form-label">Prompt de Sistema (opcional)</label>
+                            <textarea class="form-textarea" id="input-prompt-texto-sistema" placeholder="Instruções de sistema para o modelo..."></textarea>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Prompt do Usuário *</label>
+                            <textarea class="form-textarea" id="input-prompt-texto" placeholder="Digite o prompt do usuário aqui..."></textarea>
                         </div>
                         <button class="btn btn-primary" onclick="criarPrompt()">Salvar Prompt</button>
                     </div>
@@ -1294,6 +1306,7 @@
                                             <th>Nome</th>
                                             <th>Etapa</th>
                                             <th>Matéria</th>
+                                            <th>Sistema</th>
                                             <th>Ações</th>
                                         </tr>
                                     </thead>
@@ -1303,6 +1316,7 @@
                                                 <td><strong>${p.nome}</strong></td>
                                                 <td>${p.etapa}</td>
                                                 <td>${p.materia_id ? (materiaMap[p.materia_id] || p.materia_id) : 'Global'}</td>
+                                                <td>${p.texto_sistema ? '<span class="badge badge-primary">Sim</span>' : '<span class="badge badge-warning">Não</span>'}</td>
                                                 <td style="display: flex; gap: 8px; flex-wrap: wrap;">
                                                     <button class="btn btn-sm" onclick="openPromptPreview('${p.id}')">Preview</button>
                                                     <button class="btn btn-sm" onclick="duplicarPrompt('${p.id}')">Duplicar</button>
@@ -1318,6 +1332,81 @@
                 `;
             } catch (e) {
                 showToast('Erro ao carregar prompts', 'error');
+            }
+        }
+
+        async function showProviders() {
+            currentView = 'providers';
+            setBreadcrumb([{nome: 'Início', onclick: 'showDashboard()'}, {nome: 'Modelos de LLM', onclick: 'showProviders()'}]);
+            try {
+                const data = await api('/providers');
+                document.getElementById('content').innerHTML = `
+                    <div class="page-header">
+                        <h1 class="page-title">Modelos de LLM</h1>
+                        <p class="page-subtitle">${data.providers.length} provider(s) disponíveis</p>
+                    </div>
+                    <div class="card">
+                        <div class="card-header">
+                            <h3 class="card-title">Adicionar / Atualizar Provider</h3>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Tipo de Provider *</label>
+                            <select class="form-select" id="input-provider-tipo">
+                                <option value="openai">OpenAI</option>
+                                <option value="anthropic">Anthropic</option>
+                                <option value="ollama">Ollama (Local)</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Nome do Provider *</label>
+                            <input type="text" class="form-input" id="input-provider-nome" placeholder="Ex: openai-gpt4o ou meu-provider">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Modelo (nome do API) *</label>
+                            <input type="text" class="form-input" id="input-provider-modelo" placeholder="Ex: gpt-4o, claude-sonnet-4-20250514, llama3">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">API Key (empresa)</label>
+                            <input type="password" class="form-input" id="input-provider-api-key" placeholder="Opcional para OpenAI/Anthropic">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Base URL (Ollama)</label>
+                            <input type="text" class="form-input" id="input-provider-base-url" placeholder="http://localhost:11434">
+                        </div>
+                        <button class="btn btn-primary" onclick="criarProvider()">Salvar Provider</button>
+                    </div>
+                    <div class="card">
+                        <div class="card-header">
+                            <h3 class="card-title">Providers Existentes</h3>
+                        </div>
+                        ${data.providers.length === 0 ? `<div class="empty-state"><div class="empty-icon">🤖</div><div class="empty-title">Nenhum provider</div></div>` : `
+                            <div class="table-container">
+                                <table>
+                                    <thead>
+                                        <tr>
+                                            <th>Nome</th>
+                                            <th>Tipo</th>
+                                            <th>Modelo</th>
+                                            <th>Identificador</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        ${data.providers.map(p => `
+                                            <tr>
+                                                <td><strong>${p.name}</strong></td>
+                                                <td>${p.provider_type}</td>
+                                                <td>${p.model}</td>
+                                                <td>${p.identifier}</td>
+                                            </tr>
+                                        `).join('')}
+                                    </tbody>
+                                </table>
+                            </div>
+                        `}
+                    </div>
+                `;
+            } catch (e) {
+                showToast('Erro ao carregar providers', 'error');
             }
         }
         
@@ -1503,11 +1592,41 @@
             } catch (e) {}
         }
 
+        async function criarProvider() {
+            const providerType = document.getElementById('input-provider-tipo')?.value;
+            const name = document.getElementById('input-provider-nome')?.value.trim();
+            const model = document.getElementById('input-provider-modelo')?.value.trim();
+            const apiKey = document.getElementById('input-provider-api-key')?.value.trim();
+            const baseUrl = document.getElementById('input-provider-base-url')?.value.trim();
+            if (!providerType || !name || !model) {
+                showToast('Preencha tipo, nome e modelo do provider', 'error');
+                return;
+            }
+            try {
+                await api('/providers', {
+                    method: 'POST',
+                    body: JSON.stringify({
+                        name,
+                        provider_type: providerType,
+                        model,
+                        api_key: apiKey || null,
+                        base_url: baseUrl || null
+                    })
+                });
+                showToast('Provider salvo!', 'success');
+                showProviders();
+                carregarProvidersExecucao();
+            } catch (e) {
+                showToast('Erro ao salvar provider', 'error');
+            }
+        }
+
         async function criarPrompt() {
             const nome = document.getElementById('input-prompt-nome').value.trim();
             const etapa = document.getElementById('input-prompt-etapa').value;
             const materiaId = document.getElementById('input-prompt-materia').value;
             const descricao = document.getElementById('input-prompt-descricao').value.trim();
+            const textoSistema = document.getElementById('input-prompt-texto-sistema').value.trim();
             const texto = document.getElementById('input-prompt-texto').value.trim();
             if (!nome || !texto) { showToast('Preencha nome e texto do prompt', 'error'); return; }
             try {
@@ -1517,6 +1636,7 @@
                         nome,
                         etapa,
                         texto,
+                        texto_sistema: textoSistema || null,
                         descricao: descricao || null,
                         materia_id: materiaId || null
                     })
@@ -1548,6 +1668,7 @@
 
         function openPromptPreview(promptId) {
             document.getElementById('input-prompt-id').value = promptId;
+            document.getElementById('output-prompt-preview-sistema').value = '';
             document.getElementById('output-prompt-preview').value = '';
             openModal('modal-prompt-preview');
         }
@@ -1569,6 +1690,7 @@
                     method: 'POST',
                     body: JSON.stringify({ prompt_id: promptId, variaveis })
                 });
+                document.getElementById('output-prompt-preview-sistema').value = data.texto_sistema_renderizado || '';
                 document.getElementById('output-prompt-preview').value = data.texto_renderizado || '';
             } catch (e) {}
         }

@@ -32,6 +32,7 @@ class PromptTemplate:
     nome: str
     etapa: EtapaProcessamento
     texto: str
+    texto_sistema: Optional[str] = None
     descricao: Optional[str] = None
     
     # Configurações
@@ -56,6 +57,7 @@ class PromptTemplate:
             "nome": self.nome,
             "etapa": self.etapa.value,
             "texto": self.texto,
+            "texto_sistema": self.texto_sistema,
             "descricao": self.descricao,
             "is_padrao": self.is_padrao,
             "is_ativo": self.is_ativo,
@@ -74,6 +76,7 @@ class PromptTemplate:
             nome=data["nome"],
             etapa=EtapaProcessamento(data["etapa"]),
             texto=data["texto"],
+            texto_sistema=data.get("texto_sistema"),
             descricao=data.get("descricao"),
             is_padrao=data.get("is_padrao", False),
             is_ativo=data.get("is_ativo", True),
@@ -86,8 +89,18 @@ class PromptTemplate:
         )
     
     def render(self, **kwargs) -> str:
-        """Renderiza o prompt substituindo variáveis"""
-        texto = self.texto
+        """Renderiza o prompt do usuário substituindo variáveis"""
+        return self._render_texto(self.texto, **kwargs)
+
+    def render_sistema(self, **kwargs) -> str:
+        """Renderiza o prompt de sistema substituindo variáveis"""
+        if not self.texto_sistema:
+            return ""
+        return self._render_texto(self.texto_sistema, **kwargs)
+
+    @staticmethod
+    def _render_texto(texto: str, **kwargs) -> str:
+        """Renderiza um texto substituindo variáveis"""
         for var, valor in kwargs.items():
             texto = texto.replace(f"{{{{{var}}}}}", str(valor))
         return texto
@@ -376,6 +389,7 @@ class PromptManager:
                 nome TEXT NOT NULL,
                 etapa TEXT NOT NULL,
                 texto TEXT NOT NULL,
+                texto_sistema TEXT,
                 descricao TEXT,
                 is_padrao INTEGER DEFAULT 0,
                 is_ativo INTEGER DEFAULT 1,
@@ -402,7 +416,28 @@ class PromptManager:
         ''')
         
         conn.commit()
+        for column, col_type in [
+            ("texto_sistema", "TEXT"),
+            ("descricao", "TEXT"),
+            ("is_padrao", "INTEGER DEFAULT 0"),
+            ("is_ativo", "INTEGER DEFAULT 1"),
+            ("materia_id", "TEXT"),
+            ("variaveis", "TEXT"),
+            ("versao", "INTEGER DEFAULT 1"),
+            ("criado_em", "TEXT"),
+            ("atualizado_em", "TEXT"),
+            ("criado_por", "TEXT"),
+        ]:
+            self._ensure_column(conn, "prompts", column, col_type)
         conn.close()
+
+    def _ensure_column(self, conn: sqlite3.Connection, table: str, column: str, col_type: str) -> None:
+        c = conn.cursor()
+        c.execute(f"PRAGMA table_info({table})")
+        columns = {row[1] for row in c.fetchall()}
+        if column not in columns:
+            c.execute(f"ALTER TABLE {table} ADD COLUMN {column} {col_type}")
+            conn.commit()
     
     def _seed_prompts_padrao(self):
         """Insere prompts padrão se não existirem"""
@@ -413,10 +448,10 @@ class PromptManager:
             c.execute('SELECT id FROM prompts WHERE id = ?', (prompt.id,))
             if not c.fetchone():
                 c.execute('''
-                    INSERT INTO prompts (id, nome, etapa, texto, descricao, is_padrao, is_ativo, materia_id, variaveis, versao, criado_em, atualizado_em, criado_por)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    INSERT INTO prompts (id, nome, etapa, texto, texto_sistema, descricao, is_padrao, is_ativo, materia_id, variaveis, versao, criado_em, atualizado_em, criado_por)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 ''', (
-                    prompt.id, prompt.nome, prompt.etapa.value, prompt.texto,
+                    prompt.id, prompt.nome, prompt.etapa.value, prompt.texto, prompt.texto_sistema,
                     prompt.descricao, 1, 1, None, json.dumps(prompt.variaveis),
                     1, prompt.criado_em.isoformat(), prompt.atualizado_em.isoformat(), "sistema"
                 ))
@@ -425,6 +460,7 @@ class PromptManager:
         conn.close()
     
     def criar_prompt(self, nome: str, etapa: EtapaProcessamento, texto: str,
+                     texto_sistema: str = None,
                      descricao: str = None, materia_id: str = None,
                      variaveis: List[str] = None, criado_por: str = "usuario") -> PromptTemplate:
         """Cria um novo prompt"""
@@ -436,6 +472,7 @@ class PromptManager:
             nome=nome,
             etapa=etapa,
             texto=texto,
+            texto_sistema=texto_sistema,
             descricao=descricao,
             is_padrao=False,
             materia_id=materia_id,
@@ -446,10 +483,10 @@ class PromptManager:
         conn = self._get_connection()
         c = conn.cursor()
         c.execute('''
-            INSERT INTO prompts (id, nome, etapa, texto, descricao, is_padrao, is_ativo, materia_id, variaveis, versao, criado_em, atualizado_em, criado_por)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            INSERT INTO prompts (id, nome, etapa, texto, texto_sistema, descricao, is_padrao, is_ativo, materia_id, variaveis, versao, criado_em, atualizado_em, criado_por)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         ''', (
-            prompt.id, prompt.nome, prompt.etapa.value, prompt.texto,
+            prompt.id, prompt.nome, prompt.etapa.value, prompt.texto, prompt.texto_sistema,
             prompt.descricao, 0, 1, prompt.materia_id, json.dumps(prompt.variaveis),
             1, prompt.criado_em.isoformat(), prompt.atualizado_em.isoformat(), prompt.criado_por
         ))
@@ -547,6 +584,7 @@ class PromptManager:
         return prompts
     
     def atualizar_prompt(self, prompt_id: str, texto: str = None, nome: str = None,
+                         texto_sistema: str = None,
                          descricao: str = None, modificado_por: str = "usuario") -> Optional[PromptTemplate]:
         """Atualiza um prompt, salvando versão anterior no histórico"""
         prompt_atual = self.get_prompt(prompt_id)
@@ -570,6 +608,9 @@ class PromptManager:
         if texto:
             updates.append('texto = ?')
             params.append(texto)
+        if texto_sistema is not None:
+            updates.append('texto_sistema = ?')
+            params.append(texto_sistema)
         if nome:
             updates.append('nome = ?')
             params.append(nome)
@@ -637,6 +678,7 @@ class PromptManager:
             nome=novo_nome,
             etapa=original.etapa,
             texto=original.texto,
+            texto_sistema=original.texto_sistema,
             descricao=f"Cópia de: {original.nome}",
             materia_id=materia_id,
             variaveis=original.variaveis
