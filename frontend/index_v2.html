@@ -471,6 +471,44 @@
         .doc-actions { display: flex; gap: 8px; }
         .doc-name { font-weight: 500; font-size: 0.9rem; }
         .doc-meta { font-size: 0.8rem; color: var(--text-muted); }
+
+        .doc-group {
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 12px;
+            margin-bottom: 12px;
+            background: var(--bg-card);
+        }
+
+        .doc-group-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            margin-bottom: 8px;
+        }
+
+        .doc-group-title {
+            font-weight: 600;
+        }
+
+        .doc-item-static { cursor: default; }
+        .doc-item-static:hover { background: var(--bg-input); }
+
+        .doc-meta-stack {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px 12px;
+            margin-top: 4px;
+            color: var(--text-muted);
+            font-size: 0.78rem;
+        }
+
+        .doc-meta-pill {
+            background: var(--bg-hover);
+            border-radius: 999px;
+            padding: 2px 8px;
+        }
         
         /* EMPTY STATE */
         .empty-state {
@@ -758,6 +796,7 @@
                         <option value="gabarito">✅ Gabarito</option>
                         <option value="criterios_correcao">📋 Critérios de Correção</option>
                         <option value="prova_respondida">👤 Prova do Aluno</option>
+                        <option value="correcao_professor">🧑‍🏫 Correção do Professor</option>
                     </select>
                 </div>
                 <div class="form-group" id="grupo-aluno-upload" style="display: none;">
@@ -780,6 +819,23 @@
             <div class="modal-footer">
                 <button class="btn" onclick="closeModal('modal-upload')">Cancelar</button>
                 <button class="btn btn-primary" onclick="uploadDocumento()">Fazer Upload</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal: Visualizar Documento -->
+    <div class="modal-overlay" id="modal-documento-conteudo">
+        <div class="modal">
+            <div class="modal-header">
+                <h3 class="modal-title" id="titulo-documento-conteudo">Visualizar Documento</h3>
+                <button class="modal-close" onclick="closeModal('modal-documento-conteudo')">×</button>
+            </div>
+            <div class="modal-body">
+                <div id="documento-conteudo-meta" style="color: var(--text-muted); font-size: 0.85rem; margin-bottom: 12px;"></div>
+                <pre id="output-documento-conteudo" style="background: var(--bg-card); padding: 16px; border-radius: 8px; overflow:auto; max-height: 60vh;"></pre>
+            </div>
+            <div class="modal-footer">
+                <button class="btn" onclick="closeModal('modal-documento-conteudo')">Fechar</button>
             </div>
         </div>
     </div>
@@ -930,6 +986,7 @@
         let currentMateria = null;
         let currentTurma = null;
         let currentAtividade = null;
+        let currentAluno = null;
         
         // ============================================================
         // INICIALIZAÇÃO
@@ -1160,6 +1217,7 @@
         async function showAtividade(atividadeId) {
             currentView = 'atividade';
             currentAtividade = atividadeId;
+            currentAluno = null;
             
             try {
                 const data = await api(`/atividades/${atividadeId}`);
@@ -1205,19 +1263,103 @@
             } catch (e) { showToast('Erro ao carregar atividade', 'error'); }
         }
         
+        function formatDateTime(value) {
+            if (!value) return '';
+            try {
+                return new Date(value).toLocaleString('pt-BR');
+            } catch (e) {
+                return value;
+            }
+        }
+
+        function renderDocumentoItem(doc, options = {}) {
+            const metaItems = [];
+            if (doc.criado_em) metaItems.push(`Enviado: ${formatDateTime(doc.criado_em)}`);
+            if (doc.criado_por) metaItems.push(`Por: ${doc.criado_por}`);
+            if (doc.ia_provider) metaItems.push(`IA: ${doc.ia_provider}`);
+            if (doc.ia_modelo) metaItems.push(`Modelo: ${doc.ia_modelo}`);
+            if (doc.prompt_usado) metaItems.push(`Prompt: ${doc.prompt_usado}`);
+            if (doc.prompt_versao) metaItems.push(`Versão: ${doc.prompt_versao}`);
+            if (doc.tokens_usados) metaItems.push(`Tokens: ${doc.tokens_usados}`);
+            if (doc.tempo_processamento_ms) metaItems.push(`Tempo: ${Math.round(doc.tempo_processamento_ms)}ms`);
+
+            const metaHtml = metaItems.length
+                ? `<div class="doc-meta-stack">${metaItems.map(item => `<span class="doc-meta-pill">${escapeHtml(item)}</span>`).join('')}</div>`
+                : '';
+
+            const actions = [];
+            if (options.showVisualizar) {
+                actions.push(`<button class="btn btn-sm" onclick="visualizarDocumento('${doc.id}')">Visualizar</button>`);
+            }
+            actions.push(`<button class="btn btn-sm" onclick="openDocumento('${doc.id}')">Baixar</button>`);
+            if (options.showTrocar && options.onTrocar) {
+                actions.push(`<button class="btn btn-sm btn-primary" onclick="${options.onTrocar}">Trocar</button>`);
+            }
+            if (options.showExcluir) {
+                actions.push(`<button class="btn btn-sm btn-danger" onclick="deleteDocumento('${doc.id}')">Excluir</button>`);
+            }
+
+            return `
+                <div class="doc-item doc-item-static">
+                    <div class="doc-icon">${options.icon || '📄'}</div>
+                    <div class="doc-info">
+                        <div class="doc-name">${escapeHtml(doc.nome_arquivo || doc.id)}</div>
+                        ${metaHtml}
+                    </div>
+                    <div class="doc-actions">${actions.join('')}</div>
+                </div>
+            `;
+        }
+
+        function renderDocumentoGrupo({ titulo, tipo, atividadeId, alunoId, docs, onAdicionar, icon, showVisualizar }) {
+            const list = docs || [];
+            const adicionarLabel = list.length ? '+ Novo' : 'Upload';
+            const btnAdicionar = onAdicionar
+                ? `<button class="btn btn-sm btn-primary" onclick="${onAdicionar}">${adicionarLabel}</button>`
+                : '';
+            const itens = list.length
+                ? list.map(doc => renderDocumentoItem(doc, {
+                    icon,
+                    showVisualizar,
+                    showTrocar: Boolean(onAdicionar),
+                    showExcluir: true,
+                    onTrocar: onAdicionar
+                })).join('')
+                : `<div class="doc-meta" style="padding: 8px 0;">Nenhum documento enviado.</div>`;
+            return `
+                <div class="doc-group">
+                    <div class="doc-group-header">
+                        <div class="doc-group-title">${titulo}${list.length ? ` (${list.length})` : ''}</div>
+                        ${btnAdicionar}
+                    </div>
+                    ${itens}
+                </div>
+            `;
+        }
+
         function renderDocsBase(existentes, atividadeId, detalhes = {}) {
             const tipos = ['enunciado', 'gabarito', 'criterios_correcao'];
             const nomes = {'enunciado': '📄 Enunciado', 'gabarito': '✅ Gabarito', 'criterios_correcao': '📋 Critérios de Correção'};
             return tipos.map(tipo => {
-                const detalhe = detalhes[tipo];
-                const existe = Boolean(detalhe) || existentes.includes(tipo);
-                const meta = existe ? (detalhe?.nome_arquivo ? `Enviado • ${detalhe.nome_arquivo}` : 'Enviado') : 'Não enviado';
-                const acaoAbrir = detalhe?.id ? `<button class="btn btn-sm" onclick="openDocumento('${detalhe.id}')">Abrir</button>` : '';
-                const acaoTrocar = existe
-                    ? `<button class="btn btn-sm btn-primary" onclick="openModalUploadTipo('${atividadeId}', '${tipo}')">Trocar</button>`
-                    : `<button class="btn btn-sm btn-primary" onclick="openModalUploadTipo('${atividadeId}', '${tipo}')">Upload</button>`;
-                return `<div class="doc-item"><div class="doc-icon">${existe ? '✅' : '❌'}</div><div class="doc-info"><div class="doc-name">${nomes[tipo]}</div><div class="doc-meta">${meta}</div></div><div class="doc-actions">${acaoAbrir}${acaoTrocar}</div></div>`;
+                const docs = detalhes[tipo] || [];
+                return renderDocumentoGrupo({
+                    titulo: nomes[tipo],
+                    tipo,
+                    atividadeId,
+                    docs,
+                    icon: tipo === 'gabarito' ? '✅' : (tipo === 'criterios_correcao' ? '📋' : '📄'),
+                    onAdicionar: `openModalUploadTipo('${atividadeId}', '${tipo}')`,
+                    showVisualizar: true
+                });
             }).join('');
+        }
+
+        function groupDocumentosPorTipo(documentos) {
+            return documentos.reduce((acc, doc) => {
+                if (!acc[doc.tipo]) acc[doc.tipo] = [];
+                acc[doc.tipo].push(doc);
+                return acc;
+            }, {});
         }
         
         async function showAlunos() {
@@ -1454,6 +1596,63 @@
             window.open(`${API}/documentos/${documentoId}/download`, '_blank');
         }
 
+        async function visualizarDocumento(documentoId) {
+            if (!documentoId) return;
+            try {
+                const data = await api(`/documentos/${documentoId}/conteudo`);
+                const doc = data.documento || {};
+                const titulo = doc.nome_arquivo ? `Visualizar: ${doc.nome_arquivo}` : 'Visualizar Documento';
+                document.getElementById('titulo-documento-conteudo').textContent = titulo;
+                const meta = [];
+                if (doc.tipo) meta.push(`Tipo: ${doc.tipo}`);
+                if (doc.ia_provider) meta.push(`IA: ${doc.ia_provider}`);
+                if (doc.ia_modelo) meta.push(`Modelo: ${doc.ia_modelo}`);
+                if (doc.prompt_usado) meta.push(`Prompt: ${doc.prompt_usado}`);
+                if (doc.criado_em) meta.push(`Criado em: ${formatDateTime(doc.criado_em)}`);
+                document.getElementById('documento-conteudo-meta').textContent = meta.join(' • ');
+
+                const output = document.getElementById('output-documento-conteudo');
+                if (data.pode_visualizar) {
+                    const content = data.tipo_conteudo === 'json'
+                        ? JSON.stringify(data.conteudo, null, 2)
+                        : (data.conteudo || '');
+                    output.textContent = content;
+                    openModal('modal-documento-conteudo');
+                } else {
+                    showToast('Documento não possui visualização. Faça o download para ver.', 'warning');
+                    openDocumento(documentoId);
+                }
+            } catch (e) {}
+        }
+
+        async function deleteDocumento(documentoId) {
+            if (!documentoId) return;
+            if (!confirm('Deseja excluir este documento? Esta ação não pode ser desfeita.')) return;
+            try {
+                await api(`/documentos/${documentoId}`, { method: 'DELETE' });
+                showToast('Documento excluído', 'success');
+                refreshCurrentView();
+            } catch (e) {}
+        }
+
+        function refreshCurrentView() {
+            if (currentView === 'atividade' && currentAtividade) {
+                showAtividade(currentAtividade);
+                return;
+            }
+            if (currentView === 'resultado_aluno' && currentAtividade && currentAluno) {
+                showResultadoAluno(currentAtividade, currentAluno);
+                return;
+            }
+            if (currentView === 'turma' && currentTurma) {
+                showTurma(currentTurma);
+                return;
+            }
+            if (currentView === 'alunos') {
+                showAlunos();
+            }
+        }
+
         function openModalUploadProvas(atividadeId) {
             document.getElementById('input-upload-provas-atividade-id').value = atividadeId;
             openModal('modal-upload-provas');
@@ -1486,6 +1685,23 @@
             document.getElementById('input-upload-atividade-id').value = atividadeId;
             document.getElementById('input-upload-tipo').value = tipo;
             document.getElementById('grupo-aluno-upload').style.display = 'none';
+            openModal('modal-upload');
+        }
+
+        async function openModalUploadAlunoTipo(atividadeId, alunoId, tipo) {
+            document.getElementById('input-upload-atividade-id').value = atividadeId;
+            document.getElementById('input-upload-tipo').value = tipo;
+            document.getElementById('grupo-aluno-upload').style.display = 'block';
+            if (!window._atividadeData || window._atividadeData?.atividade?.id !== atividadeId) {
+                try {
+                    window._atividadeData = await api(`/atividades/${atividadeId}`);
+                } catch (e) {}
+            }
+            carregarAlunosParaUpload();
+            const selectAluno = document.getElementById('input-upload-aluno');
+            if (selectAluno) {
+                selectAluno.value = alunoId || '';
+            }
             openModal('modal-upload');
         }
         
@@ -1714,7 +1930,7 @@
                 closeModal('modal-upload');
                 fileInput.value = '';
                 document.getElementById('upload-file-name').textContent = '';
-                showAtividade(atividadeId);
+                refreshCurrentView();
             } catch (e) {}
         }
 
@@ -1857,8 +2073,58 @@
 
         async function showResultadoAluno(atividadeId, alunoId) {
             try {
-                const data = await api(`/resultados/${atividadeId}/${alunoId}`);
-                const resultado = data.resultado || {};
+                currentView = 'resultado_aluno';
+                currentAtividade = atividadeId;
+                currentAluno = alunoId;
+                const [dataResultado, dataDocumentos] = await Promise.all([
+                    api(`/resultados/${atividadeId}/${alunoId}`),
+                    api(`/documentos?atividade_id=${atividadeId}&aluno_id=${alunoId}`)
+                ]);
+                const resultado = dataResultado.resultado || {};
+                const documentos = dataDocumentos.documentos || [];
+                const docsPorTipo = groupDocumentosPorTipo(documentos);
+                const labels = {
+                    enunciado: '📄 Enunciado',
+                    gabarito: '✅ Gabarito',
+                    criterios_correcao: '📋 Critérios de Correção',
+                    prova_respondida: '📝 Prova Respondida',
+                    correcao_professor: '🧑‍🏫 Correção do Professor',
+                    extracao_questoes: '🔎 Extração de Questões',
+                    extracao_gabarito: '🧩 Extração de Gabarito',
+                    extracao_respostas: '📝 Extração de Respostas',
+                    correcao: '✅ Correção da IA',
+                    analise_habilidades: '📊 Análise de Habilidades',
+                    relatorio_final: '📄 Relatório Final'
+                };
+                const tiposAluno = window._documentosAluno || ['prova_respondida', 'correcao_professor'];
+                const tiposGerados = window._documentosGerados || [
+                    'extracao_questoes',
+                    'extracao_gabarito',
+                    'extracao_respostas',
+                    'correcao',
+                    'analise_habilidades',
+                    'relatorio_final'
+                ];
+                const gruposAluno = tiposAluno.map(tipo => renderDocumentoGrupo({
+                    titulo: labels[tipo] || tipo,
+                    tipo,
+                    atividadeId,
+                    alunoId,
+                    docs: docsPorTipo[tipo] || [],
+                    icon: tipo === 'correcao_professor' ? '🧑‍🏫' : '👤',
+                    onAdicionar: `openModalUploadAlunoTipo('${atividadeId}', '${alunoId}', '${tipo}')`,
+                    showVisualizar: true
+                })).join('');
+                const gruposGerados = tiposGerados.map(tipo => renderDocumentoGrupo({
+                    titulo: labels[tipo] || tipo,
+                    tipo,
+                    atividadeId,
+                    alunoId,
+                    docs: docsPorTipo[tipo] || [],
+                    icon: '🤖',
+                    onAdicionar: '',
+                    showVisualizar: true
+                })).join('');
                 document.getElementById('content').innerHTML = `
                     <div class="page-header"><h1 class="page-title">Resultado do Aluno</h1></div>
                     <div class="card">
@@ -1867,6 +2133,14 @@
                             <a class="btn" href="${API}/resultados/${atividadeId}/${alunoId}/exportar/markdown" target="_blank">Exportar Markdown</a>
                         </div>
                         <pre style="background: var(--bg-card); padding: 16px; border-radius: 8px; overflow:auto;">${escapeHtml(JSON.stringify(resultado, null, 2))}</pre>
+                    </div>
+                    <div class="card">
+                        <div class="card-header"><h3 class="card-title">📌 Documentos do Aluno</h3></div>
+                        ${gruposAluno || '<div class="empty-state"><div class="empty-icon">📄</div><div class="empty-title">Nenhum documento do aluno</div></div>'}
+                    </div>
+                    <div class="card">
+                        <div class="card-header"><h3 class="card-title">🤖 Comparativo das Etapas (IA)</h3></div>
+                        ${gruposGerados || '<div class="empty-state"><div class="empty-icon">🤖</div><div class="empty-title">Nenhuma etapa gerada</div></div>'}
                     </div>
                 `;
             } catch (e) {}
@@ -1944,11 +2218,14 @@
                 const select = document.getElementById('input-upload-tipo');
                 if (!select) return;
                 window._documentosBase = data.tipos?.base || [];
+                window._documentosAluno = data.tipos?.aluno || [];
+                window._documentosGerados = data.tipos?.gerados || [];
                 const labels = {
                     enunciado: '📄 Enunciado da Prova',
                     gabarito: '✅ Gabarito',
                     criterios_correcao: '📋 Critérios de Correção',
                     prova_respondida: '👤 Prova do Aluno',
+                    correcao_professor: '🧑‍🏫 Correção do Professor',
                     extracao_questoes: '🔎 Extração de Questões',
                     extracao_gabarito: '🧩 Extração de Gabarito',
                     extracao_respostas: '📝 Extração de Respostas',
