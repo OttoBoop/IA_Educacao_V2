@@ -51,4 +51,4 @@ echo "   Pressione Ctrl+C para parar"
 echo ""
 
 cd backend
-python -m uvicorn main:app --reload --host 0.0.0.0 --port 8000
+python -m uvicorn main_v2:app --reload --host 0.0.0.0 --port 8000
