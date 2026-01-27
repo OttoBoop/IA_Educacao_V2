@@ -40,47 +40,33 @@ from ai_providers import (
     LocalLLMProvider,
 )
 
-# Importar rotas extras (operações em lote, busca, estatísticas)
-try:
-    from routes_extras import router as extras_router
-    HAS_EXTRAS = True
-except ImportError:
-    HAS_EXTRAS = False
+# Importar rotas opcionais usando importlib para evitar erros de resolução estática
+import importlib
 
-# Importar rotas de prompts e processamento
-try:
-    from routes_prompts import router as prompts_router
-    HAS_PROMPTS = True
-except ImportError:
-    HAS_PROMPTS = False
+def _try_import_router(module_name: str):
+    try:
+        module = importlib.import_module(module_name)
+    except ImportError:
+        return None
+    return getattr(module, "router", None)
 
-# Importar rotas de resultados e visualização
-try:
-    from routes_resultados import router as resultados_router
-    HAS_RESULTADOS = True
-except ImportError:
-    HAS_RESULTADOS = False
+extras_router = _try_import_router("routes_extras")
+HAS_EXTRAS = extras_router is not None
 
-# Importar rotas de chat
-try:
-    from routes_chat import router as chat_router
-    HAS_CHAT = True
-except ImportError:
-    HAS_CHAT = False
+prompts_router = _try_import_router("routes_prompts")
+HAS_PROMPTS = prompts_router is not None
 
-# Importar rotas de visualização
-try:
-    from routes_visualizacao import router as visualizacao_router
-    HAS_VISUALIZACAO = True
-except ImportError:
-    HAS_VISUALIZACAO = False
+resultados_router = _try_import_router("routes_resultados")
+HAS_RESULTADOS = resultados_router is not None
 
-# Importar rotas de aluno e filtros
-try:
-    from routes_aluno import router as aluno_router
-    HAS_ALUNO = True
-except ImportError:
-    HAS_ALUNO = False
+chat_router = _try_import_router("routes_chat")
+HAS_CHAT = chat_router is not None
+
+visualizacao_router = _try_import_router("routes_visualizacao")
+HAS_VISUALIZACAO = visualizacao_router is not None
+
+aluno_router = _try_import_router("routes_aluno")
+HAS_ALUNO = aluno_router is not None
 
 
 # ============================================================

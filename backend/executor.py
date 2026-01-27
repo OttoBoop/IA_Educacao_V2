@@ -93,6 +93,9 @@ class PipelineExecutor:
             salvar_resultado: Se deve salvar o resultado como documento
         """
         inicio = time.time()
+        prompt_usado_id = ""
+        provider_nome = ""
+        provider_modelo = ""
         
         try:
             # 1. Buscar contexto
@@ -111,11 +114,14 @@ class PipelineExecutor:
             
             if not prompt:
                 return self._erro(etapa, f"Nenhum prompt disponível para etapa {etapa.value}")
+            prompt_usado_id = prompt.id
             
             # 3. Buscar provider
             provider = ai_registry.get(provider_name) if provider_name else ai_registry.get_default()
             if not provider:
                 return self._erro(etapa, "Nenhum provider de IA disponível")
+            provider_nome = provider.name
+            provider_modelo = provider.model
             
             # 4. Preparar variáveis
             variaveis = self._preparar_variaveis(etapa, atividade_id, aluno_id, materia, atividade)
@@ -148,22 +154,22 @@ class PipelineExecutor:
                 sucesso=True,
                 etapa=etapa,
                 prompt_usado=prompt_renderizado,
-                prompt_id=prompt.id,
-                provider=provider.name,
-                modelo=provider.model,
+                prompt_id=prompt_usado_id,
+                provider=provider_nome,
+                modelo=provider_modelo,
                 resposta_raw=response.content,
                 resposta_parsed=resposta_parsed,
-                tokens_entrada=0,  # TODO: calcular
-                tokens_saida=response.tokens_used,
+                tokens_entrada=response.input_tokens,
+                tokens_saida=response.output_tokens or response.tokens_used,
                 tempo_ms=tempo_ms,
                 documento_id=documento_id
             )
             
         except Exception as e:
-            return self._erro(etapa, str(e), prompt_id, provider_name)
+            return self._erro(etapa, str(e), prompt_usado_id, provider_nome, provider_modelo)
     
     def _erro(self, etapa: EtapaProcessamento, mensagem: str, 
-              prompt_id: str = None, provider: str = None) -> ResultadoExecucao:
+              prompt_id: str = None, provider: str = None, modelo: str = None) -> ResultadoExecucao:
         """Cria resultado de erro"""
         return ResultadoExecucao(
             sucesso=False,
@@ -171,7 +177,7 @@ class PipelineExecutor:
             prompt_usado="",
             prompt_id=prompt_id or "",
             provider=provider or "",
-            modelo="",
+            modelo=modelo or "",
             erro=mensagem
         )
     
@@ -251,8 +257,9 @@ class PipelineExecutor:
             elif documento.extensao.lower() == '.pdf':
                 # Tentar extrair texto do PDF
                 try:
-                    import pypdf2
+                    import importlib
                     with open(arquivo, 'rb') as f:
+                        pypdf2 = importlib.import_module("PyPDF2")
                         reader = pypdf2.PdfReader(f)
                         text = ""
                         for page in reader.pages:
@@ -263,8 +270,9 @@ class PipelineExecutor:
             
             elif documento.extensao.lower() == '.docx':
                 try:
-                    from docx import Document
-                    doc = Document(arquivo)
+                    import importlib
+                    docx = importlib.import_module("docx")
+                    doc = docx.Document(arquivo)
                     text = "\n".join([p.text for p in doc.paragraphs])
                     return text
                 except:
