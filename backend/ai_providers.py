@@ -26,6 +26,8 @@ class AIResponse:
     input_tokens: int = 0
     output_tokens: int = 0
     latency_ms: float
+    input_tokens: int = 0
+    output_tokens: int = 0
     timestamp: datetime = field(default_factory=datetime.now)
     metadata: Dict[str, Any] = field(default_factory=dict)
     
