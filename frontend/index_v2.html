@@ -1674,6 +1674,10 @@
             const replaceInfo = document.getElementById('upload-replace-info');
             replaceInfo.style.display = 'none';
             replaceInfo.textContent = '';
+            const selectTipo = document.getElementById('input-upload-tipo');
+            const selectAluno = document.getElementById('input-upload-aluno');
+            selectTipo.disabled = false;
+            selectAluno.disabled = false;
         }
 
         function openModalUpload(atividadeId, modo) {
@@ -1723,8 +1727,12 @@
             document.getElementById('input-upload-tipo').value = tipo;
             document.getElementById('input-upload-documento-id').value = documentoId || '';
             const replaceInfo = document.getElementById('upload-replace-info');
-            replaceInfo.textContent = 'Substituir documento selecionado: o novo upload excluirá o arquivo anterior.';
+            replaceInfo.textContent = 'Substituir documento selecionado: o novo upload excluirá o arquivo anterior. Tipo e aluno ficam bloqueados.';
             replaceInfo.style.display = 'block';
+            const selectTipo = document.getElementById('input-upload-tipo');
+            const selectAluno = document.getElementById('input-upload-aluno');
+            selectTipo.disabled = true;
+            selectAluno.disabled = true;
             if ((window._documentosBase || []).includes(tipo)) {
                 document.getElementById('grupo-aluno-upload').style.display = 'none';
             } else {
@@ -1735,7 +1743,6 @@
                     } catch (e) {}
                 }
                 carregarAlunosParaUpload();
-                const selectAluno = document.getElementById('input-upload-aluno');
                 if (selectAluno) {
                     selectAluno.value = alunoId || '';
                 }
@@ -2252,6 +2259,9 @@
             document.getElementById('input-upload-tipo').addEventListener('change', (e) => {
                 const isBase = (window._documentosBase || []).includes(e.target.value);
                 document.getElementById('grupo-aluno-upload').style.display = isBase ? 'none' : 'block';
+                resetUploadReplace();
+            });
+            document.getElementById('input-upload-aluno').addEventListener('change', () => {
                 resetUploadReplace();
             });
         }
