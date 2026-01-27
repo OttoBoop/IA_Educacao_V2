@@ -493,7 +493,8 @@ async def executar_etapa_preview(data: ProcessarEtapaRequest):
 async def executar_pipeline_completo(
     atividade_id: str = Form(...),
     aluno_id: str = Form(...),
-    provider: Optional[str] = Form(None)
+    provider: Optional[str] = Form(None),
+    providers: Optional[str] = Form(None)
 ):
     """
     Executa o pipeline completo para um aluno.
@@ -501,10 +502,17 @@ async def executar_pipeline_completo(
     """
     from executor import executor
     
+    providers_map = None
+    if providers:
+        try:
+            providers_map = json.loads(providers)
+        except json.JSONDecodeError:
+            raise HTTPException(400, "Formato inválido para providers. Use JSON.")
     resultados = await executor.executar_pipeline_completo(
         atividade_id=atividade_id,
         aluno_id=aluno_id,
-        provider_name=provider
+        provider_name=provider,
+        providers_map=providers_map
     )
     
     # Resumo
@@ -524,7 +532,8 @@ async def executar_pipeline_completo(
 async def executar_lote(
     atividade_id: str = Form(...),
     aluno_ids: str = Form(...),  # IDs separados por vírgula
-    provider: Optional[str] = Form(None)
+    provider: Optional[str] = Form(None),
+    providers: Optional[str] = Form(None)
 ):
     """
     Executa o pipeline completo para múltiplos alunos.
@@ -533,6 +542,12 @@ async def executar_lote(
     
     ids = [id.strip() for id in aluno_ids.split(',') if id.strip()]
     
+    providers_map = None
+    if providers:
+        try:
+            providers_map = json.loads(providers)
+        except json.JSONDecodeError:
+            raise HTTPException(400, "Formato inválido para providers. Use JSON.")
     resultados_por_aluno = {}
     for aluno_id in ids:
         aluno = storage.get_aluno(aluno_id)
@@ -541,7 +556,8 @@ async def executar_lote(
         resultados = await executor.executar_pipeline_completo(
             atividade_id=atividade_id,
             aluno_id=aluno_id,
-            provider_name=provider
+            provider_name=provider,
+            providers_map=providers_map
         )
         
         sucesso = all(r.sucesso for r in resultados.values())
