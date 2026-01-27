@@ -124,9 +124,10 @@ class PipelineExecutor:
             
             # 5. Renderizar prompt
             prompt_renderizado = prompt.render(**variaveis)
+            prompt_sistema_renderizado = prompt.render_sistema(**variaveis) or None
             
             # 6. Executar IA
-            response = await provider.complete(prompt_renderizado)
+            response = await provider.complete(prompt_renderizado, prompt_sistema_renderizado)
             
             # 7. Parsear resposta
             resposta_parsed = self._parsear_resposta(response.content)
@@ -250,8 +251,9 @@ class PipelineExecutor:
             elif documento.extensao.lower() == '.pdf':
                 # Tentar extrair texto do PDF
                 try:
-                    import pypdf2
+                    import importlib
                     with open(arquivo, 'rb') as f:
+                        pypdf2 = importlib.import_module("PyPDF2")
                         reader = pypdf2.PdfReader(f)
                         text = ""
                         for page in reader.pages:
@@ -262,8 +264,9 @@ class PipelineExecutor:
             
             elif documento.extensao.lower() == '.docx':
                 try:
-                    from docx import Document
-                    doc = Document(arquivo)
+                    import importlib
+                    docx = importlib.import_module("docx")
+                    doc = docx.Document(arquivo)
                     text = "\n".join([p.text for p in doc.paragraphs])
                     return text
                 except:
