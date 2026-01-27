@@ -466,7 +466,7 @@ async def upload_documento(
     """
     Faz upload de um documento.
     
-    - tipo: enunciado, gabarito, criterios_correcao, prova_respondida
+    - tipo: enunciado, gabarito, criterios_correcao, prova_respondida, correcao_professor
     - atividade_id: ID da atividade
     - aluno_id: ID do aluno (obrigatório para prova_respondida)
     - ia_provider: Provider para indexação (opcional)
