@@ -45,7 +45,7 @@ class AIResponse:
         }
 
 
-def _format_httpx_error(exc: "httpx.HTTPStatusError") -> str:
+def _format_httpx_error(exc) -> str:
     response = exc.response
     request = exc.request
     body = response.text.strip()
