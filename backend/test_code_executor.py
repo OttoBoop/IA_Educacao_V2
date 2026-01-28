@@ -281,7 +281,7 @@ async def test_e2b_integration():
     section("5. E2B INTEGRATION TESTS")
 
     # Check if E2B is configured
-    mode = os.getenv("EXECUTOR_MODE", "local")
+    mode = os.getenv("EXECUTOR_MODE", "e2b")
     api_key = os.getenv("E2B_API_KEY", "")
 
     if mode != "e2b" or not api_key:

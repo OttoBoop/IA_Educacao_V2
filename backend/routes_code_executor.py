@@ -186,7 +186,7 @@ async def get_executor_status():
     import os
     from code_executor import CodeExecutorConfig
 
-    mode = os.getenv("EXECUTOR_MODE", "local")
+    mode = os.getenv("EXECUTOR_MODE", "e2b")
     config = CodeExecutorConfig()
 
     available, message = await code_executor.check_availability()

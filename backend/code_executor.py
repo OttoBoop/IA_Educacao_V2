@@ -610,10 +610,10 @@ def get_executor() -> ExecutorInterface:
     """
     Factory function that returns the appropriate executor based on environment.
 
-    Set EXECUTOR_MODE=e2b for production (E2B cloud)
+    Set EXECUTOR_MODE=e2b for production (E2B cloud) - DEFAULT
     Set EXECUTOR_MODE=local for development (Docker)
     """
-    mode = os.getenv("EXECUTOR_MODE", "local").lower()
+    mode = os.getenv("EXECUTOR_MODE", "e2b").lower()
     config = CodeExecutorConfig()
 
     if mode == "e2b":
