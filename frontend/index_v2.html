@@ -583,11 +583,780 @@
         .toast.success { border-left: 4px solid var(--success); }
         .toast.error { border-left: 4px solid var(--danger); }
         
+        /* SPINNER */
+        .spinner {
+            width: 16px;
+            height: 16px;
+            border: 2px solid var(--border);
+            border-top-color: var(--primary);
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+            display: inline-block;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        /* TASK PANEL */
+        .task-panel {
+            position: fixed;
+            bottom: 80px;
+            right: 24px;
+            width: 380px;
+            max-height: 400px;
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.3);
+            z-index: 150;
+            display: none;
+            flex-direction: column;
+            overflow: hidden;
+        }
+        .task-panel.show { display: flex; }
+        .task-panel-header {
+            padding: 12px 16px;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: var(--bg-hover);
+        }
+        .task-panel-header h4 { margin: 0; font-size: 0.9rem; }
+        .task-panel-body {
+            flex: 1;
+            overflow-y: auto;
+            padding: 8px;
+        }
+        .task-item {
+            padding: 12px;
+            border-radius: 8px;
+            background: var(--bg-hover);
+            margin-bottom: 8px;
+            border-left: 3px solid var(--border);
+        }
+        .task-item.running { border-left-color: var(--primary); }
+        .task-item.success { border-left-color: var(--success); }
+        .task-item.error { border-left-color: var(--danger); }
+        .task-item-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 4px;
+        }
+        .task-item-title { font-weight: 500; font-size: 0.85rem; }
+        .task-item-status { font-size: 0.75rem; color: var(--text-muted); }
+        .task-item-actions {
+            display: flex;
+            gap: 8px;
+            margin-top: 8px;
+        }
+        .task-fab {
+            position: fixed;
+            bottom: 24px;
+            right: 440px;
+            width: 48px;
+            height: 48px;
+            border-radius: 50%;
+            background: var(--primary);
+            color: white;
+            border: none;
+            cursor: pointer;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.2rem;
+            box-shadow: 0 4px 16px rgba(139, 92, 246, 0.4);
+            z-index: 151;
+        }
+        .task-fab.show { display: flex; }
+        .task-fab .badge {
+            position: absolute;
+            top: -4px;
+            right: -4px;
+            background: var(--danger);
+            color: white;
+            font-size: 0.7rem;
+            min-width: 18px;
+            height: 18px;
+            border-radius: 9px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        /* RESULTS NAV */
+        .results-nav {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 16px;
+            flex-wrap: wrap;
+        }
+        .results-nav-item {
+            padding: 8px 16px;
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 0.85rem;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .results-nav-item:hover { background: var(--bg-hover); }
+        .results-nav-item.active { border-color: var(--primary); background: rgba(139, 92, 246, 0.1); }
+
         /* SCROLLBAR */
         ::-webkit-scrollbar { width: 8px; height: 8px; }
         ::-webkit-scrollbar-track { background: transparent; }
         ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
         ::-webkit-scrollbar-thumb:hover { background: var(--text-muted); }
+
+
+
+        /* ============================================
+           CHAT GERAL - ESTILOS
+           ============================================ */
+        .chat-panel {
+            display: flex;
+            flex-direction: column;
+            height: calc(100vh - 140px);
+            background: var(--bg-card);
+            border-radius: 12px;
+            border: 1px solid var(--border);
+            overflow: hidden;
+        }
+        
+        .chat-panel-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 16px 20px;
+            border-bottom: 1px solid var(--border);
+            background: var(--bg-dark);
+        }
+        
+        .chat-provider-info {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .chat-provider-icon {
+            font-size: 1.5rem;
+        }
+        
+        .chat-provider-name {
+            font-weight: 600;
+        }
+        
+        .chat-provider-model {
+            color: var(--text-muted);
+            font-size: 0.85rem;
+        }
+        
+        .chat-context-bar {
+            padding: 10px 20px;
+            background: var(--bg-input);
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            font-size: 0.9rem;
+        }
+        
+        .chat-context-bar select {
+            flex: 1;
+            max-width: 300px;
+        }
+        
+        .chat-messages-container {
+            flex: 1;
+            overflow-y: auto;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+        }
+        
+        .chat-message {
+            max-width: 85%;
+            padding: 14px 18px;
+            border-radius: 12px;
+            font-size: 0.95rem;
+            line-height: 1.6;
+        }
+        
+        .chat-message.user {
+            background: var(--primary);
+            color: white;
+            align-self: flex-end;
+            border-bottom-right-radius: 4px;
+        }
+        
+        .chat-message.assistant {
+            background: var(--bg-input);
+            border: 1px solid var(--border);
+            align-self: flex-start;
+            border-bottom-left-radius: 4px;
+        }
+        
+        .chat-message pre {
+            background: var(--bg-dark);
+            padding: 12px;
+            border-radius: 6px;
+            margin-top: 10px;
+            overflow-x: auto;
+            font-family: 'Consolas', 'Monaco', monospace;
+            font-size: 0.85rem;
+        }
+        
+        .chat-message-meta {
+            margin-top: 8px;
+            padding-top: 8px;
+            border-top: 1px solid var(--border);
+            font-size: 0.8rem;
+            color: var(--text-muted);
+            display: flex;
+            gap: 16px;
+        }
+        
+        .chat-message-files {
+            margin-top: 10px;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+        
+        .chat-message-file {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 4px 10px;
+            background: var(--bg-hover);
+            border-radius: 4px;
+            font-size: 0.8rem;
+            cursor: pointer;
+        }
+        
+        .chat-message-file:hover {
+            background: var(--border);
+        }
+        
+        .chat-input-area {
+            padding: 16px 20px;
+            border-top: 1px solid var(--border);
+            background: var(--bg-dark);
+        }
+        
+        .chat-input-wrapper {
+            display: flex;
+            gap: 12px;
+            align-items: flex-end;
+        }
+        
+        .chat-input-wrapper textarea {
+            flex: 1;
+            min-height: 44px;
+            max-height: 150px;
+            resize: none;
+            padding: 12px 16px;
+            background: var(--bg-input);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            color: var(--text);
+            font-family: inherit;
+            font-size: 0.95rem;
+        }
+        
+        .chat-input-wrapper textarea:focus {
+            outline: none;
+            border-color: var(--primary);
+        }
+        
+        .typing-indicator {
+            display: flex;
+            gap: 4px;
+            padding: 8px 0;
+        }
+        
+        .typing-indicator span {
+            width: 8px;
+            height: 8px;
+            background: var(--text-muted);
+            border-radius: 50%;
+            animation: typing-bounce 1.4s infinite;
+        }
+        
+        .typing-indicator span:nth-child(2) { animation-delay: 0.2s; }
+        .typing-indicator span:nth-child(3) { animation-delay: 0.4s; }
+        
+        @keyframes typing-bounce {
+            0%, 60%, 100% { opacity: 0.3; transform: translateY(0); }
+            30% { opacity: 1; transform: translateY(-4px); }
+        }
+        
+        .alert-pipeline {
+            padding: 12px 16px;
+            border-radius: 8px;
+            margin-bottom: 12px;
+            display: flex;
+            align-items: flex-start;
+            gap: 10px;
+        }
+        
+        .alert-pipeline.info {
+            background: rgba(59, 130, 246, 0.1);
+            border: 1px solid rgba(59, 130, 246, 0.3);
+        }
+        
+        .alert-pipeline.warning {
+            background: rgba(234, 179, 8, 0.1);
+            border: 1px solid rgba(234, 179, 8, 0.3);
+        }
+        
+        .alert-pipeline.error {
+            background: rgba(239, 68, 68, 0.1);
+            border: 1px solid rgba(239, 68, 68, 0.3);
+        }
+        
+        .alert-pipeline.success {
+            background: rgba(34, 197, 94, 0.1);
+            border: 1px solid rgba(34, 197, 94, 0.3);
+        }
+
+        /* ============================================================
+           MODEL MODAL STYLES
+           ============================================================ */
+
+        .form-hint {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            margin-top: 4px;
+        }
+
+        .model-warning {
+            display: flex;
+            gap: 12px;
+            padding: 12px;
+            background: rgba(234, 179, 8, 0.1);
+            border: 1px solid rgba(234, 179, 8, 0.3);
+            border-radius: 8px;
+            margin-bottom: 16px;
+        }
+        .model-warning .warning-icon {
+            font-size: 1.5rem;
+        }
+        .model-warning .warning-text strong {
+            display: block;
+            color: var(--warning);
+            margin-bottom: 4px;
+        }
+        .model-warning .warning-text p {
+            margin: 0;
+            font-size: 0.85rem;
+            color: var(--text-muted);
+        }
+
+        .checkbox-label {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            cursor: pointer;
+            font-size: 0.9rem;
+        }
+        .checkbox-label input[type="checkbox"] {
+            width: 16px;
+            height: 16px;
+            accent-color: var(--primary);
+        }
+
+        /* ============================================================
+           CATALOG STYLES
+           ============================================================ */
+
+        /* View Mode Selector */
+        .catalog-view-modes {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 12px;
+        }
+        .view-mode-btn {
+            padding: 6px 12px;
+            border: 1px solid var(--border);
+            background: var(--bg-input);
+            color: var(--text);
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.85rem;
+            transition: all 0.15s;
+        }
+        .view-mode-btn:hover { background: var(--bg-hover); }
+        .view-mode-btn.active {
+            background: var(--primary);
+            border-color: var(--primary);
+            color: white;
+        }
+
+        /* Catalog Filters */
+        .catalog-filters {
+            display: flex;
+            gap: 12px;
+            margin-bottom: 16px;
+            flex-wrap: wrap;
+        }
+
+        /* Model Card Grid */
+        .model-catalog-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            gap: 16px;
+            max-height: 400px;
+            overflow-y: auto;
+            padding-right: 8px;
+        }
+
+        .model-card {
+            background: var(--bg-input);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 16px;
+            transition: border-color 0.15s, transform 0.15s;
+        }
+        .model-card:hover {
+            border-color: var(--primary);
+            transform: translateY(-2px);
+        }
+
+        .model-card-header {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 8px;
+        }
+
+        .model-card-name {
+            font-weight: 600;
+            font-size: 1rem;
+        }
+
+        .model-card-desc {
+            font-size: 0.85rem;
+            color: var(--text-muted);
+            margin-bottom: 12px;
+            line-height: 1.4;
+        }
+
+        /* Model Stats */
+        .model-stats {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 12px;
+        }
+        .stat {
+            flex: 1;
+            text-align: center;
+            padding: 8px 4px;
+            background: var(--bg-dark);
+            border-radius: 6px;
+        }
+        .stat-label {
+            display: block;
+            font-size: 0.65rem;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            margin-bottom: 2px;
+        }
+        .stat-value {
+            font-size: 0.85rem;
+            font-weight: 600;
+        }
+
+        /* Capability Badges */
+        .capability-badges {
+            display: flex;
+            gap: 6px;
+            flex-wrap: wrap;
+            margin-bottom: 12px;
+        }
+        .capability-badges span {
+            padding: 3px 8px;
+            border-radius: 10px;
+            font-size: 0.7rem;
+            font-weight: 500;
+        }
+        .badge-vision { background: rgba(59,130,246,0.2); color: #60a5fa; }
+        .badge-tools { background: rgba(168,85,247,0.2); color: #c084fc; }
+        .badge-reasoning { background: rgba(234,179,8,0.2); color: #fbbf24; }
+        .badge-search { background: rgba(34,197,94,0.2); color: #4ade80; }
+        .badge-json { background: rgba(156,163,175,0.2); color: #9ca3af; }
+        .badge-code { background: rgba(236,72,153,0.2); color: #f472b6; }
+
+        /* Provider Badges */
+        .provider-badge {
+            padding: 3px 8px;
+            border-radius: 6px;
+            font-size: 0.7rem;
+            font-weight: 600;
+            color: white;
+        }
+        .provider-openai { background: #10a37f; }
+        .provider-anthropic { background: #d4a574; }
+        .provider-google { background: #4285f4; }
+        .provider-deepseek { background: #1890ff; }
+        .provider-xai { background: #333; }
+        .provider-perplexity { background: #20b2aa; }
+        .provider-cohere { background: #ff6b6b; }
+        .provider-mistral { background: #ff7000; }
+        .provider-groq { background: #f55036; }
+        .provider-openrouter { background: #6366f1; }
+        .provider-ollama { background: #fff; color: #333; }
+        .provider-vllm { background: #7c3aed; }
+        .provider-lmstudio { background: #059669; }
+
+        /* Model Card Footer */
+        .model-card-footer {
+            display: flex;
+            justify-content: flex-end;
+            margin-top: 8px;
+            padding-top: 12px;
+            border-top: 1px solid var(--border);
+        }
+
+        /* Catalog Table (Table View) */
+        .catalog-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.85rem;
+        }
+        .catalog-table th, .catalog-table td {
+            padding: 10px 12px;
+            text-align: left;
+            border-bottom: 1px solid var(--border);
+        }
+        .catalog-table th {
+            background: var(--bg-input);
+            font-weight: 600;
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            color: var(--text-muted);
+        }
+        .catalog-table tr:hover { background: var(--bg-hover); }
+        .catalog-table .check { color: var(--success); }
+        .catalog-table .cross { color: var(--text-muted); }
+
+        /* Compare Grid */
+        .compare-selector { margin-bottom: 16px; }
+        .compare-chips {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+        .compare-chip {
+            padding: 6px 12px;
+            background: var(--bg-input);
+            border: 1px solid var(--border);
+            border-radius: 20px;
+            font-size: 0.8rem;
+            cursor: pointer;
+            transition: all 0.15s;
+        }
+        .compare-chip:hover { border-color: var(--primary); }
+        .compare-chip.selected {
+            background: var(--primary);
+            border-color: var(--primary);
+            color: white;
+        }
+        .compare-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 16px;
+        }
+
+        /* Cost Results */
+        .cost-results {
+            margin-top: 12px;
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 12px;
+        }
+        .cost-card {
+            background: var(--bg-input);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 12px;
+        }
+        .cost-card-title {
+            font-weight: 600;
+            font-size: 0.9rem;
+            margin-bottom: 8px;
+        }
+        .cost-card-value {
+            font-size: 1.2rem;
+            font-weight: 700;
+            color: var(--success);
+        }
+        .cost-card-sub {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+        }
+
+        /* Minimal View */
+        .minimal-list {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+        .minimal-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 8px 12px;
+            background: var(--bg-input);
+            border-radius: 6px;
+            cursor: pointer;
+            transition: background 0.15s;
+        }
+        .minimal-item:hover { background: var(--bg-hover); }
+        .provider-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+        }
+        .context-badge {
+            font-size: 0.75rem;
+            padding: 2px 6px;
+            background: var(--bg-dark);
+            border-radius: 4px;
+            color: var(--text-muted);
+        }
+
+        /* Local Providers */
+        .local-providers-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 16px;
+        }
+        .local-provider-card {
+            background: var(--bg-input);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 16px;
+        }
+        .local-provider-header {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 4px;
+        }
+        .local-provider-icon { font-size: 1.2rem; }
+        .local-provider-name {
+            font-weight: 600;
+            flex: 1;
+        }
+        .status-indicator { font-size: 0.9rem; }
+        .local-provider-url {
+            font-size: 0.8rem;
+            color: var(--text-muted);
+            margin-bottom: 12px;
+        }
+        .local-models-list {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+        .local-model-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 8px 10px;
+            background: var(--bg-dark);
+            border-radius: 6px;
+            font-size: 0.85rem;
+        }
+        .local-model-item .model-name { flex: 1; }
+        .local-model-item .model-size {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            margin-right: 8px;
+        }
+        .empty-hint {
+            font-size: 0.85rem;
+            color: var(--text-muted);
+            text-align: center;
+            padding: 12px;
+        }
+
+        /* Modal Tabs for Student Selection */
+        .modal-tabs {
+            display: flex;
+            border-bottom: 1px solid var(--border-color);
+            margin-bottom: 16px;
+            padding: 0 20px;
+        }
+        .tab-btn {
+            flex: 1;
+            padding: 12px 16px;
+            background: none;
+            border: none;
+            border-bottom: 2px solid transparent;
+            color: var(--text-muted);
+            cursor: pointer;
+            font-size: 0.9rem;
+            transition: all 0.2s;
+        }
+        .tab-btn:hover {
+            color: var(--text-primary);
+        }
+        .tab-btn.active {
+            color: var(--primary);
+            border-bottom-color: var(--primary);
+        }
+
+        /* Student Selection List */
+        .aluno-list {
+            max-height: 300px;
+            overflow-y: auto;
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            margin-top: 12px;
+        }
+        .aluno-item {
+            display: flex;
+            align-items: center;
+            padding: 12px 16px;
+            border-bottom: 1px solid var(--border-color);
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+        .aluno-item:last-child {
+            border-bottom: none;
+        }
+        .aluno-item:hover {
+            background: var(--bg-hover);
+        }
+        .aluno-item.selected {
+            background: var(--primary-alpha, rgba(74, 144, 226, 0.15));
+            border-left: 3px solid var(--primary);
+        }
+        .aluno-item-info {
+            flex: 1;
+        }
+        .aluno-item-nome {
+            font-weight: 500;
+            color: var(--text-primary);
+        }
+        .aluno-item-detalhes {
+            font-size: 0.8rem;
+            color: var(--text-muted);
+            margin-top: 2px;
+        }
+        .aluno-list-empty {
+            padding: 24px;
+            text-align: center;
+            color: var(--text-muted);
+        }
+
     </style>
 </head>
 <body>
@@ -601,14 +1370,18 @@
                 </div>
             </div>
             
-            <nav class="nav-tree" id="nav-tree">
-                <div class="tree-section">
+<nav class="nav-tree" id="nav-tree">
+<div class="tree-section">
                     <div class="tree-section-header">
                         <span>Navegação</span>
                     </div>
                     <div class="tree-item active" onclick="showDashboard()">
                         <span class="tree-item-icon">🏠</span>
                         <span class="tree-item-name">Início</span>
+                    </div>
+                    <div class="tree-item" onclick="showChat()">
+                        <span class="tree-item-icon">💬</span>
+                        <span class="tree-item-name">Chat com IA</span>
                     </div>
                     <div class="tree-item" onclick="showAlunos()">
                         <span class="tree-item-icon">👥</span>
@@ -634,6 +1407,9 @@
             </nav>
             
             <div class="sidebar-footer">
+                <button class="btn" style="width: 100%; margin-bottom: 8px;" onclick="openModal('modal-settings')">
+                    ⚙️ Configurações IA
+                </button>
                 <button class="btn btn-primary" style="width: 100%;" onclick="openModal('modal-materia')">
                     + Nova Matéria
                 </button>
@@ -752,31 +1528,50 @@
         </div>
     </div>
     
-    <!-- Modal: Novo Aluno -->
+    <!-- Modal: Adicionar Aluno -->
     <div class="modal-overlay" id="modal-aluno">
-        <div class="modal">
+        <div class="modal" style="max-width: 500px;">
             <div class="modal-header">
-                <h3 class="modal-title">Novo Aluno</h3>
+                <h3 class="modal-title">Adicionar Aluno</h3>
                 <button class="modal-close" onclick="closeModal('modal-aluno')">×</button>
             </div>
+
+            <!-- Tab buttons -->
+            <div class="modal-tabs">
+                <button class="tab-btn active" id="tab-btn-selecionar" onclick="switchAlunoTab('selecionar')">Selecionar Existente</button>
+                <button class="tab-btn" id="tab-btn-criar" onclick="switchAlunoTab('criar')">Criar Novo</button>
+            </div>
+
             <div class="modal-body">
-                <div class="form-group">
-                    <label class="form-label">Nome Completo *</label>
-                    <input type="text" class="form-input" id="input-aluno-nome" placeholder="Ex: João da Silva">
+                <!-- Tab: Select Existing -->
+                <div id="tab-selecionar-aluno">
+                    <input type="text" class="form-input" id="input-busca-aluno"
+                           placeholder="Buscar por nome..." oninput="filtrarAlunos()">
+                    <div id="lista-alunos" class="aluno-list"></div>
                 </div>
-                <div class="form-group">
-                    <label class="form-label">Matrícula</label>
-                    <input type="text" class="form-input" id="input-aluno-matricula" placeholder="Ex: 2024001">
+
+                <!-- Tab: Create New -->
+                <div id="tab-criar-aluno" style="display: none;">
+                    <div class="form-group">
+                        <label class="form-label">Nome Completo *</label>
+                        <input type="text" class="form-input" id="input-aluno-nome" placeholder="Ex: João da Silva">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Matrícula</label>
+                        <input type="text" class="form-input" id="input-aluno-matricula" placeholder="Ex: 2024001">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Email</label>
+                        <input type="email" class="form-input" id="input-aluno-email" placeholder="email@exemplo.com">
+                    </div>
                 </div>
-                <div class="form-group">
-                    <label class="form-label">Email</label>
-                    <input type="email" class="form-input" id="input-aluno-email" placeholder="email@exemplo.com">
-                </div>
+
                 <input type="hidden" id="input-aluno-turma-id">
+                <input type="hidden" id="input-aluno-selecionado-id">
             </div>
             <div class="modal-footer">
                 <button class="btn" onclick="closeModal('modal-aluno')">Cancelar</button>
-                <button class="btn btn-primary" onclick="criarAluno()">Criar Aluno</button>
+                <button class="btn btn-primary" id="btn-confirmar-aluno" onclick="confirmarAluno()">Adicionar</button>
             </div>
         </div>
     </div>
@@ -912,7 +1707,7 @@
 
     <!-- Modal: Executar Etapa -->
     <div class="modal-overlay" id="modal-execucao">
-        <div class="modal">
+        <div class="modal" style="max-width: 700px;">
             <div class="modal-header">
                 <h3 class="modal-title">Executar Etapa</h3>
                 <button class="modal-close" onclick="closeModal('modal-execucao')">×</button>
@@ -920,15 +1715,33 @@
             <div class="modal-body">
                 <div class="form-group">
                     <label class="form-label">Etapa *</label>
-                    <select class="form-select" id="input-execucao-etapa"></select>
+                    <select class="form-select" id="input-execucao-etapa" onchange="onEtapaChange()"></select>
                 </div>
                 <div class="form-group">
-                    <label class="form-label">Aluno (opcional)</label>
+                    <label class="form-label">Aluno (opcional para etapas da atividade)</label>
                     <select class="form-select" id="input-execucao-aluno"></select>
+                    <small id="input-execucao-aluno-hint" style="color: var(--text-muted); font-size: 0.8rem;"></small>
                 </div>
                 <div class="form-group">
-                    <label class="form-label">Provider</label>
-                    <select class="form-select" id="input-execucao-provider"></select>
+                    <label class="form-label">Prompt</label>
+                    <select class="form-select" id="input-execucao-prompt" onchange="onPromptChange()">
+                        <option value="">Usar prompt padrão</option>
+                    </select>
+                </div>
+                <div class="form-group" id="grupo-prompt-customizado" style="display: none;">
+                    <label class="form-label">
+                        <input type="checkbox" id="input-execucao-editar-prompt" onchange="toggleEditarPrompt()">
+                        Editar prompt antes de executar
+                    </label>
+                </div>
+                <div class="form-group" id="grupo-prompt-texto" style="display: none;">
+                    <label class="form-label">Texto do Prompt</label>
+                    <textarea class="form-textarea" id="input-execucao-prompt-texto" rows="6" placeholder="Carregue um prompt ou escreva aqui..."></textarea>
+                    <small style="color: var(--text-muted); font-size: 0.8rem;">Variáveis disponíveis: {conteudo_documento}, {questoes_extraidas}, {gabarito_extraido}, {respostas_extraidas}, {materia}, {atividade}, {nome_aluno}</small>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Modelo de IA</label>
+                    <select class="form-select" id="input-execucao-model"></select>
                 </div>
                 <input type="hidden" id="input-execucao-atividade-id">
             </div>
@@ -944,20 +1757,35 @@
     <div class="modal-overlay" id="modal-pipeline-completo">
         <div class="modal">
             <div class="modal-header">
-                <h3 class="modal-title">Pipeline Completo</h3>
+                <h3 class="modal-title">🚀 Pipeline Completo</h3>
                 <button class="modal-close" onclick="closeModal('modal-pipeline-completo')">×</button>
             </div>
             <div class="modal-body">
                 <div class="form-group">
+                    <label class="form-label">Executar para:</label>
+                    <div style="display: flex; gap: 16px; margin-bottom: 12px;">
+                        <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+                            <input type="radio" name="pipeline-modo" value="aluno" checked onchange="onPipelineModoChange()"> Um aluno específico
+                        </label>
+                        <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+                            <input type="radio" name="pipeline-modo" value="turma" onchange="onPipelineModoChange()"> Turma toda
+                        </label>
+                    </div>
+                </div>
+                <div class="form-group" id="pipeline-aluno-container">
                     <label class="form-label">Aluno *</label>
                     <select class="form-select" id="input-pipeline-aluno"></select>
                 </div>
+                <div id="pipeline-turma-info" style="display: none;">
+                    <div class="alert alert-info" style="margin-bottom: 12px;">⚠️ Será executado para todos os alunos que têm prova enviada</div>
+                    <div id="pipeline-turma-resumo" style="padding: 10px; background: var(--bg-hover); border-radius: 8px; margin-bottom: 12px;"></div>
+                </div>
                 <div class="form-group">
-                    <label class="form-label">Provider padrão (opcional)</label>
+                    <label class="form-label">Modelo de IA padrão</label>
                     <select class="form-select" id="input-pipeline-provider-default"></select>
                 </div>
                 <div class="form-group">
-                    <label class="form-label">Providers por etapa</label>
+                    <label class="form-label">Modelo por etapa (opcional)</label>
                     <div id="pipeline-provider-stages" style="display: flex; flex-direction: column; gap: 8px;"></div>
                     <small style="color: var(--text-muted); display: block; margin-top: 6px;">
                         Selecione um modelo diferente por etapa para personalizar a execução.
@@ -967,7 +1795,7 @@
             </div>
             <div class="modal-footer">
                 <button class="btn" onclick="closeModal('modal-pipeline-completo')">Cancelar</button>
-                <button class="btn btn-primary" onclick="executarPipelineCompleto()">Executar Pipeline</button>
+                <button class="btn btn-primary" id="btn-executar-pipeline" onclick="executarPipelineCompleto()">Executar Pipeline</button>
             </div>
         </div>
     </div>
@@ -1000,11 +1828,445 @@
             </div>
         </div>
     </div>
+
+    <!-- Modal: Settings (API Keys e Modelos) -->
+    <div class="modal-overlay" id="modal-settings">
+        <div class="modal modal-lg" style="max-width: 800px;">
+            <div class="modal-header">
+                <h3 class="modal-title">⚙️ Configurações de IA</h3>
+                <button class="modal-close" onclick="closeModal('modal-settings')">×</button>
+            </div>
+            <div class="modal-body">
+                <div class="tabs" style="flex-wrap: wrap;">
+                    <div class="tab active" onclick="showSettingsTab('api-keys')">🔑 API Keys</div>
+                    <div class="tab" onclick="showSettingsTab('models')">🤖 Modelos</div>
+                    <div class="tab" onclick="showSettingsTab('catalog')">📚 Catálogo</div>
+                    <div class="tab" onclick="showSettingsTab('custom')">⚙️ Customizado</div>
+                    <div class="tab" onclick="showSettingsTab('local')">💻 Local</div>
+                </div>
+                
+                <!-- Tab: API Keys -->
+                <div id="settings-tab-api-keys">
+                    <div class="card-header" style="margin-bottom: 16px;">
+                        <span class="card-title">API Keys por Empresa</span>
+                        <button class="btn btn-primary btn-sm" onclick="openModal('modal-add-apikey')">+ Adicionar</button>
+                    </div>
+                    <div id="api-keys-list">
+                        <div class="empty-state">
+                            <div class="empty-icon">🔑</div>
+                            <div class="empty-title">Nenhuma API key configurada</div>
+                            <div class="empty-text">Adicione uma API key para começar a usar a IA</div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Tab: Models -->
+                <div id="settings-tab-models" style="display: none;">
+                    <div class="card-header" style="margin-bottom: 16px;">
+                        <span class="card-title">Modelos Configurados</span>
+                        <button class="btn btn-primary btn-sm" onclick="openAddModelModal()">+ Adicionar</button>
+                    </div>
+                    <div id="models-list">
+                        <div class="empty-state">
+                            <div class="empty-icon">🤖</div>
+                            <div class="empty-title">Nenhum modelo configurado</div>
+                            <div class="empty-text">Adicione um modelo para usar nas correções</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Tab: Catalog -->
+                <div id="settings-tab-catalog" style="display: none;">
+                    <!-- View Mode Selector -->
+                    <div class="catalog-view-modes">
+                        <button class="view-mode-btn active" data-mode="cards" onclick="setCatalogView('cards')">▦ Cards</button>
+                        <button class="view-mode-btn" data-mode="table" onclick="setCatalogView('table')">☰ Tabela</button>
+                        <button class="view-mode-btn" data-mode="compare" onclick="setCatalogView('compare')">⇆ Comparar</button>
+                        <button class="view-mode-btn" data-mode="minimal" onclick="setCatalogView('minimal')">• Minimal</button>
+                    </div>
+
+                    <!-- Filters -->
+                    <div class="catalog-filters">
+                        <select id="filter-provider" class="form-select" onchange="filterCatalog()" style="max-width: 180px;">
+                            <option value="">Todos Provedores</option>
+                        </select>
+                        <select id="filter-capability" class="form-select" onchange="filterCatalog()" style="max-width: 180px;">
+                            <option value="">Todas Capacidades</option>
+                            <option value="vision">👁️ Vision</option>
+                            <option value="tools">🔧 Tool Use</option>
+                            <option value="reasoning">🧠 Reasoning</option>
+                            <option value="search">🔍 Search</option>
+                            <option value="json_mode">📋 JSON Mode</option>
+                        </select>
+                        <input type="text" class="form-input" id="filter-search" placeholder="Buscar modelo..."
+                               onkeyup="filterCatalog()" style="max-width: 180px;">
+                    </div>
+
+                    <!-- Catalog Content -->
+                    <div id="catalog-content">
+                        <div class="model-catalog-grid" id="catalog-grid"></div>
+                    </div>
+
+                    <!-- Compare Mode Content (hidden by default) -->
+                    <div id="compare-content" style="display: none;">
+                        <div class="compare-selector">
+                            <label style="margin-bottom: 8px; display: block;">Selecione modelos para comparar (até 4):</label>
+                            <div id="compare-chips" class="compare-chips"></div>
+                        </div>
+                        <div id="compare-grid" class="compare-grid"></div>
+
+                        <!-- Cost Calculator -->
+                        <div class="cost-calculator" style="margin-top: 20px;">
+                            <h4 style="margin-bottom: 12px;">💰 Calculadora de Custos</h4>
+                            <div class="form-row" style="display: flex; gap: 12px; flex-wrap: wrap;">
+                                <div class="form-group" style="flex: 1; min-width: 150px;">
+                                    <label class="form-label">Tokens Input/req</label>
+                                    <input type="number" class="form-input" id="calc-input-tokens" value="1000" onchange="calculateCosts()">
+                                </div>
+                                <div class="form-group" style="flex: 1; min-width: 150px;">
+                                    <label class="form-label">Tokens Output/req</label>
+                                    <input type="number" class="form-input" id="calc-output-tokens" value="500" onchange="calculateCosts()">
+                                </div>
+                                <div class="form-group" style="flex: 1; min-width: 150px;">
+                                    <label class="form-label">Requisições/dia</label>
+                                    <input type="number" class="form-input" id="calc-requests" value="100" onchange="calculateCosts()">
+                                </div>
+                            </div>
+                            <div id="cost-results" class="cost-results"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Tab: Custom Endpoint -->
+                <div id="settings-tab-custom" style="display: none;">
+                    <div class="card" style="background: var(--bg-card); border: 1px solid var(--border); border-radius: 12px; padding: 20px;">
+                        <h4 style="margin-bottom: 16px;">🔧 Configuração de Endpoint Customizado</h4>
+                        <p style="color: var(--text-muted); margin-bottom: 16px; font-size: 0.9rem;">
+                            Configure endpoints específicos (Azure, versões antigas, proxies, etc.)
+                        </p>
+
+                        <div class="form-group">
+                            <label class="form-label">Tipo de Compatibilidade *</label>
+                            <select id="custom-compat" class="form-select">
+                                <option value="openai">OpenAI-Compatible</option>
+                                <option value="anthropic">Anthropic-Compatible</option>
+                            </select>
+                        </div>
+
+                        <div class="form-group">
+                            <label class="form-label">Nome de Exibição *</label>
+                            <input type="text" class="form-input" id="custom-nome" placeholder="Ex: Azure GPT-4 Produção">
+                        </div>
+
+                        <div class="form-group">
+                            <label class="form-label">Base URL *</label>
+                            <input type="text" class="form-input" id="custom-url" placeholder="https://my-resource.openai.azure.com/v1">
+                        </div>
+
+                        <div class="form-group">
+                            <label class="form-label">ID Exato do Modelo *</label>
+                            <input type="text" class="form-input" id="custom-model-id" placeholder="gpt-4o-2024-08-06">
+                            <div class="form-hint">O identificador exato enviado nas requisições</div>
+                        </div>
+
+                        <div class="form-group">
+                            <label class="form-label">Versão da API (opcional)</label>
+                            <input type="text" class="form-input" id="custom-api-version" placeholder="2024-02-15-preview">
+                        </div>
+
+                        <div class="form-group">
+                            <label class="form-label">Headers Extras (JSON, opcional)</label>
+                            <textarea class="form-input" id="custom-headers" rows="2" placeholder='{"x-custom-header": "value"}'></textarea>
+                        </div>
+
+                        <div class="form-row" style="display: flex; gap: 12px;">
+                            <div class="form-group" style="flex: 1;">
+                                <label class="form-label">Max Tokens</label>
+                                <input type="number" class="form-input" id="custom-tokens" value="4096">
+                            </div>
+                            <div class="form-group" style="flex: 1;">
+                                <label class="form-label">Temperatura</label>
+                                <input type="number" class="form-input" id="custom-temp" value="0.7" step="0.1" min="0" max="2">
+                            </div>
+                        </div>
+
+                        <button class="btn btn-primary" onclick="salvarCustomEndpoint()" style="margin-top: 12px;">
+                            💾 Salvar Endpoint Customizado
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Tab: Local Models -->
+                <div id="settings-tab-local" style="display: none;">
+                    <div style="margin-bottom: 16px;">
+                        <p style="color: var(--text-muted); font-size: 0.9rem;">
+                            Detecta automaticamente modelos em servidores locais (Ollama, vLLM, LM Studio)
+                        </p>
+                        <button class="btn btn-sm" onclick="detectAllLocalModels()" style="margin-top: 8px;">
+                            🔄 Atualizar Todos
+                        </button>
+                    </div>
+
+                    <div class="local-providers-grid">
+                        <!-- Ollama -->
+                        <div class="local-provider-card">
+                            <div class="local-provider-header">
+                                <span class="local-provider-icon">🦙</span>
+                                <span class="local-provider-name">Ollama</span>
+                                <span id="ollama-status" class="status-indicator">⏳</span>
+                                <button class="btn btn-xs" onclick="detectLocalModels('ollama')">↻</button>
+                            </div>
+                            <div class="local-provider-url">localhost:11434</div>
+                            <div id="ollama-models" class="local-models-list">
+                                <div class="empty-hint">Verificando...</div>
+                            </div>
+                        </div>
+
+                        <!-- vLLM -->
+                        <div class="local-provider-card">
+                            <div class="local-provider-header">
+                                <span class="local-provider-icon">⚡</span>
+                                <span class="local-provider-name">vLLM</span>
+                                <span id="vllm-status" class="status-indicator">⏳</span>
+                                <button class="btn btn-xs" onclick="detectLocalModels('vllm')">↻</button>
+                            </div>
+                            <div class="local-provider-url">localhost:8000</div>
+                            <div id="vllm-models" class="local-models-list">
+                                <div class="empty-hint">Verificando...</div>
+                            </div>
+                        </div>
+
+                        <!-- LM Studio -->
+                        <div class="local-provider-card">
+                            <div class="local-provider-header">
+                                <span class="local-provider-icon">🖥️</span>
+                                <span class="local-provider-name">LM Studio</span>
+                                <span id="lmstudio-status" class="status-indicator">⏳</span>
+                                <button class="btn btn-xs" onclick="detectLocalModels('lmstudio')">↻</button>
+                            </div>
+                            <div class="local-provider-url">localhost:1234</div>
+                            <div id="lmstudio-models" class="local-models-list">
+                                <div class="empty-hint">Verificando...</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal: Adicionar API Key -->
+    <div class="modal-overlay" id="modal-add-apikey">
+        <div class="modal">
+            <div class="modal-header">
+                <h3 class="modal-title">🔑 Adicionar API Key</h3>
+                <button class="modal-close" onclick="closeModal('modal-add-apikey')">×</button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label class="form-label">Empresa *</label>
+                    <select class="form-select" id="input-apikey-empresa">
+                        <option value="openai">OpenAI</option>
+                        <option value="anthropic">Anthropic</option>
+                        <option value="google">Google (Gemini)</option>
+                        <option value="deepseek">DeepSeek</option>
+                        <option value="mistral">Mistral</option>
+                        <option value="xai">xAI (Grok)</option>
+                        <option value="perplexity">Perplexity</option>
+                        <option value="cohere">Cohere</option>
+                        <option value="groq">Groq</option>
+                        <option value="openrouter">OpenRouter</option>
+                        <option value="ollama">Ollama (local)</option>
+                        <option value="vllm">vLLM (local)</option>
+                        <option value="lmstudio">LM Studio (local)</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">API Key *</label>
+                    <input type="password" class="form-input" id="input-apikey-key" placeholder="sk-...">
+                    <div class="form-hint">Sua chave será armazenada de forma segura</div>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Nome de exibição</label>
+                    <input type="text" class="form-input" id="input-apikey-nome" placeholder="Ex: Minha conta OpenAI">
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn" onclick="closeModal('modal-add-apikey')">Cancelar</button>
+                <button class="btn btn-primary" onclick="salvarApiKey()">Salvar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal: Adicionar Modelo -->
+    <div class="modal-overlay" id="modal-add-model">
+        <div class="modal modal-lg">
+            <div class="modal-header">
+                <h3 class="modal-title">🤖 Adicionar Modelo</h3>
+                <button class="modal-close" onclick="closeModal('modal-add-model')">×</button>
+            </div>
+            <div class="modal-body">
+                <!-- Linha 1: Apelido e Provider -->
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
+                    <div class="form-group">
+                        <label class="form-label">Apelido (Identificador) *</label>
+                        <input type="text" class="form-input" id="input-model-nome" placeholder="Ex: GPT-4o Produção">
+                        <div class="form-hint">Nome interno para identificar este modelo na lista</div>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Provedor *</label>
+                        <select class="form-select" id="input-model-tipo" onchange="onProviderChange()">
+                            <option value="openai">OpenAI</option>
+                            <option value="anthropic">Anthropic</option>
+                            <option value="google">Google (Gemini)</option>
+                            <option value="deepseek">DeepSeek</option>
+                            <option value="mistral">Mistral</option>
+                            <option value="xai">xAI (Grok)</option>
+                            <option value="perplexity">Perplexity</option>
+                            <option value="cohere">Cohere</option>
+                            <option value="groq">Groq</option>
+                            <option value="openrouter">OpenRouter</option>
+                            <option value="ollama">Ollama (local)</option>
+                            <option value="vllm">vLLM (local)</option>
+                            <option value="lmstudio">LM Studio (local)</option>
+                            <option value="custom">Customizado</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Linha 2: Modelo (select + input manual) -->
+                <div class="form-group">
+                    <label class="form-label">Modelo (ID da API) *</label>
+                    <div style="display: flex; gap: 8px; align-items: center;">
+                        <select class="form-select" id="input-model-select" onchange="onModelSelect()" style="flex: 1;">
+                            <option value="">-- Selecione ou digite abaixo --</option>
+                        </select>
+                        <span style="color: var(--text-muted);">ou</span>
+                        <input type="text" class="form-input" id="input-model-manual" placeholder="gpt-4o-2024-08-06" style="flex: 1;">
+                    </div>
+                    <div class="form-hint">O ID exato do modelo enviado para a API (ex: gpt-4o, claude-sonnet-4-5-20250514)</div>
+                </div>
+
+                <!-- Aviso de Modelo Reasoning -->
+                <div id="reasoning-warning" class="model-warning" style="display: none;">
+                    <div class="warning-icon">🧠</div>
+                    <div class="warning-text">
+                        <strong>Modelo de Raciocínio Detectado</strong>
+                        <p>Este modelo usa "reasoning_effort" ao invés de temperatura. Defina abaixo o nível de raciocínio.</p>
+                    </div>
+                </div>
+
+                <!-- Linha 3: Parâmetros (dinamicamente mostra temp ou reasoning) -->
+                <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px;">
+                    <div class="form-group">
+                        <label class="form-label">Max Tokens</label>
+                        <input type="number" class="form-input" id="input-model-tokens" value="4096">
+                        <div class="form-hint">Máximo de tokens na resposta</div>
+                    </div>
+                    <div class="form-group" id="temp-group">
+                        <label class="form-label">Temperatura</label>
+                        <input type="number" class="form-input" id="input-model-temp" value="0.7" step="0.1" min="0" max="2">
+                        <div class="form-hint">0 = determinístico, 2 = criativo</div>
+                    </div>
+                    <div class="form-group" id="reasoning-group" style="display: none;">
+                        <label class="form-label">Reasoning Effort</label>
+                        <select class="form-select" id="input-model-reasoning">
+                            <option value="low">Low (rápido)</option>
+                            <option value="medium" selected>Medium (balanceado)</option>
+                            <option value="high">High (detalhado)</option>
+                        </select>
+                        <div class="form-hint">Profundidade do raciocínio</div>
+                    </div>
+                </div>
+
+                <!-- Linha 4: System Prompt com exemplo -->
+                <div class="form-group">
+                    <label class="form-label">System Prompt Padrão</label>
+                    <textarea class="form-textarea" id="input-model-system" rows="4" placeholder="Instruções que definem o comportamento do modelo..."></textarea>
+                    <div style="display: flex; justify-content: space-between; margin-top: 4px;">
+                        <div class="form-hint">Deixe vazio para usar o prompt padrão do sistema</div>
+                        <button class="btn btn-xs" onclick="preencherSystemPromptPadrao()">Usar Padrão</button>
+                    </div>
+                </div>
+
+                <!-- Linha 5: Capacidades (checkbox) -->
+                <div class="form-group">
+                    <label class="form-label">Capacidades do Modelo</label>
+                    <div style="display: flex; gap: 16px; flex-wrap: wrap;">
+                        <label class="checkbox-label">
+                            <input type="checkbox" id="input-model-vision">
+                            <span>👁️ Vision (imagens)</span>
+                        </label>
+                        <label class="checkbox-label">
+                            <input type="checkbox" id="input-model-tools">
+                            <span>🔧 Tool Use / Functions</span>
+                        </label>
+                        <label class="checkbox-label">
+                            <input type="checkbox" id="input-model-streaming" checked>
+                            <span>📡 Streaming</span>
+                        </label>
+                    </div>
+                </div>
+
+                <!-- Campo oculto para ID do modelo real -->
+                <input type="hidden" id="input-model-modelo">
+                <input type="hidden" id="input-model-is-reasoning" value="false">
+            </div>
+            <div class="modal-footer">
+                <button class="btn" onclick="closeModal('modal-add-model')">Cancelar</button>
+                <button class="btn btn-primary" onclick="salvarModelo()">Salvar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal: Chat com IA -->
+    <div class="modal-overlay" id="modal-chat">
+        <div class="modal modal-lg" style="max-width: 900px; height: 80vh;">
+            <div class="modal-header">
+                <h3 class="modal-title" id="chat-titulo">💬 Chat com IA</h3>
+                <div style="display: flex; gap: 12px; align-items: center;">
+                    <select class="form-select" id="chat-model-select" style="width: 200px;"></select>
+                    <button class="modal-close" onclick="closeModal('modal-chat')">×</button>
+                </div>
+            </div>
+            <div class="modal-body" style="padding: 0; display: flex; flex-direction: column; height: calc(100% - 130px);">
+                <div id="chat-messages" style="flex: 1; overflow-y: auto; padding: 16px; display: flex; flex-direction: column; gap: 12px;"></div>
+                <div style="border-top: 1px solid var(--border); padding: 16px; display: flex; gap: 12px;">
+                    <textarea class="form-textarea" id="chat-input" placeholder="Digite sua mensagem..." style="flex: 1; min-height: 44px; max-height: 150px; resize: none;"></textarea>
+                    <button class="btn btn-primary" onclick="enviarMensagemChat()">Enviar</button>
+                </div>
+            </div>
+            <input type="hidden" id="chat-session-id">
+            <input type="hidden" id="chat-atividade-id">
+            <input type="hidden" id="chat-aluno-id">
+        </div>
+    </div>
     
     <!-- Toast -->
     <div class="toast" id="toast"></div>
 
-<!-- 
+    <!-- Task Panel (Fila de Tarefas) -->
+    <button class="task-fab" id="task-fab" onclick="toggleTaskPanel()">
+        📋
+        <span class="badge" id="task-badge" style="display:none;">0</span>
+    </button>
+    <div class="task-panel" id="task-panel">
+        <div class="task-panel-header">
+            <h4>📋 Tarefas</h4>
+            <div style="display: flex; gap: 8px;">
+                <button class="btn btn-xs" onclick="clearCompletedTasks()">Limpar concluídas</button>
+                <button class="btn btn-xs" onclick="toggleTaskPanel()">×</button>
+            </div>
+        </div>
+        <div class="task-panel-body" id="task-panel-body">
+            <div class="empty-state" style="padding: 24px; text-align: center;">
+                <div style="font-size: 2rem;">📭</div>
+                <div style="color: var(--text-muted); font-size: 0.85rem;">Nenhuma tarefa em execução</div>
+            </div>
+        </div>
+    </div>
+
+<!--
 ╔══════════════════════════════════════════════════════════════════╗
 ║  FIM DA PARTE 1 - CONTINUE COM A PARTE 2 ABAIXO                 ║
 ╚══════════════════════════════════════════════════════════════════╝
@@ -1021,10 +2283,223 @@
         let currentTurma = null;
         let currentAtividade = null;
         let currentAluno = null;
-        
+         // Chat Geral
+        let chatGeralConversationId = 'chat_' + Date.now();
+        let chatGeralProviders = [];
+
+        // ============================================================
+        // SISTEMA DE TAREFAS (TASK QUEUE)
+        // ============================================================
+        const taskQueue = {
+            tasks: [],
+            results: [],
+            maxResults: 20,
+
+            addTask(type, description, atividadeId, alunoId = null) {
+                const task = {
+                    id: 'task_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9),
+                    type,
+                    description,
+                    atividadeId,
+                    alunoId,
+                    status: 'running',
+                    createdAt: new Date(),
+                    result: null,
+                    error: null
+                };
+                this.tasks.push(task);
+                this.updateUI();
+                return task;
+            },
+
+            completeTask(taskId, result) {
+                const task = this.tasks.find(t => t.id === taskId);
+                if (task) {
+                    task.status = 'success';
+                    task.result = result;
+                    task.completedAt = new Date();
+                    // Adicionar ao histórico de resultados
+                    this.results.unshift({
+                        id: task.id,
+                        type: task.type,
+                        description: task.description,
+                        atividadeId: task.atividadeId,
+                        alunoId: task.alunoId,
+                        result: result,
+                        completedAt: task.completedAt
+                    });
+                    // Limitar histórico
+                    if (this.results.length > this.maxResults) {
+                        this.results = this.results.slice(0, this.maxResults);
+                    }
+                    this.updateUI();
+                    showToast(`✅ ${task.description} - concluído!`, 'success');
+                }
+            },
+
+            failTask(taskId, error) {
+                const task = this.tasks.find(t => t.id === taskId);
+                if (task) {
+                    task.status = 'error';
+                    task.error = error;
+                    task.completedAt = new Date();
+                    this.updateUI();
+                    showToast(`❌ ${task.description} - falhou: ${error}`, 'error');
+                }
+            },
+
+            removeTask(taskId) {
+                this.tasks = this.tasks.filter(t => t.id !== taskId);
+                this.updateUI();
+            },
+
+            clearCompleted() {
+                this.tasks = this.tasks.filter(t => t.status === 'running');
+                this.updateUI();
+            },
+
+            clearResult(resultId) {
+                this.results = this.results.filter(r => r.id !== resultId);
+            },
+
+            getRunningCount() {
+                return this.tasks.filter(t => t.status === 'running').length;
+            },
+
+            isRunning(type, atividadeId, alunoId = null) {
+                return this.tasks.some(t =>
+                    t.status === 'running' &&
+                    t.type === type &&
+                    t.atividadeId === atividadeId &&
+                    t.alunoId === alunoId
+                );
+            },
+
+            updateUI() {
+                const fab = document.getElementById('task-fab');
+                const badge = document.getElementById('task-badge');
+                const body = document.getElementById('task-panel-body');
+
+                const runningCount = this.getRunningCount();
+                const totalTasks = this.tasks.length;
+
+                // Mostrar FAB se houver tarefas
+                if (totalTasks > 0) {
+                    fab.classList.add('show');
+                    if (runningCount > 0) {
+                        badge.style.display = 'flex';
+                        badge.textContent = runningCount;
+                    } else {
+                        badge.style.display = 'none';
+                    }
+                } else {
+                    fab.classList.remove('show');
+                    badge.style.display = 'none';
+                }
+
+                // Renderizar tarefas
+                if (totalTasks === 0) {
+                    body.innerHTML = `
+                        <div class="empty-state" style="padding: 24px; text-align: center;">
+                            <div style="font-size: 2rem;">📭</div>
+                            <div style="color: var(--text-muted); font-size: 0.85rem;">Nenhuma tarefa em execução</div>
+                        </div>
+                    `;
+                } else {
+                    body.innerHTML = this.tasks.map(task => `
+                        <div class="task-item ${task.status}">
+                            <div class="task-item-header">
+                                <span class="task-item-title">${escapeHtml(task.description)}</span>
+                                <span class="task-item-status">
+                                    ${task.status === 'running' ? '<span class="spinner"></span>' : ''}
+                                    ${task.status === 'success' ? '✅' : ''}
+                                    ${task.status === 'error' ? '❌' : ''}
+                                </span>
+                            </div>
+                            <div class="task-item-actions">
+                                ${task.status === 'success' && task.result ? `<button class="btn btn-xs btn-primary" onclick="viewTaskResult('${task.id}')">Ver Resultado</button>` : ''}
+                                ${task.status !== 'running' ? `<button class="btn btn-xs" onclick="taskQueue.removeTask('${task.id}')">Remover</button>` : ''}
+                            </div>
+                        </div>
+                    `).join('');
+                }
+            }
+        };
+
+        function toggleTaskPanel() {
+            const panel = document.getElementById('task-panel');
+            panel.classList.toggle('show');
+        }
+
+        function clearCompletedTasks() {
+            taskQueue.clearCompleted();
+        }
+
+        function viewTaskResult(taskId) {
+            const task = taskQueue.tasks.find(t => t.id === taskId);
+            if (task && task.result) {
+                showResultado(task.type, task.atividadeId, task.alunoId, task.result, task.id);
+            }
+        }
+
+        function showResultado(type, atividadeId, alunoId, result, taskId) {
+            const backButton = atividadeId ?
+                `<button class="btn" onclick="showAtividade('${atividadeId}')">← Voltar para Atividade</button>` :
+                `<button class="btn" onclick="showDashboard()">← Voltar</button>`;
+
+            const deleteButton = taskId ?
+                `<button class="btn btn-danger btn-sm" onclick="deleteResultado('${taskId}')">🗑️ Excluir Visualização</button>` : '';
+
+            document.getElementById('content').innerHTML = `
+                <div class="page-header" style="display: flex; justify-content: space-between; align-items: center;">
+                    <h1 class="page-title">Resultado: ${escapeHtml(type)}</h1>
+                    ${deleteButton}
+                </div>
+                <div style="margin-bottom: 16px;">
+                    ${backButton}
+                </div>
+                ${renderResultsNav(atividadeId, alunoId, taskId)}
+                <pre style="background: var(--bg-card); padding: 16px; border-radius: 8px; overflow:auto; white-space: pre-wrap;">${escapeHtml(JSON.stringify(result, null, 2))}</pre>
+            `;
+        }
+
+        function renderResultsNav(currentAtividadeId, currentAlunoId, currentTaskId) {
+            const relevantResults = taskQueue.results.filter(r =>
+                r.atividadeId === currentAtividadeId &&
+                (!currentAlunoId || r.alunoId === currentAlunoId)
+            );
+
+            if (relevantResults.length <= 1) return '';
+
+            return `
+                <div class="results-nav">
+                    ${relevantResults.map(r => `
+                        <div class="results-nav-item ${r.id === currentTaskId ? 'active' : ''}"
+                             onclick="showResultado('${escapeHtml(r.type)}', '${r.atividadeId}', '${r.alunoId || ''}', taskQueue.results.find(x => x.id === '${r.id}')?.result, '${r.id}')">
+                            ${r.type === 'etapa' ? '📄' : '🚀'} ${escapeHtml(r.description)}
+                        </div>
+                    `).join('')}
+                </div>
+            `;
+        }
+
+        function deleteResultado(taskId) {
+            if (!confirm('Excluir esta visualização do histórico?')) return;
+            taskQueue.clearResult(taskId);
+            taskQueue.removeTask(taskId);
+            showToast('Visualização removida', 'success');
+            // Voltar para atividade se possível
+            if (currentAtividade) {
+                showAtividade(currentAtividade);
+            } else {
+                showDashboard();
+            }
+        }
+
         // ============================================================
         // INICIALIZAÇÃO
         // ============================================================
+
         document.addEventListener('DOMContentLoaded', () => {
             loadNavTree();
             showDashboard();
@@ -1032,6 +2507,7 @@
             setupBusca();
             loadTiposDocumentos();
             loadNiveisEnsino();
+            loadChatGeralProviders();
         });
         
         // ============================================================
@@ -1201,7 +2677,10 @@
                 setBreadcrumb([{nome: 'Início', onclick: 'showDashboard()'}, {nome: data.materia.nome, onclick: `showMateria('${materiaId}')`}]);
                 
                 document.getElementById('content').innerHTML = `
-                    <div class="page-header"><h1 class="page-title">${data.materia.nome}</h1><p class="page-subtitle">${data.materia.descricao || 'Sem descrição'}</p></div>
+                    <div class="page-header" style="display: flex; justify-content: space-between; align-items: flex-start;">
+                        <div><h1 class="page-title">${data.materia.nome}</h1><p class="page-subtitle">${data.materia.descricao || 'Sem descrição'}</p></div>
+                        <button class="btn btn-danger btn-sm" onclick="excluirMateria('${materiaId}')">🗑️ Excluir Matéria</button>
+                    </div>
                     <div class="card">
                         <div class="card-header"><h3 class="card-title">Turmas (${data.total_turmas})</h3><button class="btn btn-primary btn-sm" onclick="openModalTurma('${materiaId}')">+ Nova Turma</button></div>
                         ${data.turmas.length === 0 ? `<div class="empty-state"><div class="empty-icon">👥</div><div class="empty-title">Nenhuma turma</div><div class="empty-text">Crie uma turma para começar</div></div>` : `<div class="card-grid">${data.turmas.map(t => `<div class="card-grid-item" onclick="showTurma('${t.id}')"><div class="card-icon">👥</div><div class="card-name">${t.nome}</div><div class="card-meta">${t.ano_letivo || ''} ${t.periodo || ''}</div></div>`).join('')}</div>`}
@@ -1221,7 +2700,10 @@
                 setBreadcrumb([{nome: 'Início', onclick: 'showDashboard()'}, {nome: data.materia.nome, onclick: `showMateria('${data.materia.id}')`}, {nome: data.turma.nome, onclick: `showTurma('${turmaId}')`}]);
                 
                 document.getElementById('content').innerHTML = `
-                    <div class="page-header"><h1 class="page-title">${data.turma.nome}</h1><p class="page-subtitle">${data.materia.nome} • ${data.turma.ano_letivo || ''}</p></div>
+                    <div class="page-header" style="display: flex; justify-content: space-between; align-items: flex-start;">
+                        <div><h1 class="page-title">${data.turma.nome}</h1><p class="page-subtitle">${data.materia.nome} • ${data.turma.ano_letivo || ''}</p></div>
+                        <button class="btn btn-danger btn-sm" onclick="excluirTurma('${turmaId}')">🗑️ Excluir Turma</button>
+                    </div>
                     <div style="display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 16px;">
                         <button class="btn" onclick="showDashboardTurma('${turmaId}')">📊 Dashboard da Turma</button>
                         <button class="btn" onclick="openModalImportarCsv('${turmaId}')">⬇️ Importar Alunos (CSV)</button>
@@ -1253,7 +2735,7 @@
                         <div class="card-header"><h3 class="card-title">Alunos</h3><button class="btn btn-primary btn-sm" onclick="openModalAluno('${data.turma.id}')">+ Novo Aluno</button></div>
                         ${data.alunos.length === 0 ? `<div class="empty-state"><div class="empty-icon">👤</div><div class="empty-title">Nenhum aluno</div></div>` : `
                             <div class="table-container"><table><thead><tr><th>Nome</th><th>Matrícula</th><th>Email</th><th>Ações</th></tr></thead><tbody>
-                                ${data.alunos.map(a => `<tr><td><strong>${a.nome}</strong></td><td>${a.matricula || '-'}</td><td>${a.email || '-'}</td><td><button class="btn btn-sm" onclick="showAluno('${a.id}')">Ver</button></td></tr>`).join('')}
+                                ${data.alunos.map(a => `<tr><td><strong>${a.nome}</strong></td><td>${a.matricula || '-'}</td><td>${a.email || '-'}</td><td><button class="btn btn-sm" onclick="showAluno('${a.id}')">Ver</button> <button class="btn btn-sm btn-danger" onclick="excluirAluno('${a.id}')">🗑️</button></td></tr>`).join('')}
                             </tbody></table></div>
                         `}
                     </div>
@@ -1277,18 +2759,14 @@
                 setBreadcrumb([{nome: 'Início', onclick: 'showDashboard()'}, {nome: turma.materia.nome, onclick: `showMateria('${turma.materia.id}')`}, {nome: turma.turma.nome, onclick: `showTurma('${turma.turma.id}')`}, {nome: data.atividade.nome, onclick: `showAtividade('${atividadeId}')`}]);
                 
                 let alertas = data.documentos_base.faltando.length > 0 ? `<div class="alert alert-warning"><span class="alert-icon">⚠️</span><div class="alert-content"><div class="alert-title">Documentos faltando</div><div class="alert-text">${data.documentos_base.faltando.map(d => `<span class="badge badge-warning">${d}</span>`).join(' ')}</div></div></div>` : '';
-                
+
                 document.getElementById('content').innerHTML = `
                     <div class="page-header"><h1 class="page-title">${data.atividade.nome}</h1><p class="page-subtitle">${turma.turma.nome} • Nota máx: ${data.atividade.nota_maxima}</p></div>
                     <div style="display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 16px;">
-                        <button class="btn" onclick="openModalUpload('${atividadeId}', 'base')">📄 Upload Docs Base</button>
-                        <button class="btn" onclick="openModalUpload('${atividadeId}', 'aluno')">👥 Upload Prova</button>
-                        <button class="btn" onclick="openModalUploadProvas('${atividadeId}')">📚 Upload Provas em Lote</button>
                         <button class="btn" onclick="openModalExecucao('${atividadeId}')">⚙️ Executar Etapa</button>
-                        <button class="btn btn-primary" onclick="openModalPipelineCompleto('${atividadeId}')">⚡ Pipeline Completo</button>
-                        <button class="btn" onclick="showStatusProcessamento('${atividadeId}')">🧾 Status Processamento</button>
-                        <button class="btn" onclick="showRanking('${atividadeId}')">🏆 Ranking</button>
-                        <button class="btn" onclick="showEstatisticasAtividade('${atividadeId}')">📈 Estatísticas</button>
+                        <button class="btn btn-primary" onclick="openModalPipelineCompleto('${atividadeId}', 'aluno')">⚡ Pipeline Aluno</button>
+                        <button class="btn btn-success" onclick="openModalPipelineCompleto('${atividadeId}', 'turma')">🚀 Pipeline Turma Toda</button>
+                        <button class="btn" onclick="openModalUploadProvas('${atividadeId}')">📚 Upload Provas em Lote</button>
                     </div>
                     ${alertas}
                     <div class="stats-grid" style="grid-template-columns: repeat(3, 1fr);">
@@ -1424,7 +2902,7 @@
                         <div class="card-header"><h3 class="card-title">Lista de Alunos</h3><button class="btn btn-primary btn-sm" onclick="openModal('modal-aluno')">+ Novo</button></div>
                         ${data.alunos.length === 0 ? `<div class="empty-state"><div class="empty-icon">👥</div><div class="empty-title">Nenhum aluno</div></div>` : `
                             <div class="table-container"><table><thead><tr><th>Nome</th><th>Matrícula</th><th>Email</th><th>Ações</th></tr></thead><tbody>
-                                ${data.alunos.map(a => `<tr><td><strong>${a.nome}</strong></td><td>${a.matricula || '-'}</td><td>${a.email || '-'}</td><td><button class="btn btn-sm" onclick="showAluno('${a.id}')">Ver Turmas</button></td></tr>`).join('')}
+                                ${data.alunos.map(a => `<tr><td><strong>${a.nome}</strong></td><td>${a.matricula || '-'}</td><td>${a.email || '-'}</td><td><button class="btn btn-sm" onclick="showAluno('${a.id}')">Ver Turmas</button> <button class="btn btn-sm btn-danger" onclick="excluirAluno('${a.id}')">🗑️</button></td></tr>`).join('')}
                             </tbody></table></div>
                         `}
                     </div>
@@ -1608,6 +3086,476 @@
                 showToast('Erro ao carregar providers', 'error');
             }
         }
+
+        // ============================================================
+        // CHAT GERAL
+        // ============================================================
+        async function showChatGeral(preselectedAtividadeId = null, preselectedAlunoId = null) {
+            currentView = 'chat_geral';
+
+            // Guardar referência ao aluno pré-selecionado para uso no chat
+            window._chatGeralAlunoId = preselectedAlunoId;
+
+            // Breadcrumb dinâmico baseado no contexto
+            let breadcrumbItems = [
+                {nome: 'Início', onclick: 'showDashboard()'}
+            ];
+            if (preselectedAtividadeId && window._atividadeData?.atividade) {
+                breadcrumbItems.push({nome: window._atividadeData.atividade.nome, onclick: `showAtividade('${preselectedAtividadeId}')`});
+            }
+            breadcrumbItems.push({nome: 'Chat', onclick: preselectedAtividadeId ? `showChatGeral('${preselectedAtividadeId}')` : 'showChatGeral()'});
+            setBreadcrumb(breadcrumbItems);
+
+            // Carregar atividades para contexto
+            let atividadesOptions = '<option value="">Sem contexto específico</option>';
+            try {
+                const data = await api('/atividades');
+                if (data.atividades) {
+                    atividadesOptions += data.atividades.map(a =>
+                        `<option value="${a.id}" ${a.id === preselectedAtividadeId ? 'selected' : ''}>${escapeHtml(a.nome)}</option>`
+                    ).join('');
+                }
+            } catch (e) {}
+            
+            // Carregar modelos
+            let modelsOptions = '<option value="">Selecione um modelo...</option>';
+            try {
+                const data = await api('/settings/models');
+                chatGeralProviders = data.models || [];  // Mantém nome da variável para compatibilidade
+                modelsOptions = chatGeralProviders.map(m =>
+                    `<option value="${m.id}" ${m.is_default ? 'selected' : ''}>${getProviderIcon(m.tipo)} ${escapeHtml(m.nome)} (${m.modelo})</option>`
+                ).join('');
+                if (chatGeralProviders.length === 0) {
+                    modelsOptions = '<option value="">Nenhum modelo configurado</option>';
+                }
+            } catch (e) {}
+            
+            document.getElementById('content').innerHTML = `
+                <div class="page-header">
+                    <h1 class="page-title">💬 Chat Geral</h1>
+                    <p class="page-subtitle">Converse com a IA sobre qualquer assunto ou analise documentos</p>
+                </div>
+                
+                <div class="chat-panel">
+                    <div class="chat-panel-header">
+                        <div class="chat-provider-info">
+                            <span class="chat-provider-icon" id="chat-geral-icon">🤖</span>
+                            <span class="chat-provider-name" id="chat-geral-provider-name">Selecione um modelo</span>
+                            <span class="chat-provider-model" id="chat-geral-model"></span>
+                        </div>
+                        <div style="display: flex; gap: 8px; align-items: center;">
+                            <select class="form-select" id="chat-geral-model-select" style="width: 250px;" onchange="updateChatGeralHeader()">
+                                ${modelsOptions}
+                            </select>
+                            <button class="btn btn-sm" onclick="limparChatGeral()" title="Limpar conversa">🗑️</button>
+                        </div>
+                    </div>
+                    
+                    <div class="chat-context-bar">
+                        <span>📎 Contexto (atividade):</span>
+                        <select class="form-select" id="chat-geral-context" style="max-width: 300px;">
+                            ${atividadesOptions}
+                        </select>
+                        <span style="color: var(--text-muted); font-size: 0.85rem;">
+                            Os documentos da atividade serão anexados automaticamente
+                        </span>
+                    </div>
+                    
+                    <div class="chat-messages-container" id="chat-geral-messages">
+                        <div class="chat-message assistant">
+                            ${preselectedAtividadeId
+                                ? `Olá! Estou pronto para ajudar com esta atividade.<br><br>
+                                   Os documentos da atividade já estão carregados como contexto. Você pode:<br><br>
+                                   • 📄 Perguntar sobre os documentos<br>
+                                   • ❓ Tirar dúvidas sobre as questões<br>
+                                   • ✅ Discutir correções e respostas<br>
+                                   • 📊 Solicitar análises e relatórios<br><br>
+                                   Selecione um modelo acima e comece a conversar!`
+                                : `Olá! Sou seu assistente educacional. Posso ajudar você a:<br><br>
+                                   • 📄 Analisar documentos e provas<br>
+                                   • ❓ Extrair e formatar questões<br>
+                                   • ✅ Corrigir respostas de alunos<br>
+                                   • 📊 Gerar relatórios e análises<br><br>
+                                   Selecione um modelo acima e comece a conversar!`}
+                        </div>
+                    </div>
+                    
+                    <div class="chat-input-area">
+                        <div class="chat-input-wrapper">
+                            <textarea 
+                                class="form-textarea" 
+                                id="chat-geral-input" 
+                                placeholder="Digite sua mensagem... (Enter para enviar, Shift+Enter para nova linha)"
+                                rows="1"
+                            ></textarea>
+                            <button class="btn btn-primary" onclick="enviarMensagemChatGeral()" id="chat-geral-send-btn">
+                                Enviar
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            // Setup do textarea
+            const textarea = document.getElementById('chat-geral-input');
+            textarea.addEventListener('keydown', function(e) {
+                if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault();
+                    enviarMensagemChatGeral();
+                }
+            });
+            
+            // Auto-resize do textarea
+            textarea.addEventListener('input', function() {
+                this.style.height = 'auto';
+                this.style.height = Math.min(this.scrollHeight, 150) + 'px';
+            });
+            
+            updateChatGeralHeader();
+        }
+        
+        function getProviderIcon(tipo) {
+            const icons = {
+                'openai': '🟢',
+                'anthropic': '🟠',
+                'google': '🔵',
+                'ollama': '🦙',
+                'groq': '⚡',
+                'openrouter': '🔀'
+            };
+            return icons[tipo] || '🤖';
+        }
+        
+        function updateChatGeralHeader() {
+            const select = document.getElementById('chat-geral-model-select');
+            if (!select) return;
+
+            const selectedId = select.value;
+            const model = chatGeralProviders.find(m => m.id === selectedId);
+
+            const iconEl = document.getElementById('chat-geral-icon');
+            const nameEl = document.getElementById('chat-geral-provider-name');
+            const modelEl = document.getElementById('chat-geral-model');
+
+            if (model) {
+                iconEl.textContent = getProviderIcon(model.tipo);
+                nameEl.textContent = model.nome;
+                modelEl.textContent = `(${model.modelo})`;
+            } else {
+                iconEl.textContent = '🤖';
+                nameEl.textContent = 'Selecione um modelo';
+                modelEl.textContent = '';
+            }
+        }
+
+        async function loadChatGeralProviders() {
+            try {
+                const data = await api('/settings/models');
+                chatGeralProviders = data.models || [];
+            } catch (e) {
+                chatGeralProviders = [];
+            }
+        }
+        
+        async function enviarMensagemChatGeral() {
+            const input = document.getElementById('chat-geral-input');
+            const mensagem = input.value.trim();
+            if (!mensagem) return;
+
+            const modelId = document.getElementById('chat-geral-model-select').value;
+            if (!modelId) {
+                showToast('Selecione um modelo de IA', 'error');
+                return;
+            }
+            
+            const atividadeId = document.getElementById('chat-geral-context').value;
+            const container = document.getElementById('chat-geral-messages');
+            const sendBtn = document.getElementById('chat-geral-send-btn');
+            
+            // Adicionar mensagem do usuário
+            container.innerHTML += `
+                <div class="chat-message user">${escapeHtml(mensagem)}</div>
+            `;
+            input.value = '';
+            input.style.height = 'auto';
+            container.scrollTop = container.scrollHeight;
+            
+            // Indicador de digitação
+            const typingId = 'typing-' + Date.now();
+            container.innerHTML += `
+                <div class="chat-message assistant" id="${typingId}">
+                    <div class="typing-indicator">
+                        <span></span><span></span><span></span>
+                    </div>
+                </div>
+            `;
+            container.scrollTop = container.scrollHeight;
+            sendBtn.disabled = true;
+            
+            try {
+                // Usar endpoint de chat com documentos
+                const result = await api('/chat/com-documentos', {
+                    method: 'POST',
+                    body: JSON.stringify({
+                        mensagem: mensagem,
+                        model_id: modelId,
+                        atividade_id: atividadeId || null
+                    })
+                });
+                
+                // Remover indicador de digitação
+                document.getElementById(typingId)?.remove();
+                
+                if (result.sucesso) {
+                    let html = formatChatMessage(result.resposta || 'Sem resposta');
+                    
+                    // Metadados
+                    html += `
+                        <div class="chat-message-meta">
+                            <span>🤖 ${escapeHtml(result.provider || '')} / ${escapeHtml(result.modelo || '')}</span>
+                            ${result.anexos_confirmados ? '<span>📎 Documentos processados</span>' : ''}
+                        </div>
+                    `;
+                    
+                    // Arquivos anexados
+                    if (result.anexos_enviados && result.anexos_enviados.length > 0) {
+                        html += `
+                            <div class="chat-message-files">
+                                ${result.anexos_enviados.map(a => 
+                                    `<span class="chat-message-file">📄 ${escapeHtml(a.nome || 'arquivo')}</span>`
+                                ).join('')}
+                            </div>
+                        `;
+                    }
+                    
+                    container.innerHTML += `<div class="chat-message assistant">${html}</div>`;
+                } else {
+                    container.innerHTML += `
+                        <div class="chat-message assistant" style="border-color: var(--danger);">
+                            ❌ Erro: ${escapeHtml(result.erro || 'Erro desconhecido')}
+                        </div>
+                    `;
+                }
+                
+            } catch (e) {
+                document.getElementById(typingId)?.remove();
+                container.innerHTML += `
+                    <div class="chat-message assistant" style="border-color: var(--danger);">
+                        ❌ Erro ao enviar mensagem: ${escapeHtml(e.message)}
+                    </div>
+                `;
+            }
+            
+            sendBtn.disabled = false;
+            container.scrollTop = container.scrollHeight;
+        }
+        
+        function formatChatMessage(text) {
+            if (!text) return '';
+
+            // DEBUG
+            console.log('formatChatMessage chamada, tamanho:', text.length);
+
+            // 1. PRIMEIRO: Detectar blocos de documento
+            const documentBlocks = [];
+            const docRegex = /```\s*documento\s*:\s*([^\n\r]+)[\r\n]+([\s\S]*?)```/gi;
+            text = text.replace(docRegex, (match, titulo, conteudo) => {
+                console.log('Documento encontrado:', titulo);
+                documentBlocks.push({ titulo: titulo.trim(), conteudo: conteudo.trim() });
+                return `@@DOCBLOCK${documentBlocks.length - 1}@@`;
+            });
+
+            // 2. Blocos de código normais
+            const codeBlocks = [];
+            text = text.replace(/```(\w*)[\r\n]+([\s\S]*?)```/g, (match, lang, code) => {
+                codeBlocks.push({ lang, code });
+                return `@@CODEBLOCK${codeBlocks.length - 1}@@`;
+            });
+
+            // 3. Tabelas markdown
+            text = text.replace(/^\|(.+)\|\s*\n\|[-:\s|]+\|\s*\n((?:\|.+\|\s*\n?)+)/gm, (match, header, rows) => {
+                const headers = header.split('|').map(h => h.trim()).filter(Boolean);
+                const bodyRows = rows.trim().split('\n').map(row =>
+                    row.split('|').map(c => c.trim()).filter(Boolean)
+                );
+                let table = '<table style="width:100%;border-collapse:collapse;margin:12px 0;font-size:0.85rem;"><thead><tr>';
+                headers.forEach(h => table += `<th style="border:1px solid var(--border);padding:8px;background:var(--bg-hover);">${h}</th>`);
+                table += '</tr></thead><tbody>';
+                bodyRows.forEach(row => {
+                    table += '<tr>';
+                    row.forEach(cell => table += `<td style="border:1px solid var(--border);padding:8px;">${cell}</td>`);
+                    table += '</tr>';
+                });
+                table += '</tbody></table>';
+                return table;
+            });
+
+            // 4. Títulos
+            text = text.replace(/^######\s+(.+)$/gm, '<h6 style="margin:10px 0 6px;font-size:0.9rem;">$1</h6>');
+            text = text.replace(/^#####\s+(.+)$/gm, '<h5 style="margin:10px 0 6px;font-size:0.95rem;">$1</h5>');
+            text = text.replace(/^####\s+(.+)$/gm, '<h4 style="margin:12px 0 8px;font-size:1rem;">$1</h4>');
+            text = text.replace(/^###\s+(.+)$/gm, '<h3 style="margin:14px 0 8px;font-size:1.1rem;">$1</h3>');
+            text = text.replace(/^##\s+(.+)$/gm, '<h2 style="margin:16px 0 10px;font-size:1.25rem;">$1</h2>');
+            text = text.replace(/^#\s+(.+)$/gm, '<h1 style="margin:18px 0 12px;font-size:1.4rem;border-bottom:2px solid var(--primary);padding-bottom:6px;">$1</h1>');
+
+            // 5. Linha horizontal
+            text = text.replace(/^---+$/gm, '<hr style="border:none;border-top:1px solid var(--border);margin:16px 0;">');
+
+            // 6. Blockquotes
+            text = text.replace(/^>\s+(.+)$/gm, '<blockquote style="border-left:4px solid var(--primary);padding:8px 16px;margin:12px 0;background:rgba(59,130,246,0.1);font-style:italic;">$1</blockquote>');
+
+            // 7. Listas não ordenadas
+            text = text.replace(/^[\*\-]\s+(.+)$/gm, '<li style="margin:4px 0;">$1</li>');
+            text = text.replace(/(<li[^>]*>.*<\/li>\n?)+/g, '<ul style="margin:10px 0;padding-left:24px;">$&</ul>');
+
+            // 8. Links
+            text = text.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank" style="color:var(--primary);">$1</a>');
+
+            // 9. Negrito e itálico
+            text = text.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
+            text = text.replace(/\*([^*]+)\*/g, '<em>$1</em>');
+
+            // 10. Código inline
+            text = text.replace(/`([^`]+)`/g, '<code style="background:var(--bg-hover);padding:2px 6px;border-radius:4px;">$1</code>');
+
+            // 11. Quebras de linha
+            text = text.replace(/\n(?!<)/g, '<br>');
+            text = text.replace(/(<\/h[1-6]>|<\/ul>|<\/table>|<\/blockquote>|<hr[^>]*>)<br>/g, '$1');
+
+            // 12. Restaurar blocos de código
+            codeBlocks.forEach((block, i) => {
+                const escaped = block.code.replace(/</g, '&lt;').replace(/>/g, '&gt;');
+                text = text.replace(`@@CODEBLOCK${i}@@`, `<pre style="background:var(--bg-hover);padding:12px;border-radius:6px;overflow-x:auto;margin:8px 0;"><code>${escaped}</code></pre>`);
+            });
+
+            // 13. Restaurar blocos de documento
+            documentBlocks.forEach((block, i) => {
+                const docId = `doc_${Date.now()}_${i}`;
+                window._documentContents = window._documentContents || {};
+                window._documentContents[docId] = block;
+
+                text = text.replace(`@@DOCBLOCK${i}@@`,
+                    `<div style="background:linear-gradient(135deg,var(--bg-hover),var(--bg-card));border:2px solid var(--primary);border-radius:12px;padding:16px;margin:12px 0;">
+                        <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;">
+                            <span style="font-size:1.5rem;">📄</span>
+                            <span style="font-weight:600;">${block.titulo.replace(/</g, '&lt;')}</span>
+                        </div>
+                        <button onclick="abrirDocumentoGerado('${docId}')" style="background:var(--primary);color:white;border:none;padding:8px 16px;border-radius:6px;cursor:pointer;font-weight:500;">
+                            Abrir Documento
+                        </button>
+                    </div>`
+                );
+            });
+
+            return text;
+        }
+
+        // Função para abrir documento gerado
+        function abrirDocumentoGerado(docId) {
+            const docData = window._documentContents?.[docId];
+            if (!docData) {
+                alert('Documento não encontrado');
+                return;
+            }
+
+            const htmlContent = convertMarkdownParaHtml(docData.conteudo);
+            const htmlCompleto = `
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <title>${docData.titulo.replace(/</g, '&lt;')} - Prova AI</title>
+    <style>
+        body { font-family: 'Segoe UI', sans-serif; line-height: 1.6; color: #1f2937; background: #f9fafb; padding: 20px; }
+        .container { max-width: 800px; margin: 0 auto; background: white; padding: 40px 50px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); border-radius: 8px; }
+        .header { text-align: center; margin-bottom: 30px; padding-bottom: 20px; border-bottom: 2px solid #3b82f6; }
+        .header h1 { color: #1e40af; font-size: 1.8rem; }
+        h1 { font-size: 1.5rem; color: #1e40af; margin: 20px 0 12px; border-bottom: 2px solid #3b82f6; padding-bottom: 6px; }
+        h2 { font-size: 1.3rem; color: #1e3a8a; margin: 18px 0 10px; }
+        h3 { font-size: 1.1rem; margin: 14px 0 8px; }
+        table { width: 100%; border-collapse: collapse; margin: 16px 0; }
+        th, td { border: 1px solid #d1d5db; padding: 10px; text-align: left; }
+        th { background: #f3f4f6; }
+        blockquote { border-left: 4px solid #3b82f6; padding: 12px 20px; margin: 16px 0; background: #eff6ff; font-style: italic; }
+        ul, ol { margin: 12px 0; padding-left: 28px; }
+        li { margin: 6px 0; }
+        hr { border: none; border-top: 1px solid #e5e7eb; margin: 20px 0; }
+        pre { background: #1f2937; color: #f9fafb; padding: 14px; border-radius: 6px; overflow-x: auto; }
+        code { background: #f3f4f6; padding: 2px 6px; border-radius: 4px; font-family: monospace; }
+        pre code { background: none; padding: 0; }
+        .print-bar { position: fixed; top: 0; left: 0; right: 0; background: #1e40af; color: white; padding: 12px 20px; display: flex; justify-content: space-between; align-items: center; }
+        .print-bar button { background: white; color: #1e40af; border: none; padding: 8px 20px; border-radius: 6px; cursor: pointer; font-weight: 600; }
+        body { padding-top: 60px; }
+        .footer { text-align: center; margin-top: 30px; padding-top: 20px; border-top: 1px solid #e5e7eb; color: #6b7280; font-size: 0.85rem; }
+        @media print { .print-bar { display: none !important; } body { padding: 0; background: white; } .container { box-shadow: none; } }
+    </style>
+</head>
+<body>
+    <div class="print-bar">
+        <span>${docData.titulo.replace(/</g, '&lt;')}</span>
+        <button onclick="window.print()">Imprimir / Salvar PDF</button>
+    </div>
+    <div class="container">
+        <div class="header">
+            <h1>${docData.titulo.replace(/</g, '&lt;')}</h1>
+            <div style="color:#6b7280;font-size:0.9rem;">Gerado em ${new Date().toLocaleDateString('pt-BR')}</div>
+        </div>
+        <div class="content">${htmlContent}</div>
+        <div class="footer">Documento gerado por Prova AI</div>
+    </div>
+</body>
+</html>`;
+
+            const novaJanela = window.open('', '_blank');
+            if (novaJanela) {
+                novaJanela.document.write(htmlCompleto);
+                novaJanela.document.close();
+            } else {
+                alert('Popup bloqueado! Permita popups para este site.');
+            }
+        }
+
+        function convertMarkdownParaHtml(md) {
+            if (!md) return '';
+            let html = md;
+            html = html.replace(/```(\w*)\n([\s\S]*?)```/g, (m, lang, code) => `<pre><code>${code.replace(/</g, '&lt;')}</code></pre>`);
+            html = html.replace(/^######\s+(.+)$/gm, '<h6>$1</h6>');
+            html = html.replace(/^#####\s+(.+)$/gm, '<h5>$1</h5>');
+            html = html.replace(/^####\s+(.+)$/gm, '<h4>$1</h4>');
+            html = html.replace(/^###\s+(.+)$/gm, '<h3>$1</h3>');
+            html = html.replace(/^##\s+(.+)$/gm, '<h2>$1</h2>');
+            html = html.replace(/^#\s+(.+)$/gm, '<h1>$1</h1>');
+            html = html.replace(/^---+$/gm, '<hr>');
+            html = html.replace(/^>\s+(.+)$/gm, '<blockquote>$1</blockquote>');
+            html = html.replace(/^[\*\-]\s+(.+)$/gm, '<li>$1</li>');
+            html = html.replace(/(<li>.*<\/li>\n?)+/g, '<ul>$&</ul>');
+            html = html.replace(/^\|(.+)\|\s*\n\|[-:\s|]+\|\s*\n((?:\|.+\|\s*\n?)+)/gm, (m, hdr, rows) => {
+                const hs = hdr.split('|').map(h => h.trim()).filter(Boolean);
+                const rs = rows.trim().split('\n').map(r => r.split('|').map(c => c.trim()).filter(Boolean));
+                let t = '<table><thead><tr>' + hs.map(h => `<th>${h}</th>`).join('') + '</tr></thead><tbody>';
+                rs.forEach(r => { t += '<tr>' + r.map(c => `<td>${c}</td>`).join('') + '</tr>'; });
+                return t + '</tbody></table>';
+            });
+            html = html.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2">$1</a>');
+            html = html.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
+            html = html.replace(/\*([^*]+)\*/g, '<em>$1</em>');
+            html = html.replace(/`([^`]+)`/g, '<code>$1</code>');
+            html = html.replace(/\n/g, '<br>');
+            return html;
+        }
+        
+        function limparChatGeral() {
+            if (!confirm('Limpar toda a conversa?')) return;
+            chatGeralConversationId = 'chat_' + Date.now();
+            const container = document.getElementById('chat-geral-messages');
+            if (container) {
+                container.innerHTML = `
+                    <div class="chat-message assistant">
+                        Conversa limpa! Como posso ajudar?
+                    </div>
+                `;
+            }
+        }
         
         async function showAluno(alunoId) {
             try {
@@ -1645,12 +3593,198 @@
         function closeModal(id) { document.getElementById(id).classList.remove('active'); }
         function openModalTurma(materiaId) { document.getElementById('input-turma-materia-id').value = materiaId; openModal('modal-turma'); }
         function openModalAtividade(turmaId) { document.getElementById('input-ativ-turma-id').value = turmaId; openModal('modal-atividade'); }
-        function openModalAluno(turmaId) { document.getElementById('input-aluno-turma-id').value = turmaId || ''; openModal('modal-aluno'); }
+        // ============================================================
+        // MODAL ALUNO - Seleção e Criação
+        // ============================================================
+
+        let todosAlunos = [];  // Cache de todos os alunos para filtragem
+        let alunosDisponiveis = [];  // Alunos que não estão na turma atual
+        let alunoSelecionadoId = null;
+        let alunoTabAtual = 'selecionar';
+
+        async function openModalAluno(turmaId) {
+            document.getElementById('input-aluno-turma-id').value = turmaId || '';
+            document.getElementById('input-aluno-selecionado-id').value = '';
+            document.getElementById('input-busca-aluno').value = '';
+            document.getElementById('input-aluno-nome').value = '';
+            document.getElementById('input-aluno-matricula').value = '';
+            document.getElementById('input-aluno-email').value = '';
+            alunoSelecionadoId = null;
+
+            // Reset to first tab
+            switchAlunoTab('selecionar');
+
+            // Load students for selection
+            await carregarAlunosParaSelecao(turmaId);
+
+            openModal('modal-aluno');
+        }
+
+        function switchAlunoTab(tab) {
+            alunoTabAtual = tab;
+            const tabSelecionar = document.getElementById('tab-selecionar-aluno');
+            const tabCriar = document.getElementById('tab-criar-aluno');
+            const btnSelecionar = document.getElementById('tab-btn-selecionar');
+            const btnCriar = document.getElementById('tab-btn-criar');
+            const btnConfirmar = document.getElementById('btn-confirmar-aluno');
+
+            if (tab === 'selecionar') {
+                tabSelecionar.style.display = 'block';
+                tabCriar.style.display = 'none';
+                btnSelecionar.classList.add('active');
+                btnCriar.classList.remove('active');
+                btnConfirmar.textContent = 'Adicionar';
+            } else {
+                tabSelecionar.style.display = 'none';
+                tabCriar.style.display = 'block';
+                btnSelecionar.classList.remove('active');
+                btnCriar.classList.add('active');
+                btnConfirmar.textContent = 'Criar e Adicionar';
+            }
+        }
+
+        async function carregarAlunosParaSelecao(turmaId) {
+            const listaEl = document.getElementById('lista-alunos');
+            listaEl.innerHTML = '<div class="aluno-list-empty">Carregando...</div>';
+
+            try {
+                // Get all students
+                const resultAll = await api('/alunos');
+                todosAlunos = resultAll.alunos || [];
+
+                // Get students already in this class
+                let alunosNaTurma = [];
+                if (turmaId) {
+                    const resultTurma = await api(`/alunos?turma_id=${turmaId}`);
+                    alunosNaTurma = resultTurma.alunos || [];
+                }
+
+                // Filter: show only students NOT in the class
+                const idsNaTurma = new Set(alunosNaTurma.map(a => a.id));
+                alunosDisponiveis = todosAlunos.filter(a => !idsNaTurma.has(a.id));
+
+                // Sort alphabetically
+                alunosDisponiveis.sort((a, b) => a.nome.localeCompare(b.nome));
+
+                renderizarListaAlunos(alunosDisponiveis);
+            } catch (e) {
+                listaEl.innerHTML = '<div class="aluno-list-empty">Erro ao carregar alunos</div>';
+            }
+        }
+
+        function renderizarListaAlunos(alunos) {
+            const listaEl = document.getElementById('lista-alunos');
+
+            if (alunos.length === 0) {
+                listaEl.innerHTML = '<div class="aluno-list-empty">Nenhum aluno disponível. Crie um novo na aba "Criar Novo".</div>';
+                return;
+            }
+
+            listaEl.innerHTML = alunos.map(aluno => {
+                const detalhes = [aluno.matricula, aluno.email].filter(Boolean).join(' • ');
+                const isSelected = alunoSelecionadoId === aluno.id;
+                return `
+                    <div class="aluno-item ${isSelected ? 'selected' : ''}" onclick="selecionarAluno('${aluno.id}')">
+                        <div class="aluno-item-info">
+                            <div class="aluno-item-nome">${aluno.nome}</div>
+                            ${detalhes ? `<div class="aluno-item-detalhes">${detalhes}</div>` : ''}
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function filtrarAlunos() {
+            const busca = document.getElementById('input-busca-aluno').value.toLowerCase().trim();
+
+            if (!busca) {
+                renderizarListaAlunos(alunosDisponiveis);
+                return;
+            }
+
+            const filtrados = alunosDisponiveis.filter(aluno =>
+                aluno.nome.toLowerCase().includes(busca) ||
+                (aluno.matricula && aluno.matricula.toLowerCase().includes(busca)) ||
+                (aluno.email && aluno.email.toLowerCase().includes(busca))
+            );
+
+            renderizarListaAlunos(filtrados);
+        }
+
+        function selecionarAluno(alunoId) {
+            alunoSelecionadoId = alunoId;
+            document.getElementById('input-aluno-selecionado-id').value = alunoId;
+
+            // Re-render to show selection
+            const busca = document.getElementById('input-busca-aluno').value.toLowerCase().trim();
+            if (busca) {
+                filtrarAlunos();
+            } else {
+                renderizarListaAlunos(alunosDisponiveis);
+            }
+        }
+
+        async function confirmarAluno() {
+            const turmaId = document.getElementById('input-aluno-turma-id').value;
+
+            if (alunoTabAtual === 'selecionar') {
+                // Tab: Select existing student
+                if (!alunoSelecionadoId) {
+                    showToast('Selecione um aluno da lista', 'error');
+                    return;
+                }
+
+                try {
+                    await api('/alunos/vincular', {
+                        method: 'POST',
+                        body: JSON.stringify({ aluno_id: alunoSelecionadoId, turma_id: turmaId })
+                    });
+                    showToast('Aluno adicionado à turma!', 'success');
+                    closeModal('modal-aluno');
+                    if (turmaId) showTurma(turmaId); else showAlunos();
+                } catch (e) {
+                    showToast(e.message || 'Erro ao adicionar aluno', 'error');
+                }
+            } else {
+                // Tab: Create new student
+                await criarAluno();
+            }
+        }
+
         function openModalImportarCsv(turmaId) { document.getElementById('input-importar-turma-id').value = turmaId || ''; openModal('modal-importar-csv'); }
 
         function openDocumento(documentoId) {
             if (!documentoId) return;
             window.open(`${API}/documentos/${documentoId}/download`, '_blank');
+        }
+
+
+
+        async function downloadDocumento(documentoId) {
+            if (!documentoId) return;
+            try {
+                const response = await fetch(`${API}/documentos/${documentoId}/download`);
+                if (!response.ok) throw new Error('Erro ao baixar');
+                
+                const blob = await response.blob();
+                const contentDisposition = response.headers.get('content-disposition');
+                let filename = 'documento';
+                if (contentDisposition) {
+                    const match = contentDisposition.match(/filename="?(.+)"?/);
+                    if (match) filename = match[1];
+                }
+                
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = filename;
+                document.body.appendChild(a);
+                a.click();
+                window.URL.revokeObjectURL(url);
+                a.remove();
+            } catch (e) {
+                showToast('Erro ao baixar documento', 'error');
+            }
         }
 
         async function visualizarDocumento(documentoId) {
@@ -1749,12 +3883,28 @@
             openModal('modal-execucao');
         }
 
-        async function openModalPipelineCompleto(atividadeId) {
-            document.getElementById('input-pipeline-atividade-id').value = atividadeId;
-            await ensureAtividadeData(atividadeId);
-            await carregarPipelineAlunos();
-            await carregarPipelineProviders();
-            openModal('modal-pipeline-completo');
+        async function openModalPipelineCompleto(atividadeId, modo = 'aluno') {
+            try {
+                document.getElementById('input-pipeline-atividade-id').value = atividadeId;
+                await ensureAtividadeData(atividadeId);
+                await carregarPipelineAlunos();
+                await carregarPipelineProviders();
+
+                // Definir modo e atualizar UI
+                document.querySelector(`input[name="pipeline-modo"][value="${modo}"]`).checked = true;
+                onPipelineModoChange();
+
+                // Calcular resumo da turma
+                const atividadeData = window._atividadeData;
+                const alunosDetalhes = atividadeData?.alunos?.detalhes || [];
+                const alunosComProva = alunosDetalhes.filter(a => a.tem_prova);
+                document.getElementById('pipeline-turma-resumo').innerHTML = `<strong>${alunosComProva.length}</strong> aluno(s) com prova enviada`;
+
+                openModal('modal-pipeline-completo');
+            } catch (e) {
+                console.error('Erro ao abrir modal pipeline:', e);
+                showToast('Erro ao carregar dados do pipeline', 'error');
+            }
         }
         
         async function openModalUpload(atividadeId, modo) {
@@ -1822,7 +3972,18 @@
             }
             openModal('modal-upload');
         }
-        
+
+        function resetUploadReplace() {
+            // Limpar estado de substituição
+            document.getElementById('input-upload-documento-id').value = '';
+            document.getElementById('upload-replace-info').style.display = 'none';
+            document.getElementById('upload-replace-info').textContent = '';
+            // Reabilitar selects
+            document.getElementById('input-upload-tipo').disabled = false;
+            const selectAluno = document.getElementById('input-upload-aluno');
+            if (selectAluno) selectAluno.disabled = false;
+        }
+
         function carregarAlunosParaUpload() {
             const data = window._atividadeData;
             const select = document.getElementById('input-upload-aluno');
@@ -1847,15 +4008,85 @@
         async function carregarEtapasExecucao() {
             try {
                 const data = await api('/prompts/etapas');
-                document.getElementById('input-execucao-etapa').innerHTML = data.etapas.map(e => `<option value="${e.id}">${e.nome}</option>`).join('');
-            } catch (e) {}
+                const select = document.getElementById('input-execucao-etapa');
+                select.innerHTML = data.etapas.map(e => `<option value="${e.id}">${e.nome}</option>`).join('');
+                window._etapasData = data.etapas;
+                // Atualizar prompts para etapa selecionada
+                onEtapaChange();
+            } catch (e) {
+                console.error('Erro ao carregar etapas:', e);
+            }
+        }
+
+        // Etapas que não precisam de aluno
+        const ETAPAS_SEM_ALUNO = ['extrair_questoes', 'extrair_gabarito'];
+
+        async function onEtapaChange() {
+            const etapa = document.getElementById('input-execucao-etapa').value;
+            const hint = document.getElementById('input-execucao-aluno-hint');
+
+            // Atualizar hint do aluno
+            if (ETAPAS_SEM_ALUNO.includes(etapa)) {
+                hint.textContent = 'Esta etapa extrai dados da atividade, não precisa de aluno.';
+            } else {
+                hint.textContent = 'Selecione o aluno para executar esta etapa.';
+            }
+
+            // Carregar prompts para esta etapa
+            await carregarPromptsEtapa(etapa);
+        }
+
+        async function carregarPromptsEtapa(etapa) {
+            const select = document.getElementById('input-execucao-prompt');
+            try {
+                const data = await api(`/prompts?etapa=${etapa}`);
+                const prompts = data.prompts || [];
+                window._promptsEtapa = prompts;
+
+                select.innerHTML = '<option value="">Usar prompt padrão</option>' +
+                    prompts.map(p => `<option value="${p.id}">${p.nome}${p.is_padrao ? ' (Padrão)' : ''}</option>`).join('');
+
+                // Mostrar opção de editar
+                document.getElementById('grupo-prompt-customizado').style.display = 'block';
+                document.getElementById('input-execucao-editar-prompt').checked = false;
+                document.getElementById('grupo-prompt-texto').style.display = 'none';
+            } catch (e) {
+                select.innerHTML = '<option value="">Usar prompt padrão</option>';
+                console.error('Erro ao carregar prompts:', e);
+            }
+        }
+
+        async function onPromptChange() {
+            const promptId = document.getElementById('input-execucao-prompt').value;
+            if (!promptId) {
+                document.getElementById('input-execucao-prompt-texto').value = '';
+                return;
+            }
+
+            // Buscar texto do prompt selecionado
+            const prompts = window._promptsEtapa || [];
+            const prompt = prompts.find(p => p.id === promptId);
+            if (prompt) {
+                document.getElementById('input-execucao-prompt-texto').value = prompt.texto || '';
+            }
+        }
+
+        function toggleEditarPrompt() {
+            const editando = document.getElementById('input-execucao-editar-prompt').checked;
+            document.getElementById('grupo-prompt-texto').style.display = editando ? 'block' : 'none';
+
+            // Se habilitou edição, carregar texto do prompt selecionado
+            if (editando) {
+                onPromptChange();
+            }
         }
 
         async function carregarProvidersExecucao() {
             try {
-                const data = await api('/providers/disponiveis');
-                const options = data.providers.map(p => `<option value="${p.name}">${p.name} (${p.model})</option>`).join('');
-                document.getElementById('input-execucao-provider').innerHTML = `<option value="">Usar padrão</option>${options}`;
+                const data = await api('/settings/models').catch(() => ({ models: [] }));
+                const models = data.models || [];
+                const options = models.map(m => `<option value="${m.id}" ${m.is_default ? 'selected' : ''}>${escapeHtml(m.nome)} (${m.modelo})</option>`).join('');
+                document.getElementById('input-execucao-model').innerHTML = options || '<option value="">Nenhum modelo configurado</option>';
             } catch (e) {}
         }
 
@@ -1863,25 +4094,42 @@
             const data = window._atividadeData;
             const select = document.getElementById('input-pipeline-aluno');
             if (!select) return;
-            if (data && data.alunos?.detalhes?.length) {
-                select.innerHTML = renderAlunoOptions(data.alunos.detalhes);
+
+            const detalhes = data?.alunos?.detalhes || [];
+            // Filtrar apenas alunos com prova para o pipeline
+            const alunosComProva = detalhes.filter(a => a.tem_prova);
+
+            if (alunosComProva.length > 0) {
+                select.innerHTML = alunosComProva.map(a =>
+                    `<option value="${a.aluno_id}">${a.aluno_nome || a.aluno_id}</option>`
+                ).join('');
+            } else if (detalhes.length > 0) {
+                // Se não tem ninguém com prova, mostrar todos
+                select.innerHTML = detalhes.map(a =>
+                    `<option value="${a.aluno_id}">${a.aluno_nome || a.aluno_id}</option>`
+                ).join('');
             } else {
-                select.innerHTML = '<option value="">Nenhum aluno encontrado</option>';
+                select.innerHTML = '<option value="">Nenhum aluno na turma</option>';
             }
         }
 
         async function carregarPipelineProviders() {
             try {
-                const [etapasData, providersData] = await Promise.all([
+                const [etapasData, modelsData] = await Promise.all([
                     api('/prompts/etapas'),
-                    api('/providers/disponiveis')
+                    api('/settings/models').catch(() => ({ models: [] }))
                 ]);
-                const defaultProvider = providersData.default || '';
-                const providerOptions = providersData.providers.map(p => `<option value="${p.name}">${p.name} (${p.model})</option>`).join('');
+
+                const models = modelsData.models || [];
+                const defaultModel = models.find(m => m.is_default)?.id || '';
+                const modelOptions = models.map(m => `<option value="${m.id}" ${m.is_default ? 'selected' : ''}>${escapeHtml(m.nome)} (${m.modelo})</option>`).join('');
+
                 const defaultSelect = document.getElementById('input-pipeline-provider-default');
-                defaultSelect.innerHTML = `<option value="">Usar padrão do sistema</option>${providerOptions}`;
-                if (defaultProvider) {
-                    defaultSelect.value = defaultProvider;
+                if (defaultSelect) {
+                    defaultSelect.innerHTML = modelOptions || '<option value="">Nenhum modelo configurado</option>';
+                    if (defaultModel) {
+                        defaultSelect.value = defaultModel;
+                    }
                 }
 
                 const etapasPermitidas = [
@@ -1892,24 +4140,22 @@
                     'analisar_habilidades',
                     'gerar_relatorio'
                 ];
-                const etapas = etapasData.etapas.filter(e => etapasPermitidas.includes(e.id));
+                const etapas = (etapasData.etapas || []).filter(e => etapasPermitidas.includes(e.id));
                 const container = document.getElementById('pipeline-provider-stages');
-                container.innerHTML = etapas.map(etapa => `
-                    <div style="display: flex; gap: 12px; align-items: center;">
-                        <div style="flex: 1; font-size: 0.85rem; color: var(--text-muted);">${etapa.nome}</div>
-                        <select class="form-select" data-etapa="${etapa.id}" style="flex: 1;">
-                            <option value="">Usar padrão</option>
-                            ${providerOptions}
-                        </select>
-                    </div>
-                `).join('');
-
-                if (defaultProvider) {
-                    container.querySelectorAll('select').forEach(select => {
-                        select.value = defaultProvider;
-                    });
+                if (container) {
+                    container.innerHTML = etapas.map(etapa => `
+                        <div style="display: flex; gap: 12px; align-items: center;">
+                            <div style="flex: 1; font-size: 0.85rem; color: var(--text-muted);">${etapa.nome}</div>
+                            <select class="form-select" data-etapa="${etapa.id}" style="flex: 1;">
+                                <option value="">Usar padrão</option>
+                                ${modelOptions}
+                            </select>
+                        </div>
+                    `).join('');
                 }
-            } catch (e) {}
+            } catch (e) {
+                console.error('Erro ao carregar modelos:', e);
+            }
         }
         
         // ============================================================
@@ -1981,6 +4227,37 @@
                 document.getElementById('input-aluno-email').value = '';
                 if (turmaId) showTurma(turmaId); else showAlunos();
             } catch (e) {}
+        }
+
+        async function excluirMateria(id) {
+            if (!confirm('Excluir matéria e todas as turmas/atividades relacionadas?')) return;
+            try {
+                await api(`/materias/${id}`, { method: 'DELETE' });
+                showToast('Matéria excluída!', 'success');
+                loadNavTree();
+                showDashboard();
+            } catch (e) { showToast(e.message || 'Erro ao excluir', 'error'); }
+        }
+
+        async function excluirTurma(id) {
+            if (!confirm('Excluir turma e todas as atividades relacionadas?')) return;
+            try {
+                await api(`/turmas/${id}`, { method: 'DELETE' });
+                showToast('Turma excluída!', 'success');
+                loadNavTree();
+                showMateria(currentMateria);
+            } catch (e) { showToast(e.message || 'Erro ao excluir', 'error'); }
+        }
+
+        async function excluirAluno(id) {
+            if (!confirm('Excluir aluno?')) return;
+            try {
+                await api(`/alunos/${id}`, { method: 'DELETE' });
+                showToast('Aluno excluído!', 'success');
+                if (currentTurma) showTurma(currentTurma);
+                else if (currentView === 'alunos') showAlunos();
+                else showDashboard();
+            } catch (e) { showToast(e.message || 'Erro ao excluir', 'error'); }
         }
 
         async function criarProvider() {
@@ -2180,58 +4457,179 @@
             } catch (e) {}
         }
 
+        function onPipelineModoChange() {
+            const modo = document.querySelector('input[name="pipeline-modo"]:checked').value;
+            document.getElementById('pipeline-aluno-container').style.display = modo === 'aluno' ? 'block' : 'none';
+            document.getElementById('pipeline-turma-info').style.display = modo === 'turma' ? 'block' : 'none';
+            document.getElementById('btn-executar-pipeline').textContent = modo === 'turma' ? 'Executar para Turma Toda' : 'Executar Pipeline';
+        }
+
         async function executarPipelineCompleto() {
             const atividadeId = document.getElementById('input-pipeline-atividade-id').value;
-            const alunoId = document.getElementById('input-pipeline-aluno').value;
-            const defaultProvider = document.getElementById('input-pipeline-provider-default').value;
-            if (!atividadeId || !alunoId) {
-                showToast('Selecione o aluno para executar o pipeline', 'error');
-                return;
-            }
-            const providers = {};
+            const modo = document.querySelector('input[name="pipeline-modo"]:checked').value;
+            const defaultModelId = document.getElementById('input-pipeline-provider-default').value;
+
+            const modelsPerStage = {};
             document.querySelectorAll('#pipeline-provider-stages select[data-etapa]').forEach(select => {
-                if (select.value && select.value !== defaultProvider) {
-                    providers[select.dataset.etapa] = select.value;
+                if (select.value && select.value !== defaultModelId) {
+                    modelsPerStage[select.dataset.etapa] = select.value;
                 }
             });
-            const formData = new FormData();
-            formData.append('atividade_id', atividadeId);
-            formData.append('aluno_id', alunoId);
-            if (defaultProvider) {
-                formData.append('provider', defaultProvider);
+
+            // Renomear providers para manter compatibilidade com backend
+            const providers = modelsPerStage;
+            const btn = document.getElementById('btn-executar-pipeline');
+
+            // Validações
+            if (modo === 'aluno') {
+                const alunoId = document.getElementById('input-pipeline-aluno').value;
+                if (!atividadeId || !alunoId) {
+                    showToast('Selecione o aluno para executar o pipeline', 'error');
+                    return;
+                }
+                // Verificar se já está executando
+                if (taskQueue.isRunning('pipeline', atividadeId, alunoId)) {
+                    showToast('Já existe um pipeline em execução para este aluno', 'warning');
+                    return;
+                }
+            } else {
+                if (taskQueue.isRunning('pipeline-turma', atividadeId)) {
+                    showToast('Já existe um pipeline de turma em execução', 'warning');
+                    return;
+                }
             }
-            if (Object.keys(providers).length) {
-                formData.append('providers', JSON.stringify(providers));
-            }
+
+            // Fechar modal imediatamente e iniciar tarefa em background
+            closeModal('modal-pipeline-completo');
+
+            const taskType = modo === 'turma' ? 'pipeline-turma' : 'pipeline';
+            const description = modo === 'turma' ? 'Pipeline Turma Toda' : `Pipeline Aluno`;
+            const alunoIdForTask = modo === 'aluno' ? document.getElementById('input-pipeline-aluno').value : null;
+
+            const task = taskQueue.addTask(taskType, description, atividadeId, alunoIdForTask);
+            showToast('🚀 Pipeline iniciado! Acompanhe no painel de tarefas.', 'success');
+
+            // Abrir painel de tarefas
+            document.getElementById('task-panel').classList.add('show');
+
             try {
-                const result = await apiForm('/executar/pipeline-completo', formData);
-                showToast(result.sucesso ? 'Pipeline executado!' : 'Pipeline com falhas', result.sucesso ? 'success' : 'error');
-                closeModal('modal-pipeline-completo');
-                showAtividade(atividadeId);
-            } catch (e) {}
+                let result;
+                if (modo === 'turma') {
+                    const formData = new FormData();
+                    formData.append('atividade_id', atividadeId);
+                    formData.append('apenas_com_prova', 'true');
+                    if (defaultModelId) formData.append('model_id', defaultModelId);
+                    if (Object.keys(modelsPerStage).length) formData.append('providers', JSON.stringify(modelsPerStage));
+
+                    result = await apiForm('/executar/pipeline-turma', formData);
+                } else {
+                    const alunoId = document.getElementById('input-pipeline-aluno').value;
+                    const formData = new FormData();
+                    formData.append('atividade_id', atividadeId);
+                    formData.append('aluno_id', alunoId);
+                    if (defaultModelId) formData.append('model_id', defaultModelId);
+                    if (Object.keys(modelsPerStage).length) formData.append('providers', JSON.stringify(modelsPerStage));
+
+                    result = await apiForm('/executar/pipeline-completo', formData);
+                }
+
+                taskQueue.completeTask(task.id, result);
+            } catch (e) {
+                taskQueue.failTask(task.id, e.message || 'Erro ao executar pipeline');
+            }
         }
 
         async function executarEtapa(preview = false) {
             const etapa = document.getElementById('input-execucao-etapa').value;
             const atividadeId = document.getElementById('input-execucao-atividade-id').value;
             const alunoId = document.getElementById('input-execucao-aluno').value || null;
-            const provider = document.getElementById('input-execucao-provider').value || null;
+            const modelId = document.getElementById('input-execucao-model').value || null;
+            const promptId = document.getElementById('input-execucao-prompt').value || null;
+            const editandoPrompt = document.getElementById('input-execucao-editar-prompt').checked;
+            const promptTexto = editandoPrompt ? document.getElementById('input-execucao-prompt-texto').value : null;
+
             if (!etapa || !atividadeId) { showToast('Selecione a etapa', 'error'); return; }
-            try {
-                const endpoint = preview ? '/executar/etapa-preview' : '/executar/etapa';
-                const result = await api(endpoint, {
-                    method: 'POST',
-                    body: JSON.stringify({ etapa, atividade_id: atividadeId, aluno_id: alunoId, provider })
-                });
-                showToast(preview ? 'Preview gerado' : 'Etapa executada', 'success');
+
+            // Chat Geral: redireciona para a página de chat com a atividade pré-selecionada
+            if (etapa === 'chat_geral') {
                 closeModal('modal-execucao');
-                if (result?.resultado) {
-                    document.getElementById('content').innerHTML = `
-                        <div class="page-header"><h1 class="page-title">Resultado da Etapa</h1></div>
-                        <pre style="background: var(--bg-card); padding: 16px; border-radius: 8px; overflow:auto;">${escapeHtml(JSON.stringify(result.resultado, null, 2))}</pre>
-                    `;
+                showChatGeral(atividadeId, alunoId);
+                return;
+            }
+
+            // Verificar se etapa precisa de aluno
+            if (!ETAPAS_SEM_ALUNO.includes(etapa) && !alunoId) {
+                showToast('Esta etapa requer um aluno selecionado', 'error');
+                return;
+            }
+
+            // Para preview, executar diretamente (é rápido)
+            if (preview) {
+                try {
+                    const payload = {
+                        etapa,
+                        atividade_id: atividadeId,
+                        aluno_id: alunoId,
+                        model_id: modelId,
+                        prompt_id: promptId
+                    };
+                    if (editandoPrompt && promptTexto) {
+                        payload.prompt_customizado = promptTexto;
+                    }
+                    const result = await api('/executar/etapa-preview', {
+                        method: 'POST',
+                        body: JSON.stringify(payload)
+                    });
+                    showToast('Preview gerado', 'success');
+                    closeModal('modal-execucao');
+                    if (result?.resultado) {
+                        showResultado('preview-' + etapa, atividadeId, alunoId, result.resultado, null);
+                    }
+                } catch (e) {
+                    showToast(e.message || 'Erro ao gerar preview', 'error');
                 }
-            } catch (e) {}
+                return;
+            }
+
+            // Verificar se já está executando esta etapa
+            const taskKey = `etapa-${etapa}`;
+            if (taskQueue.isRunning(taskKey, atividadeId, alunoId)) {
+                showToast('Esta etapa já está em execução', 'warning');
+                return;
+            }
+
+            // Fechar modal e executar em background
+            closeModal('modal-execucao');
+
+            const etapaLabel = window._etapasData?.find(e => e.id === etapa)?.nome || etapa;
+            const task = taskQueue.addTask(taskKey, `Etapa: ${etapaLabel}`, atividadeId, alunoId);
+            showToast(`🔄 Executando "${etapaLabel}"... Acompanhe no painel de tarefas.`, 'success');
+
+            // Abrir painel de tarefas
+            document.getElementById('task-panel').classList.add('show');
+
+            try {
+                const payload = {
+                    etapa,
+                    atividade_id: atividadeId,
+                    aluno_id: alunoId,
+                    model_id: modelId,
+                    prompt_id: promptId
+                };
+                if (editandoPrompt && promptTexto) {
+                    payload.prompt_customizado = promptTexto;
+                }
+
+                const result = await api('/executar/etapa', {
+                    method: 'POST',
+                    body: JSON.stringify(payload)
+                });
+
+                taskQueue.completeTask(task.id, result?.resultado || result);
+            } catch (e) {
+                console.error('Erro ao executar etapa:', e);
+                taskQueue.failTask(task.id, e.message || 'Erro ao executar etapa');
+            }
         }
 
         async function showStatusProcessamento(atividadeId) {
@@ -2297,11 +4695,50 @@
                     api(`/resultados/${atividadeId}/${alunoId}`),
                     api(`/documentos?atividade_id=${atividadeId}&aluno_id=${alunoId}`)
                 ]);
-                const resultado = resultadoResp.status === 'fulfilled' ? (resultadoResp.value.resultado || {}) : {};
+                
+                // Nova lógica: endpoint agora retorna resultados parciais em vez de 404
+                const resultadoData = resultadoResp.status === 'fulfilled' ? resultadoResp.value : null;
+                const isComplete = resultadoData?.completo === true;
+                const resultado = isComplete ? (resultadoData.resultado || {}) : {};
                 const documentos = documentosResp.status === 'fulfilled' ? (documentosResp.value.documentos || []) : [];
-                const resultadoAviso = resultadoResp.status !== 'fulfilled'
-                    ? '<div class="alert alert-warning"><span class="alert-icon">⚠️</span><div class="alert-content"><div class="alert-title">Resultado indisponível</div><div class="alert-text">Ainda não há correção final para este aluno.</div></div></div>'
-                    : '';
+                
+                // Renderizar status do pipeline se não está completo
+                let pipelineStatus = '';
+                if (resultadoData && !isComplete) {
+                    const progresso = resultadoData.progresso || 0;
+                    const etapas = resultadoData.etapas || {};
+                    const dadosParciais = resultadoData.dados_parciais || {};
+                    
+                    pipelineStatus = `
+                        <div class="card" style="border-left: 4px solid var(--warning);">
+                            <div class="card-header">
+                                <h3 class="card-title">⏳ Pipeline em Progresso</h3>
+                                <span style="font-size: 14px; color: var(--text-secondary);">${progresso}% concluído</span>
+                            </div>
+                            <div style="background: var(--bg); border-radius: 8px; height: 8px; margin-bottom: 16px; overflow: hidden;">
+                                <div style="background: var(--primary); height: 100%; width: ${progresso}%; transition: width 0.3s;"></div>
+                            </div>
+                            <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 8px;">
+                                ${Object.entries(etapas).map(([key, etapa]) => `
+                                    <div style="display: flex; align-items: center; gap: 8px; padding: 8px; background: var(--bg); border-radius: 6px;">
+                                        <span style="font-size: 16px;">${etapa.completa ? '✅' : '⏳'}</span>
+                                        <span style="font-size: 13px; ${etapa.completa ? '' : 'color: var(--text-secondary);'}">${etapa.nome}</span>
+                                        ${etapa.doc_id ? `<button class="btn btn-sm" onclick="visualizarDocumento('${etapa.doc_id}')" style="margin-left: auto; padding: 2px 6px;">👁️</button>` : ''}
+                                    </div>
+                                `).join('')}
+                            </div>
+                            ${Object.keys(dadosParciais).length > 0 ? `
+                                <details style="margin-top: 16px;">
+                                    <summary style="cursor: pointer; font-weight: 500;">📊 Dados Parciais Disponíveis</summary>
+                                    <pre style="background: var(--bg); padding: 12px; border-radius: 8px; margin-top: 8px; font-size: 12px; overflow: auto; max-height: 300px;">${escapeHtml(JSON.stringify(dadosParciais, null, 2))}</pre>
+                                </details>
+                            ` : ''}
+                        </div>
+                    `;
+                } else if (!resultadoData) {
+                    pipelineStatus = '<div class="alert alert-warning"><span class="alert-icon">⚠️</span><div class="alert-content"><div class="alert-title">Resultado indisponível</div><div class="alert-text">Ainda não há correção para este aluno. Inicie o pipeline.</div></div></div>';
+                }
+                
                 const docsPorTipo = groupDocumentosPorTipo(documentos);
                 const labels = {
                     enunciado: '📄 Enunciado',
@@ -2309,9 +4746,9 @@
                     criterios_correcao: '📋 Critérios de Correção',
                     prova_respondida: '📝 Prova Respondida',
                     correcao_professor: '🧑‍🏫 Correção do Professor',
-                    extracao_questoes: '🔎 Extração de Questões',
+                    extracao_questoes: '🔎 Extração de Questões da Atividade',
                     extracao_gabarito: '🧩 Extração de Gabarito',
-                    extracao_respostas: '📝 Extração de Respostas',
+                    extracao_respostas: '📝 Extração de Respostas do Aluno',
                     correcao: '✅ Correção da IA',
                     analise_habilidades: '📊 Análise de Habilidades',
                     relatorio_final: '📄 Relatório Final'
@@ -2345,16 +4782,28 @@
                     onAdicionar: '',
                     showVisualizar: true
                 })).join('');
-                document.getElementById('content').innerHTML = `
-                    <div class="page-header"><h1 class="page-title">Resultado do Aluno</h1></div>
-                    ${resultadoAviso}
+                
+                // Só mostrar resultado final se completo
+                const resultadoFinal = isComplete ? `
                     <div class="card">
+                        <div class="card-header"><h3 class="card-title">📊 Resultado Final</h3></div>
                         <div style="display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 12px;">
                             <a class="btn" href="${API}/resultados/${atividadeId}/${alunoId}/exportar/json" target="_blank">Exportar JSON</a>
                             <a class="btn" href="${API}/resultados/${atividadeId}/${alunoId}/exportar/markdown" target="_blank">Exportar Markdown</a>
                         </div>
-                        <pre style="background: var(--bg-card); padding: 16px; border-radius: 8px; overflow:auto;">${escapeHtml(JSON.stringify(resultado, null, 2))}</pre>
+                        <pre style="background: var(--bg-card); padding: 16px; border-radius: 8px; overflow:auto; max-height: 400px;">${escapeHtml(JSON.stringify(resultado, null, 2))}</pre>
                     </div>
+                ` : '';
+                
+                document.getElementById('content').innerHTML = `
+                    <div class="page-header"><h1 class="page-title">Resultado do Aluno</h1></div>
+                    <div style="display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 16px;">
+                        <button class="btn" onclick="openModalExecucao('${atividadeId}')">⚙️ Executar Etapa</button>
+                        <button class="btn btn-primary" onclick="openModalPipelineCompleto('${atividadeId}', 'aluno')">⚡ Pipeline Aluno</button>
+                        <button class="btn" onclick="showAtividade('${atividadeId}')">← Voltar para Atividade</button>
+                    </div>
+                    ${pipelineStatus}
+                    ${resultadoFinal}
                     <div class="card">
                         <div class="card-header"><h3 class="card-title">📌 Documentos do Aluno</h3></div>
                         ${gruposAluno || '<div class="empty-state"><div class="empty-icon">📄</div><div class="empty-title">Nenhum documento do aluno</div></div>'}
@@ -2364,7 +4813,9 @@
                         ${gruposGerados || '<div class="empty-state"><div class="empty-icon">🤖</div><div class="empty-title">Nenhuma etapa gerada</div></div>'}
                     </div>
                 `;
-            } catch (e) {}
+            } catch (e) {
+                console.error('Erro ao carregar resultado:', e);
+            }
         }
 
         async function showDashboardTurma(turmaId) {
@@ -2499,12 +4950,895 @@
             return `${text.slice(0, maxLength - 1)}…`;
         }
 
+
+
         function showToast(message, type = 'success') {
             const toast = document.getElementById('toast');
             toast.textContent = message;
             toast.className = `toast ${type} show`;
             setTimeout(() => toast.classList.remove('show'), 3000);
         }
+
+
+
+
+
+        
+        // ============================================================
+        // SETTINGS - API KEYS E MODELOS
+        // ============================================================
+        let _modelosSugeridos = {};
+
+        function showSettingsTab(tab) {
+            const tabNames = ['api-keys', 'models', 'catalog', 'custom', 'local'];
+            document.querySelectorAll('#modal-settings .tab').forEach((t, i) => {
+                t.classList.toggle('active', tabNames[i] === tab);
+            });
+            tabNames.forEach(name => {
+                const el = document.getElementById(`settings-tab-${name}`);
+                if (el) el.style.display = name === tab ? 'block' : 'none';
+            });
+            if (tab === 'api-keys') carregarApiKeys();
+            if (tab === 'models') carregarModelos();
+            if (tab === 'catalog') carregarCatalogo();
+            if (tab === 'local') detectAllLocalModels();
+        }
+
+        // ============================================================
+        // CATALOG - CATÁLOGO DE MODELOS
+        // ============================================================
+        let _catalogData = null;
+        let _catalogViewMode = 'cards';
+        let _selectedForCompare = [];
+
+        async function carregarCatalogo() {
+            if (_catalogData) {
+                renderCatalog();
+                return;
+            }
+            try {
+                _catalogData = await api('/settings/model-catalog');
+                populateProviderFilter();
+                renderCatalog();
+            } catch (e) {
+                document.getElementById('catalog-grid').innerHTML =
+                    '<div class="empty-state"><div class="empty-icon">⚠️</div><div class="empty-title">Erro ao carregar catálogo</div></div>';
+            }
+        }
+
+        function populateProviderFilter() {
+            if (!_catalogData || !_catalogData.providers) return;
+            const select = document.getElementById('filter-provider');
+            select.innerHTML = '<option value="">Todos Provedores</option>';
+            for (const [key, prov] of Object.entries(_catalogData.providers)) {
+                select.innerHTML += `<option value="${key}">${prov.name}</option>`;
+            }
+        }
+
+        function setCatalogView(mode) {
+            _catalogViewMode = mode;
+            document.querySelectorAll('.view-mode-btn').forEach(btn =>
+                btn.classList.toggle('active', btn.dataset.mode === mode)
+            );
+            document.getElementById('catalog-content').style.display = mode === 'compare' ? 'none' : 'block';
+            document.getElementById('compare-content').style.display = mode === 'compare' ? 'block' : 'none';
+            renderCatalog();
+        }
+
+        function filterCatalog() {
+            renderCatalog();
+        }
+
+        function renderCatalog() {
+            if (!_catalogData) return;
+            const providerFilter = document.getElementById('filter-provider').value;
+            const capFilter = document.getElementById('filter-capability').value;
+            const searchFilter = document.getElementById('filter-search').value.toLowerCase();
+
+            switch (_catalogViewMode) {
+                case 'cards': renderCatalogCards(providerFilter, capFilter, searchFilter); break;
+                case 'table': renderCatalogTable(providerFilter, capFilter, searchFilter); break;
+                case 'compare': renderCatalogCompare(); break;
+                case 'minimal': renderCatalogMinimal(providerFilter, capFilter, searchFilter); break;
+            }
+        }
+
+        function getFilteredModels(providerFilter, capFilter, searchFilter) {
+            const models = [];
+            for (const [key, prov] of Object.entries(_catalogData.providers)) {
+                if (providerFilter && key !== providerFilter) continue;
+                for (const m of prov.models || []) {
+                    if (capFilter) {
+                        const capKey = `supports_${capFilter}`;
+                        if (!m[capKey]) continue;
+                    }
+                    if (searchFilter) {
+                        const searchIn = `${m.display_name} ${m.id} ${m.description || ''}`.toLowerCase();
+                        if (!searchIn.includes(searchFilter)) continue;
+                    }
+                    models.push({ ...m, provider: key, providerName: prov.name });
+                }
+            }
+            return models;
+        }
+
+        function renderCatalogCards(providerFilter, capFilter, searchFilter) {
+            const models = getFilteredModels(providerFilter, capFilter, searchFilter);
+            const container = document.getElementById('catalog-grid');
+            if (models.length === 0) {
+                container.innerHTML = '<div class="empty-hint">Nenhum modelo encontrado</div>';
+                return;
+            }
+            container.innerHTML = models.map(m => `
+                <div class="model-card">
+                    <div class="model-card-header">
+                        <span class="provider-badge provider-${m.provider}">${m.providerName}</span>
+                        <span class="model-card-name">${escapeHtml(m.display_name)}</span>
+                    </div>
+                    <div class="model-card-desc">${escapeHtml(m.description || '')}</div>
+                    <div class="model-stats">
+                        <div class="stat">
+                            <span class="stat-label">Contexto</span>
+                            <span class="stat-value">${formatContext(m.context_window)}</span>
+                        </div>
+                        <div class="stat">
+                            <span class="stat-label">Input</span>
+                            <span class="stat-value">$${m.input_cost?.toFixed(2) || '0'}</span>
+                        </div>
+                        <div class="stat">
+                            <span class="stat-label">Output</span>
+                            <span class="stat-value">$${m.output_cost?.toFixed(2) || '0'}</span>
+                        </div>
+                    </div>
+                    <div class="capability-badges">
+                        ${m.supports_vision ? '<span class="badge-vision">👁️ Vision</span>' : ''}
+                        ${m.supports_tools ? '<span class="badge-tools">🔧 Tools</span>' : ''}
+                        ${m.supports_reasoning ? '<span class="badge-reasoning">🧠 Reasoning</span>' : ''}
+                        ${m.supports_search ? '<span class="badge-search">🔍 Search</span>' : ''}
+                        ${m.supports_json_mode ? '<span class="badge-json">📋 JSON</span>' : ''}
+                    </div>
+                    <div class="model-card-footer">
+                        <button class="btn btn-sm btn-primary" onclick="addFromCatalog('${m.provider}', '${m.id}')">+ Adicionar</button>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function renderCatalogTable(providerFilter, capFilter, searchFilter) {
+            const models = getFilteredModels(providerFilter, capFilter, searchFilter);
+            const container = document.getElementById('catalog-grid');
+            if (models.length === 0) {
+                container.innerHTML = '<div class="empty-hint">Nenhum modelo encontrado</div>';
+                return;
+            }
+            container.innerHTML = `
+                <table class="catalog-table">
+                    <thead>
+                        <tr>
+                            <th>Modelo</th>
+                            <th>Contexto</th>
+                            <th>Input</th>
+                            <th>Output</th>
+                            <th>👁️</th>
+                            <th>🔧</th>
+                            <th>🧠</th>
+                            <th></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${models.map(m => `
+                            <tr>
+                                <td>
+                                    <span class="provider-badge provider-${m.provider}" style="margin-right: 6px;">${m.providerName}</span>
+                                    ${escapeHtml(m.display_name)}
+                                </td>
+                                <td>${formatContext(m.context_window)}</td>
+                                <td>$${m.input_cost?.toFixed(2) || '0'}</td>
+                                <td>$${m.output_cost?.toFixed(2) || '0'}</td>
+                                <td class="${m.supports_vision ? 'check' : 'cross'}">${m.supports_vision ? '✓' : '−'}</td>
+                                <td class="${m.supports_tools ? 'check' : 'cross'}">${m.supports_tools ? '✓' : '−'}</td>
+                                <td class="${m.supports_reasoning ? 'check' : 'cross'}">${m.supports_reasoning ? '✓' : '−'}</td>
+                                <td><button class="btn btn-xs btn-primary" onclick="addFromCatalog('${m.provider}', '${m.id}')">+</button></td>
+                            </tr>
+                        `).join('')}
+                    </tbody>
+                </table>
+            `;
+        }
+
+        function renderCatalogMinimal(providerFilter, capFilter, searchFilter) {
+            const models = getFilteredModels(providerFilter, capFilter, searchFilter);
+            const container = document.getElementById('catalog-grid');
+            if (models.length === 0) {
+                container.innerHTML = '<div class="empty-hint">Nenhum modelo encontrado</div>';
+                return;
+            }
+            container.innerHTML = `<div class="minimal-list">${models.map(m => `
+                <div class="minimal-item" onclick="addFromCatalog('${m.provider}', '${m.id}')">
+                    <span class="provider-dot" style="background: var(--${getProviderColor(m.provider)});"></span>
+                    <span class="model-name" style="flex:1">${escapeHtml(m.display_name)}</span>
+                    <span class="context-badge">${formatContext(m.context_window)}</span>
+                </div>
+            `).join('')}</div>`;
+        }
+
+        function renderCatalogCompare() {
+            const allModels = getFilteredModels('', '', '');
+            const chipsContainer = document.getElementById('compare-chips');
+            chipsContainer.innerHTML = allModels.map(m => {
+                const ref = `${m.provider}/${m.id}`;
+                const isSelected = _selectedForCompare.some(s => s.ref === ref);
+                return `<span class="compare-chip ${isSelected ? 'selected' : ''}"
+                             onclick="toggleCompareModel('${m.provider}', '${m.id}', '${escapeHtml(m.display_name)}', ${m.input_cost || 0}, ${m.output_cost || 0})">
+                    ${escapeHtml(m.display_name)}
+                </span>`;
+            }).join('');
+
+            const grid = document.getElementById('compare-grid');
+            if (_selectedForCompare.length === 0) {
+                grid.innerHTML = '<div class="empty-hint">Selecione modelos acima para comparar</div>';
+                document.getElementById('cost-results').innerHTML = '';
+                return;
+            }
+
+            grid.innerHTML = _selectedForCompare.map(m => `
+                <div class="model-card">
+                    <div class="model-card-header">
+                        <span class="model-card-name">${m.name}</span>
+                    </div>
+                    <div class="model-stats">
+                        <div class="stat">
+                            <span class="stat-label">Input</span>
+                            <span class="stat-value">$${m.inputCost.toFixed(2)}</span>
+                        </div>
+                        <div class="stat">
+                            <span class="stat-label">Output</span>
+                            <span class="stat-value">$${m.outputCost.toFixed(2)}</span>
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+            calculateCosts();
+        }
+
+        function toggleCompareModel(provider, modelId, name, inputCost, outputCost) {
+            const ref = `${provider}/${modelId}`;
+            const idx = _selectedForCompare.findIndex(s => s.ref === ref);
+            if (idx >= 0) {
+                _selectedForCompare.splice(idx, 1);
+            } else if (_selectedForCompare.length < 4) {
+                _selectedForCompare.push({ ref, name, inputCost, outputCost });
+            } else {
+                showToast('Máximo 4 modelos para comparação', 'warning');
+                return;
+            }
+            renderCatalogCompare();
+        }
+
+        function calculateCosts() {
+            const inputTokens = parseInt(document.getElementById('calc-input-tokens').value) || 1000;
+            const outputTokens = parseInt(document.getElementById('calc-output-tokens').value) || 500;
+            const requests = parseInt(document.getElementById('calc-requests').value) || 100;
+
+            const results = _selectedForCompare.map(m => {
+                const costPerReq = (inputTokens * m.inputCost / 1000000) + (outputTokens * m.outputCost / 1000000);
+                return {
+                    name: m.name,
+                    daily: costPerReq * requests,
+                    monthly: costPerReq * requests * 30
+                };
+            });
+
+            const container = document.getElementById('cost-results');
+            if (results.length === 0) {
+                container.innerHTML = '';
+                return;
+            }
+            container.innerHTML = results.map(r => `
+                <div class="cost-card">
+                    <div class="cost-card-title">${escapeHtml(r.name)}</div>
+                    <div class="cost-card-value">$${r.monthly.toFixed(2)}/mês</div>
+                    <div class="cost-card-sub">$${r.daily.toFixed(4)}/dia</div>
+                </div>
+            `).join('');
+        }
+
+        function formatContext(tokens) {
+            if (!tokens) return '−';
+            if (tokens >= 1000000) return (tokens / 1000000).toFixed(1) + 'M';
+            if (tokens >= 1000) return (tokens / 1000).toFixed(0) + 'K';
+            return tokens.toString();
+        }
+
+        function getProviderColor(provider) {
+            const colors = {
+                openai: 'success', anthropic: 'warning', google: 'primary',
+                deepseek: 'primary', mistral: 'warning', xai: 'text',
+                perplexity: 'success', cohere: 'danger', groq: 'danger',
+                openrouter: 'purple', ollama: 'text', vllm: 'purple', lmstudio: 'success'
+            };
+            return colors[provider] || 'text';
+        }
+
+        async function addFromCatalog(provider, modelId) {
+            try {
+                // Buscar info completa do modelo
+                const info = await api(`/settings/model-catalog/${provider}/${modelId}`);
+                const model = info.model;
+
+                // Reset modal primeiro
+                resetModelModal();
+
+                // Preencher o modal com dados do catálogo
+                document.getElementById('input-model-nome').value = model.display_name;
+                document.getElementById('input-model-tipo').value = provider;
+
+                // Popular dropdown
+                onProviderChange();
+
+                // Tentar selecionar no dropdown, senão colocar no campo manual
+                const select = document.getElementById('input-model-select');
+                let found = false;
+                for (let i = 0; i < select.options.length; i++) {
+                    if (select.options[i].value === modelId) {
+                        select.selectedIndex = i;
+                        found = true;
+                        break;
+                    }
+                }
+                if (!found) {
+                    document.getElementById('input-model-manual').value = modelId;
+                }
+
+                // Definir capacidades
+                document.getElementById('input-model-vision').checked = model.supports_vision || false;
+                document.getElementById('input-model-tools').checked = model.supports_tools || false;
+
+                // Verificar se é reasoning
+                const isReasoning = model.supports_reasoning || !model.requires_temperature;
+                if (isReasoning) {
+                    document.getElementById('input-model-is-reasoning').value = 'true';
+                    document.getElementById('reasoning-warning').style.display = 'flex';
+                    document.getElementById('temp-group').style.display = 'none';
+                    document.getElementById('reasoning-group').style.display = 'block';
+                } else {
+                    document.getElementById('input-model-is-reasoning').value = 'false';
+                }
+
+                // Definir max_output se disponível
+                if (model.max_output) {
+                    document.getElementById('input-model-tokens').value = Math.min(model.max_output, 16384);
+                }
+
+                // Abrir modal
+                openModal('modal-add-model');
+                showToast(`Dados de ${model.display_name} carregados`, 'success');
+            } catch (e) {
+                console.error('Erro addFromCatalog:', e);
+                showToast('Erro ao carregar modelo do catálogo', 'error');
+            }
+        }
+
+        // ============================================================
+        // CUSTOM ENDPOINT
+        // ============================================================
+        async function salvarCustomEndpoint() {
+            const nome = document.getElementById('custom-nome').value;
+            const tipo = document.getElementById('custom-compat').value;
+            const modelId = document.getElementById('custom-model-id').value;
+            const baseUrl = document.getElementById('custom-url').value;
+            const apiVersion = document.getElementById('custom-api-version').value || null;
+            const headersText = document.getElementById('custom-headers').value;
+            const maxTokens = parseInt(document.getElementById('custom-tokens').value) || 4096;
+            const temperature = parseFloat(document.getElementById('custom-temp').value) || 0.7;
+
+            if (!nome || !modelId || !baseUrl) {
+                showToast('Preencha os campos obrigatórios', 'error');
+                return;
+            }
+
+            let extraHeaders = null;
+            if (headersText) {
+                try {
+                    extraHeaders = JSON.parse(headersText);
+                } catch (e) {
+                    showToast('JSON de headers inválido', 'error');
+                    return;
+                }
+            }
+
+            try {
+                await api('/settings/models/custom', {
+                    method: 'POST',
+                    body: JSON.stringify({
+                        nome,
+                        tipo,
+                        custom_model_id: modelId,
+                        custom_base_url: baseUrl,
+                        api_version: apiVersion,
+                        extra_headers: extraHeaders,
+                        max_tokens: maxTokens,
+                        temperature
+                    })
+                });
+                showToast('Endpoint customizado salvo!', 'success');
+                // Limpar campos
+                document.getElementById('custom-nome').value = '';
+                document.getElementById('custom-model-id').value = '';
+                document.getElementById('custom-url').value = '';
+                document.getElementById('custom-api-version').value = '';
+                document.getElementById('custom-headers').value = '';
+                showSettingsTab('models');
+            } catch (e) {
+                showToast('Erro ao salvar endpoint', 'error');
+            }
+        }
+
+        // ============================================================
+        // LOCAL MODELS DETECTION
+        // ============================================================
+        async function detectAllLocalModels() {
+            detectLocalModels('ollama');
+            detectLocalModels('vllm');
+            detectLocalModels('lmstudio');
+        }
+
+        async function detectLocalModels(provider) {
+            const statusEl = document.getElementById(`${provider}-status`);
+            const listEl = document.getElementById(`${provider}-models`);
+            statusEl.textContent = '⏳';
+            listEl.innerHTML = '<div class="empty-hint">Verificando...</div>';
+
+            try {
+                const data = await api(`/settings/local-models/${provider}`);
+                if (data.online) {
+                    statusEl.textContent = '🟢';
+                    statusEl.title = 'Online';
+                    if (data.models && data.models.length > 0) {
+                        listEl.innerHTML = data.models.map(m => `
+                            <div class="local-model-item">
+                                <span class="model-name">${escapeHtml(m.display_name || m.id)}</span>
+                                ${m.size ? `<span class="model-size">${formatBytes(m.size)}</span>` : ''}
+                                <button class="btn btn-xs btn-primary" onclick="addLocalModel('${provider}', '${m.id}')">+</button>
+                            </div>
+                        `).join('');
+                    } else {
+                        listEl.innerHTML = '<div class="empty-hint">Nenhum modelo instalado</div>';
+                    }
+                } else {
+                    statusEl.textContent = '🔴';
+                    statusEl.title = 'Offline';
+                    listEl.innerHTML = '<div class="empty-hint">Servidor não encontrado</div>';
+                }
+            } catch (e) {
+                statusEl.textContent = '🔴';
+                listEl.innerHTML = '<div class="empty-hint">Erro ao conectar</div>';
+            }
+        }
+
+        function formatBytes(bytes) {
+            if (!bytes) return '';
+            const gb = bytes / (1024 * 1024 * 1024);
+            return gb.toFixed(1) + ' GB';
+        }
+
+        async function addLocalModel(provider, modelId) {
+            try {
+                await api('/settings/models', {
+                    method: 'POST',
+                    body: JSON.stringify({
+                        nome: modelId,
+                        tipo: provider,
+                        modelo: modelId,
+                        max_tokens: 4096,
+                        temperature: 0.7
+                    })
+                });
+                showToast(`Modelo ${modelId} adicionado!`, 'success');
+                showSettingsTab('models');
+            } catch (e) {
+                showToast('Erro ao adicionar modelo', 'error');
+            }
+        }
+
+        async function carregarApiKeys() {
+            try {
+                const data = await api('/settings/api-keys');
+                const container = document.getElementById('api-keys-list');
+                if (!data.api_keys || data.api_keys.length === 0) {
+                    container.innerHTML = '<div class="empty-state"><div class="empty-icon">🔑</div><div class="empty-title">Nenhuma API key configurada</div></div>';
+                    return;
+                }
+                container.innerHTML = data.api_keys.map(k => `
+                    <div class="doc-item" style="border: 1px solid var(--border); border-radius: 8px; margin-bottom: 8px;">
+                        <div class="doc-icon" style="background: var(--bg-hover);">🔑</div>
+                        <div class="doc-info" style="flex: 1;">
+                            <div class="doc-name">${escapeHtml(k.nome_exibicao || k.empresa)}</div>
+                            <div class="doc-meta">${escapeHtml(k.empresa)} • ${k.api_key_preview || '***'}</div>
+                        </div>
+                        <div class="doc-actions">
+                            <button class="btn btn-xs btn-danger" onclick="excluirApiKey('${k.id}')">🗑️</button>
+                        </div>
+                    </div>
+                `).join('');
+            } catch (e) {
+                document.getElementById('api-keys-list').innerHTML = '<div class="alert alert-warning">⚠️ Erro ao carregar API keys. Verifique se o routes_chat.py está instalado.</div>';
+            }
+        }
+
+        async function salvarApiKey() {
+            const empresa = document.getElementById('input-apikey-empresa').value;
+            const apiKey = document.getElementById('input-apikey-key').value;
+            const nome = document.getElementById('input-apikey-nome').value;
+            if (!apiKey) { showToast('API key obrigatória', 'error'); return; }
+            try {
+                await api('/settings/api-keys', {
+                    method: 'POST',
+                    body: JSON.stringify({ empresa, api_key: apiKey, nome_exibicao: nome || null })
+                });
+                showToast('API key salva!', 'success');
+                closeModal('modal-add-apikey');
+                document.getElementById('input-apikey-key').value = '';
+                document.getElementById('input-apikey-nome').value = '';
+                carregarApiKeys();
+            } catch (e) { /* erro já mostrado */ }
+        }
+
+        async function excluirApiKey(id) {
+            if (!confirm('Excluir esta API key?')) return;
+            try {
+                await api(`/settings/api-keys/${id}`, { method: 'DELETE' });
+                showToast('API key excluída!', 'success');
+                carregarApiKeys();
+            } catch (e) { /* erro já mostrado */ }
+        }
+
+        async function carregarModelos() {
+            try {
+                const data = await api('/settings/models');
+                const container = document.getElementById('models-list');
+                if (!data.models || data.models.length === 0) {
+                    container.innerHTML = '<div class="empty-state"><div class="empty-icon">🤖</div><div class="empty-title">Nenhum modelo configurado</div></div>';
+                    return;
+                }
+                container.innerHTML = data.models.map(m => `
+                    <div class="doc-item" style="border: 1px solid var(--border); border-radius: 8px; margin-bottom: 8px;">
+                        <div class="doc-icon" style="background: var(--bg-hover);">🤖</div>
+                        <div class="doc-info" style="flex: 1;">
+                            <div class="doc-name">${escapeHtml(m.nome)} ${m.is_default ? '<span class="badge badge-primary">Padrão</span>' : ''}</div>
+                            <div class="doc-meta">${escapeHtml(m.tipo)} • ${escapeHtml(m.modelo)}</div>
+                        </div>
+                        <div class="doc-actions" style="display: flex; gap: 6px;">
+                            ${!m.is_default ? `<button class="btn btn-xs" onclick="definirModeloPadrao('${m.id}')" title="Definir como padrão">⭐</button>` : ''}
+                            <button class="btn btn-xs" onclick="testarModelo('${m.id}')" title="Testar">🧪</button>
+                            <button class="btn btn-xs btn-danger" onclick="excluirModelo('${m.id}')" title="Excluir">🗑️</button>
+                        </div>
+                    </div>
+                `).join('');
+            } catch (e) {
+                document.getElementById('models-list').innerHTML = '<div class="alert alert-warning">⚠️ Erro ao carregar modelos. Verifique se o routes_chat.py está instalado.</div>';
+            }
+        }
+
+        // Modelos de reasoning que não suportam temperatura
+        const REASONING_MODELS = ['o1', 'o1-mini', 'o1-pro', 'o3', 'o3-mini', 'o4-mini', 'deepseek-reasoner'];
+
+        async function carregarModelosSugeridosInicial() {
+            try {
+                const data = await api('/settings/models/sugeridos');
+                _modelosSugeridos = data.modelos_por_tipo || {};
+            } catch (e) { console.log('Modelos sugeridos não disponíveis'); }
+        }
+
+        function onProviderChange() {
+            const tipo = document.getElementById('input-model-tipo').value;
+            const select = document.getElementById('input-model-select');
+            const manualInput = document.getElementById('input-model-manual');
+            const modelos = _modelosSugeridos[tipo] || [];
+
+            // Limpar campo manual
+            manualInput.value = '';
+
+            // Popular dropdown
+            if (modelos.length === 0) {
+                select.innerHTML = '<option value="">-- Nenhum modelo sugerido, digite abaixo --</option>';
+            } else {
+                select.innerHTML = '<option value="">-- Selecione ou digite abaixo --</option>' +
+                    modelos.map(m => {
+                        // Verifica se é reasoning: suporta_temperature deve ser EXPLICITAMENTE false
+                        const isReasoning = m.suporta_temperature === false || m.suporta_reasoning === true;
+                        const reasoningBadge = isReasoning ? ' [Reasoning]' : '';
+                        return `<option value="${m.id}" data-reasoning="${isReasoning}" data-vision="${m.suporta_vision || false}">${escapeHtml(m.nome || m.id)}${reasoningBadge}</option>`;
+                    }).join('');
+            }
+
+            // Verificar se modelo digitado é reasoning
+            checkIfReasoningModel();
+        }
+
+        function onModelSelect() {
+            const select = document.getElementById('input-model-select');
+            const manualInput = document.getElementById('input-model-manual');
+            const selectedOption = select.options[select.selectedIndex];
+
+            if (select.value) {
+                manualInput.value = '';  // Limpa manual se selecionou do dropdown
+            }
+
+            // Atualizar checkboxes de capacidades
+            if (selectedOption && selectedOption.dataset) {
+                const isVision = selectedOption.dataset.vision === 'true';
+                document.getElementById('input-model-vision').checked = isVision;
+            }
+
+            checkIfReasoningModel();
+        }
+
+        function checkIfReasoningModel() {
+            const select = document.getElementById('input-model-select');
+            const manualInput = document.getElementById('input-model-manual');
+            const selectedOption = select.options[select.selectedIndex];
+
+            // Determinar qual modelo está selecionado
+            const modelId = (manualInput.value.trim() || select.value).toLowerCase();
+
+            // Verificar se é reasoning:
+            // 1. Pelo dropdown (já calculado corretamente)
+            // 2. Pelo ID manual (verifica se contém nomes de modelos reasoning)
+            const isReasoningFromDropdown = selectedOption && selectedOption.dataset && selectedOption.dataset.reasoning === 'true';
+            const isReasoningFromManual = modelId && REASONING_MODELS.some(r => modelId.includes(r));
+            const isReasoning = isReasoningFromDropdown || isReasoningFromManual;
+
+            // Mostrar/ocultar elementos
+            document.getElementById('reasoning-warning').style.display = isReasoning ? 'flex' : 'none';
+            document.getElementById('temp-group').style.display = isReasoning ? 'none' : 'block';
+            document.getElementById('reasoning-group').style.display = isReasoning ? 'block' : 'none';
+            document.getElementById('input-model-is-reasoning').value = isReasoning ? 'true' : 'false';
+        }
+
+        // Verificar reasoning quando digita manualmente
+        document.addEventListener('DOMContentLoaded', function() {
+            const manualInput = document.getElementById('input-model-manual');
+            if (manualInput) {
+                manualInput.addEventListener('input', checkIfReasoningModel);
+            }
+        });
+
+        function preencherSystemPromptPadrao() {
+            const systemPrompt = `Você é um assistente educacional especializado em correção de provas.
+
+REGRA CRÍTICA PARA GERAÇÃO DE ARQUIVOS:
+=========================================
+Quando o usuário pedir para criar/gerar qualquer arquivo (Excel, PDF, Word, PowerPoint, imagem, CSV, etc.), você DEVE usar o formato python-exec.
+
+FORMATO OBRIGATÓRIO:
+\`\`\`python-exec:nome_arquivo.extensao
+# código Python aqui
+\`\`\`
+
+NUNCA FAÇA ISSO:
+- NÃO diga "copie e cole"
+- NÃO diga "salve como"
+- NÃO use blocos documento: ou document: ou arquivo:
+- NÃO descreva como criar o arquivo - CRIE O ARQUIVO
+
+Bibliotecas disponíveis: pandas, openpyxl, python-docx, reportlab, python-pptx, matplotlib, pillow, numpy
+
+EXEMPLO CORRETO (Excel):
+\`\`\`python-exec:notas.xlsx
+import pandas as pd
+df = pd.DataFrame({'Aluno': ['Ana', 'Bruno'], 'Nota': [9.0, 7.5]})
+df.to_excel('notas.xlsx', index=False)
+print('Criado!')
+\`\`\`
+
+Seja preciso e educativo nas correções.`;
+            document.getElementById('input-model-system').value = systemPrompt;
+        }
+
+        async function salvarModelo() {
+            const nome = document.getElementById('input-model-nome').value.trim();
+            const tipo = document.getElementById('input-model-tipo').value;
+            const modeloSelect = document.getElementById('input-model-select').value;
+            const modeloManual = document.getElementById('input-model-manual').value.trim();
+            const modelo = modeloManual || modeloSelect;  // Prioriza manual
+            const maxTokens = parseInt(document.getElementById('input-model-tokens').value) || 4096;
+            const systemPrompt = document.getElementById('input-model-system').value;
+            const isReasoning = document.getElementById('input-model-is-reasoning').value === 'true';
+
+            // Capacidades
+            const suportaVision = document.getElementById('input-model-vision').checked;
+            const suportaTools = document.getElementById('input-model-tools').checked;
+            const suportaStreaming = document.getElementById('input-model-streaming').checked;
+
+            // Validação
+            if (!nome) { showToast('Apelido é obrigatório', 'error'); return; }
+            if (!modelo) { showToast('Modelo (ID da API) é obrigatório', 'error'); return; }
+
+            // Construir payload
+            const payload = {
+                nome,
+                tipo,
+                modelo,
+                max_tokens: maxTokens,
+                system_prompt: systemPrompt || null,
+                suporta_vision: suportaVision,
+                suporta_function_calling: suportaTools,
+                suporta_streaming: suportaStreaming,
+                suporta_temperature: !isReasoning
+            };
+
+            // Adicionar temperatura ou reasoning_effort
+            if (isReasoning) {
+                payload.temperature = null;
+                payload.parametros = {
+                    reasoning_effort: document.getElementById('input-model-reasoning').value
+                };
+            } else {
+                payload.temperature = parseFloat(document.getElementById('input-model-temp').value) || 0.7;
+                payload.parametros = {};
+            }
+
+            try {
+                await api('/settings/models', {
+                    method: 'POST',
+                    body: JSON.stringify(payload)
+                });
+                showToast('Modelo salvo!', 'success');
+                closeModal('modal-add-model');
+                resetModelModal();
+                carregarModelos();
+            } catch (e) { /* erro já mostrado */ }
+        }
+
+        function resetModelModal() {
+            document.getElementById('input-model-nome').value = '';
+            document.getElementById('input-model-select').selectedIndex = 0;
+            document.getElementById('input-model-manual').value = '';
+            document.getElementById('input-model-tokens').value = '4096';
+            document.getElementById('input-model-temp').value = '0.7';
+            document.getElementById('input-model-reasoning').value = 'medium';
+            document.getElementById('input-model-system').value = '';
+            document.getElementById('input-model-vision').checked = false;
+            document.getElementById('input-model-tools').checked = false;
+            document.getElementById('input-model-streaming').checked = true;
+            document.getElementById('reasoning-warning').style.display = 'none';
+            document.getElementById('temp-group').style.display = 'block';
+            document.getElementById('reasoning-group').style.display = 'none';
+        }
+
+        function openAddModelModal() {
+            resetModelModal();
+            onProviderChange();  // Popular dropdown inicial
+            openModal('modal-add-model');
+        }
+
+        async function definirModeloPadrao(id) {
+            try {
+                await api(`/settings/models/${id}/default`, { method: 'POST' });
+                showToast('Modelo definido como padrão!', 'success');
+                carregarModelos();
+            } catch (e) { /* erro já mostrado */ }
+        }
+
+        async function testarModelo(id) {
+            showToast('Testando conexão...', 'warning');
+            try {
+                const result = await api(`/settings/models/${id}/testar`, { method: 'POST' });
+                if (result.success) {
+                    showToast('✅ Modelo funcionando!', 'success');
+                } else {
+                    showToast(`❌ Erro: ${result.erro}`, 'error');
+                }
+            } catch (e) { /* erro já mostrado */ }
+        }
+
+        async function excluirModelo(id) {
+            if (!confirm('Excluir este modelo?')) return;
+            try {
+                await api(`/settings/models/${id}`, { method: 'DELETE' });
+                showToast('Modelo excluído!', 'success');
+                carregarModelos();
+            } catch (e) { /* erro já mostrado */ }
+        }
+
+        // ============================================================
+        // CHAT COM IA
+        // ============================================================
+        async function abrirChat(atividadeId, alunoId = null, titulo = 'Chat com IA') {
+            document.getElementById('chat-atividade-id').value = atividadeId || '';
+            document.getElementById('chat-aluno-id').value = alunoId || '';
+            document.getElementById('chat-titulo').textContent = '💬 ' + titulo;
+            document.getElementById('chat-messages').innerHTML = '';
+            document.getElementById('chat-input').value = '';
+            
+            // Carregar modelos disponíveis
+            try {
+                const modelsData = await api('/settings/models');
+                const select = document.getElementById('chat-model-select');
+                if (modelsData.models && modelsData.models.length > 0) {
+                    select.innerHTML = modelsData.models.map(m => 
+                        `<option value="${m.id}" ${m.is_default ? 'selected' : ''}>${escapeHtml(m.nome)}</option>`
+                    ).join('');
+                } else {
+                    select.innerHTML = '<option value="">Nenhum modelo configurado</option>';
+                }
+            } catch (e) {
+                document.getElementById('chat-model-select').innerHTML = '<option value="">Erro ao carregar modelos</option>';
+            }
+            
+            // Criar sessão de chat
+            try {
+                const sessaoData = await api('/chat/sessoes', {
+                    method: 'POST',
+                    body: JSON.stringify({
+                        titulo: titulo,
+                        atividade_id: atividadeId || null,
+                        aluno_id: alunoId || null
+                    })
+                });
+                document.getElementById('chat-session-id').value = sessaoData.sessao.id;
+            } catch (e) {
+                showToast('Erro ao criar sessão de chat', 'error');
+            }
+            
+            openModal('modal-chat');
+        }
+
+        async function enviarMensagemChat() {
+            const input = document.getElementById('chat-input');
+            const mensagem = input.value.trim();
+            if (!mensagem) return;
+            
+            const sessionId = document.getElementById('chat-session-id').value;
+            const modelId = document.getElementById('chat-model-select').value;
+            const container = document.getElementById('chat-messages');
+            
+            // Adicionar mensagem do usuário
+            container.innerHTML += `<div style="max-width: 80%; padding: 12px 16px; border-radius: 12px; background: var(--primary); color: white; align-self: flex-end;">${escapeHtml(mensagem)}</div>`;
+            input.value = '';
+            container.scrollTop = container.scrollHeight;
+            
+            // Adicionar indicador de carregamento
+            const loadingId = 'loading-' + Date.now();
+            container.innerHTML += `<div id="${loadingId}" style="max-width: 80%; padding: 12px 16px; border-radius: 12px; background: var(--bg-hover); align-self: flex-start;"><span class="spinner"></span> Pensando...</div>`;
+            container.scrollTop = container.scrollHeight;
+            
+            try {
+                const result = await api(`/chat/sessoes/${sessionId}/mensagem`, {
+                    method: 'POST',
+                    body: JSON.stringify({
+                        mensagem: mensagem,
+                        model_id: modelId || null
+                    })
+                });
+                
+                // Remover loading e adicionar resposta
+                document.getElementById(loadingId)?.remove();
+                const resposta = result.resposta?.content || result.content || 'Sem resposta';
+                container.innerHTML += `<div style="max-width: 80%; padding: 12px 16px; border-radius: 12px; background: var(--bg-hover); align-self: flex-start; white-space: pre-wrap;">${escapeHtml(resposta)}</div>`;
+                container.scrollTop = container.scrollHeight;
+            } catch (e) {
+                document.getElementById(loadingId)?.remove();
+                container.innerHTML += `<div style="max-width: 80%; padding: 12px 16px; border-radius: 12px; background: rgba(239, 68, 68, 0.2); color: var(--danger); align-self: flex-start;">❌ Erro ao enviar mensagem</div>`;
+            }
+        }
+
+        // Permitir enviar com Enter
+        document.addEventListener('DOMContentLoaded', function() {
+            const chatInput = document.getElementById('chat-input');
+            if (chatInput) {
+                chatInput.addEventListener('keydown', function(e) {
+                    if (e.key === 'Enter' && !e.shiftKey) {
+                        e.preventDefault();
+                        enviarMensagemChat();
+                    }
+                });
+            }
+            // Carregar modelos sugeridos no início
+            carregarModelosSugeridosInicial();
+        });
     </script>
+    <script src="/static/chat_system.js"></script>
 </body>
 </html>

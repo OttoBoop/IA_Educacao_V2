@@ -452,7 +452,10 @@ Corrija esta questão seguindo os critérios estabelecidos."""
     
     async def gerar_relatorio_final(self,
                                      prova_aluno_id: str,
-                                     aluno_nome: str) -> PipelineResult:
+                                     aluno_nome: str,
+                                     usar_tools: bool = False,
+                                     atividade_id: str = None,
+                                     aluno_id: str = None) -> PipelineResult:
         """
         Etapa final: Gera relatório consolidado para o professor
         
@@ -461,6 +464,9 @@ Corrija esta questão seguindo os critérios estabelecidos."""
         - Resumo por questão
         - Análise de habilidades
         - Recomendações de estudo
+        
+        Se usar_tools=True, permite que o modelo use create_document
+        para criar múltiplos documentos (relatório, resumo, etc.)
         """
         import time
         start = time.time()
@@ -510,8 +516,7 @@ que poderá compartilhar com o aluno ou responsáveis."""
                 "erros": c.erros_identificados[:3]
             })
         
-        prompt = f"""Gere um relatório de avaliação para:
-Aluno: {aluno_nome}
+        base_info = f"""Aluno: {aluno_nome}
 Prova ID: {prova_aluno_id}
 
 RESULTADO GERAL:
@@ -525,11 +530,58 @@ HABILIDADES A DESENVOLVER:
 {', '.join(set(todas_habilidades_falt)) or 'Nenhuma identificada'}
 
 DETALHAMENTO POR QUESTÃO:
-{json.dumps(resumo_correcoes, indent=2, ensure_ascii=False)}
+{json.dumps(resumo_correcoes, indent=2, ensure_ascii=False)}"""
+
+        try:
+            # Se usar tools, permite que o modelo crie múltiplos documentos
+            if usar_tools and atividade_id:
+                from executor import pipeline_executor
+                
+                prompt_com_tools = f"""Gere relatório(s) para este aluno usando a ferramenta create_document.
+
+{base_info}
+
+Você DEVE usar a ferramenta create_document para criar os documentos.
+Pode criar múltiplos documentos se desejar:
+1. Relatório completo para o professor (markdown)
+2. Resumo simples para o aluno (markdown)
+3. Versão PDF profissional (docx)
+
+Escolha os formatos mais apropriados. Use a ferramenta create_document."""
+
+                executor_result = await pipeline_executor.executar_com_tools(
+                    mensagem=prompt_com_tools,
+                    atividade_id=atividade_id,
+                    aluno_id=aluno_id,
+                    provider_id=self.config.get_provider(PipelineStage.GERAR_RELATORIO),
+                    tools_to_use=["create_document"]
+                )
+                
+                duration = (time.time() - start) * 1000
+                
+                result = PipelineResult(
+                    success=executor_result.sucesso,
+                    stage=PipelineStage.GERAR_RELATORIO,
+                    data={
+                        "documentos_criados": executor_result.documentos_criados,
+                        "nota_final": nota_total,
+                        "nota_maxima": nota_maxima,
+                        "percentual": round(nota_total/nota_maxima*100, 1),
+                        "usar_tools": True
+                    },
+                    ai_response=executor_result.ai_response,
+                    duration_ms=duration
+                )
+                
+                self.results.append(result)
+                return result
+            
+            # Modo tradicional sem tools
+            prompt = f"""Gere um relatório de avaliação para:
+{base_info}
 
 Gere um relatório completo em Markdown."""
 
-        try:
             response = await provider.complete(prompt, system_prompt)
             
             # Salvar relatório

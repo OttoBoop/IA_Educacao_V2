@@ -1,0 +1,852 @@
+{
+  "version": "2026.01",
+  "last_updated": "2026-01-28",
+  "providers": {
+    "openai": {
+      "name": "OpenAI",
+      "base_url": "https://api.openai.com/v1",
+      "auth_header": "Authorization",
+      "auth_prefix": "Bearer",
+      "is_local": false,
+      "models": [
+        {
+          "id": "gpt-5.2",
+          "display_name": "GPT-5.2",
+          "description": "Modelo flagship mais recente da OpenAI com 400K context",
+          "input_cost": 1.75,
+          "output_cost": 14.00,
+          "cached_input_cost": 0.175,
+          "context_window": 400000,
+          "max_output": 32768,
+          "supports_vision": true,
+          "supports_tools": true,
+          "supports_json_mode": true,
+          "supports_streaming": true,
+          "supports_reasoning": true
+        },
+        {
+          "id": "gpt-5.2-pro",
+          "display_name": "GPT-5.2 Pro",
+          "description": "Versao premium do GPT-5.2 para tarefas complexas",
+          "input_cost": 21.00,
+          "output_cost": 168.00,
+          "context_window": 400000,
+          "max_output": 32768,
+          "supports_vision": true,
+          "supports_tools": true,
+          "supports_json_mode": true,
+          "supports_streaming": true,
+          "supports_reasoning": true
+        },
+        {
+          "id": "gpt-5",
+          "display_name": "GPT-5",
+          "description": "Modelo GPT-5 padrao com excelente custo-beneficio",
+          "input_cost": 1.25,
+          "output_cost": 10.00,
+          "cached_input_cost": 0.125,
+          "context_window": 400000,
+          "max_output": 32768,
+          "supports_vision": true,
+          "supports_tools": true,
+          "supports_json_mode": true,
+          "supports_streaming": true,
+          "supports_reasoning": true
+        },
+        {
+          "id": "gpt-5-mini",
+          "display_name": "GPT-5 Mini",
+          "description": "Versao compacta e economica do GPT-5",
+          "input_cost": 0.25,
+          "output_cost": 2.00,
+          "cached_input_cost": 0.025,
+          "context_window": 400000,
+          "max_output": 32768,
+          "supports_vision": true,
+          "supports_tools": true,
+          "supports_json_mode": true,
+          "supports_streaming": true,
+          "supports_reasoning": true
+        },
+        {
+          "id": "gpt-5-nano",
+          "display_name": "GPT-5 Nano",
+          "description": "Versao ultra-economica do GPT-5",
+          "input_cost": 0.05,
+          "output_cost": 0.40,
+          "cached_input_cost": 0.005,
+          "context_window": 400000,
+          "max_output": 32768,
+          "supports_vision": true,
+          "supports_tools": true,
+          "supports_json_mode": true,
+          "supports_streaming": true,
+          "supports_reasoning": true
+        },
+        {
+          "id": "gpt-5-pro",
+          "display_name": "GPT-5 Pro",
+          "description": "Versao premium do GPT-5 para maxima precisao",
+          "input_cost": 15.00,
+          "output_cost": 120.00,
+          "context_window": 400000,
+          "max_output": 32768,
+          "supports_vision": true,
+          "supports_tools": true,
+          "supports_json_mode": true,
+          "supports_streaming": true,
+          "supports_reasoning": true
+        },
+        {
+          "id": "gpt-5-image",
+          "display_name": "GPT-5 Image",
+          "description": "GPT-5 otimizado para geracao e analise de imagens",
+          "input_cost": 10.00,
+          "output_cost": 10.00,
+          "cached_input_cost": 1.25,
+          "context_window": 400000,
+          "max_output": 32768,
+          "supports_vision": true,
+          "supports_tools": true,
+          "supports_json_mode": true,
+          "supports_streaming": true,
+          "supports_reasoning": true
+        },
+        {
+          "id": "gpt-4o",
+          "display_name": "GPT-4o",
+          "description": "Modelo multimodal mais capaz da OpenAI",
+          "input_cost": 2.50,
+          "output_cost": 10.00,
+          "context_window": 128000,
+          "max_output": 16384,
+          "supports_vision": true,
+          "supports_tools": true,
+          "supports_json_mode": true,
+          "supports_streaming": true
+        },
+        {
+          "id": "gpt-4o-mini",
+          "display_name": "GPT-4o Mini",
+          "description": "Versao compacta e economica do GPT-4o",
+          "input_cost": 0.15,
+          "output_cost": 0.60,
+          "context_window": 128000,
+          "max_output": 16384,
+          "supports_vision": true,
+          "supports_tools": true,
+          "supports_json_mode": true,
+          "supports_streaming": true
+        },
+        {
+          "id": "gpt-4.1",
+          "display_name": "GPT-4.1",
+          "description": "Nova geracao com context window de 1M tokens",
+          "input_cost": 2.00,
+          "output_cost": 8.00,
+          "context_window": 1000000,
+          "max_output": 32768,
+          "supports_vision": true,
+          "supports_tools": true,
+          "supports_json_mode": true,
+          "supports_streaming": true
+        },
+        {
+          "id": "gpt-4.1-mini",
+          "display_name": "GPT-4.1 Mini",
+          "description": "Versao compacta do GPT-4.1",
+          "input_cost": 0.40,
+          "output_cost": 1.60,
+          "context_window": 1000000,
+          "max_output": 32768,
+          "supports_vision": true,
+          "supports_tools": true,
+          "supports_json_mode": true,
+          "supports_streaming": true
+        },
+        {
+          "id": "gpt-4.1-nano",
+          "display_name": "GPT-4.1 Nano",
+          "description": "Versao ultra-economica do GPT-4.1",
+          "input_cost": 0.10,
+          "output_cost": 0.40,
+          "context_window": 1000000,
+          "max_output": 32768,
+          "supports_vision": true,
+          "supports_tools": true,
+          "supports_json_mode": true,
+          "supports_streaming": true
+        },
+        {
+          "id": "o1",
+          "display_name": "o1 (Reasoning)",
+          "description": "Modelo de raciocinio avancado para problemas complexos",
+          "input_cost": 15.00,
+          "output_cost": 60.00,
+          "context_window": 200000,
+          "max_output": 100000,
+          "supports_vision": true,
+          "supports_tools": true,
+          "supports_json_mode": true,
+          "supports_streaming": false,
+          "supports_reasoning": true,
+          "requires_temperature": false,
+          "special_params": {
+            "reasoning_effort": ["low", "medium", "high"]
+          }
+        },
+        {
+          "id": "o1-mini",
+          "display_name": "o1 Mini",
+          "description": "Versao compacta do modelo de raciocinio",
+          "input_cost": 3.00,
+          "output_cost": 12.00,
+          "context_window": 128000,
+          "max_output": 65536,
+          "supports_vision": true,
+          "supports_tools": true,
+          "supports_json_mode": true,
+          "supports_streaming": false,
+          "supports_reasoning": true,
+          "requires_temperature": false,
+          "special_params": {
+            "reasoning_effort": ["low", "medium", "high"]
+          }
+        },
+        {
+          "id": "o1-pro",
+          "display_name": "o1 Pro",
+          "description": "Modelo de raciocinio com maxima precisao",
+          "input_cost": 150.00,
+          "output_cost": 600.00,
+          "context_window": 200000,
+          "max_output": 100000,
+          "supports_vision": true,
+          "supports_tools": true,
+          "supports_reasoning": true,
+          "requires_temperature": false
+        },
+        {
+          "id": "o3",
+          "display_name": "o3 (Reasoning)",
+          "description": "Modelo de raciocinio mais recente",
+          "input_cost": 2.00,
+          "output_cost": 8.00,
+          "context_window": 200000,
+          "max_output": 100000,
+          "supports_vision": true,
+          "supports_tools": true,
+          "supports_json_mode": true,
+          "supports_reasoning": true,
+          "requires_temperature": false,
+          "special_params": {
+            "reasoning_effort": ["low", "medium", "high"]
+          }
+        },
+        {
+          "id": "o3-mini",
+          "display_name": "o3 Mini",
+          "description": "Versao economica do o3 para raciocinio",
+          "input_cost": 1.10,
+          "output_cost": 4.40,
+          "context_window": 200000,
+          "max_output": 100000,
+          "supports_vision": true,
+          "supports_tools": true,
+          "supports_json_mode": true,
+          "supports_reasoning": true,
+          "requires_temperature": false,
+          "special_params": {
+            "reasoning_effort": ["low", "medium", "high"]
+          }
+        },
+        {
+          "id": "o3-pro",
+          "display_name": "o3 Pro",
+          "description": "Modelo de raciocinio premium com maxima precisao",
+          "input_cost": 20.00,
+          "output_cost": 80.00,
+          "context_window": 200000,
+          "max_output": 100000,
+          "supports_vision": true,
+          "supports_tools": true,
+          "supports_json_mode": true,
+          "supports_reasoning": true,
+          "requires_temperature": false,
+          "special_params": {
+            "reasoning_effort": ["low", "medium", "high"]
+          }
+        },
+        {
+          "id": "o4-mini",
+          "display_name": "o4 Mini",
+          "description": "Modelo de raciocinio economico mais recente",
+          "input_cost": 1.10,
+          "output_cost": 4.40,
+          "context_window": 200000,
+          "max_output": 100000,
+          "supports_vision": true,
+          "supports_tools": true,
+          "supports_json_mode": true,
+          "supports_reasoning": true,
+          "requires_temperature": false,
+          "special_params": {
+            "reasoning_effort": ["low", "medium", "high"]
+          }
+        },
+        {
+          "id": "gpt-4-turbo",
+          "display_name": "GPT-4 Turbo",
+          "description": "Modelo GPT-4 Turbo (legado)",
+          "input_cost": 10.00,
+          "output_cost": 30.00,
+          "context_window": 128000,
+          "max_output": 4096,
+          "supports_vision": true,
+          "supports_tools": true,
+          "supports_json_mode": true,
+          "supports_streaming": true
+        },
+        {
+          "id": "gpt-4",
+          "display_name": "GPT-4",
+          "description": "Modelo GPT-4 original (legado)",
+          "input_cost": 30.00,
+          "output_cost": 60.00,
+          "context_window": 8191,
+          "max_output": 4096,
+          "supports_vision": false,
+          "supports_tools": true,
+          "supports_json_mode": true,
+          "supports_streaming": true
+        }
+      ]
+    },
+    "anthropic": {
+      "name": "Anthropic",
+      "base_url": "https://api.anthropic.com/v1",
+      "auth_header": "x-api-key",
+      "auth_prefix": "",
+      "extra_headers": {
+        "anthropic-version": "2023-06-01"
+      },
+      "is_local": false,
+      "models": [
+        {
+          "id": "claude-opus-4-5-20251101",
+          "display_name": "Claude Opus 4.5",
+          "description": "Modelo mais capaz da Anthropic",
+          "input_cost": 15.00,
+          "output_cost": 75.00,
+          "context_window": 200000,
+          "max_output": 32768,
+          "supports_vision": true,
+          "supports_tools": true,
+          "supports_json_mode": true,
+          "supports_streaming": true,
+          "supports_extended_thinking": true
+        },
+        {
+          "id": "claude-sonnet-4-5-20250514",
+          "display_name": "Claude Sonnet 4.5",
+          "description": "Equilibrio ideal entre capacidade e custo",
+          "input_cost": 3.00,
+          "output_cost": 15.00,
+          "context_window": 200000,
+          "max_output": 64000,
+          "supports_vision": true,
+          "supports_tools": true,
+          "supports_json_mode": true,
+          "supports_streaming": true,
+          "supports_extended_thinking": true
+        },
+        {
+          "id": "claude-haiku-4-5-20251001",
+          "display_name": "Claude Haiku 4.5",
+          "description": "Modelo rapido e economico",
+          "input_cost": 1.00,
+          "output_cost": 5.00,
+          "context_window": 200000,
+          "max_output": 64000,
+          "supports_vision": true,
+          "supports_tools": true,
+          "supports_json_mode": true,
+          "supports_streaming": true
+        },
+        {
+          "id": "claude-3-5-sonnet-20241022",
+          "display_name": "Claude 3.5 Sonnet",
+          "description": "Versao anterior do Sonnet",
+          "input_cost": 3.00,
+          "output_cost": 15.00,
+          "context_window": 200000,
+          "max_output": 8192,
+          "supports_vision": true,
+          "supports_tools": true,
+          "supports_streaming": true
+        },
+        {
+          "id": "claude-3-5-haiku-20241022",
+          "display_name": "Claude 3.5 Haiku",
+          "description": "Versao anterior, ainda muito rapida",
+          "input_cost": 0.80,
+          "output_cost": 4.00,
+          "context_window": 200000,
+          "max_output": 8192,
+          "supports_vision": true,
+          "supports_tools": true,
+          "supports_streaming": true
+        }
+      ]
+    },
+    "google": {
+      "name": "Google Gemini",
+      "base_url": "https://generativelanguage.googleapis.com/v1beta",
+      "auth_header": "x-goog-api-key",
+      "auth_prefix": "",
+      "is_local": false,
+      "models": [
+        {
+          "id": "gemini-2.5-pro",
+          "display_name": "Gemini 2.5 Pro",
+          "description": "Modelo com thinking nativo",
+          "input_cost": 1.25,
+          "output_cost": 10.00,
+          "context_window": 1000000,
+          "max_output": 65536,
+          "supports_vision": true,
+          "supports_tools": true,
+          "supports_json_mode": true,
+          "supports_streaming": true,
+          "supports_reasoning": true,
+          "supports_code_exec": true
+        },
+        {
+          "id": "gemini-2.5-flash",
+          "display_name": "Gemini 2.5 Flash",
+          "description": "Melhor custo-beneficio com thinking",
+          "input_cost": 0.15,
+          "output_cost": 0.60,
+          "context_window": 1000000,
+          "max_output": 65536,
+          "supports_vision": true,
+          "supports_tools": true,
+          "supports_json_mode": true,
+          "supports_streaming": true,
+          "supports_reasoning": true,
+          "supports_code_exec": true
+        },
+        {
+          "id": "gemini-2.5-flash-lite",
+          "display_name": "Gemini 2.5 Flash Lite",
+          "description": "Ultra economico (sem tools)",
+          "input_cost": 0.075,
+          "output_cost": 0.30,
+          "context_window": 1000000,
+          "max_output": 65536,
+          "supports_vision": true,
+          "supports_tools": false,
+          "supports_json_mode": true,
+          "supports_streaming": true
+        },
+        {
+          "id": "gemini-2.0-flash",
+          "display_name": "Gemini 2.0 Flash",
+          "description": "Modelo legado rapido",
+          "input_cost": 0.10,
+          "output_cost": 0.40,
+          "context_window": 1000000,
+          "max_output": 8192,
+          "supports_vision": true,
+          "supports_tools": true,
+          "supports_json_mode": true,
+          "supports_streaming": true
+        },
+        {
+          "id": "gemini-3-pro",
+          "display_name": "Gemini 3 Pro",
+          "description": "Modelo flagship mais recente do Google com raciocinio avancado",
+          "input_cost": 2.00,
+          "output_cost": 15.00,
+          "context_window": 2000000,
+          "max_output": 131072,
+          "supports_vision": true,
+          "supports_tools": true,
+          "supports_json_mode": true,
+          "supports_streaming": true,
+          "supports_reasoning": true,
+          "supports_code_exec": true
+        },
+        {
+          "id": "gemini-3-flash",
+          "display_name": "Gemini 3 Flash",
+          "description": "Modelo rapido e economico com thinking nativo",
+          "input_cost": 0.30,
+          "output_cost": 1.20,
+          "context_window": 2000000,
+          "max_output": 131072,
+          "supports_vision": true,
+          "supports_tools": true,
+          "supports_json_mode": true,
+          "supports_streaming": true,
+          "supports_reasoning": true,
+          "supports_code_exec": true
+        },
+        {
+          "id": "gemini-3-ultra",
+          "display_name": "Gemini 3 Ultra",
+          "description": "Modelo ultra-poderoso para tarefas mais complexas",
+          "input_cost": 5.00,
+          "output_cost": 40.00,
+          "context_window": 2000000,
+          "max_output": 131072,
+          "supports_vision": true,
+          "supports_tools": true,
+          "supports_json_mode": true,
+          "supports_streaming": true,
+          "supports_reasoning": true,
+          "supports_code_exec": true
+        }
+      ]
+    },
+    "deepseek": {
+      "name": "DeepSeek",
+      "base_url": "https://api.deepseek.com/v1",
+      "auth_header": "Authorization",
+      "auth_prefix": "Bearer",
+      "is_local": false,
+      "models": [
+        {
+          "id": "deepseek-chat",
+          "display_name": "DeepSeek Chat",
+          "description": "Melhor custo-beneficio do mercado",
+          "input_cost": 0.28,
+          "output_cost": 0.42,
+          "cached_input_cost": 0.028,
+          "context_window": 64000,
+          "max_output": 8192,
+          "supports_vision": false,
+          "supports_tools": true,
+          "supports_json_mode": true,
+          "supports_streaming": true
+        },
+        {
+          "id": "deepseek-reasoner",
+          "display_name": "DeepSeek Reasoner (R1)",
+          "description": "Modelo de raciocinio do DeepSeek",
+          "input_cost": 0.55,
+          "output_cost": 2.19,
+          "context_window": 64000,
+          "max_output": 8192,
+          "supports_vision": false,
+          "supports_tools": true,
+          "supports_reasoning": true,
+          "requires_temperature": false
+        }
+      ]
+    },
+    "mistral": {
+      "name": "Mistral",
+      "base_url": "https://api.mistral.ai/v1",
+      "auth_header": "Authorization",
+      "auth_prefix": "Bearer",
+      "is_local": false,
+      "models": [
+        {
+          "id": "mistral-large-latest",
+          "display_name": "Mistral Large 2",
+          "description": "Modelo mais capaz da Mistral",
+          "input_cost": 2.00,
+          "output_cost": 6.00,
+          "context_window": 128000,
+          "max_output": 8192,
+          "supports_vision": false,
+          "supports_tools": true,
+          "supports_json_mode": true,
+          "supports_streaming": true
+        },
+        {
+          "id": "mistral-small-latest",
+          "display_name": "Mistral Small",
+          "description": "Modelo economico da Mistral",
+          "input_cost": 0.20,
+          "output_cost": 0.60,
+          "context_window": 128000,
+          "max_output": 8192,
+          "supports_vision": false,
+          "supports_tools": true,
+          "supports_json_mode": true,
+          "supports_streaming": true
+        },
+        {
+          "id": "codestral-latest",
+          "display_name": "Codestral",
+          "description": "Especializado em codigo",
+          "input_cost": 0.30,
+          "output_cost": 0.90,
+          "context_window": 32000,
+          "max_output": 8192,
+          "supports_vision": false,
+          "supports_tools": true,
+          "supports_streaming": true
+        }
+      ]
+    },
+    "xai": {
+      "name": "xAI (Grok)",
+      "base_url": "https://api.x.ai/v1",
+      "auth_header": "Authorization",
+      "auth_prefix": "Bearer",
+      "is_local": false,
+      "models": [
+        {
+          "id": "grok-4",
+          "display_name": "Grok 4",
+          "description": "Modelo mais capaz da xAI",
+          "input_cost": 5.00,
+          "output_cost": 15.00,
+          "context_window": 131072,
+          "max_output": 8192,
+          "supports_vision": true,
+          "supports_tools": true,
+          "supports_streaming": true
+        },
+        {
+          "id": "grok-4-fast",
+          "display_name": "Grok 4 Fast",
+          "description": "Versao rapida do Grok 4",
+          "input_cost": 2.00,
+          "output_cost": 6.00,
+          "context_window": 131072,
+          "max_output": 8192,
+          "supports_vision": true,
+          "supports_tools": true,
+          "supports_streaming": true
+        }
+      ]
+    },
+    "perplexity": {
+      "name": "Perplexity",
+      "base_url": "https://api.perplexity.ai",
+      "auth_header": "Authorization",
+      "auth_prefix": "Bearer",
+      "is_local": false,
+      "models": [
+        {
+          "id": "sonar",
+          "display_name": "Sonar",
+          "description": "Busca em tempo real integrada",
+          "input_cost": 1.00,
+          "output_cost": 1.00,
+          "context_window": 32000,
+          "max_output": 4096,
+          "supports_vision": false,
+          "supports_tools": false,
+          "supports_search": true,
+          "supports_streaming": true
+        },
+        {
+          "id": "sonar-pro",
+          "display_name": "Sonar Pro",
+          "description": "Busca avancada com fontes",
+          "input_cost": 3.00,
+          "output_cost": 15.00,
+          "context_window": 32000,
+          "max_output": 4096,
+          "supports_vision": false,
+          "supports_tools": false,
+          "supports_search": true,
+          "supports_streaming": true
+        },
+        {
+          "id": "sonar-deep-research",
+          "display_name": "Sonar Deep Research",
+          "description": "Pesquisa profunda multi-fonte",
+          "input_cost": 5.00,
+          "output_cost": 20.00,
+          "context_window": 128000,
+          "max_output": 8192,
+          "supports_vision": false,
+          "supports_search": true,
+          "supports_reasoning": true
+        }
+      ]
+    },
+    "cohere": {
+      "name": "Cohere",
+      "base_url": "https://api.cohere.ai/v1",
+      "auth_header": "Authorization",
+      "auth_prefix": "Bearer",
+      "is_local": false,
+      "models": [
+        {
+          "id": "command-r-plus",
+          "display_name": "Command R+",
+          "description": "Modelo mais capaz com RAG integrado",
+          "input_cost": 2.50,
+          "output_cost": 10.00,
+          "context_window": 128000,
+          "max_output": 4096,
+          "supports_vision": false,
+          "supports_tools": true,
+          "supports_rag": true,
+          "supports_streaming": true
+        },
+        {
+          "id": "command-r",
+          "display_name": "Command R",
+          "description": "Modelo balanceado com RAG",
+          "input_cost": 0.15,
+          "output_cost": 0.60,
+          "context_window": 128000,
+          "max_output": 4096,
+          "supports_vision": false,
+          "supports_tools": true,
+          "supports_rag": true,
+          "supports_streaming": true
+        }
+      ]
+    },
+    "groq": {
+      "name": "Groq",
+      "base_url": "https://api.groq.com/openai/v1",
+      "auth_header": "Authorization",
+      "auth_prefix": "Bearer",
+      "is_local": false,
+      "models": [
+        {
+          "id": "llama-3.3-70b-versatile",
+          "display_name": "Llama 3.3 70B",
+          "description": "Llama 3.3 com inferencia ultra-rapida",
+          "input_cost": 0.59,
+          "output_cost": 0.79,
+          "context_window": 128000,
+          "max_output": 32768,
+          "supports_vision": false,
+          "supports_tools": true,
+          "supports_json_mode": true,
+          "supports_streaming": true
+        },
+        {
+          "id": "mixtral-8x7b-32768",
+          "display_name": "Mixtral 8x7B",
+          "description": "Modelo MoE rapido e economico",
+          "input_cost": 0.24,
+          "output_cost": 0.24,
+          "context_window": 32768,
+          "max_output": 8192,
+          "supports_vision": false,
+          "supports_tools": true,
+          "supports_json_mode": true,
+          "supports_streaming": true
+        }
+      ]
+    },
+    "openrouter": {
+      "name": "OpenRouter",
+      "base_url": "https://openrouter.ai/api/v1",
+      "auth_header": "Authorization",
+      "auth_prefix": "Bearer",
+      "is_local": false,
+      "models": [
+        {
+          "id": "openai/gpt-4o",
+          "display_name": "GPT-4o (via OpenRouter)",
+          "description": "Acesso ao GPT-4o via OpenRouter",
+          "input_cost": 2.50,
+          "output_cost": 10.00,
+          "context_window": 128000,
+          "max_output": 16384,
+          "supports_vision": true,
+          "supports_tools": true,
+          "supports_streaming": true
+        },
+        {
+          "id": "anthropic/claude-3.5-sonnet",
+          "display_name": "Claude 3.5 Sonnet (via OpenRouter)",
+          "description": "Acesso ao Claude via OpenRouter",
+          "input_cost": 3.00,
+          "output_cost": 15.00,
+          "context_window": 200000,
+          "max_output": 8192,
+          "supports_vision": true,
+          "supports_tools": true,
+          "supports_streaming": true
+        },
+        {
+          "id": "meta-llama/llama-3.1-405b-instruct",
+          "display_name": "Llama 3.1 405B",
+          "description": "Maior modelo open source",
+          "input_cost": 2.70,
+          "output_cost": 2.70,
+          "context_window": 128000,
+          "max_output": 8192,
+          "supports_vision": false,
+          "supports_tools": true,
+          "supports_streaming": true
+        }
+      ]
+    },
+    "ollama": {
+      "name": "Ollama (Local)",
+      "base_url": "http://localhost:11434/api",
+      "auth_header": "",
+      "auth_prefix": "",
+      "is_local": true,
+      "models": [
+        {
+          "id": "llama3.2",
+          "display_name": "Llama 3.2",
+          "description": "Meta Llama 3.2 local",
+          "input_cost": 0,
+          "output_cost": 0,
+          "context_window": 128000,
+          "max_output": 8192,
+          "supports_vision": true,
+          "supports_tools": false,
+          "supports_streaming": true
+        },
+        {
+          "id": "mistral",
+          "display_name": "Mistral",
+          "description": "Mistral 7B local",
+          "input_cost": 0,
+          "output_cost": 0,
+          "context_window": 32000,
+          "max_output": 4096,
+          "supports_vision": false,
+          "supports_tools": false,
+          "supports_streaming": true
+        },
+        {
+          "id": "codellama",
+          "display_name": "Code Llama",
+          "description": "Especializado em codigo",
+          "input_cost": 0,
+          "output_cost": 0,
+          "context_window": 16000,
+          "max_output": 4096,
+          "supports_vision": false,
+          "supports_tools": false,
+          "supports_streaming": true
+        }
+      ]
+    },
+    "vllm": {
+      "name": "vLLM (Local)",
+      "base_url": "http://localhost:8000/v1",
+      "auth_header": "",
+      "auth_prefix": "",
+      "is_local": true,
+      "models": []
+    },
+    "lmstudio": {
+      "name": "LM Studio (Local)",
+      "base_url": "http://localhost:1234/v1",
+      "auth_header": "",
+      "auth_prefix": "",
+      "is_local": true,
+      "models": []
+    }
+  }
+}

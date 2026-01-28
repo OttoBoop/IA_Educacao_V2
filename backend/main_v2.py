@@ -26,6 +26,7 @@ import json
 import tempfile
 import shutil
 import uuid
+import traceback
 
 # Importar nossos módulos
 from models import (
@@ -42,15 +43,38 @@ from ai_providers import (
     LocalLLMProvider,
 )
 
-# Importar rotas opcionais usando importlib para evitar erros de resolução estática
-import importlib
+
+# ============================================================
+# IMPORTAÇÃO DE ROUTERS COM DEBUG
+# ============================================================
 
 def _try_import_router(module_name: str):
+    """
+    Tenta importar um router de um módulo.
+    Agora com logging detalhado para debug.
+    """
     try:
+        import importlib
         module = importlib.import_module(module_name)
-    except ImportError:
+        router = getattr(module, "router", None)
+        if router:
+            print(f"[OK] Router carregado: {module_name}")
+        else:
+            print(f"[WARN] Modulo {module_name} nao tem 'router'")
+        return router
+    except ImportError as e:
+        print(f"[ERROR] Erro ao importar {module_name}: {e}")
+        traceback.print_exc()
         return None
-    return getattr(module, "router", None)
+    except Exception as e:
+        print(f"[ERROR] Erro inesperado ao importar {module_name}: {e}")
+        traceback.print_exc()
+        return None
+
+
+print("\n" + "="*50)
+print("CARREGANDO ROUTERS...")
+print("="*50)
 
 extras_router = _try_import_router("routes_extras")
 HAS_EXTRAS = extras_router is not None
@@ -64,11 +88,16 @@ HAS_RESULTADOS = resultados_router is not None
 chat_router = _try_import_router("routes_chat")
 HAS_CHAT = chat_router is not None
 
-visualizacao_router = _try_import_router("routes_visualizacao")
-HAS_VISUALIZACAO = visualizacao_router is not None
+pipeline_router = _try_import_router("routes_pipeline")
+HAS_PIPELINE = pipeline_router is not None
 
-aluno_router = _try_import_router("routes_aluno")
-HAS_ALUNO = aluno_router is not None
+code_executor_router = _try_import_router("routes_code_executor")
+HAS_CODE_EXECUTOR = code_executor_router is not None
+
+print("="*50)
+print(f"RESUMO: extras={HAS_EXTRAS}, prompts={HAS_PROMPTS}, resultados={HAS_RESULTADOS}")
+print(f"        chat={HAS_CHAT}, pipeline={HAS_PIPELINE}, code_executor={HAS_CODE_EXECUTOR}")
+print("="*50 + "\n")
 
 
 # ============================================================
@@ -133,6 +162,9 @@ async def validation_exception_handler(request: Request, exc: RequestValidationE
 @app.exception_handler(Exception)
 async def unhandled_exception_handler(request: Request, exc: Exception):
     trace_id = getattr(request.state, "trace_id", None)
+    # Log the error for debugging
+    print(f"[ERROR] Erro não tratado: {exc}")
+    traceback.print_exc()
     return JSONResponse(
         status_code=500,
         content={
@@ -160,13 +192,13 @@ if HAS_RESULTADOS:
 if HAS_CHAT:
     app.include_router(chat_router)
 
-# Incluir rotas de visualização se disponíveis
-if HAS_VISUALIZACAO:
-    app.include_router(visualizacao_router)
+# Incluir rotas de pipeline se disponíveis
+if HAS_PIPELINE:
+    app.include_router(pipeline_router)
 
-# Incluir rotas de aluno se disponíveis
-if HAS_ALUNO:
-    app.include_router(aluno_router)
+# Incluir rotas de code executor se disponíveis
+if HAS_CODE_EXECUTOR:
+    app.include_router(code_executor_router)
 
 # Storage
 storage = storage_v2
@@ -280,9 +312,9 @@ async def startup():
     """Inicializa providers de IA"""
     try:
         setup_providers_from_env()
-        print(f"✓ Providers carregados: {ai_registry.list_providers()}")
+        print(f"[OK] Providers carregados: {ai_registry.list_providers()}")
     except Exception as e:
-        print(f"⚠ Erro ao carregar providers: {e}")
+        print(f"[WARN] Erro ao carregar providers: {e}")
 
 
 # ============================================================
@@ -433,8 +465,10 @@ async def get_aluno(aluno_id: str):
 @app.delete("/api/alunos/{aluno_id}", tags=["Alunos"])
 async def deletar_aluno(aluno_id: str):
     """Deleta um aluno"""
-    # Implementar no storage se necessário
-    raise HTTPException(501, "Não implementado ainda")
+    success = storage.deletar_aluno(aluno_id)
+    if not success:
+        raise HTTPException(404, "Aluno não encontrado")
+    return {"success": True, "deleted": aluno_id}
 
 
 @app.post("/api/alunos/vincular", tags=["Alunos"])
@@ -534,7 +568,7 @@ async def upload_documento(
         raise HTTPException(400, f"Tipo inválido: {tipo}. Tipos válidos: {[t.value for t in TipoDocumento]}")
     
     # Validar aluno_id para tipos que precisam
-    if tipo_doc not in TipoDocumento.documentos_base() and not aluno_id:
+    if tipo_doc not in TipoDocumento.documentos_sem_aluno() and not aluno_id:
         raise HTTPException(400, f"Tipo '{tipo}' requer aluno_id")
     
     # Salvar arquivo temporário
@@ -751,30 +785,43 @@ async def adicionar_provider(config: ProviderConfig):
     """Adiciona ou atualiza um provider de IA"""
     try:
         provider_type = config.provider_type.lower()
+        api_key = config.api_key or ""
+        base_url = config.base_url
+
         if provider_type == "openai":
-            provider = OpenAIProvider(
-                api_key=config.api_key or os.getenv("OPENAI_API_KEY", ""),
-                model=config.model
-            )
+            api_key = api_key or os.getenv("OPENAI_API_KEY", "")
+            provider = OpenAIProvider(api_key=api_key, model=config.model)
         elif provider_type == "anthropic":
-            provider = AnthropicProvider(
-                api_key=config.api_key or os.getenv("ANTHROPIC_API_KEY", ""),
-                model=config.model
-            )
+            api_key = api_key or os.getenv("ANTHROPIC_API_KEY", "")
+            provider = AnthropicProvider(api_key=api_key, model=config.model)
         elif provider_type == "ollama":
-            provider = LocalLLMProvider(
-                base_url=config.base_url or "http://localhost:11434",
-                model=config.model
-            )
+            base_url = base_url or "http://localhost:11434"
+            provider = LocalLLMProvider(base_url=base_url, model=config.model)
         else:
             raise HTTPException(400, f"Tipo de provider não suportado: {config.provider_type}")
 
-        ai_registry.register(config.name, provider)
+        ai_registry.register(config.name, provider, api_key=api_key, base_url=base_url)
         return {"success": True, "name": config.name}
     except HTTPException:
         raise
     except Exception as e:
         raise HTTPException(500, str(e))
+
+
+@app.delete("/api/providers/{name}", tags=["Providers"])
+async def remover_provider(name: str):
+    """Remove um provider de IA"""
+    if ai_registry.unregister(name):
+        return {"success": True, "message": f"Provider '{name}' removido"}
+    raise HTTPException(404, f"Provider '{name}' não encontrado")
+
+
+@app.post("/api/providers/{name}/default", tags=["Providers"])
+async def definir_provider_padrao(name: str):
+    """Define um provider como padrão"""
+    if ai_registry.set_default(name):
+        return {"success": True, "default": name}
+    raise HTTPException(404, f"Provider '{name}' não encontrado")
 
 
 # ============================================================
@@ -798,6 +845,24 @@ async def listar_tipos_documentos():
 async def listar_niveis_ensino():
     """Lista níveis de ensino disponíveis"""
     return {"niveis": [n.value for n in NivelEnsino]}
+
+
+# ============================================================
+# ENDPOINTS: DEBUG (remover em produção)
+# ============================================================
+
+@app.get("/api/debug/routers", tags=["Debug"])
+async def debug_routers():
+    """Mostra quais routers foram carregados (remover em produção)"""
+    return {
+        "routers": {
+            "extras": HAS_EXTRAS,
+            "prompts": HAS_PROMPTS,
+            "resultados": HAS_RESULTADOS,
+            "chat": HAS_CHAT,
+            "pipeline": HAS_PIPELINE
+        }
+    }
 
 
 # ============================================================
@@ -831,7 +896,8 @@ async def serve_frontend():
 
 # Servir arquivos estáticos do frontend
 if FRONTEND_PATH.exists():
-    app.mount("/static", StaticFiles(directory=str(FRONTEND_PATH)), name="static")
+    app.mount("/static", StaticFiles(directory=str(FRONTEND_PATH)), 
+              name="static")
 
 
 # ============================================================

@@ -1,0 +1,776 @@
+{
+  "20260128_043218": {
+    "timestamp": "2026-01-28T04:32:49.190139",
+    "total_tests": 15,
+    "successful": 14,
+    "failed": 1,
+    "results": [
+      {
+        "model_id": "gpt-4o-mini",
+        "model_name": "GPT-4o Mini",
+        "model_type": "chat",
+        "prompt_type": "simple",
+        "params_sent": {
+          "model": "gpt-4o-mini",
+          "max_tokens": 1000,
+          "temperature": 0.7
+        },
+        "timestamp": "2026-01-28T04:32:18.247271",
+        "success": true,
+        "error": null,
+        "response": "A capital do Brasil é Brasília.",
+        "tokens_used": 44,
+        "latency_ms": 1418.46
+      },
+      {
+        "model_id": "gpt-4o-mini",
+        "model_name": "GPT-4o Mini",
+        "model_type": "chat",
+        "prompt_type": "math",
+        "params_sent": {
+          "model": "gpt-4o-mini",
+          "max_tokens": 1000,
+          "temperature": 0.7
+        },
+        "timestamp": "2026-01-28T04:32:19.665814",
+        "success": true,
+        "error": null,
+        "response": "Resultado: 346.",
+        "tokens_used": 49,
+        "latency_ms": 962.27
+      },
+      {
+        "model_id": "gpt-4o-mini",
+        "model_name": "GPT-4o Mini",
+        "model_type": "chat",
+        "prompt_type": "document",
+        "params_sent": {
+          "model": "gpt-4o-mini",
+          "max_tokens": 1000,
+          "temperature": 0.7
+        },
+        "timestamp": "2026-01-28T04:32:20.628163",
+        "success": true,
+        "error": null,
+        "response": "```json\n{\n  \"titulo\": \"Prova de Matematica\",\n  \"questoes\": [\n    {\n      \"numero\": 1,\n      \"enunciado\": \"Qual é a soma de 5 e 7?\",\n      \"resposta\": \"12\"\n    },\n    {\n      \"numero\": 2,\n      \"enunciado\": \"Qual é o produto de 4 e 6?\",\n      \"resposta\": \"24\"\n    }\n  ]\n}\n```",
+        "tokens_used": 185,
+        "latency_ms": 2700.99
+      },
+      {
+        "model_id": "gpt-4o-mini",
+        "model_name": "GPT-4o Mini",
+        "model_type": "chat",
+        "test_type": "tool_use",
+        "timestamp": "2026-01-28T04:32:23.329248",
+        "success": true,
+        "error": null,
+        "tool_calls": [
+          {
+            "name": "create_document",
+            "arguments": "{\"titulo\":\"Teste\",\"conteudo\":\"Este e um teste de tool use\"}"
+          }
+        ],
+        "latency_ms": 1472.8
+      },
+      {
+        "model_id": "gpt-4o",
+        "model_name": "GPT-4o",
+        "model_type": "chat",
+        "prompt_type": "simple",
+        "params_sent": {
+          "model": "gpt-4o",
+          "max_tokens": 1000,
+          "temperature": 0.7
+        },
+        "timestamp": "2026-01-28T04:32:25.802250",
+        "success": true,
+        "error": null,
+        "response": "Brasília.",
+        "tokens_used": 40,
+        "latency_ms": 828.02
+      },
+      {
+        "model_id": "gpt-4o",
+        "model_name": "GPT-4o",
+        "model_type": "chat",
+        "prompt_type": "math",
+        "params_sent": {
+          "model": "gpt-4o",
+          "max_tokens": 1000,
+          "temperature": 0.7
+        },
+        "timestamp": "2026-01-28T04:32:26.630373",
+        "success": true,
+        "error": null,
+        "response": "390",
+        "tokens_used": 45,
+        "latency_ms": 1575.87
+      },
+      {
+        "model_id": "gpt-4o",
+        "model_name": "GPT-4o",
+        "model_type": "chat",
+        "prompt_type": "document",
+        "params_sent": {
+          "model": "gpt-4o",
+          "max_tokens": 1000,
+          "temperature": 0.7
+        },
+        "timestamp": "2026-01-28T04:32:28.206315",
+        "success": true,
+        "error": null,
+        "response": "```json\n{\n  \"titulo\": \"Prova de Matematica\",\n  \"questoes\": [\n    {\n      \"numero\": 1,\n      \"enunciado\": \"Qual é a soma de 5 e 3?\",\n      \"resposta\": \"8\"\n    },\n    {\n      \"numero\": 2,\n      \"enunciado\": \"Qual é o produto de 4 e 6?\",\n      \"resposta\": \"24\"\n    }\n  ]\n}\n```",
+        "tokens_used": 185,
+        "latency_ms": 2690.19
+      },
+      {
+        "model_id": "gpt-4o",
+        "model_name": "GPT-4o",
+        "model_type": "chat",
+        "test_type": "tool_use",
+        "timestamp": "2026-01-28T04:32:30.896600",
+        "success": true,
+        "error": null,
+        "tool_calls": [
+          {
+            "name": "create_document",
+            "arguments": "{\"titulo\":\"Teste\",\"conteudo\":\"Este e um teste de tool use\"}"
+          }
+        ],
+        "latency_ms": 1062.12
+      },
+      {
+        "model_id": "o3-mini",
+        "model_name": "o3 Mini",
+        "model_type": "reasoning",
+        "prompt_type": "simple",
+        "params_sent": {
+          "model": "o3-mini",
+          "max_completion_tokens": 1000,
+          "reasoning_effort": "low"
+        },
+        "timestamp": "2026-01-28T04:32:32.963805",
+        "success": true,
+        "error": null,
+        "response": "A capital do Brasil é Brasília.",
+        "tokens_used": 184,
+        "latency_ms": 2748.13
+      },
+      {
+        "model_id": "o3-mini",
+        "model_name": "o3 Mini",
+        "model_type": "reasoning",
+        "prompt_type": "math",
+        "params_sent": {
+          "model": "o3-mini",
+          "max_completion_tokens": 1000,
+          "reasoning_effort": "low"
+        },
+        "timestamp": "2026-01-28T04:32:35.712025",
+        "success": true,
+        "error": null,
+        "response": "380",
+        "tokens_used": 122,
+        "latency_ms": 1531.92
+      },
+      {
+        "model_id": "o3-mini",
+        "model_name": "o3 Mini",
+        "model_type": "reasoning",
+        "prompt_type": "document",
+        "params_sent": {
+          "model": "o3-mini",
+          "max_completion_tokens": 1000,
+          "reasoning_effort": "low"
+        },
+        "timestamp": "2026-01-28T04:32:37.244014",
+        "success": true,
+        "error": null,
+        "response": "{\n  \"titulo\": \"Prova de Matematica\",\n  \"questoes\": [\n    {\n      \"numero\": 1,\n      \"enunciado\": \"Qual é a soma de 2 + 2?\",\n      \"resposta\": \"4\"\n    },\n    {\n      \"numero\": 2,\n      \"enunciado\": \"Qual é o resultado de 3 x 3?\",\n      \"resposta\": \"9\"\n    }\n  ]\n}",
+        "tokens_used": 260,
+        "latency_ms": 2297.63
+      },
+      {
+        "model_id": "o3-mini",
+        "model_name": "o3 Mini",
+        "model_type": "reasoning",
+        "test_type": "tool_use",
+        "timestamp": "2026-01-28T04:32:39.541723",
+        "success": false,
+        "error": {
+          "status_code": 400,
+          "message": "{'error': {'message': \"Unsupported parameter: 'parallel_tool_calls' is not supported with this model.\", 'type': 'invalid_request_error', 'param': 'parallel_tool_calls', 'code': 'unsupported_parameter'}}"
+        },
+        "tool_calls": null,
+        "latency_ms": 523.45
+      },
+      {
+        "model_id": "o3-mini",
+        "model_name": "o3 Mini",
+        "model_type": "reasoning",
+        "prompt_type": "reasoning_low",
+        "params_sent": {
+          "model": "o3-mini",
+          "max_completion_tokens": 1000,
+          "reasoning_effort": "low"
+        },
+        "timestamp": "2026-01-28T04:32:40.065232",
+        "success": true,
+        "error": null,
+        "response": "380",
+        "tokens_used": 58,
+        "latency_ms": 1893.27
+      },
+      {
+        "model_id": "o3-mini",
+        "model_name": "o3 Mini",
+        "model_type": "reasoning",
+        "prompt_type": "reasoning_medium",
+        "params_sent": {
+          "model": "o3-mini",
+          "max_completion_tokens": 1000,
+          "reasoning_effort": "medium"
+        },
+        "timestamp": "2026-01-28T04:32:41.958570",
+        "success": true,
+        "error": null,
+        "response": "380",
+        "tokens_used": 186,
+        "latency_ms": 2653.84
+      },
+      {
+        "model_id": "o3-mini",
+        "model_name": "o3 Mini",
+        "model_type": "reasoning",
+        "prompt_type": "reasoning_high",
+        "params_sent": {
+          "model": "o3-mini",
+          "max_completion_tokens": 1000,
+          "reasoning_effort": "high"
+        },
+        "timestamp": "2026-01-28T04:32:44.612483",
+        "success": true,
+        "error": null,
+        "response": "380",
+        "tokens_used": 314,
+        "latency_ms": 3561.91
+      }
+    ]
+  },
+  "20260128_043344": {
+    "timestamp": "2026-01-28T04:34:13.570171",
+    "total_tests": 15,
+    "successful": 14,
+    "failed": 1,
+    "results": [
+      {
+        "model_id": "gpt-4o-mini",
+        "model_name": "GPT-4o Mini",
+        "model_type": "chat",
+        "prompt_type": "simple",
+        "params_sent": {
+          "model": "gpt-4o-mini",
+          "max_tokens": 1000,
+          "temperature": 0.7
+        },
+        "timestamp": "2026-01-28T04:33:44.647082",
+        "success": true,
+        "error": null,
+        "response": "A capital do Brasil é Brasília.",
+        "tokens_used": 44,
+        "latency_ms": 1048.83
+      },
+      {
+        "model_id": "gpt-4o-mini",
+        "model_name": "GPT-4o Mini",
+        "model_type": "chat",
+        "prompt_type": "math",
+        "params_sent": {
+          "model": "gpt-4o-mini",
+          "max_tokens": 1000,
+          "temperature": 0.7
+        },
+        "timestamp": "2026-01-28T04:33:45.696434",
+        "success": true,
+        "error": null,
+        "response": "Resultado: 346.",
+        "tokens_used": 49,
+        "latency_ms": 981.03
+      },
+      {
+        "model_id": "gpt-4o-mini",
+        "model_name": "GPT-4o Mini",
+        "model_type": "chat",
+        "prompt_type": "document",
+        "params_sent": {
+          "model": "gpt-4o-mini",
+          "max_tokens": 1000,
+          "temperature": 0.7
+        },
+        "timestamp": "2026-01-28T04:33:46.678028",
+        "success": true,
+        "error": null,
+        "response": "```json\n{\n  \"titulo\": \"Prova de Matematica\",\n  \"questoes\": [\n    {\n      \"numero\": 1,\n      \"enunciado\": \"Qual é a soma de 5 e 3?\",\n      \"resposta\": \"8\"\n    },\n    {\n      \"numero\": 2,\n      \"enunciado\": \"Qual é o produto de 4 e 7?\",\n      \"resposta\": \"28\"\n    }\n  ]\n}\n```",
+        "tokens_used": 185,
+        "latency_ms": 3118.73
+      },
+      {
+        "model_id": "gpt-4o-mini",
+        "model_name": "GPT-4o Mini",
+        "model_type": "chat",
+        "test_type": "tool_use",
+        "timestamp": "2026-01-28T04:33:49.797266",
+        "success": true,
+        "error": null,
+        "tool_calls": [
+          {
+            "name": "create_document",
+            "arguments": "{\"titulo\":\"Teste\",\"conteudo\":\"Este e um teste de tool use\"}"
+          }
+        ],
+        "latency_ms": 1522.91
+      },
+      {
+        "model_id": "gpt-4o",
+        "model_name": "GPT-4o",
+        "model_type": "chat",
+        "prompt_type": "simple",
+        "params_sent": {
+          "model": "gpt-4o",
+          "max_tokens": 1000,
+          "temperature": 0.7
+        },
+        "timestamp": "2026-01-28T04:33:52.324104",
+        "success": true,
+        "error": null,
+        "response": "Brasília.",
+        "tokens_used": 40,
+        "latency_ms": 652.37
+      },
+      {
+        "model_id": "gpt-4o",
+        "model_name": "GPT-4o",
+        "model_type": "chat",
+        "prompt_type": "math",
+        "params_sent": {
+          "model": "gpt-4o",
+          "max_tokens": 1000,
+          "temperature": 0.7
+        },
+        "timestamp": "2026-01-28T04:33:52.977100",
+        "success": true,
+        "error": null,
+        "response": "390",
+        "tokens_used": 45,
+        "latency_ms": 646.68
+      },
+      {
+        "model_id": "gpt-4o",
+        "model_name": "GPT-4o",
+        "model_type": "chat",
+        "prompt_type": "document",
+        "params_sent": {
+          "model": "gpt-4o",
+          "max_tokens": 1000,
+          "temperature": 0.7
+        },
+        "timestamp": "2026-01-28T04:33:53.624328",
+        "success": true,
+        "error": null,
+        "response": "```json\n{\n  \"titulo\": \"Prova de Matematica\",\n  \"questoes\": [\n    {\n      \"numero\": 1,\n      \"enunciado\": \"Qual é o resultado de 5 + 3?\",\n      \"resposta\": \"8\"\n    },\n    {\n      \"numero\": 2,\n      \"enunciado\": \"Quanto é 9 - 4?\",\n      \"resposta\": \"5\"\n    }\n  ]\n}\n```",
+        "tokens_used": 182,
+        "latency_ms": 1228.42
+      },
+      {
+        "model_id": "gpt-4o",
+        "model_name": "GPT-4o",
+        "model_type": "chat",
+        "test_type": "tool_use",
+        "timestamp": "2026-01-28T04:33:54.853303",
+        "success": true,
+        "error": null,
+        "tool_calls": [
+          {
+            "name": "create_document",
+            "arguments": "{\"titulo\":\"Teste\",\"conteudo\":\"Este e um teste de tool use\"}"
+          }
+        ],
+        "latency_ms": 881.28
+      },
+      {
+        "model_id": "o3-mini",
+        "model_name": "o3 Mini",
+        "model_type": "reasoning",
+        "prompt_type": "simple",
+        "params_sent": {
+          "model": "o3-mini",
+          "max_completion_tokens": 1000,
+          "reasoning_effort": "low"
+        },
+        "timestamp": "2026-01-28T04:33:56.745697",
+        "success": true,
+        "error": null,
+        "response": "Brasília.",
+        "tokens_used": 180,
+        "latency_ms": 1899.27
+      },
+      {
+        "model_id": "o3-mini",
+        "model_name": "o3 Mini",
+        "model_type": "reasoning",
+        "prompt_type": "math",
+        "params_sent": {
+          "model": "o3-mini",
+          "max_completion_tokens": 1000,
+          "reasoning_effort": "low"
+        },
+        "timestamp": "2026-01-28T04:33:58.645598",
+        "success": true,
+        "error": null,
+        "response": "380",
+        "tokens_used": 121,
+        "latency_ms": 1480.03
+      },
+      {
+        "model_id": "o3-mini",
+        "model_name": "o3 Mini",
+        "model_type": "reasoning",
+        "prompt_type": "document",
+        "params_sent": {
+          "model": "o3-mini",
+          "max_completion_tokens": 1000,
+          "reasoning_effort": "low"
+        },
+        "timestamp": "2026-01-28T04:34:00.126159",
+        "success": true,
+        "error": null,
+        "response": "{\n  \"titulo\": \"Prova de Matematica\",\n  \"questoes\": [\n    {\n      \"numero\": 1,\n      \"enunciado\": \"Qual é o resultado de 2 + 3?\",\n      \"resposta\": \"5\"\n    },\n    {\n      \"numero\": 2,\n      \"enunciado\": \"Quanto é 7 - 4?\",\n      \"resposta\": \"3\"\n    }\n  ]\n}",
+        "tokens_used": 318,
+        "latency_ms": 3097.49
+      },
+      {
+        "model_id": "o3-mini",
+        "model_name": "o3 Mini",
+        "model_type": "reasoning",
+        "test_type": "tool_use",
+        "timestamp": "2026-01-28T04:34:03.224280",
+        "success": false,
+        "error": {
+          "status_code": 400,
+          "message": "{'error': {'message': \"Unsupported parameter: 'parallel_tool_calls' is not supported with this model.\", 'type': 'invalid_request_error', 'param': 'parallel_tool_calls', 'code': 'unsupported_parameter'}}"
+        },
+        "tool_calls": null,
+        "latency_ms": 527.4
+      },
+      {
+        "model_id": "o3-mini",
+        "model_name": "o3 Mini",
+        "model_type": "reasoning",
+        "prompt_type": "reasoning_low",
+        "params_sent": {
+          "model": "o3-mini",
+          "max_completion_tokens": 1000,
+          "reasoning_effort": "low"
+        },
+        "timestamp": "2026-01-28T04:34:03.751990",
+        "success": true,
+        "error": null,
+        "response": "380",
+        "tokens_used": 57,
+        "latency_ms": 2565.79
+      },
+      {
+        "model_id": "o3-mini",
+        "model_name": "o3 Mini",
+        "model_type": "reasoning",
+        "prompt_type": "reasoning_medium",
+        "params_sent": {
+          "model": "o3-mini",
+          "max_completion_tokens": 1000,
+          "reasoning_effort": "medium"
+        },
+        "timestamp": "2026-01-28T04:34:06.318274",
+        "success": true,
+        "error": null,
+        "response": "380",
+        "tokens_used": 122,
+        "latency_ms": 1879.61
+      },
+      {
+        "model_id": "o3-mini",
+        "model_name": "o3 Mini",
+        "model_type": "reasoning",
+        "prompt_type": "reasoning_high",
+        "params_sent": {
+          "model": "o3-mini",
+          "max_completion_tokens": 1000,
+          "reasoning_effort": "high"
+        },
+        "timestamp": "2026-01-28T04:34:08.198539",
+        "success": true,
+        "error": null,
+        "response": "380",
+        "tokens_used": 442,
+        "latency_ms": 4356.65
+      }
+    ]
+  },
+  "20260128_043703": {
+    "timestamp": "2026-01-28T04:37:30.558792",
+    "total_tests": 15,
+    "successful": 14,
+    "failed": 1,
+    "results": [
+      {
+        "model_id": "gpt-4o-mini",
+        "model_name": "GPT-4o Mini",
+        "model_type": "chat",
+        "prompt_type": "simple",
+        "params_sent": {
+          "model": "gpt-4o-mini",
+          "max_tokens": 1000,
+          "temperature": 0.7
+        },
+        "timestamp": "2026-01-28T04:37:03.501875",
+        "success": true,
+        "error": null,
+        "response": "A capital do Brasil é Brasília.",
+        "tokens_used": 44,
+        "latency_ms": 1116.66
+      },
+      {
+        "model_id": "gpt-4o-mini",
+        "model_name": "GPT-4o Mini",
+        "model_type": "chat",
+        "prompt_type": "math",
+        "params_sent": {
+          "model": "gpt-4o-mini",
+          "max_tokens": 1000,
+          "temperature": 0.7
+        },
+        "timestamp": "2026-01-28T04:37:04.618990",
+        "success": true,
+        "error": null,
+        "response": "O resultado é 366.",
+        "tokens_used": 50,
+        "latency_ms": 935.45
+      },
+      {
+        "model_id": "gpt-4o-mini",
+        "model_name": "GPT-4o Mini",
+        "model_type": "chat",
+        "prompt_type": "document",
+        "params_sent": {
+          "model": "gpt-4o-mini",
+          "max_tokens": 1000,
+          "temperature": 0.7
+        },
+        "timestamp": "2026-01-28T04:37:05.554944",
+        "success": true,
+        "error": null,
+        "response": "```json\n{\n  \"titulo\": \"Prova de Matematica\",\n  \"questoes\": [\n    {\n      \"numero\": 1,\n      \"enunciado\": \"Qual é a soma de 5 e 3?\",\n      \"resposta\": \"8\"\n    },\n    {\n      \"numero\": 2,\n      \"enunciado\": \"Qual é o produto de 4 e 6?\",\n      \"resposta\": \"24\"\n    }\n  ]\n}\n```",
+        "tokens_used": 185,
+        "latency_ms": 3112.97
+      },
+      {
+        "model_id": "gpt-4o-mini",
+        "model_name": "GPT-4o Mini",
+        "model_type": "chat",
+        "test_type": "tool_use",
+        "timestamp": "2026-01-28T04:37:08.668443",
+        "success": true,
+        "error": null,
+        "tool_calls": [
+          {
+            "name": "create_document",
+            "arguments": "{\"titulo\":\"Teste\",\"conteudo\":\"Este e um teste de tool use\"}"
+          }
+        ],
+        "latency_ms": 1242.14
+      },
+      {
+        "model_id": "gpt-4o",
+        "model_name": "GPT-4o",
+        "model_type": "chat",
+        "prompt_type": "simple",
+        "params_sent": {
+          "model": "gpt-4o",
+          "max_tokens": 1000,
+          "temperature": 0.7
+        },
+        "timestamp": "2026-01-28T04:37:10.918339",
+        "success": true,
+        "error": null,
+        "response": "Brasília.",
+        "tokens_used": 40,
+        "latency_ms": 682.1
+      },
+      {
+        "model_id": "gpt-4o",
+        "model_name": "GPT-4o",
+        "model_type": "chat",
+        "prompt_type": "math",
+        "params_sent": {
+          "model": "gpt-4o",
+          "max_tokens": 1000,
+          "temperature": 0.7
+        },
+        "timestamp": "2026-01-28T04:37:11.601232",
+        "success": true,
+        "error": null,
+        "response": "390",
+        "tokens_used": 45,
+        "latency_ms": 720.79
+      },
+      {
+        "model_id": "gpt-4o",
+        "model_name": "GPT-4o",
+        "model_type": "chat",
+        "prompt_type": "document",
+        "params_sent": {
+          "model": "gpt-4o",
+          "max_tokens": 1000,
+          "temperature": 0.7
+        },
+        "timestamp": "2026-01-28T04:37:12.322501",
+        "success": true,
+        "error": null,
+        "response": "```json\n{\n  \"titulo\": \"Prova de Matematica\",\n  \"questoes\": [\n    {\n      \"numero\": 1,\n      \"enunciado\": \"Qual é a soma de 5 e 3?\",\n      \"resposta\": \"8\"\n    },\n    {\n      \"numero\": 2,\n      \"enunciado\": \"Qual é o resultado de 9 menos 4?\",\n      \"resposta\": \"5\"\n    }\n  ]\n}\n```",
+        "tokens_used": 185,
+        "latency_ms": 1660.26
+      },
+      {
+        "model_id": "gpt-4o",
+        "model_name": "GPT-4o",
+        "model_type": "chat",
+        "test_type": "tool_use",
+        "timestamp": "2026-01-28T04:37:13.983290",
+        "success": true,
+        "error": null,
+        "tool_calls": [
+          {
+            "name": "create_document",
+            "arguments": "{\"titulo\":\"Teste\",\"conteudo\":\"Este e um teste de tool use\"}"
+          }
+        ],
+        "latency_ms": 865.47
+      },
+      {
+        "model_id": "o3-mini",
+        "model_name": "o3 Mini",
+        "model_type": "reasoning",
+        "prompt_type": "simple",
+        "params_sent": {
+          "model": "o3-mini",
+          "max_completion_tokens": 1000,
+          "reasoning_effort": "low"
+        },
+        "timestamp": "2026-01-28T04:37:15.864066",
+        "success": true,
+        "error": null,
+        "response": "Brasília.",
+        "tokens_used": 116,
+        "latency_ms": 1551.42
+      },
+      {
+        "model_id": "o3-mini",
+        "model_name": "o3 Mini",
+        "model_type": "reasoning",
+        "prompt_type": "math",
+        "params_sent": {
+          "model": "o3-mini",
+          "max_completion_tokens": 1000,
+          "reasoning_effort": "low"
+        },
+        "timestamp": "2026-01-28T04:37:17.415908",
+        "success": true,
+        "error": null,
+        "response": "380",
+        "tokens_used": 58,
+        "latency_ms": 1439.57
+      },
+      {
+        "model_id": "o3-mini",
+        "model_name": "o3 Mini",
+        "model_type": "reasoning",
+        "prompt_type": "document",
+        "params_sent": {
+          "model": "o3-mini",
+          "max_completion_tokens": 1000,
+          "reasoning_effort": "low"
+        },
+        "timestamp": "2026-01-28T04:37:18.855939",
+        "success": true,
+        "error": null,
+        "response": "{\n  \"titulo\": \"Prova de Matematica\",\n  \"questoes\": [\n    {\n      \"numero\": 1,\n      \"enunciado\": \"Qual é o resultado de 2 + 2?\",\n      \"resposta\": \"4\"\n    },\n    {\n      \"numero\": 2,\n      \"enunciado\": \"Qual é o resultado de 3 * 3?\",\n      \"resposta\": \"9\"\n    }\n  ]\n}",
+        "tokens_used": 321,
+        "latency_ms": 2457.74
+      },
+      {
+        "model_id": "o3-mini",
+        "model_name": "o3 Mini",
+        "model_type": "reasoning",
+        "test_type": "tool_use",
+        "timestamp": "2026-01-28T04:37:21.314198",
+        "success": false,
+        "error": {
+          "status_code": 400,
+          "message": "{'error': {'message': \"Unsupported parameter: 'parallel_tool_calls' is not supported with this model.\", 'type': 'invalid_request_error', 'param': 'parallel_tool_calls', 'code': 'unsupported_parameter'}}"
+        },
+        "tool_calls": null,
+        "latency_ms": 493.67
+      },
+      {
+        "model_id": "o3-mini",
+        "model_name": "o3 Mini",
+        "model_type": "reasoning",
+        "prompt_type": "reasoning_low",
+        "params_sent": {
+          "model": "o3-mini",
+          "max_completion_tokens": 1000,
+          "reasoning_effort": "low"
+        },
+        "timestamp": "2026-01-28T04:37:21.808590",
+        "success": true,
+        "error": null,
+        "response": "380",
+        "tokens_used": 122,
+        "latency_ms": 2309.02
+      },
+      {
+        "model_id": "o3-mini",
+        "model_name": "o3 Mini",
+        "model_type": "reasoning",
+        "prompt_type": "reasoning_medium",
+        "params_sent": {
+          "model": "o3-mini",
+          "max_completion_tokens": 1000,
+          "reasoning_effort": "medium"
+        },
+        "timestamp": "2026-01-28T04:37:24.118533",
+        "success": true,
+        "error": null,
+        "response": "380",
+        "tokens_used": 185,
+        "latency_ms": 1987.79
+      },
+      {
+        "model_id": "o3-mini",
+        "model_name": "o3 Mini",
+        "model_type": "reasoning",
+        "prompt_type": "reasoning_high",
+        "params_sent": {
+          "model": "o3-mini",
+          "max_completion_tokens": 1000,
+          "reasoning_effort": "high"
+        },
+        "timestamp": "2026-01-28T04:37:26.106751",
+        "success": true,
+        "error": null,
+        "response": "380",
+        "tokens_used": 249,
+        "latency_ms": 3435.75
+      }
+    ]
+  }
+}

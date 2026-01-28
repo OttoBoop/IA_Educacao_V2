@@ -1,35 +1,55 @@
 """
-PROVA AI - Executor de Pipeline v2.0
+PROVA AI - Executor de Pipeline v2.5 (Unificado)
 
 Executa etapas individuais do pipeline de correção.
-Permite escolher IA e prompt para cada execução.
+Suporta envio MULTIMODAL (PDFs e imagens nativos) para APIs de IA.
+
+Mantém compatibilidade com:
+- ai_registry (sistema antigo)
+- chat_service.provider_manager (sistema novo)
+- Sistema de prompts existente
 """
 
 from dataclasses import dataclass, field
 from datetime import datetime
-from typing import Optional, Dict, Any, List
+from typing import Optional, Dict, Any, List, Union
 from pathlib import Path
 import json
 import asyncio
 import time
+import re
+import tempfile
+import os
 
 from models import TipoDocumento, Documento
 from prompts import PromptManager, PromptTemplate, EtapaProcessamento, prompt_manager
 from storage_v2 import StorageManagerV2, storage_v2 as storage
 from ai_providers import ai_registry, AIResponse
 
+# Import do sistema multimodal
+try:
+    from anexos import ClienteAPIMultimodal, PreparadorArquivos, ResultadoEnvio
+    HAS_MULTIMODAL = True
+except ImportError:
+    HAS_MULTIMODAL = False
+    print("[WARN] Sistema multimodal não disponível (anexos.py não encontrado)")
+
+
+# ============================================================
+# DATACLASSES DE RESULTADO
+# ============================================================
 
 @dataclass
 class ResultadoExecucao:
-    """Resultado de uma execução de etapa"""
+    """Resultado de uma execução de etapa (compatível com sistema antigo)"""
     sucesso: bool
-    etapa: EtapaProcessamento
+    etapa: Union[EtapaProcessamento, str]
     
     # Dados da execução
-    prompt_usado: str
-    prompt_id: str
-    provider: str
-    modelo: str
+    prompt_usado: str = ""
+    prompt_id: str = ""
+    provider: str = ""
+    modelo: str = ""
     
     # Resultado
     resposta_raw: str = ""
@@ -43,32 +63,133 @@ class ResultadoExecucao:
     # Documento gerado (se salvou)
     documento_id: Optional[str] = None
     
+    # Multimodal - novos campos
+    anexos_enviados: List[Dict[str, Any]] = field(default_factory=list)
+    anexos_confirmados: bool = False
+    alertas: List[Dict[str, Any]] = field(default_factory=list)
+    
     # Erro (se falhou)
     erro: Optional[str] = None
     
     def to_dict(self) -> Dict[str, Any]:
+        etapa_valor = self.etapa.value if isinstance(self.etapa, EtapaProcessamento) else self.etapa
         return {
             "sucesso": self.sucesso,
-            "etapa": self.etapa.value,
+            "etapa": etapa_valor,
             "prompt_id": self.prompt_id,
             "provider": self.provider,
             "modelo": self.modelo,
-            "resposta_raw": self.resposta_raw,
+            "resposta_raw": self.resposta_raw[:2000] + "..." if len(self.resposta_raw) > 2000 else self.resposta_raw,
             "resposta_parsed": self.resposta_parsed,
             "tokens_entrada": self.tokens_entrada,
             "tokens_saida": self.tokens_saida,
             "tempo_ms": self.tempo_ms,
             "documento_id": self.documento_id,
+            "anexos_enviados": self.anexos_enviados,
+            "anexos_confirmados": self.anexos_confirmados,
+            "alertas": self.alertas,
             "erro": self.erro
         }
 
 
+# Alias para compatibilidade com routes_pipeline.py
+ResultadoEtapa = ResultadoExecucao
+
+
+# ============================================================
+# PIPELINE EXECUTOR UNIFICADO
+# ============================================================
+
 class PipelineExecutor:
-    """Executa etapas do pipeline de correção"""
+    """
+    Executa etapas do pipeline de correção.
+    
+    Suporta dois modos:
+    1. Modo texto (legado): extrai texto de documentos e envia como string
+    2. Modo multimodal (novo): envia PDFs e imagens nativamente para a API
+    """
     
     def __init__(self):
         self.prompt_manager = prompt_manager
         self.storage = storage
+        self.preparador = PreparadorArquivos() if HAS_MULTIMODAL else None
+    
+    # ============================================================
+    # MÉTODOS AUXILIARES PARA OBTER PROVIDER
+    # ============================================================
+    
+    def _get_provider_config(self, provider_id: str = None) -> Dict[str, Any]:
+        """
+        Obtém configuração do provider para uso com ClienteAPIMultimodal.
+        Tenta primeiro o chat_service (model_manager), depois ai_registry.
+        """
+        # Tentar chat_service primeiro (sistema mais novo)
+        try:
+            from chat_service import model_manager, api_key_manager
+
+            if provider_id:
+                model = model_manager.get(provider_id)
+                print(f"[DEBUG] Provider ID solicitado: {provider_id}, modelo encontrado: {model.nome if model else 'None'}")
+            else:
+                model = model_manager.get_default()
+                print(f"[DEBUG] Usando modelo padrão: {model.nome if model else 'None'}")
+
+            if model:
+                print(f"[DEBUG] Modelo: tipo={model.tipo.value}, modelo={model.modelo}")
+                # Obter API key
+                api_key = None
+                if model.api_key_id:
+                    key_config = api_key_manager.get(model.api_key_id)
+                    if key_config:
+                        api_key = key_config.api_key
+                        print(f"[DEBUG] API key obtida via api_key_id: {model.api_key_id}")
+
+                if not api_key:
+                    key_config = api_key_manager.get_por_empresa(model.tipo)
+                    if key_config:
+                        api_key = key_config.api_key
+                        print(f"[DEBUG] API key obtida via empresa: {model.tipo.value}")
+
+                if not api_key:
+                    print(f"[WARN] Nenhuma API key encontrada para modelo {model.nome} ({model.tipo.value})")
+
+                if api_key:
+                    return {
+                        "tipo": model.tipo.value,
+                        "api_key": api_key,
+                        "modelo": model.modelo,
+                        "base_url": model.base_url,
+                        "max_tokens": model.max_tokens,
+                        "temperature": model.temperature,
+                        "suporta_temperature": model.suporta_temperature
+                    }
+        except ImportError:
+            print("[WARN] chat_service não disponível, usando ai_registry")
+        except Exception as e:
+            print(f"[WARN] Erro ao buscar provider via chat_service: {e}")
+        
+        # Fallback para ai_registry
+        provider = ai_registry.get(provider_id) if provider_id else ai_registry.get_default()
+        if provider:
+            return {
+                "tipo": "openai",  # ai_registry usa OpenAI por padrão
+                "api_key": getattr(provider, 'api_key', ''),
+                "modelo": provider.model,
+                "base_url": getattr(provider, 'base_url', None),
+                "max_tokens": 4096,
+                "temperature": 0.7,
+                "suporta_temperature": True
+            }
+        
+        raise ValueError("Nenhum provider de IA configurado")
+    
+    def _get_provider_legacy(self, provider_name: str = None):
+        """Obtém provider do ai_registry (sistema legado)"""
+        return ai_registry.get(provider_name) if provider_name else ai_registry.get_default()
+    
+    # ============================================================
+    # MÉTODO PRINCIPAL - EXECUTAR ETAPA (LEGADO + MULTIMODAL)
+    # ============================================================
     
     async def executar_etapa(
         self,
@@ -76,100 +197,467 @@ class PipelineExecutor:
         atividade_id: str,
         aluno_id: Optional[str] = None,
         prompt_id: Optional[str] = None,
+        prompt_customizado: Optional[str] = None,  # NOVO: texto do prompt customizado
         provider_name: Optional[str] = None,
         variaveis_extra: Optional[Dict[str, str]] = None,
-        salvar_resultado: bool = True
+        salvar_resultado: bool = True,
+        usar_multimodal: bool = True,  # NOVO: flag para usar visão
+        criar_nova_versao: bool = False  # NOVO: cria versão ao invés de sobrescrever
     ) -> ResultadoExecucao:
         """
         Executa uma etapa do pipeline.
-        
+
         Args:
             etapa: Qual etapa executar
             atividade_id: ID da atividade
             aluno_id: ID do aluno (necessário para etapas de aluno)
             prompt_id: ID do prompt a usar (ou usa o padrão)
+            prompt_customizado: Texto do prompt customizado (override)
             provider_name: Nome do provider de IA (ou usa o padrão)
             variaveis_extra: Variáveis adicionais para o prompt
             salvar_resultado: Se deve salvar o resultado como documento
+            usar_multimodal: Se deve enviar arquivos como anexos multimodais
+            criar_nova_versao: Se True, cria nova versão do documento ao invés de sobrescrever
         """
         inicio = time.time()
         prompt_usado_id = ""
         provider_nome = ""
         provider_modelo = ""
-        
+
         try:
             # 1. Buscar contexto
             atividade = self.storage.get_atividade(atividade_id)
             if not atividade:
                 return self._erro(etapa, "Atividade não encontrada")
-            
+
             turma = self.storage.get_turma(atividade.turma_id)
             materia = self.storage.get_materia(turma.materia_id) if turma else None
-            
+
             # 2. Buscar prompt
             if prompt_id:
                 prompt = self.prompt_manager.get_prompt(prompt_id)
             else:
                 prompt = self.prompt_manager.get_prompt_padrao(etapa, materia.id if materia else None)
-            
-            if not prompt:
+
+            if not prompt and not prompt_customizado:
                 return self._erro(etapa, f"Nenhum prompt disponível para etapa {etapa.value}")
-            prompt_usado_id = prompt.id
-            
-            # 3. Buscar provider
-            provider = ai_registry.get(provider_name) if provider_name else ai_registry.get_default()
-            if not provider:
-                return self._erro(etapa, "Nenhum provider de IA disponível")
-            provider_nome = provider.name
-            provider_modelo = provider.model
-            
-            # 4. Preparar variáveis
-            variaveis = self._preparar_variaveis(etapa, atividade_id, aluno_id, materia, atividade)
-            if variaveis_extra:
-                variaveis.update(variaveis_extra)
-            
-            # 5. Renderizar prompt
-            prompt_renderizado = prompt.render(**variaveis)
-            prompt_sistema_renderizado = prompt.render_sistema(**variaveis) or None
-            
-            # 6. Executar IA
-            response = await provider.complete(prompt_renderizado, prompt_sistema_renderizado)
-            
-            # 7. Parsear resposta
-            resposta_parsed = self._parsear_resposta(response.content)
-            
-            tempo_ms = (time.time() - inicio) * 1000
-            
-            # 8. Salvar resultado se solicitado
-            documento_id = None
-            if salvar_resultado:
-                documento_id = await self._salvar_resultado(
-                    etapa, atividade_id, aluno_id,
-                    response.content, resposta_parsed,
-                    provider.name, provider.model, prompt.id,
-                    response.tokens_used, tempo_ms
+            prompt_usado_id = prompt.id if prompt else "customizado"
+
+            # Se tiver prompt customizado, criar um prompt temporário
+            if prompt_customizado:
+                from prompts import PromptTemplate
+                prompt = PromptTemplate(
+                    id="customizado",
+                    nome="Prompt Customizado",
+                    etapa=etapa,
+                    texto=prompt_customizado,
+                    texto_sistema=prompt.texto_sistema if prompt else None,
+                    is_padrao=False
                 )
             
-            return ResultadoExecucao(
-                sucesso=True,
-                etapa=etapa,
-                prompt_usado=prompt_renderizado,
-                prompt_id=prompt_usado_id,
-                provider=provider_nome,
-                modelo=provider_modelo,
-                resposta_raw=response.content,
-                resposta_parsed=resposta_parsed,
-                tokens_entrada=response.input_tokens,
-                tokens_saida=response.output_tokens or response.tokens_used,
-                tempo_ms=tempo_ms,
-                documento_id=documento_id
-            )
+            # 3. Decidir modo de execução
+            if usar_multimodal and HAS_MULTIMODAL:
+                return await self._executar_multimodal(
+                    etapa, atividade_id, aluno_id, prompt, materia, atividade,
+                    provider_name, variaveis_extra, salvar_resultado, inicio,
+                    criar_nova_versao
+                )
+            else:
+                return await self._executar_texto(
+                    etapa, atividade_id, aluno_id, prompt, materia, atividade,
+                    provider_name, variaveis_extra, salvar_resultado, inicio,
+                    criar_nova_versao
+                )
             
         except Exception as e:
             return self._erro(etapa, str(e), prompt_usado_id, provider_nome, provider_modelo)
     
-    def _erro(self, etapa: EtapaProcessamento, mensagem: str, 
-              prompt_id: str = None, provider: str = None, modelo: str = None) -> ResultadoExecucao:
+    async def _executar_texto(
+        self,
+        etapa: EtapaProcessamento,
+        atividade_id: str,
+        aluno_id: Optional[str],
+        prompt: PromptTemplate,
+        materia: Any,
+        atividade: Any,
+        provider_name: Optional[str],
+        variaveis_extra: Optional[Dict[str, str]],
+        salvar_resultado: bool,
+        inicio: float,
+        criar_nova_versao: bool = False
+    ) -> ResultadoExecucao:
+        """Executa etapa no modo texto (legado)"""
+        
+        # Buscar provider
+        provider = self._get_provider_legacy(provider_name)
+        if not provider:
+            return self._erro(etapa, "Nenhum provider de IA disponível")
+        
+        # Preparar variáveis (extrai texto dos documentos)
+        variaveis = self._preparar_variaveis_texto(etapa, atividade_id, aluno_id, materia, atividade)
+        if variaveis_extra:
+            variaveis.update(variaveis_extra)
+        
+        # Renderizar prompt
+        prompt_renderizado = prompt.render(**variaveis)
+        prompt_sistema_renderizado = prompt.render_sistema(**variaveis) or None
+        
+        # Executar IA
+        response = await provider.complete(prompt_renderizado, prompt_sistema_renderizado)
+        
+        # Parsear resposta
+        resposta_parsed = self._parsear_resposta(response.content)
+        
+        tempo_ms = (time.time() - inicio) * 1000
+        
+        # Salvar resultado se solicitado
+        documento_id = None
+        if salvar_resultado:
+            documento_id = await self._salvar_resultado(
+                etapa, atividade_id, aluno_id,
+                response.content, resposta_parsed,
+                provider.name, provider.model, prompt.id,
+                response.tokens_used, tempo_ms,
+                criar_nova_versao=criar_nova_versao
+            )
+        
+        return ResultadoExecucao(
+            sucesso=True,
+            etapa=etapa,
+            prompt_usado=prompt_renderizado,
+            prompt_id=prompt.id,
+            provider=provider.name,
+            modelo=provider.model,
+            resposta_raw=response.content,
+            resposta_parsed=resposta_parsed,
+            tokens_entrada=response.input_tokens,
+            tokens_saida=response.output_tokens or response.tokens_used,
+            tempo_ms=tempo_ms,
+            documento_id=documento_id
+        )
+    
+    async def _executar_multimodal(
+        self,
+        etapa: EtapaProcessamento,
+        atividade_id: str,
+        aluno_id: Optional[str],
+        prompt: PromptTemplate,
+        materia: Any,
+        atividade: Any,
+        provider_id: Optional[str],
+        variaveis_extra: Optional[Dict[str, str]],
+        salvar_resultado: bool,
+        inicio: float,
+        criar_nova_versao: bool = False
+    ) -> ResultadoExecucao:
+        """Executa etapa no modo multimodal (envia arquivos nativamente)"""
+        
+        # Obter configuração do provider
+        config = self._get_provider_config(provider_id)
+        cliente = ClienteAPIMultimodal(config)
+        
+        # Preparar variáveis básicas (sem conteúdo de documentos)
+        variaveis = {
+            "materia": materia.nome if materia else "Não definida",
+            "atividade": atividade.nome if atividade else "Não definida",
+            "nota_maxima": str(atividade.nota_maxima) if atividade else "10"
+        }
+        
+        if aluno_id:
+            aluno = self.storage.get_aluno(aluno_id)
+            if aluno:
+                variaveis["nome_aluno"] = aluno.nome
+                variaveis["aluno"] = aluno.nome
+        
+        if variaveis_extra:
+            variaveis.update(variaveis_extra)
+        
+        # Coletar arquivos para anexar
+        arquivos = self._coletar_arquivos_para_etapa(etapa, atividade_id, aluno_id)
+        
+        # Adicionar contexto de arquivos JSON já processados
+        variaveis.update(self._preparar_contexto_json(atividade_id, aluno_id, etapa))
+        
+        # Renderizar prompt
+        prompt_renderizado = prompt.render(**variaveis)
+        prompt_sistema_renderizado = prompt.render_sistema(**variaveis) or None
+        
+        # Enviar para IA com anexos
+        resultado = await cliente.enviar_com_anexos(
+            mensagem=prompt_renderizado,
+            arquivos=arquivos,
+            system_prompt=prompt_sistema_renderizado,
+            verificar_anexos=True
+        )
+        
+        tempo_ms = (time.time() - inicio) * 1000
+        
+        if not resultado.sucesso:
+            return ResultadoExecucao(
+                sucesso=False,
+                etapa=etapa,
+                prompt_usado=prompt_renderizado,
+                prompt_id=prompt.id,
+                provider=resultado.provider,
+                modelo=resultado.modelo,
+                erro=resultado.erro,
+                anexos_enviados=resultado.anexos_enviados,
+                tempo_ms=tempo_ms
+            )
+        
+        # Parsear resposta
+        resposta_parsed = self._parsear_resposta(resultado.resposta)
+        alertas = resposta_parsed.get("alertas", []) if resposta_parsed else []
+        
+        # Verificar se anexo foi processado
+        if not resultado.anexos_confirmados and arquivos:
+            alertas.append({
+                "tipo": "aviso",
+                "mensagem": "Não foi possível confirmar se a IA processou os documentos corretamente"
+            })
+        
+        # Salvar resultado
+        documento_id = None
+        if salvar_resultado:
+            documento_id = await self._salvar_resultado(
+                etapa, atividade_id, aluno_id,
+                resultado.resposta, resposta_parsed,
+                resultado.provider, resultado.modelo, prompt.id,
+                resultado.tokens_entrada + resultado.tokens_saida, tempo_ms,
+                criar_nova_versao=criar_nova_versao
+            )
+        
+        return ResultadoExecucao(
+            sucesso=True,
+            etapa=etapa,
+            prompt_usado=prompt_renderizado,
+            prompt_id=prompt.id,
+            provider=resultado.provider,
+            modelo=resultado.modelo,
+            resposta_raw=resultado.resposta,
+            resposta_parsed=resposta_parsed,
+            tokens_entrada=resultado.tokens_entrada,
+            tokens_saida=resultado.tokens_saida,
+            tempo_ms=tempo_ms,
+            documento_id=documento_id,
+            anexos_enviados=resultado.anexos_enviados,
+            anexos_confirmados=resultado.anexos_confirmados,
+            alertas=alertas
+        )
+    
+    def _coletar_arquivos_para_etapa(
+        self,
+        etapa: EtapaProcessamento,
+        atividade_id: str,
+        aluno_id: Optional[str]
+    ) -> List[str]:
+        """Coleta arquivos relevantes para uma etapa específica"""
+        arquivos = []
+        
+        # Documentos base da atividade
+        docs_base = self.storage.listar_documentos(atividade_id)
+        
+        # Documentos do aluno (se aplicável)
+        docs_aluno = self.storage.listar_documentos(atividade_id, aluno_id) if aluno_id else []
+        
+        # Mapa de quais documentos cada etapa precisa
+        if etapa == EtapaProcessamento.EXTRAIR_QUESTOES:
+            # Precisa do enunciado
+            for doc in docs_base:
+                if doc.tipo == TipoDocumento.ENUNCIADO:
+                    if Path(doc.caminho_arquivo).exists():
+                        arquivos.append(doc.caminho_arquivo)
+        
+        elif etapa == EtapaProcessamento.EXTRAIR_GABARITO:
+            # Precisa do gabarito
+            for doc in docs_base:
+                if doc.tipo == TipoDocumento.GABARITO:
+                    if Path(doc.caminho_arquivo).exists():
+                        arquivos.append(doc.caminho_arquivo)
+        
+        elif etapa == EtapaProcessamento.EXTRAIR_RESPOSTAS:
+            # Precisa da prova respondida do aluno
+            for doc in docs_aluno:
+                if doc.tipo == TipoDocumento.PROVA_RESPONDIDA:
+                    if Path(doc.caminho_arquivo).exists():
+                        arquivos.append(doc.caminho_arquivo)
+        
+        elif etapa in [EtapaProcessamento.CORRIGIR, EtapaProcessamento.ANALISAR_HABILIDADES]:
+            # Pode precisar da prova do aluno para referência visual
+            for doc in docs_aluno:
+                if doc.tipo == TipoDocumento.PROVA_RESPONDIDA:
+                    if Path(doc.caminho_arquivo).exists():
+                        arquivos.append(doc.caminho_arquivo)
+        
+        return arquivos
+    
+    def _preparar_contexto_json(
+        self,
+        atividade_id: str,
+        aluno_id: Optional[str],
+        etapa: EtapaProcessamento
+    ) -> Dict[str, str]:
+        """Prepara contexto de documentos JSON já processados"""
+        contexto = {}
+        
+        docs_base = self.storage.listar_documentos(atividade_id)
+        docs_aluno = self.storage.listar_documentos(atividade_id, aluno_id) if aluno_id else []
+        
+        # Para correção, incluir questões extraídas e respostas
+        if etapa in [EtapaProcessamento.CORRIGIR, EtapaProcessamento.ANALISAR_HABILIDADES, EtapaProcessamento.GERAR_RELATORIO]:
+            for doc in docs_base:
+                if doc.tipo == TipoDocumento.EXTRACAO_QUESTOES and doc.extensao.lower() == '.json':
+                    try:
+                        with open(doc.caminho_arquivo, 'r', encoding='utf-8') as f:
+                            data = json.load(f)
+                            contexto["questoes_extraidas"] = json.dumps(data, ensure_ascii=False)
+                    except:
+                        pass
+            
+            for doc in docs_aluno:
+                if doc.tipo == TipoDocumento.EXTRACAO_RESPOSTAS and doc.extensao.lower() == '.json':
+                    try:
+                        with open(doc.caminho_arquivo, 'r', encoding='utf-8') as f:
+                            data = json.load(f)
+                            contexto["respostas_aluno"] = json.dumps(data, ensure_ascii=False)
+                    except:
+                        pass
+        
+        # Para análise de habilidades e relatório, incluir correção
+        if etapa in [EtapaProcessamento.ANALISAR_HABILIDADES, EtapaProcessamento.GERAR_RELATORIO]:
+            for doc in docs_aluno:
+                if doc.tipo == TipoDocumento.CORRECAO and doc.extensao.lower() == '.json':
+                    try:
+                        with open(doc.caminho_arquivo, 'r', encoding='utf-8') as f:
+                            data = json.load(f)
+                            contexto["correcoes"] = json.dumps(data, ensure_ascii=False)
+                    except:
+                        pass
+        
+        # Para relatório, incluir análise de habilidades
+        if etapa == EtapaProcessamento.GERAR_RELATORIO:
+            for doc in docs_aluno:
+                if doc.tipo == TipoDocumento.ANALISE_HABILIDADES and doc.extensao.lower() == '.json':
+                    try:
+                        with open(doc.caminho_arquivo, 'r', encoding='utf-8') as f:
+                            data = json.load(f)
+                            contexto["analise_habilidades"] = json.dumps(data, ensure_ascii=False)
+                    except:
+                        pass
+        
+        return contexto
+    
+    # ============================================================
+    # NOVOS MÉTODOS PARA PIPELINE MULTIMODAL (compatível com routes_pipeline.py)
+    # ============================================================
+    
+    async def extrair_questoes(
+        self,
+        atividade_id: str,
+        provider_id: str = None
+    ) -> ResultadoExecucao:
+        """Extrai questões do enunciado usando visão multimodal"""
+        return await self.executar_etapa(
+            etapa=EtapaProcessamento.EXTRAIR_QUESTOES,
+            atividade_id=atividade_id,
+            provider_name=provider_id,
+            usar_multimodal=True
+        )
+    
+    async def extrair_respostas_aluno(
+        self,
+        atividade_id: str,
+        aluno_id: str,
+        provider_id: str = None
+    ) -> ResultadoExecucao:
+        """Extrai respostas da prova do aluno usando visão multimodal"""
+        return await self.executar_etapa(
+            etapa=EtapaProcessamento.EXTRAIR_RESPOSTAS,
+            atividade_id=atividade_id,
+            aluno_id=aluno_id,
+            provider_name=provider_id,
+            usar_multimodal=True
+        )
+    
+    async def corrigir(
+        self,
+        atividade_id: str,
+        aluno_id: str,
+        provider_id: str = None
+    ) -> ResultadoExecucao:
+        """Corrige a prova do aluno"""
+        return await self.executar_etapa(
+            etapa=EtapaProcessamento.CORRIGIR,
+            atividade_id=atividade_id,
+            aluno_id=aluno_id,
+            provider_name=provider_id,
+            usar_multimodal=True
+        )
+    
+    async def chat_com_documentos(
+        self,
+        mensagem: str,
+        arquivos: List[str],
+        provider_id: str = None,
+        system_prompt: str = None
+    ) -> ResultadoExecucao:
+        """Chat livre com documentos anexados"""
+        inicio = time.time()
+        
+        if not HAS_MULTIMODAL:
+            return ResultadoExecucao(
+                sucesso=False,
+                etapa="chat",
+                erro="Sistema multimodal não disponível"
+            )
+        
+        try:
+            config = self._get_provider_config(provider_id)
+            cliente = ClienteAPIMultimodal(config)
+            
+            resultado = await cliente.enviar_com_anexos(
+                mensagem=mensagem,
+                arquivos=arquivos,
+                system_prompt=system_prompt or "Você é um assistente educacional especializado em análise de provas e documentos acadêmicos.",
+                verificar_anexos=True
+            )
+            
+            tempo_ms = (time.time() - inicio) * 1000
+            
+            return ResultadoExecucao(
+                sucesso=resultado.sucesso,
+                etapa="chat",
+                resposta_raw=resultado.resposta,
+                provider=resultado.provider,
+                modelo=resultado.modelo,
+                tokens_entrada=resultado.tokens_entrada,
+                tokens_saida=resultado.tokens_saida,
+                tempo_ms=tempo_ms,
+                anexos_enviados=resultado.anexos_enviados,
+                anexos_confirmados=resultado.anexos_confirmados,
+                erro=resultado.erro
+            )
+            
+        except Exception as e:
+            return ResultadoExecucao(
+                sucesso=False,
+                etapa="chat",
+                erro=str(e),
+                tempo_ms=(time.time() - inicio) * 1000
+            )
+    
+    # ============================================================
+    # MÉTODOS AUXILIARES (mantidos do original)
+    # ============================================================
+    
+    def _erro(
+        self,
+        etapa: Union[EtapaProcessamento, str],
+        mensagem: str,
+        prompt_id: str = None,
+        provider: str = None,
+        modelo: str = None
+    ) -> ResultadoExecucao:
         """Cria resultado de erro"""
         return ResultadoExecucao(
             sucesso=False,
@@ -181,7 +669,7 @@ class PipelineExecutor:
             erro=mensagem
         )
     
-    def _preparar_variaveis(
+    def _preparar_variaveis_texto(
         self,
         etapa: EtapaProcessamento,
         atividade_id: str,
@@ -189,7 +677,7 @@ class PipelineExecutor:
         materia: Any,
         atividade: Any
     ) -> Dict[str, str]:
-        """Prepara variáveis para o prompt baseado no contexto"""
+        """Prepara variáveis para o prompt extraindo TEXTO dos documentos (modo legado)"""
         variaveis = {
             "materia": materia.nome if materia else "Não definida",
             "atividade": atividade.nome if atividade else "Não definida",
@@ -200,7 +688,7 @@ class PipelineExecutor:
         documentos = self.storage.listar_documentos(atividade_id, aluno_id)
         
         for doc in documentos:
-            conteudo = self._ler_documento(doc)
+            conteudo = self._ler_documento_texto(doc)
             
             if doc.tipo == TipoDocumento.ENUNCIADO:
                 variaveis["conteudo_documento"] = conteudo
@@ -238,54 +726,61 @@ class PipelineExecutor:
         
         return variaveis
     
-    def _ler_documento(self, documento: Documento) -> str:
-        """Lê conteúdo de um documento"""
+    def _ler_documento_texto(self, documento: Documento) -> str:
+        """
+        Lê conteúdo de um documento como TEXTO.
+        
+        NOTA: Para PDFs e imagens, retorna placeholder indicando que
+        o documento deve ser processado via multimodal.
+        """
         try:
             arquivo = Path(documento.caminho_arquivo)
             if not arquivo.exists():
                 return f"[Arquivo não encontrado: {documento.nome_arquivo}]"
             
-            if documento.extensao.lower() == '.json':
+            ext = documento.extensao.lower()
+            
+            # Arquivos JSON
+            if ext == '.json':
                 with open(arquivo, 'r', encoding='utf-8') as f:
                     data = json.load(f)
                     return json.dumps(data, ensure_ascii=False, indent=2)
             
-            elif documento.extensao.lower() in ['.txt', '.md']:
+            # Arquivos de texto
+            elif ext in ['.txt', '.md', '.csv']:
                 with open(arquivo, 'r', encoding='utf-8') as f:
                     return f.read()
             
-            elif documento.extensao.lower() == '.pdf':
-                # Tentar extrair texto do PDF
-                try:
-                    import importlib
-                    with open(arquivo, 'rb') as f:
-                        pypdf2 = importlib.import_module("PyPDF2")
-                        reader = pypdf2.PdfReader(f)
-                        text = ""
-                        for page in reader.pages:
-                            text += page.extract_text() + "\n"
-                        return text
-                except:
-                    return f"[PDF: {documento.nome_arquivo} - Não foi possível extrair texto]"
+            # PDFs - NÃO extrair texto, indicar que precisa de multimodal
+            elif ext == '.pdf':
+                return f"[DOCUMENTO PDF: {documento.nome_arquivo} - Use modo multimodal para processar]"
             
-            elif documento.extensao.lower() == '.docx':
+            # Imagens - NÃO processar, indicar que precisa de multimodal
+            elif ext in ['.png', '.jpg', '.jpeg', '.gif', '.webp', '.bmp', '.tiff', '.tif']:
+                return f"[IMAGEM: {documento.nome_arquivo} - Use modo multimodal para processar]"
+            
+            # DOCX - tentar extrair texto (pode ser útil para alguns casos)
+            elif ext == '.docx':
                 try:
                     import importlib
-                    docx = importlib.import_module("docx")
-                    doc = docx.Document(arquivo)
+                    docx_module = importlib.import_module("docx")
+                    doc = docx_module.Document(arquivo)
                     text = "\n".join([p.text for p in doc.paragraphs])
-                    return text
+                    return text if text.strip() else f"[DOCX vazio: {documento.nome_arquivo}]"
                 except:
                     return f"[DOCX: {documento.nome_arquivo} - Não foi possível extrair texto]"
             
             else:
-                return f"[Arquivo: {documento.nome_arquivo} - Tipo não suportado para leitura automática]"
+                return f"[Arquivo: {documento.nome_arquivo} - Tipo não suportado]"
                 
         except Exception as e:
             return f"[Erro ao ler {documento.nome_arquivo}: {str(e)}]"
     
     def _parsear_resposta(self, resposta: str) -> Optional[Dict[str, Any]]:
         """Tenta extrair JSON da resposta"""
+        if not resposta:
+            return None
+        
         try:
             # Tentar parsear diretamente
             return json.loads(resposta)
@@ -293,7 +788,6 @@ class PipelineExecutor:
             pass
         
         # Tentar extrair JSON de bloco de código
-        import re
         json_match = re.search(r'```(?:json)?\s*([\s\S]*?)\s*```', resposta)
         if json_match:
             try:
@@ -323,9 +817,11 @@ class PipelineExecutor:
         modelo: str,
         prompt_id: str,
         tokens: int,
-        tempo_ms: float
+        tempo_ms: float,
+        gerar_formatos_extras: bool = True,  # Gerar PDF/CSV automaticamente
+        criar_nova_versao: bool = False  # Cria nova versão ao invés de sobrescrever
     ) -> Optional[str]:
-        """Salva o resultado como documento"""
+        """Salva o resultado como documento JSON e opcionalmente gera outros formatos"""
         
         # Determinar tipo de documento
         tipo_map = {
@@ -341,9 +837,21 @@ class PipelineExecutor:
         if not tipo:
             return None
         
-        # Criar arquivo temporário com resultado
-        import tempfile
+        # Se criar_nova_versao, buscar documento existente para determinar próxima versão
+        versao = 1
+        documento_origem_id = None
+        if criar_nova_versao:
+            docs_existentes = self.storage.listar_documentos(atividade_id, aluno_id)
+            docs_tipo = [d for d in docs_existentes if d.tipo == tipo]
+            if docs_tipo:
+                # Encontrar maior versão
+                max_versao = max(d.versao for d in docs_tipo)
+                versao = max_versao + 1
+                # O documento original é o de versão 1
+                doc_original = next((d for d in docs_tipo if d.versao == 1), docs_tipo[0])
+                documento_origem_id = doc_original.id
         
+        # Criar arquivo temporário com resultado
         conteudo = resposta_parsed if resposta_parsed else {"resposta_raw": resposta_raw}
         
         with tempfile.NamedTemporaryFile(mode='w', suffix='.json', delete=False, encoding='utf-8') as f:
@@ -351,7 +859,7 @@ class PipelineExecutor:
             temp_path = f.name
         
         try:
-            # Salvar documento
+            # Salvar documento JSON (sempre)
             documento = self.storage.salvar_documento(
                 arquivo_origem=temp_path,
                 tipo=tipo,
@@ -360,106 +868,461 @@ class PipelineExecutor:
                 ia_provider=provider,
                 ia_modelo=modelo,
                 prompt_usado=prompt_id,
-                criado_por="sistema"
+                criado_por="sistema",
+                versao=versao,
+                documento_origem_id=documento_origem_id
             )
             
-            # Atualizar metadados
-            if documento:
-                # TODO: Atualizar tokens e tempo no documento
-                pass
+            documento_id = documento.id if documento else None
             
-            return documento.id if documento else None
+            # Gerar formatos extras (PDF, CSV) se configurado
+            if gerar_formatos_extras and documento_id:
+                await self._gerar_formatos_extras(
+                    documento_id=documento_id,
+                    tipo=tipo,
+                    conteudo=conteudo,
+                    atividade_id=atividade_id,
+                    aluno_id=aluno_id
+                )
+            
+            return documento_id
             
         finally:
             # Limpar temp
-            import os
             os.unlink(temp_path)
+    
+    async def _gerar_formatos_extras(
+        self,
+        documento_id: str,
+        tipo: TipoDocumento,
+        conteudo: Dict[str, Any],
+        atividade_id: str,
+        aluno_id: Optional[str]
+    ) -> List[str]:
+        """
+        Gera documentos em formatos adicionais (PDF, CSV) com base no tipo.
+        
+        Returns:
+            Lista de IDs dos documentos gerados
+        """
+        from document_generators import (
+            OutputFormat, get_output_formats, generate_document, get_file_extension
+        )
+        
+        tipo_str = tipo.value if hasattr(tipo, 'value') else str(tipo)
+        formatos = get_output_formats(tipo_str)
+        
+        documentos_gerados = []
+        
+        for fmt in formatos:
+            # Pular JSON (já foi salvo)
+            if fmt == OutputFormat.JSON:
+                continue
+            
+            try:
+                # Determinar título
+                titulo = tipo_str.replace('_', ' ').title()
+                
+                # Gerar conteúdo no formato
+                content = generate_document(conteudo, fmt, titulo, tipo_str)
+                
+                # Salvar
+                extensao = get_file_extension(fmt)
+                nome_arquivo = f"{tipo_str}{extensao}"
+                
+                with tempfile.NamedTemporaryFile(
+                    delete=False, 
+                    suffix=extensao, 
+                    mode='wb' if isinstance(content, bytes) else 'w',
+                    encoding=None if isinstance(content, bytes) else 'utf-8'
+                ) as tmp:
+                    tmp.write(content)
+                    tmp_path = tmp.name
+                
+                novo_doc = self.storage.salvar_documento(
+                    arquivo_origem=tmp_path,
+                    tipo=tipo,
+                    atividade_id=atividade_id,
+                    aluno_id=aluno_id,
+                    criado_por="sistema"
+                    # Nota: metadata não suportado no storage_v2
+                )
+                
+                os.unlink(tmp_path)
+                
+                if novo_doc:
+                    documentos_gerados.append(novo_doc.id)
+                    print(f"[DOC] Gerado {fmt.value}: {novo_doc.id}")
+                    
+            except Exception as e:
+                print(f"[WARN] Falha ao gerar {fmt.value}: {e}")
+        
+        return documentos_gerados
+    
+    # ============================================================
+    # EXECUÇÃO COM TOOLS (Para geração de documentos)
+    # ============================================================
+    
+    async def executar_com_tools(
+        self,
+        mensagem: str,
+        atividade_id: str,
+        aluno_id: Optional[str] = None,
+        turma_id: Optional[str] = None,
+        provider_id: Optional[str] = None,
+        system_prompt: Optional[str] = None,
+        tools_to_use: Optional[List[str]] = None
+    ) -> ResultadoExecucao:
+        """
+        Executa uma chamada de IA com suporte a tools.
+        
+        Usado quando a IA precisa criar documentos ou executar código.
+        O modelo pode chamar create_document múltiplas vezes para
+        gerar vários arquivos (ex: relatórios individuais por aluno).
+        
+        Args:
+            mensagem: Prompt para a IA
+            atividade_id: ID da atividade
+            aluno_id: ID do aluno (opcional)
+            turma_id: ID da turma (para geração em lote)
+            provider_id: ID do modelo a usar
+            system_prompt: System prompt customizado
+            tools_to_use: Lista de tools para habilitar (default: create_document, execute_python_code)
+        
+        Returns:
+            ResultadoExecucao com documentos gerados
+        """
+        inicio = time.time()
+        
+        try:
+            from chat_service import model_manager, api_key_manager, ChatClient, ProviderType
+            from tools import ToolRegistry, CREATE_DOCUMENT, EXECUTE_PYTHON_CODE, PIPELINE_TOOLS
+            from tool_handlers import TOOL_HANDLERS
+            
+            # Obter modelo
+            if provider_id:
+                model = model_manager.get(provider_id)
+            else:
+                model = model_manager.get_default()
+            
+            if not model:
+                return self._erro("tools", "Nenhum modelo configurado")
+            
+            # Obter API key
+            api_key = None
+            if model.api_key_id:
+                key_config = api_key_manager.get(model.api_key_id)
+                if key_config:
+                    api_key = key_config.api_key
+            if not api_key:
+                key_config = api_key_manager.get_por_empresa(model.tipo)
+                if key_config:
+                    api_key = key_config.api_key
+            
+            if not api_key and model.tipo != ProviderType.OLLAMA:
+                return self._erro("tools", f"API key não encontrada para {model.tipo.value}")
+            
+            # Criar registry de tools
+            registry = ToolRegistry()
+            
+            # Determinar quais tools usar
+            if tools_to_use is None:
+                tools_to_use = ["create_document", "execute_python_code"]
+            
+            # Registrar tools com handlers
+            tools_definitions = []
+            for tool in PIPELINE_TOOLS:
+                if tool.name in tools_to_use:
+                    handler = TOOL_HANDLERS.get(tool.name)
+                    if handler:
+                        tool.handler = handler
+                    registry.register(tool)
+                    tools_definitions.append(tool.to_anthropic_format())
+            
+            # Criar contexto de execução
+            from tools import ToolExecutionContext
+            context = ToolExecutionContext(
+                atividade_id=atividade_id,
+                aluno_id=aluno_id,
+                session_id=f"pipeline_{atividade_id}_{aluno_id or 'base'}"
+            )
+            
+            # Default system prompt para pipeline
+            if not system_prompt:
+                system_prompt = """Você é um assistente educacional especializado em análise e correção de provas.
+
+CAPACIDADES DE GERAÇÃO DE DOCUMENTOS:
+=====================================
+Você pode criar documentos usando a ferramenta create_document. Use-a para:
+- Gerar relatórios individuais de alunos (PDF, DOCX, MD)
+- Criar feedback detalhado para cada estudante
+- Produzir análises consolidadas da turma
+- Salvar qualquer documento estruturado
+
+IMPORTANTE:
+- Você pode criar MÚLTIPLOS documentos em uma única chamada
+- Cada documento será salvo e associado ao aluno/atividade correta
+- Use nomes de arquivo descritivos (ex: "relatorio_joao_matematica.pdf")
+
+Seja preciso, educativo e construtivo em suas análises."""
+            
+            # Verificar se o modelo suporta tools
+            if not model.suporta_function_calling:
+                # Fallback: executar sem tools
+                client = ChatClient(model, api_key or "")
+                resposta = await client.chat(mensagem, system_prompt=system_prompt)
+                
+                return ResultadoExecucao(
+                    sucesso=True,
+                    etapa="tools",
+                    resposta_raw=resposta.get("content", ""),
+                    provider=model.tipo.value,
+                    modelo=model.modelo,
+                    tokens_entrada=resposta.get("tokens", 0),
+                    tempo_ms=(time.time() - inicio) * 1000,
+                    alertas=[{"tipo": "aviso", "mensagem": "Modelo não suporta tools - executado sem geração de documentos"}]
+                )
+            
+            # Executar com tools (apenas para Anthropic por enquanto)
+            client = ChatClient(model, api_key or "")
+            resposta = await client.chat_with_tools(
+                mensagem=mensagem,
+                tools=tools_definitions,
+                tool_registry=registry,
+                system_prompt=system_prompt,
+                context=context
+            )
+            
+            tempo_ms = (time.time() - inicio) * 1000
+            
+            # Coletar documentos gerados pelas tools
+            documentos_gerados = []
+            tool_calls = resposta.get("tool_calls", [])
+            for tc in tool_calls:
+                if tc.get("name") == "create_document":
+                    docs = tc.get("input", {}).get("documents", [])
+                    for doc in docs:
+                        documentos_gerados.append(doc.get("filename", "documento"))
+            
+            return ResultadoExecucao(
+                sucesso=True,
+                etapa="tools",
+                resposta_raw=resposta.get("content", ""),
+                provider=model.tipo.value,
+                modelo=model.modelo,
+                tokens_entrada=resposta.get("tokens", 0),
+                tempo_ms=tempo_ms,
+                alertas=[{"tipo": "info", "mensagem": f"Documentos gerados: {documentos_gerados}"}] if documentos_gerados else []
+            )
+            
+        except Exception as e:
+            return self._erro("tools", str(e))
+    
+    async def gerar_relatorios_turma(
+        self,
+        atividade_id: str,
+        turma_id: str,
+        provider_id: Optional[str] = None
+    ) -> Dict[str, Any]:
+        """
+        Gera relatórios para todos os alunos de uma turma.
+        
+        O modelo pode usar create_document para criar múltiplos
+        relatórios individuais em uma única chamada.
+        """
+        # Buscar alunos da turma
+        alunos = self.storage.listar_alunos(turma_id)
+        
+        if not alunos:
+            return {"sucesso": False, "erro": "Nenhum aluno encontrado na turma"}
+        
+        # Buscar dados de correção de cada aluno
+        dados_alunos = []
+        for aluno in alunos:
+            docs = self.storage.listar_documentos(atividade_id, aluno.id)
+            correcao = next((d for d in docs if d.tipo == TipoDocumento.CORRECAO), None)
+            
+            if correcao:
+                try:
+                    with open(correcao.caminho_arquivo, 'r', encoding='utf-8') as f:
+                        dados = json.load(f)
+                        dados_alunos.append({
+                            "aluno_id": aluno.id,
+                            "nome": aluno.nome,
+                            "correcao": dados
+                        })
+                except:
+                    pass
+        
+        if not dados_alunos:
+            return {"sucesso": False, "erro": "Nenhuma correção encontrada para os alunos"}
+        
+        # Montar prompt para geração em lote
+        prompt = f"""Gere relatórios individuais para cada aluno da turma.
+
+DADOS DAS CORREÇÕES:
+{json.dumps(dados_alunos, ensure_ascii=False, indent=2)}
+
+Para cada aluno, use a ferramenta create_document para criar um relatório individual.
+O relatório deve incluir:
+- Nome do aluno
+- Nota obtida e percentual
+- Pontos fortes identificados
+- Áreas de melhoria
+- Feedback construtivo personalizado
+
+Crie UM documento separado para cada aluno, nomeando como "relatorio_[nome_aluno].md"
+"""
+        
+        resultado = await self.executar_com_tools(
+            mensagem=prompt,
+            atividade_id=atividade_id,
+            turma_id=turma_id,
+            provider_id=provider_id,
+            tools_to_use=["create_document"]
+        )
+        
+        return {
+            "sucesso": resultado.sucesso,
+            "etapa": "gerar_relatorios_turma",
+            "alunos_processados": len(dados_alunos),
+            "resultado": resultado.to_dict()
+        }
+    
+    # ============================================================
+    # PIPELINE COMPLETO (mantido do original)
+    # ============================================================
     
     async def executar_pipeline_completo(
         self,
         atividade_id: str,
         aluno_id: str,
         provider_name: Optional[str] = None,
-        providers_map: Optional[Dict[str, str]] = None
+        providers_map: Optional[Dict[str, str]] = None,
+        usar_multimodal: bool = True,
+        selected_steps: Optional[List[str]] = None,
+        force_rerun: bool = False
     ) -> Dict[str, ResultadoExecucao]:
         """
         Executa o pipeline completo para um aluno.
         Retorna resultados de cada etapa.
+        
+        Args:
+            selected_steps: Lista de etapas a executar. Se None, executa todas.
+            force_rerun: Se True, re-executa mesmo que já existam resultados.
         """
         resultados = {}
         providers_map = providers_map or {}
+        
+        # Todas as etapas disponíveis
+        ALL_STEPS = [
+            "extrair_questoes", "extrair_gabarito", "extrair_respostas",
+            "corrigir", "analisar_habilidades", "gerar_relatorio"
+        ]
+        
+        # Se não especificou etapas, executa todas
+        steps_to_run = selected_steps if selected_steps else ALL_STEPS
 
         def _resolve_provider(stage: EtapaProcessamento) -> Optional[str]:
             return providers_map.get(stage.value) or provider_name
         
-        # 1. Extrair questões (se não existir)
+        def _should_run(step_name: str, doc_type: TipoDocumento, docs_list: List) -> bool:
+            """Verifica se deve executar uma etapa"""
+            if step_name not in steps_to_run:
+                return False
+            if force_rerun:
+                return True
+            return not any(d.tipo == doc_type for d in docs_list)
+        
+        # Carregar documentos existentes
         docs = self.storage.listar_documentos(atividade_id)
-        if not any(d.tipo == TipoDocumento.EXTRACAO_QUESTOES for d in docs):
+        docs_aluno = self.storage.listar_documentos(atividade_id, aluno_id)
+        
+        # 1. Extrair questões
+        if _should_run("extrair_questoes", TipoDocumento.EXTRACAO_QUESTOES, docs):
             resultado = await self.executar_etapa(
                 EtapaProcessamento.EXTRAIR_QUESTOES,
                 atividade_id,
-                provider_name=_resolve_provider(EtapaProcessamento.EXTRAIR_QUESTOES)
+                provider_name=_resolve_provider(EtapaProcessamento.EXTRAIR_QUESTOES),
+                usar_multimodal=usar_multimodal,
+                criar_nova_versao=force_rerun
             )
             resultados["extrair_questoes"] = resultado
             if not resultado.sucesso:
                 return resultados
         
-        # 2. Extrair gabarito (se não existir)
-        if not any(d.tipo == TipoDocumento.EXTRACAO_GABARITO for d in docs):
+        # 2. Extrair gabarito
+        if _should_run("extrair_gabarito", TipoDocumento.EXTRACAO_GABARITO, docs):
             resultado = await self.executar_etapa(
                 EtapaProcessamento.EXTRAIR_GABARITO,
                 atividade_id,
-                provider_name=_resolve_provider(EtapaProcessamento.EXTRAIR_GABARITO)
+                provider_name=_resolve_provider(EtapaProcessamento.EXTRAIR_GABARITO),
+                usar_multimodal=usar_multimodal,
+                criar_nova_versao=force_rerun
             )
             resultados["extrair_gabarito"] = resultado
         
         # 3. Extrair respostas do aluno
-        docs_aluno = self.storage.listar_documentos(atividade_id, aluno_id)
-        if not any(d.tipo == TipoDocumento.EXTRACAO_RESPOSTAS for d in docs_aluno):
+        if _should_run("extrair_respostas", TipoDocumento.EXTRACAO_RESPOSTAS, docs_aluno):
             resultado = await self.executar_etapa(
                 EtapaProcessamento.EXTRAIR_RESPOSTAS,
                 atividade_id,
                 aluno_id,
-                provider_name=_resolve_provider(EtapaProcessamento.EXTRAIR_RESPOSTAS)
+                provider_name=_resolve_provider(EtapaProcessamento.EXTRAIR_RESPOSTAS),
+                usar_multimodal=usar_multimodal,
+                criar_nova_versao=force_rerun
             )
             resultados["extrair_respostas"] = resultado
             if not resultado.sucesso:
                 return resultados
         
         # 4. Corrigir
-        if not any(d.tipo == TipoDocumento.CORRECAO for d in docs_aluno):
+        if _should_run("corrigir", TipoDocumento.CORRECAO, docs_aluno):
             resultado = await self.executar_etapa(
                 EtapaProcessamento.CORRIGIR,
                 atividade_id,
                 aluno_id,
-                provider_name=_resolve_provider(EtapaProcessamento.CORRIGIR)
+                provider_name=_resolve_provider(EtapaProcessamento.CORRIGIR),
+                usar_multimodal=usar_multimodal,
+                criar_nova_versao=force_rerun
             )
             resultados["corrigir"] = resultado
             if not resultado.sucesso:
                 return resultados
         
         # 5. Analisar habilidades
-        if not any(d.tipo == TipoDocumento.ANALISE_HABILIDADES for d in docs_aluno):
+        if _should_run("analisar_habilidades", TipoDocumento.ANALISE_HABILIDADES, docs_aluno):
             resultado = await self.executar_etapa(
                 EtapaProcessamento.ANALISAR_HABILIDADES,
                 atividade_id,
                 aluno_id,
-                provider_name=_resolve_provider(EtapaProcessamento.ANALISAR_HABILIDADES)
+                provider_name=_resolve_provider(EtapaProcessamento.ANALISAR_HABILIDADES),
+                usar_multimodal=usar_multimodal,
+                criar_nova_versao=force_rerun
             )
             resultados["analisar_habilidades"] = resultado
         
         # 6. Gerar relatório
-        if not any(d.tipo == TipoDocumento.RELATORIO_FINAL for d in docs_aluno):
+        if _should_run("gerar_relatorio", TipoDocumento.RELATORIO_FINAL, docs_aluno):
             resultado = await self.executar_etapa(
                 EtapaProcessamento.GERAR_RELATORIO,
                 atividade_id,
                 aluno_id,
-                provider_name=_resolve_provider(EtapaProcessamento.GERAR_RELATORIO)
+                provider_name=_resolve_provider(EtapaProcessamento.GERAR_RELATORIO),
+                usar_multimodal=usar_multimodal,
+                criar_nova_versao=force_rerun
             )
             resultados["gerar_relatorio"] = resultado
         
         return resultados
 
 
-# Instância global
+# ============================================================
+# INSTÂNCIAS GLOBAIS
+# ============================================================
+
+# Instância principal (compatível com código existente)
 executor = PipelineExecutor()
+
+# Alias para compatibilidade com routes_pipeline.py
+pipeline_executor = executor

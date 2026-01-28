@@ -21,5 +21,18 @@ pydantic==2.5.3
 # Utils
 python-dotenv==1.0.0
 
+# Security
+cryptography>=41.0.0
+
 # Optional: Local LLM
 # ollama (install separately)
+
+# Code Execution - E2B (Cloud - Recommended)
+e2b-code-interpreter>=1.0.0
+
+# Code Execution - Local (Docker) - optional, requires Docker Desktop
+# llm-sandbox[docker]>=0.5.0
+# docker>=6.0.0
+
+# Document Generation
+reportlab>=4.0.0

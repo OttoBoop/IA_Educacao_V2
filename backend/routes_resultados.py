@@ -30,15 +30,86 @@ async def get_resultado_aluno(atividade_id: str, aluno_id: str):
     """
     Retorna resultado completo de um aluno em uma atividade.
     Inclui nota, questões detalhadas, habilidades e feedback.
+    
+    Se não houver resultado final, retorna resultados parciais (status do pipeline).
     """
+    from models import TipoDocumento
+    import json
+    from pathlib import Path
+    
     resultado = visualizador.get_resultado_aluno(atividade_id, aluno_id)
     
-    if not resultado:
-        raise HTTPException(404, "Resultado não encontrado. Verifique se a correção foi realizada.")
+    if resultado:
+        return {
+            "sucesso": True,
+            "completo": True,
+            "resultado": resultado.to_dict()
+        }
+    
+    # Sem resultado final - retornar status parcial do pipeline
+    # Buscar documentos disponíveis para mostrar progresso
+    docs_aluno = storage.listar_documentos(atividade_id, aluno_id)
+    docs_base = storage.listar_documentos(atividade_id)  # Docs da atividade (gabarito, etc)
+    
+    # Definir etapas do pipeline e verificar quais foram concluídas
+    etapas = {
+        "enunciado": {"nome": "📄 Enunciado", "completa": False, "doc_id": None},
+        "gabarito": {"nome": "✅ Gabarito", "completa": False, "doc_id": None},
+        "extracao_questoes": {"nome": "🔍 Extração de Questões", "completa": False, "doc_id": None},
+        "prova_respondida": {"nome": "📝 Prova do Aluno", "completa": False, "doc_id": None},
+        "extracao_respostas": {"nome": "📋 Extração de Respostas", "completa": False, "doc_id": None},
+        "correcao": {"nome": "✏️ Correção", "completa": False, "doc_id": None},
+        "analise_habilidades": {"nome": "📊 Análise de Habilidades", "completa": False, "doc_id": None},
+        "relatorio_final": {"nome": "📑 Relatório Final", "completa": False, "doc_id": None},
+    }
+    
+    # Verificar documentos base da atividade
+    for doc in docs_base:
+        tipo = doc.tipo.value if hasattr(doc.tipo, 'value') else str(doc.tipo)
+        if tipo in etapas:
+            etapas[tipo]["completa"] = True
+            etapas[tipo]["doc_id"] = doc.id
+    
+    # Verificar documentos do aluno
+    for doc in docs_aluno:
+        tipo = doc.tipo.value if hasattr(doc.tipo, 'value') else str(doc.tipo)
+        if tipo in etapas:
+            etapas[tipo]["completa"] = True
+            etapas[tipo]["doc_id"] = doc.id
+    
+    # Calcular progresso
+    total_etapas = len(etapas)
+    etapas_completas = sum(1 for e in etapas.values() if e["completa"])
+    progresso = round(etapas_completas / total_etapas * 100)
+    
+    # Tentar ler dados parciais (ex: nota parcial de uma correção incompleta)
+    dados_parciais = {}
+    for tipo in ["correcao", "analise_habilidades"]:
+        if etapas[tipo]["doc_id"]:
+            doc = storage.get_documento(etapas[tipo]["doc_id"])
+            if doc and doc.extensao == ".json":
+                try:
+                    with open(Path(doc.caminho_arquivo), 'r', encoding='utf-8') as f:
+                        dados_parciais[tipo] = json.load(f)
+                except:
+                    pass
     
     return {
         "sucesso": True,
-        "resultado": resultado.to_dict()
+        "completo": False,
+        "progresso": progresso,
+        "etapas": etapas,
+        "dados_parciais": dados_parciais,
+        "documentos_disponiveis": [
+            {
+                "id": d.id,
+                "tipo": d.tipo.value if hasattr(d.tipo, 'value') else str(d.tipo),
+                "nome": d.nome_arquivo,
+                "extensao": d.extensao
+            }
+            for d in docs_aluno + [d for d in docs_base if not d.aluno_id]
+        ],
+        "mensagem": f"Pipeline em progresso: {etapas_completas}/{total_etapas} etapas concluídas"
     }
 
 

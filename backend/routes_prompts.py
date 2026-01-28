@@ -5,17 +5,30 @@ Endpoints para:
 - Gerenciar prompts (CRUD)
 - Executar etapas individuais do pipeline
 - Visualizar resultados
+
+ATUALIZADO: Integrado com chat_service.py (novo sistema de models/providers)
 """
 
 from fastapi import APIRouter, HTTPException, Form, UploadFile, File
 from pydantic import BaseModel
 from typing import Optional, List, Dict, Any
 from datetime import datetime
+from pathlib import Path
 import json
 
 from prompts import PromptManager, PromptTemplate, EtapaProcessamento, prompt_manager
 from storage_v2 import storage_v2 as storage
 from models import TipoDocumento, Documento
+
+# Importar novo sistema de chat/models
+try:
+    from chat_service import (
+        chat_service, model_manager, api_key_manager,
+        ModelConfig, ProviderType
+    )
+    HAS_NEW_CHAT = True
+except ImportError:
+    HAS_NEW_CHAT = False
 
 
 router = APIRouter()
@@ -49,12 +62,15 @@ class ProcessarEtapaRequest(BaseModel):
     atividade_id: str
     aluno_id: Optional[str] = None
     prompt_id: Optional[str] = None  # Se não fornecido, usa o padrão
-    provider: Optional[str] = None   # Se não fornecido, usa o padrão
+    prompt_customizado: Optional[str] = None  # Texto do prompt customizado (override)
+    model_id: Optional[str] = None   # NOVO: ID do modelo a usar
+    provider: Optional[str] = None   # Legado: nome do provider
     
 class ProcessarEtapaSimples(BaseModel):
     """Para processar com entrada manual (sem documentos)"""
     etapa: str
     prompt_id: Optional[str] = None
+    model_id: Optional[str] = None
     provider: Optional[str] = None
     entrada: Dict[str, str]  # Variáveis do prompt
 
@@ -231,122 +247,108 @@ async def status_processamento(atividade_id: str, aluno_id: Optional[str] = None
         raise HTTPException(404, "Atividade não encontrada")
     
     documentos = storage.listar_documentos(atividade_id, aluno_id)
-    tipos_existentes = [d.tipo for d in documentos]
     
-    # Documentos base
-    docs_base = {
-        "enunciado": TipoDocumento.ENUNCIADO in tipos_existentes,
-        "gabarito": TipoDocumento.GABARITO in tipos_existentes,
-        "criterios": TipoDocumento.CRITERIOS_CORRECAO in tipos_existentes
-    }
+    # Mapear tipos de documentos presentes
+    tipos_presentes = {d.tipo for d in documentos}
     
-    # Se pediu aluno específico
-    docs_aluno = {}
-    if aluno_id:
-        docs_aluno = {
-            "prova_respondida": TipoDocumento.PROVA_RESPONDIDA in tipos_existentes,
-            "extracao_respostas": TipoDocumento.EXTRACAO_RESPOSTAS in tipos_existentes,
-            "correcao": TipoDocumento.CORRECAO in tipos_existentes,
-            "analise_habilidades": TipoDocumento.ANALISE_HABILIDADES in tipos_existentes,
-            "relatorio": TipoDocumento.RELATORIO_FINAL in tipos_existentes
+    # Definir etapas e documentos requeridos
+    etapas_status = []
+    
+    etapas_config = [
+        {
+            "etapa": EtapaProcessamento.EXTRAIR_QUESTOES,
+            "requer": [TipoDocumento.ENUNCIADO],
+            "gera": TipoDocumento.EXTRACAO_QUESTOES
+        },
+        {
+            "etapa": EtapaProcessamento.EXTRAIR_GABARITO,
+            "requer": [TipoDocumento.GABARITO, TipoDocumento.EXTRACAO_QUESTOES],
+            "gera": TipoDocumento.EXTRACAO_GABARITO
+        },
+        {
+            "etapa": EtapaProcessamento.EXTRAIR_RESPOSTAS,
+            "requer": [TipoDocumento.PROVA_RESPONDIDA, TipoDocumento.EXTRACAO_QUESTOES],
+            "gera": TipoDocumento.EXTRACAO_RESPOSTAS
+        },
+        {
+            "etapa": EtapaProcessamento.CORRIGIR,
+            "requer": [TipoDocumento.EXTRACAO_RESPOSTAS, TipoDocumento.EXTRACAO_GABARITO],
+            "gera": TipoDocumento.CORRECAO
+        },
+        {
+            "etapa": EtapaProcessamento.ANALISAR_HABILIDADES,
+            "requer": [TipoDocumento.CORRECAO],
+            "gera": TipoDocumento.ANALISE_HABILIDADES
+        },
+        {
+            "etapa": EtapaProcessamento.GERAR_RELATORIO,
+            "requer": [TipoDocumento.CORRECAO, TipoDocumento.ANALISE_HABILIDADES],
+            "gera": TipoDocumento.RELATORIO_FINAL
         }
+    ]
     
-    # Determinar próximas etapas possíveis
-    proximas_etapas = []
-    
-    if docs_base["enunciado"] and not any(d.tipo == TipoDocumento.EXTRACAO_QUESTOES for d in documentos):
-        proximas_etapas.append({
-            "etapa": "extrair_questoes",
-            "descricao": "Extrair questões do enunciado",
-            "pode_executar": True
-        })
-    
-    if docs_base["gabarito"] and not any(d.tipo == TipoDocumento.EXTRACAO_GABARITO for d in documentos):
-        proximas_etapas.append({
-            "etapa": "extrair_gabarito",
-            "descricao": "Extrair respostas do gabarito",
-            "pode_executar": True
-        })
-    
-    if aluno_id and docs_aluno.get("prova_respondida") and not docs_aluno.get("extracao_respostas"):
-        proximas_etapas.append({
-            "etapa": "extrair_respostas",
-            "descricao": "Extrair respostas do aluno",
-            "pode_executar": True
-        })
-    
-    if aluno_id and docs_aluno.get("extracao_respostas") and docs_base["gabarito"] and not docs_aluno.get("correcao"):
-        proximas_etapas.append({
-            "etapa": "corrigir",
-            "descricao": "Corrigir respostas",
-            "pode_executar": True
-        })
-    
-    if aluno_id and docs_aluno.get("correcao") and not docs_aluno.get("analise_habilidades"):
-        proximas_etapas.append({
-            "etapa": "analisar_habilidades",
-            "descricao": "Analisar habilidades",
-            "pode_executar": True
-        })
-    
-    if aluno_id and docs_aluno.get("correcao") and not docs_aluno.get("relatorio"):
-        proximas_etapas.append({
-            "etapa": "gerar_relatorio",
-            "descricao": "Gerar relatório final",
-            "pode_executar": True
+    for cfg in etapas_config:
+        faltando = [r for r in cfg["requer"] if r not in tipos_presentes]
+        concluida = cfg["gera"] in tipos_presentes
+        pode_executar = len(faltando) == 0 and not concluida
+        
+        etapas_status.append({
+            "etapa": cfg["etapa"].value,
+            "nome": cfg["etapa"].value.replace("_", " ").title(),
+            "concluida": concluida,
+            "pode_executar": pode_executar,
+            "documentos_faltando": [f.value for f in faltando],
+            "documento_gerado": cfg["gera"].value
         })
     
     return {
         "atividade_id": atividade_id,
         "aluno_id": aluno_id,
-        "documentos_base": docs_base,
-        "documentos_aluno": docs_aluno,
-        "documentos": [d.to_dict() for d in documentos],
-        "proximas_etapas": proximas_etapas
+        "documentos": [{"id": d.id, "tipo": d.tipo.value, "nome": d.nome_arquivo} for d in documentos],
+        "etapas": etapas_status
     }
 
 
 @router.get("/api/processamento/preparar/{etapa}", tags=["Processamento"])
-async def preparar_etapa(
-    etapa: str,
-    atividade_id: str,
-    aluno_id: Optional[str] = None,
-    prompt_id: Optional[str] = None
-):
+async def preparar_etapa(etapa: str, atividade_id: str, aluno_id: Optional[str] = None):
     """
-    Prepara dados para executar uma etapa.
-    Retorna o prompt que será usado e as variáveis disponíveis.
+    Prepara execução de uma etapa: retorna prompt, variáveis disponíveis, etc.
     """
     try:
         etapa_enum = EtapaProcessamento(etapa)
     except ValueError:
         raise HTTPException(400, f"Etapa inválida: {etapa}")
     
-    # Buscar prompt
-    if prompt_id:
-        prompt = prompt_manager.get_prompt(prompt_id)
-    else:
-        atividade = storage.get_atividade(atividade_id)
-        turma = storage.get_turma(atividade.turma_id) if atividade else None
-        materia_id = turma.materia_id if turma else None
-        prompt = prompt_manager.get_prompt_padrao(etapa_enum, materia_id)
-    
+    # Buscar prompt padrão
+    prompt = prompt_manager.get_prompt_padrao(etapa_enum)
     if not prompt:
-        raise HTTPException(404, f"Nenhum prompt encontrado para etapa {etapa}")
+        raise HTTPException(404, f"Nenhum prompt padrão para etapa {etapa}")
     
-    # Buscar documentos relevantes
+    # Carregar documentos disponíveis
     documentos = storage.listar_documentos(atividade_id, aluno_id)
     
     # Preparar variáveis disponíveis
     variaveis_disponiveis = {}
     
     for doc in documentos:
+        # Ler conteúdo do documento
+        conteudo = _ler_conteudo_documento(doc)
+        
+        # Mapear para variáveis
         if doc.tipo == TipoDocumento.ENUNCIADO:
-            variaveis_disponiveis["conteudo_documento"] = f"[Conteúdo do arquivo: {doc.nome_arquivo}]"
-        if doc.tipo == TipoDocumento.GABARITO:
-            variaveis_disponiveis["gabarito"] = f"[Conteúdo do gabarito: {doc.nome_arquivo}]"
-        if doc.tipo == TipoDocumento.PROVA_RESPONDIDA:
-            variaveis_disponiveis["prova_aluno"] = f"[Conteúdo da prova: {doc.nome_arquivo}]"
+            variaveis_disponiveis["conteudo_documento"] = conteudo
+        elif doc.tipo == TipoDocumento.GABARITO:
+            variaveis_disponiveis["conteudo_documento"] = conteudo
+        elif doc.tipo == TipoDocumento.EXTRACAO_QUESTOES:
+            variaveis_disponiveis["questoes_extraidas"] = conteudo
+        elif doc.tipo == TipoDocumento.EXTRACAO_GABARITO:
+            variaveis_disponiveis["gabarito_extraido"] = conteudo
+        elif doc.tipo == TipoDocumento.EXTRACAO_RESPOSTAS:
+            variaveis_disponiveis["respostas_extraidas"] = conteudo
+        elif doc.tipo == TipoDocumento.CORRECAO:
+            variaveis_disponiveis["correcao"] = conteudo
+        elif doc.tipo == TipoDocumento.PROVA_RESPONDIDA:
+            variaveis_disponiveis["prova_aluno"] = conteudo
     
     # Info da atividade
     atividade = storage.get_atividade(atividade_id)
@@ -362,13 +364,40 @@ async def preparar_etapa(
         if aluno:
             variaveis_disponiveis["nome_aluno"] = aluno.nome
     
+    # Modelos disponíveis (novo sistema)
+    modelos_disponiveis = []
+    if HAS_NEW_CHAT:
+        modelos = model_manager.listar()
+        modelos_disponiveis = [{"id": m.id, "nome": m.nome, "is_default": m.is_default} for m in modelos]
+    
     return {
         "etapa": etapa,
         "prompt": prompt.to_dict(),
         "variaveis_requeridas": prompt.variaveis,
         "variaveis_disponiveis": variaveis_disponiveis,
-        "documentos_encontrados": [{"id": d.id, "tipo": d.tipo.value, "nome": d.nome_arquivo} for d in documentos]
+        "documentos_encontrados": [{"id": d.id, "tipo": d.tipo.value, "nome": d.nome_arquivo} for d in documentos],
+        "modelos_disponiveis": modelos_disponiveis
     }
+
+
+def _ler_conteudo_documento(doc) -> str:
+    """Lê conteúdo de um documento"""
+    try:
+        arquivo = Path(doc.caminho_arquivo)
+        if not arquivo.exists():
+            return f"[Arquivo não encontrado: {doc.nome_arquivo}]"
+        
+        if doc.extensao.lower() == '.json':
+            with open(arquivo, 'r', encoding='utf-8') as f:
+                data = json.load(f)
+                return json.dumps(data, ensure_ascii=False, indent=2)
+        elif doc.extensao.lower() in ['.txt', '.md']:
+            with open(arquivo, 'r', encoding='utf-8') as f:
+                return f.read()
+        else:
+            return f"[Arquivo: {doc.nome_arquivo}]"
+    except Exception as e:
+        return f"[Erro ao ler: {e}]"
 
 
 @router.get("/api/documentos/{documento_id}/conteudo", tags=["Documentos"])
@@ -381,7 +410,6 @@ async def get_conteudo_documento(documento_id: str):
     if not documento:
         raise HTTPException(404, "Documento não encontrado")
     
-    from pathlib import Path
     arquivo = Path(documento.caminho_arquivo)
     
     if not arquivo.exists():
@@ -415,20 +443,49 @@ async def get_conteudo_documento(documento_id: str):
 
 
 # ============================================================
-# ENDPOINTS: PROVIDERS
+# ENDPOINTS: PROVIDERS/MODELS
 # ============================================================
 
 @router.get("/api/providers/disponiveis", tags=["Providers"])
 async def listar_providers_disponiveis():
     """Lista providers de IA disponíveis para processamento"""
-    from ai_providers import ai_registry
     
-    providers = ai_registry.get_provider_info()
+    # Novo sistema (chat_service)
+    if HAS_NEW_CHAT:
+        modelos = model_manager.listar()
+        default_model = model_manager.get_default()
+        
+        return {
+            "providers": [
+                {
+                    "id": m.id,
+                    "nome": m.nome,
+                    "tipo": m.tipo.value,
+                    "modelo": m.modelo,
+                    "is_default": m.is_default
+                }
+                for m in modelos
+            ],
+            "default": default_model.id if default_model else None,
+            "sistema": "chat_service"
+        }
     
-    return {
-        "providers": providers,
-        "default": ai_registry.default_provider
-    }
+    # Fallback para sistema antigo
+    try:
+        from ai_providers import ai_registry
+        providers = ai_registry.get_provider_info()
+        return {
+            "providers": providers,
+            "default": ai_registry.default_provider,
+            "sistema": "ai_providers"
+        }
+    except ImportError:
+        return {
+            "providers": [],
+            "default": None,
+            "sistema": "none",
+            "erro": "Nenhum sistema de IA configurado"
+        }
 
 
 # ============================================================
@@ -439,25 +496,40 @@ async def listar_providers_disponiveis():
 async def executar_etapa(data: ProcessarEtapaRequest):
     """
     Executa uma etapa específica do pipeline.
-    
-    Retorna o resultado da execução, incluindo a resposta da IA.
+
+    Usa o novo sistema de chat se disponível, senão fallback para executor antigo.
+    Suporta prompt_customizado para override do texto do prompt.
     """
-    from executor import executor, EtapaProcessamento
-    
     try:
         etapa = EtapaProcessamento(data.etapa)
     except ValueError:
         raise HTTPException(400, f"Etapa inválida: {data.etapa}")
-    
+
+    # Usar novo sistema de chat
+    if HAS_NEW_CHAT and data.model_id:
+        return await _executar_com_chat_service(
+            etapa=etapa,
+            atividade_id=data.atividade_id,
+            aluno_id=data.aluno_id,
+            prompt_id=data.prompt_id,
+            prompt_customizado=data.prompt_customizado,
+            model_id=data.model_id,
+            salvar=True
+        )
+
+    # Fallback para executor antigo
+    from executor import executor
+
     resultado = await executor.executar_etapa(
         etapa=etapa,
         atividade_id=data.atividade_id,
         aluno_id=data.aluno_id,
         prompt_id=data.prompt_id,
+        prompt_customizado=data.prompt_customizado,
         provider_name=data.provider,
         salvar_resultado=True
     )
-    
+
     return {
         "sucesso": resultado.sucesso,
         "resultado": resultado.to_dict()
@@ -470,22 +542,36 @@ async def executar_etapa_preview(data: ProcessarEtapaRequest):
     Executa uma etapa SEM salvar o resultado.
     Útil para testar prompts e ver a resposta antes de confirmar.
     """
-    from executor import executor, EtapaProcessamento
-    
     try:
         etapa = EtapaProcessamento(data.etapa)
     except ValueError:
         raise HTTPException(400, f"Etapa inválida: {data.etapa}")
-    
+
+    # Usar novo sistema de chat
+    if HAS_NEW_CHAT and data.model_id:
+        return await _executar_com_chat_service(
+            etapa=etapa,
+            atividade_id=data.atividade_id,
+            aluno_id=data.aluno_id,
+            prompt_id=data.prompt_id,
+            prompt_customizado=data.prompt_customizado,
+            model_id=data.model_id,
+            salvar=False
+        )
+
+    # Fallback
+    from executor import executor
+
     resultado = await executor.executar_etapa(
         etapa=etapa,
         atividade_id=data.atividade_id,
         aluno_id=data.aluno_id,
         prompt_id=data.prompt_id,
+        prompt_customizado=data.prompt_customizado,
         provider_name=data.provider,
-        salvar_resultado=False  # Não salva!
+        salvar_resultado=False
     )
-    
+
     return {
         "sucesso": resultado.sucesso,
         "preview": True,
@@ -493,16 +579,133 @@ async def executar_etapa_preview(data: ProcessarEtapaRequest):
     }
 
 
+async def _executar_com_chat_service(
+    etapa: EtapaProcessamento,
+    atividade_id: str,
+    aluno_id: Optional[str],
+    prompt_id: Optional[str],
+    model_id: str,
+    salvar: bool,
+    prompt_customizado: Optional[str] = None
+) -> Dict[str, Any]:
+    """Executa etapa usando o novo chat_service"""
+
+    # Buscar prompt
+    if prompt_id:
+        prompt = prompt_manager.get_prompt(prompt_id)
+    else:
+        prompt = prompt_manager.get_prompt_padrao(etapa)
+
+    if not prompt and not prompt_customizado:
+        raise HTTPException(404, f"Nenhum prompt encontrado para etapa {etapa.value}")
+
+    # Carregar variáveis
+    documentos = storage.listar_documentos(atividade_id, aluno_id)
+    variaveis = {}
+
+    for doc in documentos:
+        conteudo = _ler_conteudo_documento(doc)
+
+        if doc.tipo == TipoDocumento.ENUNCIADO:
+            variaveis["conteudo_documento"] = conteudo
+        elif doc.tipo == TipoDocumento.GABARITO:
+            variaveis["conteudo_documento"] = conteudo
+        elif doc.tipo == TipoDocumento.EXTRACAO_QUESTOES:
+            variaveis["questoes_extraidas"] = conteudo
+        elif doc.tipo == TipoDocumento.EXTRACAO_GABARITO:
+            variaveis["gabarito_extraido"] = conteudo
+        elif doc.tipo == TipoDocumento.EXTRACAO_RESPOSTAS:
+            variaveis["respostas_extraidas"] = conteudo
+        elif doc.tipo == TipoDocumento.CORRECAO:
+            variaveis["correcao"] = conteudo
+        elif doc.tipo == TipoDocumento.PROVA_RESPONDIDA:
+            variaveis["prova_aluno"] = conteudo
+
+    # Info contextual
+    atividade = storage.get_atividade(atividade_id)
+    if atividade:
+        turma = storage.get_turma(atividade.turma_id)
+        materia = storage.get_materia(turma.materia_id) if turma else None
+        variaveis["materia"] = materia.nome if materia else "Não definida"
+        variaveis["atividade"] = atividade.nome
+
+    if aluno_id:
+        aluno = storage.get_aluno(aluno_id)
+        if aluno:
+            variaveis["nome_aluno"] = aluno.nome
+
+    # Renderizar prompt (usa customizado se fornecido)
+    if prompt_customizado:
+        # Substituir variáveis no texto customizado
+        texto_renderizado = prompt_customizado
+        for key, value in variaveis.items():
+            texto_renderizado = texto_renderizado.replace(f"{{{key}}}", str(value))
+        texto_sistema = prompt.render_sistema(**variaveis) if prompt and prompt.texto_sistema else None
+    else:
+        texto_renderizado = prompt.render(**variaveis)
+    texto_sistema = prompt.render_sistema(**variaveis) if prompt.texto_sistema else None
+    
+    # Criar sessão de chat
+    sessao = chat_service.criar_sessao(
+        titulo=f"Pipeline: {etapa.value}",
+        model_id=model_id,
+        atividade_id=atividade_id,
+        aluno_id=aluno_id,
+        etapa_pipeline=etapa.value
+    )
+    
+    try:
+        # Enviar para IA
+        resposta = await chat_service.enviar_mensagem(
+            session_id=sessao.id,
+            mensagem=texto_renderizado,
+            model_id=model_id,
+            system_prompt=texto_sistema,
+            incluir_contexto_docs=False  # Já incluímos no prompt
+        )
+        
+        return {
+            "sucesso": True,
+            "preview": not salvar,
+            "resultado": {
+                "session_id": sessao.id,
+                "etapa": etapa.value,
+                "resposta": resposta.content,
+                "modelo": resposta.modelo,
+                "provider": resposta.provider,
+                "tokens": resposta.tokens,
+                "arquivos_gerados": resposta.arquivos_gerados
+            }
+        }
+        
+    except Exception as e:
+        return {
+            "sucesso": False,
+            "erro": str(e),
+            "resultado": None
+        }
+
+
 @router.post("/api/executar/pipeline-completo", tags=["Execução"])
 async def executar_pipeline_completo(
     atividade_id: str = Form(...),
     aluno_id: str = Form(...),
+    model_id: Optional[str] = Form(None),
     provider: Optional[str] = Form(None),
-    providers: Optional[str] = Form(None)
+    providers: Optional[str] = Form(None),
+    selected_steps: Optional[str] = Form(None),
+    force_rerun: bool = Form(False)
 ):
     """
     Executa o pipeline completo para um aluno.
     Executa todas as etapas necessárias em sequência.
+    
+    Args:
+        selected_steps: JSON array de etapas a executar. Se vazio, executa todas.
+                        Valores: extrair_questoes, extrair_gabarito, extrair_respostas,
+                                 corrigir, analisar_habilidades, gerar_relatorio
+        force_rerun: Se True, re-executa etapas mesmo que já existam resultados.
+                     Cria nova versão do documento ao invés de sobrescrever.
     """
     from executor import executor
     
@@ -512,11 +715,21 @@ async def executar_pipeline_completo(
             providers_map = json.loads(providers)
         except json.JSONDecodeError:
             raise HTTPException(400, "Formato inválido para providers. Use JSON.")
+    
+    steps_list = None
+    if selected_steps:
+        try:
+            steps_list = json.loads(selected_steps)
+        except json.JSONDecodeError:
+            raise HTTPException(400, "Formato inválido para selected_steps. Use JSON array.")
+    
     resultados = await executor.executar_pipeline_completo(
         atividade_id=atividade_id,
         aluno_id=aluno_id,
         provider_name=provider,
-        providers_map=providers_map
+        providers_map=providers_map,
+        selected_steps=steps_list,
+        force_rerun=force_rerun
     )
     
     # Resumo
@@ -532,10 +745,126 @@ async def executar_pipeline_completo(
     }
 
 
+@router.get("/api/executar/status-etapas/{atividade_id}/{aluno_id}", tags=["Execução"])
+async def status_etapas_pipeline(atividade_id: str, aluno_id: str):
+    """
+    Retorna o status de cada etapa do pipeline para um aluno.
+    Mostra quais etapas já foram executadas, por qual modelo, e quantas versões existem.
+    """
+    from models import TipoDocumento
+    
+    # Mapear etapas para tipos de documento
+    etapa_tipo_map = {
+        "extrair_questoes": TipoDocumento.EXTRACAO_QUESTOES,
+        "extrair_gabarito": TipoDocumento.EXTRACAO_GABARITO,
+        "extrair_respostas": TipoDocumento.EXTRACAO_RESPOSTAS,
+        "corrigir": TipoDocumento.CORRECAO,
+        "analisar_habilidades": TipoDocumento.ANALISE_HABILIDADES,
+        "gerar_relatorio": TipoDocumento.RELATORIO_FINAL
+    }
+    
+    # Etapas de atividade (sem aluno)
+    etapas_atividade = ["extrair_questoes", "extrair_gabarito"]
+    
+    # Buscar documentos
+    docs_base = storage.listar_documentos(atividade_id)
+    docs_aluno = storage.listar_documentos(atividade_id, aluno_id)
+    
+    status = {}
+    for etapa_nome, tipo_doc in etapa_tipo_map.items():
+        # Escolher lista de docs correta
+        docs_list = docs_base if etapa_nome in etapas_atividade else docs_aluno
+        
+        # Filtrar por tipo
+        docs_etapa = [d for d in docs_list if d.tipo == tipo_doc]
+        
+        if not docs_etapa:
+            status[etapa_nome] = {
+                "executada": False,
+                "versoes": 0,
+                "documentos": []
+            }
+        else:
+            status[etapa_nome] = {
+                "executada": True,
+                "versoes": len(docs_etapa),
+                "documentos": [
+                    {
+                        "id": d.id,
+                        "versao": d.versao,
+                        "modelo": d.ia_modelo,
+                        "provider": d.ia_provider,
+                        "criado_em": d.criado_em.isoformat() if d.criado_em else None
+                    }
+                    for d in sorted(docs_etapa, key=lambda x: x.versao)
+                ]
+            }
+    
+    return {
+        "atividade_id": atividade_id,
+        "aluno_id": aluno_id,
+        "etapas": status
+    }
+
+
+@router.get("/api/documentos/{atividade_id}/{aluno_id}/versoes", tags=["Documentos"])
+async def listar_versoes_documentos(
+    atividade_id: str, 
+    aluno_id: str,
+    tipo: Optional[str] = None
+):
+    """
+    Lista todas as versões de documentos para um aluno, agrupadas por tipo.
+    Útil para comparar resultados de diferentes modelos.
+    """
+    from models import TipoDocumento
+    
+    # Buscar documentos do aluno e da atividade
+    docs_base = storage.listar_documentos(atividade_id)
+    docs_aluno = storage.listar_documentos(atividade_id, aluno_id)
+    
+    todos_docs = docs_base + docs_aluno
+    
+    # Filtrar por tipo se especificado
+    if tipo:
+        try:
+            tipo_enum = TipoDocumento(tipo)
+            todos_docs = [d for d in todos_docs if d.tipo == tipo_enum]
+        except ValueError:
+            pass
+    
+    # Agrupar por tipo
+    por_tipo = {}
+    for doc in todos_docs:
+        tipo_str = doc.tipo.value
+        if tipo_str not in por_tipo:
+            por_tipo[tipo_str] = []
+        por_tipo[tipo_str].append({
+            "id": doc.id,
+            "versao": doc.versao,
+            "modelo": doc.ia_modelo,
+            "provider": doc.ia_provider,
+            "nome_arquivo": doc.nome_arquivo,
+            "criado_em": doc.criado_em.isoformat() if doc.criado_em else None,
+            "documento_origem_id": doc.documento_origem_id
+        })
+    
+    # Ordenar por versão dentro de cada tipo
+    for tipo_str in por_tipo:
+        por_tipo[tipo_str] = sorted(por_tipo[tipo_str], key=lambda x: x["versao"])
+    
+    return {
+        "atividade_id": atividade_id,
+        "aluno_id": aluno_id,
+        "documentos_por_tipo": por_tipo
+    }
+
+
 @router.post("/api/executar/lote", tags=["Execução"])
 async def executar_lote(
     atividade_id: str = Form(...),
     aluno_ids: str = Form(...),  # IDs separados por vírgula
+    model_id: Optional[str] = Form(None),
     provider: Optional[str] = Form(None),
     providers: Optional[str] = Form(None)
 ):
@@ -552,6 +881,7 @@ async def executar_lote(
             providers_map = json.loads(providers)
         except json.JSONDecodeError:
             raise HTTPException(400, "Formato inválido para providers. Use JSON.")
+    
     resultados_por_aluno = {}
     for aluno_id in ids:
         aluno = storage.get_aluno(aluno_id)
@@ -575,5 +905,99 @@ async def executar_lote(
         "total_alunos": len(ids),
         "sucesso": sum(1 for r in resultados_por_aluno.values() if r["sucesso"]),
         "falhas": sum(1 for r in resultados_por_aluno.values() if not r["sucesso"]),
+        "resultados": resultados_por_aluno
+    }
+
+
+@router.post("/api/executar/pipeline-turma", tags=["Execução"])
+async def executar_pipeline_turma(
+    atividade_id: str = Form(...),
+    provider: Optional[str] = Form(None),
+    providers: Optional[str] = Form(None),
+    apenas_com_prova: bool = Form(True)  # Apenas alunos que têm prova enviada
+):
+    """
+    Executa o pipeline completo para TODOS os alunos de uma turma.
+
+    Parâmetros:
+    - atividade_id: ID da atividade
+    - provider: Provider de IA a usar (opcional)
+    - providers: JSON com provider por etapa (opcional)
+    - apenas_com_prova: Se True, executa apenas para alunos que têm prova enviada
+    """
+    from executor import executor
+
+    # Buscar atividade e turma
+    atividade = storage.get_atividade(atividade_id)
+    if not atividade:
+        raise HTTPException(404, "Atividade não encontrada")
+
+    # Buscar todos os alunos da turma
+    alunos = storage.listar_alunos(atividade.turma_id)
+    if not alunos:
+        raise HTTPException(400, "Nenhum aluno encontrado na turma")
+
+    # Filtrar apenas alunos com prova enviada, se solicitado
+    alunos_para_processar = []
+    for aluno in alunos:
+        if apenas_com_prova:
+            docs_aluno = storage.listar_documentos(atividade_id, aluno.id)
+            tem_prova = any(d.tipo == TipoDocumento.PROVA_RESPONDIDA for d in docs_aluno)
+            if tem_prova:
+                alunos_para_processar.append(aluno)
+        else:
+            alunos_para_processar.append(aluno)
+
+    if not alunos_para_processar:
+        return {
+            "sucesso": False,
+            "mensagem": "Nenhum aluno com prova enviada para processar",
+            "total_alunos": 0,
+            "resultados": {}
+        }
+
+    providers_map = None
+    if providers:
+        try:
+            providers_map = json.loads(providers)
+        except json.JSONDecodeError:
+            raise HTTPException(400, "Formato inválido para providers. Use JSON.")
+
+    resultados_por_aluno = {}
+    for aluno in alunos_para_processar:
+        try:
+            resultados = await executor.executar_pipeline_completo(
+                atividade_id=atividade_id,
+                aluno_id=aluno.id,
+                provider_name=provider,
+                providers_map=providers_map
+            )
+
+            sucesso = all(r.sucesso for r in resultados.values())
+            resultados_por_aluno[aluno.id] = {
+                "nome": aluno.nome,
+                "sucesso": sucesso,
+                "etapas_executadas": [k for k, v in resultados.items() if v.sucesso],
+                "etapas_falharam": [k for k, v in resultados.items() if not v.sucesso],
+                "erro": None
+            }
+        except Exception as e:
+            resultados_por_aluno[aluno.id] = {
+                "nome": aluno.nome,
+                "sucesso": False,
+                "etapas_executadas": [],
+                "etapas_falharam": [],
+                "erro": str(e)
+            }
+
+    total_sucesso = sum(1 for r in resultados_por_aluno.values() if r["sucesso"])
+    total_falhas = sum(1 for r in resultados_por_aluno.values() if not r["sucesso"])
+
+    return {
+        "sucesso": total_falhas == 0,
+        "mensagem": f"Pipeline executado para {total_sucesso} de {len(alunos_para_processar)} alunos",
+        "total_alunos": len(alunos_para_processar),
+        "total_sucesso": total_sucesso,
+        "total_falhas": total_falhas,
         "resultados": resultados_por_aluno
     }

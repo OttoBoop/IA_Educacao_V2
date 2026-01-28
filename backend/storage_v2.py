@@ -176,23 +176,6 @@ class StorageManagerV2:
             )
         ''')
         
-        # Tabela: Prompts
-        c.execute('''
-            CREATE TABLE IF NOT EXISTS prompts (
-                id TEXT PRIMARY KEY,
-                nome TEXT NOT NULL,
-                etapa TEXT NOT NULL,
-                texto TEXT NOT NULL,
-                descricao TEXT,
-                is_padrao INTEGER DEFAULT 1,
-                materia_id TEXT,
-                criado_em TEXT,
-                atualizado_em TEXT,
-                metadata TEXT,
-                FOREIGN KEY (materia_id) REFERENCES materias(id) ON DELETE SET NULL
-            )
-        ''')
-        
         # Tabela: Resultados (agregação)
         c.execute('''
             CREATE TABLE IF NOT EXISTS resultados (
@@ -500,6 +483,65 @@ class StorageManagerV2:
         
         return [Aluno.from_dict(dict(row)) for row in rows]
     
+    def deletar_aluno(self, aluno_id: str) -> bool:
+        """Deleta um aluno e todos os seus vínculos"""
+        aluno = self.get_aluno(aluno_id)
+        if not aluno:
+            return False
+        
+        conn = self._get_connection()
+        c = conn.cursor()
+        
+        # Remove vínculos com turmas
+        c.execute('DELETE FROM alunos_turmas WHERE aluno_id = ?', (aluno_id,))
+        
+        # Remove documentos do aluno (opcional: pode querer manter)
+        c.execute('DELETE FROM documentos WHERE aluno_id = ?', (aluno_id,))
+        
+        # Remove resultados
+        c.execute('DELETE FROM resultados WHERE aluno_id = ?', (aluno_id,))
+        
+        # Remove o aluno
+        c.execute('DELETE FROM alunos WHERE id = ?', (aluno_id,))
+        affected = c.rowcount
+        
+        conn.commit()
+        conn.close()
+        
+        return affected > 0
+    
+    def atualizar_aluno(self, aluno_id: str, **kwargs) -> Optional[Aluno]:
+        """Atualiza campos de um aluno"""
+        aluno = self.get_aluno(aluno_id)
+        if not aluno:
+            return None
+        
+        campos_permitidos = ['nome', 'email', 'matricula', 'metadata']
+        updates = []
+        valores = []
+        
+        for campo, valor in kwargs.items():
+            if campo in campos_permitidos:
+                if campo == 'metadata':
+                    valor = json.dumps(valor)
+                updates.append(f"{campo} = ?")
+                valores.append(valor)
+        
+        if not updates:
+            return aluno
+        
+        updates.append("atualizado_em = ?")
+        valores.append(datetime.now().isoformat())
+        valores.append(aluno_id)
+        
+        conn = self._get_connection()
+        c = conn.cursor()
+        c.execute(f"UPDATE alunos SET {', '.join(updates)} WHERE id = ?", valores)
+        conn.commit()
+        conn.close()
+        
+        return self.get_aluno(aluno_id)
+    
     def vincular_aluno_turma(self, aluno_id: str, turma_id: str, observacoes: str = None) -> Optional[AlunoTurma]:
         """Vincula um aluno a uma turma"""
         if not self.get_aluno(aluno_id) or not self.get_turma(turma_id):
@@ -663,21 +705,24 @@ class StorageManagerV2:
     # CRUD: DOCUMENTOS
     # ============================================================
     
-    def _get_caminho_documento(self, atividade: Atividade, tipo: TipoDocumento, 
+    def _get_caminho_documento(self, atividade: Atividade, tipo: TipoDocumento,
                                 aluno_id: str = None, nome_arquivo: str = "") -> Path:
         """Calcula o caminho onde o documento deve ser salvo"""
         turma = self.get_turma(atividade.turma_id)
         base = self.arquivos_path / turma.materia_id / turma.id / atividade.id
-        
-        if tipo in TipoDocumento.documentos_base():
-            # Documentos base ficam em _base/
-            return base / "_base" / nome_arquivo
+
+        # Documentos que não precisam de aluno ficam em _base/
+        # Isso inclui: enunciado, gabarito, extracao_questoes, extracao_gabarito
+        if tipo in TipoDocumento.documentos_sem_aluno():
+            base_dir = base / "_base"
+            base_dir.mkdir(parents=True, exist_ok=True)
+            return base_dir / nome_arquivo
         else:
             # Documentos de aluno ficam em {aluno_id}/
             if not aluno_id:
                 raise ValueError("Documentos de aluno precisam de aluno_id")
             aluno_dir = base / aluno_id
-            aluno_dir.mkdir(exist_ok=True)
+            aluno_dir.mkdir(parents=True, exist_ok=True)
             return aluno_dir / nome_arquivo
     
     def salvar_documento(self, 
@@ -688,7 +733,9 @@ class StorageManagerV2:
                          ia_provider: str = None,
                          ia_modelo: str = None,
                          prompt_usado: str = None,
-                         criado_por: str = "usuario") -> Optional[Documento]:
+                         criado_por: str = "usuario",
+                         versao: int = 1,
+                         documento_origem_id: str = None) -> Optional[Documento]:
         """
         Salva um documento no sistema.
         
@@ -701,13 +748,15 @@ class StorageManagerV2:
             ia_modelo: Modelo da IA (para docs gerados)
             prompt_usado: Prompt utilizado (para docs gerados)
             criado_por: Quem criou o documento
+            versao: Número da versão (1 = original, 2+ = re-processado)
+            documento_origem_id: ID do documento original se for versão > 1
         """
         atividade = self.get_atividade(atividade_id)
         if not atividade:
             return None
         
         # Validar aluno_id para documentos que precisam
-        if tipo not in TipoDocumento.documentos_base() and not aluno_id:
+        if tipo not in TipoDocumento.documentos_sem_aluno() and not aluno_id:
             raise ValueError(f"Tipo {tipo.value} requer aluno_id")
         
         # Validar se aluno existe e está na turma
@@ -746,7 +795,9 @@ class StorageManagerV2:
             ia_provider=ia_provider,
             ia_modelo=ia_modelo,
             prompt_usado=prompt_usado,
-            criado_por=criado_por
+            criado_por=criado_por,
+            versao=versao,
+            documento_origem_id=documento_origem_id
         )
         
         conn = self._get_connection()

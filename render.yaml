@@ -1,0 +1,18 @@
+services:
+  - type: web
+    name: prova-ai
+    runtime: python
+    rootDir: IA_Educacao_V2/backend
+    buildCommand: pip install -r ../requirements.txt
+    startCommand: uvicorn main_v2:app --host 0.0.0.0 --port $PORT
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.11.4
+      - key: OPENAI_API_KEY
+        sync: false
+      - key: ANTHROPIC_API_KEY
+        sync: false
+      - key: GOOGLE_API_KEY
+        sync: false
+      - key: E2B_API_KEY
+        sync: false

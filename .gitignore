@@ -1,0 +1,50 @@
+# Environment files (contain secrets)
+.env
+.env.local
+.env.*.local
+
+# Encryption keys and API credentials (NEVER commit these)
+data/.encryption_key
+data/api_keys.json
+backend/data/.encryption_key
+backend/data/api_keys.json
+backend/data/providers.json
+
+# User data (created at runtime)
+backend/data/arquivos/
+backend/data/database.db
+backend/data/metadata.db
+data/arquivos/
+
+# Test output files
+backend/test_output.*
+test_output.*
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+.venv/
+venv/
+ENV/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Generated files
+data/code_outputs/
+*.log
+
+# Distribution / packaging
+dist/
+build/
+*.egg-info/

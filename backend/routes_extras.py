@@ -543,3 +543,174 @@ async def duplicar_atividade(
         "nova_atividade": nova_atividade.to_dict(),
         "documentos_copiados": docs_copiados
     }
+# ============================================================
+# ENDPOINT: DOCUMENTOS PARA CHAT
+# ============================================================
+
+@router.get("/api/documentos/todos", tags=["Chat"])
+async def listar_todos_documentos(
+    materia_ids: Optional[str] = None,
+    turma_ids: Optional[str] = None,
+    atividade_ids: Optional[str] = None,
+    aluno_ids: Optional[str] = None,
+    tipos: Optional[str] = None
+):
+    """
+    Lista todos os documentos do sistema com metadados completos.
+    Usado pelo sistema de chat para seleção de contexto.
+    
+    Parâmetros são listas separadas por vírgula.
+    """
+    # Parse filters
+    filters = {
+        'materia_ids': materia_ids.split(',') if materia_ids else None,
+        'turma_ids': turma_ids.split(',') if turma_ids else None,
+        'atividade_ids': atividade_ids.split(',') if atividade_ids else None,
+        'aluno_ids': aluno_ids.split(',') if aluno_ids else None,
+        'tipos': tipos.split(',') if tipos else None,
+    }
+    
+    documentos = []
+    
+    # Buscar todas as matérias
+    materias = storage.listar_materias()
+    
+    for materia in materias:
+        # Filtrar por matéria se especificado
+        if filters['materia_ids'] and materia.id not in filters['materia_ids']:
+            continue
+        
+        turmas = storage.listar_turmas(materia.id)
+        
+        for turma in turmas:
+            # Filtrar por turma se especificado
+            if filters['turma_ids'] and turma.id not in filters['turma_ids']:
+                continue
+            
+            atividades = storage.listar_atividades(turma.id)
+            
+            for atividade in atividades:
+                # Filtrar por atividade se especificado
+                if filters['atividade_ids'] and atividade.id not in filters['atividade_ids']:
+                    continue
+                
+                # Buscar documentos da atividade
+                docs_atividade = storage.listar_documentos(atividade.id)
+                
+                for doc in docs_atividade:
+                    # Filtrar por tipo se especificado
+                    if filters['tipos'] and doc.tipo.value not in filters['tipos']:
+                        continue
+                    
+                    # Filtrar por aluno se especificado
+                    if filters['aluno_ids']:
+                        # Incluir documentos base (sem aluno) E documentos dos alunos selecionados
+                        if doc.aluno_id and doc.aluno_id not in filters['aluno_ids']:
+                            continue
+                    
+                    # Buscar nome do aluno se houver
+                    aluno_nome = None
+                    if doc.aluno_id:
+                        aluno = storage.get_aluno(doc.aluno_id)
+                        aluno_nome = aluno.nome if aluno else None
+                    
+                    documentos.append({
+                        "id": doc.id,
+                        "nome_arquivo": doc.nome_arquivo,
+                        "tipo": doc.tipo.value,
+                        "materia_id": materia.id,
+                        "materia_nome": materia.nome,
+                        "turma_id": turma.id,
+                        "turma_nome": turma.nome,
+                        "atividade_id": atividade.id,
+                        "atividade_nome": atividade.nome,
+                        "aluno_id": doc.aluno_id,
+                        "aluno_nome": aluno_nome,
+                        "criado_em": doc.criado_em.isoformat() if doc.criado_em else None,
+                        "ia_provider": doc.ia_provider,
+                        "ia_modelo": doc.ia_modelo,
+                        "status": doc.status.value if doc.status else None
+                    })
+    
+    return {
+        "documentos": documentos,
+        "total": len(documentos),
+        "filtros_aplicados": {k: v for k, v in filters.items() if v}
+    }
+    
+# ============================================================
+# ENDPOINT: DOCUMENTOS PARA CHAT
+# ============================================================
+
+@router.get("/api/documentos/todos", tags=["Chat"])
+async def listar_todos_documentos(
+    materia_ids: Optional[str] = None,
+    turma_ids: Optional[str] = None,
+    atividade_ids: Optional[str] = None,
+    aluno_ids: Optional[str] = None,
+    tipos: Optional[str] = None
+):
+    """Lista todos os documentos do sistema com metadados completos."""
+    filters = {
+        'materia_ids': materia_ids.split(',') if materia_ids else None,
+        'turma_ids': turma_ids.split(',') if turma_ids else None,
+        'atividade_ids': atividade_ids.split(',') if atividade_ids else None,
+        'aluno_ids': aluno_ids.split(',') if aluno_ids else None,
+        'tipos': tipos.split(',') if tipos else None,
+    }
+    
+    documentos = []
+    materias = storage.listar_materias()
+    
+    for materia in materias:
+        if filters['materia_ids'] and materia.id not in filters['materia_ids']:
+            continue
+        
+        turmas = storage.listar_turmas(materia.id)
+        for turma in turmas:
+            if filters['turma_ids'] and turma.id not in filters['turma_ids']:
+                continue
+            
+            atividades = storage.listar_atividades(turma.id)
+            for atividade in atividades:
+                if filters['atividade_ids'] and atividade.id not in filters['atividade_ids']:
+                    continue
+                
+                docs = storage.listar_documentos(atividade.id)
+                for doc in docs:
+                    if filters['tipos'] and doc.tipo.value not in filters['tipos']:
+                        continue
+                    if filters['aluno_ids'] and doc.aluno_id and doc.aluno_id not in filters['aluno_ids']:
+                        continue
+                    
+                    aluno_nome = None
+                    if doc.aluno_id:
+                        aluno = storage.get_aluno(doc.aluno_id)
+                        aluno_nome = aluno.nome if aluno else None
+                    
+                    documentos.append({
+                        "id": doc.id,
+                        "nome_arquivo": doc.nome_arquivo,
+                        "tipo": doc.tipo.value,
+                        "materia_id": materia.id,
+                        "materia_nome": materia.nome,
+                        "turma_id": turma.id,
+                        "turma_nome": turma.nome,
+                        "atividade_id": atividade.id,
+                        "atividade_nome": atividade.nome,
+                        "aluno_id": doc.aluno_id,
+                        "aluno_nome": aluno_nome,
+                        "criado_em": doc.criado_em.isoformat() if doc.criado_em else None,
+                    })
+    
+    return {"documentos": documentos, "total": len(documentos)}
+
+
+@router.get("/api/chat/providers", tags=["Chat"])
+async def listar_chat_providers():
+    """Lista providers disponíveis para o chat."""
+    from ai_providers import ai_registry
+    return {
+        "providers": ai_registry.get_provider_info(),
+        "default": ai_registry.default_provider
+    }

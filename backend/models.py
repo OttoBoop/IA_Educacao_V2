@@ -62,6 +62,16 @@ class TipoDocumento(Enum):
     def documentos_base(cls) -> List['TipoDocumento']:
         """Retorna tipos que são documentos base da atividade"""
         return [cls.ENUNCIADO, cls.GABARITO, cls.CRITERIOS_CORRECAO, cls.MATERIAL_APOIO]
+
+    @classmethod
+    def documentos_atividade_gerados(cls) -> List['TipoDocumento']:
+        """Retorna tipos gerados pela IA que são nível atividade (não precisam de aluno_id)"""
+        return [cls.EXTRACAO_QUESTOES, cls.EXTRACAO_GABARITO]
+
+    @classmethod
+    def documentos_sem_aluno(cls) -> List['TipoDocumento']:
+        """Retorna todos os tipos que NÃO precisam de aluno_id"""
+        return cls.documentos_base() + cls.documentos_atividade_gerados()
     
     @classmethod
     def documentos_aluno(cls) -> List['TipoDocumento']:
