@@ -1,38 +1,31 @@
 # API Framework
-fastapi==0.109.0
-uvicorn[standard]==0.27.0
-python-multipart==0.0.6
+fastapi>=0.115.0
+uvicorn[standard]>=0.32.0
+python-multipart>=0.0.9
 
 # HTTP Client
-httpx==0.26.0
+httpx>=0.27.0
 
 # Document Processing
-python-docx==1.1.0
-PyMuPDF>=1.24.0
-Pillow==10.2.0
+python-docx>=1.1.2
+PyMuPDF>=1.25.0
+Pillow>=10.4.0
 
 # Database
 # SQLite is built-in
 
 # Data
-numpy==1.26.3
-pydantic==2.5.3
+numpy>=1.26.4
+pydantic>=2.9.0
 
 # Utils
-python-dotenv==1.0.0
+python-dotenv>=1.0.1
 
 # Security
-cryptography>=41.0.0
-
-# Optional: Local LLM
-# ollama (install separately)
+cryptography>=43.0.0
 
 # Code Execution - E2B (Cloud - Recommended)
 e2b-code-interpreter>=1.0.0
 
-# Code Execution - Local (Docker) - optional, requires Docker Desktop
-# llm-sandbox[docker]>=0.5.0
-# docker>=6.0.0
-
 # Document Generation
-reportlab>=4.0.0
+reportlab>=4.2.0
