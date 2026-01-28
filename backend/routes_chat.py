@@ -368,6 +368,21 @@ Seja preciso e educativo nas correcoes."""
         if not api_key and model_config.tipo == ProviderType.OLLAMA:
             api_key = "ollama"
 
+        # Fallback: variáveis de ambiente (para produção/Render)
+        if not api_key:
+            import os
+            env_var_map = {
+                ProviderType.OPENAI: "OPENAI_API_KEY",
+                ProviderType.ANTHROPIC: "ANTHROPIC_API_KEY",
+                ProviderType.GOOGLE: "GOOGLE_API_KEY",
+                ProviderType.GROQ: "GROQ_API_KEY",
+                ProviderType.MISTRAL: "MISTRAL_API_KEY",
+                ProviderType.OPENROUTER: "OPENROUTER_API_KEY",
+            }
+            env_var = env_var_map.get(model_config.tipo)
+            if env_var:
+                api_key = os.getenv(env_var)
+
         if not api_key:
             raise HTTPException(400, f"API key não configurada para {model_config.tipo.value}")
 
