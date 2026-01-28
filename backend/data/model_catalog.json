@@ -347,7 +347,7 @@
           "supports_extended_thinking": true
         },
         {
-          "id": "claude-sonnet-4-5-20250514",
+          "id": "claude-sonnet-4-5-20250929",
           "display_name": "Claude Sonnet 4.5",
           "description": "Equilibrio ideal entre capacidade e custo",
           "input_cost": 3.00,

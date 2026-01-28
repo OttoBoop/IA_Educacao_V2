@@ -87,9 +87,9 @@ MODELOS_SUGERIDOS = {
         {"id": "o4-mini", "nome": "o4 Mini", "suporta_temperature": False, "suporta_tools": True, "suporta_reasoning": True},
     ],
     ProviderType.ANTHROPIC: [
-        {"id": "claude-opus-4-5-20251124", "nome": "Claude Opus 4.5", "suporta_vision": True, "suporta_tools": True, "suporta_extended_thinking": True},
+        {"id": "claude-opus-4-5-20251101", "nome": "Claude Opus 4.5", "suporta_vision": True, "suporta_tools": True, "suporta_extended_thinking": True},
         {"id": "claude-sonnet-4-5-20250929", "nome": "Claude Sonnet 4.5", "suporta_vision": True, "suporta_tools": True, "suporta_extended_thinking": True},
-        {"id": "claude-haiku-4-5-20251015", "nome": "Claude Haiku 4.5", "suporta_vision": True, "suporta_tools": True, "suporta_extended_thinking": True},
+        {"id": "claude-haiku-4-5-20251001", "nome": "Claude Haiku 4.5", "suporta_vision": True, "suporta_tools": True, "suporta_extended_thinking": True},
         {"id": "claude-3-5-sonnet-20241022", "nome": "Claude 3.5 Sonnet", "suporta_vision": True, "suporta_tools": True},
         {"id": "claude-3-5-haiku-20241022", "nome": "Claude 3.5 Haiku", "suporta_vision": True, "suporta_tools": True},
     ],
