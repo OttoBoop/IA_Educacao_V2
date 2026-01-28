@@ -2276,7 +2276,8 @@
         // ============================================================
         // CONFIGURAÇÃO
         // ============================================================
-        const API = 'http://localhost:8000/api';
+        // API URL - relative path works in both local and production
+        const API = '/api';
         
         let currentView = 'dashboard';
         let currentMateria = null;
@@ -2663,7 +2664,7 @@
                     gridMaterias.innerHTML = materiasData.materias.map(m => `<div class="card-grid-item" onclick="showMateria('${m.id}')"><div class="card-icon">📚</div><div class="card-name">${m.nome}</div><div class="card-meta">${m.descricao || 'Sem descrição'}</div></div>`).join('');
                 }
             } catch (e) {
-                document.getElementById('content').innerHTML = `<div class="alert alert-danger"><span class="alert-icon">❌</span><div class="alert-content"><div class="alert-title">Erro ao carregar</div><div class="alert-text">Verifique se o servidor está rodando em localhost:8000</div></div></div>`;
+                document.getElementById('content').innerHTML = `<div class="alert alert-danger"><span class="alert-icon">❌</span><div class="alert-content"><div class="alert-title">Erro ao carregar</div><div class="alert-text">Verifique se o servidor está rodando corretamente</div></div></div>`;
             }
         }
         
