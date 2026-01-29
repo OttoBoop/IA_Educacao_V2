@@ -9,10 +9,14 @@ FGV eClass Complete Scraper
 - Upload everything
 
 FULLY AUTOMATED - No manual intervention required
+
+BROWSER MODES:
+- "camoufox": Uses Camoufox (anti-detection Firefox) - BEST for Cloudflare
+- "undetected": Uses undetected-playwright with Tarnished
+
+Change BROWSER_MODE below to switch between them.
 """
 
-from playwright.sync_api import sync_playwright, Page, Download
-from playwright_stealth import stealth_sync as apply_stealth
 import os
 import json
 import time
@@ -20,9 +24,19 @@ import requests
 import re
 from pathlib import Path
 from datetime import datetime
-from typing import List, Dict, Optional
+from typing import List, Dict, Optional, TYPE_CHECKING
 import hashlib
 import shutil
+
+# Type hints for Playwright
+if TYPE_CHECKING:
+    from playwright.sync_api import Download
+
+# ============================================================================
+# BROWSER MODE SELECTION - Change this to test different approaches
+# ============================================================================
+BROWSER_MODE = "playwright"  # Options: "camoufox", "undetected", or "playwright"
+# ============================================================================
 
 # Import credentials from our encrypted storage
 from fgv_credentials import get_credentials
@@ -32,11 +46,12 @@ BASE_DIR = Path("./fgv_data")
 DOWNLOAD_DIR = BASE_DIR / "downloads"
 SCREENSHOTS_DIR = BASE_DIR / "screenshots"
 ORGANIZED_DIR = BASE_DIR / "organized"
+BROWSER_DATA_DIR = BASE_DIR / "browser_sessions"
 LOG_FILE = BASE_DIR / "scrape_log.txt"
 PROVA_AI_URL = "https://ia-educacao-v2.onrender.com/api"
 
 # Create directories
-for d in [DOWNLOAD_DIR, SCREENSHOTS_DIR, ORGANIZED_DIR]:
+for d in [DOWNLOAD_DIR, SCREENSHOTS_DIR, ORGANIZED_DIR, BROWSER_DATA_DIR]:
     d.mkdir(parents=True, exist_ok=True)
 
 
@@ -203,6 +218,7 @@ class FGVScraper:
         self.browser = None
         self.context = None
         self.page = None
+        self._camoufox = None  # Camoufox context manager (if using camoufox mode)
         self.prova_ai = ProvaAIClient()
         
         # Data collected
@@ -218,66 +234,22 @@ class FGVScraper:
         self.screenshot_count = 0
         
         log_message("=" * 60)
-        log_message("FGV SCRAPER INITIALIZED")
+        log_message(f"FGV SCRAPER INITIALIZED (mode: {BROWSER_MODE})")
         log_message("=" * 60)
     
     def start(self):
-        """Start browser with persistent context (keeps you logged in)"""
-        log_message("\n🚀 Starting browser...")
-        log_message("   💭 Using stealth mode to bypass Cloudflare...")
+        """Start browser with anti-detection (Camoufox or Undetected-Playwright)"""
+        log_message(f"\n🚀 Starting browser in '{BROWSER_MODE}' mode...")
+        log_message(f"   📁 Session data: {BROWSER_DATA_DIR}")
         
-        self.playwright = sync_playwright().start()
-        
-        # Anti-detection browser args
-        stealth_args = [
-            '--disable-blink-features=AutomationControlled',
-            '--disable-dev-shm-usage',
-            '--no-sandbox',
-            '--disable-web-security',
-            '--disable-features=IsolateOrigins,site-per-process',
-        ]
-        
-        # Try persistent context first, fall back to regular if it fails
-        try:
-            log_message("   💭 Trying persistent browser (saves login between runs)...")
-            self.context = self.playwright.chromium.launch_persistent_context(
-                user_data_dir=str(BROWSER_DATA_DIR),
-                headless=False,  # VISIBLE browser
-                viewport={"width": 1400, "height": 900},
-                accept_downloads=True,
-                slow_mo=150,
-                args=stealth_args,
-                user_agent='Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-            )
-            log_message("   ✓ Persistent browser started")
-        except Exception as e:
-            log_message(f"   ⚠️ Persistent context failed: {e}")
-            log_message("   💭 Falling back to regular browser (won't save session)...")
-            
-            # Clear corrupted browser data
-            import shutil
-            if BROWSER_DATA_DIR.exists():
-                shutil.rmtree(BROWSER_DATA_DIR, ignore_errors=True)
-            BROWSER_DATA_DIR.mkdir(parents=True, exist_ok=True)
-            
-            # Launch regular browser with stealth
-            self.browser = self.playwright.chromium.launch(
-                headless=False,
-                slow_mo=150,
-                args=stealth_args,
-            )
-            self.context = self.browser.new_context(
-                viewport={"width": 1400, "height": 900},
-                accept_downloads=True,
-                user_agent='Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-            )
-            log_message("   ✓ Regular browser started")
-        
-        self.page = self.context.pages[0] if self.context.pages else self.context.new_page()
-        
-        # Apply stealth to page
-        stealth_sync(self.page)
-        log_message("   ✓ Stealth mode applied (anti-Cloudflare)")
+        if BROWSER_MODE == "camoufox":
+            self._start_camoufox()
+        elif BROWSER_MODE == "undetected":
+            self._start_undetected()
+        elif BROWSER_MODE == "playwright":
+            self._start_playwright_firefox()
+        else:
+            raise ValueError(f"Unknown BROWSER_MODE: {BROWSER_MODE}")
         
         # Set up download handling
         self.page.on("download", self._handle_download)
@@ -287,30 +259,143 @@ class FGVScraper:
         # Take initial screenshot
         self.screenshot("browser_started")
     
-    def _handle_download(self, download: Download):
-        """Handle file downloads"""
-        filename = download.suggested_filename
-        save_path = DOWNLOAD_DIR / filename
+    def _start_camoufox(self):
+        """Start Camoufox (anti-detection Firefox) with persistent session"""
+        from camoufox.sync_api import Camoufox
+        
+        log_message("   🦊 Using Camoufox (anti-detection Firefox)...")
+        log_message("   💭 This works at the C++ level - Cloudflare can't detect it!")
+        
+        # Camoufox with persistent context
+        self._camoufox = Camoufox(
+            headless=False,  # Visible browser
+            persistent_context=True,  # Keep login sessions
+            user_data_dir=str(BROWSER_DATA_DIR / "camoufox"),
+            geoip=False,  # Disabled - requires extra install
+        )
+        
+        # Enter context and get browser
+        self.context = self._camoufox.__enter__()
+        self.page = self.context.new_page()
+        
+        log_message("   ✓ Camoufox started with persistent session")
+    
+    def _start_playwright_firefox(self):
+        """Fallback: Start regular Playwright Firefox with persistent context"""
+        from playwright.sync_api import sync_playwright
+        
+        log_message("   🦊 Using regular Playwright Firefox...")
+        
+        self.playwright = sync_playwright().start()
+        
+        # Use persistent context for login session persistence
+        session_dir = BROWSER_DATA_DIR / "playwright_firefox"
+        session_dir.mkdir(parents=True, exist_ok=True)
+        
+        try:
+            self.context = self.playwright.firefox.launch_persistent_context(
+                user_data_dir=str(session_dir),
+                headless=False,
+                viewport={"width": 1400, "height": 900},
+                accept_downloads=True,
+                slow_mo=100,
+            )
+            log_message("   ✓ Persistent Firefox context created")
+        except Exception as e:
+            log_message(f"   ⚠️ Persistent context failed: {e}")
+            # Fallback to regular context
+            self.browser = self.playwright.firefox.launch(headless=False, slow_mo=100)
+            self.context = self.browser.new_context(
+                viewport={"width": 1400, "height": 900},
+                accept_downloads=True,
+            )
+            log_message("   ✓ Using regular context (no session persistence)")
+        
+        self.page = self.context.pages[0] if self.context.pages else self.context.new_page()
+        log_message("   ✓ Playwright Firefox started")
+    
+    def _start_undetected(self):
+        """Start Undetected-Playwright with Tarnished stealth"""
+        from playwright.sync_api import sync_playwright
+        from undetected_playwright import Tarnished
+        
+        log_message("   🕵️ Using Undetected-Playwright with Tarnished...")
+        
+        self.playwright = sync_playwright().start()
+        
+        # Use persistent context for login session persistence
+        session_dir = BROWSER_DATA_DIR / "undetected"
+        session_dir.mkdir(parents=True, exist_ok=True)
+        
+        try:
+            self.context = self.playwright.chromium.launch_persistent_context(
+                user_data_dir=str(session_dir),
+                headless=False,
+                viewport={"width": 1400, "height": 900},
+                accept_downloads=True,
+                slow_mo=100,
+            )
+            log_message("   ✓ Persistent context created")
+        except Exception as e:
+            log_message(f"   ⚠️ Persistent context failed: {e}")
+            # Fallback to regular context
+            self.browser = self.playwright.chromium.launch(headless=False, slow_mo=100)
+            self.context = self.browser.new_context(
+                viewport={"width": 1400, "height": 900},
+                accept_downloads=True,
+            )
+            log_message("   ✓ Using regular context (no session persistence)")
+        
+        # Apply Tarnished stealth to context
+        Tarnished.apply_stealth(self.context)
+        log_message("   ✓ Tarnished stealth applied")
+        
+        self.page = self.context.pages[0] if self.context.pages else self.context.new_page()
+        log_message("   ✓ Undetected-Playwright started")
+        
+        # Set up download handling
+        self.page.on("download", self._handle_download)
+        
+        log_message(f"   📁 Downloads will go to: {DOWNLOAD_DIR}")
+        
+        # Take initial screenshot
+        self.screenshot("browser_started")
+    
+    def _handle_download(self, download):
+        """Handle file downloads - save with context-aware naming"""
+        original_filename = download.suggested_filename
+        
+        # Build context-aware filename
+        year_str = str(self.current_year) if self.current_year else "unknown_year"
+        course_clean = re.sub(r'[^\w\s-]', '', self.current_course or "unknown_course")[:30].strip()
+        activity_clean = re.sub(r'[^\w\s-]', '', self.current_activity or "activity")[:30].strip()
+        
+        # Create organized directory structure: year/subject/activity/
+        org_dir = DOWNLOAD_DIR / year_str / course_clean / activity_clean
+        org_dir.mkdir(parents=True, exist_ok=True)
+        
+        save_path = org_dir / original_filename
         
         # Avoid duplicates
         counter = 1
         while save_path.exists():
-            stem = save_path.stem
-            suffix = save_path.suffix
-            save_path = DOWNLOAD_DIR / f"{stem}_{counter}{suffix}"
+            stem = Path(original_filename).stem
+            suffix = Path(original_filename).suffix
+            save_path = org_dir / f"{stem}_{counter}{suffix}"
             counter += 1
         
         download.save_as(save_path)
         self.files_downloaded += 1
         
         # Detailed logging about the file
-        log_message(f"\n   📥 DOWNLOADED: {filename}")
+        log_message(f"\n   📥 DOWNLOADED: {original_filename}")
         log_message(f"      → Saved to: {save_path}")
-        log_message(f"      → Course: {self.current_course or 'Unknown'}")
-        log_message(f"      → Activity: {self.current_activity or 'Unknown'}")
+        log_message(f"      → Year: {year_str}")
+        log_message(f"      → Subject: {course_clean}")
+        log_message(f"      → Activity: {activity_clean}")
         
         self.documents.append({
-            "filename": filename,
+            "filename": original_filename,
             "path": str(save_path),
             "course": self.current_course,
             "activity": self.current_activity,
@@ -367,24 +452,37 @@ class FGVScraper:
             log_message(f"   ⚠️ Status check failed: {e}")
     
     def check_cloudflare(self) -> bool:
-        """Check if Cloudflare challenge is present"""
+        """Check if Cloudflare challenge is actively blocking us"""
         try:
-            # Common Cloudflare indicators
-            cf_indicators = [
-                "challenge-running",
-                "cf-browser-verification",
-                "cloudflare",
-                "Checking your browser",
-                "Just a moment",
-                "Please wait while we verify",
+            # Check for actual Cloudflare CHALLENGE elements (not just references to cloudflare)
+            cf_challenge_selectors = [
+                "#challenge-running",
+                "#challenge-stage",
+                ".cf-browser-verification",
+                "#cf-please-wait",
+                "#cf-spinner-please-wait",
+                "[id*='challenge']",
             ]
             
-            page_text = self.page.content().lower()
-            for indicator in cf_indicators:
-                if indicator.lower() in page_text:
-                    log_message(f"   ⚠️ CLOUDFLARE DETECTED: '{indicator}'")
+            for selector in cf_challenge_selectors:
+                try:
+                    el = self.page.query_selector(selector)
+                    if el and el.is_visible():
+                        log_message(f"   ⚠️ CLOUDFLARE CHALLENGE ACTIVE: '{selector}'")
+                        self.screenshot("cloudflare_challenge")
+                        return True
+                except:
+                    pass
+            
+            # Also check for challenge text in visible elements only
+            page_title = self.page.title().lower()
+            challenge_titles = ["just a moment", "checking your browser", "please wait"]
+            for title in challenge_titles:
+                if title in page_title:
+                    log_message(f"   ⚠️ CLOUDFLARE CHALLENGE (title): '{title}'")
                     self.screenshot("cloudflare_challenge")
                     return True
+            
             return False
         except:
             return False
@@ -587,72 +685,95 @@ class FGVScraper:
     def find_courses_by_year(self) -> Dict[int, List[Dict]]:
         """Find all courses organized by year"""
         log_message("\n📚 Finding courses by year...")
-        log_message("\n🤔 THINKING: Looking for course cards on the homepage...")
-        log_message("   💭 D2L/Brightspace typically shows courses as cards")
-        log_message("   💭 Each card should have the course name and year")
+        log_message("\n🤔 THINKING: Looking for course links on the homepage...")
+        log_message("   💭 D2L/Brightspace shows courses as links with 'ouHome' in URL")
+        log_message("   💭 Each link leads to a course homepage")
         
         self.page.goto("https://ss.cursos.fgv.br/d2l/home")
         self.page.wait_for_load_state("networkidle")
         time.sleep(2)
+        self.screenshot("d2l_homepage")
         
         courses_by_year = {}
-        
-        # D2L course cards
-        selectors = [
-            "d2l-card",
-            ".d2l-card",
-            "[class*='course-card']",
-            "[class*='enrollment']",
-            ".homepage-card",
-            "a[href*='/d2l/home/']",
-        ]
-        
-        log_message("   💭 Trying multiple selectors to find course elements...")
-        
         all_courses = []
         
-        for selector in selectors:
-            try:
-                elements = self.page.query_selector_all(selector)
-                if elements:
-                    log_message(f"   💭 Selector '{selector}' found {len(elements)} elements")
-                for el in elements:
-                    try:
-                        text = el.text_content().strip()
-                        href = el.get_attribute("href") or ""
-                        
-                        if not href:
-                            link = el.query_selector("a")
-                            if link:
-                                href = link.get_attribute("href") or ""
-                        
-                        if text and len(text) > 3 and "d2l" in href.lower():
-                            year_match = re.search(r'20\d{2}', text)
-                            year = int(year_match.group()) if year_match else 2024
-                            
-                            log_message(f"\n      📖 Found course: '{text[:50]}...'")
-                            log_message(f"         💭 Extracted year: {year}")
-                            
-                            all_courses.append({
-                                "name": text[:100],
-                                "url": href,
-                                "year": year
-                            })
-                    except:
-                        pass
-            except:
-                pass
+        # D2L course links have 'ouHome' in URL
+        log_message("   💭 Searching for course links (ouHome URLs)...")
         
-        # Remove duplicates and organize by year
-        seen = set()
+        # Find ALL links with ouHome (course homepages)
+        course_links = self.page.query_selector_all("a[href*='ouHome']")
+        log_message(f"   💭 Found {len(course_links)} potential course links")
+        
+        seen_courses = set()
+        
+        for link in course_links:
+            try:
+                text = link.text_content().strip()
+                href = link.get_attribute("href") or ""
+                
+                # Skip empty or very short names
+                if not text or len(text) < 3:
+                    continue
+                
+                # Extract course ID from URL (ou=XXXXX)
+                ou_match = re.search(r'ou=(\d+)', href)
+                course_id = ou_match.group(1) if ou_match else None
+                
+                # Skip duplicates (same course ID)
+                if course_id and course_id in seen_courses:
+                    continue
+                seen_courses.add(course_id)
+                
+                # Extract year from course name or default to current year
+                year_match = re.search(r'20\d{2}', text)
+                year = int(year_match.group()) if year_match else datetime.now().year
+                
+                # Build full URL
+                full_url = f"https://ss.cursos.fgv.br{href}" if href.startswith('/') else href
+                
+                log_message(f"\n      📖 Found course: '{text[:50]}'")
+                log_message(f"         💭 Course ID: {course_id}, Year: {year}")
+                
+                all_courses.append({
+                    "name": text[:100],
+                    "url": full_url,
+                    "year": year,
+                    "id": course_id
+                })
+            except Exception as e:
+                log_message(f"         ⚠️ Error parsing course: {e}")
+        
+        # If no ouHome links found, try the "My Courses" widget
+        if not all_courses:
+            log_message("   💭 No ouHome links found, looking for My Courses widget...")
+            self.screenshot("no_courses_found")
+            
+            # Try clicking on "My Courses" or similar
+            my_courses_patterns = [
+                "a:has-text('Meus Cursos')",
+                "a:has-text('My Courses')",
+                "button:has-text('Cursos')",
+                "d2l-my-courses",
+            ]
+            
+            for pattern in my_courses_patterns:
+                try:
+                    el = self.page.query_selector(pattern)
+                    if el and el.is_visible():
+                        log_message(f"   💭 Found: {pattern}")
+                        el.click()
+                        time.sleep(2)
+                        self.screenshot("clicked_my_courses")
+                        break
+                except:
+                    pass
+        
+        # Organize by year
         for c in all_courses:
-            key = c.get("url", c.get("name", ""))
-            if key and key not in seen:
-                seen.add(key)
-                year = c["year"]
-                if year not in courses_by_year:
-                    courses_by_year[year] = []
-                courses_by_year[year].append(c)
+            year = c["year"]
+            if year not in courses_by_year:
+                courses_by_year[year] = []
+            courses_by_year[year].append(c)
         
         sorted_years = sorted(courses_by_year.keys(), reverse=True)
         
@@ -666,57 +787,136 @@ class FGVScraper:
         return {y: courses_by_year[y] for y in sorted_years}
     
     def find_dropbox_submissions(self, course_url: str) -> List[Dict]:
-        """Navigate to course and find the Dropbox/Submissions area"""
-        log_message("\n   📤 Looking for Dropbox/Submissions...")
+        """
+        Check the dropbox page for YOUR submissions.
+        Returns ONLY assignments where you actually submitted something.
         
-        self.page.goto(course_url)
-        self.page.wait_for_load_state("networkidle")
-        time.sleep(2)
+        Logic:
+        1. Go to dropbox page
+        2. Look at the STATUS column for each assignment
+        3. If status shows "Enviado" or a date/file → you submitted → include it
+        4. If status shows "Não Enviado" → skip immediately
+        """
+        log_message(f"\n   📤 Checking dropbox for YOUR submissions...")
         
+        # Navigate to course if not there
+        if course_url not in self.page.url:
+            self.page.goto(course_url)
+            self.page.wait_for_load_state("networkidle")
+            time.sleep(2)
+        
+        # Find and click the dropbox/submissions link
         dropbox_patterns = [
             "a[href*='dropbox']",
-            "a[href*='submissions']",
             "a:has-text('Dropbox')",
             "a:has-text('Atividades')",
-            "a:has-text('Trabalhos')",
-            "a:has-text('Assignments')",
             "a:has-text('Entregas')",
         ]
         
+        dropbox_link = None
         for pattern in dropbox_patterns:
             try:
                 link = self.page.query_selector(pattern)
                 if link and link.is_visible():
-                    log_message(f"   Found submissions link: {pattern}")
-                    link.click()
-                    self.page.wait_for_load_state("networkidle")
-                    time.sleep(2)
+                    dropbox_link = link
                     break
             except:
                 continue
         
-        submissions = []
-        submission_links = self.page.query_selector_all("a[href*='dropbox'], a[href*='submission'], [class*='assignment']")
+        if not dropbox_link:
+            log_message("   ❌ No dropbox found in this course")
+            return []
         
-        log_message(f"\n   🤔 THINKING: Scanning for your submitted work...")
+        dropbox_link.click()
+        self.page.wait_for_load_state("networkidle")
+        time.sleep(2)
+        self.screenshot("dropbox_list")
         
-        for link in submission_links:
+        # Now we're on the dropbox list page
+        # D2L shows a table with: Assignment Name | Status | Due Date | etc.
+        # We need to find rows where Status is NOT "Não Enviado"
+        
+        submitted_assignments = []
+        
+        # Get all table rows
+        rows = self.page.query_selector_all("tr")
+        log_message(f"   💭 Found {len(rows)} rows in dropbox table")
+        
+        for row in rows:
             try:
-                text = link.text_content().strip()
+                row_text = row.text_content() or ""
+                
+                # Skip header rows
+                if not row_text.strip() or "Nome" in row_text and "Status" in row_text:
+                    continue
+                
+                # Look for links in this row (the assignment link)
+                link = row.query_selector("a[href*='dropbox']")
+                if not link:
+                    continue
+                
+                assignment_name = link.text_content().strip()
+                if not assignment_name or len(assignment_name) < 2:
+                    continue
+                
                 href = link.get_attribute("href") or ""
-                if text and href:
-                    log_message(f"\n      📋 Found submission area: '{text[:50]}'")
-                    log_message(f"         💭 This is where YOUR submitted work lives")
-                    log_message(f"         💭 Will look for downloadable files here")
-                    submissions.append({"name": text[:80], "url": href})
-            except:
-                pass
+                full_url = f"https://ss.cursos.fgv.br{href}" if href.startswith('/') else href
+                
+                # Check status - look for "Não Enviado" in the row
+                if "Não Enviado" in row_text:
+                    log_message(f"   ⏭️ SKIP: '{assignment_name[:40]}' → Não Enviado")
+                    continue
+                
+                # Check if there's evidence of submission (date, file count, "Enviado")
+                has_submission = False
+                
+                # Look for date patterns (dd/mm/yyyy or similar)
+                date_pattern = r'\d{1,2}/\d{1,2}/\d{2,4}'
+                if re.search(date_pattern, row_text):
+                    has_submission = True
+                
+                # Look for "Enviado" or file indicators
+                if "Enviado" in row_text or "arquivo" in row_text.lower():
+                    has_submission = True
+                
+                # Look for cells that might contain submission info
+                cells = row.query_selector_all("td")
+                for cell in cells:
+                    cell_text = cell.text_content().strip()
+                    # If cell has a date or "Enviado", it's submitted
+                    if re.search(date_pattern, cell_text) or "Enviado" in cell_text:
+                        has_submission = True
+                        break
+                
+                if has_submission:
+                    log_message(f"   ✅ FOUND: '{assignment_name[:40]}' → Submitted!")
+                    submitted_assignments.append({
+                        "name": assignment_name,
+                        "url": full_url,
+                        "status": "submitted"
+                    })
+                else:
+                    # Status unclear - we'll check inside
+                    log_message(f"   🔍 CHECK: '{assignment_name[:40]}' → Status unclear")
+                    submitted_assignments.append({
+                        "name": assignment_name,
+                        "url": full_url,
+                        "status": "check"
+                    })
+                    
+            except Exception as e:
+                continue
         
-        if submissions:
-            log_message(f"\n   ✅ Found {len(submissions)} submission areas to check")
-        else:
-            log_message(f"\n   ⚠️ No submissions found - might need different navigation")
-        return submissions
+        # Summary
+        submitted_count = len([s for s in submitted_assignments if s['status'] == 'submitted'])
+        check_count = len([s for s in submitted_assignments if s['status'] == 'check'])
+        
+        log_message(f"\n   📊 Result: {submitted_count} submitted, {check_count} to check")
+        
+        if not submitted_assignments:
+            log_message("   💭 Nothing submitted in this course → Moving to next subject")
+        
+        return submitted_assignments
     
     def find_content_materials(self, course_url: str) -> List[Dict]:
         """Navigate to course content and find enunciados/gabaritos"""
@@ -765,6 +965,13 @@ class FGVScraper:
                 if (is_enunciado or is_gabarito) or is_file:
                     doc_type = "gabarito" if is_gabarito else "enunciado" if is_enunciado else "material"
                     
+                    # Build full URL (fix relative paths)
+                    full_url = href
+                    if href.startswith('/'):
+                        full_url = f"https://ss.cursos.fgv.br{href}"
+                    elif not href.startswith('http'):
+                        full_url = f"https://ss.cursos.fgv.br/{href}"
+                    
                     # Show reasoning
                     log_message(f"\n      📄 Found: '{text[:50]}'")
                     if is_gabarito:
@@ -782,7 +989,7 @@ class FGVScraper:
                     
                     materials.append({
                         "name": text[:80],
-                        "url": href,
+                        "url": full_url,
                         "type": doc_type
                     })
             except:
@@ -814,7 +1021,6 @@ class FGVScraper:
                 pass
         
         log_message(f"   Found {len(files_found)} files to download")
-        
         for f in files_found[:30]:
             try:
                 log_message(f"   Clicking: {f['text'][:50]}...")
@@ -960,6 +1166,13 @@ class FGVScraper:
                     log_message("\n   📤 STEP 1: Checking your SUBMISSIONS...")
                     submissions = self.find_dropbox_submissions(course['url'])
                     
+                    downloaded_count = 0
+                    skipped_count = 0
+                    
+                    if not submissions:
+                        log_message(f"\n   ⏭️ No submissions found - skipping to next course")
+                        continue
+                    
                     for sub in submissions[:10]:
                         self.current_activity = sub['name']
                         log_message(f"\n   📋 Submission: {sub['name'][:50]}")
@@ -969,30 +1182,64 @@ class FGVScraper:
                                 self.page.goto(sub['url'])
                                 self.page.wait_for_load_state("networkidle")
                                 time.sleep(1)
-                                self.download_files_from_page("my submission")
+                                
+                                # Check the folder page for submission status
+                                folder_text = self.page.text_content("body") or ""
+                                
+                                # Check for "Não Enviado" - means NO submission
+                                if "Não Enviado" in folder_text or "Not Submitted" in folder_text:
+                                    log_message(f"      ⏭️ SKIPPING: Status shows 'Não Enviado' (not submitted)")
+                                    skipped_count += 1
+                                    continue
+                                
+                                # Look specifically for YOUR submission section
+                                # In D2L, submissions are in a specific section
+                                submission_section = self.page.query_selector("[class*='submission'], [class*='Submission'], .d2l-submission")
+                                
+                                # Also check for file links that look like downloads (not instructions)
+                                # Your submissions would be in a download link, not content links
+                                submission_files = self.page.query_selector_all("a[href*='download'][href*='submission'], a[href*='viewSubmission'], a[href*='SubmittedFile']")
+                                
+                                if not submission_files:
+                                    # Try more generic approach - look for any downloadable files in submission area
+                                    submission_files = self.page.query_selector_all("a[href*='attachment'], a[href*='download']")
+                                
+                                if submission_files:
+                                    log_message(f"      ✅ Found {len(submission_files)} submission file(s)")
+                                    self.download_files_from_page("my submission")
+                                    downloaded_count += 1
+                                else:
+                                    log_message(f"      ⏭️ SKIPPING: No submission files found in this folder")
+                                    skipped_count += 1
+                                    continue
                         except Exception as e:
                             log_message(f"   ⚠️ Error: {e}")
                     
-                    # STEP 2: Find enunciados and gabaritos
-                    log_message("\n   📚 STEP 2: Finding ENUNCIADOS and GABARITOS...")
-                    self.page.goto(course['url'])
-                    self.page.wait_for_load_state("networkidle")
-                    time.sleep(1)
+                    log_message(f"\n   📊 Course Summary: Downloaded from {downloaded_count} submissions, Skipped {skipped_count}")
                     
-                    materials = self.find_content_materials(course['url'])
-                    
-                    for mat in materials[:15]:
-                        self.current_activity = mat.get('name', 'Material')
-                        log_message(f"\n   📄 Material [{mat.get('type', 'unknown')}]: {mat['name'][:50]}")
+                    # STEP 2: Find enunciados and gabaritos (only if we had submissions)
+                    if downloaded_count > 0:
+                        log_message("\n   📚 STEP 2: Finding ENUNCIADOS and GABARITOS for your submissions...")
+                        self.page.goto(course['url'])
+                        self.page.wait_for_load_state("networkidle")
+                        time.sleep(1)
                         
-                        try:
-                            if mat.get('url') and not mat['url'].startswith('#'):
-                                self.page.goto(mat['url'])
-                                self.page.wait_for_load_state("networkidle")
-                                time.sleep(1)
-                                self.download_files_from_page(mat.get('type', 'material'))
-                        except Exception as e:
-                            log_message(f"   ⚠️ Error: {e}")
+                        materials = self.find_content_materials(course['url'])
+                        
+                        for mat in materials[:15]:
+                            self.current_activity = mat.get('name', 'Material')
+                            log_message(f"\n   📄 Material [{mat.get('type', 'unknown')}]: {mat['name'][:50]}")
+                            
+                            try:
+                                if mat.get('url') and not mat['url'].startswith('#'):
+                                    self.page.goto(mat['url'])
+                                    self.page.wait_for_load_state("networkidle")
+                                    time.sleep(1)
+                                    self.download_files_from_page(mat.get('type', 'material'))
+                            except Exception as e:
+                                log_message(f"   ⚠️ Error: {e}")
+                    else:
+                        log_message("\n   ⏭️ Skipping Step 2 (gabaritos) - no submissions in this course")
                     
                 except Exception as e:
                     log_message(f"   ❌ Error processing course: {e}")
