@@ -157,7 +157,7 @@ class PipelineExecutor:
                     return {
                         "tipo": model.tipo.value,
                         "api_key": api_key,
-                        "modelo": model.modelo,
+                        "modelo": model.get_model_id(),  # Usa get_model_id() para suportar custom_model_id
                         "base_url": model.base_url,
                         "max_tokens": model.max_tokens,
                         "temperature": model.temperature,
@@ -356,25 +356,15 @@ class PipelineExecutor:
         config = self._get_provider_config(provider_id)
         cliente = ClienteAPIMultimodal(config)
         
-        # Preparar variáveis básicas (sem conteúdo de documentos)
-        variaveis = {
-            "materia": materia.nome if materia else "Não definida",
-            "atividade": atividade.nome if atividade else "Não definida",
-            "nota_maxima": str(atividade.nota_maxima) if atividade else "10"
-        }
-        
-        if aluno_id:
-            aluno = self.storage.get_aluno(aluno_id)
-            if aluno:
-                variaveis["nome_aluno"] = aluno.nome
-                variaveis["aluno"] = aluno.nome
-        
+        # Preparar variáveis com conteúdo de documentos (reutiliza lógica do modo texto)
+        variaveis = self._preparar_variaveis_texto(etapa, atividade_id, aluno_id, materia, atividade)
+
         if variaveis_extra:
             variaveis.update(variaveis_extra)
-        
-        # Coletar arquivos para anexar
+
+        # Coletar arquivos para anexar (multimodal envia arquivos como anexos)
         arquivos = self._coletar_arquivos_para_etapa(etapa, atividade_id, aluno_id)
-        
+
         # Adicionar contexto de arquivos JSON já processados
         variaveis.update(self._preparar_contexto_json(atividade_id, aluno_id, etapa))
         
@@ -1197,6 +1187,7 @@ Crie UM documento separado para cada aluno, nomeando como "relatorio_[nome_aluno
         self,
         atividade_id: str,
         aluno_id: str,
+        model_id: Optional[str] = None,
         provider_name: Optional[str] = None,
         providers_map: Optional[Dict[str, str]] = None,
         usar_multimodal: bool = True,
@@ -1224,7 +1215,8 @@ Crie UM documento separado para cada aluno, nomeando como "relatorio_[nome_aluno
         steps_to_run = selected_steps if selected_steps else ALL_STEPS
 
         def _resolve_provider(stage: EtapaProcessamento) -> Optional[str]:
-            return providers_map.get(stage.value) or provider_name
+            # Prioridade: providers_map > model_id > provider_name
+            return providers_map.get(stage.value) or model_id or provider_name
         
         def _should_run(step_name: str, doc_type: TipoDocumento, docs_list: List) -> bool:
             """Verifica se deve executar uma etapa"""

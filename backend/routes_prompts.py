@@ -726,6 +726,7 @@ async def executar_pipeline_completo(
     resultados = await executor.executar_pipeline_completo(
         atividade_id=atividade_id,
         aluno_id=aluno_id,
+        model_id=model_id,
         provider_name=provider,
         providers_map=providers_map,
         selected_steps=steps_list,
