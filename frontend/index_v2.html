@@ -495,6 +495,92 @@
         .doc-item-static { cursor: default; }
         .doc-item-static:hover { background: var(--bg-input); }
 
+        /* === FASE 3: Destaque para Documentos Gerados === */
+        .doc-group-highlight {
+            border: 2px solid var(--success);
+            background: linear-gradient(135deg, rgba(16, 185, 129, 0.08) 0%, var(--bg-card) 100%);
+            position: relative;
+        }
+        .doc-group-highlight::before {
+            content: '✨ Pronto!';
+            position: absolute;
+            top: -10px;
+            right: 12px;
+            background: var(--success);
+            color: white;
+            font-size: 0.7rem;
+            font-weight: 600;
+            padding: 2px 8px;
+            border-radius: 10px;
+        }
+        .doc-group-highlight .doc-group-title {
+            color: var(--success);
+        }
+
+        /* Card especial para Relatório Final */
+        .doc-group-final {
+            border: 2px solid var(--primary);
+            background: linear-gradient(135deg, rgba(59, 130, 246, 0.12) 0%, var(--bg-card) 100%);
+            box-shadow: 0 4px 12px rgba(59, 130, 246, 0.15);
+        }
+        .doc-group-final::before {
+            content: '📋 Relatório Completo';
+            background: linear-gradient(135deg, var(--primary) 0%, #8b5cf6 100%);
+        }
+        .doc-group-final .doc-group-title {
+            color: var(--primary);
+            font-size: 1.05rem;
+        }
+        .doc-group-final .doc-item {
+            background: rgba(59, 130, 246, 0.08);
+            border: 1px solid rgba(59, 130, 246, 0.2);
+        }
+
+        /* Botão de download destacado */
+        .btn-download-pdf {
+            background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+            color: white;
+            font-weight: 600;
+            padding: 8px 16px;
+            border-radius: 8px;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            text-decoration: none;
+            transition: all 0.2s;
+        }
+        .btn-download-pdf:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(239, 68, 68, 0.3);
+        }
+
+        /* Seção de documentos prontos */
+        .docs-ready-section {
+            background: linear-gradient(135deg, rgba(16, 185, 129, 0.05) 0%, rgba(59, 130, 246, 0.05) 100%);
+            border: 1px dashed var(--success);
+            border-radius: 12px;
+            padding: 16px;
+            margin-bottom: 16px;
+        }
+        .docs-ready-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 12px;
+        }
+        .docs-ready-title {
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: var(--success);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .docs-ready-actions {
+            display: flex;
+            gap: 8px;
+        }
+
         .doc-meta-stack {
             display: flex;
             flex-wrap: wrap;
@@ -4842,12 +4928,32 @@
             `;
         }
 
-        function renderDocumentoGrupo({ titulo, tipo, atividadeId, alunoId, docs, onAdicionar, icon, showVisualizar }) {
+        function renderDocumentoGrupo({ titulo, tipo, atividadeId, alunoId, docs, onAdicionar, icon, showVisualizar, isGenerated }) {
             const list = docs || [];
             const adicionarLabel = list.length ? '+ Novo' : 'Upload';
             const btnAdicionar = onAdicionar
                 ? `<button class="btn btn-sm btn-primary" onclick="${onAdicionar}">${adicionarLabel}</button>`
                 : '';
+
+            // Determinar classe especial para documentos gerados
+            let groupClass = 'doc-group';
+            const isRelatorioFinal = tipo === 'relatorio_final';
+            const hasContent = list.length > 0;
+
+            if (isGenerated && hasContent) {
+                groupClass += isRelatorioFinal ? ' doc-group-final' : ' doc-group-highlight';
+            }
+
+            // Botão de download direto para relatório final
+            let downloadBtn = '';
+            if (isRelatorioFinal && hasContent && alunoId) {
+                downloadBtn = `
+                    <a class="btn-download-pdf" href="${API}/resultados/${atividadeId}/${alunoId}/exportar/pdf" target="_blank">
+                        📥 Baixar PDF
+                    </a>
+                `;
+            }
+
             const itens = list.length
                 ? list.map(doc => renderDocumentoItem(doc, {
                     icon,
@@ -4858,10 +4964,13 @@
                 })).join('')
                 : `<div class="doc-meta" style="padding: 8px 0;">Nenhum documento enviado.</div>`;
             return `
-                <div class="doc-group">
+                <div class="${groupClass}">
                     <div class="doc-group-header">
                         <div class="doc-group-title">${titulo}${list.length ? ` (${list.length})` : ''}</div>
-                        ${btnAdicionar}
+                        <div style="display: flex; gap: 8px; align-items: center;">
+                            ${downloadBtn}
+                            ${btnAdicionar}
+                        </div>
                     </div>
                     ${itens}
                 </div>
@@ -6824,19 +6933,35 @@
                     docs: docsPorTipo[tipo] || [],
                     icon: '🤖',
                     onAdicionar: '',
-                    showVisualizar: true
+                    showVisualizar: true,
+                    isGenerated: true  // Fase 3: marcar como gerado pela IA
                 })).join('');
                 
                 // Só mostrar resultado final se completo
                 const resultadoFinal = isComplete ? `
+                    <!-- Fase 3: Seção de Documentos Prontos destacada -->
+                    <div class="docs-ready-section">
+                        <div class="docs-ready-header">
+                            <div class="docs-ready-title">
+                                <span>✅</span> Correção Concluída!
+                            </div>
+                            <div class="docs-ready-actions">
+                                <a class="btn-download-pdf" href="${API}/resultados/${atividadeId}/${alunoId}/exportar/pdf" target="_blank">
+                                    📥 Baixar Relatório PDF
+                                </a>
+                                <a class="btn" href="${API}/resultados/${atividadeId}/${alunoId}/exportar/markdown" target="_blank">📄 Markdown</a>
+                                <a class="btn" href="${API}/resultados/${atividadeId}/${alunoId}/exportar/json" target="_blank">{ } JSON</a>
+                            </div>
+                        </div>
+                        <p style="margin: 0; color: var(--text-muted); font-size: 0.9rem;">
+                            O pipeline de correção foi executado com sucesso. Use os botões acima para exportar o relatório.
+                        </p>
+                    </div>
+
                     <div class="card">
                         <div class="card-header" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px;">
                             <h3 class="card-title" style="margin: 0;">📊 Resultado Final</h3>
                             ${renderViewToggle('resultado')}
-                        </div>
-                        <div style="display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 12px;">
-                            <a class="btn" href="${API}/resultados/${atividadeId}/${alunoId}/exportar/json" target="_blank">⬇️ Exportar JSON</a>
-                            <a class="btn" href="${API}/resultados/${atividadeId}/${alunoId}/exportar/markdown" target="_blank">📄 Exportar Markdown</a>
                         </div>
                         <div id="resultado-visual" style="display: ${viewPreference === 'visual' ? 'block' : 'none'};">
                             ${renderResultadoVisual(resultado)}
