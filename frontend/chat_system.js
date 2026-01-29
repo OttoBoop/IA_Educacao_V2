@@ -1316,10 +1316,21 @@ function toggleContextPanel() {
     const panel = document.getElementById('context-panel');
     const body = document.getElementById('context-body');
     const icon = document.getElementById('context-toggle-icon');
-    
+
     panel.classList.toggle('collapsed');
-    body.style.display = panel.classList.contains('collapsed') ? 'none' : 'block';
-    icon.textContent = panel.classList.contains('collapsed') ? '▶' : '◀';
+    const isCollapsed = panel.classList.contains('collapsed');
+
+    body.style.display = isCollapsed ? 'none' : 'block';
+    icon.textContent = isCollapsed ? '▶' : '◀';
+
+    // Restaurar estado dos filtros ao reabrir o painel
+    if (!isCollapsed) {
+        const ctx = window.chatState.context;
+        const filtersDiv = document.getElementById('context-filters');
+        if (filtersDiv) {
+            filtersDiv.style.display = ctx.mode === 'filtered' ? 'block' : 'none';
+        }
+    }
 }
 
 function setContextMode(mode) {
