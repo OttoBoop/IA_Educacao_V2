@@ -2106,6 +2106,212 @@
             content: '💡';
             font-size: 0.85rem;
         }
+        
+        /* ============================================================
+           TOGGLE VISUAL/JSON
+           ============================================================ */
+        .view-toggle {
+            display: inline-flex;
+            background: var(--bg);
+            border-radius: 8px;
+            padding: 3px;
+            gap: 2px;
+        }
+        
+        .view-toggle-btn {
+            padding: 6px 14px;
+            border: none;
+            background: transparent;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.85rem;
+            color: var(--text-secondary);
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        
+        .view-toggle-btn:hover {
+            background: var(--bg-hover);
+        }
+        
+        .view-toggle-btn.active {
+            background: var(--primary);
+            color: white;
+            font-weight: 500;
+        }
+        
+        /* Visual Data Cards */
+        .visual-data {
+            display: grid;
+            gap: 16px;
+        }
+        
+        .data-section {
+            background: var(--bg-card);
+            border-radius: 12px;
+            padding: 16px;
+            border: 1px solid var(--border);
+        }
+        
+        .data-section-title {
+            font-size: 0.9rem;
+            font-weight: 600;
+            color: var(--text);
+            margin-bottom: 12px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .data-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+            gap: 12px;
+        }
+        
+        .data-item {
+            background: var(--bg);
+            padding: 12px;
+            border-radius: 8px;
+        }
+        
+        .data-label {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            margin-bottom: 4px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        
+        .data-value {
+            font-size: 1rem;
+            font-weight: 500;
+            color: var(--text);
+        }
+        
+        .data-value.large {
+            font-size: 1.5rem;
+            font-weight: 700;
+        }
+        
+        .data-value.success { color: var(--success); }
+        .data-value.warning { color: var(--warning); }
+        .data-value.danger { color: var(--danger); }
+        .data-value.primary { color: var(--primary); }
+        
+        /* Questões visuais */
+        .questao-card {
+            background: var(--bg);
+            border-radius: 10px;
+            padding: 14px;
+            margin-bottom: 12px;
+            border-left: 4px solid var(--border);
+        }
+        
+        .questao-card.correta {
+            border-left-color: var(--success);
+            background: rgba(16, 185, 129, 0.05);
+        }
+        
+        .questao-card.incorreta {
+            border-left-color: var(--danger);
+            background: rgba(239, 68, 68, 0.05);
+        }
+        
+        .questao-card.parcial {
+            border-left-color: var(--warning);
+            background: rgba(245, 158, 11, 0.05);
+        }
+        
+        .questao-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 8px;
+        }
+        
+        .questao-numero {
+            font-weight: 600;
+            font-size: 0.95rem;
+        }
+        
+        .questao-pontuacao {
+            font-size: 0.85rem;
+            padding: 4px 10px;
+            border-radius: 20px;
+            font-weight: 500;
+        }
+        
+        .questao-pontuacao.success {
+            background: rgba(16, 185, 129, 0.15);
+            color: var(--success);
+        }
+        
+        .questao-pontuacao.danger {
+            background: rgba(239, 68, 68, 0.15);
+            color: var(--danger);
+        }
+        
+        .questao-pontuacao.warning {
+            background: rgba(245, 158, 11, 0.15);
+            color: var(--warning);
+        }
+        
+        .questao-resposta {
+            font-size: 0.85rem;
+            color: var(--text-secondary);
+            margin-top: 6px;
+        }
+        
+        .questao-feedback {
+            font-size: 0.82rem;
+            color: var(--text-muted);
+            margin-top: 8px;
+            padding-top: 8px;
+            border-top: 1px solid var(--border);
+            font-style: italic;
+        }
+        
+        /* Habilidades visual */
+        .habilidade-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 10px 0;
+            border-bottom: 1px solid var(--border);
+        }
+        
+        .habilidade-item:last-child {
+            border-bottom: none;
+        }
+        
+        .habilidade-nome {
+            flex: 1;
+            font-size: 0.9rem;
+        }
+        
+        .habilidade-barra {
+            width: 120px;
+            height: 8px;
+            background: var(--bg);
+            border-radius: 4px;
+            overflow: hidden;
+        }
+        
+        .habilidade-barra-fill {
+            height: 100%;
+            border-radius: 4px;
+            transition: width 0.3s;
+        }
+        
+        .habilidade-valor {
+            font-size: 0.85rem;
+            font-weight: 600;
+            width: 45px;
+            text-align: right;
+        }
 
     </style>
 </head>
@@ -3820,6 +4026,282 @@
             document.querySelectorAll('.help-panel').forEach(p => p.remove());
         }
         
+        // ============================================================
+        // TOGGLE VISUAL / JSON
+        // ============================================================
+        
+        // Preferência de visualização (localStorage)
+        let viewPreference = localStorage.getItem('prova-ai-view-mode') || 'visual';
+        
+        // Renderiza toggle de visualização
+        function renderViewToggle(containerId) {
+            return `
+                <div class="view-toggle" id="view-toggle-${containerId}">
+                    <button class="view-toggle-btn ${viewPreference === 'visual' ? 'active' : ''}" 
+                            onclick="setViewMode('visual', '${containerId}')">
+                        📊 Visual
+                    </button>
+                    <button class="view-toggle-btn ${viewPreference === 'json' ? 'active' : ''}" 
+                            onclick="setViewMode('json', '${containerId}')">
+                        { } JSON
+                    </button>
+                </div>
+            `;
+        }
+        
+        // Alterna modo de visualização
+        function setViewMode(mode, containerId) {
+            viewPreference = mode;
+            localStorage.setItem('prova-ai-view-mode', mode);
+            
+            // Atualiza botões
+            const toggle = document.getElementById(`view-toggle-${containerId}`);
+            if (toggle) {
+                toggle.querySelectorAll('.view-toggle-btn').forEach(btn => {
+                    btn.classList.toggle('active', btn.textContent.includes(mode === 'visual' ? 'Visual' : 'JSON'));
+                });
+            }
+            
+            // Atualiza containers
+            const visualContainer = document.getElementById(`${containerId}-visual`);
+            const jsonContainer = document.getElementById(`${containerId}-json`);
+            
+            if (visualContainer) visualContainer.style.display = mode === 'visual' ? 'block' : 'none';
+            if (jsonContainer) jsonContainer.style.display = mode === 'json' ? 'block' : 'none';
+        }
+        
+        // Renderiza dados visuais do resultado do aluno
+        function renderResultadoVisual(resultado) {
+            if (!resultado || Object.keys(resultado).length === 0) {
+                return '<div class="empty-state"><div class="empty-icon">📭</div><div class="empty-title">Sem dados</div></div>';
+            }
+            
+            let html = '<div class="visual-data">';
+            
+            // Resumo geral (nota, acertos, etc)
+            const nota = resultado.nota_final ?? resultado.nota ?? resultado.pontuacao ?? null;
+            const acertos = resultado.acertos ?? resultado.questoes_corretas ?? null;
+            const total = resultado.total_questoes ?? resultado.questoes?.length ?? null;
+            
+            if (nota !== null || acertos !== null) {
+                html += `
+                    <div class="data-section">
+                        <div class="data-section-title">📊 Resumo</div>
+                        <div class="data-grid">
+                `;
+                
+                if (nota !== null) {
+                    const notaClass = nota >= 7 ? 'success' : nota >= 5 ? 'warning' : 'danger';
+                    html += `
+                        <div class="data-item">
+                            <div class="data-label">Nota Final</div>
+                            <div class="data-value large ${notaClass}">${typeof nota === 'number' ? nota.toFixed(1) : nota}</div>
+                        </div>
+                    `;
+                }
+                
+                if (acertos !== null && total !== null) {
+                    const pct = Math.round((acertos / total) * 100);
+                    html += `
+                        <div class="data-item">
+                            <div class="data-label">Acertos</div>
+                            <div class="data-value large">${acertos}/${total}</div>
+                        </div>
+                        <div class="data-item">
+                            <div class="data-label">Aproveitamento</div>
+                            <div class="data-value large ${pct >= 70 ? 'success' : pct >= 50 ? 'warning' : 'danger'}">${pct}%</div>
+                        </div>
+                    `;
+                }
+                
+                html += '</div></div>';
+            }
+            
+            // Questões detalhadas
+            const questoes = resultado.questoes || resultado.correcoes || resultado.itens || [];
+            if (questoes.length > 0) {
+                html += `
+                    <div class="data-section">
+                        <div class="data-section-title">📝 Questões (${questoes.length})</div>
+                `;
+                
+                questoes.forEach((q, i) => {
+                    const num = q.numero ?? q.questao ?? (i + 1);
+                    const pontosObtidos = q.pontos_obtidos ?? q.pontuacao ?? q.nota ?? null;
+                    const pontosMax = q.pontos_maximos ?? q.valor ?? q.peso ?? null;
+                    const correta = q.correta ?? q.correto ?? (pontosObtidos === pontosMax);
+                    const parcial = pontosObtidos !== null && pontosMax !== null && pontosObtidos > 0 && pontosObtidos < pontosMax;
+                    
+                    const statusClass = parcial ? 'parcial' : (correta ? 'correta' : 'incorreta');
+                    const pontuacaoClass = parcial ? 'warning' : (correta ? 'success' : 'danger');
+                    
+                    html += `
+                        <div class="questao-card ${statusClass}">
+                            <div class="questao-header">
+                                <span class="questao-numero">Questão ${num}</span>
+                                ${pontosObtidos !== null && pontosMax !== null ? 
+                                    `<span class="questao-pontuacao ${pontuacaoClass}">${pontosObtidos}/${pontosMax} pts</span>` : 
+                                    `<span class="questao-pontuacao ${pontuacaoClass}">${correta ? '✓ Correta' : '✗ Incorreta'}</span>`
+                                }
+                            </div>
+                            ${q.resposta_aluno ? `<div class="questao-resposta"><strong>Resposta:</strong> ${escapeHtml(String(q.resposta_aluno))}</div>` : ''}
+                            ${q.resposta_correta && !correta ? `<div class="questao-resposta" style="color: var(--success);"><strong>Esperado:</strong> ${escapeHtml(String(q.resposta_correta))}</div>` : ''}
+                            ${q.feedback || q.comentario ? `<div class="questao-feedback">${escapeHtml(q.feedback || q.comentario)}</div>` : ''}
+                        </div>
+                    `;
+                });
+                
+                html += '</div>';
+            }
+            
+            // Habilidades/competências
+            const habilidades = resultado.habilidades || resultado.competencias || resultado.analise_habilidades || null;
+            if (habilidades && (Array.isArray(habilidades) || typeof habilidades === 'object')) {
+                html += `
+                    <div class="data-section">
+                        <div class="data-section-title">🎯 Habilidades</div>
+                `;
+                
+                const habArray = Array.isArray(habilidades) ? habilidades : Object.entries(habilidades).map(([k,v]) => ({nome: k, valor: v}));
+                
+                habArray.forEach(h => {
+                    const nome = h.nome || h.habilidade || h.competencia || 'Habilidade';
+                    const valor = h.valor ?? h.nivel ?? h.desempenho ?? h.pontuacao ?? 0;
+                    const valorNum = typeof valor === 'number' ? valor : parseInt(valor) || 0;
+                    const pct = valorNum > 1 ? valorNum : valorNum * 100;
+                    const cor = pct >= 70 ? 'var(--success)' : pct >= 50 ? 'var(--warning)' : 'var(--danger)';
+                    
+                    html += `
+                        <div class="habilidade-item">
+                            <span class="habilidade-nome">${escapeHtml(nome)}</span>
+                            <div class="habilidade-barra">
+                                <div class="habilidade-barra-fill" style="width: ${Math.min(pct, 100)}%; background: ${cor};"></div>
+                            </div>
+                            <span class="habilidade-valor" style="color: ${cor};">${Math.round(pct)}%</span>
+                        </div>
+                    `;
+                });
+                
+                html += '</div>';
+            }
+            
+            // Feedback geral
+            const feedback = resultado.feedback || resultado.comentario_geral || resultado.observacoes || null;
+            if (feedback) {
+                html += `
+                    <div class="data-section">
+                        <div class="data-section-title">💬 Feedback</div>
+                        <p style="line-height: 1.6; color: var(--text-secondary);">${escapeHtml(feedback)}</p>
+                    </div>
+                `;
+            }
+            
+            html += '</div>';
+            return html;
+        }
+        
+        // Renderiza dashboard visual genérico
+        function renderDashboardVisual(data, tipo) {
+            if (!data || Object.keys(data).length === 0) {
+                return '<div class="empty-state"><div class="empty-icon">📭</div><div class="empty-title">Sem dados</div></div>';
+            }
+            
+            let html = '<div class="visual-data">';
+            
+            // Estatísticas principais
+            const stats = [];
+            
+            // Detecta campos comuns de dashboards
+            if (data.total_alunos !== undefined) stats.push({label: 'Total de Alunos', value: data.total_alunos, icon: '👥'});
+            if (data.total_atividades !== undefined) stats.push({label: 'Atividades', value: data.total_atividades, icon: '📝'});
+            if (data.media_geral !== undefined) stats.push({label: 'Média Geral', value: typeof data.media_geral === 'number' ? data.media_geral.toFixed(1) : data.media_geral, icon: '📊', class: data.media_geral >= 7 ? 'success' : data.media_geral >= 5 ? 'warning' : 'danger'});
+            if (data.media !== undefined) stats.push({label: 'Média', value: typeof data.media === 'number' ? data.media.toFixed(1) : data.media, icon: '📊', class: data.media >= 7 ? 'success' : data.media >= 5 ? 'warning' : 'danger'});
+            if (data.aprovados !== undefined) stats.push({label: 'Aprovados', value: data.aprovados, icon: '✅', class: 'success'});
+            if (data.reprovados !== undefined) stats.push({label: 'Reprovados', value: data.reprovados, icon: '❌', class: 'danger'});
+            if (data.pendentes !== undefined) stats.push({label: 'Pendentes', value: data.pendentes, icon: '⏳', class: 'warning'});
+            if (data.concluidas !== undefined) stats.push({label: 'Concluídas', value: data.concluidas, icon: '✅', class: 'success'});
+            
+            if (stats.length > 0) {
+                html += `
+                    <div class="data-section">
+                        <div class="data-section-title">📊 Estatísticas</div>
+                        <div class="data-grid">
+                            ${stats.map(s => `
+                                <div class="data-item">
+                                    <div class="data-label">${s.icon} ${s.label}</div>
+                                    <div class="data-value large ${s.class || ''}">${s.value}</div>
+                                </div>
+                            `).join('')}
+                        </div>
+                    </div>
+                `;
+            }
+            
+            // Lista de alunos se existir
+            if (data.alunos && Array.isArray(data.alunos)) {
+                html += `
+                    <div class="data-section">
+                        <div class="data-section-title">👥 Alunos (${data.alunos.length})</div>
+                        <table class="table">
+                            <thead>
+                                <tr>
+                                    <th>Nome</th>
+                                    <th>Média</th>
+                                    <th>Status</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                ${data.alunos.slice(0, 10).map(a => `
+                                    <tr>
+                                        <td><strong>${escapeHtml(a.nome || a.aluno_nome || 'Aluno')}</strong></td>
+                                        <td>${a.media !== undefined ? (typeof a.media === 'number' ? a.media.toFixed(1) : a.media) : '-'}</td>
+                                        <td>${a.status ? `<span class="badge badge-${a.status === 'aprovado' ? 'success' : a.status === 'reprovado' ? 'danger' : 'warning'}">${a.status}</span>` : '-'}</td>
+                                    </tr>
+                                `).join('')}
+                            </tbody>
+                        </table>
+                        ${data.alunos.length > 10 ? `<p style="color: var(--text-muted); font-size: 0.85rem; margin-top: 8px;">... e mais ${data.alunos.length - 10} alunos</p>` : ''}
+                    </div>
+                `;
+            }
+            
+            // Atividades se existir
+            if (data.atividades && Array.isArray(data.atividades)) {
+                html += `
+                    <div class="data-section">
+                        <div class="data-section-title">📝 Atividades (${data.atividades.length})</div>
+                        ${data.atividades.slice(0, 5).map(a => `
+                            <div style="display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid var(--border);">
+                                <span>${escapeHtml(a.nome || a.titulo || 'Atividade')}</span>
+                                <span style="color: var(--text-secondary);">${a.data || a.criado_em || ''}</span>
+                            </div>
+                        `).join('')}
+                    </div>
+                `;
+            }
+            
+            html += '</div>';
+            return html;
+        }
+        
+        // Container com toggle visual/json
+        function renderDataWithToggle(containerId, data, visualRenderer) {
+            const visualHtml = visualRenderer(data);
+            const jsonHtml = `<pre style="background: var(--bg); padding: 16px; border-radius: 8px; overflow:auto; max-height: 500px;">${escapeHtml(JSON.stringify(data, null, 2))}</pre>`;
+            
+            return `
+                <div style="display: flex; justify-content: flex-end; margin-bottom: 12px;">
+                    ${renderViewToggle(containerId)}
+                </div>
+                <div id="${containerId}-visual" style="display: ${viewPreference === 'visual' ? 'block' : 'none'};">
+                    ${visualHtml}
+                </div>
+                <div id="${containerId}-json" style="display: ${viewPreference === 'json' ? 'block' : 'none'};">
+                    ${jsonHtml}
+                </div>
+            `;
+        }
+
         function openWelcome() {
             document.getElementById('modal-welcome').classList.add('active');
             // Remove pulse animation after first click
@@ -6269,12 +6751,20 @@
                 // Só mostrar resultado final se completo
                 const resultadoFinal = isComplete ? `
                     <div class="card">
-                        <div class="card-header"><h3 class="card-title">📊 Resultado Final</h3></div>
-                        <div style="display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 12px;">
-                            <a class="btn" href="${API}/resultados/${atividadeId}/${alunoId}/exportar/json" target="_blank">Exportar JSON</a>
-                            <a class="btn" href="${API}/resultados/${atividadeId}/${alunoId}/exportar/markdown" target="_blank">Exportar Markdown</a>
+                        <div class="card-header" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px;">
+                            <h3 class="card-title" style="margin: 0;">📊 Resultado Final</h3>
+                            ${renderViewToggle('resultado')}
                         </div>
-                        <pre style="background: var(--bg-card); padding: 16px; border-radius: 8px; overflow:auto; max-height: 400px;">${escapeHtml(JSON.stringify(resultado, null, 2))}</pre>
+                        <div style="display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 12px;">
+                            <a class="btn" href="${API}/resultados/${atividadeId}/${alunoId}/exportar/json" target="_blank">⬇️ Exportar JSON</a>
+                            <a class="btn" href="${API}/resultados/${atividadeId}/${alunoId}/exportar/markdown" target="_blank">📄 Exportar Markdown</a>
+                        </div>
+                        <div id="resultado-visual" style="display: ${viewPreference === 'visual' ? 'block' : 'none'};">
+                            ${renderResultadoVisual(resultado)}
+                        </div>
+                        <div id="resultado-json" style="display: ${viewPreference === 'json' ? 'block' : 'none'};">
+                            <pre style="background: var(--bg); padding: 16px; border-radius: 8px; overflow:auto; max-height: 500px;">${escapeHtml(JSON.stringify(resultado, null, 2))}</pre>
+                        </div>
                     </div>
                 ` : '';
                 
@@ -6307,7 +6797,16 @@
                 document.getElementById('content').innerHTML = `
                     <div class="page-header"><h1 class="page-title">Dashboard da Turma</h1></div>
                     <div class="card">
-                        <pre style="background: var(--bg-card); padding: 16px; border-radius: 8px; overflow:auto;">${escapeHtml(JSON.stringify(data, null, 2))}</pre>
+                        <div class="card-header" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px;">
+                            <h3 class="card-title" style="margin: 0;">📊 Estatísticas da Turma</h3>
+                            ${renderViewToggle('dash-turma')}
+                        </div>
+                        <div id="dash-turma-visual" style="display: ${viewPreference === 'visual' ? 'block' : 'none'};">
+                            ${renderDashboardVisual(data, 'turma')}
+                        </div>
+                        <div id="dash-turma-json" style="display: ${viewPreference === 'json' ? 'block' : 'none'};">
+                            <pre style="background: var(--bg); padding: 16px; border-radius: 8px; overflow:auto; max-height: 500px;">${escapeHtml(JSON.stringify(data, null, 2))}</pre>
+                        </div>
                     </div>
                 `;
             } catch (e) {}
@@ -6319,7 +6818,16 @@
                 document.getElementById('content').innerHTML = `
                     <div class="page-header"><h1 class="page-title">Dashboard do Aluno</h1></div>
                     <div class="card">
-                        <pre style="background: var(--bg-card); padding: 16px; border-radius: 8px; overflow:auto;">${escapeHtml(JSON.stringify(data, null, 2))}</pre>
+                        <div class="card-header" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px;">
+                            <h3 class="card-title" style="margin: 0;">📊 Estatísticas do Aluno</h3>
+                            ${renderViewToggle('dash-aluno')}
+                        </div>
+                        <div id="dash-aluno-visual" style="display: ${viewPreference === 'visual' ? 'block' : 'none'};">
+                            ${renderDashboardVisual(data, 'aluno')}
+                        </div>
+                        <div id="dash-aluno-json" style="display: ${viewPreference === 'json' ? 'block' : 'none'};">
+                            <pre style="background: var(--bg); padding: 16px; border-radius: 8px; overflow:auto; max-height: 500px;">${escapeHtml(JSON.stringify(data, null, 2))}</pre>
+                        </div>
                     </div>
                 `;
             } catch (e) {}
