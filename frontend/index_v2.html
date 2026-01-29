@@ -318,7 +318,7 @@
             border-radius: 8px;
             color: var(--text);
             font-family: inherit;
-            font-size: 0.9rem;
+            font-size: 16px; /* Previne auto-zoom em iOS */
             transition: border-color 0.15s;
         }
         
@@ -2892,13 +2892,17 @@
                 font-size: 1.25rem;
             }
 
-            /* Modal tabs more compact */
+            /* Modal tabs more compact and organized */
             .tabs {
                 gap: 4px;
+                flex-wrap: wrap;
             }
             .tab {
                 padding: 10px 12px;
                 font-size: 0.85rem;
+                flex: 1 1 auto;
+                min-width: max-content;
+                text-align: center;
             }
 
             /* Settings modal tabs wrap */
@@ -5660,6 +5664,21 @@
             document.querySelector('.nav-tree')?.addEventListener('click', (e) => {
                 if (e.target.closest('.tree-item') && window.innerWidth <= 768) {
                     closeMobileSidebar();
+                }
+            });
+
+            // Close modals when clicking on overlay (outside modal content)
+            document.addEventListener('click', (e) => {
+                if (e.target.classList.contains('modal-overlay') && e.target.classList.contains('active')) {
+                    const modalId = e.target.id;
+
+                    if (modalId === 'modal-welcome') {
+                        closeWelcome();
+                    } else if (modalId === 'modal-tutorial') {
+                        closeTutorial();
+                    } else {
+                        closeModal(modalId);
+                    }
                 }
             });
         });
