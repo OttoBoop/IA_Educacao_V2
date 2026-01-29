@@ -1,11 +1,11 @@
 """
-Captura screenshots finais do tutorial melhorado
+Captura screenshots finais do tutorial melhorado - v3
 """
 from playwright.sync_api import sync_playwright
 import time
 from pathlib import Path
 
-OUTPUT_DIR = Path(__file__).parent / "design-review-v2"
+OUTPUT_DIR = Path(__file__).parent / "design-review-v3"
 OUTPUT_DIR.mkdir(exist_ok=True)
 
 def capture():
@@ -16,50 +16,44 @@ def capture():
         page.goto("http://127.0.0.1:8001", wait_until="networkidle")
         time.sleep(1)
         
-        # 1. Welcome modal
-        print("📸 1. Modal de boas-vindas...")
-        page.screenshot(path=str(OUTPUT_DIR / "01-welcome-novo.png"))
+        # 1. Welcome modal com novos estilos
+        print("📸 1. Modal de boas-vindas (novo design)...")
+        page.screenshot(path=str(OUTPUT_DIR / "01-welcome-v3.png"))
         
-        # Abrir tutorial clicando no botao
-        print("📸 2. Abrindo tutorial...")
-        page.click(".welcome-footer button.btn:first-child")  # Ver Tutorial
+        # 2. Abrir tutorial e ver tabs
+        print("📸 2. Tutorial com tabs melhoradas...")
+        page.click(".welcome-footer .btn-tutorial")  # Botão verde
         time.sleep(0.5)
-        page.screenshot(path=str(OUTPUT_DIR / "02-tutorial-passo1.png"))
+        page.screenshot(path=str(OUTPUT_DIR / "02-tutorial-tabs-v3.png"))
         
-        # 3. Próximo passo
+        # 3. Navegar passos
         print("📸 3. Tutorial passo 2...")
-        page.click("#tutorial-next")  # Próximo
+        page.click("#tutorial-next")
         time.sleep(0.5)
-        page.screenshot(path=str(OUTPUT_DIR / "03-tutorial-passo2.png"))
+        page.screenshot(path=str(OUTPUT_DIR / "03-tutorial-passo2-v3.png"))
         
-        # 4. Próximo passo
-        print("📸 4. Tutorial passo 3...")
-        page.click("#tutorial-next")  # Próximo
-        time.sleep(0.5)
-        page.screenshot(path=str(OUTPUT_DIR / "04-tutorial-passo3.png"))
-        
-        # 5. Fechar tutorial e ver sidebar
-        print("📸 5. Novo botão de ajuda...")
-        # Fechar usando JavaScript ao inves de clicar
+        # 4. Fechar e ver botão de ajuda pulsando
+        print("📸 4. Sidebar com botão de ajuda...")
         page.evaluate("""
             document.querySelector('#modal-tutorial').classList.remove('active');
             document.querySelector('#modal-welcome').classList.remove('active');
         """)
         time.sleep(0.5)
         
-        # Highlight the help button area
+        # Destacar área do sidebar footer
         page.evaluate("""
-            const sidebar = document.querySelector('.sidebar-footer');
-            if (sidebar) {
-                sidebar.style.border = '3px solid #3b82f6';
-                sidebar.style.borderRadius = '8px';
+            const footer = document.querySelector('.sidebar-footer');
+            if (footer) {
+                footer.style.border = '3px solid #10b981';
+                footer.style.borderRadius = '12px';
+                footer.style.padding = '12px';
             }
         """)
         
-        page.screenshot(path=str(OUTPUT_DIR / "05-sidebar-botao-ajuda.png"))
+        page.screenshot(path=str(OUTPUT_DIR / "04-sidebar-help-btn-v3.png"))
         
         browser.close()
-        print(f"\n✅ Screenshots salvas em: {OUTPUT_DIR}")
+        print(f"\n✅ Screenshots v3 salvas em: {OUTPUT_DIR}")
 
 if __name__ == "__main__":
     capture()
