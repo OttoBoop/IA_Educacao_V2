@@ -3633,191 +3633,246 @@
         const tutorialContent = {
             quick: [
                 {
-                    title: '👋 Bem-vindo ao Prova AI!',
-                    subtitle: 'Vamos conhecer o sistema em 3 passos simples',
+                    title: '🎯 O que é o Prova AI?',
+                    subtitle: 'Relatórios de performance que vão além da nota',
                     image: '/static/tutorial-images-v2/01-dashboard-anotado.png',
                     content: `
-                        <p>Esta é a <strong>tela inicial</strong> do sistema. Aqui você vê um resumo de tudo:</p>
+                        <p>O Prova AI <strong>não é só um corretor automático</strong>. Seu objetivo principal é:</p>
                         <ul>
-                            <li><strong>① Menu Principal</strong> - Use para navegar pelo sistema</li>
-                            <li><strong>② Resumo Geral</strong> - Quantas matérias, turmas e alunos você tem</li>
-                            <li><strong>③ Botão "+ Nova Matéria"</strong> - Clique aqui para começar!</li>
+                            <li><strong>📊 Relatórios de performance</strong> - Entender onde o aluno precisa melhorar, não só a nota</li>
+                            <li><strong>🤖 Auxiliar a correção</strong> - Não substituir você! Tem aba para sua correção manual</li>
+                            <li><strong>💬 Chat para o aluno</strong> - O aluno pode conversar com a IA para entender seus erros</li>
+                            <li><strong>📈 Visão consolidada</strong> - Juntando várias atividades, vemos o progresso do aluno</li>
                         </ul>
                         <div class="tutorial-highlight">
-                            <strong>💡 Primeiro passo:</strong> Crie uma matéria para organizar suas turmas e provas.
+                            <strong>💡 Filosofia:</strong> A IA cria documentos que <em>auxiliam</em> sua avaliação, gerando insights que seriam difíceis de ver manualmente.
                         </div>
                     `
                 },
                 {
-                    title: '💬 Converse com a IA',
-                    subtitle: 'Faça perguntas e peça relatórios sobre seus documentos',
-                    image: '/static/tutorial-images-v2/03-chat-anotado.png',
+                    title: '📂 Estrutura: Matéria → Turma → Atividade',
+                    subtitle: 'Organize suas aulas para criar relatórios poderosos',
+                    image: '/static/tutorial-images-v2/02-sidebar-anotado.png',
                     content: `
-                        <p>O <strong>Chat com IA</strong> é onde a mágica acontece! Você pode:</p>
+                        <p>A organização é simples:</p>
+                        <ol>
+                            <li><strong>📚 Matéria</strong> - A disciplina (Matemática, Português, etc.)</li>
+                            <li><strong>👥 Turma</strong> - O grupo de alunos (9º A, 1º EM, etc.)</li>
+                            <li><strong>📝 Atividade</strong> - Uma prova, trabalho ou exercício específico</li>
+                        </ol>
+                        <p>Para cada <strong>Atividade</strong>, você envia:</p>
                         <ul>
-                            <li><strong>① Escolher documentos</strong> - Selecione quais provas e correções a IA deve ler</li>
-                            <li><strong>② Filtrar por matéria/turma/aluno</strong> - Foque no que você precisa</li>
-                            <li><strong>③ Escolher o modelo de IA</strong> - Claude faz relatórios mais detalhados</li>
-                            <li><strong>④ Fazer sua pergunta</strong> - Digite o que você precisa!</li>
+                            <li><strong>📄 Enunciado</strong> - A prova em branco com as questões</li>
+                            <li><strong>✅ Gabarito</strong> - As respostas corretas</li>
+                            <li><strong>👤 Prova do aluno</strong> - O que cada aluno respondeu</li>
                         </ul>
                         <div class="tutorial-highlight">
-                            <strong>💡 Experimente perguntar:</strong><br>
-                            "Faça um relatório da turma" ou "Como está o desempenho do João?"
+                            <strong>▶️ Para começar:</strong> Clique em "+ Nova Matéria" no menu lateral.
                         </div>
                     `
                 },
                 {
-                    title: '📋 Corrija Provas Automaticamente',
-                    subtitle: 'Envie as provas e deixe a IA fazer o trabalho pesado',
+                    title: '⚙️ O Pipeline: Como a IA Processa',
+                    subtitle: 'Cada etapa gera um documento que você pode revisar',
                     image: '/static/tutorial-images-v2/06-fluxo-correcao.png',
                     content: `
-                        <p>Para corrigir provas automaticamente, siga estes <strong>4 passos</strong>:</p>
-                        <ul>
-                            <li><strong>① Upload do Enunciado</strong> - A prova em branco (PDF ou imagem)</li>
-                            <li><strong>② Upload do Gabarito</strong> - As respostas corretas</li>
-                            <li><strong>③ Upload das Provas dos Alunos</strong> - As provas respondidas</li>
-                            <li><strong>④ Clique em "Pipeline"</strong> - A IA corrige tudo automaticamente!</li>
-                        </ul>
+                        <p>O <strong>Pipeline</strong> são etapas que a IA executa em sequência:</p>
+                        <ol>
+                            <li><strong>🔎 Extração de Questões</strong> - Lê o enunciado e identifica cada questão e seu tipo</li>
+                            <li><strong>🧩 Extração de Gabarito</strong> - Estrutura as respostas corretas</li>
+                            <li><strong>📝 Extração de Respostas</strong> - Lê o que o aluno escreveu</li>
+                            <li><strong>✅ Correção</strong> - Compara respostas com gabarito e atribui notas</li>
+                            <li><strong>📊 Análise de Habilidades</strong> - Identifica pontos fortes e fracos</li>
+                            <li><strong>📄 Relatório Final</strong> - Feedback completo para o aluno</li>
+                        </ol>
                         <div class="tutorial-highlight">
-                            <strong>⏱️ Economia de tempo:</strong> O que levaria horas, a IA faz em minutos!
+                            <strong>👁️ Cada etapa gera um documento</strong> que você pode visualizar e editar. A correção do professor tem sua própria aba!
+                        </div>
+                    `
+                },
+                {
+                    title: '💬 O Chat: Aluno Aprende com a IA',
+                    subtitle: 'O objetivo final é ajudar o aluno a entender seus erros',
+                    image: '/static/tutorial-images-v2/03-chat-anotado.png',
+                    content: `
+                        <p>O <strong>Chat com IA</strong> é onde tudo se conecta:</p>
+                        <ul>
+                            <li><strong>Para você (professor):</strong> "Quais questões a turma mais errou?" / "Faça um relatório da turma"</li>
+                            <li><strong>Para o aluno:</strong> "Por que eu errei a questão 3?" / "Me explique como resolver isso"</li>
+                            <li><strong>Visão consolidada:</strong> Juntando várias atividades, o chat mostra a evolução do aluno ao longo do tempo</li>
+                        </ul>
+                        <p><strong>Use os filtros:</strong> Selecione matéria, turma ou aluno para a IA focar nos documentos certos.</p>
+                        <div class="tutorial-highlight">
+                            <strong>🎯 O objetivo final:</strong> O aluno entende onde precisa melhorar e <em>como</em> melhorar, não só vê a nota.
                         </div>
                     `
                 }
             ],
             full: [
                 {
-                    title: '🏠 Tela Inicial (Dashboard)',
-                    subtitle: 'Seu painel de controle do sistema',
+                    title: '🎯 A Filosofia do Prova AI',
+                    subtitle: 'Muito além de um corretor automático',
                     image: '/static/tutorial-images-v2/01-dashboard-anotado.png',
                     content: `
-                        <p>A tela inicial mostra um <strong>resumo de tudo</strong> no sistema:</p>
+                        <p>O Prova AI foi criado com um objetivo claro:</p>
                         <ul>
-                            <li><strong>Números no topo:</strong> Total de matérias, turmas, alunos e atividades</li>
-                            <li><strong>Alertas em amarelo:</strong> Atividades que ainda precisam de gabarito</li>
-                            <li><strong>Cards de matérias:</strong> Clique em uma matéria para ver suas turmas</li>
+                            <li><strong>📊 Relatórios que vão além da nota</strong> - Entender <em>por que</em> o aluno errou, não só <em>quanto</em> ele errou</li>
+                            <li><strong>🧑‍🏫 Auxiliar, não substituir</strong> - A IA cria documentos de apoio. Sua correção manual tem aba própria!</li>
+                            <li><strong>💬 Aprendizado ativo</strong> - O aluno pode conversar com a IA para entender seus erros</li>
+                            <li><strong>📈 Visão de longo prazo</strong> - Juntando várias atividades, vemos evolução e padrões</li>
                         </ul>
                         <div class="tutorial-highlight">
-                            <strong>💡 Dica:</strong> Sempre que quiser voltar aqui, clique em "Início" no menu.
+                            <strong>💡 Pense assim:</strong> A IA faz o trabalho pesado de análise, você faz o julgamento pedagógico final.
                         </div>
                     `
                 },
                 {
-                    title: '📁 Menu de Navegação',
-                    subtitle: 'Como se mover pelo sistema',
-                    image: '/static/tutorial-images-v2/02-sidebar-anotado.png',
-                    content: `
-                        <p>O menu do lado esquerdo organiza tudo em uma <strong>árvore</strong>:</p>
-                        <ul>
-                            <li><strong>① Início</strong> - Volta para a tela inicial</li>
-                            <li><strong>② Chat com IA</strong> - Converse sobre seus documentos</li>
-                            <li><strong>③ Suas Matérias</strong> - Clique para expandir e ver turmas</li>
-                            <li><strong>④ Botão de Ajuda (?)</strong> - Abre este tutorial novamente</li>
-                        </ul>
-                        <div class="tutorial-highlight">
-                            <strong>💡 Estrutura:</strong> Matéria → Turma → Atividade (prova/trabalho)
-                        </div>
-                    `
-                },
-                {
-                    title: '📚 Criando uma Matéria',
-                    subtitle: 'O primeiro passo para organizar suas aulas',
+                    title: '📚 Passo 1: Crie uma Matéria',
+                    subtitle: 'A disciplina que você leciona',
                     image: '/static/tutorial-images-v2/05-nova-materia-anotado.png',
                     content: `
                         <p>Para criar uma nova matéria:</p>
                         <ol>
-                            <li>Clique no botão <strong>"+ Nova Matéria"</strong> (no canto inferior do menu)</li>
-                            <li><strong>① Nome:</strong> Digite o nome da disciplina (ex: "Matemática")</li>
-                            <li><strong>② Descrição:</strong> Opcional - adicione detalhes se quiser</li>
-                            <li><strong>③ Nível:</strong> Escolha o nível de ensino</li>
+                            <li>Clique em <strong>"+ Nova Matéria"</strong> no rodapé do menu lateral</li>
+                            <li><strong>Nome:</strong> Digite o nome da disciplina (ex: "Matemática 2024")</li>
+                            <li><strong>Descrição:</strong> Opcional - adicione detalhes se quiser</li>
+                            <li><strong>Nível:</strong> Escolha o nível de ensino (Fundamental, Médio, etc.)</li>
                             <li>Clique em <strong>"Salvar"</strong></li>
                         </ol>
                         <div class="tutorial-highlight">
-                            <strong>📝 Próximo passo:</strong> Depois de criar a matéria, adicione uma turma dentro dela!
+                            <strong>📝 Exemplo:</strong> "Matemática - 9º Ano" ou "Física - 1ª Série EM"
                         </div>
                     `
                 },
                 {
-                    title: '👥 Adicionando Alunos',
-                    subtitle: 'Cadastre os estudantes da sua turma',
-                    image: '/static/tutorial-images-v2/03-chat-anotado.png',
+                    title: '👥 Passo 2: Crie uma Turma',
+                    subtitle: 'Um grupo de alunos dentro da matéria',
+                    image: '/static/tutorial-images-v2/02-sidebar-anotado.png',
                     content: `
-                        <p>Existem <strong>duas formas</strong> de adicionar alunos:</p>
-                        <ul>
-                            <li><strong>Um por um:</strong> Clique em "+ Adicionar Aluno" e preencha nome e matrícula</li>
-                            <li><strong>Vários de uma vez:</strong> Use "Importar CSV" para subir uma planilha</li>
-                        </ul>
-                        <div class="tutorial-highlight">
-                            <strong>📋 Formato do CSV:</strong><br>
-                            Crie uma planilha com colunas "nome" e "matricula", salve como CSV e faça upload.
-                        </div>
-                    `
-                },
-                {
-                    title: '📄 Enviando Documentos',
-                    subtitle: 'Upload de provas, gabaritos e critérios',
-                    image: '/static/tutorial-images-v2/06-fluxo-correcao.png',
-                    content: `
-                        <p>Para cada atividade, você pode enviar:</p>
-                        <ul>
-                            <li><strong>Enunciado:</strong> A prova em branco (PDF ou imagem)</li>
-                            <li><strong>Gabarito:</strong> As respostas corretas</li>
-                            <li><strong>Critérios:</strong> Como você quer que a IA corrija (opcional)</li>
-                            <li><strong>Provas respondidas:</strong> O que cada aluno escreveu</li>
-                        </ul>
-                        <div class="tutorial-highlight">
-                            <strong>📸 Formatos aceitos:</strong> PDF, imagens (JPG, PNG), documentos de texto
-                        </div>
-                    `
-                },
-                {
-                    title: '⚙️ Correção Automática',
-                    subtitle: 'Deixe a IA corrigir as provas para você',
-                    image: '/static/tutorial-images-v2/06-fluxo-correcao.png',
-                    content: `
-                        <p>A <strong>correção automática</strong> funciona em etapas:</p>
+                        <p>Depois de criar a matéria:</p>
                         <ol>
-                            <li><strong>① Extrai questões</strong> - A IA lê o enunciado da prova</li>
-                            <li><strong>② Extrai respostas</strong> - Identifica o que o aluno escreveu</li>
-                            <li><strong>③ Compara com gabarito</strong> - Verifica acertos e erros</li>
-                            <li><strong>④ Gera relatório</strong> - Cria feedback detalhado</li>
+                            <li>Clique na matéria para abri-la</li>
+                            <li>Clique em <strong>"+ Nova Turma"</strong></li>
+                            <li>Digite o nome (ex: "9º Ano A" ou "Turma da Manhã")</li>
+                            <li>Clique em <strong>"Salvar"</strong></li>
+                        </ol>
+                        <p>Depois adicione os alunos:</p>
+                        <ul>
+                            <li><strong>Um por um:</strong> "+ Adicionar Aluno" → Nome e matrícula</li>
+                            <li><strong>Em lote:</strong> "Importar CSV" com colunas "nome" e "matricula"</li>
+                        </ul>
+                        <div class="tutorial-highlight">
+                            <strong>💡 Dica:</strong> Você pode ter várias turmas na mesma matéria!
+                        </div>
+                    `
+                },
+                {
+                    title: '📝 Passo 3: Crie uma Atividade',
+                    subtitle: 'Uma prova, trabalho ou exercício',
+                    image: '/static/tutorial-images-v2/06-fluxo-correcao.png',
+                    content: `
+                        <p>Dentro de uma turma, crie a atividade:</p>
+                        <ol>
+                            <li>Clique na turma para abri-la</li>
+                            <li>Clique em <strong>"+ Nova Atividade"</strong></li>
+                            <li>Digite o nome (ex: "Prova Bimestral" ou "Exercício de Fixação")</li>
+                            <li>Clique em <strong>"Salvar"</strong></li>
+                        </ol>
+                        <p>Agora você precisa enviar os documentos:</p>
+                        <ul>
+                            <li><strong>📄 Enunciado</strong> - A prova em branco (PDF ou imagem)</li>
+                            <li><strong>✅ Gabarito</strong> - As respostas corretas</li>
+                            <li><strong>👤 Provas dos alunos</strong> - O que cada aluno respondeu</li>
+                        </ul>
+                    `
+                },
+                {
+                    title: '📤 Passo 4: Envie os Documentos',
+                    subtitle: 'Enunciado, gabarito e provas respondidas',
+                    image: '/static/tutorial-images-v2/06-fluxo-correcao.png',
+                    content: `
+                        <p>Na página da atividade, use os botões de <strong>Upload</strong>:</p>
+                        <ul>
+                            <li><strong>📄 Enunciado da Prova:</strong> A prova em branco com todas as questões</li>
+                            <li><strong>✅ Gabarito:</strong> Documento com as respostas corretas</li>
+                            <li><strong>📋 Critérios de Correção:</strong> (Opcional) Como você quer que a IA avalie</li>
+                            <li><strong>👤 Prova do Aluno:</strong> A prova preenchida - selecione qual aluno</li>
+                            <li><strong>🧑‍🏫 Correção do Professor:</strong> (Opcional) Sua correção manual para comparar</li>
+                        </ul>
+                        <div class="tutorial-highlight">
+                            <strong>📸 Formatos aceitos:</strong> PDF, imagens (JPG, PNG), documentos Word
+                        </div>
+                    `
+                },
+                {
+                    title: '⚙️ Passo 5: Execute o Pipeline',
+                    subtitle: 'A IA processa os documentos em etapas',
+                    image: '/static/tutorial-images-v2/06-fluxo-correcao.png',
+                    content: `
+                        <p>O <strong>Pipeline</strong> tem 6 etapas que a IA executa:</p>
+                        <ol>
+                            <li><strong>🔎 Extração de Questões</strong> - Lê o enunciado, identifica questões, tipos e pontuação</li>
+                            <li><strong>🧩 Extração de Gabarito</strong> - Estrutura as respostas corretas em formato padronizado</li>
+                            <li><strong>📝 Extração de Respostas</strong> - Lê a prova do aluno e extrai cada resposta</li>
+                            <li><strong>✅ Correção</strong> - Compara respostas com gabarito e atribui notas</li>
+                            <li><strong>📊 Análise de Habilidades</strong> - Identifica pontos fortes e fracos do aluno</li>
+                            <li><strong>📄 Relatório Final</strong> - Gera feedback personalizado</li>
                         </ol>
                         <div class="tutorial-highlight">
-                            <strong>🚀 Dica:</strong> Use "Pipeline Turma Toda" para corrigir todos os alunos de uma vez!
+                            <strong>▶️ Como executar:</strong> Use "Pipeline Aluno" para um aluno ou "Pipeline Turma" para todos de uma vez!
                         </div>
                     `
                 },
                 {
-                    title: '💬 Usando o Chat',
-                    subtitle: 'Converse com a IA sobre seus documentos',
+                    title: '👁️ Visualize e Revise',
+                    subtitle: 'Cada etapa gera um documento que você pode ver',
+                    image: '/static/tutorial-images-v2/01-dashboard-anotado.png',
+                    content: `
+                        <p>Na página do resultado do aluno, você vê:</p>
+                        <ul>
+                            <li><strong>📌 Documentos do Aluno:</strong> Prova respondida e sua correção manual (se enviou)</li>
+                            <li><strong>🤖 Etapas da IA:</strong> Cada documento gerado pelo pipeline</li>
+                            <li><strong>📊 Resultado Final:</strong> Nota, questões, habilidades (Visual ou JSON)</li>
+                        </ul>
+                        <p>Você pode <strong>visualizar</strong> cada documento clicando no ícone 👁️</p>
+                        <div class="tutorial-highlight">
+                            <strong>🧑‍🏫 Importante:</strong> A aba "Correção do Professor" é para você colocar sua avaliação manual. A IA auxilia, não substitui!
+                        </div>
+                    `
+                },
+                {
+                    title: '💬 Use o Chat para Relatórios',
+                    subtitle: 'Pergunte à IA sobre desempenho e padrões',
                     image: '/static/tutorial-images-v2/03-chat-anotado.png',
                     content: `
-                        <p>O Chat é muito <strong>poderoso</strong>! Você pode:</p>
+                        <p>O <strong>Chat com IA</strong> lê todos os documentos e responde suas perguntas:</p>
                         <ul>
-                            <li><strong>Fazer perguntas:</strong> "Quais questões os alunos mais erraram?"</li>
-                            <li><strong>Pedir relatórios:</strong> "Faça um resumo do desempenho da turma"</li>
-                            <li><strong>Analisar alunos:</strong> "Como está o João em matemática?"</li>
-                            <li><strong>Comparar:</strong> "Compare o desempenho das turmas A e B"</li>
+                            <li><strong>📊 Para a turma:</strong> "Quais questões a turma mais errou?" / "Faça um relatório da turma"</li>
+                            <li><strong>👤 Para um aluno:</strong> "Como está o desempenho do João?" / "Quais habilidades ele precisa melhorar?"</li>
+                            <li><strong>📈 Evolução:</strong> "Compare as provas 1 e 2" / "O João está melhorando?"</li>
                         </ul>
+                        <p><strong>Use os filtros:</strong> Selecione matéria, turma ou aluno para focar.</p>
                         <div class="tutorial-highlight">
-                            <strong>🎯 Lembre-se:</strong> Use os filtros para a IA focar nos documentos certos!
+                            <strong>🎯 O poder do Chat:</strong> Juntando várias atividades, você vê padrões que seriam invisíveis olhando nota por nota!
                         </div>
                     `
                 },
                 {
-                    title: '🔍 Usando Filtros no Chat',
-                    subtitle: 'Foque a IA nos documentos que você precisa',
+                    title: '🎓 O Aluno Também Usa o Chat!',
+                    subtitle: 'O objetivo final: o aluno entende onde melhorar',
                     image: '/static/tutorial-images-v2/04-chat-exemplos.png',
                     content: `
-                        <p>Os <strong>filtros</strong> controlam quais documentos a IA vai ler:</p>
+                        <p>O aluno pode acessar o chat e perguntar:</p>
                         <ul>
-                            <li><strong>Filtrar por Matéria:</strong> Relatório geral da disciplina</li>
-                            <li><strong>Filtrar por Turma:</strong> Visão específica de uma turma</li>
-                            <li><strong>Filtrar por Aluno:</strong> Desempenho individual</li>
-                            <li><strong>Combinar filtros:</strong> Ex: "João" + "Matemática" = desempenho do João em Matemática</li>
+                            <li><strong>"Por que eu errei a questão 3?"</strong> - A IA explica o erro</li>
+                            <li><strong>"Me ensina a resolver isso"</strong> - A IA ajuda a entender o conceito</li>
+                            <li><strong>"Onde eu preciso melhorar?"</strong> - Análise das habilidades fracas</li>
+                            <li><strong>"Como eu posso estudar para a próxima prova?"</strong> - Sugestões personalizadas</li>
                         </ul>
                         <div class="tutorial-highlight">
-                            <strong>💡 Exemplo:</strong> Para ver todos os alunos com dificuldade, filtre por turma e pergunte: 
-                            "Quais alunos precisam de atenção especial?"
+                            <strong>🎯 Objetivo final do Prova AI:</strong><br>
+                            O aluno não só vê a nota, mas <em>entende</em> onde errou e <em>como</em> melhorar.<br>
+                            E você, professor, tem relatórios completos para acompanhar a evolução!
                         </div>
                     `
                 }
@@ -3866,15 +3921,16 @@
         // Textos de ajuda contextual por seção
         const ajudaContextual = {
             'dashboard': {
-                titulo: '🏠 Página Inicial',
+                titulo: '🏠 Como Começar',
                 conteudo: `
+                    <p><strong>O Prova AI gera relatórios de performance</strong>, não só notas. Aqui está o fluxo:</p>
                     <div class="help-step">
                         <div class="help-step-number">1</div>
-                        <div class="help-step-text">Crie uma <strong>Matéria</strong> (ex: Matemática, História)</div>
+                        <div class="help-step-text">Crie uma <strong>Matéria</strong> (Matemática, História...)</div>
                     </div>
                     <div class="help-step">
                         <div class="help-step-number">2</div>
-                        <div class="help-step-text">Dentro da matéria, crie uma <strong>Turma</strong> (ex: 9º Ano A)</div>
+                        <div class="help-step-text">Dentro dela, crie uma <strong>Turma</strong> (9º A, 1º EM...)</div>
                     </div>
                     <div class="help-step">
                         <div class="help-step-number">3</div>
@@ -3882,43 +3938,66 @@
                     </div>
                     <div class="help-step">
                         <div class="help-step-number">4</div>
-                        <div class="help-step-text">Crie uma <strong>Atividade</strong> (a prova) e envie os documentos</div>
+                        <div class="help-step-text">Crie uma <strong>Atividade</strong> e envie enunciado + gabarito + provas</div>
                     </div>
-                    <p style="margin-top: 12px;">A hierarquia é: <strong>Matéria → Turma → Alunos + Atividades</strong></p>
+                    <div class="help-step">
+                        <div class="help-step-number">5</div>
+                        <div class="help-step-text">Execute o <strong>Pipeline</strong> para a IA analisar</div>
+                    </div>
+                    <p style="margin-top: 12px;">💡 <strong>Objetivo:</strong> Entender onde cada aluno precisa melhorar, não só dar nota!</p>
                 `
             },
             'atividade': {
-                titulo: '📋 Atividade (Prova)',
+                titulo: '📋 Pipeline de Correção',
                 conteudo: `
+                    <p>Envie os documentos e deixe a IA processar:</p>
                     <div class="help-step">
                         <div class="help-step-number">1</div>
-                        <div class="help-step-text"><strong>Envie o Enunciado:</strong> PDF da prova original com as questões</div>
+                        <div class="help-step-text"><strong>📄 Enunciado:</strong> A prova em branco com as questões</div>
                     </div>
                     <div class="help-step">
                         <div class="help-step-number">2</div>
-                        <div class="help-step-text"><strong>Envie o Gabarito:</strong> Respostas corretas (pode ser PDF ou texto)</div>
+                        <div class="help-step-text"><strong>✅ Gabarito:</strong> As respostas corretas</div>
                     </div>
                     <div class="help-step">
                         <div class="help-step-number">3</div>
-                        <div class="help-step-text"><strong>Envie as Provas dos Alunos:</strong> Uma por aluno, selecionando quem fez cada uma</div>
+                        <div class="help-step-text"><strong>👤 Provas dos alunos:</strong> O que cada um respondeu</div>
                     </div>
                     <div class="help-step">
                         <div class="help-step-number">4</div>
-                        <div class="help-step-text"><strong>Execute o Pipeline:</strong> A IA corrige automaticamente todas as provas</div>
+                        <div class="help-step-text"><strong>⚡ Pipeline:</strong> A IA extrai, compara e analisa automaticamente</div>
                     </div>
-                    <p style="margin-top: 12px;">💡 <strong>Dica:</strong> Use "📚 Upload em Lote" para enviar várias provas de uma vez!</p>
+                    <p style="margin-top: 12px;"><strong>Cada etapa gera um documento</strong> que você pode revisar. Sua correção manual tem aba própria!</p>
+                `
+            },
+            'resultado': {
+                titulo: '📊 Resultado do Aluno',
+                conteudo: `
+                    <p>Aqui você vê tudo sobre a prova deste aluno:</p>
+                    <ul>
+                        <li><strong>📌 Documentos do Aluno:</strong> Prova respondida e correção do professor (se houver)</li>
+                        <li><strong>🤖 Etapas da IA:</strong> Cada análise feita pelo pipeline</li>
+                        <li><strong>📊 Resultado Final:</strong> Nota, acertos, habilidades - Visual ou JSON</li>
+                    </ul>
+                    <p style="margin-top: 12px;">💡 <strong>Toggle Visual/JSON:</strong> Clique para alternar entre visualização amigável e dados brutos.</p>
+                    <p>🧑‍🏫 <strong>Correção do Professor:</strong> Use para enviar sua avaliação manual. A IA auxilia, não substitui!</p>
                 `
             },
             'chat': {
                 titulo: '💬 Chat com IA',
                 conteudo: `
-                    <p>Converse com a IA sobre os documentos que você enviou!</p>
+                    <p><strong>O Chat é onde tudo se conecta!</strong></p>
                     <ul>
-                        <li><strong>Filtro de Contexto:</strong> Escolha uma atividade para a IA ter acesso aos documentos dela</li>
-                        <li><strong>Sem filtro:</strong> A IA responde com conhecimento geral</li>
-                        <li><strong>Perguntas úteis:</strong> "Resuma as dificuldades da turma", "Que questões tiveram mais erros?"</li>
+                        <li><strong>Para você:</strong> "Quais questões a turma mais errou?" "Faça um relatório"</li>
+                        <li><strong>Para o aluno:</strong> "Por que errei a questão 3?" "Me explica como resolver"</li>
                     </ul>
-                    <p style="margin-top: 12px;">💡 A IA só vê os documentos do contexto selecionado, não todos os arquivos!</p>
+                    <p><strong>Use os filtros:</strong></p>
+                    <ul>
+                        <li><strong>Por Atividade:</strong> A IA lê os documentos daquela prova</li>
+                        <li><strong>Por Turma/Aluno:</strong> Foca no desempenho específico</li>
+                        <li><strong>Sem filtro:</strong> Conhecimento geral da IA</li>
+                    </ul>
+                    <p style="margin-top: 12px;">🎯 <strong>Objetivo:</strong> O aluno entende onde errou e como melhorar!</p>
                 `
             },
             'prompts': {
@@ -3928,7 +4007,7 @@
                     <ul>
                         <li><strong>Prompt de Sistema:</strong> Define o "personagem" da IA (ex: você é um professor)</li>
                         <li><strong>Prompt de Usuário:</strong> O que a IA deve fazer com os documentos</li>
-                        <li><strong>Variáveis:</strong> Palavras entre {chaves} são substituídas automaticamente</li>
+                        <li><strong>Variáveis {chaves}:</strong> São substituídas automaticamente pelos dados</li>
                     </ul>
                     <p style="margin-top: 12px; color: var(--warning);">⚠️ Modificar prompts pode afetar a qualidade das correções!</p>
                 `
