@@ -1683,21 +1683,47 @@
             display: flex;
             align-items: center;
             justify-content: center;
-            width: 36px;
-            height: 36px;
-            border-radius: 50%;
-            background: var(--bg-hover);
-            border: 1px solid var(--border);
-            color: var(--text-muted);
-            font-size: 1rem;
+            gap: 8px;
+            padding: 8px 16px;
+            border-radius: 20px;
+            background: linear-gradient(135deg, var(--primary), #6366f1);
+            border: none;
+            color: white;
+            font-size: 0.9rem;
+            font-weight: 500;
             cursor: pointer;
-            transition: all 0.2s;
+            transition: all 0.3s;
+            box-shadow: 0 2px 8px rgba(59, 130, 246, 0.3);
         }
         
         .help-btn:hover {
-            background: var(--primary);
-            color: white;
-            border-color: var(--primary);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(59, 130, 246, 0.5);
+        }
+        
+        .help-btn-icon {
+            font-size: 1.1rem;
+        }
+        
+        /* Tutorial text enhancements */
+        .tutorial-text ol {
+            margin: 12px 0;
+            padding-left: 24px;
+        }
+        
+        .tutorial-text ol li {
+            margin-bottom: 8px;
+        }
+        
+        /* Tutorial highlight variations */
+        .tutorial-highlight.warning {
+            background: rgba(234, 179, 8, 0.1);
+            border-left-color: #eab308;
+        }
+        
+        .tutorial-highlight.success {
+            background: rgba(34, 197, 94, 0.1);
+            border-left-color: #22c55e;
         }
 
     </style>
@@ -1754,13 +1780,16 @@
                     <button class="btn" style="flex: 1;" onclick="openModal('modal-settings')">
                         ⚙️ Configurações IA
                     </button>
+                </div>
+                <div style="display: flex; gap: 8px; margin-bottom: 8px;">
+                    <button class="btn btn-primary" style="flex: 1;" onclick="openModal('modal-materia')">
+                        + Nova Matéria
+                    </button>
                     <button class="help-btn" onclick="openWelcome()" title="Ajuda e Tutorial">
-                        ❓
+                        <span class="help-btn-icon">📖</span>
+                        <span>Ajuda</span>
                     </button>
                 </div>
-                <button class="btn btn-primary" style="width: 100%;" onclick="openModal('modal-materia')">
-                    + Nova Matéria
-                </button>
             </div>
         </aside>
         
@@ -2133,10 +2162,19 @@
                     <select class="form-select" id="input-pipeline-provider-default"></select>
                 </div>
                 <div class="form-group">
-                    <label class="form-label">Modelo por etapa (opcional)</label>
+                    <label class="form-label">Etapas a executar e modelo por etapa</label>
                     <div id="pipeline-provider-stages" style="display: flex; flex-direction: column; gap: 8px;"></div>
                     <small style="color: var(--text-muted); display: block; margin-top: 6px;">
-                        Selecione um modelo diferente por etapa para personalizar a execução.
+                        Marque as etapas que deseja executar. Selecione um modelo diferente para personalizar cada etapa.
+                    </small>
+                </div>
+                <div class="form-group">
+                    <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+                        <input type="checkbox" id="input-pipeline-force-rerun">
+                        Forçar re-execução (criar nova versão)
+                    </label>
+                    <small style="color: var(--text-muted); display: block; margin-top: 4px;">
+                        Se marcado, cria novas versões dos documentos em vez de pular etapas já executadas. Útil para comparar resultados de diferentes modelos.
                     </small>
                 </div>
                 <input type="hidden" id="input-pipeline-atividade-id">
@@ -2973,160 +3011,191 @@
         const tutorialContent = {
             quick: [
                 {
-                    title: '💬 Chat com IA',
-                    subtitle: 'Converse com a IA sobre seus documentos',
-                    image: '/static/tutorial-images/03-chat.png',
+                    title: '� Bem-vindo ao Prova AI!',
+                    subtitle: 'Vamos conhecer o sistema em 3 passos simples',
+                    image: '/static/tutorial-images-v2/01-dashboard-anotado.png',
                     content: `
-                        <p>O Chat com IA permite conversar sobre todos os documentos do sistema.</p>
+                        <p>Esta é a <strong>tela inicial</strong> do sistema. Aqui você vê um resumo de tudo:</p>
                         <ul>
-                            <li><strong>Selecione o modo de contexto:</strong> Todos, Filtrar ou Manual</li>
-                            <li><strong>Use filtros</strong> para focar em matérias, turmas ou alunos específicos</li>
-                            <li><strong>Escolha o modelo</strong> no seletor (Claude para relatórios elaborados)</li>
+                            <li><strong>① Menu Principal</strong> - Use para navegar pelo sistema</li>
+                            <li><strong>② Resumo Geral</strong> - Quantas matérias, turmas e alunos você tem</li>
+                            <li><strong>③ Botão "+ Nova Matéria"</strong> - Clique aqui para começar!</li>
                         </ul>
                         <div class="tutorial-highlight">
-                            <strong>💡 Dica:</strong> Filtre por matéria para relatório de turma, ou por aluno para ver desempenho individual.
+                            <strong>💡 Primeiro passo:</strong> Crie uma matéria para organizar suas turmas e provas.
                         </div>
                     `
                 },
                 {
-                    title: '📚 Adicionar Matéria e Turma',
-                    subtitle: 'Organize suas disciplinas e classes',
-                    image: '/static/tutorial-images/07-nova-materia.png',
+                    title: '💬 Converse com a IA',
+                    subtitle: 'Faça perguntas e peça relatórios sobre seus documentos',
+                    image: '/static/tutorial-images-v2/03-chat-anotado.png',
                     content: `
-                        <p>Crie a estrutura para organizar suas provas:</p>
+                        <p>O <strong>Chat com IA</strong> é onde a mágica acontece! Você pode:</p>
                         <ul>
-                            <li><strong>Nova Matéria:</strong> Clique em "+ Nova Matéria" no menu lateral</li>
-                            <li><strong>Nova Turma:</strong> Dentro da matéria, adicione turmas</li>
-                            <li><strong>Alunos:</strong> Adicione manualmente ou importe via CSV</li>
+                            <li><strong>① Escolher documentos</strong> - Selecione quais provas e correções a IA deve ler</li>
+                            <li><strong>② Filtrar por matéria/turma/aluno</strong> - Foque no que você precisa</li>
+                            <li><strong>③ Escolher o modelo de IA</strong> - Claude faz relatórios mais detalhados</li>
+                            <li><strong>④ Fazer sua pergunta</strong> - Digite o que você precisa!</li>
                         </ul>
+                        <div class="tutorial-highlight">
+                            <strong>💡 Experimente perguntar:</strong><br>
+                            "Faça um relatório da turma" ou "Como está o desempenho do João?"
+                        </div>
                     `
                 },
                 {
-                    title: '⚙️ Pipeline de Correção',
-                    subtitle: 'Automatize a correção de provas',
-                    image: '/static/tutorial-images/08-materia-view.png',
+                    title: '📋 Corrija Provas Automaticamente',
+                    subtitle: 'Envie as provas e deixe a IA fazer o trabalho pesado',
+                    image: '/static/tutorial-images-v2/06-fluxo-correcao.png',
                     content: `
-                        <p>O pipeline executa a correção automática em etapas:</p>
+                        <p>Para corrigir provas automaticamente, siga estes <strong>4 passos</strong>:</p>
                         <ul>
-                            <li><strong>1. Upload:</strong> Envie enunciado, gabarito e provas dos alunos</li>
-                            <li><strong>2. Executar:</strong> Use "Pipeline Turma Toda" ou individual</li>
-                            <li><strong>3. Resultados:</strong> Veja correções e relatórios gerados</li>
+                            <li><strong>① Upload do Enunciado</strong> - A prova em branco (PDF ou imagem)</li>
+                            <li><strong>② Upload do Gabarito</strong> - As respostas corretas</li>
+                            <li><strong>③ Upload das Provas dos Alunos</strong> - As provas respondidas</li>
+                            <li><strong>④ Clique em "Pipeline"</strong> - A IA corrige tudo automaticamente!</li>
                         </ul>
                         <div class="tutorial-highlight">
-                            <strong>💡 Dica:</strong> Configure os prompts para personalizar como a IA corrige.
+                            <strong>⏱️ Economia de tempo:</strong> O que levaria horas, a IA faz em minutos!
                         </div>
                     `
                 }
             ],
             full: [
                 {
-                    title: '🏠 Dashboard',
-                    subtitle: 'Visão geral do sistema',
-                    image: '/static/tutorial-images/01-dashboard.png',
+                    title: '🏠 Tela Inicial (Dashboard)',
+                    subtitle: 'Seu painel de controle do sistema',
+                    image: '/static/tutorial-images-v2/01-dashboard-anotado.png',
                     content: `
-                        <p>O Dashboard mostra um resumo de todo o sistema:</p>
+                        <p>A tela inicial mostra um <strong>resumo de tudo</strong> no sistema:</p>
                         <ul>
-                            <li><strong>Estatísticas:</strong> Total de matérias, turmas, alunos e atividades</li>
-                            <li><strong>Alertas:</strong> Atividades sem gabarito ou pendências</li>
-                            <li><strong>Cards:</strong> Acesso rápido às matérias cadastradas</li>
-                        </ul>
-                    `
-                },
-                {
-                    title: '📁 Navegação',
-                    subtitle: 'Menu lateral hierárquico',
-                    image: '/static/tutorial-images/02-sidebar.png',
-                    content: `
-                        <p>O menu lateral organiza tudo em uma árvore hierárquica:</p>
-                        <ul>
-                            <li><strong>Início:</strong> Dashboard principal</li>
-                            <li><strong>Chat com IA:</strong> Conversa com documentos</li>
-                            <li><strong>Todos os Alunos:</strong> Lista geral de alunos</li>
-                            <li><strong>Matérias:</strong> Expandem para mostrar turmas e atividades</li>
-                        </ul>
-                    `
-                },
-                {
-                    title: '🔑 Configurar API Keys',
-                    subtitle: 'Conecte os provedores de IA',
-                    image: '/static/tutorial-images/05-config-apikeys.png',
-                    content: `
-                        <p>Configure as chaves de API para usar os modelos:</p>
-                        <ul>
-                            <li>Clique em <strong>⚙️ Configurações IA</strong></li>
-                            <li>Na aba <strong>API Keys</strong>, adicione suas chaves</li>
-                            <li>Suporta: OpenAI, Anthropic, Google, e mais</li>
+                            <li><strong>Números no topo:</strong> Total de matérias, turmas, alunos e atividades</li>
+                            <li><strong>Alertas em amarelo:</strong> Atividades que ainda precisam de gabarito</li>
+                            <li><strong>Cards de matérias:</strong> Clique em uma matéria para ver suas turmas</li>
                         </ul>
                         <div class="tutorial-highlight">
-                            <strong>⚠️ Nota:</strong> As chaves já estão configuradas neste protótipo.
+                            <strong>💡 Dica:</strong> Sempre que quiser voltar aqui, clique em "Início" no menu.
                         </div>
                     `
                 },
                 {
-                    title: '🤖 Configurar Modelos',
-                    subtitle: 'Personalize os modelos de IA',
-                    image: '/static/tutorial-images/06-config-modelos.png',
+                    title: '📁 Menu de Navegação',
+                    subtitle: 'Como se mover pelo sistema',
+                    image: '/static/tutorial-images-v2/02-sidebar-anotado.png',
                     content: `
-                        <p>Gerencie os modelos disponíveis:</p>
+                        <p>O menu do lado esquerdo organiza tudo em uma <strong>árvore</strong>:</p>
                         <ul>
-                            <li><strong>Adicionar modelo:</strong> Configure temperatura, tokens máximos</li>
-                            <li><strong>Catálogo:</strong> Veja todos os modelos disponíveis</li>
-                            <li><strong>System Prompt:</strong> Personalize instruções base</li>
-                        </ul>
-                    `
-                },
-                {
-                    title: '📚 Criar Matéria',
-                    subtitle: 'Organize suas disciplinas',
-                    image: '/static/tutorial-images/07-nova-materia.png',
-                    content: `
-                        <p>Crie matérias para organizar o conteúdo:</p>
-                        <ul>
-                            <li>Clique em <strong>+ Nova Matéria</strong></li>
-                            <li>Preencha nome, descrição e nível de ensino</li>
-                            <li>Depois, adicione turmas dentro da matéria</li>
-                        </ul>
-                    `
-                },
-                {
-                    title: '👥 Adicionar Alunos',
-                    subtitle: 'Cadastre os estudantes',
-                    image: '/static/tutorial-images/08-materia-view.png',
-                    content: `
-                        <p>Adicione alunos às turmas:</p>
-                        <ul>
-                            <li><strong>Individual:</strong> Clique em "+ Adicionar Aluno"</li>
-                            <li><strong>Em lote:</strong> Importe via CSV com nome e matrícula</li>
-                            <li><strong>Vincular:</strong> Associe alunos existentes a novas turmas</li>
-                        </ul>
-                    `
-                },
-                {
-                    title: '💬 Chat com IA',
-                    subtitle: 'Converse sobre documentos',
-                    image: '/static/tutorial-images/03-chat.png',
-                    content: `
-                        <p>O Chat permite análises personalizadas:</p>
-                        <ul>
-                            <li><strong>Contexto:</strong> Escolha quais documentos incluir</li>
-                            <li><strong>Filtros:</strong> Por matéria, turma, aluno ou tipo</li>
-                            <li><strong>Modelo:</strong> Escolha entre GPT, Claude ou Gemini</li>
-                        </ul>
-                    `
-                },
-                {
-                    title: '🔍 Filtros do Chat',
-                    subtitle: 'Foque nos documentos certos',
-                    image: '/static/tutorial-images/04-chat-filtros.png',
-                    content: `
-                        <p>Use filtros para gerar relatórios específicos:</p>
-                        <ul>
-                            <li><strong>Por Matéria/Turma:</strong> Relatório completo (visão professor)</li>
-                            <li><strong>Por Aluno:</strong> Desempenho geral do estudante</li>
-                            <li><strong>Por Aluno + Matéria:</strong> Desempenho específico</li>
+                            <li><strong>① Início</strong> - Volta para a tela inicial</li>
+                            <li><strong>② Chat com IA</strong> - Converse sobre seus documentos</li>
+                            <li><strong>③ Suas Matérias</strong> - Clique para expandir e ver turmas</li>
+                            <li><strong>④ Botão de Ajuda (?)</strong> - Abre este tutorial novamente</li>
                         </ul>
                         <div class="tutorial-highlight">
-                            <strong>💡 Dica:</strong> Claude gera relatórios mais elaborados (mas custa mais).
+                            <strong>💡 Estrutura:</strong> Matéria → Turma → Atividade (prova/trabalho)
+                        </div>
+                    `
+                },
+                {
+                    title: '📚 Criando uma Matéria',
+                    subtitle: 'O primeiro passo para organizar suas aulas',
+                    image: '/static/tutorial-images-v2/05-nova-materia-anotado.png',
+                    content: `
+                        <p>Para criar uma nova matéria:</p>
+                        <ol>
+                            <li>Clique no botão <strong>"+ Nova Matéria"</strong> (no canto inferior do menu)</li>
+                            <li><strong>① Nome:</strong> Digite o nome da disciplina (ex: "Matemática")</li>
+                            <li><strong>② Descrição:</strong> Opcional - adicione detalhes se quiser</li>
+                            <li><strong>③ Nível:</strong> Escolha o nível de ensino</li>
+                            <li>Clique em <strong>"Salvar"</strong></li>
+                        </ol>
+                        <div class="tutorial-highlight">
+                            <strong>📝 Próximo passo:</strong> Depois de criar a matéria, adicione uma turma dentro dela!
+                        </div>
+                    `
+                },
+                {
+                    title: '👥 Adicionando Alunos',
+                    subtitle: 'Cadastre os estudantes da sua turma',
+                    image: '/static/tutorial-images/08-materia-view.png',
+                    content: `
+                        <p>Existem <strong>duas formas</strong> de adicionar alunos:</p>
+                        <ul>
+                            <li><strong>Um por um:</strong> Clique em "+ Adicionar Aluno" e preencha nome e matrícula</li>
+                            <li><strong>Vários de uma vez:</strong> Use "Importar CSV" para subir uma planilha</li>
+                        </ul>
+                        <div class="tutorial-highlight">
+                            <strong>📋 Formato do CSV:</strong><br>
+                            Crie uma planilha com colunas "nome" e "matricula", salve como CSV e faça upload.
+                        </div>
+                    `
+                },
+                {
+                    title: '📄 Enviando Documentos',
+                    subtitle: 'Upload de provas, gabaritos e critérios',
+                    image: '/static/tutorial-images/08-materia-view.png',
+                    content: `
+                        <p>Para cada atividade, você pode enviar:</p>
+                        <ul>
+                            <li><strong>Enunciado:</strong> A prova em branco (PDF ou imagem)</li>
+                            <li><strong>Gabarito:</strong> As respostas corretas</li>
+                            <li><strong>Critérios:</strong> Como você quer que a IA corrija (opcional)</li>
+                            <li><strong>Provas respondidas:</strong> O que cada aluno escreveu</li>
+                        </ul>
+                        <div class="tutorial-highlight">
+                            <strong>📸 Formatos aceitos:</strong> PDF, imagens (JPG, PNG), documentos de texto
+                        </div>
+                    `
+                },
+                {
+                    title: '⚙️ Correção Automática',
+                    subtitle: 'Deixe a IA corrigir as provas para você',
+                    image: '/static/tutorial-images-v2/06-fluxo-correcao.png',
+                    content: `
+                        <p>A <strong>correção automática</strong> funciona em etapas:</p>
+                        <ol>
+                            <li><strong>① Extrai questões</strong> - A IA lê o enunciado da prova</li>
+                            <li><strong>② Extrai respostas</strong> - Identifica o que o aluno escreveu</li>
+                            <li><strong>③ Compara com gabarito</strong> - Verifica acertos e erros</li>
+                            <li><strong>④ Gera relatório</strong> - Cria feedback detalhado</li>
+                        </ol>
+                        <div class="tutorial-highlight">
+                            <strong>🚀 Dica:</strong> Use "Pipeline Turma Toda" para corrigir todos os alunos de uma vez!
+                        </div>
+                    `
+                },
+                {
+                    title: '💬 Usando o Chat',
+                    subtitle: 'Converse com a IA sobre seus documentos',
+                    image: '/static/tutorial-images-v2/03-chat-anotado.png',
+                    content: `
+                        <p>O Chat é muito <strong>poderoso</strong>! Você pode:</p>
+                        <ul>
+                            <li><strong>Fazer perguntas:</strong> "Quais questões os alunos mais erraram?"</li>
+                            <li><strong>Pedir relatórios:</strong> "Faça um resumo do desempenho da turma"</li>
+                            <li><strong>Analisar alunos:</strong> "Como está o João em matemática?"</li>
+                            <li><strong>Comparar:</strong> "Compare o desempenho das turmas A e B"</li>
+                        </ul>
+                        <div class="tutorial-highlight">
+                            <strong>🎯 Lembre-se:</strong> Use os filtros para a IA focar nos documentos certos!
+                        </div>
+                    `
+                },
+                {
+                    title: '🔍 Usando Filtros no Chat',
+                    subtitle: 'Foque a IA nos documentos que você precisa',
+                    image: '/static/tutorial-images-v2/04-chat-exemplos.png',
+                    content: `
+                        <p>Os <strong>filtros</strong> controlam quais documentos a IA vai ler:</p>
+                        <ul>
+                            <li><strong>Filtrar por Matéria:</strong> Relatório geral da disciplina</li>
+                            <li><strong>Filtrar por Turma:</strong> Visão específica de uma turma</li>
+                            <li><strong>Filtrar por Aluno:</strong> Desempenho individual</li>
+                            <li><strong>Combinar filtros:</strong> Ex: "João" + "Matemática" = desempenho do João em Matemática</li>
+                        </ul>
+                        <div class="tutorial-highlight">
+                            <strong>💡 Exemplo:</strong> Para ver todos os alunos com dificuldade, filtre por turma e pergunte: 
+                            "Quais alunos precisam de atenção especial?"
                         </div>
                     `
                 }
@@ -4882,8 +4951,11 @@
                 const container = document.getElementById('pipeline-provider-stages');
                 if (container) {
                     container.innerHTML = etapas.map(etapa => `
-                        <div style="display: flex; gap: 12px; align-items: center;">
-                            <div style="flex: 1; font-size: 0.85rem; color: var(--text-muted);">${etapa.nome}</div>
+                        <div style="display: flex; gap: 12px; align-items: center; padding: 8px; border-radius: 6px; background: var(--bg-hover);">
+                            <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; min-width: 24px;">
+                                <input type="checkbox" data-step="${etapa.id}" class="pipeline-step-checkbox" checked>
+                            </label>
+                            <div style="flex: 1; font-size: 0.85rem; color: var(--text-primary);">${etapa.nome}</div>
                             <select class="form-select" data-etapa="${etapa.id}" style="flex: 1;">
                                 <option value="">Usar padrão</option>
                                 ${modelOptions}
@@ -5206,6 +5278,18 @@
             const atividadeId = document.getElementById('input-pipeline-atividade-id').value;
             const modo = document.querySelector('input[name="pipeline-modo"]:checked').value;
             const defaultModelId = document.getElementById('input-pipeline-provider-default').value;
+            const forceRerun = document.getElementById('input-pipeline-force-rerun').checked;
+
+            // Coletar etapas selecionadas
+            const selectedSteps = [];
+            document.querySelectorAll('.pipeline-step-checkbox:checked').forEach(cb => {
+                selectedSteps.push(cb.dataset.step);
+            });
+
+            if (selectedSteps.length === 0) {
+                showToast('Selecione pelo menos uma etapa para executar', 'error');
+                return;
+            }
 
             const modelsPerStage = {};
             document.querySelectorAll('#pipeline-provider-stages select[data-etapa]').forEach(select => {
@@ -5241,7 +5325,8 @@
             closeModal('modal-pipeline-completo');
 
             const taskType = modo === 'turma' ? 'pipeline-turma' : 'pipeline';
-            const description = modo === 'turma' ? 'Pipeline Turma Toda' : `Pipeline Aluno`;
+            const stepsInfo = selectedSteps.length < 6 ? ` (${selectedSteps.length} etapas)` : '';
+            const description = modo === 'turma' ? `Pipeline Turma Toda${stepsInfo}` : `Pipeline Aluno${stepsInfo}`;
             const alunoIdForTask = modo === 'aluno' ? document.getElementById('input-pipeline-aluno').value : null;
 
             const task = taskQueue.addTask(taskType, description, atividadeId, alunoIdForTask);
@@ -5258,6 +5343,8 @@
                     formData.append('apenas_com_prova', 'true');
                     if (defaultModelId) formData.append('model_id', defaultModelId);
                     if (Object.keys(modelsPerStage).length) formData.append('providers', JSON.stringify(modelsPerStage));
+                    formData.append('selected_steps', JSON.stringify(selectedSteps));
+                    formData.append('force_rerun', forceRerun ? 'true' : 'false');
 
                     result = await apiForm('/executar/pipeline-turma', formData);
                 } else {
@@ -5267,6 +5354,8 @@
                     formData.append('aluno_id', alunoId);
                     if (defaultModelId) formData.append('model_id', defaultModelId);
                     if (Object.keys(modelsPerStage).length) formData.append('providers', JSON.stringify(modelsPerStage));
+                    formData.append('selected_steps', JSON.stringify(selectedSteps));
+                    formData.append('force_rerun', forceRerun ? 'true' : 'false');
 
                     result = await apiForm('/executar/pipeline-completo', formData);
                 }
