@@ -1839,6 +1839,274 @@
             transform: translateY(-1px);
         }
 
+        /* ========================================
+           SISTEMA DE TOOLTIPS E AJUDA CONTEXTUAL
+           ======================================== */
+        
+        /* Tooltip básico via atributo data-tooltip */
+        [data-tooltip] {
+            position: relative;
+        }
+        
+        [data-tooltip]::before,
+        [data-tooltip]::after {
+            position: absolute;
+            opacity: 0;
+            visibility: hidden;
+            pointer-events: none;
+            transition: all 0.25s ease;
+            z-index: 1000;
+        }
+        
+        [data-tooltip]::before {
+            content: attr(data-tooltip);
+            bottom: calc(100% + 8px);
+            left: 50%;
+            transform: translateX(-50%) translateY(4px);
+            padding: 10px 14px;
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            font-size: 0.82rem;
+            font-weight: 400;
+            line-height: 1.5;
+            color: var(--text);
+            white-space: normal;
+            max-width: 300px;
+            min-width: 180px;
+            text-align: left;
+            box-shadow: 0 6px 20px rgba(0,0,0,0.35);
+        }
+        
+        [data-tooltip]::after {
+            content: '';
+            bottom: calc(100% + 2px);
+            left: 50%;
+            transform: translateX(-50%);
+            border: 6px solid transparent;
+            border-top-color: var(--border);
+        }
+        
+        [data-tooltip]:hover::before,
+        [data-tooltip]:hover::after {
+            opacity: 1;
+            visibility: visible;
+        }
+        
+        [data-tooltip]:hover::before {
+            transform: translateX(-50%) translateY(0);
+        }
+        
+        /* Tooltip posicionado à direita */
+        [data-tooltip-pos="right"]::before {
+            bottom: auto;
+            left: calc(100% + 10px);
+            top: 50%;
+            transform: translateY(-50%) translateX(-4px);
+        }
+        
+        [data-tooltip-pos="right"]::after {
+            bottom: auto;
+            left: calc(100% + 4px);
+            top: 50%;
+            transform: translateY(-50%);
+            border: 6px solid transparent;
+            border-right-color: var(--border);
+        }
+        
+        [data-tooltip-pos="right"]:hover::before {
+            transform: translateY(-50%) translateX(0);
+        }
+        
+        /* Tooltip posicionado embaixo */
+        [data-tooltip-pos="bottom"]::before {
+            bottom: auto;
+            top: calc(100% + 8px);
+            transform: translateX(-50%) translateY(-4px);
+        }
+        
+        [data-tooltip-pos="bottom"]::after {
+            bottom: auto;
+            top: calc(100% + 2px);
+            border: 6px solid transparent;
+            border-bottom-color: var(--border);
+        }
+        
+        [data-tooltip-pos="bottom"]:hover::before {
+            transform: translateX(-50%) translateY(0);
+        }
+        
+        /* Ícone de ajuda inline (?) */
+        .tooltip-icon {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            background: var(--bg-hover);
+            border: 1px solid var(--border);
+            font-size: 0.65rem;
+            font-weight: 600;
+            color: var(--text-muted);
+            cursor: help;
+            margin-left: 6px;
+            transition: all 0.2s;
+            vertical-align: middle;
+        }
+        
+        .tooltip-icon:hover {
+            background: var(--primary);
+            border-color: var(--primary);
+            color: white;
+        }
+        
+        /* Botão de ajuda por seção (maior, para headers) */
+        .section-help {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 28px;
+            height: 28px;
+            border-radius: 50%;
+            background: var(--bg-hover);
+            border: 1px solid var(--border);
+            font-size: 1rem;
+            color: var(--text-muted);
+            cursor: pointer;
+            margin-left: 12px;
+            transition: all 0.2s;
+        }
+        
+        .section-help:hover {
+            background: var(--primary);
+            border-color: var(--primary);
+            color: white;
+            transform: scale(1.1);
+        }
+        
+        /* Painel de ajuda inline (abre em cada seção) */
+        .help-panel {
+            background: linear-gradient(135deg, rgba(59, 130, 246, 0.08), rgba(139, 92, 246, 0.04));
+            border: 1px solid rgba(59, 130, 246, 0.25);
+            border-radius: 12px;
+            padding: 16px 20px;
+            margin-bottom: 20px;
+            display: none;
+        }
+        
+        .help-panel.show {
+            display: block;
+            animation: helpSlideDown 0.3s ease;
+        }
+        
+        @keyframes helpSlideDown {
+            from { opacity: 0; transform: translateY(-10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        .help-panel-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 12px;
+        }
+        
+        .help-panel-title {
+            font-weight: 600;
+            font-size: 0.95rem;
+            color: var(--primary);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .help-panel-close {
+            background: none;
+            border: none;
+            color: var(--text-muted);
+            font-size: 1.3rem;
+            cursor: pointer;
+            padding: 4px 8px;
+            line-height: 1;
+        }
+        
+        .help-panel-close:hover {
+            color: var(--text);
+        }
+        
+        .help-panel-content {
+            font-size: 0.88rem;
+            line-height: 1.65;
+            color: var(--text);
+        }
+        
+        .help-panel-content ul {
+            margin: 10px 0;
+            padding-left: 20px;
+        }
+        
+        .help-panel-content li {
+            margin-bottom: 6px;
+        }
+        
+        .help-step {
+            display: flex;
+            gap: 12px;
+            margin-bottom: 14px;
+            align-items: flex-start;
+        }
+        
+        .help-step-number {
+            flex-shrink: 0;
+            width: 26px;
+            height: 26px;
+            border-radius: 50%;
+            background: var(--primary);
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.8rem;
+            font-weight: 600;
+        }
+        
+        .help-step-text {
+            flex: 1;
+            padding-top: 2px;
+        }
+        
+        .help-link {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            color: var(--primary);
+            text-decoration: none;
+            font-size: 0.85rem;
+            margin-top: 12px;
+            cursor: pointer;
+            font-weight: 500;
+        }
+        
+        .help-link:hover {
+            text-decoration: underline;
+        }
+        
+        /* Tag de explicação inline */
+        .inline-hint {
+            font-size: 0.78rem;
+            color: var(--text-muted);
+            margin-top: 4px;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+        
+        .inline-hint::before {
+            content: '💡';
+            font-size: 0.85rem;
+        }
+
     </style>
 </head>
 <body>
@@ -1857,23 +2125,23 @@
                     <div class="tree-section-header">
                         <span>Navegação</span>
                     </div>
-                    <div class="tree-item active" onclick="showDashboard()">
+                    <div class="tree-item active" onclick="showDashboard()" data-tooltip="Página inicial com visão geral do sistema" data-tooltip-pos="right">
                         <span class="tree-item-icon">🏠</span>
                         <span class="tree-item-name">Início</span>
                     </div>
-                    <div class="tree-item" onclick="showChat()">
+                    <div class="tree-item" onclick="showChat()" data-tooltip="Converse com a IA sobre seus documentos e provas" data-tooltip-pos="right">
                         <span class="tree-item-icon">💬</span>
                         <span class="tree-item-name">Chat com IA</span>
                     </div>
-                    <div class="tree-item" onclick="showAlunos()">
+                    <div class="tree-item" onclick="showAlunos()" data-tooltip="Lista de todos os alunos cadastrados no sistema" data-tooltip-pos="right">
                         <span class="tree-item-icon">👥</span>
                         <span class="tree-item-name">Todos os Alunos</span>
                     </div>
-                    <div class="tree-item" onclick="showPrompts()">
+                    <div class="tree-item" onclick="showPrompts()" data-tooltip="⚠️ Área técnica: instruções que controlam o comportamento da IA" data-tooltip-pos="right">
                         <span class="tree-item-icon">🧠</span>
                         <span class="tree-item-name">Prompts</span>
                     </div>
-                    <div class="tree-item" onclick="showProviders()">
+                    <div class="tree-item" onclick="showProviders()" data-tooltip="⚠️ Área técnica: modelos de IA configurados (GPT, Claude, Gemini)" data-tooltip-pos="right">
                         <span class="tree-item-icon">🤖</span>
                         <span class="tree-item-name">Modelos de LLM</span>
                     </div>
@@ -1890,7 +2158,7 @@
             
             <div class="sidebar-footer">
                 <div style="display: flex; gap: 8px; margin-bottom: 8px;">
-                    <button class="btn" style="flex: 1;" onclick="openModal('modal-settings')">
+                    <button class="btn" style="flex: 1;" onclick="openModal('modal-settings')" data-tooltip="Configure API Keys e modelos de IA. ⚠️ Área técnica - as chaves já estão configuradas!" data-tooltip-pos="right">
                         ⚙️ Configurações IA
                     </button>
                 </div>
@@ -2075,14 +2343,18 @@
             </div>
             <div class="modal-body">
                 <div class="form-group">
-                    <label class="form-label">Tipo de Documento *</label>
-                    <select class="form-select" id="input-upload-tipo">
+                    <label class="form-label">
+                        Tipo de Documento *
+                        <span class="tooltip-icon" data-tooltip="Cada tipo tem um propósito no pipeline de correção. Passe o mouse sobre as opções para saber mais!" data-tooltip-pos="right">?</span>
+                    </label>
+                    <select class="form-select" id="input-upload-tipo" onchange="onUploadTipoChange()">
                         <option value="enunciado">📄 Enunciado da Prova</option>
                         <option value="gabarito">✅ Gabarito</option>
                         <option value="criterios_correcao">📋 Critérios de Correção</option>
                         <option value="prova_respondida">👤 Prova do Aluno</option>
                         <option value="correcao_professor">🧑‍🏫 Correção do Professor</option>
                     </select>
+                    <div class="inline-hint" id="upload-tipo-hint">PDF ou imagem da prova original com as questões</div>
                 </div>
                 <div class="form-group" id="grupo-aluno-upload" style="display: none;">
                     <label class="form-label">Aluno *</label>
@@ -2199,13 +2471,20 @@
     <div class="modal-overlay" id="modal-execucao">
         <div class="modal" style="max-width: 700px;">
             <div class="modal-header">
-                <h3 class="modal-title">Executar Etapa</h3>
+                <h3 class="modal-title">
+                    Executar Etapa
+                    <span class="tooltip-icon" data-tooltip="Execute uma etapa específica do pipeline de correção. Cada etapa processa documentos e gera resultados intermediários." data-tooltip-pos="right">?</span>
+                </h3>
                 <button class="modal-close" onclick="closeModal('modal-execucao')">×</button>
             </div>
             <div class="modal-body">
                 <div class="form-group">
-                    <label class="form-label">Etapa *</label>
+                    <label class="form-label">
+                        Etapa *
+                        <span class="tooltip-icon" data-tooltip="Escolha qual etapa do pipeline executar. Cada uma tem um propósito específico no processo de correção." data-tooltip-pos="right">?</span>
+                    </label>
                     <select class="form-select" id="input-execucao-etapa" onchange="onEtapaChange()"></select>
+                    <div class="inline-hint" id="execucao-etapa-hint">Selecione uma etapa para ver sua descrição</div>
                 </div>
                 <div class="form-group">
                     <label class="form-label">Aluno (opcional para etapas da atividade)</label>
@@ -2213,7 +2492,10 @@
                     <small id="input-execucao-aluno-hint" style="color: var(--text-muted); font-size: 0.8rem;"></small>
                 </div>
                 <div class="form-group">
-                    <label class="form-label">Prompt</label>
+                    <label class="form-label">
+                        Prompt
+                        <span class="tooltip-icon" data-tooltip="Prompts são instruções que dizem à IA como executar a tarefa. O padrão já foi otimizado, mas você pode personalizar." data-tooltip-pos="right">?</span>
+                    </label>
                     <select class="form-select" id="input-execucao-prompt" onchange="onPromptChange()">
                         <option value="">Usar prompt padrão</option>
                     </select>
@@ -2247,7 +2529,10 @@
     <div class="modal-overlay" id="modal-pipeline-completo">
         <div class="modal">
             <div class="modal-header">
-                <h3 class="modal-title">🚀 Pipeline Completo</h3>
+                <h3 class="modal-title">
+                    🚀 Pipeline Completo
+                    <span class="tooltip-icon" data-tooltip="O pipeline executa automaticamente todas as etapas de correção, desde a extração de questões até o relatório final." data-tooltip-pos="right">?</span>
+                </h3>
                 <button class="modal-close" onclick="closeModal('modal-pipeline-completo')">×</button>
             </div>
             <div class="modal-body">
@@ -3315,6 +3600,205 @@
         let currentTutorialMode = 'quick';
         let currentTutorialStep = 0;
         
+        // ========================================
+        // SISTEMA DE TOOLTIPS E AJUDA CONTEXTUAL
+        // ========================================
+        
+        // Descrições dos tipos de documento para hints dinâmicos
+        const tipoDocumentoDescricoes = {
+            'enunciado': '📄 PDF ou imagem da prova original com as questões',
+            'gabarito': '✅ Documento com as respostas corretas de cada questão',
+            'criterios_correcao': '📋 Instruções de como avaliar (pontuação, critérios parciais)',
+            'prova_respondida': '👤 Prova preenchida por um aluno - selecione o aluno abaixo',
+            'correcao_professor': '🧑‍🏫 Sua correção manual para comparar com a IA'
+        };
+        
+        // Atualiza hint quando muda tipo de documento
+        function onUploadTipoChange() {
+            const tipo = document.getElementById('input-upload-tipo').value;
+            const hint = document.getElementById('upload-tipo-hint');
+            if (hint && tipoDocumentoDescricoes[tipo]) {
+                hint.textContent = tipoDocumentoDescricoes[tipo];
+            }
+            // Chama função original se existir (para mostrar/esconder seletor de aluno)
+            if (typeof atualizarCampoAluno === 'function') {
+                atualizarCampoAluno();
+            }
+        }
+        
+        // Descrições das etapas do pipeline
+        const etapaDescricoes = {
+            'extracao_questoes': '🔎 A IA lê o enunciado e identifica cada questão, tipo (múltipla escolha, dissertativa) e pontuação',
+            'extracao_gabarito': '🧩 A IA extrai as respostas corretas do gabarito em formato estruturado',
+            'extracao_respostas': '📝 A IA lê a prova do aluno e extrai o que ele respondeu em cada questão',
+            'correcao': '✅ A IA compara as respostas do aluno com o gabarito e atribui notas',
+            'analise_habilidades': '📊 A IA identifica pontos fortes e fracos do aluno por habilidade/competência',
+            'relatorio_final': '📄 A IA gera um relatório completo com feedback personalizado para o aluno'
+        };
+        
+        // Textos de ajuda contextual por seção
+        const ajudaContextual = {
+            'dashboard': {
+                titulo: '🏠 Página Inicial',
+                conteudo: `
+                    <div class="help-step">
+                        <div class="help-step-number">1</div>
+                        <div class="help-step-text">Crie uma <strong>Matéria</strong> (ex: Matemática, História)</div>
+                    </div>
+                    <div class="help-step">
+                        <div class="help-step-number">2</div>
+                        <div class="help-step-text">Dentro da matéria, crie uma <strong>Turma</strong> (ex: 9º Ano A)</div>
+                    </div>
+                    <div class="help-step">
+                        <div class="help-step-number">3</div>
+                        <div class="help-step-text">Adicione <strong>Alunos</strong> à turma</div>
+                    </div>
+                    <div class="help-step">
+                        <div class="help-step-number">4</div>
+                        <div class="help-step-text">Crie uma <strong>Atividade</strong> (a prova) e envie os documentos</div>
+                    </div>
+                    <p style="margin-top: 12px;">A hierarquia é: <strong>Matéria → Turma → Alunos + Atividades</strong></p>
+                `
+            },
+            'atividade': {
+                titulo: '📋 Atividade (Prova)',
+                conteudo: `
+                    <div class="help-step">
+                        <div class="help-step-number">1</div>
+                        <div class="help-step-text"><strong>Envie o Enunciado:</strong> PDF da prova original com as questões</div>
+                    </div>
+                    <div class="help-step">
+                        <div class="help-step-number">2</div>
+                        <div class="help-step-text"><strong>Envie o Gabarito:</strong> Respostas corretas (pode ser PDF ou texto)</div>
+                    </div>
+                    <div class="help-step">
+                        <div class="help-step-number">3</div>
+                        <div class="help-step-text"><strong>Envie as Provas dos Alunos:</strong> Uma por aluno, selecionando quem fez cada uma</div>
+                    </div>
+                    <div class="help-step">
+                        <div class="help-step-number">4</div>
+                        <div class="help-step-text"><strong>Execute o Pipeline:</strong> A IA corrige automaticamente todas as provas</div>
+                    </div>
+                    <p style="margin-top: 12px;">💡 <strong>Dica:</strong> Use "📚 Upload em Lote" para enviar várias provas de uma vez!</p>
+                `
+            },
+            'chat': {
+                titulo: '💬 Chat com IA',
+                conteudo: `
+                    <p>Converse com a IA sobre os documentos que você enviou!</p>
+                    <ul>
+                        <li><strong>Filtro de Contexto:</strong> Escolha uma atividade para a IA ter acesso aos documentos dela</li>
+                        <li><strong>Sem filtro:</strong> A IA responde com conhecimento geral</li>
+                        <li><strong>Perguntas úteis:</strong> "Resuma as dificuldades da turma", "Que questões tiveram mais erros?"</li>
+                    </ul>
+                    <p style="margin-top: 12px;">💡 A IA só vê os documentos do contexto selecionado, não todos os arquivos!</p>
+                `
+            },
+            'prompts': {
+                titulo: '🧠 Prompts (Instruções da IA)',
+                conteudo: `
+                    <p>⚠️ <strong>Área técnica!</strong> Prompts são as instruções que dizem à IA como executar cada etapa.</p>
+                    <ul>
+                        <li><strong>Prompt de Sistema:</strong> Define o "personagem" da IA (ex: você é um professor)</li>
+                        <li><strong>Prompt de Usuário:</strong> O que a IA deve fazer com os documentos</li>
+                        <li><strong>Variáveis:</strong> Palavras entre {chaves} são substituídas automaticamente</li>
+                    </ul>
+                    <p style="margin-top: 12px; color: var(--warning);">⚠️ Modificar prompts pode afetar a qualidade das correções!</p>
+                `
+            },
+            'providers': {
+                titulo: '🤖 Modelos de IA',
+                conteudo: `
+                    <p>⚠️ <strong>Área técnica!</strong> Configure quais modelos de IA estão disponíveis.</p>
+                    <ul>
+                        <li><strong>API Keys:</strong> Chaves de acesso para cada provedor (OpenAI, Google, etc.)</li>
+                        <li><strong>Modelos:</strong> Versões específicas (GPT-4o, Claude, Gemini)</li>
+                        <li><strong>Local:</strong> Modelos rodando no seu computador (Ollama, LM Studio)</li>
+                    </ul>
+                    <p style="margin-top: 12px;">💡 As chaves já estão configuradas! Só mexa aqui se souber o que está fazendo.</p>
+                `
+            },
+            'settings': {
+                titulo: '⚙️ Configurações Avançadas',
+                conteudo: `
+                    <p>⚠️ <strong>Área técnica!</strong> Aqui você configura as conexões com os provedores de IA.</p>
+                    <ul>
+                        <li><strong>API Keys:</strong> Chaves secretas para acessar cada serviço</li>
+                        <li><strong>Catálogo:</strong> Lista de modelos disponíveis por provedor</li>
+                        <li><strong>Customizado:</strong> Endpoints personalizados (Azure, AWS, etc.)</li>
+                    </ul>
+                    <p style="margin-top: 12px; color: var(--warning);">⚠️ Se você não é desenvolvedor, provavelmente não precisa mexer aqui!</p>
+                `
+            },
+            'turma': {
+                titulo: '👨‍🎓 Turma',
+                conteudo: `
+                    <p>Gerencie os alunos e atividades desta turma.</p>
+                    <div class="help-step">
+                        <div class="help-step-number">1</div>
+                        <div class="help-step-text"><strong>Adicione Alunos:</strong> Clique em "+ Adicionar Aluno" ou importe uma lista CSV</div>
+                    </div>
+                    <div class="help-step">
+                        <div class="help-step-number">2</div>
+                        <div class="help-step-text"><strong>Crie Atividades:</strong> Clique em "+ Nova Atividade" para adicionar provas</div>
+                    </div>
+                    <p style="margin-top: 12px;">💡 Uma turma pode ter vários alunos e várias atividades (provas).</p>
+                `
+            },
+            'materia': {
+                titulo: '📚 Matéria',
+                conteudo: `
+                    <p>Organize suas turmas por matéria.</p>
+                    <div class="help-step">
+                        <div class="help-step-number">1</div>
+                        <div class="help-step-text"><strong>Crie Turmas:</strong> Clique em "+ Nova Turma" para organizar por período/série</div>
+                    </div>
+                    <p style="margin-top: 12px;">💡 Exemplo: Matéria "Matemática" → Turmas "9º A", "9º B", "1º EM"</p>
+                `
+            }
+        };
+        
+        // Mostra/esconde painel de ajuda
+        function toggleHelpPanel(secao) {
+            const panelId = `help-panel-${secao}`;
+            let panel = document.getElementById(panelId);
+            
+            if (panel) {
+                panel.classList.toggle('show');
+                return;
+            }
+            
+            // Se não existe, cria dinamicamente
+            const ajuda = ajudaContextual[secao];
+            if (!ajuda) return;
+            
+            // Encontra onde inserir
+            const content = document.getElementById('content');
+            const firstChild = content.firstElementChild;
+            
+            if (firstChild) {
+                panel = document.createElement('div');
+                panel.id = panelId;
+                panel.className = 'help-panel show';
+                panel.innerHTML = `
+                    <div class="help-panel-header">
+                        <div class="help-panel-title">💡 ${ajuda.titulo}</div>
+                        <button class="help-panel-close" onclick="toggleHelpPanel('${secao}')">×</button>
+                    </div>
+                    <div class="help-panel-content">
+                        ${ajuda.conteudo}
+                        <a class="help-link" onclick="openTutorial()">📖 Ver tutorial completo →</a>
+                    </div>
+                `;
+                content.insertBefore(panel, firstChild);
+            }
+        }
+        
+        // Remove painéis de ajuda ao mudar de seção
+        function clearHelpPanels() {
+            document.querySelectorAll('.help-panel').forEach(p => p.remove());
+        }
+        
         function openWelcome() {
             document.getElementById('modal-welcome').classList.add('active');
             // Remove pulse animation after first click
@@ -3550,12 +4034,16 @@
             currentView = 'dashboard';
             currentMateria = currentTurma = currentAtividade = null;
             setBreadcrumb([{nome: 'Início', onclick: 'showDashboard()'}]);
+            clearHelpPanels();
             
             try {
                 const stats = await api('/estatisticas');
                 document.getElementById('content').innerHTML = `
                     <div class="page-header">
-                        <h1 class="page-title">Dashboard</h1>
+                        <h1 class="page-title">
+                            Dashboard
+                            <button class="section-help" onclick="toggleHelpPanel('dashboard')" title="Como usar esta página?">?</button>
+                        </h1>
                         <p class="page-subtitle">Visão geral do sistema</p>
                     </div>
                     <div class="stats-grid">
@@ -3676,6 +4164,7 @@
             currentView = 'atividade';
             currentAtividade = atividadeId;
             currentAluno = null;
+            clearHelpPanels();
             
             try {
                 const data = await api(`/atividades/${atividadeId}`);
@@ -3688,12 +4177,18 @@
                 let alertas = data.documentos_base.faltando.length > 0 ? `<div class="alert alert-warning"><span class="alert-icon">⚠️</span><div class="alert-content"><div class="alert-title">Documentos faltando</div><div class="alert-text">${data.documentos_base.faltando.map(d => `<span class="badge badge-warning">${d}</span>`).join(' ')}</div></div></div>` : '';
 
                 document.getElementById('content').innerHTML = `
-                    <div class="page-header"><h1 class="page-title">${data.atividade.nome}</h1><p class="page-subtitle">${turma.turma.nome} • Nota máx: ${data.atividade.nota_maxima}</p></div>
+                    <div class="page-header">
+                        <h1 class="page-title">
+                            ${data.atividade.nome}
+                            <button class="section-help" onclick="toggleHelpPanel('atividade')" title="Como corrigir provas?">?</button>
+                        </h1>
+                        <p class="page-subtitle">${turma.turma.nome} • Nota máx: ${data.atividade.nota_maxima}</p>
+                    </div>
                     <div style="display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 16px;">
-                        <button class="btn" onclick="openModalExecucao('${atividadeId}')">⚙️ Executar Etapa</button>
-                        <button class="btn btn-primary" onclick="openModalPipelineCompleto('${atividadeId}', 'aluno')">⚡ Pipeline Aluno</button>
-                        <button class="btn btn-success" onclick="openModalPipelineCompleto('${atividadeId}', 'turma')">🚀 Pipeline Turma Toda</button>
-                        <button class="btn" onclick="openModalUploadProvas('${atividadeId}')">📚 Upload Provas em Lote</button>
+                        <button class="btn" onclick="openModalExecucao('${atividadeId}')" data-tooltip="Execute uma etapa específica do pipeline de correção" data-tooltip-pos="bottom">⚙️ Executar Etapa</button>
+                        <button class="btn btn-primary" onclick="openModalPipelineCompleto('${atividadeId}', 'aluno')" data-tooltip="Corrige automaticamente a prova de um aluno específico" data-tooltip-pos="bottom">⚡ Pipeline Aluno</button>
+                        <button class="btn btn-success" onclick="openModalPipelineCompleto('${atividadeId}', 'turma')" data-tooltip="Corrige automaticamente as provas de TODOS os alunos da turma" data-tooltip-pos="bottom">🚀 Pipeline Turma Toda</button>
+                        <button class="btn" onclick="openModalUploadProvas('${atividadeId}')" data-tooltip="Envie várias provas de alunos de uma vez (PDF ou imagens)" data-tooltip-pos="bottom">📚 Upload Provas em Lote</button>
                     </div>
                     ${alertas}
                     <div class="stats-grid" style="grid-template-columns: repeat(3, 1fr);">
@@ -3840,6 +4335,7 @@
         async function showPrompts() {
             currentView = 'prompts';
             setBreadcrumb([{nome: 'Início', onclick: 'showDashboard()'}, {nome: 'Prompts', onclick: 'showPrompts()'}]);
+            clearHelpPanels();
             try {
                 const [promptsData, etapasData, materiasData] = await Promise.all([
                     api('/prompts'),
@@ -3853,7 +4349,10 @@
 
                 document.getElementById('content').innerHTML = `
                     <div class="page-header">
-                        <h1 class="page-title">Prompts</h1>
+                        <h1 class="page-title">
+                            Prompts
+                            <button class="section-help" onclick="toggleHelpPanel('prompts')" title="O que são prompts?">?</button>
+                        </h1>
                         <p class="page-subtitle">${promptsData.total} prompt(s) ativos</p>
                     </div>
                     <div class="card">
@@ -3937,12 +4436,16 @@
         async function showProviders() {
             currentView = 'providers';
             setBreadcrumb([{nome: 'Início', onclick: 'showDashboard()'}, {nome: 'Modelos de LLM', onclick: 'showProviders()'}]);
+            clearHelpPanels();
             try {
                 const data = await api('/providers');
                 window._providersCache = data.providers || [];
                 document.getElementById('content').innerHTML = `
                     <div class="page-header">
-                        <h1 class="page-title">Modelos de LLM</h1>
+                        <h1 class="page-title">
+                            Modelos de LLM
+                            <button class="section-help" onclick="toggleHelpPanel('providers')" title="O que são modelos de LLM?">?</button>
+                        </h1>
                         <p class="page-subtitle">${data.providers.length} provider(s) disponíveis</p>
                     </div>
                     <div class="card">
@@ -4019,6 +4522,7 @@
         // ============================================================
         async function showChatGeral(preselectedAtividadeId = null, preselectedAlunoId = null) {
             currentView = 'chat_geral';
+            clearHelpPanels();
 
             // Guardar referência ao aluno pré-selecionado para uso no chat
             window._chatGeralAlunoId = preselectedAlunoId;
@@ -4059,7 +4563,10 @@
             
             document.getElementById('content').innerHTML = `
                 <div class="page-header">
-                    <h1 class="page-title">💬 Chat Geral</h1>
+                    <h1 class="page-title">
+                        💬 Chat Geral
+                        <button class="section-help" onclick="toggleHelpPanel('chat')" title="Como usar o chat?">?</button>
+                    </h1>
                     <p class="page-subtitle">Converse com a IA sobre qualquer assunto ou analise documentos</p>
                 </div>
                 
