@@ -2886,19 +2886,28 @@
     <div class="modal-overlay" id="modal-add-model">
         <div class="modal modal-lg">
             <div class="modal-header">
-                <h3 class="modal-title">🤖 Adicionar Modelo</h3>
+                <h3 class="modal-title">
+                    🤖 Adicionar Modelo
+                    <span class="tooltip-icon" data-tooltip="⚠️ Área técnica! Configure um modelo de IA para usar nas correções e no chat." data-tooltip-pos="right">?</span>
+                </h3>
                 <button class="modal-close" onclick="closeModal('modal-add-model')">×</button>
             </div>
             <div class="modal-body">
                 <!-- Linha 1: Apelido e Provider -->
                 <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
                     <div class="form-group">
-                        <label class="form-label">Apelido (Identificador) *</label>
+                        <label class="form-label">
+                            Apelido (Identificador) *
+                            <span class="tooltip-icon" data-tooltip="Nome amigável para identificar este modelo na lista. Ex: 'GPT-4o Principal' ou 'Claude para Correções'" data-tooltip-pos="right">?</span>
+                        </label>
                         <input type="text" class="form-input" id="input-model-nome" placeholder="Ex: GPT-4o Produção">
                         <div class="form-hint">Nome interno para identificar este modelo na lista</div>
                     </div>
                     <div class="form-group">
-                        <label class="form-label">Provedor *</label>
+                        <label class="form-label">
+                            Provedor *
+                            <span class="tooltip-icon" data-tooltip="Empresa que fornece o modelo. OpenAI (GPT), Anthropic (Claude), Google (Gemini), etc." data-tooltip-pos="right">?</span>
+                        </label>
                         <select class="form-select" id="input-model-tipo" onchange="onProviderChange()">
                             <option value="openai">OpenAI</option>
                             <option value="anthropic">Anthropic</option>
@@ -2943,17 +2952,26 @@
                 <!-- Linha 3: Parâmetros (dinamicamente mostra temp ou reasoning) -->
                 <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px;">
                     <div class="form-group">
-                        <label class="form-label">Max Tokens</label>
+                        <label class="form-label">
+                            Max Tokens
+                            <span class="tooltip-icon" data-tooltip="Limite máximo de caracteres/palavras na resposta da IA. Valores maiores = respostas mais longas (e mais caras)." data-tooltip-pos="right">?</span>
+                        </label>
                         <input type="number" class="form-input" id="input-model-tokens" value="4096">
                         <div class="form-hint">Máximo de tokens na resposta</div>
                     </div>
                     <div class="form-group" id="temp-group">
-                        <label class="form-label">Temperatura</label>
+                        <label class="form-label">
+                            Temperatura
+                            <span class="tooltip-icon" data-tooltip="Controla a 'criatividade' da IA. 0 = sempre a mesma resposta, 0.7 = balanceado, 2 = muito criativo/aleatório." data-tooltip-pos="right">?</span>
+                        </label>
                         <input type="number" class="form-input" id="input-model-temp" value="0.7" step="0.1" min="0" max="2">
                         <div class="form-hint">0 = determinístico, 2 = criativo</div>
                     </div>
                     <div class="form-group" id="reasoning-group" style="display: none;">
-                        <label class="form-label">Reasoning Effort</label>
+                        <label class="form-label">
+                            Reasoning Effort
+                            <span class="tooltip-icon" data-tooltip="Para modelos de raciocínio (o1, o3). Low = respostas rápidas, Medium = balanceado, High = raciocínio profundo." data-tooltip-pos="right">?</span>
+                        </label>
                         <select class="form-select" id="input-model-reasoning">
                             <option value="low">Low (rápido)</option>
                             <option value="medium" selected>Medium (balanceado)</option>
@@ -2975,17 +2993,20 @@
 
                 <!-- Linha 5: Capacidades (checkbox) -->
                 <div class="form-group">
-                    <label class="form-label">Capacidades do Modelo</label>
+                    <label class="form-label">
+                        Capacidades do Modelo
+                        <span class="tooltip-icon" data-tooltip="Recursos especiais que o modelo suporta. Marque apenas os que o modelo realmente tem!" data-tooltip-pos="right">?</span>
+                    </label>
                     <div style="display: flex; gap: 16px; flex-wrap: wrap;">
-                        <label class="checkbox-label">
+                        <label class="checkbox-label" data-tooltip="Pode analisar imagens e PDFs escaneados" data-tooltip-pos="bottom">
                             <input type="checkbox" id="input-model-vision">
                             <span>👁️ Vision (imagens)</span>
                         </label>
-                        <label class="checkbox-label">
+                        <label class="checkbox-label" data-tooltip="Pode executar ferramentas/funções durante a resposta" data-tooltip-pos="bottom">
                             <input type="checkbox" id="input-model-tools">
                             <span>🔧 Tool Use / Functions</span>
                         </label>
-                        <label class="checkbox-label">
+                        <label class="checkbox-label" data-tooltip="Mostra a resposta enquanto está sendo gerada" data-tooltip-pos="bottom">
                             <input type="checkbox" id="input-model-streaming" checked>
                             <span>📡 Streaming</span>
                         </label>
@@ -5458,12 +5479,20 @@
         async function onEtapaChange() {
             const etapa = document.getElementById('input-execucao-etapa').value;
             const hint = document.getElementById('input-execucao-aluno-hint');
+            const etapaHint = document.getElementById('execucao-etapa-hint');
 
             // Atualizar hint do aluno
             if (ETAPAS_SEM_ALUNO.includes(etapa)) {
                 hint.textContent = 'Esta etapa extrai dados da atividade, não precisa de aluno.';
             } else {
                 hint.textContent = 'Selecione o aluno para executar esta etapa.';
+            }
+            
+            // Atualizar hint da etapa com descrição contextual
+            if (etapaHint && etapaDescricoes[etapa]) {
+                etapaHint.textContent = etapaDescricoes[etapa];
+            } else if (etapaHint) {
+                etapaHint.textContent = 'Selecione uma etapa para ver sua descrição';
             }
 
             // Carregar prompts para esta etapa
