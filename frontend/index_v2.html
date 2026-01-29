@@ -2126,16 +2126,56 @@
             line-height: 1.65;
             color: var(--text);
         }
-        
+
         .help-panel-content ul {
             margin: 10px 0;
             padding-left: 20px;
         }
-        
+
         .help-panel-content li {
             margin-bottom: 6px;
         }
-        
+
+        /* === HELP TABS === */
+        .help-tabs {
+            display: flex;
+            gap: 4px;
+            padding: 8px 12px;
+            border-bottom: 1px solid var(--border);
+            background: var(--bg-dark);
+            flex-wrap: wrap;
+        }
+
+        .help-tab {
+            padding: 6px 12px;
+            background: transparent;
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            color: var(--text-muted);
+            font-size: 0.8rem;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .help-tab:hover {
+            background: var(--bg-hover);
+            color: var(--text);
+        }
+
+        .help-tab.active {
+            background: var(--primary);
+            border-color: var(--primary);
+            color: white;
+        }
+
+        .help-tab-content {
+            display: none;
+        }
+
+        .help-tab-content.active {
+            display: block;
+        }
+
         .help-step {
             display: flex;
             gap: 12px;
@@ -3814,42 +3854,47 @@
                 },
                 {
                     title: '📚 Passo 1: Crie uma Matéria',
-                    subtitle: 'A disciplina que você leciona',
+                    subtitle: 'A disciplina - agrupa turmas ao longo dos anos',
                     image: '/static/tutorial-images-v2/05-nova-materia-anotado.png',
                     content: `
-                        <p>Para criar uma nova matéria:</p>
+                        <p><strong>Matéria = Disciplina</strong> que agrupa todas as turmas ao longo dos anos:</p>
                         <ol>
                             <li>Clique em <strong>"+ Nova Matéria"</strong> no rodapé do menu lateral</li>
-                            <li><strong>Nome:</strong> Digite o nome da disciplina (ex: "Matemática 2024")</li>
-                            <li><strong>Descrição:</strong> Opcional - adicione detalhes se quiser</li>
-                            <li><strong>Nível:</strong> Escolha o nível de ensino (Fundamental, Médio, etc.)</li>
+                            <li><strong>Nome:</strong> Digite apenas o nome da disciplina (ex: "Matemática")</li>
+                            <li><strong>Descrição:</strong> Opcional - ex: "Matemática básica e aplicada"</li>
+                            <li><strong>Nível:</strong> Escolha o nível de ensino</li>
                             <li>Clique em <strong>"Salvar"</strong></li>
                         </ol>
                         <div class="tutorial-highlight">
-                            <strong>📝 Exemplo:</strong> "Matemática - 9º Ano" ou "Física - 1ª Série EM"
+                            <strong>💡 NÃO coloque o ano aqui!</strong> O ano fica na Turma. Assim você pode ter "Matemática" com turmas de 2023, 2024, 2025...
                         </div>
+                        <p><strong>Exemplos corretos:</strong> "Matemática", "Português", "Física", "História"</p>
                     `
                 },
                 {
                     title: '👥 Passo 2: Crie uma Turma',
-                    subtitle: 'Um grupo de alunos dentro da matéria',
+                    subtitle: 'Grupo de alunos + ano letivo',
                     image: '/static/tutorial-images-v2/02-sidebar-anotado.png',
                     content: `
-                        <p>Depois de criar a matéria:</p>
+                        <p><strong>Turma = Grupo de alunos em um ano específico:</strong></p>
                         <ol>
                             <li>Clique na matéria para abri-la</li>
                             <li>Clique em <strong>"+ Nova Turma"</strong></li>
-                            <li>Digite o nome (ex: "9º Ano A" ou "Turma da Manhã")</li>
+                            <li><strong>Nome:</strong> Ex: "9º Ano A" ou "Turma Manhã"</li>
+                            <li><strong>Ano:</strong> Selecione o ano letivo (2024, 2025...)</li>
                             <li>Clique em <strong>"Salvar"</strong></li>
                         </ol>
-                        <p>Depois adicione os alunos:</p>
+                        <div class="tutorial-highlight">
+                            <strong>📅 O ANO fica aqui!</strong> Assim em "Matemática" você pode ter:<br>
+                            • 9º Ano A (2024)<br>
+                            • 9º Ano B (2024)<br>
+                            • 9º Ano A (2025)
+                        </div>
+                        <p><strong>Adicionar alunos:</strong></p>
                         <ul>
                             <li><strong>Um por um:</strong> "+ Adicionar Aluno" → Nome e matrícula</li>
-                            <li><strong>Em lote:</strong> "Importar CSV" com colunas "nome" e "matricula"</li>
+                            <li><strong>Em lote:</strong> "Importar CSV" com colunas nome, matricula</li>
                         </ul>
-                        <div class="tutorial-highlight">
-                            <strong>💡 Dica:</strong> Você pode ter várias turmas na mesma matéria!
-                        </div>
                     `
                 },
                 {
@@ -4123,29 +4168,137 @@
                 `
             },
             'turma': {
-                titulo: '👨‍🎓 Turma',
+                titulo: '👥 Como Usar Esta Turma',
+                abas: [
+                    {
+                        id: 'alunos',
+                        label: '👤 Adicionar Alunos',
+                        conteudo: `
+                            <p><strong>Adicione os alunos desta turma:</strong></p>
+                            <div class="help-step">
+                                <div class="help-step-number">1</div>
+                                <div class="help-step-text">Clique em <strong>"+ Adicionar Aluno"</strong></div>
+                            </div>
+                            <div class="help-step">
+                                <div class="help-step-number">2</div>
+                                <div class="help-step-text">Digite o <strong>nome</strong> e <strong>matrícula</strong> (opcional)</div>
+                            </div>
+                            <div class="help-step">
+                                <div class="help-step-number">3</div>
+                                <div class="help-step-text">Clique em <strong>"Salvar"</strong></div>
+                            </div>
+                            <p style="margin-top: 12px;"><strong>📋 Importar em lote:</strong> Clique em "Importar CSV" com colunas: nome, matricula, email</p>
+                        `
+                    },
+                    {
+                        id: 'atividade',
+                        label: '📝 Criar Atividade',
+                        conteudo: `
+                            <p><strong>Crie uma prova/atividade:</strong></p>
+                            <div class="help-step">
+                                <div class="help-step-number">1</div>
+                                <div class="help-step-text">Clique em <strong>"+ Nova Atividade"</strong></div>
+                            </div>
+                            <div class="help-step">
+                                <div class="help-step-number">2</div>
+                                <div class="help-step-text">Digite o nome (ex: "Prova 1 - Frações")</div>
+                            </div>
+                            <div class="help-step">
+                                <div class="help-step-number">3</div>
+                                <div class="help-step-text">Defina a nota máxima e tipo</div>
+                            </div>
+                            <p style="margin-top: 12px;">💡 Depois de criar, você enviará: enunciado, gabarito e provas dos alunos.</p>
+                        `
+                    }
+                ],
                 conteudo: `
-                    <p>Gerencie os alunos e atividades desta turma.</p>
-                    <div class="help-step">
-                        <div class="help-step-number">1</div>
-                        <div class="help-step-text"><strong>Adicione Alunos:</strong> Clique em "+ Adicionar Aluno" ou importe uma lista CSV</div>
-                    </div>
-                    <div class="help-step">
-                        <div class="help-step-number">2</div>
-                        <div class="help-step-text"><strong>Crie Atividades:</strong> Clique em "+ Nova Atividade" para adicionar provas</div>
-                    </div>
-                    <p style="margin-top: 12px;">💡 Uma turma pode ter vários alunos e várias atividades (provas).</p>
+                    <p>Gerencie os alunos e atividades desta turma. Use as abas acima para ver como fazer cada tarefa.</p>
                 `
             },
             'materia': {
-                titulo: '📚 Matéria',
+                titulo: '📚 Como Usar Esta Matéria',
+                abas: [
+                    {
+                        id: 'turma',
+                        label: '👥 Criar Turma',
+                        conteudo: `
+                            <p><strong>Crie uma turma dentro desta matéria:</strong></p>
+                            <div class="help-step">
+                                <div class="help-step-number">1</div>
+                                <div class="help-step-text">Clique em <strong>"+ Nova Turma"</strong></div>
+                            </div>
+                            <div class="help-step">
+                                <div class="help-step-number">2</div>
+                                <div class="help-step-text"><strong>Nome:</strong> Ex: "9º Ano A" ou "Turma Manhã"</div>
+                            </div>
+                            <div class="help-step">
+                                <div class="help-step-number">3</div>
+                                <div class="help-step-text"><strong>Ano:</strong> Selecione 2024, 2025, etc.</div>
+                            </div>
+                            <p style="margin-top: 12px;">💡 <strong>O ano fica aqui!</strong> Assim você pode ter várias turmas do mesmo nome em anos diferentes.</p>
+                        `
+                    }
+                ],
                 conteudo: `
-                    <p>Organize suas turmas por matéria.</p>
-                    <div class="help-step">
-                        <div class="help-step-number">1</div>
-                        <div class="help-step-text"><strong>Crie Turmas:</strong> Clique em "+ Nova Turma" para organizar por período/série</div>
-                    </div>
-                    <p style="margin-top: 12px;">💡 Exemplo: Matéria "Matemática" → Turmas "9º A", "9º B", "1º EM"</p>
+                    <p><strong>Matéria = Disciplina</strong> que agrupa turmas ao longo dos anos.</p>
+                    <p>Exemplo: "Matemática" pode ter turmas de 2023, 2024, 2025...</p>
+                `
+            },
+            'atividade': {
+                titulo: '📋 Como Corrigir Provas',
+                abas: [
+                    {
+                        id: 'docs',
+                        label: '📄 Enviar Docs',
+                        conteudo: `
+                            <p><strong>Envie os documentos necessários:</strong></p>
+                            <div class="help-step">
+                                <div class="help-step-number">1</div>
+                                <div class="help-step-text"><strong>📄 Enunciado:</strong> A prova em branco (PDF ou imagem)</div>
+                            </div>
+                            <div class="help-step">
+                                <div class="help-step-number">2</div>
+                                <div class="help-step-text"><strong>✅ Gabarito:</strong> As respostas corretas</div>
+                            </div>
+                            <div class="help-step">
+                                <div class="help-step-number">3</div>
+                                <div class="help-step-text"><strong>👤 Provas dos alunos:</strong> Use "Upload Provas em Lote"</div>
+                            </div>
+                        `
+                    },
+                    {
+                        id: 'pipeline',
+                        label: '⚡ Executar Pipeline',
+                        conteudo: `
+                            <p><strong>Execute a correção automática:</strong></p>
+                            <div class="help-step">
+                                <div class="help-step-number">1</div>
+                                <div class="help-step-text"><strong>⚡ Pipeline Aluno:</strong> Corrige um aluno específico</div>
+                            </div>
+                            <div class="help-step">
+                                <div class="help-step-number">2</div>
+                                <div class="help-step-text"><strong>🚀 Pipeline Turma:</strong> Corrige TODOS os alunos de uma vez</div>
+                            </div>
+                            <p style="margin-top: 12px;">⏱️ A IA executa 6 etapas: Extração → Correção → Análise → Relatório</p>
+                            <p>📊 Cada etapa gera um documento que você pode revisar!</p>
+                        `
+                    },
+                    {
+                        id: 'resultado',
+                        label: '📊 Ver Resultados',
+                        conteudo: `
+                            <p><strong>Veja os resultados:</strong></p>
+                            <ul>
+                                <li>Clique no nome de um aluno para ver a correção</li>
+                                <li>Use <strong>Toggle Visual/JSON</strong> para alternar a visualização</li>
+                                <li><strong>📥 Baixar PDF:</strong> Exporta o relatório formatado</li>
+                            </ul>
+                            <p style="margin-top: 12px;">🧑‍🏫 <strong>Sua correção:</strong> Envie "Correção do Professor" para comparar com a IA!</p>
+                        `
+                    }
+                ],
+                conteudo: `
+                    <p>Use as abas acima para ver como enviar documentos, executar o pipeline e ver resultados.</p>
                 `
             }
         };
@@ -4154,38 +4307,78 @@
         function toggleHelpPanel(secao) {
             const panelId = `help-panel-${secao}`;
             let panel = document.getElementById(panelId);
-            
+
             if (panel) {
                 panel.classList.toggle('show');
                 return;
             }
-            
+
             // Se não existe, cria dinamicamente
             const ajuda = ajudaContextual[secao];
             if (!ajuda) return;
-            
+
             // Encontra onde inserir
             const content = document.getElementById('content');
             const firstChild = content.firstElementChild;
-            
+
             if (firstChild) {
                 panel = document.createElement('div');
                 panel.id = panelId;
                 panel.className = 'help-panel show';
+
+                // Renderizar abas se existirem
+                let abasHtml = '';
+                let abasContent = '';
+                if (ajuda.abas && ajuda.abas.length > 0) {
+                    abasHtml = `
+                        <div class="help-tabs">
+                            ${ajuda.abas.map((aba, i) => `
+                                <button class="help-tab ${i === 0 ? 'active' : ''}"
+                                        onclick="switchHelpTab('${secao}', '${aba.id}')">
+                                    ${aba.label}
+                                </button>
+                            `).join('')}
+                        </div>
+                    `;
+                    abasContent = ajuda.abas.map((aba, i) => `
+                        <div class="help-tab-content ${i === 0 ? 'active' : ''}" id="help-tab-${secao}-${aba.id}">
+                            ${aba.conteudo}
+                        </div>
+                    `).join('');
+                }
+
                 panel.innerHTML = `
                     <div class="help-panel-header">
                         <div class="help-panel-title">💡 ${ajuda.titulo}</div>
                         <button class="help-panel-close" onclick="toggleHelpPanel('${secao}')">×</button>
                     </div>
+                    ${abasHtml}
                     <div class="help-panel-content">
-                        ${ajuda.conteudo}
+                        ${abasContent || ajuda.conteudo}
                         <a class="help-link" onclick="openTutorial()">📖 Ver tutorial completo →</a>
                     </div>
                 `;
                 content.insertBefore(panel, firstChild);
             }
         }
-        
+
+        // Troca aba ativa no painel de ajuda
+        function switchHelpTab(secao, abaId) {
+            const panel = document.getElementById(`help-panel-${secao}`);
+            if (!panel) return;
+
+            // Desativar todas as abas e conteúdos
+            panel.querySelectorAll('.help-tab').forEach(tab => tab.classList.remove('active'));
+            panel.querySelectorAll('.help-tab-content').forEach(content => content.classList.remove('active'));
+
+            // Ativar a aba clicada
+            const tab = panel.querySelector(`.help-tab[onclick*="${abaId}"]`);
+            const content = document.getElementById(`help-tab-${secao}-${abaId}`);
+
+            if (tab) tab.classList.add('active');
+            if (content) content.classList.add('active');
+        }
+
         // Remove painéis de ajuda ao mudar de seção
         function clearHelpPanels() {
             document.querySelectorAll('.help-panel').forEach(p => p.remove());
