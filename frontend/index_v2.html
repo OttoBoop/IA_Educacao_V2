@@ -1705,6 +1705,16 @@
             font-size: 1.1rem;
         }
         
+        /* Pulsação para chamar atenção */
+        @keyframes pulse-glow {
+            0%, 100% { box-shadow: 0 2px 8px rgba(59, 130, 246, 0.3); }
+            50% { box-shadow: 0 2px 20px rgba(59, 130, 246, 0.6); }
+        }
+        
+        .help-btn.pulse {
+            animation: pulse-glow 2s ease-in-out infinite;
+        }
+        
         /* Tutorial text enhancements */
         .tutorial-text ol {
             margin: 12px 0;
@@ -1724,6 +1734,22 @@
         .tutorial-highlight.success {
             background: rgba(34, 197, 94, 0.1);
             border-left-color: #22c55e;
+        }
+        
+        /* Botão de tutorial destacado */
+        .btn-tutorial {
+            background: linear-gradient(135deg, #10b981, #059669) !important;
+            border: none !important;
+            color: white !important;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-weight: 500;
+        }
+        
+        .btn-tutorial:hover {
+            background: linear-gradient(135deg, #059669, #047857) !important;
+            transform: translateY(-1px);
         }
 
     </style>
@@ -1785,7 +1811,7 @@
                     <button class="btn btn-primary" style="flex: 1;" onclick="openModal('modal-materia')">
                         + Nova Matéria
                     </button>
-                    <button class="help-btn" onclick="openWelcome()" title="Ajuda e Tutorial">
+                    <button class="help-btn pulse" id="help-btn" onclick="openWelcome()" title="Ajuda e Tutorial">
                         <span class="help-btn-icon">📖</span>
                         <span>Ajuda</span>
                     </button>
@@ -2710,8 +2736,10 @@
                         Não mostrar novamente
                     </label>
                     <div style="display: flex; gap: 12px;">
-                        <button class="btn" onclick="openTutorial()">📖 Ver Tutorial</button>
-                        <button class="btn btn-primary" onclick="closeWelcome()">Começar a Usar</button>
+                        <button class="btn btn-tutorial" onclick="openTutorial()">
+                            <span style="font-size: 1.2rem;">🎓</span> Tutorial Interativo
+                        </button>
+                        <button class="btn btn-primary" onclick="closeWelcome()">Começar a Usar →</button>
                     </div>
                 </div>
             </div>
@@ -2727,8 +2755,8 @@
             </div>
             
             <div class="tutorial-tabs">
-                <div class="tutorial-tab active" data-mode="quick" onclick="switchTutorialMode('quick')">⚡ Guia Rápido</div>
-                <div class="tutorial-tab" data-mode="full" onclick="switchTutorialMode('full')">📚 Tutorial Completo</div>
+                <button class="tutorial-tab active" data-mode="quick" onclick="switchTutorialMode('quick')">⚡ 3 Passos Essenciais</button>
+                <button class="tutorial-tab" data-mode="full" onclick="switchTutorialMode('full')">📚 Completo (8 passos)</button>
             </div>
             
             <div class="modal-body">
@@ -3117,7 +3145,7 @@
                 {
                     title: '👥 Adicionando Alunos',
                     subtitle: 'Cadastre os estudantes da sua turma',
-                    image: '/static/tutorial-images/08-materia-view.png',
+                    image: '/static/tutorial-images-v2/03-chat-anotado.png',
                     content: `
                         <p>Existem <strong>duas formas</strong> de adicionar alunos:</p>
                         <ul>
@@ -3133,7 +3161,7 @@
                 {
                     title: '📄 Enviando Documentos',
                     subtitle: 'Upload de provas, gabaritos e critérios',
-                    image: '/static/tutorial-images/08-materia-view.png',
+                    image: '/static/tutorial-images-v2/06-fluxo-correcao.png',
                     content: `
                         <p>Para cada atividade, você pode enviar:</p>
                         <ul>
@@ -3207,6 +3235,9 @@
         
         function openWelcome() {
             document.getElementById('modal-welcome').classList.add('active');
+            // Remove pulse animation after first click
+            const helpBtn = document.getElementById('help-btn');
+            if (helpBtn) helpBtn.classList.remove('pulse');
         }
         
         function closeWelcome() {
@@ -3215,6 +3246,9 @@
                 localStorage.setItem('prova-ai-welcomed', 'true');
             }
             document.getElementById('modal-welcome').classList.remove('active');
+            // Also stop pulsing when user closes welcome
+            const helpBtn = document.getElementById('help-btn');
+            if (helpBtn) helpBtn.classList.remove('pulse');
         }
         
         function openTutorial() {

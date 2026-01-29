@@ -12,6 +12,7 @@ FULLY AUTOMATED - No manual intervention required
 """
 
 from playwright.sync_api import sync_playwright, Page, Download
+from playwright_stealth import stealth_sync as apply_stealth
 import os
 import json
 import time
@@ -214,6 +215,7 @@ class FGVScraper:
         # Stats
         self.files_downloaded = 0
         self.files_uploaded = 0
+        self.screenshot_count = 0
         
         log_message("=" * 60)
         log_message("FGV SCRAPER INITIALIZED")
@@ -222,8 +224,18 @@ class FGVScraper:
     def start(self):
         """Start browser with persistent context (keeps you logged in)"""
         log_message("\n🚀 Starting browser...")
+        log_message("   💭 Using stealth mode to bypass Cloudflare...")
         
         self.playwright = sync_playwright().start()
+        
+        # Anti-detection browser args
+        stealth_args = [
+            '--disable-blink-features=AutomationControlled',
+            '--disable-dev-shm-usage',
+            '--no-sandbox',
+            '--disable-web-security',
+            '--disable-features=IsolateOrigins,site-per-process',
+        ]
         
         # Try persistent context first, fall back to regular if it fails
         try:
@@ -233,7 +245,9 @@ class FGVScraper:
                 headless=False,  # VISIBLE browser
                 viewport={"width": 1400, "height": 900},
                 accept_downloads=True,
-                slow_mo=100,
+                slow_mo=150,
+                args=stealth_args,
+                user_agent='Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
             )
             log_message("   ✓ Persistent browser started")
         except Exception as e:
@@ -246,23 +260,32 @@ class FGVScraper:
                 shutil.rmtree(BROWSER_DATA_DIR, ignore_errors=True)
             BROWSER_DATA_DIR.mkdir(parents=True, exist_ok=True)
             
-            # Launch regular browser
+            # Launch regular browser with stealth
             self.browser = self.playwright.chromium.launch(
                 headless=False,
-                slow_mo=100,
+                slow_mo=150,
+                args=stealth_args,
             )
             self.context = self.browser.new_context(
                 viewport={"width": 1400, "height": 900},
                 accept_downloads=True,
+                user_agent='Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
             )
             log_message("   ✓ Regular browser started")
         
         self.page = self.context.pages[0] if self.context.pages else self.context.new_page()
         
+        # Apply stealth to page
+        stealth_sync(self.page)
+        log_message("   ✓ Stealth mode applied (anti-Cloudflare)")
+        
         # Set up download handling
         self.page.on("download", self._handle_download)
         
         log_message(f"   📁 Downloads will go to: {DOWNLOAD_DIR}")
+        
+        # Take initial screenshot
+        self.screenshot("browser_started")
     
     def _handle_download(self, download: Download):
         """Handle file downloads"""
@@ -295,11 +318,76 @@ class FGVScraper:
             "timestamp": datetime.now().isoformat()
         })
     
-    def screenshot(self, name: str):
-        """Take screenshot only when needed for debugging errors"""
-        path = SCREENSHOTS_DIR / f"{name}_{datetime.now().strftime('%H%M%S')}.png"
-        self.page.screenshot(path=path)
-        log_message(f"   📸 Screenshot saved: {path.name}")
+    def screenshot(self, name: str, always: bool = False):
+        """Take screenshot - always saves to disk for debugging"""
+        self.screenshot_count += 1
+        path = SCREENSHOTS_DIR / f"{self.screenshot_count:03d}_{name}_{datetime.now().strftime('%H%M%S')}.png"
+        try:
+            self.page.screenshot(path=path)
+            log_message(f"   📸 Screenshot #{self.screenshot_count}: {path.name}")
+        except Exception as e:
+            log_message(f"   ⚠️ Screenshot failed: {e}")
+        return path
+    
+    def check_for_errors(self):
+        """Check page for error messages and capture them"""
+        try:
+            # Common error patterns
+            error_selectors = [
+                ".error", ".alert-danger", ".error-message",
+                "[class*='error']", "[class*='Error']",
+                ".warning", ".alert-warning"
+            ]
+            
+            for selector in error_selectors:
+                try:
+                    error_el = self.page.query_selector(selector)
+                    if error_el and error_el.is_visible():
+                        error_text = error_el.text_content().strip()[:200]
+                        if error_text:
+                            log_message(f"   ⚠️ PAGE ERROR DETECTED: {error_text}")
+                            self.screenshot("error_detected")
+                            return error_text
+                except:
+                    pass
+        except:
+            pass
+        return None
+    
+    def report_status(self):
+        """Report current browser status"""
+        try:
+            url = self.page.url
+            title = self.page.title()
+            log_message(f"\n   📍 STATUS:")
+            log_message(f"      URL: {url[:80]}")
+            log_message(f"      Title: {title[:60]}")
+            self.check_for_errors()
+        except Exception as e:
+            log_message(f"   ⚠️ Status check failed: {e}")
+    
+    def check_cloudflare(self) -> bool:
+        """Check if Cloudflare challenge is present"""
+        try:
+            # Common Cloudflare indicators
+            cf_indicators = [
+                "challenge-running",
+                "cf-browser-verification",
+                "cloudflare",
+                "Checking your browser",
+                "Just a moment",
+                "Please wait while we verify",
+            ]
+            
+            page_text = self.page.content().lower()
+            for indicator in cf_indicators:
+                if indicator.lower() in page_text:
+                    log_message(f"   ⚠️ CLOUDFLARE DETECTED: '{indicator}'")
+                    self.screenshot("cloudflare_challenge")
+                    return True
+            return False
+        except:
+            return False
     
     def navigate_to_eclass(self):
         """Navigate to FGV eClass and auto-login"""
@@ -312,9 +400,23 @@ class FGVScraper:
             log_message("   Page load slow, continuing anyway...")
         
         time.sleep(3)
+        self.screenshot("initial_page")
         
         current_url = self.page.url
         log_message(f"   Current URL: {current_url}")
+        
+        # Check for Cloudflare
+        if self.check_cloudflare():
+            log_message("   💭 Cloudflare challenge detected - waiting for it to resolve...")
+            # Give Cloudflare time to auto-resolve with stealth mode
+            for i in range(15):
+                time.sleep(2)
+                if not self.check_cloudflare():
+                    log_message("   ✓ Cloudflare challenge passed!")
+                    self.screenshot("cloudflare_passed")
+                    break
+                else:
+                    log_message(f"   💭 Still waiting... ({i+1}/15)")
         
         # Check if already logged in
         if "d2l" in current_url and "home" in current_url:
@@ -334,8 +436,23 @@ class FGVScraper:
         
         # Try to find and fill login form
         try:
-            self.page.wait_for_load_state("networkidle")
-            time.sleep(2)
+            # Wait for page to be ready
+            log_message("   💭 Waiting for login page to load...")
+            time.sleep(3)
+            
+            # First, let's see what inputs are on the page
+            all_inputs = self.page.query_selector_all("input")
+            log_message(f"   💭 Found {len(all_inputs)} input fields on page")
+            
+            for inp in all_inputs[:10]:
+                try:
+                    inp_type = inp.get_attribute("type") or "unknown"
+                    inp_name = inp.get_attribute("name") or ""
+                    inp_placeholder = inp.get_attribute("placeholder") or ""
+                    if inp.is_visible():
+                        log_message(f"      • Input: type={inp_type}, name={inp_name}, placeholder={inp_placeholder[:30]}")
+                except:
+                    pass
             
             # Look for username field - FGV specific selectors first
             username_selectors = [
@@ -372,6 +489,7 @@ class FGVScraper:
             
             username_field.fill(username)
             log_message("   ✓ Filled username")
+            self.screenshot("filled_username")
             time.sleep(0.5)
             
             # Look for password field - FGV uses "Senha"
@@ -403,6 +521,7 @@ class FGVScraper:
             
             password_field.fill(password)
             log_message("   ✓ Filled password")
+            self.screenshot("filled_credentials")
             time.sleep(0.5)
             
             # Click login button - FGV uses "ENTRAR"
@@ -443,11 +562,20 @@ class FGVScraper:
             # Verify login success
             current_url = self.page.url
             log_message(f"   URL after login: {current_url}")
+            self.screenshot("after_login_attempt")
+            
+            # Check if Cloudflare blocked us after login
+            if self.check_cloudflare():
+                log_message("   ⚠️ Cloudflare appeared after login - waiting...")
+                time.sleep(10)
+                self.screenshot("cloudflare_after_login")
             
             if "d2l" in current_url or "home" in current_url:
                 log_message("   ✅ LOGIN SUCCESSFUL!")
+                self.screenshot("login_success")
             else:
                 log_message("   ⚠️ Login may have failed - continuing anyway...")
+                self.report_status()
             
         except Exception as e:
             log_message(f"   ❌ Login error: {e}")
