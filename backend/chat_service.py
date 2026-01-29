@@ -783,10 +783,21 @@ class ChatClient:
             )
             
             if response.status_code != 200:
-                raise Exception(f"Erro API OpenAI: {response.status_code} - {response.text}")
-            
+                error_msg = f"Erro API OpenAI: {response.status_code}"
+                if response.status_code == 400:
+                    error_msg += f" - Erro na requisição para '{self.config.modelo}'. Verifique os parâmetros ou tente outro modelo como GPT-4o."
+                elif response.status_code == 401:
+                    error_msg += " - Chave de API inválida ou expirada."
+                elif response.status_code == 429:
+                    error_msg += " - Limite de requisições atingido. Aguarde alguns minutos ou tente outro modelo."
+                elif response.status_code == 404:
+                    error_msg += f" - Modelo '{self.config.modelo}' não encontrado. Tente outro modelo."
+                else:
+                    error_msg += f" - {response.text[:300]}"
+                raise Exception(error_msg)
+
             data = response.json()
-            
+
             return {
                 "content": data["choices"][0]["message"]["content"],
                 "tokens": data.get("usage", {}).get("total_tokens", 0),
@@ -829,10 +840,21 @@ class ChatClient:
             )
             
             if response.status_code != 200:
-                raise Exception(f"Erro API Anthropic: {response.status_code} - {response.text}")
-            
+                error_msg = f"Erro API Anthropic: {response.status_code}"
+                if response.status_code == 400:
+                    error_msg += f" - Modelo '{self.config.modelo}' pode estar indisponível ou com ID incorreto. Tente outro modelo como Claude Sonnet."
+                elif response.status_code == 401:
+                    error_msg += " - Chave de API inválida ou expirada."
+                elif response.status_code == 429:
+                    error_msg += " - Limite de requisições atingido. Aguarde alguns minutos ou tente outro modelo."
+                elif response.status_code == 404:
+                    error_msg += f" - Modelo '{self.config.modelo}' não encontrado. Tente outro modelo."
+                else:
+                    error_msg += f" - {response.text[:300]}"
+                raise Exception(error_msg)
+
             data = response.json()
-            
+
             content = ""
             for block in data.get("content", []):
                 if block.get("type") == "text":
@@ -1027,10 +1049,21 @@ class ChatClient:
             )
             
             if response.status_code != 200:
-                raise Exception(f"Erro API Google: {response.status_code} - {response.text}")
-            
+                error_msg = f"Erro API Google: {response.status_code}"
+                if response.status_code == 400:
+                    error_msg += f" - Erro na requisição para '{self.config.modelo}'. Verifique os parâmetros ou tente outro modelo como GPT-4o."
+                elif response.status_code == 403:
+                    error_msg += " - Chave de API sem permissão para este modelo ou região."
+                elif response.status_code == 429:
+                    error_msg += " - Limite de requisições atingido. Aguarde alguns minutos ou tente outro modelo."
+                elif response.status_code == 404:
+                    error_msg += f" - Modelo '{self.config.modelo}' não encontrado. Tente outro modelo."
+                else:
+                    error_msg += f" - {response.text[:300]}"
+                raise Exception(error_msg)
+
             data = response.json()
-            
+
             content = ""
             candidates = data.get("candidates", [])
             if candidates:

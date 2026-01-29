@@ -659,6 +659,29 @@ async def renomear_documento(documento_id: str, novo_nome: str = Form(...)):
     return {"success": True, "documento": documento.to_dict()}
 
 
+@app.get("/api/documentos/verificar-integridade", tags=["Documentos"])
+async def verificar_integridade_documentos(atividade_id: str):
+    """Verifica quais documentos existem no disco vs banco de dados"""
+    documentos = storage.listar_documentos(atividade_id)
+    resultado = []
+    for doc in documentos:
+        arquivo = Path(doc.caminho_arquivo) if doc.caminho_arquivo else None
+        existe = arquivo.exists() if arquivo else False
+        resultado.append({
+            "id": doc.id,
+            "nome": doc.nome_arquivo,
+            "tipo": doc.tipo.value if doc.tipo else None,
+            "arquivo_existe": existe,
+            "caminho": doc.caminho_arquivo
+        })
+    return {
+        "total": len(resultado),
+        "com_arquivo": sum(1 for r in resultado if r["arquivo_existe"]),
+        "sem_arquivo": sum(1 for r in resultado if not r["arquivo_existe"]),
+        "documentos": resultado
+    }
+
+
 # ============================================================
 # ENDPOINTS: VERIFICAÇÃO E STATUS
 # ============================================================

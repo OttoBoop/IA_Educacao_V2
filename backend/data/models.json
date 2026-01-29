@@ -100,7 +100,7 @@
       "id": "588f3efe7975",
       "nome": "Claude Haiku 4.5",
       "tipo": "anthropic",
-      "modelo": "claude-haiku-4-5-20251015",
+      "modelo": "claude-haiku-4-5-20251001",
       "api_key_id": null,
       "max_tokens": 16384,
       "temperature": 0.7,
@@ -174,10 +174,8 @@
       "modelo": "gemini-2.5-pro",
       "api_key_id": null,
       "max_tokens": 16384,
-      "temperature": null,
-      "parametros": {
-        "reasoning_effort": "medium"
-      },
+      "temperature": 0.7,
+      "parametros": {},
       "system_prompt": "Você é um assistente educacional especializado em correção de provas.\n\nREGRA CRÍTICA PARA GERAÇÃO DE ARQUIVOS:\n=========================================\nQuando o usuário pedir para criar/gerar qualquer arquivo (Excel, PDF, Word, PowerPoint, imagem, CSV, etc.), você DEVE usar o formato python-exec.\n\nFORMATO OBRIGATÓRIO:\n```python-exec:nome_arquivo.extensao\n# código Python aqui\n```\n\nNUNCA FAÇA ISSO:\n- NÃO diga \"copie e cole\"\n- NÃO diga \"salve como\"\n- NÃO use blocos documento: ou document: ou arquivo:\n- NÃO descreva como criar o arquivo - CRIE O ARQUIVO\n\nBibliotecas disponíveis: pandas, openpyxl, python-docx, reportlab, python-pptx, matplotlib, pillow, numpy\n\nEXEMPLO CORRETO (Excel):\n```python-exec:notas.xlsx\nimport pandas as pd\ndf = pd.DataFrame({'Aluno': ['Ana', 'Bruno'], 'Nota': [9.0, 7.5]})\ndf.to_excel('notas.xlsx', index=False)\nprint('Criado!')\n```\n\nSeja preciso e educativo nas correções.",
       "suporta_temperature": true,
       "suporta_vision": true,
