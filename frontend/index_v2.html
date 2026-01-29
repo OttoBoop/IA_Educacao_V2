@@ -36,10 +36,27 @@
             --sidebar-width: 280px;
             --touch-target-min: 44px;
             --header-height: 64px;
+
+            /* === MOBILE SAFE AREA === */
+            --safe-area-top: env(safe-area-inset-top, 0px);
+            --safe-area-bottom: env(safe-area-inset-bottom, 0px);
+            --safe-area-left: env(safe-area-inset-left, 0px);
+            --safe-area-right: env(safe-area-inset-right, 0px);
+            --mobile-bottom-safe: max(var(--safe-area-bottom), 16px);
         }
         
         * { margin: 0; padding: 0; box-sizing: border-box; }
-        
+
+        /* Esconder itens técnicos por padrão (Prompts, Modelos LLM) */
+        .technical-item {
+            display: none !important;
+        }
+
+        /* Mostrar itens técnicos quando modo avançado ativo */
+        body.show-technical .technical-item {
+            display: flex !important;
+        }
+
         body {
             font-family: 'Inter', -apple-system, sans-serif;
             background: var(--bg-dark);
@@ -2454,23 +2471,31 @@
             flex-direction: column;
             justify-content: center;
             align-items: center;
-            width: var(--touch-target-min);
-            height: var(--touch-target-min);
-            padding: 8px;
+            width: 48px;
+            height: 48px;
+            padding: 12px;
             background: transparent;
             border: none;
             cursor: pointer;
             gap: 5px;
-            margin-right: 12px;
+            margin-right: 8px;
             flex-shrink: 0;
+            border-radius: 10px;
+            transition: background 0.2s ease;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        .hamburger-btn:active {
+            background: var(--bg-hover);
         }
 
         .hamburger-line {
             width: 22px;
-            height: 2px;
+            height: 2.5px;
             background: var(--text);
             border-radius: 2px;
-            transition: all 0.3s ease;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            transform-origin: center;
         }
 
         .hamburger-btn.active .hamburger-line:nth-child(1) {
@@ -2488,14 +2513,14 @@
             display: none;
             position: fixed;
             inset: 0;
-            background: rgba(0, 0, 0, 0.6);
+            background: rgba(0, 0, 0, 0);
             z-index: 49;
-            opacity: 0;
-            transition: opacity 0.3s ease;
+            transition: background 0.3s ease;
+            -webkit-tap-highlight-color: transparent;
         }
         .sidebar-overlay.active {
             display: block;
-            opacity: 1;
+            background: rgba(0, 0, 0, 0.6);
         }
 
         /* ============================================================
@@ -2508,18 +2533,48 @@
                 left: 0;
                 top: 0;
                 height: 100vh;
+                height: 100dvh;
+                width: var(--sidebar-width);
+                max-width: calc(100vw - 60px);
                 transform: translateX(-100%);
                 z-index: 50;
-                transition: transform 0.3s ease;
+                transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+                padding-top: var(--safe-area-top);
+                will-change: transform;
             }
             .sidebar.mobile-open {
                 transform: translateX(0);
+                box-shadow: 4px 0 24px rgba(0, 0, 0, 0.3);
+            }
+
+            /* Sidebar footer safe area */
+            .sidebar-footer {
+                padding-bottom: calc(12px + var(--safe-area-bottom));
+            }
+
+            /* Tree items larger touch targets */
+            .tree-item {
+                min-height: 48px;
+                padding: 12px 16px;
+            }
+
+            /* Section header buttons larger */
+            .tree-section-header .btn {
+                min-width: 36px;
+                min-height: 36px;
+            }
+
+            /* Nav tree scroll */
+            .nav-tree {
+                padding-bottom: 16px;
             }
 
             /* Main content - full width */
             .main {
                 margin-left: 0;
                 width: 100%;
+                padding-left: var(--safe-area-left);
+                padding-right: var(--safe-area-right);
             }
 
             /* Header */
@@ -2528,11 +2583,14 @@
             }
             .header {
                 padding: 12px 16px;
+                padding-top: calc(12px + var(--safe-area-top));
+                gap: 8px;
             }
 
             /* Content */
             .content {
                 padding: 16px;
+                padding-bottom: calc(16px + var(--safe-area-bottom));
             }
 
             /* Grids */
@@ -2560,18 +2618,102 @@
                 font-size: 16px;
             }
 
-            /* Modals */
-            .modal {
-                max-width: calc(100vw - 32px);
-                max-height: calc(100vh - 32px);
-                margin: 16px;
+            /* Modals - bottom sheet style */
+            .modal-overlay {
+                padding: 0;
+                padding-top: var(--safe-area-top);
+                align-items: flex-end;
             }
+
+            .modal {
+                max-width: 100%;
+                max-height: calc(100vh - var(--safe-area-top) - 20px);
+                max-height: calc(100dvh - var(--safe-area-top) - 20px);
+                margin: 0;
+                border-radius: 20px 20px 0 0;
+                animation: slideUp 0.3s ease;
+            }
+
+            @keyframes slideUp {
+                from {
+                    transform: translateY(100%);
+                    opacity: 0;
+                }
+                to {
+                    transform: translateY(0);
+                    opacity: 1;
+                }
+            }
+
+            /* Modal header - sticky with larger close button */
+            .modal-header {
+                position: sticky;
+                top: 0;
+                background: var(--bg-card);
+                z-index: 10;
+                padding: 16px 20px;
+                border-radius: 20px 20px 0 0;
+            }
+
+            .modal-close {
+                width: 44px;
+                height: 44px;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                font-size: 1.75rem;
+                border-radius: 50%;
+                background: var(--bg-hover);
+            }
+
+            .modal-close:active {
+                background: var(--border);
+            }
+
+            .modal-body {
+                padding: 16px 20px;
+                overflow-y: auto;
+                -webkit-overflow-scrolling: touch;
+                overscroll-behavior: contain;
+            }
+
+            /* Modal footer - sticky at bottom */
+            .modal-footer {
+                position: sticky;
+                bottom: 0;
+                background: var(--bg-card);
+                padding: 16px 20px;
+                padding-bottom: calc(16px + var(--safe-area-bottom));
+            }
+
+            /* Welcome and tutorial modals */
             .modal-welcome .modal,
             .modal-tutorial .modal {
-                max-width: calc(100vw - 32px);
+                max-width: 100%;
+                height: calc(100vh - var(--safe-area-top));
+                height: calc(100dvh - var(--safe-area-top));
+                max-height: none;
+                border-radius: 0;
             }
-            .modal-body {
-                padding: 16px;
+
+            .modal-welcome .modal-header,
+            .modal-tutorial .modal-header {
+                border-radius: 0;
+            }
+
+            /* Large modals full screen */
+            .modal-lg,
+            .modal[style*="max-width: 800px"],
+            .modal[style*="max-width: 900px"] {
+                max-width: 100% !important;
+                height: calc(100vh - var(--safe-area-top));
+                height: calc(100dvh - var(--safe-area-top));
+                max-height: none;
+                border-radius: 0;
+            }
+
+            .modal-lg .modal-header {
+                border-radius: 0;
             }
 
             /* Tables */
@@ -2606,11 +2748,179 @@
             /* Doc items */
             .doc-item {
                 flex-wrap: wrap;
+                padding: 14px;
             }
             .doc-actions {
                 width: 100%;
                 justify-content: flex-end;
-                margin-top: 8px;
+                margin-top: 12px;
+                padding-top: 12px;
+                border-top: 1px solid var(--border);
+            }
+            .doc-actions .btn {
+                flex: 1;
+            }
+
+            /* ===== CHAT INTERFACE MOBILE ===== */
+            .chat-panel {
+                height: calc(100vh - var(--header-height) - 32px);
+                height: calc(100dvh - var(--header-height) - 32px);
+                border-radius: 0;
+                margin: -16px;
+                margin-top: 0;
+            }
+
+            .chat-panel-header {
+                padding: 12px 16px;
+            }
+
+            .chat-provider-info {
+                gap: 8px;
+            }
+
+            .chat-provider-name {
+                font-size: 0.9rem;
+            }
+
+            .chat-provider-model {
+                font-size: 0.75rem;
+            }
+
+            .chat-context-bar {
+                padding: 8px 16px;
+                flex-wrap: wrap;
+                gap: 8px;
+            }
+
+            .chat-context-bar select {
+                max-width: 100%;
+                width: 100%;
+            }
+
+            .chat-messages-container {
+                padding: 12px 16px;
+            }
+
+            .chat-message {
+                max-width: 90%;
+                padding: 12px 14px;
+                font-size: 0.9rem;
+            }
+
+            .chat-message pre {
+                font-size: 0.8rem;
+                padding: 10px;
+            }
+
+            .chat-message-meta {
+                flex-wrap: wrap;
+                gap: 8px;
+            }
+
+            .chat-input-area {
+                padding: 12px 16px;
+                padding-bottom: calc(12px + var(--safe-area-bottom));
+                position: sticky;
+                bottom: 0;
+                background: var(--bg-dark);
+            }
+
+            .chat-input-wrapper {
+                gap: 8px;
+            }
+
+            .chat-input-wrapper textarea {
+                min-height: 44px;
+                max-height: 120px;
+                font-size: 16px;
+                padding: 10px 14px;
+            }
+
+            .chat-input-wrapper .btn {
+                min-width: 44px;
+                min-height: 44px;
+                padding: 0 16px;
+            }
+
+            /* Toast notifications */
+            .toast {
+                bottom: calc(16px + var(--safe-area-bottom));
+                right: 16px;
+                left: 16px;
+                max-width: none;
+            }
+
+            /* Task panel */
+            .task-panel {
+                bottom: calc(70px + var(--safe-area-bottom));
+                right: 16px;
+                left: 16px;
+                width: auto;
+                max-height: 50vh;
+            }
+
+            .task-fab {
+                bottom: calc(16px + var(--safe-area-bottom));
+                right: 16px;
+            }
+        }
+
+        /* ============================================================
+           SMALL TABLET / LARGE PHONE BREAKPOINT (max-width: 600px)
+           ============================================================ */
+        @media screen and (max-width: 600px) {
+            /* Stats grid: maintain 2 columns but tighter */
+            .stats-grid {
+                gap: 10px;
+            }
+
+            .stat-card {
+                padding: 14px;
+            }
+
+            .stat-value {
+                font-size: 1.25rem;
+            }
+
+            /* Flow cards single column */
+            .flow-cards {
+                grid-template-columns: 1fr;
+            }
+
+            /* Welcome modal adjustments */
+            .welcome-title {
+                font-size: 1.25rem;
+            }
+
+            /* Modal tabs more compact */
+            .tabs {
+                gap: 4px;
+            }
+            .tab {
+                padding: 10px 12px;
+                font-size: 0.85rem;
+            }
+
+            /* Settings modal tabs wrap */
+            .modal-lg .tabs {
+                flex-wrap: wrap;
+                gap: 4px;
+            }
+            .modal-lg .tab {
+                flex: 1 1 auto;
+                min-width: 70px;
+                text-align: center;
+                padding: 10px 8px;
+            }
+
+            /* Page title smaller */
+            .page-title {
+                font-size: 1.15rem;
+            }
+
+            /* Cards more compact */
+            .card {
+                padding: 14px;
             }
         }
 
@@ -2631,9 +2941,32 @@
             /* Header compact */
             .header {
                 padding: 10px 12px;
+                padding-top: calc(10px + var(--safe-area-top));
             }
             .header-actions .btn span:not(:first-child) {
                 display: none;
+            }
+
+            /* ===== CHAT PHONE SPECIFIC ===== */
+            .chat-panel {
+                height: calc(100vh - var(--header-height) - 24px);
+                height: calc(100dvh - var(--header-height) - 24px);
+                margin: -12px;
+                margin-top: 0;
+            }
+
+            .chat-message {
+                max-width: 95%;
+            }
+
+            .chat-message-meta {
+                flex-direction: column;
+                gap: 4px;
+            }
+
+            .chat-input-area {
+                padding: 10px 12px;
+                padding-bottom: calc(10px + var(--safe-area-bottom));
             }
 
             /* Content compact */
@@ -2655,25 +2988,218 @@
                 font-size: 1.1rem;
             }
 
-            /* Modals smaller margins */
+            /* Modals full screen on phone */
             .modal {
-                max-width: calc(100vw - 16px);
-                margin: 8px;
-                border-radius: 12px;
-            }
-            .modal-overlay {
-                padding: 8px;
+                max-width: 100%;
+                height: 100%;
+                max-height: none;
+                margin: 0;
+                border-radius: 0;
             }
 
-            /* Tutorial modal full height */
+            .modal-overlay {
+                padding: 0;
+            }
+
+            .modal-header {
+                border-radius: 0;
+            }
+
+            /* Tutorial modal full screen */
             .modal-tutorial .modal {
-                height: calc(100vh - 16px);
+                height: 100%;
+                max-height: none;
+            }
+
+            /* Tutorial tabs scrollable */
+            .tutorial-tabs {
+                overflow-x: auto;
+                flex-wrap: nowrap;
+                -webkit-overflow-scrolling: touch;
+                scrollbar-width: none;
+                padding: 0 12px;
+            }
+
+            .tutorial-tabs::-webkit-scrollbar {
+                display: none;
+            }
+
+            .tutorial-tab {
+                flex-shrink: 0;
+                white-space: nowrap;
+                padding: 10px 12px;
+                font-size: 0.85rem;
+            }
+
+            /* Settings modal tabs - scrollable on phone */
+            #modal-settings .tabs {
+                overflow-x: auto;
+                flex-wrap: nowrap !important;
+                -webkit-overflow-scrolling: touch;
+                scrollbar-width: none;
+                gap: 0;
+                padding: 0;
+            }
+
+            #modal-settings .tabs::-webkit-scrollbar {
+                display: none;
+            }
+
+            #modal-settings .tab {
+                flex-shrink: 0;
+                white-space: nowrap;
+                padding: 10px 12px;
+                font-size: 0.8rem;
+            }
+
+            /* Mode selector buttons in chat */
+            .chat-mode-selector {
+                flex-wrap: wrap;
+                gap: 8px;
+            }
+
+            .chat-mode-selector .btn {
+                flex: 1 1 calc(50% - 4px);
+                min-width: 0;
+                font-size: 0.85rem;
+                padding: 10px 12px;
+            }
+
+            /* Model chips in welcome - wrap nicely */
+            .model-chips {
+                flex-wrap: wrap;
+                gap: 6px;
+            }
+
+            .model-chip {
+                padding: 6px 10px;
+                font-size: 0.75rem;
+            }
+
+            /* Modal close button larger on phone */
+            .modal-close {
+                width: 40px;
+                height: 40px;
+                font-size: 1.5rem;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                border-radius: 8px;
+                background: var(--bg-hover);
+            }
+
+            /* Truncated text with ellipsis */
+            .doc-name,
+            .tree-item-name {
+                overflow: hidden;
+                text-overflow: ellipsis;
+                white-space: nowrap;
+                max-width: 100%;
+            }
+
+            /* Context items in chat */
+            .context-item-name {
+                overflow: hidden;
+                text-overflow: ellipsis;
+                white-space: nowrap;
+                max-width: 180px;
+            }
+
+            .tutorial-content {
+                padding: 16px;
+            }
+
+            .tutorial-nav {
+                flex-direction: column;
+                gap: 12px;
+                padding: 12px 16px;
+                padding-bottom: calc(12px + var(--safe-area-bottom));
+            }
+
+            .tutorial-nav .btn {
+                width: 100%;
+            }
+
+            /* Welcome modal adjustments */
+            .welcome-footer {
+                flex-direction: column;
+                gap: 12px;
+            }
+
+            .welcome-footer .btn {
+                width: 100%;
             }
 
             /* Alert stack */
             .alert {
                 flex-direction: column;
                 gap: 8px;
+            }
+
+            /* Stats horizontal card layout */
+            .stat-card {
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                padding: 14px 16px;
+            }
+
+            .stat-value {
+                font-size: 1.25rem;
+                margin-bottom: 0;
+            }
+
+            /* Breadcrumb more compact */
+            .breadcrumb {
+                max-width: calc(100vw - 130px);
+                font-size: 0.8rem;
+            }
+        }
+
+        /* ============================================================
+           TOUCH DEVICE OPTIMIZATIONS
+           ============================================================ */
+        @media (hover: none) and (pointer: coarse) {
+            /* Disable hover tooltips on touch devices */
+            [data-tooltip]::before,
+            [data-tooltip]::after {
+                display: none !important;
+            }
+
+            /* Remove hover effects that don't work well on touch */
+            .card-grid-item:hover,
+            .flow-card:hover,
+            .tree-item:hover {
+                transform: none;
+            }
+
+            /* Ensure all interactive elements have proper touch feedback */
+            .btn:active,
+            .tree-item:active,
+            .card-grid-item:active,
+            .doc-item:active {
+                opacity: 0.8;
+                transform: scale(0.98);
+            }
+
+            /* Larger touch targets for small interactive elements */
+            .checkbox-label {
+                min-height: 44px;
+                padding: 8px 0;
+                display: flex;
+                align-items: center;
+            }
+
+            .checkbox-label input[type="checkbox"],
+            input[type="radio"] {
+                width: 22px;
+                height: 22px;
+            }
+
+            /* Form select arrow larger tap area */
+            .form-select {
+                padding-right: 44px;
+                background-size: 18px;
             }
         }
 
@@ -2707,11 +3233,11 @@
                         <span class="tree-item-icon">👥</span>
                         <span class="tree-item-name">Todos os Alunos</span>
                     </div>
-                    <div class="tree-item" onclick="showPrompts()" data-tooltip="⚠️ Área técnica: instruções que controlam o comportamento da IA" data-tooltip-pos="right">
+                    <div class="tree-item technical-item" onclick="showPrompts()" data-tooltip="⚠️ Área técnica: instruções que controlam o comportamento da IA" data-tooltip-pos="right">
                         <span class="tree-item-icon">🧠</span>
                         <span class="tree-item-name">Prompts</span>
                     </div>
-                    <div class="tree-item" onclick="showProviders()" data-tooltip="⚠️ Área técnica: modelos de IA configurados (GPT, Claude, Gemini)" data-tooltip-pos="right">
+                    <div class="tree-item technical-item" onclick="showProviders()" data-tooltip="⚠️ Área técnica: modelos de IA configurados (GPT, Claude, Gemini)" data-tooltip-pos="right">
                         <span class="tree-item-icon">🤖</span>
                         <span class="tree-item-name">Modelos de LLM</span>
                     </div>
