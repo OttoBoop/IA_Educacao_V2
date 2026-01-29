@@ -4115,20 +4115,59 @@
                 `
             },
             'chat': {
-                titulo: '💬 Chat com IA',
+                titulo: '💬 Como Usar o Chat',
+                abas: [
+                    {
+                        id: 'professor',
+                        label: '🧑‍🏫 Para Professor',
+                        conteudo: `
+                            <p><strong>Perguntas úteis para você:</strong></p>
+                            <ul>
+                                <li>"Quais questões a turma mais errou?"</li>
+                                <li>"Faça um relatório da turma 9º A"</li>
+                                <li>"Compare o desempenho do João com a Maria"</li>
+                                <li>"Quais habilidades a turma precisa trabalhar?"</li>
+                            </ul>
+                            <p style="margin-top: 8px;">💡 <strong>Dica:</strong> Use os filtros para focar em uma turma ou atividade específica!</p>
+                        `
+                    },
+                    {
+                        id: 'aluno',
+                        label: '👤 Para Aluno',
+                        conteudo: `
+                            <p><strong>Perguntas úteis para o aluno:</strong></p>
+                            <ul>
+                                <li>"Por que errei a questão 3?"</li>
+                                <li>"Me explica como resolver esse tipo de problema"</li>
+                                <li>"O que preciso estudar para melhorar?"</li>
+                                <li>"Dá uma dica sobre frações"</li>
+                            </ul>
+                            <p style="margin-top: 8px;">🎯 <strong>Objetivo:</strong> O aluno entende onde errou e como melhorar!</p>
+                        `
+                    },
+                    {
+                        id: 'filtros',
+                        label: '🔍 Usar Filtros',
+                        conteudo: `
+                            <p><strong>Modos de seleção de contexto:</strong></p>
+                            <div class="help-step">
+                                <div class="help-step-number">1</div>
+                                <div class="help-step-text"><strong>Todos:</strong> A IA vê todos os documentos</div>
+                            </div>
+                            <div class="help-step">
+                                <div class="help-step-number">2</div>
+                                <div class="help-step-text"><strong>Filtrar:</strong> Selecione matéria, turma, aluno ou atividade</div>
+                            </div>
+                            <div class="help-step">
+                                <div class="help-step-number">3</div>
+                                <div class="help-step-text"><strong>Manual:</strong> Escolha documentos específicos</div>
+                            </div>
+                            <p style="margin-top: 8px;">💡 Quanto mais específico o filtro, mais precisa a resposta!</p>
+                        `
+                    }
+                ],
                 conteudo: `
-                    <p><strong>O Chat é onde tudo se conecta!</strong></p>
-                    <ul>
-                        <li><strong>Para você:</strong> "Quais questões a turma mais errou?" "Faça um relatório"</li>
-                        <li><strong>Para o aluno:</strong> "Por que errei a questão 3?" "Me explica como resolver"</li>
-                    </ul>
-                    <p><strong>Use os filtros:</strong></p>
-                    <ul>
-                        <li><strong>Por Atividade:</strong> A IA lê os documentos daquela prova</li>
-                        <li><strong>Por Turma/Aluno:</strong> Foca no desempenho específico</li>
-                        <li><strong>Sem filtro:</strong> Conhecimento geral da IA</li>
-                    </ul>
-                    <p style="margin-top: 12px;">🎯 <strong>Objetivo:</strong> O aluno entende onde errou e como melhorar!</p>
+                    <p>Use as abas acima para ver dicas específicas para professor, aluno ou como usar filtros.</p>
                 `
             },
             'prompts': {
@@ -4952,9 +4991,16 @@
                 const data = await api(`/materias/${materiaId}`);
                 setBreadcrumb([{nome: 'Início', onclick: 'showDashboard()'}, {nome: data.materia.nome, onclick: `showMateria('${materiaId}')`}]);
                 
+                clearHelpPanels();
                 document.getElementById('content').innerHTML = `
                     <div class="page-header" style="display: flex; justify-content: space-between; align-items: flex-start;">
-                        <div><h1 class="page-title">${data.materia.nome}</h1><p class="page-subtitle">${data.materia.descricao || 'Sem descrição'}</p></div>
+                        <div>
+                            <h1 class="page-title">
+                                ${data.materia.nome}
+                                <button class="section-help" onclick="toggleHelpPanel('materia')" title="Como usar esta matéria?">?</button>
+                            </h1>
+                            <p class="page-subtitle">${data.materia.descricao || 'Sem descrição'}</p>
+                        </div>
                         <button class="btn btn-danger btn-sm" onclick="excluirMateria('${materiaId}')">🗑️ Excluir Matéria</button>
                     </div>
                     <div class="card">
@@ -4975,9 +5021,16 @@
                 currentMateria = data.turma.materia_id;
                 setBreadcrumb([{nome: 'Início', onclick: 'showDashboard()'}, {nome: data.materia.nome, onclick: `showMateria('${data.materia.id}')`}, {nome: data.turma.nome, onclick: `showTurma('${turmaId}')`}]);
                 
+                clearHelpPanels();
                 document.getElementById('content').innerHTML = `
                     <div class="page-header" style="display: flex; justify-content: space-between; align-items: flex-start;">
-                        <div><h1 class="page-title">${data.turma.nome}</h1><p class="page-subtitle">${data.materia.nome} • ${data.turma.ano_letivo || ''}</p></div>
+                        <div>
+                            <h1 class="page-title">
+                                ${data.turma.nome}
+                                <button class="section-help" onclick="toggleHelpPanel('turma')" title="Como usar esta turma?">?</button>
+                            </h1>
+                            <p class="page-subtitle">${data.materia.nome} • ${data.turma.ano_letivo || ''}</p>
+                        </div>
                         <button class="btn btn-danger btn-sm" onclick="excluirTurma('${turmaId}')">🗑️ Excluir Turma</button>
                     </div>
                     <div style="display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 16px;">
