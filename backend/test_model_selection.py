@@ -62,7 +62,7 @@ def test_chat_model_selection(model: dict) -> tuple[bool, str]:
 
         if r.status_code == 200:
             data = r.json()
-            used_model = data.get("modelo", "unknown")
+            used_model = data.get("model", data.get("modelo", "unknown"))
 
             # Check if the returned model matches what we requested
             if used_model == expected_modelo:
