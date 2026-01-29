@@ -31,6 +31,11 @@
             --warning: #eab308;
             --danger: #ef4444;
             --purple: #a855f7;
+
+            /* === RESPONSIVE VARIABLES === */
+            --sidebar-width: 280px;
+            --touch-target-min: 44px;
+            --header-height: 64px;
         }
         
         * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -2439,6 +2444,239 @@
             text-align: right;
         }
 
+        /* ============================================================
+           MOBILE RESPONSIVE STYLES
+           ============================================================ */
+
+        /* Hamburger Button - hidden on desktop */
+        .hamburger-btn {
+            display: none;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            width: var(--touch-target-min);
+            height: var(--touch-target-min);
+            padding: 8px;
+            background: transparent;
+            border: none;
+            cursor: pointer;
+            gap: 5px;
+            margin-right: 12px;
+            flex-shrink: 0;
+        }
+
+        .hamburger-line {
+            width: 22px;
+            height: 2px;
+            background: var(--text);
+            border-radius: 2px;
+            transition: all 0.3s ease;
+        }
+
+        .hamburger-btn.active .hamburger-line:nth-child(1) {
+            transform: rotate(45deg) translate(5px, 5px);
+        }
+        .hamburger-btn.active .hamburger-line:nth-child(2) {
+            opacity: 0;
+        }
+        .hamburger-btn.active .hamburger-line:nth-child(3) {
+            transform: rotate(-45deg) translate(5px, -5px);
+        }
+
+        /* Sidebar Overlay */
+        .sidebar-overlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.6);
+            z-index: 49;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+        .sidebar-overlay.active {
+            display: block;
+            opacity: 1;
+        }
+
+        /* ============================================================
+           TABLET BREAKPOINT (max-width: 768px)
+           ============================================================ */
+        @media screen and (max-width: 768px) {
+            /* Sidebar - slide out by default */
+            .sidebar {
+                position: fixed;
+                left: 0;
+                top: 0;
+                height: 100vh;
+                transform: translateX(-100%);
+                z-index: 50;
+                transition: transform 0.3s ease;
+            }
+            .sidebar.mobile-open {
+                transform: translateX(0);
+            }
+
+            /* Main content - full width */
+            .main {
+                margin-left: 0;
+                width: 100%;
+            }
+
+            /* Header */
+            .hamburger-btn {
+                display: flex;
+            }
+            .header {
+                padding: 12px 16px;
+            }
+
+            /* Content */
+            .content {
+                padding: 16px;
+            }
+
+            /* Grids */
+            .stats-grid {
+                grid-template-columns: repeat(2, 1fr);
+                gap: 12px;
+            }
+            .card-grid {
+                grid-template-columns: 1fr;
+            }
+
+            /* Buttons - touch friendly */
+            .btn {
+                min-height: var(--touch-target-min);
+                padding: 12px 16px;
+            }
+            .btn-sm {
+                min-height: 36px;
+                padding: 8px 12px;
+            }
+
+            /* Forms - prevent iOS zoom */
+            .form-input, .form-select, .form-textarea {
+                min-height: var(--touch-target-min);
+                font-size: 16px;
+            }
+
+            /* Modals */
+            .modal {
+                max-width: calc(100vw - 32px);
+                max-height: calc(100vh - 32px);
+                margin: 16px;
+            }
+            .modal-welcome .modal,
+            .modal-tutorial .modal {
+                max-width: calc(100vw - 32px);
+            }
+            .modal-body {
+                padding: 16px;
+            }
+
+            /* Tables */
+            .table-container {
+                overflow-x: auto;
+                -webkit-overflow-scrolling: touch;
+            }
+
+            /* Tabs - horizontal scroll */
+            .tabs {
+                overflow-x: auto;
+                flex-wrap: nowrap;
+                -webkit-overflow-scrolling: touch;
+            }
+            .tab {
+                flex-shrink: 0;
+            }
+
+            /* Tree items - touch friendly */
+            .tree-item {
+                min-height: var(--touch-target-min);
+                padding: 10px 12px;
+            }
+
+            /* Breadcrumb - prevent overflow */
+            .breadcrumb {
+                overflow-x: auto;
+                flex-wrap: nowrap;
+                max-width: calc(100vw - 140px);
+            }
+
+            /* Doc items */
+            .doc-item {
+                flex-wrap: wrap;
+            }
+            .doc-actions {
+                width: 100%;
+                justify-content: flex-end;
+                margin-top: 8px;
+            }
+        }
+
+        /* ============================================================
+           PHONE BREAKPOINT (max-width: 480px)
+           ============================================================ */
+        @media screen and (max-width: 480px) {
+            /* Sidebar full width */
+            .sidebar {
+                width: 100vw;
+            }
+
+            /* Stats single column */
+            .stats-grid {
+                grid-template-columns: 1fr;
+            }
+
+            /* Header compact */
+            .header {
+                padding: 10px 12px;
+            }
+            .header-actions .btn span:not(:first-child) {
+                display: none;
+            }
+
+            /* Content compact */
+            .content {
+                padding: 12px;
+            }
+
+            /* Cards compact */
+            .card {
+                padding: 16px;
+            }
+            .card-icon {
+                width: 40px;
+                height: 40px;
+            }
+
+            /* Page title smaller */
+            .page-title {
+                font-size: 1.1rem;
+            }
+
+            /* Modals smaller margins */
+            .modal {
+                max-width: calc(100vw - 16px);
+                margin: 8px;
+                border-radius: 12px;
+            }
+            .modal-overlay {
+                padding: 8px;
+            }
+
+            /* Tutorial modal full height */
+            .modal-tutorial .modal {
+                height: calc(100vh - 16px);
+            }
+
+            /* Alert stack */
+            .alert {
+                flex-direction: column;
+                gap: 8px;
+            }
+        }
+
     </style>
 </head>
 <body>
@@ -2505,10 +2743,19 @@
                 </div>
             </div>
         </aside>
-        
+
+        <!-- Mobile sidebar overlay -->
+        <div class="sidebar-overlay" id="sidebar-overlay" onclick="closeMobileSidebar()"></div>
+
         <!-- Main Content -->
         <main class="main">
             <header class="header">
+                <!-- Mobile hamburger menu -->
+                <button class="hamburger-btn" id="hamburger-btn" onclick="toggleMobileSidebar()" aria-label="Menu">
+                    <span class="hamburger-line"></span>
+                    <span class="hamburger-line"></span>
+                    <span class="hamburger-line"></span>
+                </button>
                 <div class="breadcrumb" id="breadcrumb">
                     <span class="breadcrumb-item current">Início</span>
                 </div>
@@ -3528,11 +3775,45 @@
 
     <script>
         // ============================================================
+        // MOBILE SIDEBAR TOGGLE
+        // ============================================================
+        function toggleMobileSidebar() {
+            const sidebar = document.querySelector('.sidebar');
+            const overlay = document.getElementById('sidebar-overlay');
+            const hamburger = document.getElementById('hamburger-btn');
+
+            sidebar.classList.toggle('mobile-open');
+            overlay.classList.toggle('active');
+            hamburger.classList.toggle('active');
+
+            // Prevent body scroll when sidebar is open
+            document.body.style.overflow = sidebar.classList.contains('mobile-open') ? 'hidden' : '';
+        }
+
+        function closeMobileSidebar() {
+            const sidebar = document.querySelector('.sidebar');
+            const overlay = document.getElementById('sidebar-overlay');
+            const hamburger = document.getElementById('hamburger-btn');
+
+            sidebar.classList.remove('mobile-open');
+            overlay.classList.remove('active');
+            hamburger.classList.remove('active');
+            document.body.style.overflow = '';
+        }
+
+        // Close sidebar on resize to desktop
+        window.addEventListener('resize', () => {
+            if (window.innerWidth > 768) {
+                closeMobileSidebar();
+            }
+        });
+
+        // ============================================================
         // CONFIGURAÇÃO
         // ============================================================
         // API URL - relative path works in both local and production
         const API = '/api';
-        
+
         let currentView = 'dashboard';
         let currentMateria = null;
         let currentTurma = null;
@@ -4819,6 +5100,13 @@
             loadNiveisEnsino();
             loadChatGeralProviders();
             checkFirstVisit();
+
+            // Close mobile sidebar when clicking nav items
+            document.querySelector('.nav-tree')?.addEventListener('click', (e) => {
+                if (e.target.closest('.tree-item') && window.innerWidth <= 768) {
+                    closeMobileSidebar();
+                }
+            });
         });
         
         // ============================================================
@@ -4892,7 +5180,7 @@
             }
             
             container.innerHTML = materias.map(materia => `
-                <div class="tree-item" onclick="showMateria('${materia.id}')">
+                <div class="tree-item" onclick="showMateria('${materia.id}')" title="${materia.nome}">
                     <span class="tree-toggle ${materia.turmas.length > 0 ? '' : 'hidden'}" onclick="event.stopPropagation(); toggleTree(this)">▶</span>
                     <span class="tree-item-icon">📚</span>
                     <span class="tree-item-name">${materia.nome}</span>
@@ -4900,7 +5188,7 @@
                 </div>
                 <div class="tree-children" id="tree-materia-${materia.id}">
                     ${materia.turmas.map(turma => `
-                        <div class="tree-item" onclick="showTurma('${turma.id}')">
+                        <div class="tree-item" onclick="showTurma('${turma.id}')" title="${turma.nome}">
                             <span class="tree-toggle ${turma.atividades.length > 0 ? '' : 'hidden'}" onclick="event.stopPropagation(); toggleTree(this)">▶</span>
                             <span class="tree-item-icon">👥</span>
                             <span class="tree-item-name">${turma.nome}</span>
@@ -4908,7 +5196,7 @@
                         </div>
                         <div class="tree-children" id="tree-turma-${turma.id}">
                             ${turma.atividades.map(ativ => `
-                                <div class="tree-item" onclick="showAtividade('${ativ.id}')">
+                                <div class="tree-item" onclick="showAtividade('${ativ.id}')" title="${ativ.nome}">
                                     <span class="tree-item-icon">📝</span>
                                     <span class="tree-item-name">${ativ.nome}</span>
                                 </div>

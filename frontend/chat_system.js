@@ -52,7 +52,9 @@ const TIPO_DOC_LABELS = {
     'gabarito': '✅ Gabarito',
     'criterios_correcao': '📋 Critérios',
     'prova_respondida': '📝 Prova do Aluno',
-    'extracao_questoes': '🔍 Extração',
+    'extracao_questoes': '🔍 Extração Questões',
+    'extracao_gabarito': '🔍 Extração Gabarito',
+    'extracao_respostas': '🔍 Extração Respostas',
     'correcao': '✏️ Correção',
     'analise_habilidades': '📊 Análise',
     'relatorio_final': '📑 Relatório'
@@ -1418,14 +1420,21 @@ function updateDocumentsList() {
             // Determinar classe de exclusao (nao usar se tiver override de inclusao)
             const excludedClass = (!isIncluded && !isOverrideIncluded) ? 'excluded' : '';
 
+            // Criar nome legivel: tipo + aluno (se houver)
+            const tipoLabel = TIPO_DOC_LABELS[doc.tipo] || doc.tipo;
+            const displayName = doc.aluno_nome
+                ? `${tipoLabel.split(' ')[1] || tipoLabel}`
+                : tipoLabel;
+            const tooltipText = `${tipoLabel}${doc.aluno_nome ? ' - ' + doc.aluno_nome : ''}\n${doc.nome_arquivo || ''}`;
+
             html += `
                 <div class="doc-item-mini ${excludedClass} ${corClass}"
                      onclick="toggleDocSelection('${doc.id}')"
-                     title="${doc.nome_arquivo || doc.tipo}${isOverrideIncluded ? ' (adicionado manualmente)' : ''}${isOverrideExcluded ? ' (removido manualmente)' : ''}">
+                     title="${tooltipText.trim()}${isOverrideIncluded ? '\n(adicionado manualmente)' : ''}${isOverrideExcluded ? '\n(removido manualmente)' : ''}">
                     <input type="checkbox" ${isIncluded ? 'checked' : ''} onclick="event.stopPropagation()">
-                    <span class="doc-type-icon">${TIPO_DOC_LABELS[doc.tipo]?.substring(0, 2) || '📄'}</span>
-                    <span class="doc-name">${truncateText(doc.nome_arquivo || doc.tipo, 25)}</span>
-                    ${doc.aluno_nome ? `<span class="doc-aluno">${truncateText(doc.aluno_nome, 15)}</span>` : ''}
+                    <span class="doc-type-icon">${tipoLabel.substring(0, 2) || '📄'}</span>
+                    <span class="doc-name">${truncateText(displayName, 18)}</span>
+                    ${doc.aluno_nome ? `<span class="doc-aluno" title="${doc.aluno_nome}">${truncateText(doc.aluno_nome, 18)}</span>` : ''}
                 </div>
             `;
         });
@@ -2616,6 +2625,11 @@ function injectChatStyles() {
             background: var(--bg-input);
             padding: 1px 6px;
             border-radius: 8px;
+            max-width: 120px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            flex-shrink: 0;
         }
         
         .empty-state-mini {
@@ -3011,8 +3025,181 @@ function injectChatStyles() {
         .context-warning {
             color: var(--amber);
         }
+
+        /* ============================================================
+           CHAT RESPONSIVE - TABLET (max-width: 768px)
+           ============================================================ */
+        @media screen and (max-width: 768px) {
+            .chat-layout {
+                flex-direction: column;
+                height: calc(100vh - 80px);
+            }
+
+            .chat-context-panel {
+                width: 100%;
+                min-width: 100%;
+                max-height: 45vh;
+                border-right: none;
+                border-bottom: 1px solid var(--border);
+            }
+
+            .chat-context-panel.collapsed {
+                width: 100%;
+                min-width: 100%;
+                max-height: 48px;
+            }
+
+            .chat-context-panel.collapsed .context-body {
+                display: none;
+            }
+
+            #context-toggle-icon {
+                transform: rotate(90deg);
+            }
+            .chat-context-panel.collapsed #context-toggle-icon {
+                transform: rotate(-90deg);
+            }
+
+            .context-body {
+                max-height: calc(45vh - 60px);
+                overflow-y: auto;
+            }
+
+            .docs-list {
+                max-height: 150px;
+            }
+
+            .chat-main {
+                flex: 1;
+                min-height: 0;
+            }
+
+            .chat-header {
+                padding: 12px 16px;
+                flex-wrap: wrap;
+                gap: 8px;
+            }
+
+            .chat-header-right {
+                width: 100%;
+                justify-content: space-between;
+            }
+
+            .chat-header-right .form-select {
+                flex: 1;
+                min-width: 0 !important;
+            }
+
+            .chat-messages {
+                padding: 12px;
+            }
+
+            .message-content {
+                padding: 12px 14px;
+            }
+
+            .chat-input-area {
+                padding: 12px 16px;
+            }
+
+            .chat-input {
+                font-size: 16px; /* Prevents iOS zoom */
+            }
+
+            /* Touch-friendly buttons */
+            .mode-btn,
+            .filter-dropdown-trigger,
+            .filter-dropdown-item,
+            .doc-item-mini {
+                min-height: 44px;
+                padding: 10px 12px;
+            }
+
+            .document-open-btn,
+            .document-download-btn {
+                min-height: 44px;
+                padding: 10px 16px;
+            }
+        }
+
+        /* ============================================================
+           CHAT RESPONSIVE - PHONE (max-width: 480px)
+           ============================================================ */
+        @media screen and (max-width: 480px) {
+            .chat-layout {
+                height: calc(100vh - 60px);
+            }
+
+            .chat-context-panel {
+                max-height: 40vh;
+            }
+
+            .context-mode-buttons {
+                flex-wrap: wrap;
+            }
+
+            .mode-btn {
+                flex: 1 1 45%;
+                font-size: 0.75rem;
+                padding: 8px;
+            }
+
+            .chat-header {
+                padding: 10px 12px;
+            }
+
+            .chat-header-left {
+                width: 100%;
+            }
+
+            .chat-header-right {
+                flex-direction: column;
+                align-items: stretch;
+            }
+
+            .form-label-inline {
+                display: none;
+            }
+
+            .chat-messages {
+                padding: 10px;
+            }
+
+            .message {
+                max-width: 95%;
+            }
+
+            .chat-input-area {
+                padding: 10px 12px;
+            }
+
+            .chat-input-info {
+                flex-direction: column;
+                gap: 4px;
+                font-size: 0.75rem;
+            }
+
+            .document-block {
+                padding: 12px;
+            }
+
+            .document-block-buttons {
+                flex-direction: column;
+            }
+
+            .document-open-btn,
+            .document-download-btn {
+                width: 100%;
+                justify-content: center;
+            }
+
+            .filter-chip {
+                font-size: 0.7rem;
+                padding: 2px 6px;
+            }
+        }
     `;
-    
+
     document.head.appendChild(styles);
 }
 
