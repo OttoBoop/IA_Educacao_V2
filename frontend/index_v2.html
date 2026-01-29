@@ -7504,6 +7504,15 @@
             } catch (e) { showToast(e.message || 'Erro ao excluir', 'error'); }
         }
 
+        async function excluirDocumentosAluno(atividadeId, alunoId) {
+            if (!confirm('Excluir TODOS os documentos deste aluno nesta atividade? Esta ação não pode ser desfeita.')) return;
+            try {
+                const resp = await api(`/atividades/${atividadeId}/alunos/${alunoId}/documentos`, { method: 'DELETE' });
+                showToast(`${resp.deleted_count} documento(s) excluído(s)!`, 'success');
+                showResultadoAluno(atividadeId, alunoId);
+            } catch (e) { showToast(e.message || 'Erro ao excluir documentos', 'error'); }
+        }
+
         async function criarProvider() {
             const providerType = document.getElementById('input-provider-tipo')?.value;
             const name = document.getElementById('input-provider-nome')?.value.trim();
@@ -8085,6 +8094,7 @@
                     <div style="display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 16px;">
                         <button class="btn" onclick="openModalExecucao('${atividadeId}')">⚙️ Executar Etapa</button>
                         <button class="btn btn-primary" onclick="openModalPipelineCompleto('${atividadeId}', 'aluno')">⚡ Pipeline Aluno</button>
+                        <button class="btn btn-danger" onclick="excluirDocumentosAluno('${atividadeId}', '${alunoId}')">🗑️ Excluir Todos Documentos</button>
                         <button class="btn" onclick="showAtividade('${atividadeId}')">← Voltar para Atividade</button>
                     </div>
                     ${pipelineStatus}

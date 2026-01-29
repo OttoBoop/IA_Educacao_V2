@@ -882,7 +882,34 @@ class StorageManagerV2:
         conn.close()
         
         return True
-    
+
+    def deletar_documentos_aluno_atividade(self, atividade_id: str, aluno_id: str) -> int:
+        """Deleta todos os documentos de um aluno em uma atividade específica"""
+        # Buscar documentos do aluno nesta atividade
+        conn = self._get_connection()
+        c = conn.cursor()
+        c.execute('''
+            SELECT id, caminho_arquivo FROM documentos
+            WHERE atividade_id = ? AND aluno_id = ?
+        ''', (atividade_id, aluno_id))
+        rows = c.fetchall()
+
+        count = 0
+        for row in rows:
+            # Remover arquivo físico
+            if row['caminho_arquivo']:
+                arquivo = Path(row['caminho_arquivo'])
+                if arquivo.exists():
+                    arquivo.unlink()
+            count += 1
+
+        # Remover do banco
+        c.execute('DELETE FROM documentos WHERE atividade_id = ? AND aluno_id = ?', (atividade_id, aluno_id))
+        conn.commit()
+        conn.close()
+
+        return count
+
     def renomear_documento(self, documento_id: str, novo_nome: str) -> Optional[Documento]:
         """Renomeia um documento"""
         doc = self.get_documento(documento_id)

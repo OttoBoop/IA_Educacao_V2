@@ -650,6 +650,13 @@ async def deletar_documento(documento_id: str):
     return {"success": True, "deleted": documento_id}
 
 
+@app.delete("/api/atividades/{atividade_id}/alunos/{aluno_id}/documentos", tags=["Documentos"])
+async def deletar_documentos_aluno_atividade(atividade_id: str, aluno_id: str):
+    """Deleta todos os documentos de um aluno em uma atividade específica"""
+    count = storage.deletar_documentos_aluno_atividade(atividade_id, aluno_id)
+    return {"success": True, "deleted_count": count, "atividade_id": atividade_id, "aluno_id": aluno_id}
+
+
 @app.put("/api/documentos/{documento_id}/renomear", tags=["Documentos"])
 async def renomear_documento(documento_id: str, novo_nome: str = Form(...)):
     """Renomeia um documento"""
