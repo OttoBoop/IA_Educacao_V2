@@ -132,51 +132,41 @@ function renderChatView(models, materias, alunos) {
                     
                     <!-- Filtros (aparecem no modo 'filtered') -->
                     <div class="context-filters" id="context-filters" style="display: none;">
-                        <!-- Filtro por Alunos (primeiro para permitir comparar alunos de diferentes matérias) -->
+                        <!-- Filtro por Alunos -->
                         <div class="filter-group">
                             <label class="form-label">👤 Alunos</label>
-                            <select class="form-select filter-select" id="filter-alunos" multiple onchange="onFilterAlunosChange()">
-                                ${alunos.map(a => `<option value="${a.id}">${a.nome}</option>`).join('')}
-                            </select>
+                            <div id="filter-alunos-container"></div>
                             <div class="filter-chips" id="chips-alunos"></div>
                         </div>
-                        
+
                         <!-- Filtro por Matéria -->
                         <div class="filter-group">
                             <label class="form-label">📚 Matérias</label>
-                            <select class="form-select filter-select" id="filter-materias" multiple onchange="onFilterMateriasChange()">
-                                ${materias.map(m => `<option value="${m.id}">${m.nome}</option>`).join('')}
-                            </select>
+                            <div id="filter-materias-container"></div>
                             <div class="filter-chips" id="chips-materias"></div>
                         </div>
-                        
-                        <!-- Filtro por Turma (depende da matéria) -->
+
+                        <!-- Filtro por Turma -->
                         <div class="filter-group">
                             <label class="form-label">👥 Turmas</label>
-                            <select class="form-select filter-select" id="filter-turmas" multiple onchange="onFilterTurmasChange()">
-                                <option value="" disabled>Selecione matéria(s) primeiro</option>
-                            </select>
+                            <div id="filter-turmas-container"></div>
                             <div class="filter-chips" id="chips-turmas"></div>
                         </div>
-                        
-                        <!-- Filtro por Atividade (depende da turma) -->
+
+                        <!-- Filtro por Atividade -->
                         <div class="filter-group">
                             <label class="form-label">📝 Atividades</label>
-                            <select class="form-select filter-select" id="filter-atividades" multiple onchange="onFilterAtividadesChange()">
-                                <option value="" disabled>Selecione turma(s) primeiro</option>
-                            </select>
+                            <div id="filter-atividades-container"></div>
                             <div class="filter-chips" id="chips-atividades"></div>
                         </div>
-                        
+
                         <!-- Filtro por Tipo de Documento -->
                         <div class="filter-group">
                             <label class="form-label">📄 Tipos de Documento</label>
-                            <select class="form-select filter-select" id="filter-tipos" multiple onchange="onFilterTiposChange()">
-                                ${Object.entries(TIPO_DOC_LABELS).map(([k, v]) => `<option value="${k}">${v}</option>`).join('')}
-                            </select>
+                            <div id="filter-tipos-container"></div>
                             <div class="filter-chips" id="chips-tipos"></div>
                         </div>
-                        
+
                         <!-- Toggle para ocultar arquivos JSON -->
                         <div class="filter-group" style="border-top: 1px solid var(--border); padding-top: 10px; margin-top: 10px;">
                             <label class="form-label" style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
@@ -187,7 +177,7 @@ function renderChatView(models, materias, alunos) {
                                 JSONs são dados brutos. PDFs/CSVs são mais visuais.
                             </small>
                         </div>
-                        
+
                         <button class="btn btn-sm" onclick="clearAllFilters()" style="width: 100%; margin-top: 8px;">
                             🗑️ Limpar Filtros
                         </button>
@@ -299,12 +289,147 @@ function setupChatEventListeners() {
                 sendChatMessage();
             }
         });
-        
+
         // Auto-resize
         input.addEventListener('input', () => {
             input.style.height = 'auto';
             input.style.height = Math.min(input.scrollHeight, 200) + 'px';
         });
+    }
+
+    // Inicializar dropdowns de filtro melhorados
+    initFilterDropdowns();
+}
+
+/**
+ * Inicializa os dropdowns customizados de filtro
+ */
+function initFilterDropdowns() {
+    // Alunos
+    const alunos = (window._chatAlunos || []).map(a => ({ id: a.id, nome: a.nome }));
+    createFilterDropdown('filter-alunos-container', alunos, (selected) => {
+        window.chatState.context.filters.alunos = selected.length > 0 ? selected : null;
+        updateFilterChips('alunos', selected, window._chatAlunos, 'nome');
+        window.chatState.context.intersectionCache = calcularIntersecoes(selected);
+        atualizarIndicadoresVisuais();
+        updateDocumentsList();
+    }, { placeholder: 'Selecionar alunos...', searchable: true });
+
+    // Matérias
+    const materias = (window._chatMaterias || []).map(m => ({ id: m.id, nome: m.nome }));
+    createFilterDropdown('filter-materias-container', materias, async (selected) => {
+        window.chatState.context.filters.materias = selected.length > 0 ? selected : null;
+        updateFilterChips('materias', selected, window._chatMaterias, 'nome');
+        await loadTurmasForMateriasDropdown(selected);
+        clearDependentFilters(['turmas', 'atividades']);
+        updateDocumentsList();
+    }, { placeholder: 'Selecionar matérias...', searchable: true });
+
+    // Turmas (inicialmente vazio)
+    createFilterDropdown('filter-turmas-container', [], () => {}, {
+        placeholder: 'Selecione matéria(s) primeiro',
+        emptyText: 'Selecione matéria(s) primeiro'
+    });
+
+    // Atividades (inicialmente vazio)
+    createFilterDropdown('filter-atividades-container', [], () => {}, {
+        placeholder: 'Selecione turma(s) primeiro',
+        emptyText: 'Selecione turma(s) primeiro'
+    });
+
+    // Tipos de documento
+    const tipos = Object.entries(TIPO_DOC_LABELS).map(([k, v]) => ({ id: k, nome: v }));
+    createFilterDropdown('filter-tipos-container', tipos, (selected) => {
+        window.chatState.context.filters.tipos = selected.length > 0 ? selected : null;
+        const tiposList = selected.map(t => ({ id: t, nome: TIPO_DOC_LABELS[t] || t }));
+        updateFilterChips('tipos', selected, tiposList, 'nome');
+        updateDocumentsList();
+    }, { placeholder: 'Selecionar tipos...' });
+}
+
+/**
+ * Atualiza dropdown de turmas baseado nas matérias selecionadas
+ */
+async function loadTurmasForMateriasDropdown(materiaIds) {
+    if (!materiaIds || materiaIds.length === 0) {
+        createFilterDropdown('filter-turmas-container', [], () => {}, {
+            placeholder: 'Selecione matéria(s) primeiro',
+            emptyText: 'Selecione matéria(s) primeiro'
+        });
+        window.chatState.context.cache.turmasDisponiveis = [];
+        return;
+    }
+
+    try {
+        const turmasPromises = materiaIds.map(id => api(`/materias/${id}/turmas`).catch(() => ({ turmas: [] })));
+        const results = await Promise.all(turmasPromises);
+        const todasTurmas = results.flatMap(r => r.turmas || []);
+
+        // Remover duplicadas
+        const turmasUnicas = [];
+        const ids = new Set();
+        for (const t of todasTurmas) {
+            if (!ids.has(t.id)) {
+                ids.add(t.id);
+                turmasUnicas.push(t);
+            }
+        }
+
+        window.chatState.context.cache.turmasDisponiveis = turmasUnicas;
+
+        const turmasItems = turmasUnicas.map(t => ({ id: t.id, nome: t.nome }));
+        createFilterDropdown('filter-turmas-container', turmasItems, async (selected) => {
+            window.chatState.context.filters.turmas = selected.length > 0 ? selected : null;
+            updateFilterChips('turmas', selected, window.chatState.context.cache.turmasDisponiveis, 'nome');
+            await loadAtividadesForTurmasDropdown(selected);
+            clearDependentFilters(['atividades']);
+            updateDocumentsList();
+        }, { placeholder: 'Selecionar turmas...', searchable: turmasUnicas.length > 5 });
+
+    } catch (e) {
+        console.error('Erro ao carregar turmas:', e);
+    }
+}
+
+/**
+ * Atualiza dropdown de atividades baseado nas turmas selecionadas
+ */
+async function loadAtividadesForTurmasDropdown(turmaIds) {
+    if (!turmaIds || turmaIds.length === 0) {
+        createFilterDropdown('filter-atividades-container', [], () => {}, {
+            placeholder: 'Selecione turma(s) primeiro',
+            emptyText: 'Selecione turma(s) primeiro'
+        });
+        window.chatState.context.cache.atividadesDisponiveis = [];
+        return;
+    }
+
+    try {
+        const atividadesPromises = turmaIds.map(id => api(`/turmas/${id}/atividades`).catch(() => ({ atividades: [] })));
+        const results = await Promise.all(atividadesPromises);
+        const todasAtividades = results.flatMap(r => r.atividades || []);
+
+        // Remover duplicadas
+        const atividadesUnicas = [];
+        const ids = new Set();
+        for (const a of todasAtividades) {
+            if (!ids.has(a.id)) {
+                ids.add(a.id);
+                atividadesUnicas.push(a);
+            }
+        }
+
+        window.chatState.context.cache.atividadesDisponiveis = atividadesUnicas;
+
+        const atividadesItems = atividadesUnicas.map(a => ({ id: a.id, nome: a.nome }));
+        createFilterDropdown('filter-atividades-container', atividadesItems, (selected) => {
+            window.chatState.context.filters.atividades = selected.length > 0 ? selected : null;
+            updateFilterChips('atividades', selected, window.chatState.context.cache.atividadesDisponiveis, 'nome');
+            updateDocumentsList();
+        }, { placeholder: 'Selecionar atividades...', searchable: atividadesUnicas.length > 5 });
+
+    } catch (e) {
+        console.error('Erro ao carregar atividades:', e);
     }
 }
 
@@ -1756,7 +1881,146 @@ function renderLegendaIntersecao() {
 }
 
 // ============================================================
-// FILTROS CASCATA
+// FILTROS CASCATA - IMPROVED DROPDOWNS
+// ============================================================
+
+/**
+ * Cria um dropdown customizado com checkboxes
+ * @param {string} containerId - ID do container onde criar o dropdown
+ * @param {Array} items - Lista de itens {id, nome, count?}
+ * @param {Function} onChange - Callback quando seleção muda
+ * @param {Object} options - Opções adicionais
+ */
+function createFilterDropdown(containerId, items, onChange, options = {}) {
+    const container = document.getElementById(containerId);
+    if (!container) return;
+
+    const placeholder = options.placeholder || 'Selecione...';
+    const emptyText = options.emptyText || 'Nenhuma opção disponível';
+    const searchable = options.searchable !== false && items.length > 5;
+    const selected = options.selected || [];
+
+    const dropdownId = `dropdown-${containerId}`;
+
+    container.innerHTML = `
+        <div class="filter-dropdown" id="${dropdownId}">
+            <div class="filter-dropdown-trigger" onclick="toggleFilterDropdown('${dropdownId}')">
+                <span class="trigger-text">${selected.length > 0 ? `${selected.length} selecionado(s)` : placeholder}</span>
+                <span class="filter-dropdown-arrow">▼</span>
+            </div>
+            <div class="filter-dropdown-menu">
+                ${searchable ? `
+                    <div class="filter-dropdown-search">
+                        <input type="text" placeholder="Buscar..." oninput="filterDropdownItems('${dropdownId}', this.value)">
+                    </div>
+                ` : ''}
+                <div class="filter-dropdown-items">
+                    ${items.length === 0 ? `<div class="filter-dropdown-empty">${emptyText}</div>` :
+                        items.map(item => `
+                            <div class="filter-dropdown-item ${selected.includes(item.id) ? 'checked' : ''}"
+                                 data-value="${item.id}"
+                                 onclick="toggleDropdownItem('${dropdownId}', '${item.id}')">
+                                <input type="checkbox" ${selected.includes(item.id) ? 'checked' : ''}>
+                                <span class="item-label">${item.nome}</span>
+                                ${item.count !== undefined ? `<span class="item-count">${item.count}</span>` : ''}
+                            </div>
+                        `).join('')
+                    }
+                </div>
+            </div>
+        </div>
+    `;
+
+    // Guardar callback e items
+    container._dropdownCallback = onChange;
+    container._dropdownItems = items;
+}
+
+function toggleFilterDropdown(dropdownId) {
+    const dropdown = document.getElementById(dropdownId);
+    if (!dropdown) return;
+
+    const wasOpen = dropdown.classList.contains('open');
+
+    // Fechar todos os outros dropdowns
+    document.querySelectorAll('.filter-dropdown.open').forEach(d => {
+        d.classList.remove('open');
+        d.querySelector('.filter-dropdown-trigger')?.classList.remove('active');
+    });
+
+    if (!wasOpen) {
+        dropdown.classList.add('open');
+        dropdown.querySelector('.filter-dropdown-trigger')?.classList.add('active');
+
+        // Focus no search se existir
+        const searchInput = dropdown.querySelector('.filter-dropdown-search input');
+        if (searchInput) {
+            setTimeout(() => searchInput.focus(), 100);
+        }
+    }
+}
+
+function toggleDropdownItem(dropdownId, value) {
+    const dropdown = document.getElementById(dropdownId);
+    if (!dropdown) return;
+
+    const item = dropdown.querySelector(`.filter-dropdown-item[data-value="${value}"]`);
+    if (!item) return;
+
+    const checkbox = item.querySelector('input[type="checkbox"]');
+    checkbox.checked = !checkbox.checked;
+    item.classList.toggle('checked', checkbox.checked);
+
+    // Atualizar texto do trigger
+    const selectedCount = dropdown.querySelectorAll('.filter-dropdown-item.checked').length;
+    const trigger = dropdown.querySelector('.trigger-text');
+    if (trigger) {
+        trigger.textContent = selectedCount > 0 ? `${selectedCount} selecionado(s)` : 'Selecione...';
+    }
+
+    // Chamar callback
+    const container = dropdown.parentElement;
+    if (container._dropdownCallback) {
+        const selectedValues = Array.from(dropdown.querySelectorAll('.filter-dropdown-item.checked'))
+            .map(el => el.dataset.value);
+        container._dropdownCallback(selectedValues);
+    }
+}
+
+function filterDropdownItems(dropdownId, searchText) {
+    const dropdown = document.getElementById(dropdownId);
+    if (!dropdown) return;
+
+    const search = searchText.toLowerCase().trim();
+    dropdown.querySelectorAll('.filter-dropdown-item').forEach(item => {
+        const label = item.querySelector('.item-label')?.textContent.toLowerCase() || '';
+        item.style.display = label.includes(search) ? 'flex' : 'none';
+    });
+}
+
+function getDropdownSelectedValues(containerId) {
+    const container = document.getElementById(containerId);
+    if (!container) return [];
+
+    const dropdown = container.querySelector('.filter-dropdown');
+    if (!dropdown) return [];
+
+    return Array.from(dropdown.querySelectorAll('.filter-dropdown-item.checked'))
+        .map(el => el.dataset.value);
+}
+
+// Fechar dropdowns ao clicar fora
+document.addEventListener('click', (e) => {
+    if (!e.target.closest('.filter-dropdown')) {
+        document.querySelectorAll('.filter-dropdown.open').forEach(d => {
+            d.classList.remove('open');
+            d.querySelector('.filter-dropdown-trigger')?.classList.remove('active');
+        });
+    }
+});
+
+// ============================================================
+// FILTROS CASCATA - ORIGINAL FUNCTIONS (UPDATED)
 // ============================================================
 async function onFilterAlunosChange() {
     const select = document.getElementById('filter-alunos');
@@ -2066,7 +2330,130 @@ function injectChatStyles() {
             min-height: 60px;
             font-size: 0.85rem;
         }
-        
+
+        /* === IMPROVED FILTER DROPDOWNS === */
+        .filter-dropdown {
+            position: relative;
+            width: 100%;
+        }
+
+        .filter-dropdown-trigger {
+            width: 100%;
+            padding: 8px 12px;
+            background: var(--bg-input);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            cursor: pointer;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 0.85rem;
+            color: var(--text);
+            transition: border-color 0.2s;
+        }
+
+        .filter-dropdown-trigger:hover {
+            border-color: var(--primary);
+        }
+
+        .filter-dropdown-trigger.active {
+            border-color: var(--primary);
+            border-bottom-left-radius: 0;
+            border-bottom-right-radius: 0;
+        }
+
+        .filter-dropdown-arrow {
+            transition: transform 0.2s;
+        }
+
+        .filter-dropdown-trigger.active .filter-dropdown-arrow {
+            transform: rotate(180deg);
+        }
+
+        .filter-dropdown-menu {
+            display: none;
+            position: absolute;
+            top: 100%;
+            left: 0;
+            right: 0;
+            background: var(--bg-card);
+            border: 1px solid var(--primary);
+            border-top: none;
+            border-radius: 0 0 6px 6px;
+            max-height: 200px;
+            overflow-y: auto;
+            z-index: 100;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+        }
+
+        .filter-dropdown.open .filter-dropdown-menu {
+            display: block;
+        }
+
+        .filter-dropdown-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 12px;
+            cursor: pointer;
+            font-size: 0.85rem;
+            transition: background 0.1s;
+        }
+
+        .filter-dropdown-item:hover {
+            background: var(--bg-hover);
+        }
+
+        .filter-dropdown-item input[type="checkbox"] {
+            width: 16px;
+            height: 16px;
+            cursor: pointer;
+            accent-color: var(--primary);
+        }
+
+        .filter-dropdown-item.checked {
+            background: rgba(59, 130, 246, 0.1);
+        }
+
+        .filter-dropdown-item .item-label {
+            flex: 1;
+        }
+
+        .filter-dropdown-item .item-count {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            background: var(--bg-input);
+            padding: 2px 6px;
+            border-radius: 10px;
+        }
+
+        .filter-dropdown-empty {
+            padding: 12px;
+            text-align: center;
+            color: var(--text-muted);
+            font-size: 0.85rem;
+        }
+
+        .filter-dropdown-search {
+            padding: 8px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .filter-dropdown-search input {
+            width: 100%;
+            padding: 6px 10px;
+            background: var(--bg-input);
+            border: 1px solid var(--border);
+            border-radius: 4px;
+            font-size: 0.8rem;
+            color: var(--text);
+        }
+
+        .filter-dropdown-search input:focus {
+            outline: none;
+            border-color: var(--primary);
+        }
+
         .filter-chips {
             display: flex;
             flex-wrap: wrap;
