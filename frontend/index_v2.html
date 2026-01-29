@@ -1,4 +1,4 @@
-<!-- 
+﻿<!-- 
 ╔══════════════════════════════════════════════════════════════════╗
 ║  PROVA AI - FRONTEND v2.0 - PARTE 1 de 2                        ║
 ║                                                                  ║
@@ -1362,6 +1362,12 @@
            ============================================================ */
         .modal-welcome .modal {
             max-width: 680px;
+            animation: modalBounceIn 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+        }
+        
+        @keyframes modalBounceIn {
+            0% { opacity: 0; transform: translateY(-40px) scale(0.9); }
+            100% { opacity: 1; transform: translateY(0) scale(1); }
         }
         
         .welcome-badge {
@@ -1488,6 +1494,60 @@
             color: var(--text-muted);
         }
         
+        /* Chat examples - more visual */
+        .chat-examples {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+        
+        .chat-example {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 10px 14px;
+            font-size: 0.85rem;
+            transition: all 0.2s;
+        }
+        
+        .chat-example:hover {
+            border-color: var(--primary);
+            background: rgba(59, 130, 246, 0.05);
+        }
+        
+        .chat-example-icon {
+            font-size: 1.2rem;
+        }
+        
+        /* Tips section - compact */
+        .welcome-tips {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            margin-top: 16px;
+        }
+        
+        .tip-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 0.85rem;
+            padding: 10px 14px;
+            background: rgba(59, 130, 246, 0.08);
+            border-radius: 8px;
+        }
+        
+        .tip-item.tip-warning {
+            background: rgba(234, 179, 8, 0.1);
+        }
+        
+        .tip-icon {
+            font-size: 1.1rem;
+        }
+        
         .welcome-warning {
             background: rgba(234, 179, 8, 0.1);
             border: 1px solid rgba(234, 179, 8, 0.3);
@@ -1605,12 +1665,39 @@
             margin-bottom: 20px;
         }
         
+        .tutorial-image-container {
+            width: 100%;
+            min-height: 200px;
+            background: var(--bg-hover);
+            border-radius: 12px;
+            margin: 16px 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+        }
+        
         .tutorial-image {
             width: 100%;
             border-radius: 12px;
             border: 1px solid var(--border);
-            margin: 16px 0;
             box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+            transition: opacity 0.3s;
+        }
+        
+        .tutorial-image-placeholder {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 8px;
+            color: var(--text-muted);
+            padding: 40px;
+            text-align: center;
+        }
+        
+        .tutorial-image-placeholder-icon {
+            font-size: 3rem;
+            opacity: 0.5;
         }
         
         .tutorial-text {
@@ -2697,37 +2784,32 @@
                 </div>
                 
                 <div class="welcome-section">
-                    <h4>🔍 Exemplos de Filtros no Chat</h4>
-                    <div class="filter-examples">
-                        <div class="filter-example">
-                            <span>Filtrar por <strong>Matéria</strong> ou <strong>Turma</strong></span>
-                            <span class="filter-example-arrow">→</span>
-                            <span class="filter-example-result">Relatório completo (visão do professor)</span>
+                    <h4>🔍 Exemplos de Perguntas ao Chat</h4>
+                    <div class="chat-examples">
+                        <div class="chat-example">
+                            <span class="chat-example-icon">📊</span>
+                            <span>"Faça um relatório da turma 3A"</span>
                         </div>
-                        <div class="filter-example">
-                            <span>Filtrar por <strong>Nome do Aluno</strong></span>
-                            <span class="filter-example-arrow">→</span>
-                            <span class="filter-example-result">Desempenho geral do aluno</span>
+                        <div class="chat-example">
+                            <span class="chat-example-icon">👤</span>
+                            <span>"Como está o desempenho do João?"</span>
                         </div>
-                        <div class="filter-example">
-                            <span>Filtrar por <strong>Aluno + Matéria</strong></span>
-                            <span class="filter-example-arrow">→</span>
-                            <span class="filter-example-result">Desempenho do aluno naquela matéria</span>
+                        <div class="chat-example">
+                            <span class="chat-example-icon">❓</span>
+                            <span>"Quais questões os alunos mais erraram?"</span>
                         </div>
                     </div>
                 </div>
                 
-                <div class="tutorial-highlight">
-                    <strong>💡 Dica:</strong> Os modelos Claude geram relatórios mais elaborados, mas custam mais!
-                </div>
-                
-                <div class="welcome-warning">
-                    <h4>⚠️ Aviso Importante</h4>
-                    <p>
-                        Este protótipo está sendo custeado por <strong>Otávio Bopp</strong>. 
-                        Por favor, use com moderação e consciência. Cada requisição tem um custo real. 
-                        Obrigado pela compreensão! 🙏
-                    </p>
+                <div class="welcome-tips">
+                    <div class="tip-item">
+                        <span class="tip-icon">💡</span>
+                        <span><strong>Claude</strong> faz relatórios mais elaborados, <strong>Gemini</strong> é mais rápido!</span>
+                    </div>
+                    <div class="tip-item tip-warning">
+                        <span class="tip-icon">💰</span>
+                        <span>Protótipo custeado por <strong>Otávio Bopp</strong> — use com moderação 🙏</span>
+                    </div>
                 </div>
                 
                 <div class="welcome-footer">
@@ -3039,7 +3121,7 @@
         const tutorialContent = {
             quick: [
                 {
-                    title: '� Bem-vindo ao Prova AI!',
+                    title: '👋 Bem-vindo ao Prova AI!',
                     subtitle: 'Vamos conhecer o sistema em 3 passos simples',
                     image: '/static/tutorial-images-v2/01-dashboard-anotado.png',
                     content: `
@@ -3283,7 +3365,11 @@
                 <div class="tutorial-step active">
                     <h2 class="tutorial-step-title">${step.title}</h2>
                     <p class="tutorial-step-subtitle">${step.subtitle}</p>
-                    <img src="${step.image}" alt="${step.title}" class="tutorial-image" onerror="this.style.display='none'">
+                    <div class="tutorial-image-container">
+                        <img src="${step.image}" alt="${step.title}" class="tutorial-image" 
+                             onload="this.parentElement.style.minHeight='auto'"
+                             onerror="this.outerHTML='<div class=tutorial-image-placeholder><span class=tutorial-image-placeholder-icon>🖼️</span><span>Imagem indisponível</span></div>'">
+                    </div>
                     <div class="tutorial-text">${step.content}</div>
                 </div>
             `;
@@ -6703,3 +6789,4 @@ Seja preciso e educativo nas correções.`;
     <script src="/static/chat_system.js"></script>
 </body>
 </html>
+
