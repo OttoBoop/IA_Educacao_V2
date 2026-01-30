@@ -523,7 +523,30 @@ class PipelineExecutor:
                 "tipo": "aviso",
                 "mensagem": "Não foi possível confirmar se a IA processou os documentos corretamente"
             })
-        
+
+        # Validar extração de respostas - detectar falha silenciosa
+        if etapa == EtapaProcessamento.EXTRAIR_RESPOSTAS and resposta_parsed:
+            respostas = resposta_parsed.get("respostas", [])
+            total = len(respostas)
+            em_branco = sum(1 for r in respostas if r.get("em_branco", False))
+
+            if total > 0 and em_branco == total:
+                alertas.append({
+                    "tipo": "erro_extracao",
+                    "severidade": "critico",
+                    "codigo": "ALL_RESPONSES_BLANK",
+                    "mensagem": f"ERRO: Todas as {total} questões foram marcadas como em branco. "
+                               f"Verifique se o arquivo de respostas do aluno está correto e legível."
+                })
+            elif total > 0 and em_branco >= total * 0.8:  # 80%+ em branco
+                alertas.append({
+                    "tipo": "aviso_extracao",
+                    "severidade": "alto",
+                    "codigo": "MOSTLY_BLANK_RESPONSES",
+                    "mensagem": f"AVISO: {em_branco} de {total} questões ({int(em_branco/total*100)}%) "
+                               f"foram marcadas como em branco. Verifique o arquivo de respostas."
+                })
+
         # Salvar resultado
         documento_id = None
         if salvar_resultado:
