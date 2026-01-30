@@ -877,13 +877,15 @@ class StorageManager:
         Retorna o Path absoluto do arquivo.
         """
         import sys
-        caminho = Path(documento.caminho_arquivo)
-        caminho_str = str(caminho).replace('\\', '/')
+        # Normalizar: converter barras invertidas para barras normais
+        caminho_str = documento.caminho_arquivo.replace('\\', '/')
 
         # Normalizar caminho remoto (remover 'data/' se existir)
         remote_path = caminho_str
         if remote_path.startswith('data/'):
             remote_path = remote_path[5:]
+
+        caminho = Path(remote_path)
 
         # Definir caminho local para salvar/verificar
         local_path = self.base_path / remote_path
