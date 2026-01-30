@@ -105,8 +105,21 @@ class ChatComDocumentosRequest(BaseModel):
 @router.post("/api/pipeline/executar", tags=["Pipeline"])
 async def executar_etapa(data: ExecutarEtapaRequest):
     """
-    Executa uma etapa do pipeline.
+    [LEGACY - CONSIDER UNIFICATION] Executa uma etapa do pipeline.
     Os arquivos são enviados NATIVAMENTE para a IA.
+
+    ⚠️  UNIFICATION CANDIDATE: Multiple pipeline execution endpoints exist:
+    - /api/pipeline/executar (this - single step)
+    - /api/executar/etapa (routes_prompts.py - single step with chat service)
+    - /api/executar/pipeline-completo (routes_prompts.py - full pipeline for one student)
+    - /api/executar/pipeline-turma (routes_prompts.py - full pipeline for all students)
+
+    POTENTIAL ERRORS from unification:
+    - Different request/response formats
+    - Inconsistent error handling
+    - Different authentication/authorization
+    - Race conditions when executing multiple students simultaneously
+    - Resource exhaustion from parallel processing
     """
     from executor import pipeline_executor
     
@@ -181,12 +194,26 @@ async def status_pipeline(atividade_id: str, aluno_id: Optional[str] = None):
 
 @router.get("/api/documentos/{documento_id}/download", tags=["Documentos"])
 async def download_documento(documento_id: str):
-    """Download de documento com MIME type correto"""
+    """
+    [LEGACY - CONSIDER UNIFICATION] Download de documento com MIME type correto
+
+    ⚠️  UNIFICATION CANDIDATE: Multiple document access endpoints exist:
+    - /api/documentos/{id}/download (this)
+    - /api/documentos/{id}/view (below)
+    - /api/documentos/{id}/visualizar (below)
+    - /api/documentos/{id}/conteudo (routes_prompts.py)
+
+    POTENTIAL ERRORS from unification:
+    - Different response types (FileResponse vs JSON content)
+    - MIME type detection inconsistencies
+    - File not found handling differences
+    - Security implications of exposing different access methods
+    """
     documento = storage.get_documento(documento_id)
     if not documento:
         raise HTTPException(404, "Documento não encontrado")
 
-    arquivo = Path(documento.caminho_arquivo)
+    arquivo = storage.base_path / documento.caminho_arquivo
     if not arquivo.exists():
         raise HTTPException(404, "Arquivo não encontrado")
 
@@ -196,12 +223,16 @@ async def download_documento(documento_id: str):
 
 @router.get("/api/documentos/{documento_id}/view", tags=["Documentos"])
 async def view_documento(documento_id: str):
-    """Visualiza documento inline no navegador (PDFs, imagens, HTML)"""
+    """
+    [LEGACY - CONSIDER UNIFICATION] Visualiza documento inline no navegador (PDFs, imagens, HTML)
+
+    ⚠️  UNIFICATION CANDIDATE: See /api/documentos/{id}/download for details
+    """
     documento = storage.get_documento(documento_id)
     if not documento:
         raise HTTPException(404, "Documento não encontrado")
 
-    arquivo = Path(documento.caminho_arquivo)
+    arquivo = storage.base_path / documento.caminho_arquivo
     if not arquivo.exists():
         raise HTTPException(404, "Arquivo não encontrado")
 
@@ -223,12 +254,16 @@ async def view_documento(documento_id: str):
 
 @router.get("/api/documentos/{documento_id}/visualizar", tags=["Documentos"])
 async def visualizar_documento(documento_id: str):
-    """Visualiza conteúdo de documento JSON/texto"""
+    """
+    [LEGACY - CONSIDER UNIFICATION] Visualiza conteúdo de documento JSON/texto
+
+    ⚠️  UNIFICATION CANDIDATE: See /api/documentos/{id}/download for details
+    """
     documento = storage.get_documento(documento_id)
     if not documento:
         raise HTTPException(404, "Documento não encontrado")
     
-    arquivo = Path(documento.caminho_arquivo)
+    arquivo = storage.base_path / documento.caminho_arquivo
     if not arquivo.exists():
         raise HTTPException(404, "Arquivo não encontrado")
     
@@ -316,7 +351,17 @@ async def listar_alertas(atividade_id: str, aluno_id: Optional[str] = None):
 
 @router.get("/api/providers/disponiveis", tags=["Providers"])
 async def listar_providers():
-    """Lista providers configurados"""
+    """
+    [LEGACY - DUPLICATE ENDPOINT] Lista providers configurados
+
+    ⚠️  DUPLICATE: This endpoint exists in routes_prompts.py with enhanced functionality.
+    Consider unifying with /api/providers/disponiveis in routes_prompts.py
+
+    POTENTIAL ERRORS from unification:
+    - Different return format (this returns simple list, routes_prompts.py returns with defaults)
+    - Missing error handling for no providers configured
+    - No fallback to old ai_providers system
+    """
     from chat_service import model_manager
     models = model_manager.listar(apenas_ativos=True)
     return {"providers": [{"id": m.id, "nome": m.nome, "tipo": m.tipo.value, "modelo": m.modelo} for m in models]}
@@ -536,7 +581,7 @@ async def regenerar_documento(documento_id: str, formato: str, data: Optional[Re
         raise HTTPException(400, "Apenas documentos JSON podem ser regenerados")
     
     # Ler dados do JSON
-    arquivo = Path(documento.caminho_arquivo)
+    arquivo = storage.base_path / documento.caminho_arquivo
     if not arquivo.exists():
         raise HTTPException(404, "Arquivo JSON não encontrado")
     
@@ -594,3 +639,98 @@ async def regenerar_documento(documento_id: str, formato: str, data: Optional[Re
         
     except Exception as e:
         raise HTTPException(500, f"Erro ao salvar documento: {e}")
+
+
+# ============================================================
+# ENDPOINTS PARA DOWNLOAD DE RESULTADOS
+# ============================================================
+
+@router.get("/api/pipeline/{atividade_id}/resultados/json", tags=["Pipeline"])
+async def download_resultados_json(atividade_id: str, aluno_id: str = None):
+    """
+    Baixa todos os resultados JSON de uma atividade.
+    Se aluno_id fornecido, retorna apenas daquele aluno.
+
+    Útil para revisar o que a pipeline gerou e depurar problemas.
+    """
+    atividade = storage.get_atividade(atividade_id)
+    if not atividade:
+        raise HTTPException(404, "Atividade não encontrada")
+
+    documentos = storage.listar_documentos(atividade_id, aluno_id)
+
+    resultados = {}
+    for doc in documentos:
+        if doc.extensao == ".json":
+            arquivo = storage.base_path / doc.caminho_arquivo
+            if arquivo.exists():
+                try:
+                    with open(arquivo, 'r', encoding='utf-8') as f:
+                        resultados[doc.tipo.value] = {
+                            "documento_id": doc.id,
+                            "aluno_id": doc.aluno_id,
+                            "conteudo": json.load(f),
+                            "criado_em": doc.criado_em.isoformat() if doc.criado_em else None,
+                            "ia_provider": doc.ia_provider,
+                            "ia_modelo": doc.ia_modelo
+                        }
+                except Exception as e:
+                    resultados[doc.tipo.value] = {
+                        "documento_id": doc.id,
+                        "erro": str(e)
+                    }
+
+    return {
+        "atividade_id": atividade_id,
+        "aluno_id": aluno_id,
+        "resultados": resultados,
+        "total_documentos": len(resultados)
+    }
+
+
+@router.get("/api/pipeline/{atividade_id}/texto-extraido", tags=["Pipeline"])
+async def get_texto_extraido(atividade_id: str, aluno_id: str = None):
+    """
+    Retorna o texto extraído de todos os documentos processados.
+    Útil para revisar o que a IA entendeu dos PDFs/imagens.
+
+    Retorna dados de:
+    - extracao_questoes: questões extraídas do enunciado
+    - extracao_gabarito: gabarito extraído
+    - extracao_respostas: respostas extraídas da prova do aluno
+    """
+    atividade = storage.get_atividade(atividade_id)
+    if not atividade:
+        raise HTTPException(404, "Atividade não encontrada")
+
+    docs = storage.listar_documentos(atividade_id, aluno_id)
+
+    tipos_extracao = ["extracao_questoes", "extracao_respostas", "extracao_gabarito"]
+    textos = {}
+
+    for doc in docs:
+        if doc.tipo.value in tipos_extracao:
+            arquivo = storage.base_path / doc.caminho_arquivo
+            if arquivo.exists():
+                try:
+                    with open(arquivo, 'r', encoding='utf-8') as f:
+                        dados = json.load(f)
+                        textos[doc.tipo.value] = {
+                            "documento_id": doc.id,
+                            "aluno_id": doc.aluno_id,
+                            "questoes": dados.get("questoes", []),
+                            "texto_original": dados.get("texto_original", ""),
+                            "total_questoes": len(dados.get("questoes", []))
+                        }
+                except Exception as e:
+                    textos[doc.tipo.value] = {
+                        "documento_id": doc.id,
+                        "erro": str(e)
+                    }
+
+    return {
+        "atividade_id": atividade_id,
+        "aluno_id": aluno_id,
+        "textos": textos,
+        "tipos_encontrados": list(textos.keys())
+    }

@@ -89,7 +89,7 @@ async def get_resultado_aluno(atividade_id: str, aluno_id: str):
             doc = storage.get_documento(etapas[tipo]["doc_id"])
             if doc and doc.extensao == ".json":
                 try:
-                    arquivo_path = Path(doc.caminho_arquivo)
+                    arquivo_path = storage.base_path / doc.caminho_arquivo
                     if arquivo_path.exists():
                         with open(arquivo_path, 'r', encoding='utf-8') as f:
                             dados_parciais[tipo] = json.load(f)

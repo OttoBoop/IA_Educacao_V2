@@ -27,6 +27,10 @@ from models import (
 )
 
 
+# Diretório base para paths absolutos (compatível com Render)
+BASE_DIR = Path(__file__).parent
+
+
 class StorageManager:
     """
     Gerenciador de armazenamento unificado.
@@ -51,7 +55,10 @@ class StorageManager:
         └── database.db                      # SQLite
     """
     
-    def __init__(self, base_path: str = "./data"):
+    def __init__(self, base_path: str = None):
+        # Usar path absoluto baseado em __file__ para compatibilidade com Render
+        if base_path is None:
+            base_path = str(BASE_DIR / "data")
         self.base_path = Path(base_path)
         self.arquivos_path = self.base_path / "arquivos"
         self.db_path = self.base_path / "database.db"
@@ -785,6 +792,9 @@ class StorageManager:
         # Copiar arquivo
         shutil.copy2(arquivo_origem, destino)
         
+        # Calcular caminho relativo para compatibilidade cross-platform
+        caminho_relativo = destino.relative_to(self.base_path)
+        
         # Criar registro
         documento = Documento(
             id=self._generate_id("doc", atividade_id, tipo.value, aluno_id or "base"),
@@ -792,7 +802,7 @@ class StorageManager:
             atividade_id=atividade_id,
             aluno_id=aluno_id,
             nome_arquivo=nome_original,
-            caminho_arquivo=str(destino),
+            caminho_arquivo=str(caminho_relativo),
             extensao=extensao,
             tamanho_bytes=tamanho,
             ia_provider=ia_provider,
@@ -908,6 +918,61 @@ class StorageManager:
 
         # Remover do banco
         c.execute('DELETE FROM documentos WHERE atividade_id = ? AND aluno_id = ?', (atividade_id, aluno_id))
+        conn.commit()
+        conn.close()
+
+        return count
+
+    def excluir_documentos_ai_aluno_atividade(self, atividade_id: str, aluno_id: str) -> int:
+        """Deleta apenas os documentos gerados por IA de um aluno em uma atividade específica"""
+        ai_types = ['extracao_questoes', 'extracao_gabarito', 'extracao_respostas', 'correcao', 'analise_habilidades', 'relatorio_final']
+        # Buscar documentos do aluno nesta atividade que são AI-generated
+        conn = self._get_connection()
+        c = conn.cursor()
+        c.execute('''
+            SELECT id, caminho_arquivo FROM documentos
+            WHERE atividade_id = ? AND aluno_id = ? AND (ia_provider IS NOT NULL OR tipo IN ({placeholders}))
+        '''.format(placeholders=','.join(['?']*len(ai_types))), (atividade_id, aluno_id) + tuple(ai_types))
+        rows = c.fetchall()
+
+        count = 0
+        for row in rows:
+            # Remover arquivo físico
+            if row['caminho_arquivo']:
+                arquivo = Path(row['caminho_arquivo'])
+                if arquivo.exists():
+                    arquivo.unlink()
+            count += 1
+
+        # Remover do banco
+        c.execute('DELETE FROM documentos WHERE atividade_id = ? AND aluno_id = ? AND (ia_provider IS NOT NULL OR tipo IN ({placeholders}))'.format(placeholders=','.join(['?']*len(ai_types))), (atividade_id, aluno_id) + tuple(ai_types))
+        conn.commit()
+        conn.close()
+
+        return count
+
+    def resetar_extracoes_questoes_aluno_atividade(self, atividade_id: str, aluno_id: str) -> int:
+        """Reseta as extrações de questões de um aluno em uma atividade específica"""
+        # Buscar documentos do aluno nesta atividade que são extrações de questões
+        conn = self._get_connection()
+        c = conn.cursor()
+        c.execute('''
+            SELECT id, caminho_arquivo FROM documentos
+            WHERE atividade_id = ? AND aluno_id = ? AND tipo = ?
+        ''', (atividade_id, aluno_id, 'extracao_questoes'))
+        rows = c.fetchall()
+
+        count = 0
+        for row in rows:
+            # Remover arquivo físico
+            if row['caminho_arquivo']:
+                arquivo = Path(row['caminho_arquivo'])
+                if arquivo.exists():
+                    arquivo.unlink()
+            count += 1
+
+        # Remover do banco
+        c.execute('DELETE FROM documentos WHERE atividade_id = ? AND aluno_id = ? AND tipo = ?', (atividade_id, aluno_id, 'extracao_questoes'))
         conn.commit()
         conn.close()
 

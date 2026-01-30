@@ -148,7 +148,7 @@ class VisualizadorResultados:
     def _ler_json(self, documento: Documento) -> Dict[str, Any]:
         """Lê conteúdo JSON de um documento"""
         try:
-            arquivo = Path(documento.caminho_arquivo)
+            arquivo = storage.base_path / documento.caminho_arquivo
             if arquivo.exists():
                 with open(arquivo, 'r', encoding='utf-8') as f:
                     return json.load(f)
