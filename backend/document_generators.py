@@ -196,10 +196,10 @@ def _build_relatorio_pdf(data: Dict, styles, heading_style, body_style) -> List:
     story.append(Spacer(1, 15))
     
     # Nota final
-    story.append(Paragraph("📊 Resultado Final", heading_style))
-    nota = data.get("nota_final", data.get("nota", 0))
-    nota_max = data.get("nota_maxima", 10)
-    percentual = data.get("percentual", (nota / nota_max * 100) if nota_max > 0 else 0)
+    story.append(Paragraph("Resultado Final", heading_style))
+    nota = data.get("nota_final", data.get("nota", 0)) or 0
+    nota_max = data.get("nota_maxima", 10) or 10
+    percentual = data.get("percentual") or ((nota / nota_max * 100) if nota_max > 0 else 0)
     
     summary_data = [
         ["Nota Final", f"{nota:.1f} / {nota_max:.1f}"],
@@ -223,12 +223,12 @@ def _build_relatorio_pdf(data: Dict, styles, heading_style, body_style) -> List:
     
     # Feedback geral
     if data.get("feedback_geral"):
-        story.append(Paragraph("💬 Comentários", heading_style))
+        story.append(Paragraph("Comentarios", heading_style))
         story.append(Paragraph(data["feedback_geral"], body_style))
-    
+
     # Recomendações
     if data.get("recomendacoes"):
-        story.append(Paragraph("📌 Recomendações", heading_style))
+        story.append(Paragraph("Recomendacoes", heading_style))
         for rec in data["recomendacoes"]:
             story.append(Paragraph(f"• {rec}", body_style))
     
