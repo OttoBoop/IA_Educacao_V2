@@ -271,10 +271,13 @@ class TestSavedModelsConfiguration:
             data = json.load(f)
 
         # Known valid Google Gemini model patterns
+        # NOTE: Gemini 3 requires "-preview" suffix (verified Jan 2026)
+        # Gemini 2.0 deprecated (EOL March 2026)
         valid_patterns = [
-            "gemini-3-pro", "gemini-3-flash", "gemini-3-ultra",
-            "gemini-2.5-pro", "gemini-2.5-flash", "gemini-2.5-flash-lite",
-            "gemini-2.0-flash", "gemini-1.5-pro", "gemini-1.5-flash",
+            "gemini-3-pro-preview", "gemini-3-flash-preview",  # Gemini 3 (preview)
+            "gemini-2.5-pro", "gemini-2.5-flash", "gemini-2.5-flash-lite",  # Gemini 2.5 (stable)
+            "gemini-2.0-flash",  # Deprecated - EOL March 2026
+            "gemini-1.5-pro", "gemini-1.5-flash",  # Legacy
         ]
 
         google_models = [m for m in data.get("models", []) if m.get("tipo") == "google"]

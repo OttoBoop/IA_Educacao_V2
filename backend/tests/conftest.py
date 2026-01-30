@@ -2,6 +2,12 @@
 Shared fixtures for Prova AI tests.
 """
 
+import os
+
+# Avoid hanging tests when local LLM is not running.
+os.environ.setdefault("PROVA_AI_DISABLE_LOCAL_LLM", "1")
+os.environ.setdefault("PROVA_AI_TESTING", "1")
+
 import sys
 from pathlib import Path
 
@@ -131,26 +137,28 @@ def sample_json_path(temp_data_dir: Path) -> Path:
 # ============================================================
 
 # Configuração de modelos por modo (sync com test_runner.py)
+# Model IDs verified working as of January 2026
+# NOTE: Gemini 3 requires "-preview" suffix. Gemini 2.0 deprecated (EOL March 2026)
 MODEL_CONFIGS = {
     "cheap": {
         "openai": "gpt-5-mini",
         "anthropic": "claude-haiku-4-5-20251001",
-        "google": "gemini-3-flash",
+        "google": "gemini-3-flash-preview",  # Gemini 3 requires -preview suffix
     },
     "full": {
         "openai": "gpt-5",
         "anthropic": "claude-sonnet-4-5-20250929",
-        "google": "gemini-3-pro",
+        "google": "gemini-3-pro-preview",  # Gemini 3 requires -preview suffix
     },
     "reasoning": {
         "openai": "o3-mini",
         "anthropic": "claude-sonnet-4-5-20250929",
-        "google": "gemini-3-pro",
+        "google": "gemini-3-pro-preview",  # Gemini 3 requires -preview suffix
     },
     "legacy": {
         "openai": "gpt-4o-mini",
         "anthropic": "claude-3-5-haiku-20241022",
-        "google": "gemini-2.0-flash",
+        "google": "gemini-2.5-flash",  # 2.0 deprecated, use 2.5
     }
 }
 

@@ -44,6 +44,27 @@ Thumbs.db
 data/code_outputs/
 *.log
 
+# Test screenshots and images
+*.png
+frontend/*-screenshots/
+frontend/*-test/
+frontend/click-test/
+frontend/compare-screenshots/
+frontend/tutorial-*/
+frontend/ui-audit/
+frontend/visual-test/
+frontend/version-comparison/
+
+# Backend test data and downloads
+backend/data/e2b_downloads/
+backend/logs/
+backend/test_data/
+backend/nul
+data/
+
+# Windows temp files
+nul
+
 # Distribution / packaging
 dist/
 build/

@@ -39,17 +39,20 @@ Modelos por modo:
     --cheap (padrão): Modelos novos e econômicos
         OpenAI: gpt-5-mini ($0.25/$2.00)
         Anthropic: claude-haiku-4-5-20251001 ($1.00/$5.00)
-        Google: gemini-3-flash ($0.30/$1.20)
+        Google: gemini-3-flash-preview ($0.30/$1.20)
 
     --full: Modelos potentes
         OpenAI: gpt-5 ($1.25/$10.00)
         Anthropic: claude-sonnet-4-5-20250929 ($3.00/$15.00)
-        Google: gemini-3-pro ($2.00/$15.00)
+        Google: gemini-3-pro-preview ($2.00/$15.00)
 
     --legacy: Modelos antigos (mais baratos)
         OpenAI: gpt-4o-mini ($0.15/$0.60)
         Anthropic: claude-3-5-haiku-20241022 ($0.80/$4.00)
-        Google: gemini-2.0-flash ($0.10/$0.40)
+        Google: gemini-2.5-flash ($0.10/$0.40)
+
+NOTE: Gemini 3 models require "-preview" suffix. Gemini 2.0 deprecated (EOL March 2026).
+Model IDs verified working as of January 2026.
 """
 
 import argparse
@@ -69,29 +72,32 @@ REPORTS_DIR = BASE_DIR / "test_reports"
 LOGS_DIR = BASE_DIR / "logs"
 
 # Configuração de modelos por modo
+# Model IDs verified working as of January 2026
+# NOTE: Gemini 3 requires "-preview" suffix (gemini-3-pro-preview, gemini-3-flash-preview)
+# NOTE: Gemini 2.0 deprecated, shutting down March 31, 2026 - use 2.5 for legacy
 MODEL_CONFIGS = {
     "cheap": {
         "openai": "gpt-5-mini",           # $0.25/$2.00 - novo e barato
         "anthropic": "claude-haiku-4-5-20251001",  # $1.00/$5.00 - Haiku 4.5
-        "google": "gemini-3-flash",       # $0.30/$1.20 - mais novo
+        "google": "gemini-3-flash-preview",  # $0.30/$1.20 - Gemini 3 (requires -preview suffix)
         "description": "Modelos novos e econômicos (recomendado para testes)"
     },
     "full": {
         "openai": "gpt-5",                # $1.25/$10.00
         "anthropic": "claude-sonnet-4-5-20250929",  # $3.00/$15.00
-        "google": "gemini-3-pro",         # $2.00/$15.00
+        "google": "gemini-3-pro-preview",    # $2.00/$15.00 - Gemini 3 (requires -preview suffix)
         "description": "Modelos potentes (maior custo)"
     },
     "reasoning": {
         "openai": "o3-mini",              # $1.10/$4.40 - reasoning
         "anthropic": "claude-sonnet-4-5-20250929",  # Com extended thinking
-        "google": "gemini-3-pro",         # Com thinking nativo
+        "google": "gemini-3-pro-preview",    # Com thinking nativo (requires -preview suffix)
         "description": "Modelos com reasoning/thinking"
     },
     "legacy": {
         "openai": "gpt-4o-mini",          # $0.15/$0.60 - legado barato
         "anthropic": "claude-3-5-haiku-20241022",  # $0.80/$4.00 - legado
-        "google": "gemini-2.0-flash",     # $0.10/$0.40 - legado
+        "google": "gemini-2.5-flash",     # $0.10/$0.40 - stable (2.0 deprecated EOL Mar 2026)
         "description": "Modelos legados (mais baratos, menos capazes)"
     }
 }
@@ -133,10 +139,9 @@ def build_pytest_args(args) -> List[str]:
     pytest_args = [str(TESTS_DIR)]
 
     # Verbosidade
+    pytest_args.append("-v")  # Sempre verbose por padrão
     if args.verbose:
-        pytest_args.append("-v")
-    else:
-        pytest_args.append("-v")  # Sempre verbose por padrão
+        pytest_args.extend(["-s", "--tb=long"])  # Mostrar prints e tracebacks completos
 
     # Determinar modo de modelo
     if args.full:
@@ -231,6 +236,11 @@ def run_pytest(args) -> int:
     env = os.environ.copy()
     if args.render:
         env["RENDER"] = "true"
+
+    # CRITICAL: Add backend to PYTHONPATH so imports work
+    env["PYTHONPATH"] = str(BASE_DIR)
+    if str(BASE_DIR) not in sys.path:
+        sys.path.insert(0, str(BASE_DIR))
 
     # Executar pytest
     try:
@@ -344,11 +354,11 @@ Exemplos:
     models = parser.add_argument_group("Seleção de Modelos")
     model_mode = models.add_mutually_exclusive_group()
     model_mode.add_argument("--cheap", action="store_true", default=True,
-                            help="Usar modelos novos e baratos (padrão): gpt-5-mini, claude-haiku-4-5, gemini-3-flash")
+                            help="Usar modelos novos e baratos (padrão): gpt-5-mini, claude-haiku-4-5, gemini-3-flash-preview")
     model_mode.add_argument("--full", action="store_true",
-                            help="Usar modelos potentes: gpt-5, claude-sonnet-4-5, gemini-3-pro")
+                            help="Usar modelos potentes: gpt-5, claude-sonnet-4-5, gemini-3-pro-preview")
     model_mode.add_argument("--legacy", action="store_true",
-                            help="Usar modelos legados (mais baratos): gpt-4o-mini, claude-3-5-haiku, gemini-2.0-flash")
+                            help="Usar modelos legados (mais baratos): gpt-4o-mini, claude-3-5-haiku, gemini-2.5-flash")
 
     # Filtros
     filters = parser.add_argument_group("Filtros")

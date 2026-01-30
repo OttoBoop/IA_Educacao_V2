@@ -463,9 +463,9 @@
           "supports_streaming": true
         },
         {
-          "id": "gemini-3-pro",
-          "display_name": "Gemini 3 Pro",
-          "description": "Modelo flagship mais recente do Google com raciocinio avancado",
+          "id": "gemini-3-pro-preview",
+          "display_name": "Gemini 3 Pro (Preview)",
+          "description": "Modelo flagship mais recente do Google com raciocinio avancado. NOTA: Requer sufixo -preview (verificado Jan 2026)",
           "input_cost": 2.00,
           "output_cost": 15.00,
           "context_window": 2000000,
@@ -478,26 +478,11 @@
           "supports_code_exec": true
         },
         {
-          "id": "gemini-3-flash",
-          "display_name": "Gemini 3 Flash",
-          "description": "Modelo rapido e economico com thinking nativo",
+          "id": "gemini-3-flash-preview",
+          "display_name": "Gemini 3 Flash (Preview)",
+          "description": "Modelo rapido e economico com thinking nativo. NOTA: Requer sufixo -preview (verificado Jan 2026)",
           "input_cost": 0.30,
           "output_cost": 1.20,
-          "context_window": 2000000,
-          "max_output": 131072,
-          "supports_vision": true,
-          "supports_tools": true,
-          "supports_json_mode": true,
-          "supports_streaming": true,
-          "supports_reasoning": true,
-          "supports_code_exec": true
-        },
-        {
-          "id": "gemini-3-ultra",
-          "display_name": "Gemini 3 Ultra",
-          "description": "Modelo ultra-poderoso para tarefas mais complexas",
-          "input_cost": 5.00,
-          "output_cost": 40.00,
           "context_window": 2000000,
           "max_output": 131072,
           "supports_vision": true,

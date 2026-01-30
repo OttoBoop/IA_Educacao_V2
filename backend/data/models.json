@@ -235,6 +235,29 @@
       "ativo": true,
       "is_default": false,
       "criado_em": "2026-01-29T12:00:00.000000"
+    },
+    {
+      "id": "ollama-llama3",
+      "nome": "Llama 3.2 (Local)",
+      "tipo": "ollama",
+      "modelo": "llama3.2:latest",
+      "api_key_id": null,
+      "max_tokens": 4096,
+      "temperature": 0.7,
+      "parametros": {},
+      "system_prompt": null,
+      "suporta_temperature": true,
+      "suporta_vision": true,
+      "suporta_streaming": true,
+      "suporta_function_calling": false,
+      "base_url": "http://localhost:11434",
+      "custom_model_id": null,
+      "api_version": null,
+      "extra_headers": {},
+      "catalog_ref": null,
+      "ativo": true,
+      "is_default": true,
+      "criado_em": "2026-01-29T12:00:00.000000"
     }
   ]
 }

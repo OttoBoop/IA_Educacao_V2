@@ -20,9 +20,13 @@ class TestGoogle(BaseModelTest):
     - Suporta tools/function calling
     - API diferente (generationConfig, systemInstruction)
     - Header: x-goog-api-key
+
+    NOTE: Gemini 3 models require "-preview" suffix (verified Jan 2026)
     """
 
-    MODELS = ["gemini-2.5-flash", "gemini-2.5-pro", "gemini-3-flash", "gemini-3-pro"]
+    # Model IDs verified working as of January 2026
+    # Gemini 3 requires "-preview" suffix, Gemini 2.5 uses direct IDs
+    MODELS = ["gemini-2.5-flash", "gemini-2.5-pro", "gemini-3-flash-preview", "gemini-3-pro-preview"]
 
     @property
     def model_config(self) -> ModelTestConfig:

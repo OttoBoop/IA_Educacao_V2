@@ -6,7 +6,7 @@ Adiciona círculos, setas e números para guiar usuários não técnicos
 from playwright.sync_api import sync_playwright
 from pathlib import Path
 
-BASE_URL = "http://127.0.0.1:8000"
+BASE_URL = "https://ia-educacao-v2.onrender.com"
 OUTPUT_DIR = Path(__file__).parent / "tutorial-images-v2"
 OUTPUT_DIR.mkdir(exist_ok=True)
 
@@ -222,31 +222,37 @@ def capture_annotated_screenshots():
             # 3. CHAT COM ANOTAÇÕES
             # ========================================
             print("\n📸 3. Chat anotado...")
-            
+
             chat_link = page.query_selector("text=Chat com IA")
             if chat_link:
                 chat_link.click()
                 page.wait_for_timeout(1500)
-            
+
+            # Clicar em "Filtrados" para mostrar os filtros
+            filtrar_btn = page.query_selector('[data-mode="filtered"]')
+            if filtrar_btn:
+                filtrar_btn.click()
+                page.wait_for_timeout(500)
+
             page.evaluate(add_annotation_script())
             page.evaluate("""
-                // Painel de contexto
-                addCircle(160, 150, '1', '#3b82f6');
-                addLabel(200, 140, 'Escolha o que a IA vai ler');
-                
-                // Área de filtros
-                addCircle(160, 300, '2', '#22c55e');
-                addLabel(200, 290, 'Filtre por matéria, turma ou aluno');
-                
-                // Seletor de modelo
+                // 1. Item "Chat com IA" na sidebar (já está selecionado)
+                addCircle(85, 115, '1', '#3b82f6');
+                addLabel(110, 105, 'Acesse o Chat');
+
+                // 2. Botões de modo de seleção (Todos/Filtrados/Manual)
+                addCircle(330, 130, '2', '#22c55e');
+                addLabel(360, 120, 'Escolha o modo de seleção');
+
+                // 3. Seletor de modelo no header
                 addCircle(1200, 80, '3', '#a855f7');
-                addLabel(1000, 70, 'Escolha o modelo de IA');
-                
-                // Área de mensagem
-                addCircle(700, 800, '4', '#ef4444');
-                addLabel(750, 790, 'Digite sua pergunta aqui');
+                addLabel(1000, 70, 'Selecione o modelo de IA');
+
+                // 4. Campo de input na parte inferior
+                addCircle(700, 850, '4', '#ef4444');
+                addLabel(750, 840, 'Digite sua pergunta aqui');
             """)
-            
+
             page.screenshot(path=str(OUTPUT_DIR / "03-chat-anotado.png"))
             page.evaluate("clearAnnotations()")
             print("   ✅ 03-chat-anotado.png")
@@ -302,35 +308,16 @@ def capture_annotated_screenshots():
             page.wait_for_timeout(500)
             
             # ========================================
-            # 6. FLUXO COMPLETO: CORRIGIR PROVA
+            # 6. DIAGRAMA DO PIPELINE
             # ========================================
-            print("\n📸 6. Fluxo de correção...")
-            
-            # Navegar para uma matéria existente
-            materia = page.query_selector(".materia-card")
-            if materia:
-                materia.click()
-                page.wait_for_timeout(1000)
-            
-            page.evaluate(add_annotation_script())
-            page.evaluate("""
-                addLabel(600, 100, '📋 Passo a Passo para Corrigir Provas', '#ef4444');
-                
-                addCircle(400, 200, '1', '#ef4444');
-                addLabel(450, 190, 'Faça upload do enunciado da prova');
-                
-                addCircle(400, 280, '2', '#3b82f6');
-                addLabel(450, 270, 'Adicione o gabarito');
-                
-                addCircle(400, 360, '3', '#22c55e');
-                addLabel(450, 350, 'Suba as provas respondidas dos alunos');
-                
-                addCircle(400, 440, '4', '#a855f7');
-                addLabel(450, 430, 'Clique em "Pipeline" para corrigir tudo!');
-            """)
-            
+            print("\n📸 6. Diagrama do pipeline...")
+
+            # Capturar o diagrama HTML do pipeline
+            html_path = Path(__file__).parent / "diagram_pipeline.html"
+            page.goto(f"file:///{html_path.resolve()}")
+            page.wait_for_timeout(1000)
+
             page.screenshot(path=str(OUTPUT_DIR / "06-fluxo-correcao.png"))
-            page.evaluate("clearAnnotations()")
             print("   ✅ 06-fluxo-correcao.png")
             
             print("\n" + "="*60)

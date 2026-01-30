@@ -98,14 +98,20 @@ MODELOS_SUGERIDOS = {
         {"id": "claude-3-5-sonnet-20241022", "nome": "Claude 3.5 Sonnet", "suporta_vision": True, "suporta_tools": True},
         {"id": "claude-3-5-haiku-20241022", "nome": "Claude 3.5 Haiku", "suporta_vision": True, "suporta_tools": True},
     ],
+    # Google Gemini models - verified working endpoints as of January 2026
+    # NOTE: Gemini 3 models require "-preview" suffix (unlike Gemini 2.x which uses direct IDs)
+    # API: https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent
+    # Gemini 2.0 deprecated, shutting down March 31, 2026
     ProviderType.GOOGLE: [
-        {"id": "gemini-3-pro", "nome": "Gemini 3 Pro", "suporta_vision": True, "suporta_tools": True, "suporta_reasoning": True},
-        {"id": "gemini-3-flash", "nome": "Gemini 3 Flash", "suporta_vision": True, "suporta_tools": True, "suporta_reasoning": True},
-        {"id": "gemini-3-ultra", "nome": "Gemini 3 Ultra", "suporta_vision": True, "suporta_tools": True, "suporta_reasoning": True},
+        # Gemini 3 series (preview) - require "-preview" suffix
+        {"id": "gemini-3-pro-preview", "nome": "Gemini 3 Pro", "suporta_vision": True, "suporta_tools": True, "suporta_reasoning": True},
+        {"id": "gemini-3-flash-preview", "nome": "Gemini 3 Flash", "suporta_vision": True, "suporta_tools": True, "suporta_reasoning": True},
+        # Gemini 2.5 series (stable) - direct model IDs work
         {"id": "gemini-2.5-pro", "nome": "Gemini 2.5 Pro", "suporta_vision": True, "suporta_tools": True, "suporta_reasoning": True},
         {"id": "gemini-2.5-flash", "nome": "Gemini 2.5 Flash", "suporta_vision": True, "suporta_tools": True, "suporta_reasoning": True},
         {"id": "gemini-2.5-flash-lite", "nome": "Gemini 2.5 Flash Lite", "suporta_vision": True, "suporta_tools": False},
-        {"id": "gemini-2.0-flash", "nome": "Gemini 2.0 Flash", "suporta_vision": True, "suporta_tools": True},
+        # Gemini 2.0 series (deprecated - EOL March 2026)
+        {"id": "gemini-2.0-flash", "nome": "Gemini 2.0 Flash (Deprecated)", "suporta_vision": True, "suporta_tools": True},
     ],
     ProviderType.OLLAMA: [
         {"id": "llama3.2", "nome": "Llama 3.2", "suporta_vision": True},

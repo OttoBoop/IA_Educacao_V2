@@ -149,34 +149,53 @@ class TestHappyPath:
     @pytest.mark.asyncio
     async def test_extracao_questoes(self, test_scenario, selected_provider):
         """
-        Testa extração de questões do enunciado.
+        Testa extra??o de quest?es do enunciado.
         """
         from ai_providers import ai_registry
 
         provider = ai_registry.get_default()
         if not provider:
-            pytest.skip("Provider não disponível")
+            pytest.skip("Provider n?o dispon?vel")
 
         enunciado = test_scenario["enunciado"]
         num_questoes = test_scenario["num_questoes"]
 
         prompt = f"""
-        Extraia as questões deste enunciado de prova.
+        Extraia as quest?es deste enunciado de prova.
 
         Enunciado:
         {enunciado.content}
 
         Retorne um JSON com:
-        - Lista de questões com número e enunciado
-        - Total de questões encontradas
+        - Lista de quest?es com n?mero e enunciado
+        - Total de quest?es encontradas
         """
 
         response = await provider.complete(prompt, max_tokens=2000)
         assert response is not None
 
-        # Deve mencionar as questões
+        content = response.content.strip()
+        if "```" in content:
+            if "```json" in content:
+                content = content.split("```json")[1].split("```")[0].strip()
+            else:
+                content = content.split("```")[1].split("```")[0].strip()
+
+        parsed = None
+        try:
+            parsed = json.loads(content)
+        except json.JSONDecodeError:
+            parsed = None
+
+        if isinstance(parsed, dict):
+            questoes = parsed.get("questoes")
+            assert questoes is not None
+            assert len(questoes) > 0
+            return
+
+        # Fallback: deve mencionar questoes
         content_lower = response.content.lower()
-        assert "questão" in content_lower or "questao" in content_lower or "question" in content_lower
+        assert any(word in content_lower for word in ["questao", "questoes", "question"])
 
     @pytest.mark.asyncio
     async def test_correcao_aluno_excelente(self, document_factory, selected_provider):

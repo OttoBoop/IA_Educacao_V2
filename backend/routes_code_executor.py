@@ -259,3 +259,127 @@ async def detect_code_requirements(request: CodeValidationRequest):
 #         filename=filename,
 #         media_type="application/octet-stream"
 #     )
+
+
+# ============================================================
+# SYNC ENDPOINTS
+# ============================================================
+
+class SyncRequest(BaseModel):
+    """Request to sync files from local storage to E2B"""
+    documento_ids: List[str] = Field(..., description="List of documento IDs to sync")
+    target_path: Optional[str] = Field("/home/user", description="Target path in E2B sandbox")
+
+
+@router.post("/api/code/sync-to-e2b", tags=["Code Executor"])
+async def sync_files_to_e2b(request: SyncRequest):
+    """
+    Sync files from local storage to E2B sandbox.
+    Useful for preparing context files before code execution.
+    """
+    from storage import storage
+    from e2b_code_interpreter import Sandbox
+    import os
+
+    if not os.getenv("E2B_API_KEY"):
+        raise HTTPException(400, "E2B not configured (missing E2B_API_KEY)")
+
+    synced_files = []
+    errors = []
+
+    try:
+        with Sandbox.create() as sandbox:
+            for doc_id in request.documento_ids:
+                try:
+                    # Get document from storage
+                    documento = storage.get_documento(doc_id)
+                    if not documento:
+                        errors.append(f"Documento {doc_id} not found")
+                        continue
+
+                    # Read file content
+                    file_path = documento.caminho_arquivo
+                    if not Path(file_path).exists():
+                        errors.append(f"File {file_path} not found for documento {doc_id}")
+                        continue
+
+                    with open(file_path, 'rb') as f:
+                        content = f.read()
+
+                    # Upload to E2B
+                    target_path = f"{request.target_path}/{documento.nome_arquivo}"
+                    sandbox.files.write(target_path, content)
+
+                    synced_files.append({
+                        "documento_id": doc_id,
+                        "filename": documento.nome_arquivo,
+                        "target_path": target_path,
+                        "size_bytes": len(content)
+                    })
+
+                except Exception as e:
+                    errors.append(f"Error syncing {doc_id}: {str(e)}")
+
+    except Exception as e:
+        raise HTTPException(500, f"E2B sync failed: {str(e)}")
+
+    return {
+        "success": True,
+        "synced_files": synced_files,
+        "errors": errors,
+        "total_synced": len(synced_files),
+        "total_errors": len(errors)
+    }
+
+
+@router.post("/api/code/sync-from-e2b", tags=["Code Executor"])
+async def sync_files_from_e2b(files: List[str], target_dir: str = "./data/e2b_downloads"):
+    """
+    Sync files from E2B sandbox to local storage.
+    Useful for retrieving generated files after code execution.
+    """
+    from e2b_code_interpreter import Sandbox
+    import os
+    from pathlib import Path
+
+    if not os.getenv("E2B_API_KEY"):
+        raise HTTPException(400, "E2B not configured (missing E2B_API_KEY)")
+
+    # Create target directory
+    target_path = Path(target_dir)
+    target_path.mkdir(parents=True, exist_ok=True)
+
+    downloaded_files = []
+    errors = []
+
+    try:
+        with Sandbox.create() as sandbox:
+            for filename in files:
+                try:
+                    # Download from E2B
+                    content = sandbox.files.read(f"/home/user/{filename}", format="bytes")
+
+                    # Save locally
+                    local_path = target_path / filename
+                    with open(local_path, 'wb') as f:
+                        f.write(content)
+
+                    downloaded_files.append({
+                        "filename": filename,
+                        "local_path": str(local_path),
+                        "size_bytes": len(content)
+                    })
+
+                except Exception as e:
+                    errors.append(f"Error downloading {filename}: {str(e)}")
+
+    except Exception as e:
+        raise HTTPException(500, f"E2B download failed: {str(e)}")
+
+    return {
+        "success": True,
+        "downloaded_files": downloaded_files,
+        "errors": errors,
+        "total_downloaded": len(downloaded_files),
+        "total_errors": len(errors)
+    }

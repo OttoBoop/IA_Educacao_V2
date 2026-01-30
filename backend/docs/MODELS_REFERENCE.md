@@ -83,15 +83,17 @@ Todos os outros modelos que aceitam o parâmetro `temperature`.
 
 ## Google (Gemini)
 
+> **IMPORTANT (Jan 2026):** Gemini 3 models require the `-preview` suffix (e.g., `gemini-3-pro-preview`).
+> Gemini 2.0 is deprecated and will shut down March 31, 2026.
+
 | Modelo | Vision | Tools | Temperature | Reasoning | Notas |
 |--------|--------|-------|-------------|-----------|-------|
-| gemini-3-pro | ✅ | ✅ | 0-2 | ✅ | Most intelligent model, multimodal understanding, agentic and coding |
-| gemini-3-flash | ✅ | ✅ | 0-2 | ✅ | Balanced model for speed, scale, and frontier intelligence |
-| gemini-3-ultra | ✅ | ✅ | 0-2 | ✅ | Ultra-capable version |
+| gemini-3-pro-preview | ✅ | ✅ | 0-2 | ✅ | Most intelligent model, multimodal understanding, agentic and coding |
+| gemini-3-flash-preview | ✅ | ✅ | 0-2 | ✅ | Balanced model for speed, scale, and frontier intelligence |
 | gemini-2.5-pro | ✅ | ✅ | 0-2 | ✅ | Advanced thinking model for reasoning, math, and STEM |
 | gemini-2.5-flash | ✅ | ✅ | 0-2 | ✅ | Best price-performance, thinking, and agentic use cases |
 | gemini-2.5-flash-lite | ✅ | ❌ | 0-2 | ❌ | Fastest, cost-efficient version |
-| gemini-2.0-flash | ✅ | ✅ | 0-2 | ❌ | Legacy model |
+| gemini-2.0-flash | ✅ | ✅ | 0-2 | ❌ | **DEPRECATED** - EOL March 2026 |
 
 **Parâmetros específicos:**
 - `temperature`: vai em `generationConfig`

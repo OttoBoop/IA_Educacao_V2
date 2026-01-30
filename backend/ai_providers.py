@@ -32,6 +32,16 @@ def _get_provider_type():
     return ProviderType
 
 
+
+
+def _testing_mode() -> bool:
+    """Detecta se esta rodando em contexto de testes."""
+    return os.getenv("PROVA_AI_TESTING", "").lower() in ("1", "true", "yes")
+
+
+def _local_llm_disabled() -> bool:
+    """Permite desabilitar provider local (ex: Ollama) via env var."""
+    return os.getenv("PROVA_AI_DISABLE_LOCAL_LLM", "").lower() in ("1", "true", "yes")
 @dataclass
 class AIResponse:
     """Resposta padronizada de qualquer provider de IA"""
@@ -152,34 +162,65 @@ class OpenAIProvider(AIProvider):
         if self._is_reasoning_model():
             # Reasoning models usam max_completion_tokens, não max_tokens
             payload["max_completion_tokens"] = max_tokens
-            # Adicionar reasoning_effort se especificado
-            if reasoning_effort and reasoning_effort in ['low', 'medium', 'high']:
-                payload["reasoning_effort"] = reasoning_effort
+            # Definir reasoning_effort - usar "minimal" por padrão para evitar respostas vazias
+            # Ref: https://community.openai.com/t/gpt-5-mini-api-unstable-and-slow-repeated-timeout-and-empty-responses/1355041
+            # Modelos GPT-5 podem consumir todos tokens em raciocínio se effort for alto demais
+            effort = reasoning_effort if reasoning_effort in ['minimal', 'low', 'medium', 'high'] else 'minimal'
+            payload["reasoning_effort"] = effort
         else:
             # Modelos normais: usar temperature e max_tokens
             payload["temperature"] = temperature
             payload["max_tokens"] = max_tokens
 
+        import asyncio
         async with httpx.AsyncClient() as client:
-            try:
-                response = await client.post(
-                    f"{self.base_url}/chat/completions",
-                    headers={
-                        "Authorization": f"Bearer {self.api_key}",
-                        "Content-Type": "application/json"
-                    },
-                    json=payload,
-                    timeout=120.0
-                )
-                response.raise_for_status()
-                data = response.json()
-            except httpx.HTTPStatusError as exc:
-                raise RuntimeError(_format_httpx_error(exc)) from exc
+            max_retries = 3
+            backoff = 1.0
+            data = None
+            content = ""
+
+            for attempt in range(max_retries):
+                try:
+                    response = await client.post(
+                        f"{self.base_url}/chat/completions",
+                        headers={
+                            "Authorization": f"Bearer {self.api_key}",
+                            "Content-Type": "application/json"
+                        },
+                        json=payload,
+                        timeout=120.0
+                    )
+                    response.raise_for_status()
+                    data = response.json()
+
+                    # Extrair conteúdo - pode ser None para modelos de raciocínio
+                    # Ref: https://github.com/openai/openai-python/issues/2546
+                    content = data["choices"][0]["message"].get("content") or ""
+
+                    # Se resposta vazia em modelo de raciocínio, retry com effort maior
+                    # Ref: https://community.openai.com/t/gpt-5-mini-api-unstable-and-slow-repeated-timeout-and-empty-responses/1355041
+                    if content or not self._is_reasoning_model():
+                        break  # Sucesso
+
+                    # Retry com reasoning_effort mais alto
+                    if attempt < max_retries - 1:
+                        await asyncio.sleep(backoff)
+                        backoff *= 2
+                        payload["reasoning_effort"] = "low" if attempt == 0 else "medium"
+                        continue
+
+                except httpx.HTTPStatusError as exc:
+                    status = exc.response.status_code
+                    if status in (429, 500, 502, 503, 504) and attempt < max_retries - 1:
+                        await asyncio.sleep(backoff)
+                        backoff *= 2
+                        continue
+                    raise RuntimeError(_format_httpx_error(exc)) from exc
 
         latency = (time.time() - start) * 1000
 
         return AIResponse(
-            content=data["choices"][0]["message"]["content"],
+            content=content,
             provider="openai",
             model=self.model,
             tokens_used=data["usage"]["total_tokens"],
@@ -188,7 +229,8 @@ class OpenAIProvider(AIProvider):
             latency_ms=latency,
             metadata={
                 "finish_reason": data["choices"][0]["finish_reason"],
-                "is_reasoning_model": self._is_reasoning_model()
+                "is_reasoning_model": self._is_reasoning_model(),
+                "reasoning_tokens": data["usage"].get("completion_tokens_details", {}).get("reasoning_tokens", 0)
             }
         )
     
@@ -779,9 +821,15 @@ class AIProviderRegistry:
 
             for config in data.get("providers", []):
                 try:
+                    provider_type = (config.get("provider_type") or "").lower()
+                    if _local_llm_disabled() and provider_type in ("ollama", "localllmprovider"):
+                        continue
                     self._create_provider_from_config(config)
                 except Exception as e:
                     print(f"Erro ao carregar provider {config.get('name')}: {e}")
+
+            if self.default_provider and self.default_provider not in self.providers:
+                self.default_provider = None
 
             print(f"[OK] Providers carregados: {list(self.providers.keys())}")
         except Exception as e:
@@ -923,9 +971,16 @@ class AIProviderRegistry:
         return self.providers[name]
 
     def get_default(self) -> Optional[AIProvider]:
-        """Retorna o provider padrão, ou None se nenhum estiver configurado"""
+        """Retorna o provider padrao, ou None se nenhum estiver configurado"""
         if self.default_provider and self.default_provider in self.providers:
-            return self.providers[self.default_provider]
+            provider = self.providers[self.default_provider]
+            if _testing_mode():
+                # Em testes, evita usar providers sem API key ou LLM local desativado.
+                if isinstance(provider, LocalLLMProvider) and _local_llm_disabled():
+                    return None
+                if not isinstance(provider, LocalLLMProvider) and not getattr(provider, 'api_key', ''):
+                    return None
+            return provider
         return None
 
     def list_providers(self) -> List[str]:
@@ -1003,7 +1058,7 @@ def setup_providers_from_env():
         print(f"[WARN] Erro ao carregar chaves do gerenciador: {e}")
 
     # Ollama (local) - sempre disponível como fallback
-    if "ollama-llama3" not in ai_registry.providers:
+    if not _local_llm_disabled() and "ollama-llama3" not in ai_registry.providers:
         ai_registry.register(
             "ollama-llama3",
             LocalLLMProvider(model="llama3"),

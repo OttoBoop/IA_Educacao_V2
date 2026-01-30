@@ -1,0 +1,239 @@
+"""
+PROVA AI - Validation Models for Pipeline JSON Outputs v2.0
+
+Pydantic models for validating JSON outputs from each pipeline stage.
+These models ensure AI models produce correctly structured responses.
+"""
+
+from pydantic import BaseModel, Field, field_validator
+from typing import List, Dict, Any, Optional, Union
+from enum import Enum
+
+
+# ============================================================
+# ENUMS FOR VALIDATION
+# ============================================================
+
+class TipoQuestao(str, Enum):
+    """Tipos de questões suportadas"""
+    MULTIPLA_ESCOLHA = "multipla_escolha"
+    DISSERTATIVA = "dissertativa"
+    VERDADEIRO_FALSO = "verdadeiro_falso"
+    ASSOCIACAO = "associacao"
+
+
+class StatusCorrecao(str, Enum):
+    """Status possíveis para correção de questões"""
+    CORRETA = "correta"
+    PARCIAL = "parcial"
+    INCORRETA = "incorreta"
+    EM_BRANCO = "em_branco"
+
+
+class NivelHabilidade(str, Enum):
+    """Níveis de domínio de habilidades"""
+    DOMINADA = "dominadas"
+    EM_DESENVOLVIMENTO = "em_desenvolvimento"
+    NAO_DEMONSTRADA = "nao_demonstradas"
+
+
+# ============================================================
+# MODELS FOR EACH PIPELINE STAGE
+# ============================================================
+
+class ItemQuestao(BaseModel):
+    """Item de uma questão de múltipla escolha"""
+    letra: str = Field(..., description="Letra do item (a, b, c, d, etc.)", min_length=1, max_length=2)
+    texto: str = Field(..., description="Texto do item", min_length=1)
+
+
+class Questao(BaseModel):
+    """Questão extraída do enunciado"""
+    numero: int = Field(..., description="Número da questão", gt=0)
+    enunciado: str = Field(..., description="Enunciado completo da questão", min_length=1)
+    itens: List[ItemQuestao] = Field(default_factory=list, description="Itens para questões de múltipla escolha")
+    tipo: TipoQuestao = Field(..., description="Tipo da questão")
+    pontuacao: float = Field(..., description="Pontuação da questão", ge=0)
+    habilidades: List[str] = Field(default_factory=list, description="Habilidades relacionadas")
+
+
+class ExtracaoQuestoes(BaseModel):
+    """Saída da etapa EXTRAIR_QUESTOES"""
+    questoes: List[Questao] = Field(..., description="Lista de questões extraídas")
+    total_questoes: int = Field(..., description="Total de questões encontradas", ge=0)
+    pontuacao_total: float = Field(..., description="Pontuação total da prova", ge=0)
+
+    @field_validator('total_questoes')
+    @classmethod
+    def validar_total_questoes(cls, v: int, info) -> int:
+        if 'questoes' in info.data and len(info.data['questoes']) != v:
+            raise ValueError('total_questoes deve corresponder ao tamanho da lista questoes')
+        return v
+
+
+class CriterioParcial(BaseModel):
+    """Critério para correção parcial"""
+    descricao: str = Field(..., description="Descrição do critério", min_length=1)
+    percentual: int = Field(..., description="Percentual de pontuação (0-100)", ge=0, le=100)
+
+
+class RespostaGabarito(BaseModel):
+    """Resposta correta do gabarito"""
+    questao_numero: int = Field(..., description="Número da questão", gt=0)
+    resposta_correta: str = Field(..., description="Resposta correta", min_length=1)
+    justificativa: str = Field(default="", description="Justificativa da resposta correta")
+    criterios_parciais: List[CriterioParcial] = Field(default_factory=list, description="Critérios para correção parcial")
+
+
+class ExtracaoGabarito(BaseModel):
+    """Saída da etapa EXTRAIR_GABARITO"""
+    respostas: List[RespostaGabarito] = Field(..., description="Lista de respostas corretas")
+
+
+class RespostaAluno(BaseModel):
+    """Resposta extraída da prova do aluno"""
+    questao_numero: int = Field(..., description="Número da questão", gt=0)
+    resposta_aluno: Optional[str] = Field(None, description="Resposta dada pelo aluno")
+    em_branco: bool = Field(default=False, description="Se a questão foi deixada em branco")
+    ilegivel: bool = Field(default=False, description="Se a resposta é ilegível")
+    observacoes: str = Field(default="", description="Observações adicionais")
+
+
+class ExtracaoRespostas(BaseModel):
+    """Saída da etapa EXTRAIR_RESPOSTAS"""
+    aluno: str = Field(..., description="Nome do aluno", min_length=1)
+    respostas: List[RespostaAluno] = Field(..., description="Lista de respostas do aluno")
+    questoes_respondidas: int = Field(..., description="Número de questões respondidas", ge=0)
+    questoes_em_branco: int = Field(..., description="Número de questões em branco", ge=0)
+
+    @field_validator('questoes_respondidas', 'questoes_em_branco')
+    @classmethod
+    def validar_contagens(cls, v: int, info) -> int:
+        if 'respostas' in info.data:
+            respondidas = sum(1 for r in info.data['respostas'] if not r.em_branco and r.resposta_aluno)
+            em_branco = sum(1 for r in info.data['respostas'] if r.em_branco)
+
+            if info.field_name == 'questoes_respondidas' and v != respondidas:
+                raise ValueError('questoes_respondidas deve corresponder ao número real de respostas')
+            if info.field_name == 'questoes_em_branco' and v != em_branco:
+                raise ValueError('questoes_em_branco deve corresponder ao número real de questões em branco')
+        return v
+
+
+class CorrecaoQuestao(BaseModel):
+    """Resultado da correção de uma questão individual"""
+    nota: float = Field(..., description="Nota atribuída", ge=0)
+    nota_maxima: float = Field(..., description="Nota máxima da questão", gt=0)
+    percentual: int = Field(..., description="Percentual de acerto (0-100)", ge=0, le=100)
+    status: StatusCorrecao = Field(..., description="Status da correção")
+    feedback: str = Field(..., description="Feedback detalhado para o aluno", min_length=1)
+    pontos_positivos: List[str] = Field(default_factory=list, description="Pontos positivos da resposta")
+    pontos_melhorar: List[str] = Field(default_factory=list, description="Pontos a melhorar")
+    erros_conceituais: List[str] = Field(default_factory=list, description="Erros conceituais identificados")
+    habilidades_demonstradas: List[str] = Field(default_factory=list, description="Habilidades demonstradas")
+    habilidades_faltantes: List[str] = Field(default_factory=list, description="Habilidades que precisam ser desenvolvidas")
+
+
+class AnaliseHabilidades(BaseModel):
+    """Saída da etapa ANALISAR_HABILIDADES"""
+    aluno: str = Field(..., description="Nome do aluno", min_length=1)
+    resumo_desempenho: str = Field(..., description="Resumo geral do desempenho", min_length=1)
+    nota_final: float = Field(..., description="Nota final do aluno", ge=0)
+    nota_maxima: float = Field(..., description="Nota máxima possível", gt=0)
+    percentual_acerto: int = Field(..., description="Percentual geral de acerto (0-100)", ge=0, le=100)
+    habilidades: Dict[str, List[Dict[str, str]]] = Field(..., description="Análise de habilidades por categoria")
+    recomendacoes: List[str] = Field(default_factory=list, description="Recomendações de estudo")
+    pontos_fortes: List[str] = Field(default_factory=list, description="Pontos fortes do aluno")
+    areas_atencao: List[str] = Field(default_factory=list, description="Áreas que precisam de atenção")
+
+    @field_validator('habilidades')
+    @classmethod
+    def validar_habilidades(cls, v: Dict[str, List[Dict[str, str]]]) -> Dict[str, List[Dict[str, str]]]:
+        """Validar que as chaves das habilidades são válidas"""
+        chaves_validas = {nivel.value for nivel in NivelHabilidade}
+        for chave in v.keys():
+            if chave not in chaves_validas:
+                raise ValueError(f'Chave de habilidade inválida: {chave}. Deve ser uma de: {chaves_validas}')
+        return v
+
+
+class RelatorioFinal(BaseModel):
+    """Saída da etapa GERAR_RELATORIO"""
+    conteudo: str = Field(..., description="Conteúdo do relatório em Markdown", min_length=1)
+    resumo_executivo: str = Field(default="", description="Resumo executivo breve")
+    nota_final: str = Field(..., description="Nota final formatada")
+    aluno: str = Field(..., description="Nome do aluno", min_length=1)
+    materia: str = Field(..., description="Matéria da prova", min_length=1)
+    atividade: str = Field(..., description="Nome/título da atividade", min_length=1)
+
+
+# ============================================================
+# UTILITY FUNCTIONS
+# ============================================================
+
+def validar_json_pipeline(etapa: str, dados: Dict[str, Any]) -> Union[BaseModel, Dict[str, Any]]:
+    """
+    Valida JSON de saída de uma etapa do pipeline usando Pydantic models.
+
+    Args:
+        etapa: Nome da etapa do pipeline
+        dados: Dados JSON a validar
+
+    Returns:
+        Instância do modelo Pydantic se válido, ou dict com erro se inválido
+    """
+    modelos = {
+        'extrair_questoes': ExtracaoQuestoes,
+        'extrair_gabarito': ExtracaoGabarito,
+        'extrair_respostas': ExtracaoRespostas,
+        'corrigir': CorrecaoQuestao,
+        'analisar_habilidades': AnaliseHabilidades,
+        'gerar_relatorio': RelatorioFinal
+    }
+
+    modelo = modelos.get(etapa.lower().replace(' ', '_'))
+    if not modelo:
+        return {
+            "_error": "etapa_desconhecida",
+            "_message": f"Etapa '{etapa}' não possui modelo de validação",
+            "_etapa": etapa
+        }
+
+    try:
+        instancia = modelo(**dados)
+        return instancia
+    except Exception as e:
+        return {
+            "_error": "validacao_falhou",
+            "_message": f"JSON não corresponde ao esquema esperado: {str(e)}",
+            "_etapa": etapa,
+            "_erros": str(e),
+            "_dados_recebidos": dados
+        }
+
+
+def obter_schema_json(etapa: str) -> Optional[Dict[str, Any]]:
+    """
+    Retorna o schema JSON Schema para uma etapa do pipeline.
+
+    Args:
+        etapa: Nome da etapa
+
+    Returns:
+        Schema JSON Schema ou None se etapa não existir
+    """
+    modelos = {
+        'extrair_questoes': ExtracaoQuestoes,
+        'extrair_gabarito': ExtracaoGabarito,
+        'extrair_respostas': ExtracaoRespostas,
+        'corrigir': CorrecaoQuestao,
+        'analisar_habilidades': AnaliseHabilidades,
+        'gerar_relatorio': RelatorioFinal
+    }
+
+    modelo = modelos.get(etapa.lower().replace(' ', '_'))
+    if modelo:
+        return modelo.schema()
+    else:
+        return None</content>
+<parameter name="filePath">c:\Users\otavi\Documents\prova-ai\IA_Educacao_V2\backend\pipeline_validation.py
