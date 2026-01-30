@@ -372,19 +372,7 @@ class PipelineExecutor:
         if etapa in etapas_requerem_arquivo and not arquivos:
             import logging
             logger = logging.getLogger("pipeline")
-            
-            # Provide more detailed error message
-            tipo_esperado = {
-                EtapaProcessamento.EXTRAIR_QUESTOES: "ENUNCIADO (arquivo do enunciado da prova)",
-                EtapaProcessamento.EXTRAIR_GABARITO: "GABARITO (arquivo do gabarito da prova)",
-                EtapaProcessamento.EXTRAIR_RESPOSTAS: "PROVA_RESPONDIDA (arquivo da prova respondida pelo aluno)"
-            }
-            
-            tipo_nome = tipo_esperado.get(etapa, f"documento do tipo {etapa.value}")
-            logger.error(f"FALHA: Etapa {etapa.value} requer {tipo_nome} mas nenhum foi encontrado!")
-            logger.error(f"  Atividade ID: {atividade_id}")
-            logger.error(f"  Aluno ID: {aluno_id or 'N/A'}")
-            logger.error(f"  Documentos encontrados: {len(docs_base)} base, {len(docs_aluno)} aluno")
+            logger.error(f"FALHA: Etapa {etapa.value} requer arquivos mas nenhum foi encontrado!")
 
             return ResultadoExecucao(
                 sucesso=False,
@@ -393,7 +381,7 @@ class PipelineExecutor:
                 prompt_id=prompt.id,
                 provider=config.get("tipo", "unknown"),
                 modelo=config.get("modelo", "unknown"),
-                erro=f"Arquivo não encontrado para {etapa.value}. Esperado: {tipo_nome}. Verifique se o documento foi enviado corretamente.",
+                erro=f"Arquivo não encontrado para {etapa.value}. Verifique se o documento foi enviado corretamente.",
                 anexos_enviados=[],
                 tempo_ms=(time.time() - inicio) * 1000
             )
@@ -518,24 +506,17 @@ class PipelineExecutor:
                 logger.warning(f"  Doc {doc.id} ({doc.tipo.value}): caminho vazio")
                 return None
 
-            # Normalizar caminhos (Windows backslash -> forward slash)
-            caminho = doc.caminho_arquivo.replace('\\', '/')
-            path = Path(caminho)
-
-            if path.exists():
-                logger.info(f"  Doc {doc.id} ({doc.tipo.value}): OK - {caminho}")
-                return str(path)
+            # Resolver caminho relativo contra o base_path do storage
+            caminho_relativo = Path(doc.caminho_arquivo)
+            caminho_absoluto = self.storage.base_path / caminho_relativo
+            
+            if caminho_absoluto.exists():
+                logger.info(f"  Doc {doc.id} ({doc.tipo.value}): OK - {caminho_absoluto}")
+                return str(caminho_absoluto)
             else:
-                # Tentar caminho relativo ao diretório atual
-                cwd_path = Path.cwd() / caminho
-                if cwd_path.exists():
-                    logger.info(f"  Doc {doc.id} ({doc.tipo.value}): OK (cwd) - {cwd_path}")
-                    return str(cwd_path)
-
                 logger.error(f"  Doc {doc.id} ({doc.tipo.value}): ARQUIVO NÃO ENCONTRADO")
-                logger.error(f"    Tentei: {path} (exists={path.exists()})")
-                logger.error(f"    Tentei: {cwd_path} (exists={cwd_path.exists()})")
-                logger.error(f"    CWD: {Path.cwd()}")
+                logger.error(f"    Tentei: {caminho_absoluto} (exists={caminho_absoluto.exists()})")
+                logger.error(f"    Base path: {self.storage.base_path}")
                 return None
 
         # Mapa de quais documentos cada etapa precisa
