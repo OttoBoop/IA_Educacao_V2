@@ -25,6 +25,7 @@ from chat_service import (
     DEFAULT_URLS, MODELOS_SUGERIDOS, get_tipos_providers
 )
 from model_catalog import model_catalog, ModelMetadata
+from storage import storage
 import httpx
 import mimetypes
 
@@ -259,7 +260,6 @@ async def chat_direto(data: ChatRequest):
     sys.stderr.write("=" * 50 + "\n")
     sys.stderr.flush()
     import time
-    from storage import storage
     from chat_service import ChatClient
 
     start_time = time.time()
@@ -886,8 +886,6 @@ async def ler_documento_para_chat(documento_id: str):
 @router.get("/api/chat/arquivos", tags=["Chat - Arquivos"])
 async def listar_arquivos_chat():
     """Lista arquivos gerados pelo chat"""
-    from storage import storage
-    
     pasta = Path(storage.base_path) / "chat_outputs"
     
     if not pasta.exists():
@@ -909,8 +907,6 @@ async def listar_arquivos_chat():
 @router.get("/api/chat/arquivos/download/{caminho:path}", tags=["Chat - Arquivos"])
 async def download_arquivo(caminho: str):
     """Download de arquivo gerado pelo chat"""
-    from storage import storage
-
     arquivo = Path(storage.base_path) / "chat_outputs" / caminho
 
     if not arquivo.exists():
@@ -923,8 +919,6 @@ async def download_arquivo(caminho: str):
 @router.get("/api/chat/arquivos/view/{caminho:path}", tags=["Chat - Arquivos"])
 async def view_arquivo(caminho: str):
     """Visualiza arquivo inline no navegador (para PDFs, imagens, HTML)"""
-    from storage import storage
-
     arquivo = Path(storage.base_path) / "chat_outputs" / caminho
 
     if not arquivo.exists():
