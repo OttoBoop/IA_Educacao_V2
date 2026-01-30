@@ -623,15 +623,16 @@ async def get_documento(documento_id: str):
 
 @app.get("/api/documentos/{documento_id}/download", tags=["Documentos"])
 async def download_documento(documento_id: str):
-    """Faz download do arquivo"""
+    """Faz download do arquivo (baixa do Supabase se necessário)"""
     documento = storage.get_documento(documento_id)
     if not documento:
         raise HTTPException(404, "Documento não encontrado")
-    
-    arquivo = Path(documento.caminho_arquivo)
-    if not arquivo.exists():
+
+    # Usar resolver_caminho_documento para baixar do Supabase se necessário
+    arquivo = storage.resolver_caminho_documento(documento)
+    if arquivo is None or not arquivo.exists():
         raise HTTPException(404, "Arquivo não encontrado no sistema")
-    
+
     return FileResponse(
         arquivo,
         filename=documento.nome_arquivo,

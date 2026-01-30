@@ -515,12 +515,21 @@ def _ler_conteudo_documento(documento) -> Optional[str]:
     Usa storage.resolver_caminho_documento() para baixar do Supabase se não existir localmente.
     """
     import json
+    import sys
 
     try:
+        sys.stderr.write(f"[_ler_conteudo] Tentando ler: {documento.id} - {documento.nome_arquivo}\n")
+        sys.stderr.write(f"[_ler_conteudo] Caminho original: {documento.caminho_arquivo}\n")
+        sys.stderr.flush()
+
         # Usar resolver_caminho_documento para obter arquivo (baixa do Supabase se necessário)
         arquivo = storage.resolver_caminho_documento(documento)
+        sys.stderr.write(f"[_ler_conteudo] Arquivo resolvido: {arquivo}\n")
+        sys.stderr.flush()
+
         if arquivo is None or not arquivo.exists():
-            print(f"[Chat] Documento não encontrado: {documento.caminho_arquivo}")
+            sys.stderr.write(f"[_ler_conteudo] ERRO: Arquivo não encontrado após resolver: {documento.caminho_arquivo}\n")
+            sys.stderr.flush()
             return None
 
         if documento.extensao.lower() == '.json':
