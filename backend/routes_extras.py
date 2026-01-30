@@ -860,3 +860,126 @@ async def get_sync_status():
         status["remote_server"]["status"] = f"offline: {str(e)[:50]}"
 
     return status
+
+
+# ============================================================
+# LIMPEZA DE DOCUMENTOS ÓRFÃOS
+# ============================================================
+
+@router.get("/api/manutencao/documentos-orfaos", tags=["Manutenção"])
+async def listar_documentos_orfaos():
+    """
+    Lista documentos órfãos (existem no BD mas não no Supabase).
+    Útil para diagnóstico antes de executar a limpeza.
+    """
+    from supabase_storage import supabase_storage
+
+    if not supabase_storage or not supabase_storage.enabled:
+        raise HTTPException(503, "Supabase não está configurado")
+
+    orfaos = []
+    verificados = 0
+
+    # Iterar por todas as matérias/turmas/atividades para pegar todos os docs
+    for materia in storage.listar_materias():
+        for turma in storage.listar_turmas(materia.id):
+            for atividade in storage.listar_atividades(turma.id):
+                docs = storage.listar_documentos(atividade.id)
+                for doc in docs:
+                    verificados += 1
+
+                    # Normalizar caminho para formato Supabase
+                    caminho = doc.caminho_arquivo or ""
+                    remote_path = caminho.replace("\\", "/")
+                    if remote_path.startswith("data/"):
+                        remote_path = remote_path[5:]  # Remove "data/"
+
+                    # Verificar se existe no Supabase
+                    if not supabase_storage.exists(remote_path):
+                        orfaos.append({
+                            "id": doc.id,
+                            "tipo": doc.tipo.value,
+                            "nome_arquivo": doc.nome_arquivo,
+                            "caminho_bd": doc.caminho_arquivo,
+                            "remote_path": remote_path,
+                            "atividade_id": doc.atividade_id,
+                            "aluno_id": doc.aluno_id,
+                            "criado_em": doc.criado_em.isoformat() if doc.criado_em else None
+                        })
+
+    return {
+        "total_verificados": verificados,
+        "total_orfaos": len(orfaos),
+        "orfaos": orfaos
+    }
+
+
+@router.delete("/api/manutencao/documentos-orfaos", tags=["Manutenção"])
+async def limpar_documentos_orfaos(dry_run: bool = True):
+    """
+    Remove documentos órfãos do banco de dados.
+
+    Args:
+        dry_run: Se True (padrão), apenas lista o que seria deletado sem deletar.
+                 Se False, executa a limpeza de verdade.
+    """
+    from supabase_storage import supabase_storage
+
+    if not supabase_storage or not supabase_storage.enabled:
+        raise HTTPException(503, "Supabase não está configurado")
+
+    orfaos = []
+    deletados = []
+    erros = []
+    verificados = 0
+
+    # Iterar por todas as matérias/turmas/atividades
+    for materia in storage.listar_materias():
+        for turma in storage.listar_turmas(materia.id):
+            for atividade in storage.listar_atividades(turma.id):
+                docs = storage.listar_documentos(atividade.id)
+                for doc in docs:
+                    verificados += 1
+
+                    # Normalizar caminho
+                    caminho = doc.caminho_arquivo or ""
+                    remote_path = caminho.replace("\\", "/")
+                    if remote_path.startswith("data/"):
+                        remote_path = remote_path[5:]
+
+                    # Verificar se existe no Supabase
+                    if not supabase_storage.exists(remote_path):
+                        orfao_info = {
+                            "id": doc.id,
+                            "tipo": doc.tipo.value,
+                            "nome_arquivo": doc.nome_arquivo,
+                            "remote_path": remote_path
+                        }
+                        orfaos.append(orfao_info)
+
+                        # Se não for dry_run, deletar do banco
+                        if not dry_run:
+                            try:
+                                # Deletar diretamente do banco (sem tentar deletar arquivo)
+                                conn = storage._get_connection()
+                                c = conn.cursor()
+                                c.execute('DELETE FROM documentos WHERE id = ?', [doc.id])
+                                conn.commit()
+                                conn.close()
+                                deletados.append(orfao_info)
+                            except Exception as e:
+                                erros.append({
+                                    "id": doc.id,
+                                    "erro": str(e)
+                                })
+
+    return {
+        "dry_run": dry_run,
+        "total_verificados": verificados,
+        "total_orfaos": len(orfaos),
+        "deletados": len(deletados) if not dry_run else 0,
+        "erros": len(erros),
+        "orfaos": orfaos,
+        "detalhes_erros": erros,
+        "mensagem": "Simulação - use dry_run=false para deletar" if dry_run else f"Deletados {len(deletados)} documentos órfãos"
+    }
