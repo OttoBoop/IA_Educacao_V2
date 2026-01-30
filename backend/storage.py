@@ -875,6 +875,9 @@ class StorageManager:
         Local é apenas cache/fallback para dev.
         """
         import sys
+        import logging
+        logger = logging.getLogger("pipeline")
+
         # Normalizar: converter barras invertidas para barras normais
         caminho_str = documento.caminho_arquivo.replace('\\', '/')
 
@@ -886,14 +889,16 @@ class StorageManager:
         # Definir caminho local para salvar
         local_path = self.base_path / remote_path
 
-        sys.stderr.write(f"[resolver_caminho] Documento: {documento.nome_arquivo}\n")
-        sys.stderr.write(f"[resolver_caminho] Remote path: {remote_path}\n")
-        sys.stderr.flush()
+        logger.info(f"[resolver_caminho] Doc: {documento.id} | Nome: {documento.nome_arquivo}")
+        logger.info(f"[resolver_caminho] caminho_arquivo (BD): {documento.caminho_arquivo}")
+        logger.info(f"[resolver_caminho] remote_path: {remote_path}")
+        logger.info(f"[resolver_caminho] local_path: {local_path}")
+        logger.info(f"[resolver_caminho] SUPABASE_AVAILABLE: {SUPABASE_AVAILABLE}")
+        logger.info(f"[resolver_caminho] supabase_storage.enabled: {supabase_storage.enabled if supabase_storage else 'None'}")
 
         # SEMPRE tentar Supabase primeiro
-        if SUPABASE_AVAILABLE and supabase_storage:
-            sys.stderr.write(f"[resolver_caminho] Baixando do Supabase: {remote_path}\n")
-            sys.stderr.flush()
+        if SUPABASE_AVAILABLE and supabase_storage and supabase_storage.enabled:
+            logger.info(f"[resolver_caminho] Tentando Supabase...")
 
             # Criar diretório pai se não existir
             local_path.parent.mkdir(parents=True, exist_ok=True)
@@ -901,21 +906,30 @@ class StorageManager:
             success, msg = supabase_storage.download(remote_path, str(local_path))
 
             if success:
-                sys.stderr.write(f"[resolver_caminho] Supabase OK: {local_path}\n")
-                sys.stderr.flush()
+                logger.info(f"[resolver_caminho] Supabase OK: {local_path}")
                 return local_path
             else:
-                sys.stderr.write(f"[resolver_caminho] Supabase falhou: {msg}\n")
-                sys.stderr.flush()
+                logger.warning(f"[resolver_caminho] Supabase falhou: {msg}")
+
+                # Tentar também com prefixo 'arquivos/' se não tiver
+                if not remote_path.startswith('arquivos/'):
+                    alt_path = f"arquivos/{remote_path}"
+                    logger.info(f"[resolver_caminho] Tentando caminho alternativo: {alt_path}")
+                    success2, msg2 = supabase_storage.download(alt_path, str(local_path))
+                    if success2:
+                        logger.info(f"[resolver_caminho] Supabase OK (alt): {local_path}")
+                        return local_path
+                    else:
+                        logger.warning(f"[resolver_caminho] Supabase (alt) falhou: {msg2}")
+        else:
+            logger.warning(f"[resolver_caminho] Supabase não disponível!")
 
         # Fallback: verificar local (para dev sem Supabase)
         if local_path.exists():
-            sys.stderr.write(f"[resolver_caminho] Usando cache local: {local_path}\n")
-            sys.stderr.flush()
+            logger.info(f"[resolver_caminho] Usando cache local: {local_path}")
             return local_path
 
-        sys.stderr.write(f"[resolver_caminho] ERRO: Arquivo não encontrado\n")
-        sys.stderr.flush()
+        logger.error(f"[resolver_caminho] ERRO: Arquivo não encontrado em lugar nenhum!")
         return local_path
     
     def listar_documentos(self, atividade_id: str, aluno_id: str = None, 

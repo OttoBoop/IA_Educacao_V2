@@ -224,5 +224,45 @@ class SupabaseStorage:
             return None
 
 
+    def list_files(self, prefix: str = "", limit: int = 100) -> Tuple[bool, any]:
+        """
+        Lista arquivos no bucket.
+
+        Args:
+            prefix: Prefixo para filtrar (ex: "arquivos/materia_id/")
+            limit: Limite de resultados
+
+        Returns:
+            Tuple[success: bool, files_or_error: list|str]
+        """
+        if not self._enabled:
+            return False, "Supabase não configurado"
+
+        prefix = prefix.replace("\\", "/").lstrip("/")
+        url = f"{self.storage_url}/object/list/{self.bucket}"
+
+        try:
+            with httpx.Client(timeout=30) as client:
+                response = client.post(
+                    url,
+                    headers=self.headers,
+                    json={
+                        "prefix": prefix,
+                        "limit": limit,
+                        "offset": 0,
+                        "sortBy": {"column": "name", "order": "asc"}
+                    }
+                )
+
+            if response.status_code == 200:
+                files = response.json()
+                return True, files
+            else:
+                return False, f"Erro {response.status_code}: {response.text}"
+
+        except Exception as e:
+            return False, f"Erro ao listar: {str(e)}"
+
+
 # Instância global
 supabase_storage = SupabaseStorage()

@@ -908,6 +908,76 @@ async def debug_routers():
     }
 
 
+@app.get("/api/debug/supabase", tags=["Debug"])
+async def debug_supabase(prefix: str = ""):
+    """Diagnóstico do Supabase Storage"""
+    from supabase_storage import supabase_storage
+
+    result = {
+        "supabase_enabled": supabase_storage.enabled if supabase_storage else False,
+        "supabase_url": supabase_storage.url if supabase_storage else None,
+        "supabase_bucket": supabase_storage.bucket if supabase_storage else None,
+        "storage_base_path": str(storage.base_path),
+        "files": []
+    }
+
+    if supabase_storage and supabase_storage.enabled:
+        success, files_or_error = supabase_storage.list_files(prefix=prefix, limit=50)
+        if success:
+            result["files"] = files_or_error
+        else:
+            result["list_error"] = files_or_error
+
+    return result
+
+
+@app.get("/api/debug/documento/{documento_id}", tags=["Debug"])
+async def debug_documento(documento_id: str):
+    """Debug de um documento específico"""
+    from supabase_storage import supabase_storage
+
+    doc = storage.get_documento(documento_id)
+    if not doc:
+        raise HTTPException(404, "Documento não encontrado")
+
+    caminho_str = doc.caminho_arquivo.replace('\\', '/')
+    remote_path = caminho_str
+    if remote_path.startswith('data/'):
+        remote_path = remote_path[5:]
+
+    local_path = storage.base_path / remote_path
+
+    result = {
+        "documento": {
+            "id": doc.id,
+            "tipo": doc.tipo.value,
+            "nome_arquivo": doc.nome_arquivo,
+            "caminho_arquivo": doc.caminho_arquivo,
+            "atividade_id": doc.atividade_id,
+            "aluno_id": doc.aluno_id,
+        },
+        "paths": {
+            "caminho_str": caminho_str,
+            "remote_path": remote_path,
+            "local_path": str(local_path),
+            "local_exists": local_path.exists(),
+        },
+        "supabase": {
+            "enabled": supabase_storage.enabled if supabase_storage else False,
+            "exists": False,
+            "download_test": None,
+        }
+    }
+
+    if supabase_storage and supabase_storage.enabled:
+        result["supabase"]["exists"] = supabase_storage.exists(remote_path)
+        # Tentar download
+        success, msg = supabase_storage.download(remote_path, str(local_path))
+        result["supabase"]["download_test"] = {"success": success, "message": msg}
+
+    return result
+
+
 # ============================================================
 # FRONTEND (servir arquivos estáticos)
 # ============================================================
