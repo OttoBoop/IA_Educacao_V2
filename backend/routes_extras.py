@@ -555,101 +555,6 @@ async def listar_todos_documentos(
     aluno_ids: Optional[str] = None,
     tipos: Optional[str] = None
 ):
-    """
-    Lista todos os documentos do sistema com metadados completos.
-    Usado pelo sistema de chat para seleção de contexto.
-    
-    Parâmetros são listas separadas por vírgula.
-    """
-    # Parse filters
-    filters = {
-        'materia_ids': materia_ids.split(',') if materia_ids else None,
-        'turma_ids': turma_ids.split(',') if turma_ids else None,
-        'atividade_ids': atividade_ids.split(',') if atividade_ids else None,
-        'aluno_ids': aluno_ids.split(',') if aluno_ids else None,
-        'tipos': tipos.split(',') if tipos else None,
-    }
-    
-    documentos = []
-    
-    # Buscar todas as matérias
-    materias = storage.listar_materias()
-    
-    for materia in materias:
-        # Filtrar por matéria se especificado
-        if filters['materia_ids'] and materia.id not in filters['materia_ids']:
-            continue
-        
-        turmas = storage.listar_turmas(materia.id)
-        
-        for turma in turmas:
-            # Filtrar por turma se especificado
-            if filters['turma_ids'] and turma.id not in filters['turma_ids']:
-                continue
-            
-            atividades = storage.listar_atividades(turma.id)
-            
-            for atividade in atividades:
-                # Filtrar por atividade se especificado
-                if filters['atividade_ids'] and atividade.id not in filters['atividade_ids']:
-                    continue
-                
-                # Buscar documentos da atividade
-                docs_atividade = storage.listar_documentos(atividade.id)
-                
-                for doc in docs_atividade:
-                    # Filtrar por tipo se especificado
-                    if filters['tipos'] and doc.tipo.value not in filters['tipos']:
-                        continue
-                    
-                    # Filtrar por aluno se especificado
-                    if filters['aluno_ids']:
-                        # Incluir documentos base (sem aluno) E documentos dos alunos selecionados
-                        if doc.aluno_id and doc.aluno_id not in filters['aluno_ids']:
-                            continue
-                    
-                    # Buscar nome do aluno se houver
-                    aluno_nome = None
-                    if doc.aluno_id:
-                        aluno = storage.get_aluno(doc.aluno_id)
-                        aluno_nome = aluno.nome if aluno else None
-                    
-                    documentos.append({
-                        "id": doc.id,
-                        "nome_arquivo": doc.nome_arquivo,
-                        "tipo": doc.tipo.value,
-                        "materia_id": materia.id,
-                        "materia_nome": materia.nome,
-                        "turma_id": turma.id,
-                        "turma_nome": turma.nome,
-                        "atividade_id": atividade.id,
-                        "atividade_nome": atividade.nome,
-                        "aluno_id": doc.aluno_id,
-                        "aluno_nome": aluno_nome,
-                        "criado_em": doc.criado_em.isoformat() if doc.criado_em else None,
-                        "ia_provider": doc.ia_provider,
-                        "ia_modelo": doc.ia_modelo,
-                        "status": doc.status.value if doc.status else None
-                    })
-    
-    return {
-        "documentos": documentos,
-        "total": len(documentos),
-        "filtros_aplicados": {k: v for k, v in filters.items() if v}
-    }
-    
-# ============================================================
-# ENDPOINT: DOCUMENTOS PARA CHAT
-# ============================================================
-
-@router.get("/api/documentos/todos", tags=["Chat"])
-async def listar_todos_documentos(
-    materia_ids: Optional[str] = None,
-    turma_ids: Optional[str] = None,
-    atividade_ids: Optional[str] = None,
-    aluno_ids: Optional[str] = None,
-    tipos: Optional[str] = None
-):
     """Lista todos os documentos do sistema com metadados completos."""
     filters = {
         'materia_ids': materia_ids.split(',') if materia_ids else None,
@@ -714,3 +619,244 @@ async def listar_chat_providers():
         "providers": ai_registry.get_provider_info(),
         "default": ai_registry.default_provider
     }
+
+
+@router.get("/api/debug/documento/{documento_id}", tags=["Debug"])
+async def debug_documento(documento_id: str):
+    """Diagnóstico completo de um documento - verifica DB, arquivo local e Supabase"""
+    from supabase_storage import supabase_storage
+
+    result = {
+        "documento_id": documento_id,
+        "etapas": {}
+    }
+
+    # 1. Verificar se existe no banco
+    doc = storage.get_documento(documento_id)
+    result["etapas"]["1_banco_dados"] = {
+        "encontrado": doc is not None,
+        "nome_arquivo": doc.nome_arquivo if doc else None,
+        "caminho": doc.caminho_arquivo if doc else None,
+        "extensao": doc.extensao if doc else None
+    }
+
+    if not doc:
+        result["erro"] = "Documento não encontrado no banco de dados"
+        return result
+
+    # 2. Verificar arquivo local
+    from pathlib import Path
+    caminho_direto = Path(doc.caminho_arquivo)
+    caminho_base = storage.base_path / doc.caminho_arquivo
+    caminho_sem_data = storage.base_path / doc.caminho_arquivo.replace("data/", "").replace("data\\", "")
+
+    result["etapas"]["2_arquivo_local"] = {
+        "caminho_direto_existe": caminho_direto.exists(),
+        "caminho_base_existe": caminho_base.exists(),
+        "caminho_sem_data_existe": caminho_sem_data.exists(),
+        "base_path": str(storage.base_path)
+    }
+
+    # 3. Verificar Supabase
+    result["etapas"]["3_supabase"] = {
+        "habilitado": supabase_storage.enabled if supabase_storage else False,
+        "url": supabase_storage.url[:50] + "..." if supabase_storage and supabase_storage.url else None
+    }
+
+    # 4. Tentar resolver caminho
+    try:
+        arquivo_resolvido = storage.resolver_caminho_documento(doc)
+        result["etapas"]["4_resolver_caminho"] = {
+            "sucesso": arquivo_resolvido is not None and arquivo_resolvido.exists(),
+            "caminho_resolvido": str(arquivo_resolvido) if arquivo_resolvido else None,
+            "existe": arquivo_resolvido.exists() if arquivo_resolvido else False
+        }
+    except Exception as e:
+        result["etapas"]["4_resolver_caminho"] = {
+            "sucesso": False,
+            "erro": str(e)
+        }
+
+    return result
+
+
+# ============================================================
+# SINCRONIZAÇÃO COM SERVIDOR REMOTO
+# ============================================================
+
+@router.post("/api/sync/test-connection", tags=["Sync"])
+async def test_remote_connection():
+    """Testa conexão com o servidor remoto"""
+    from sync_service import sync_service
+
+    try:
+        # Tentar fazer uma requisição simples
+        import requests
+        response = requests.get(f"{sync_service.remote_base_url}/docs", timeout=10)
+        return {
+            "success": True,
+            "remote_url": sync_service.remote_base_url,
+            "status_code": response.status_code,
+            "message": "Conexão estabelecida com sucesso"
+        }
+    except Exception as e:
+        raise HTTPException(500, f"Falha na conexão: {str(e)}")
+
+
+@router.post("/api/sync/atividade/{atividade_id}", tags=["Sync"])
+async def sync_atividade_to_remote(atividade_id: str):
+    """Sincroniza uma atividade completa para o servidor remoto"""
+    from sync_service import sync_service
+
+    try:
+        result = sync_service.sync_atividade_completa(atividade_id, storage)
+        return {
+            "success": True,
+            "message": "Atividade sincronizada com sucesso",
+            "data": result
+        }
+    except Exception as e:
+        raise HTTPException(500, f"Erro na sincronização: {str(e)}")
+
+
+@router.post("/api/sync/materia/{materia_id}", tags=["Sync"])
+async def sync_materia_to_remote(materia_id: str):
+    """Sincroniza uma matéria para o servidor remoto"""
+    from sync_service import sync_service
+
+    try:
+        materia = storage.get_materia(materia_id)
+        if not materia:
+            raise HTTPException(404, "Matéria não encontrada")
+
+        materia_data = {
+            "nome": materia.nome,
+            "descricao": materia.descricao,
+            "nivel": materia.nivel.value if hasattr(materia.nivel, 'value') else str(materia.nivel)
+        }
+
+        result = sync_service.sync_materia(materia_data)
+        return {
+            "success": True,
+            "message": "Matéria sincronizada com sucesso",
+            "remote_materia": result
+        }
+    except Exception as e:
+        raise HTTPException(500, f"Erro na sincronização: {str(e)}")
+
+
+@router.post("/api/sync/turma/{turma_id}", tags=["Sync"])
+async def sync_turma_to_remote(turma_id: str):
+    """Sincroniza uma turma para o servidor remoto"""
+    from sync_service import sync_service
+
+    try:
+        turma = storage.get_turma(turma_id)
+        if not turma:
+            raise HTTPException(404, "Turma não encontrada")
+
+        # Buscar matéria relacionada
+        materia = storage.get_materia(turma.materia_id)
+        if not materia:
+            raise HTTPException(404, "Matéria da turma não encontrada")
+
+        # Verificar se a matéria já existe remotamente
+        try:
+            remote_materias = sync_service._make_request("GET", "/api/materias")
+            remote_materia_id = None
+            for m in remote_materias.get("materias", []):
+                if m["nome"] == materia.nome:
+                    remote_materia_id = m["id"]
+                    break
+
+            if not remote_materia_id:
+                raise HTTPException(400, "Matéria não encontrada no servidor remoto. Sincronize a matéria primeiro.")
+
+        except Exception as e:
+            raise HTTPException(500, f"Erro ao buscar matéria remota: {str(e)}")
+
+        turma_data = {
+            "materia_id": remote_materia_id,
+            "nome": turma.nome,
+            "ano_letivo": turma.ano_letivo,
+            "periodo": turma.periodo,
+            "descricao": turma.descricao
+        }
+
+        result = sync_service.sync_turma(turma_data)
+        return {
+            "success": True,
+            "message": "Turma sincronizada com sucesso",
+            "remote_turma": result
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(500, f"Erro na sincronização: {str(e)}")
+
+
+@router.post("/api/sync/documentos", tags=["Sync"])
+async def sync_documentos_to_remote(documento_ids: List[str]):
+    """Sincroniza múltiplos documentos para o servidor remoto"""
+    from sync_service import sync_service
+
+    results = []
+    errors = []
+
+    for doc_id in documento_ids:
+        try:
+            documento = storage.get_documento(doc_id)
+            if not documento:
+                errors.append(f"Documento {doc_id} não encontrado")
+                continue
+
+            # Preparar metadados
+            metadata = {
+                "nome_arquivo": documento.nome_arquivo,
+                "atividade_id": documento.atividade_id,
+                "aluno_id": documento.aluno_id,
+                "tipo": documento.tipo.value if hasattr(documento.tipo, 'value') else str(documento.tipo)
+            }
+
+            # Sincronizar
+            result = sync_service.sync_documento(documento.caminho_arquivo, metadata)
+            results.append({
+                "documento_id": doc_id,
+                "remote_documento": result
+            })
+
+        except Exception as e:
+            errors.append(f"Erro sincronizando {doc_id}: {str(e)}")
+
+    return {
+        "success": len(results) > 0,
+        "synchronized": results,
+        "errors": errors,
+        "total_synchronized": len(results),
+        "total_errors": len(errors)
+    }
+
+
+@router.get("/api/sync/status", tags=["Sync"])
+async def get_sync_status():
+    """Verifica status da sincronização e conexão com servidor remoto"""
+    from sync_service import sync_service
+
+    status = {
+        "local_server": "online",
+        "remote_server": {
+            "url": sync_service.remote_base_url,
+            "status": "unknown"
+        },
+        "sync_service": "available"
+    }
+
+    # Testar conexão remota
+    try:
+        import requests
+        response = requests.get(f"{sync_service.remote_base_url}/docs", timeout=5)
+        status["remote_server"]["status"] = "online" if response.status_code == 200 else f"http_{response.status_code}"
+    except Exception as e:
+        status["remote_server"]["status"] = f"offline: {str(e)[:50]}"
+
+    return status
