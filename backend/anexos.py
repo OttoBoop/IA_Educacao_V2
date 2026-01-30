@@ -97,7 +97,8 @@ FORMATOS_ESPECIAIS = {
 }
 
 # Modelos que usam reasoning e não suportam certos parâmetros
-REASONING_MODELS = ['o1', 'o1-pro', 'o3', 'o3-mini', 'o4-mini', 'deepseek-reasoner']
+# Deprecated: 'o1', 'o1-pro' (removidos pois estão deprecated)
+REASONING_MODELS = ['o3', 'o3-mini', 'o3-pro', 'o4-mini', 'gpt-5', 'gpt-5-mini', 'gpt-5-nano', 'gpt-5.1', 'gpt-5.2', 'deepseek-reasoner']
 
 
 def is_reasoning_model(modelo: str) -> bool:

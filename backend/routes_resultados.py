@@ -15,7 +15,7 @@ from fastapi.responses import PlainTextResponse, JSONResponse
 from typing import Optional
 
 from visualizador import VisualizadorResultados, visualizador
-from storage_v2 import storage_v2 as storage
+from storage import storage
 
 
 router = APIRouter()

@@ -1,14 +1,18 @@
 """
-Pipeline de Correção de Provas
+Pipeline de Correção de Provas [DEPRECATED]
 
-Este módulo orquestra todo o fluxo:
-1. Extração de questões do gabarito
-2. Identificação de respostas do aluno
-3. Correção questão por questão
-4. Agregação em relatório final
+AVISO: Este módulo é LEGADO e não está mais em uso.
+Use o módulo `executor.py` com `PipelineExecutor` para novas implementações.
 
-Cada etapa pode usar uma IA diferente, permitindo experimentação.
+Este módulo foi mantido apenas para referência histórica.
 """
+
+import warnings
+warnings.warn(
+    "O módulo pipeline.py está DEPRECATED. Use executor.py (PipelineExecutor) ao invés.",
+    DeprecationWarning,
+    stacklevel=2
+)
 
 import json
 import asyncio
@@ -18,11 +22,67 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from enum import Enum
 
-from ai_providers import AIProvider, AIResponse, ai_registry
-from storage import (
-    StorageManager, VectorStore, DocumentType, 
-    Questao, Correcao, storage, vector_store
-)
+from .ai_providers import AIProvider, AIResponse, ai_registry
+from .storage import StorageManager, storage
+from .models import TipoDocumento as DocumentType
+
+# =============================================================
+# STUBS para compatibilidade - classes removidas do storage.py
+# Essas definições são apenas placeholders para evitar erros
+# =============================================================
+
+@dataclass
+class Questao:
+    """[DEPRECATED] Use models.py"""
+    id: str = ""
+    numero: int = 0
+    enunciado: str = ""
+    itens: List[Dict[str, str]] = field(default_factory=list)
+    pontuacao_maxima: float = 0
+    habilidades: List[str] = field(default_factory=list)
+    metadata: Dict[str, Any] = field(default_factory=dict)
+
+
+@dataclass
+class Correcao:
+    """[DEPRECATED] Use models.py"""
+    id: str = ""
+    prova_aluno_id: str = ""
+    questao_id: str = ""
+    item_id: Optional[str] = None
+    resposta_aluno: str = ""
+    resposta_esperada: str = ""
+    nota: float = 0
+    nota_maxima: float = 0
+    feedback: str = ""
+    erros_identificados: List[str] = field(default_factory=list)
+    habilidades_demonstradas: List[str] = field(default_factory=list)
+    habilidades_faltantes: List[str] = field(default_factory=list)
+    corrigido_por: str = ""
+    timestamp: datetime = field(default_factory=datetime.now)
+    confianca: float = 0
+    metadata: Dict[str, Any] = field(default_factory=dict)
+
+
+class VectorStore:
+    """[DEPRECATED] VectorStore foi removido. Não usar."""
+    def __init__(self, storage=None):
+        self.storage = storage
+        warnings.warn("VectorStore está deprecated e não funciona mais.", DeprecationWarning)
+
+    async def create_embedding(self, *args, **kwargs):
+        raise NotImplementedError("VectorStore foi removido")
+
+    async def index_questao(self, *args, **kwargs):
+        pass  # Silently no-op
+
+    async def search_similar(self, *args, **kwargs):
+        return []
+
+
+vector_store = VectorStore(storage)
+
+# =============================================================
 
 
 class PipelineStage(Enum):

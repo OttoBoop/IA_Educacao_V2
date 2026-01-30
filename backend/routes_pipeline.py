@@ -16,7 +16,7 @@ from pathlib import Path
 import json
 import mimetypes
 
-from storage_v2 import storage_v2 as storage
+from storage import storage
 from models import TipoDocumento
 
 

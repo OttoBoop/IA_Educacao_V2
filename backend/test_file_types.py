@@ -119,8 +119,8 @@ async def test_endpoints(base_url: str = "http://localhost:8000"):
     print("=" * 60)
 
     # Criar arquivos temporários no diretório de chat_outputs
-    from storage_v2 import storage_v2
-    output_dir = Path(storage_v2.base_path) / "chat_outputs" / "test_files"
+    from storage import storage
+    output_dir = Path(storage.base_path) / "chat_outputs" / "test_files"
     output_dir.mkdir(parents=True, exist_ok=True)
 
     results = []

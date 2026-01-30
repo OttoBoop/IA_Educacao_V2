@@ -18,7 +18,7 @@ import io
 from pathlib import Path
 
 from models import TipoDocumento
-from storage_v2 import storage_v2 as storage
+from storage import storage
 
 
 # Router para endpoints adicionais

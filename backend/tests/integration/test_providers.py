@@ -162,11 +162,11 @@ class TestModelNames:
 
         haiku_45 = next((m for m in anthropic_models if "haiku-4-5" in m["id"]), None)
         assert haiku_45 is not None, "Claude Haiku 4.5 not found"
-        assert "20251015" in haiku_45["id"], f"Wrong date for Haiku 4.5: {haiku_45['id']} (should be 20251015)"
+        assert "20251001" in haiku_45["id"], f"Wrong date for Haiku 4.5: {haiku_45['id']} (should be 20251001)"
 
         opus_45 = next((m for m in anthropic_models if "opus-4-5" in m["id"]), None)
         assert opus_45 is not None, "Claude Opus 4.5 not found"
-        assert "20251124" in opus_45["id"], f"Wrong date for Opus 4.5: {opus_45['id']} (should be 20251124)"
+        assert "20251101" in opus_45["id"], f"Wrong date for Opus 4.5: {opus_45['id']} (should be 20251101)"
 
     def test_openai_model_ids_exist(self):
         """Test that OpenAI model IDs are valid."""
@@ -174,7 +174,7 @@ class TestModelNames:
 
         openai_models = MODELOS_SUGERIDOS.get(ProviderType.OPENAI, [])
 
-        valid_models = ["gpt-4o", "gpt-4o-mini", "gpt-4.1", "o1", "o3", "o3-mini", "o4-mini"]
+        valid_models = ["gpt-4o", "gpt-4o-mini", "gpt-4.1", "o3", "o3-mini", "o4-mini", "gpt-5", "gpt-5-mini", "gpt-5-nano", "gpt-5.1", "gpt-5.2"]
 
         for model in openai_models:
             assert any(valid in model["id"] for valid in valid_models), \
@@ -199,8 +199,8 @@ class TestSavedModelsConfiguration:
         # Known correct Anthropic model IDs with release dates
         correct_anthropic_models = {
             "claude-sonnet-4-5": "claude-sonnet-4-5-20250929",
-            "claude-haiku-4-5": "claude-haiku-4-5-20251015",
-            "claude-opus-4-5": "claude-opus-4-5-20251124",
+            "claude-haiku-4-5": "claude-haiku-4-5-20251001",
+            "claude-opus-4-5": "claude-opus-4-5-20251101",
             "claude-3-5-sonnet": "claude-3-5-sonnet-20241022",
             "claude-3-5-haiku": "claude-3-5-haiku-20241022",
         }

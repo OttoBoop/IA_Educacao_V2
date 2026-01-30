@@ -15,7 +15,7 @@ from pathlib import Path
 import json
 
 from models import TipoDocumento, Documento
-from storage_v2 import storage_v2 as storage
+from storage import storage
 
 
 @dataclass

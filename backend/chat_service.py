@@ -20,7 +20,7 @@ import hashlib
 import httpx
 
 from models import TipoDocumento
-from storage_v2 import storage_v2 as storage
+from storage import storage
 from tools import ToolRegistry, ToolCall, ToolResult, ToolExecutionContext
 
 

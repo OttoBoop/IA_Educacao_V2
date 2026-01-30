@@ -34,7 +34,7 @@ from models import (
     TipoDocumento, StatusProcessamento, NivelEnsino,
     verificar_dependencias
 )
-from storage_v2 import StorageManagerV2, storage_v2
+from storage import StorageManager, storage
 from ai_providers import (
     ai_registry,
     setup_providers_from_env,
@@ -200,8 +200,7 @@ if HAS_PIPELINE:
 if HAS_CODE_EXECUTOR:
     app.include_router(code_executor_router)
 
-# Storage
-storage = storage_v2
+# Storage já importado diretamente de storage.py
 
 
 # ============================================================

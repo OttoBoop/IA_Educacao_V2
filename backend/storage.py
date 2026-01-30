@@ -1,568 +1,1075 @@
 """
-Sistema de Armazenamento e Vector Database
+PROVA AI - Sistema de Armazenamento Unificado
 
 Gerencia:
-1. Organização de arquivos em pastas estruturadas
-2. Vector embeddings para busca semântica
-3. Rastreamento de qual IA processou cada documento
-4. Metadados de correções e análises
+1. Banco de dados SQLite com estrutura hierárquica
+2. Sistema de arquivos organizado por Matéria/Turma/Atividade
+3. Metadados de documentos e processamento
+4. Verificação de dependências
+
+NOTA: Este arquivo é a unificação de storage.py e storage_v2.py
+O antigo storage.py (legado) foi removido em 2026-01-30.
 """
 
 import os
-import json
 import sqlite3
 import hashlib
+import shutil
+import json
 from pathlib import Path
 from datetime import datetime
-from typing import Optional, Dict, Any, List, Tuple
-from dataclasses import dataclass, field, asdict
-import numpy as np
-from enum import Enum
+from typing import Optional, List, Dict, Any, Tuple
 
-
-class DocumentType(Enum):
-    PROVA_ORIGINAL = "prova_original"      # Gabarito do professor
-    RESOLUCAO = "resolucao"                 # Resolução/rubrica
-    PROVA_ALUNO = "prova_aluno"            # Prova respondida por aluno
-    CORRECAO = "correcao"                   # Correção gerada pela IA
-    ANALISE = "analise"                     # Análise de habilidades
-
-
-@dataclass
-class Questao:
-    """Representa uma questão extraída"""
-    id: str
-    numero: int
-    enunciado: str
-    itens: List[Dict[str, str]] = field(default_factory=list)  # [{item: "a", texto: "..."}]
-    pontuacao_maxima: float = 0
-    habilidades: List[str] = field(default_factory=list)
-    metadata: Dict[str, Any] = field(default_factory=dict)
-
-
-@dataclass
-class DocumentoProcessado:
-    """Metadados de um documento processado"""
-    id: str
-    tipo: DocumentType
-    arquivo_original: str
-    materia: str
-    questoes: List[Questao]
-    processado_por: str  # Identificador da IA
-    timestamp: datetime
-    embedding: Optional[List[float]] = None
-    metadata: Dict[str, Any] = field(default_factory=dict)
-
-
-@dataclass 
-class Correcao:
-    """Resultado da correção de uma questão"""
-    id: str
-    prova_aluno_id: str
-    questao_id: str
-    item_id: Optional[str]
-    
-    resposta_aluno: str
-    resposta_esperada: str
-    
-    nota: float
-    nota_maxima: float
-    
-    feedback: str
-    erros_identificados: List[str]
-    habilidades_demonstradas: List[str]
-    habilidades_faltantes: List[str]
-    
-    corrigido_por: str  # Identificador da IA
-    timestamp: datetime
-    
-    confianca: float  # 0-1, quão confiante a IA está
-    metadata: Dict[str, Any] = field(default_factory=dict)
+from models import (
+    Materia, Turma, Aluno, AlunoTurma, Atividade, Documento, Prompt, ResultadoAluno,
+    TipoDocumento, StatusProcessamento, NivelEnsino,
+    verificar_dependencias, DEPENDENCIAS_DOCUMENTOS
+)
 
 
 class StorageManager:
-    """Gerencia armazenamento de arquivos e metadados"""
+    """
+    Gerenciador de armazenamento unificado.
+
+    Estrutura de diretórios:
+        data/
+        ├── arquivos/
+        │   └── {materia_id}/
+        │       └── {turma_id}/
+        │           └── {atividade_id}/
+        │               ├── _base/           # Documentos da atividade
+        │               │   ├── enunciado.pdf
+        │               │   ├── gabarito.pdf
+        │               │   └── criterios.pdf
+        │               │
+        │               └── {aluno_id}/      # Documentos do aluno
+        │                   ├── prova_respondida.pdf
+        │                   ├── extracao_respostas.json
+        │                   ├── correcao.json
+        │                   └── relatorio.pdf
+        │
+        └── database.db                      # SQLite
+    """
     
     def __init__(self, base_path: str = "./data"):
         self.base_path = Path(base_path)
-        self.db_path = self.base_path / "metadata.db"
+        self.arquivos_path = self.base_path / "arquivos"
+        self.db_path = self.base_path / "database.db"
+        
         self._setup_directories()
         self._setup_database()
     
+    # ============================================================
+    # SETUP
+    # ============================================================
+    
     def _setup_directories(self):
-        """Cria estrutura de diretórios"""
-        dirs = [
-            "provas",           # Provas originais (gabaritos)
-            "resolucoes",       # Resoluções/rubricas
-            "alunos",           # Provas dos alunos (por matéria/turma)
-            "correcoes",        # Correções geradas
-            "analises",         # Análises agregadas
-            "embeddings",       # Vector embeddings
-            "exports"           # Exportações finais
-        ]
-        for d in dirs:
-            (self.base_path / d).mkdir(parents=True, exist_ok=True)
+        """Cria estrutura base de diretórios"""
+        self.base_path.mkdir(parents=True, exist_ok=True)
+        self.arquivos_path.mkdir(parents=True, exist_ok=True)
     
     def _setup_database(self):
-        """Inicializa banco SQLite para metadados"""
+        """Inicializa banco de dados SQLite"""
         conn = sqlite3.connect(self.db_path)
         c = conn.cursor()
         
-        # Tabela de documentos
+        # Tabela: Matérias
         c.execute('''
-            CREATE TABLE IF NOT EXISTS documentos (
+            CREATE TABLE IF NOT EXISTS materias (
                 id TEXT PRIMARY KEY,
-                tipo TEXT NOT NULL,
-                arquivo_original TEXT NOT NULL,
-                materia TEXT NOT NULL,
-                processado_por TEXT,
-                timestamp TEXT,
+                nome TEXT NOT NULL,
+                descricao TEXT,
+                nivel TEXT DEFAULT 'outro',
+                criado_em TEXT,
+                atualizado_em TEXT,
                 metadata TEXT
             )
         ''')
         
-        # Tabela de questões
+        # Tabela: Turmas
         c.execute('''
-            CREATE TABLE IF NOT EXISTS questoes (
+            CREATE TABLE IF NOT EXISTS turmas (
                 id TEXT PRIMARY KEY,
-                documento_id TEXT NOT NULL,
-                numero INTEGER,
-                enunciado TEXT,
-                itens TEXT,
-                pontuacao_maxima REAL,
-                habilidades TEXT,
+                materia_id TEXT NOT NULL,
+                nome TEXT NOT NULL,
+                ano_letivo INTEGER,
+                periodo TEXT,
+                descricao TEXT,
+                criado_em TEXT,
+                atualizado_em TEXT,
                 metadata TEXT,
-                FOREIGN KEY (documento_id) REFERENCES documentos(id)
+                FOREIGN KEY (materia_id) REFERENCES materias(id) ON DELETE CASCADE
             )
         ''')
         
-        # Tabela de correções
+        # Tabela: Alunos
         c.execute('''
-            CREATE TABLE IF NOT EXISTS correcoes (
+            CREATE TABLE IF NOT EXISTS alunos (
                 id TEXT PRIMARY KEY,
-                prova_aluno_id TEXT NOT NULL,
-                questao_id TEXT NOT NULL,
-                item_id TEXT,
-                resposta_aluno TEXT,
-                resposta_esperada TEXT,
-                nota REAL,
-                nota_maxima REAL,
-                feedback TEXT,
-                erros TEXT,
+                nome TEXT NOT NULL,
+                email TEXT,
+                matricula TEXT,
+                criado_em TEXT,
+                atualizado_em TEXT,
+                metadata TEXT
+            )
+        ''')
+        
+        # Tabela: Vínculo Aluno-Turma (many-to-many)
+        c.execute('''
+            CREATE TABLE IF NOT EXISTS alunos_turmas (
+                id TEXT PRIMARY KEY,
+                aluno_id TEXT NOT NULL,
+                turma_id TEXT NOT NULL,
+                ativo INTEGER DEFAULT 1,
+                data_entrada TEXT,
+                data_saida TEXT,
+                observacoes TEXT,
+                FOREIGN KEY (aluno_id) REFERENCES alunos(id) ON DELETE CASCADE,
+                FOREIGN KEY (turma_id) REFERENCES turmas(id) ON DELETE CASCADE,
+                UNIQUE(aluno_id, turma_id)
+            )
+        ''')
+        
+        # Tabela: Atividades
+        c.execute('''
+            CREATE TABLE IF NOT EXISTS atividades (
+                id TEXT PRIMARY KEY,
+                turma_id TEXT NOT NULL,
+                nome TEXT NOT NULL,
+                tipo TEXT,
+                data_aplicacao TEXT,
+                data_entrega TEXT,
+                peso REAL DEFAULT 1.0,
+                nota_maxima REAL DEFAULT 10.0,
+                descricao TEXT,
+                criado_em TEXT,
+                atualizado_em TEXT,
+                metadata TEXT,
+                FOREIGN KEY (turma_id) REFERENCES turmas(id) ON DELETE CASCADE
+            )
+        ''')
+        
+        # Tabela: Documentos
+        c.execute('''
+            CREATE TABLE IF NOT EXISTS documentos (
+                id TEXT PRIMARY KEY,
+                tipo TEXT NOT NULL,
+                atividade_id TEXT NOT NULL,
+                aluno_id TEXT,
+                nome_arquivo TEXT,
+                caminho_arquivo TEXT,
+                extensao TEXT,
+                tamanho_bytes INTEGER DEFAULT 0,
+                ia_provider TEXT,
+                ia_modelo TEXT,
+                prompt_usado TEXT,
+                prompt_versao TEXT,
+                tokens_usados INTEGER DEFAULT 0,
+                tempo_processamento_ms REAL DEFAULT 0,
+                status TEXT DEFAULT 'concluido',
+                criado_em TEXT,
+                atualizado_em TEXT,
+                criado_por TEXT,
+                versao INTEGER DEFAULT 1,
+                documento_origem_id TEXT,
+                metadata TEXT,
+                FOREIGN KEY (atividade_id) REFERENCES atividades(id) ON DELETE CASCADE,
+                FOREIGN KEY (aluno_id) REFERENCES alunos(id) ON DELETE SET NULL
+            )
+        ''')
+        
+        # Tabela: Resultados (agregação)
+        c.execute('''
+            CREATE TABLE IF NOT EXISTS resultados (
+                id TEXT PRIMARY KEY,
+                aluno_id TEXT NOT NULL,
+                atividade_id TEXT NOT NULL,
+                nota_obtida REAL,
+                nota_maxima REAL DEFAULT 10.0,
+                percentual REAL,
+                total_questoes INTEGER DEFAULT 0,
+                questoes_corretas INTEGER DEFAULT 0,
+                questoes_parciais INTEGER DEFAULT 0,
+                questoes_incorretas INTEGER DEFAULT 0,
                 habilidades_demonstradas TEXT,
                 habilidades_faltantes TEXT,
-                corrigido_por TEXT,
-                timestamp TEXT,
-                confianca REAL,
+                feedback_geral TEXT,
+                corrigido_em TEXT,
+                corrigido_por_ia TEXT,
                 metadata TEXT,
-                FOREIGN KEY (prova_aluno_id) REFERENCES documentos(id),
-                FOREIGN KEY (questao_id) REFERENCES questoes(id)
+                FOREIGN KEY (aluno_id) REFERENCES alunos(id) ON DELETE CASCADE,
+                FOREIGN KEY (atividade_id) REFERENCES atividades(id) ON DELETE CASCADE,
+                UNIQUE(aluno_id, atividade_id)
             )
         ''')
         
-        # Tabela de embeddings
-        c.execute('''
-            CREATE TABLE IF NOT EXISTS embeddings (
-                id TEXT PRIMARY KEY,
-                documento_id TEXT,
-                questao_id TEXT,
-                texto TEXT,
-                embedding BLOB,
-                modelo TEXT,
-                timestamp TEXT,
-                FOREIGN KEY (documento_id) REFERENCES documentos(id),
-                FOREIGN KEY (questao_id) REFERENCES questoes(id)
-            )
-        ''')
-        
-        # Tabela de experimentos (para comparar IAs)
-        c.execute('''
-            CREATE TABLE IF NOT EXISTS experimentos (
-                id TEXT PRIMARY KEY,
-                nome TEXT,
-                descricao TEXT,
-                provider_config TEXT,
-                timestamp TEXT,
-                resultados TEXT
-            )
-        ''')
+        # Índices para performance
+        c.execute('CREATE INDEX IF NOT EXISTS idx_turmas_materia ON turmas(materia_id)')
+        c.execute('CREATE INDEX IF NOT EXISTS idx_atividades_turma ON atividades(turma_id)')
+        c.execute('CREATE INDEX IF NOT EXISTS idx_documentos_atividade ON documentos(atividade_id)')
+        c.execute('CREATE INDEX IF NOT EXISTS idx_documentos_aluno ON documentos(aluno_id)')
+        c.execute('CREATE INDEX IF NOT EXISTS idx_alunos_turmas_aluno ON alunos_turmas(aluno_id)')
+        c.execute('CREATE INDEX IF NOT EXISTS idx_alunos_turmas_turma ON alunos_turmas(turma_id)')
         
         conn.commit()
         conn.close()
     
+    # ============================================================
+    # UTILITÁRIOS
+    # ============================================================
+    
     def _generate_id(self, *args) -> str:
-        """Gera ID único baseado nos argumentos"""
+        """Gera ID único baseado nos argumentos + timestamp"""
         content = "_".join(str(a) for a in args) + str(datetime.now().timestamp())
         return hashlib.sha256(content.encode()).hexdigest()[:16]
     
-    def get_path_for_type(self, doc_type: DocumentType, materia: str) -> Path:
-        """Retorna o caminho correto para um tipo de documento"""
-        type_dirs = {
-            DocumentType.PROVA_ORIGINAL: "provas",
-            DocumentType.RESOLUCAO: "resolucoes",
-            DocumentType.PROVA_ALUNO: "alunos",
-            DocumentType.CORRECAO: "correcoes",
-            DocumentType.ANALISE: "analises"
-        }
-        path = self.base_path / type_dirs[doc_type] / materia
-        path.mkdir(parents=True, exist_ok=True)
-        return path
-    
-    def save_document(self, 
-                      file_path: str,
-                      doc_type: DocumentType,
-                      materia: str,
-                      processado_por: str = "manual",
-                      metadata: Dict[str, Any] = None) -> str:
-        """Salva um documento e retorna seu ID"""
-        import shutil
-        
-        doc_id = self._generate_id(file_path, doc_type.value, materia)
-        
-        # Copiar arquivo para pasta correta
-        dest_dir = self.get_path_for_type(doc_type, materia)
-        dest_path = dest_dir / f"{doc_id}_{Path(file_path).name}"
-        shutil.copy2(file_path, dest_path)
-        
-        # Salvar metadados no banco
+    def _get_connection(self) -> sqlite3.Connection:
+        """Retorna conexão com o banco"""
         conn = sqlite3.connect(self.db_path)
+        conn.row_factory = sqlite3.Row
+        return conn
+    
+    def _sanitize_filename(self, name: str) -> str:
+        """Remove caracteres inválidos de nomes de arquivo"""
+        invalid_chars = '<>:"/\\|?*'
+        for char in invalid_chars:
+            name = name.replace(char, '_')
+        return name
+    
+    # ============================================================
+    # CRUD: MATÉRIAS
+    # ============================================================
+    
+    def criar_materia(self, nome: str, descricao: str = None, nivel: NivelEnsino = NivelEnsino.OUTRO) -> Materia:
+        """Cria uma nova matéria"""
+        materia = Materia(
+            id=self._generate_id("materia", nome),
+            nome=nome,
+            descricao=descricao,
+            nivel=nivel
+        )
+        
+        conn = self._get_connection()
         c = conn.cursor()
         c.execute('''
-            INSERT INTO documentos (id, tipo, arquivo_original, materia, processado_por, timestamp, metadata)
+            INSERT INTO materias (id, nome, descricao, nivel, criado_em, atualizado_em, metadata)
             VALUES (?, ?, ?, ?, ?, ?, ?)
         ''', (
-            doc_id,
-            doc_type.value,
-            str(dest_path),
-            materia,
-            processado_por,
-            datetime.now().isoformat(),
-            json.dumps(metadata or {})
+            materia.id, materia.nome, materia.descricao, materia.nivel.value,
+            materia.criado_em.isoformat(), materia.atualizado_em.isoformat(),
+            json.dumps(materia.metadata)
         ))
         conn.commit()
         conn.close()
         
-        return doc_id
+        # Criar diretório da matéria
+        (self.arquivos_path / materia.id).mkdir(exist_ok=True)
+        
+        return materia
     
-    def save_questao(self, questao: Questao, documento_id: str) -> str:
-        """Salva uma questão extraída"""
-        conn = sqlite3.connect(self.db_path)
+    def get_materia(self, materia_id: str) -> Optional[Materia]:
+        """Busca matéria por ID"""
+        conn = self._get_connection()
         c = conn.cursor()
-        c.execute('''
-            INSERT OR REPLACE INTO questoes (id, documento_id, numero, enunciado, itens, pontuacao_maxima, habilidades, metadata)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-        ''', (
-            questao.id,
-            documento_id,
-            questao.numero,
-            questao.enunciado,
-            json.dumps(questao.itens),
-            questao.pontuacao_maxima,
-            json.dumps(questao.habilidades),
-            json.dumps(questao.metadata)
-        ))
-        conn.commit()
-        conn.close()
-        return questao.id
-    
-    def save_correcao(self, correcao: Correcao) -> str:
-        """Salva uma correção"""
-        conn = sqlite3.connect(self.db_path)
-        c = conn.cursor()
-        c.execute('''
-            INSERT INTO correcoes (
-                id, prova_aluno_id, questao_id, item_id,
-                resposta_aluno, resposta_esperada,
-                nota, nota_maxima, feedback,
-                erros, habilidades_demonstradas, habilidades_faltantes,
-                corrigido_por, timestamp, confianca, metadata
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-        ''', (
-            correcao.id,
-            correcao.prova_aluno_id,
-            correcao.questao_id,
-            correcao.item_id,
-            correcao.resposta_aluno,
-            correcao.resposta_esperada,
-            correcao.nota,
-            correcao.nota_maxima,
-            correcao.feedback,
-            json.dumps(correcao.erros_identificados),
-            json.dumps(correcao.habilidades_demonstradas),
-            json.dumps(correcao.habilidades_faltantes),
-            correcao.corrigido_por,
-            correcao.timestamp.isoformat(),
-            correcao.confianca,
-            json.dumps(correcao.metadata)
-        ))
-        conn.commit()
-        conn.close()
-        return correcao.id
-    
-    def get_documento(self, doc_id: str) -> Optional[Dict[str, Any]]:
-        """Recupera um documento pelo ID"""
-        conn = sqlite3.connect(self.db_path)
-        c = conn.cursor()
-        c.execute('SELECT * FROM documentos WHERE id = ?', (doc_id,))
+        c.execute('SELECT * FROM materias WHERE id = ?', (materia_id,))
         row = c.fetchone()
         conn.close()
         
-        if row:
-            return {
-                "id": row[0],
-                "tipo": row[1],
-                "arquivo_original": row[2],
-                "materia": row[3],
-                "processado_por": row[4],
-                "timestamp": row[5],
-                "metadata": json.loads(row[6]) if row[6] else {}
-            }
-        return None
+        if not row:
+            return None
+        
+        return Materia.from_dict(dict(row))
     
-    def get_questoes_documento(self, doc_id: str) -> List[Questao]:
-        """Recupera todas as questões de um documento"""
-        conn = sqlite3.connect(self.db_path)
+    def listar_materias(self) -> List[Materia]:
+        """Lista todas as matérias"""
+        conn = self._get_connection()
         c = conn.cursor()
-        c.execute('SELECT * FROM questoes WHERE documento_id = ? ORDER BY numero', (doc_id,))
+        c.execute('SELECT * FROM materias ORDER BY nome')
         rows = c.fetchall()
         conn.close()
         
-        questoes = []
-        for row in rows:
-            questoes.append(Questao(
-                id=row[0],
-                numero=row[2],
-                enunciado=row[3],
-                itens=json.loads(row[4]) if row[4] else [],
-                pontuacao_maxima=row[5],
-                habilidades=json.loads(row[6]) if row[6] else [],
-                metadata=json.loads(row[7]) if row[7] else {}
-            ))
-        return questoes
+        return [Materia.from_dict(dict(row)) for row in rows]
     
-    def get_correcoes_aluno(self, prova_aluno_id: str) -> List[Correcao]:
-        """Recupera todas as correções de uma prova de aluno"""
-        conn = sqlite3.connect(self.db_path)
+    def atualizar_materia(self, materia_id: str, **kwargs) -> Optional[Materia]:
+        """Atualiza campos de uma matéria"""
+        materia = self.get_materia(materia_id)
+        if not materia:
+            return None
+        
+        campos_permitidos = ['nome', 'descricao', 'nivel', 'metadata']
+        updates = []
+        valores = []
+        
+        for campo, valor in kwargs.items():
+            if campo in campos_permitidos:
+                if campo == 'nivel' and isinstance(valor, NivelEnsino):
+                    valor = valor.value
+                elif campo == 'metadata':
+                    valor = json.dumps(valor)
+                updates.append(f"{campo} = ?")
+                valores.append(valor)
+        
+        if not updates:
+            return materia
+        
+        updates.append("atualizado_em = ?")
+        valores.append(datetime.now().isoformat())
+        valores.append(materia_id)
+        
+        conn = self._get_connection()
         c = conn.cursor()
-        c.execute('SELECT * FROM correcoes WHERE prova_aluno_id = ?', (prova_aluno_id,))
+        c.execute(f"UPDATE materias SET {', '.join(updates)} WHERE id = ?", valores)
+        conn.commit()
+        conn.close()
+        
+        return self.get_materia(materia_id)
+    
+    def deletar_materia(self, materia_id: str) -> bool:
+        """Deleta matéria e todos os dados relacionados"""
+        conn = self._get_connection()
+        c = conn.cursor()
+        c.execute('DELETE FROM materias WHERE id = ?', (materia_id,))
+        affected = c.rowcount
+        conn.commit()
+        conn.close()
+        
+        # Remover diretório
+        dir_path = self.arquivos_path / materia_id
+        if dir_path.exists():
+            shutil.rmtree(dir_path)
+        
+        return affected > 0
+    
+    # ============================================================
+    # CRUD: TURMAS
+    # ============================================================
+    
+    def criar_turma(self, materia_id: str, nome: str, ano_letivo: int = None, 
+                    periodo: str = None, descricao: str = None) -> Optional[Turma]:
+        """Cria uma nova turma dentro de uma matéria"""
+        if not self.get_materia(materia_id):
+            return None
+        
+        turma = Turma(
+            id=self._generate_id("turma", materia_id, nome),
+            materia_id=materia_id,
+            nome=nome,
+            ano_letivo=ano_letivo,
+            periodo=periodo,
+            descricao=descricao
+        )
+        
+        conn = self._get_connection()
+        c = conn.cursor()
+        c.execute('''
+            INSERT INTO turmas (id, materia_id, nome, ano_letivo, periodo, descricao, criado_em, atualizado_em, metadata)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ''', (
+            turma.id, turma.materia_id, turma.nome, turma.ano_letivo, turma.periodo,
+            turma.descricao, turma.criado_em.isoformat(), turma.atualizado_em.isoformat(),
+            json.dumps(turma.metadata)
+        ))
+        conn.commit()
+        conn.close()
+        
+        # Criar diretório da turma
+        (self.arquivos_path / materia_id / turma.id).mkdir(parents=True, exist_ok=True)
+        
+        return turma
+    
+    def get_turma(self, turma_id: str) -> Optional[Turma]:
+        """Busca turma por ID"""
+        conn = self._get_connection()
+        c = conn.cursor()
+        c.execute('SELECT * FROM turmas WHERE id = ?', (turma_id,))
+        row = c.fetchone()
+        conn.close()
+        
+        if not row:
+            return None
+        
+        return Turma.from_dict(dict(row))
+    
+    def listar_turmas(self, materia_id: str = None) -> List[Turma]:
+        """Lista turmas, opcionalmente filtradas por matéria"""
+        conn = self._get_connection()
+        c = conn.cursor()
+        
+        if materia_id:
+            c.execute('SELECT * FROM turmas WHERE materia_id = ? ORDER BY ano_letivo DESC, nome', (materia_id,))
+        else:
+            c.execute('SELECT * FROM turmas ORDER BY ano_letivo DESC, nome')
+        
         rows = c.fetchall()
         conn.close()
         
-        correcoes = []
-        for row in rows:
-            correcoes.append(Correcao(
-                id=row[0],
-                prova_aluno_id=row[1],
-                questao_id=row[2],
-                item_id=row[3],
-                resposta_aluno=row[4],
-                resposta_esperada=row[5],
-                nota=row[6],
-                nota_maxima=row[7],
-                feedback=row[8],
-                erros_identificados=json.loads(row[9]) if row[9] else [],
-                habilidades_demonstradas=json.loads(row[10]) if row[10] else [],
-                habilidades_faltantes=json.loads(row[11]) if row[11] else [],
-                corrigido_por=row[12],
-                timestamp=datetime.fromisoformat(row[13]),
-                confianca=row[14],
-                metadata=json.loads(row[15]) if row[15] else {}
-            ))
-        return correcoes
+        return [Turma.from_dict(dict(row)) for row in rows]
     
-    def list_documentos(self, 
-                        tipo: Optional[DocumentType] = None,
-                        materia: Optional[str] = None) -> List[Dict[str, Any]]:
-        """Lista documentos com filtros opcionais"""
-        conn = sqlite3.connect(self.db_path)
+    def deletar_turma(self, turma_id: str) -> bool:
+        """Deleta turma e todos os dados relacionados"""
+        turma = self.get_turma(turma_id)
+        if not turma:
+            return False
+        
+        conn = self._get_connection()
+        c = conn.cursor()
+        c.execute('DELETE FROM turmas WHERE id = ?', (turma_id,))
+        conn.commit()
+        conn.close()
+        
+        # Remover diretório
+        dir_path = self.arquivos_path / turma.materia_id / turma_id
+        if dir_path.exists():
+            shutil.rmtree(dir_path)
+        
+        return True
+    
+    # ============================================================
+    # CRUD: ALUNOS
+    # ============================================================
+    
+    def criar_aluno(self, nome: str, email: str = None, matricula: str = None) -> Aluno:
+        """Cria um novo aluno"""
+        aluno = Aluno(
+            id=self._generate_id("aluno", nome, matricula or ""),
+            nome=nome,
+            email=email,
+            matricula=matricula
+        )
+        
+        conn = self._get_connection()
+        c = conn.cursor()
+        c.execute('''
+            INSERT INTO alunos (id, nome, email, matricula, criado_em, atualizado_em, metadata)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
+        ''', (
+            aluno.id, aluno.nome, aluno.email, aluno.matricula,
+            aluno.criado_em.isoformat(), aluno.atualizado_em.isoformat(),
+            json.dumps(aluno.metadata)
+        ))
+        conn.commit()
+        conn.close()
+        
+        return aluno
+    
+    def get_aluno(self, aluno_id: str) -> Optional[Aluno]:
+        """Busca aluno por ID"""
+        conn = self._get_connection()
+        c = conn.cursor()
+        c.execute('SELECT * FROM alunos WHERE id = ?', (aluno_id,))
+        row = c.fetchone()
+        conn.close()
+        
+        if not row:
+            return None
+        
+        return Aluno.from_dict(dict(row))
+    
+    def listar_alunos(self, turma_id: str = None) -> List[Aluno]:
+        """Lista alunos, opcionalmente filtrados por turma"""
+        conn = self._get_connection()
         c = conn.cursor()
         
-        query = 'SELECT * FROM documentos WHERE 1=1'
-        params = []
+        if turma_id:
+            c.execute('''
+                SELECT a.* FROM alunos a
+                JOIN alunos_turmas at ON a.id = at.aluno_id
+                WHERE at.turma_id = ? AND at.ativo = 1
+                ORDER BY a.nome
+            ''', (turma_id,))
+        else:
+            c.execute('SELECT * FROM alunos ORDER BY nome')
+        
+        rows = c.fetchall()
+        conn.close()
+        
+        return [Aluno.from_dict(dict(row)) for row in rows]
+    
+    def deletar_aluno(self, aluno_id: str) -> bool:
+        """Deleta um aluno e todos os seus vínculos"""
+        aluno = self.get_aluno(aluno_id)
+        if not aluno:
+            return False
+        
+        conn = self._get_connection()
+        c = conn.cursor()
+        
+        # Remove vínculos com turmas
+        c.execute('DELETE FROM alunos_turmas WHERE aluno_id = ?', (aluno_id,))
+        
+        # Remove documentos do aluno (opcional: pode querer manter)
+        c.execute('DELETE FROM documentos WHERE aluno_id = ?', (aluno_id,))
+        
+        # Remove resultados
+        c.execute('DELETE FROM resultados WHERE aluno_id = ?', (aluno_id,))
+        
+        # Remove o aluno
+        c.execute('DELETE FROM alunos WHERE id = ?', (aluno_id,))
+        affected = c.rowcount
+        
+        conn.commit()
+        conn.close()
+        
+        return affected > 0
+    
+    def atualizar_aluno(self, aluno_id: str, **kwargs) -> Optional[Aluno]:
+        """Atualiza campos de um aluno"""
+        aluno = self.get_aluno(aluno_id)
+        if not aluno:
+            return None
+        
+        campos_permitidos = ['nome', 'email', 'matricula', 'metadata']
+        updates = []
+        valores = []
+        
+        for campo, valor in kwargs.items():
+            if campo in campos_permitidos:
+                if campo == 'metadata':
+                    valor = json.dumps(valor)
+                updates.append(f"{campo} = ?")
+                valores.append(valor)
+        
+        if not updates:
+            return aluno
+        
+        updates.append("atualizado_em = ?")
+        valores.append(datetime.now().isoformat())
+        valores.append(aluno_id)
+        
+        conn = self._get_connection()
+        c = conn.cursor()
+        c.execute(f"UPDATE alunos SET {', '.join(updates)} WHERE id = ?", valores)
+        conn.commit()
+        conn.close()
+        
+        return self.get_aluno(aluno_id)
+    
+    def vincular_aluno_turma(self, aluno_id: str, turma_id: str, observacoes: str = None) -> Optional[AlunoTurma]:
+        """Vincula um aluno a uma turma"""
+        if not self.get_aluno(aluno_id) or not self.get_turma(turma_id):
+            return None
+        
+        vinculo = AlunoTurma(
+            id=self._generate_id("vinculo", aluno_id, turma_id),
+            aluno_id=aluno_id,
+            turma_id=turma_id,
+            observacoes=observacoes
+        )
+        
+        conn = self._get_connection()
+        c = conn.cursor()
+        
+        try:
+            c.execute('''
+                INSERT INTO alunos_turmas (id, aluno_id, turma_id, ativo, data_entrada, observacoes)
+                VALUES (?, ?, ?, ?, ?, ?)
+            ''', (
+                vinculo.id, vinculo.aluno_id, vinculo.turma_id,
+                1, vinculo.data_entrada.isoformat(), vinculo.observacoes
+            ))
+            conn.commit()
+        except sqlite3.IntegrityError:
+            # Vínculo já existe
+            conn.close()
+            return None
+        
+        conn.close()
+        return vinculo
+    
+    def desvincular_aluno_turma(self, aluno_id: str, turma_id: str) -> bool:
+        """Remove vínculo aluno-turma (soft delete)"""
+        conn = self._get_connection()
+        c = conn.cursor()
+        c.execute('''
+            UPDATE alunos_turmas 
+            SET ativo = 0, data_saida = ?
+            WHERE aluno_id = ? AND turma_id = ?
+        ''', (datetime.now().isoformat(), aluno_id, turma_id))
+        affected = c.rowcount
+        conn.commit()
+        conn.close()
+        return affected > 0
+    
+    def get_turmas_do_aluno(self, aluno_id: str, apenas_ativas: bool = True) -> List[Dict[str, Any]]:
+        """Retorna todas as turmas de um aluno, com info da matéria"""
+        conn = self._get_connection()
+        c = conn.cursor()
+        
+        query = '''
+            SELECT t.*, m.nome as materia_nome, at.observacoes, at.data_entrada
+            FROM turmas t
+            JOIN alunos_turmas at ON t.id = at.turma_id
+            JOIN materias m ON t.materia_id = m.id
+            WHERE at.aluno_id = ?
+        '''
+        if apenas_ativas:
+            query += ' AND at.ativo = 1'
+        query += ' ORDER BY m.nome, t.ano_letivo DESC'
+        
+        c.execute(query, (aluno_id,))
+        rows = c.fetchall()
+        conn.close()
+        
+        return [dict(row) for row in rows]
+    
+    # ============================================================
+    # CRUD: ATIVIDADES
+    # ============================================================
+    
+    def criar_atividade(self, turma_id: str, nome: str, tipo: str = None,
+                        data_aplicacao: datetime = None, nota_maxima: float = 10.0,
+                        descricao: str = None) -> Optional[Atividade]:
+        """Cria uma nova atividade dentro de uma turma"""
+        turma = self.get_turma(turma_id)
+        if not turma:
+            return None
+        
+        atividade = Atividade(
+            id=self._generate_id("atividade", turma_id, nome),
+            turma_id=turma_id,
+            nome=nome,
+            tipo=tipo,
+            data_aplicacao=data_aplicacao,
+            nota_maxima=nota_maxima,
+            descricao=descricao
+        )
+        
+        conn = self._get_connection()
+        c = conn.cursor()
+        c.execute('''
+            INSERT INTO atividades (id, turma_id, nome, tipo, data_aplicacao, data_entrega, peso, nota_maxima, descricao, criado_em, atualizado_em, metadata)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ''', (
+            atividade.id, atividade.turma_id, atividade.nome, atividade.tipo,
+            atividade.data_aplicacao.isoformat() if atividade.data_aplicacao else None,
+            atividade.data_entrega.isoformat() if atividade.data_entrega else None,
+            atividade.peso, atividade.nota_maxima, atividade.descricao,
+            atividade.criado_em.isoformat(), atividade.atualizado_em.isoformat(),
+            json.dumps(atividade.metadata)
+        ))
+        conn.commit()
+        conn.close()
+        
+        # Criar diretório da atividade
+        materia_id = turma.materia_id
+        ativ_path = self.arquivos_path / materia_id / turma_id / atividade.id
+        ativ_path.mkdir(parents=True, exist_ok=True)
+        (ativ_path / "_base").mkdir(exist_ok=True)  # Pasta para documentos base
+        
+        return atividade
+    
+    def get_atividade(self, atividade_id: str) -> Optional[Atividade]:
+        """Busca atividade por ID"""
+        conn = self._get_connection()
+        c = conn.cursor()
+        c.execute('SELECT * FROM atividades WHERE id = ?', (atividade_id,))
+        row = c.fetchone()
+        conn.close()
+        
+        if not row:
+            return None
+        
+        return Atividade.from_dict(dict(row))
+    
+    def listar_atividades(self, turma_id: str) -> List[Atividade]:
+        """Lista atividades de uma turma"""
+        conn = self._get_connection()
+        c = conn.cursor()
+        c.execute('SELECT * FROM atividades WHERE turma_id = ? ORDER BY data_aplicacao DESC, nome', (turma_id,))
+        rows = c.fetchall()
+        conn.close()
+        
+        return [Atividade.from_dict(dict(row)) for row in rows]
+    
+    def deletar_atividade(self, atividade_id: str) -> bool:
+        """Deleta atividade e todos os documentos"""
+        atividade = self.get_atividade(atividade_id)
+        if not atividade:
+            return False
+        
+        turma = self.get_turma(atividade.turma_id)
+        
+        conn = self._get_connection()
+        c = conn.cursor()
+        c.execute('DELETE FROM atividades WHERE id = ?', (atividade_id,))
+        conn.commit()
+        conn.close()
+        
+        # Remover diretório
+        if turma:
+            dir_path = self.arquivos_path / turma.materia_id / turma.id / atividade_id
+            if dir_path.exists():
+                shutil.rmtree(dir_path)
+        
+        return True
+    
+    # ============================================================
+    # CRUD: DOCUMENTOS
+    # ============================================================
+    
+    def _get_caminho_documento(self, atividade: Atividade, tipo: TipoDocumento,
+                                aluno_id: str = None, nome_arquivo: str = "") -> Path:
+        """Calcula o caminho onde o documento deve ser salvo"""
+        turma = self.get_turma(atividade.turma_id)
+        base = self.arquivos_path / turma.materia_id / turma.id / atividade.id
+
+        # Documentos que não precisam de aluno ficam em _base/
+        # Isso inclui: enunciado, gabarito, extracao_questoes, extracao_gabarito
+        if tipo in TipoDocumento.documentos_sem_aluno():
+            base_dir = base / "_base"
+            base_dir.mkdir(parents=True, exist_ok=True)
+            return base_dir / nome_arquivo
+        else:
+            # Documentos de aluno ficam em {aluno_id}/
+            if not aluno_id:
+                raise ValueError("Documentos de aluno precisam de aluno_id")
+            aluno_dir = base / aluno_id
+            aluno_dir.mkdir(parents=True, exist_ok=True)
+            return aluno_dir / nome_arquivo
+    
+    def salvar_documento(self, 
+                         arquivo_origem: str,
+                         tipo: TipoDocumento,
+                         atividade_id: str,
+                         aluno_id: str = None,
+                         ia_provider: str = None,
+                         ia_modelo: str = None,
+                         prompt_usado: str = None,
+                         criado_por: str = "usuario",
+                         versao: int = 1,
+                         documento_origem_id: str = None) -> Optional[Documento]:
+        """
+        Salva um documento no sistema.
+        
+        Args:
+            arquivo_origem: Caminho do arquivo a ser copiado
+            tipo: Tipo do documento
+            atividade_id: ID da atividade
+            aluno_id: ID do aluno (obrigatório para docs de aluno/gerados)
+            ia_provider: Provider da IA (para docs gerados)
+            ia_modelo: Modelo da IA (para docs gerados)
+            prompt_usado: Prompt utilizado (para docs gerados)
+            criado_por: Quem criou o documento
+            versao: Número da versão (1 = original, 2+ = re-processado)
+            documento_origem_id: ID do documento original se for versão > 1
+        """
+        atividade = self.get_atividade(atividade_id)
+        if not atividade:
+            return None
+        
+        # Validar aluno_id para documentos que precisam
+        if tipo not in TipoDocumento.documentos_sem_aluno() and not aluno_id:
+            raise ValueError(f"Tipo {tipo.value} requer aluno_id")
+        
+        # Validar se aluno existe e está na turma
+        if aluno_id:
+            aluno = self.get_aluno(aluno_id)
+            if not aluno:
+                return None
+        
+        # Info do arquivo
+        arquivo_path = Path(arquivo_origem)
+        nome_original = arquivo_path.name
+        extensao = arquivo_path.suffix
+        tamanho = arquivo_path.stat().st_size if arquivo_path.exists() else 0
+        
+        # Gerar nome único para o arquivo
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        nome_arquivo = f"{tipo.value}_{timestamp}{extensao}"
+        
+        # Calcular destino
+        destino = self._get_caminho_documento(atividade, tipo, aluno_id, nome_arquivo)
+        destino.parent.mkdir(parents=True, exist_ok=True)
+        
+        # Copiar arquivo
+        shutil.copy2(arquivo_origem, destino)
+        
+        # Criar registro
+        documento = Documento(
+            id=self._generate_id("doc", atividade_id, tipo.value, aluno_id or "base"),
+            tipo=tipo,
+            atividade_id=atividade_id,
+            aluno_id=aluno_id,
+            nome_arquivo=nome_original,
+            caminho_arquivo=str(destino),
+            extensao=extensao,
+            tamanho_bytes=tamanho,
+            ia_provider=ia_provider,
+            ia_modelo=ia_modelo,
+            prompt_usado=prompt_usado,
+            criado_por=criado_por,
+            versao=versao,
+            documento_origem_id=documento_origem_id
+        )
+        
+        conn = self._get_connection()
+        c = conn.cursor()
+        c.execute('''
+            INSERT INTO documentos (
+                id, tipo, atividade_id, aluno_id, nome_arquivo, caminho_arquivo, extensao,
+                tamanho_bytes, ia_provider, ia_modelo, prompt_usado, prompt_versao,
+                tokens_usados, tempo_processamento_ms, status, criado_em, atualizado_em,
+                criado_por, versao, documento_origem_id, metadata
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ''', (
+            documento.id, documento.tipo.value, documento.atividade_id, documento.aluno_id,
+            documento.nome_arquivo, documento.caminho_arquivo, documento.extensao,
+            documento.tamanho_bytes, documento.ia_provider, documento.ia_modelo,
+            documento.prompt_usado, documento.prompt_versao, documento.tokens_usados,
+            documento.tempo_processamento_ms, documento.status.value,
+            documento.criado_em.isoformat(), documento.atualizado_em.isoformat(),
+            documento.criado_por, documento.versao, documento.documento_origem_id,
+            json.dumps(documento.metadata)
+        ))
+        conn.commit()
+        conn.close()
+        
+        return documento
+    
+    def get_documento(self, documento_id: str) -> Optional[Documento]:
+        """Busca documento por ID"""
+        conn = self._get_connection()
+        c = conn.cursor()
+        c.execute('SELECT * FROM documentos WHERE id = ?', (documento_id,))
+        row = c.fetchone()
+        conn.close()
+        
+        if not row:
+            return None
+        
+        return Documento.from_dict(dict(row))
+    
+    def listar_documentos(self, atividade_id: str, aluno_id: str = None, 
+                          tipo: TipoDocumento = None) -> List[Documento]:
+        """Lista documentos com filtros"""
+        conn = self._get_connection()
+        c = conn.cursor()
+        
+        query = 'SELECT * FROM documentos WHERE atividade_id = ?'
+        params = [atividade_id]
+        
+        if aluno_id is not None:
+            query += ' AND (aluno_id = ? OR aluno_id IS NULL)'
+            params.append(aluno_id)
         
         if tipo:
             query += ' AND tipo = ?'
             params.append(tipo.value)
-        if materia:
-            query += ' AND materia = ?'
-            params.append(materia)
         
-        query += ' ORDER BY timestamp DESC'
+        query += ' ORDER BY criado_em DESC'
         
         c.execute(query, params)
         rows = c.fetchall()
         conn.close()
         
-        return [{
-            "id": row[0],
-            "tipo": row[1],
-            "arquivo_original": row[2],
-            "materia": row[3],
-            "processado_por": row[4],
-            "timestamp": row[5],
-            "metadata": json.loads(row[6]) if row[6] else {}
-        } for row in rows]
+        return [Documento.from_dict(dict(row)) for row in rows]
     
-    def list_materias(self) -> List[str]:
-        """Lista todas as matérias cadastradas"""
-        conn = sqlite3.connect(self.db_path)
+    def deletar_documento(self, documento_id: str) -> bool:
+        """Deleta documento do banco e do sistema de arquivos"""
+        doc = self.get_documento(documento_id)
+        if not doc:
+            return False
+        
+        # Remover arquivo
+        if doc.caminho_arquivo:
+            arquivo = Path(doc.caminho_arquivo)
+            if arquivo.exists():
+                arquivo.unlink()
+        
+        # Remover do banco
+        conn = self._get_connection()
         c = conn.cursor()
-        c.execute('SELECT DISTINCT materia FROM documentos ORDER BY materia')
-        materias = [row[0] for row in c.fetchall()]
-        conn.close()
-        return materias
-    
-    def get_estatisticas_ia(self, provider_id: str) -> Dict[str, Any]:
-        """Retorna estatísticas de uso de uma IA específica"""
-        conn = sqlite3.connect(self.db_path)
-        c = conn.cursor()
-        
-        # Documentos processados
-        c.execute(
-            'SELECT COUNT(*) FROM documentos WHERE processado_por = ?',
-            (provider_id,)
-        )
-        docs_count = c.fetchone()[0]
-        
-        # Correções feitas
-        c.execute(
-            'SELECT COUNT(*), AVG(confianca), AVG(nota/nota_maxima) FROM correcoes WHERE corrigido_por = ?',
-            (provider_id,)
-        )
-        row = c.fetchone()
-        
-        conn.close()
-        
-        return {
-            "provider_id": provider_id,
-            "documentos_processados": docs_count,
-            "correcoes_feitas": row[0] or 0,
-            "confianca_media": round(row[1] or 0, 3),
-            "nota_media_percentual": round((row[2] or 0) * 100, 1)
-        }
-
-
-class VectorStore:
-    """Store para embeddings e busca semântica"""
-    
-    def __init__(self, storage: StorageManager):
-        self.storage = storage
-        self.embeddings_path = storage.base_path / "embeddings"
-    
-    async def create_embedding(self, 
-                               text: str, 
-                               provider_name: str = "openai") -> List[float]:
-        """Cria embedding usando o provider especificado"""
-        import httpx
-        
-        # Por enquanto, só OpenAI embeddings
-        api_key = os.getenv("OPENAI_API_KEY")
-        if not api_key:
-            raise ValueError("OPENAI_API_KEY não configurada")
-        
-        async with httpx.AsyncClient() as client:
-            response = await client.post(
-                "https://api.openai.com/v1/embeddings",
-                headers={
-                    "Authorization": f"Bearer {api_key}",
-                    "Content-Type": "application/json"
-                },
-                json={
-                    "model": "text-embedding-3-small",
-                    "input": text
-                },
-                timeout=30.0
-            )
-            response.raise_for_status()
-            data = response.json()
-        
-        return data["data"][0]["embedding"]
-    
-    async def index_questao(self, 
-                            questao: Questao, 
-                            documento_id: str) -> str:
-        """Indexa uma questão para busca semântica"""
-        # Criar texto para embedding
-        text = f"Questão {questao.numero}: {questao.enunciado}"
-        if questao.itens:
-            for item in questao.itens:
-                text += f"\n{item.get('item', '')}: {item.get('texto', '')}"
-        
-        # Gerar embedding
-        embedding = await self.create_embedding(text)
-        
-        # Salvar no banco
-        conn = sqlite3.connect(self.storage.db_path)
-        c = conn.cursor()
-        
-        emb_id = self.storage._generate_id(questao.id, "embedding")
-        
-        c.execute('''
-            INSERT OR REPLACE INTO embeddings (id, documento_id, questao_id, texto, embedding, modelo, timestamp)
-            VALUES (?, ?, ?, ?, ?, ?, ?)
-        ''', (
-            emb_id,
-            documento_id,
-            questao.id,
-            text,
-            np.array(embedding).tobytes(),
-            "text-embedding-3-small",
-            datetime.now().isoformat()
-        ))
-        
+        c.execute('DELETE FROM documentos WHERE id = ?', (documento_id,))
         conn.commit()
         conn.close()
         
-        return emb_id
-    
-    async def search_similar(self, 
-                             query: str, 
-                             top_k: int = 5,
-                             materia: Optional[str] = None) -> List[Tuple[str, float, Dict]]:
-        """Busca questões similares à query"""
-        # Gerar embedding da query
-        query_embedding = np.array(await self.create_embedding(query))
-        
-        # Buscar todos os embeddings
-        conn = sqlite3.connect(self.storage.db_path)
+        return True
+
+    def deletar_documentos_aluno_atividade(self, atividade_id: str, aluno_id: str) -> int:
+        """Deleta todos os documentos de um aluno em uma atividade específica"""
+        # Buscar documentos do aluno nesta atividade
+        conn = self._get_connection()
         c = conn.cursor()
-        
-        if materia:
-            c.execute('''
-                SELECT e.questao_id, e.texto, e.embedding, d.materia
-                FROM embeddings e
-                JOIN documentos d ON e.documento_id = d.id
-                WHERE d.materia = ?
-            ''', (materia,))
-        else:
-            c.execute('''
-                SELECT e.questao_id, e.texto, e.embedding, d.materia
-                FROM embeddings e
-                JOIN documentos d ON e.documento_id = d.id
-            ''')
-        
+        c.execute('''
+            SELECT id, caminho_arquivo FROM documentos
+            WHERE atividade_id = ? AND aluno_id = ?
+        ''', (atividade_id, aluno_id))
         rows = c.fetchall()
-        conn.close()
-        
-        # Calcular similaridades
-        results = []
+
+        count = 0
         for row in rows:
-            stored_embedding = np.frombuffer(row[2], dtype=np.float64)
-            # Cosine similarity
-            similarity = np.dot(query_embedding, stored_embedding) / (
-                np.linalg.norm(query_embedding) * np.linalg.norm(stored_embedding)
-            )
-            results.append((
-                row[0],  # questao_id
-                float(similarity),
-                {"texto": row[1], "materia": row[3]}
-            ))
+            # Remover arquivo físico
+            if row['caminho_arquivo']:
+                arquivo = Path(row['caminho_arquivo'])
+                if arquivo.exists():
+                    arquivo.unlink()
+            count += 1
+
+        # Remover do banco
+        c.execute('DELETE FROM documentos WHERE atividade_id = ? AND aluno_id = ?', (atividade_id, aluno_id))
+        conn.commit()
+        conn.close()
+
+        return count
+
+    def renomear_documento(self, documento_id: str, novo_nome: str) -> Optional[Documento]:
+        """Renomeia um documento"""
+        doc = self.get_documento(documento_id)
+        if not doc:
+            return None
         
-        # Ordenar por similaridade e retornar top_k
-        results.sort(key=lambda x: x[1], reverse=True)
-        return results[:top_k]
+        # Renomear arquivo físico
+        arquivo_atual = Path(doc.caminho_arquivo)
+        if arquivo_atual.exists():
+            novo_caminho = arquivo_atual.parent / novo_nome
+            arquivo_atual.rename(novo_caminho)
+            
+            # Atualizar banco
+            conn = self._get_connection()
+            c = conn.cursor()
+            c.execute('''
+                UPDATE documentos 
+                SET nome_arquivo = ?, caminho_arquivo = ?, atualizado_em = ?
+                WHERE id = ?
+            ''', (novo_nome, str(novo_caminho), datetime.now().isoformat(), documento_id))
+            conn.commit()
+            conn.close()
+        
+        return self.get_documento(documento_id)
+    
+    # ============================================================
+    # STATUS E VERIFICAÇÕES
+    # ============================================================
+    
+    def get_status_atividade(self, atividade_id: str) -> Dict[str, Any]:
+        """
+        Retorna status completo de uma atividade.
+        Inclui documentos existentes, faltantes, e status por aluno.
+        """
+        atividade = self.get_atividade(atividade_id)
+        if not atividade:
+            return {"erro": "Atividade não encontrada"}
+        
+        turma = self.get_turma(atividade.turma_id)
+        alunos = self.listar_alunos(turma.id)
+        documentos = self.listar_documentos(atividade_id)
+        
+        # Documentos base
+        docs_base = [d for d in documentos if d.is_documento_base]
+        docs_base_detalhes: Dict[str, List[Dict[str, Any]]] = {}
+        for doc in docs_base:
+            tipo = doc.tipo.value
+            if tipo not in docs_base_detalhes:
+                docs_base_detalhes[tipo] = []
+            docs_base_detalhes[tipo].append({
+                "id": doc.id,
+                "nome_arquivo": doc.nome_arquivo,
+                "criado_em": doc.criado_em.isoformat(),
+                "criado_por": doc.criado_por
+            })
+        tipos_base_existentes = [TipoDocumento(tipo) for tipo in docs_base_detalhes.keys()]
+        
+        docs_base_faltando = []
+        for tipo in [TipoDocumento.ENUNCIADO, TipoDocumento.GABARITO]:
+            if tipo not in tipos_base_existentes:
+                docs_base_faltando.append(tipo.value)
+        
+        # Status por aluno
+        alunos_status = []
+        for aluno in alunos:
+            docs_aluno = [d for d in documentos if d.aluno_id == aluno.id]
+            tipos_aluno = [d.tipo for d in docs_aluno]
+            
+            tem_prova = TipoDocumento.PROVA_RESPONDIDA in tipos_aluno
+            tem_correcao = TipoDocumento.CORRECAO in tipos_aluno
+            tem_relatorio = TipoDocumento.RELATORIO_FINAL in tipos_aluno
+            
+            alunos_status.append({
+                "aluno_id": aluno.id,
+                "aluno_nome": aluno.nome,
+                "tem_prova": tem_prova,
+                "tem_correcao": tem_correcao,
+                "tem_relatorio": tem_relatorio,
+                "documentos": len(docs_aluno)
+            })
+        
+        return {
+            "atividade": atividade.to_dict(),
+            "documentos_base": {
+                "existentes": [tipo.value for tipo in tipos_base_existentes],
+                "faltando": docs_base_faltando,
+                "aviso": "Falta gabarito para poder corrigir" if TipoDocumento.GABARITO.value in docs_base_faltando else None,
+                "detalhes": docs_base_detalhes
+            },
+            "alunos": {
+                "total": len(alunos),
+                "com_prova": sum(1 for a in alunos_status if a["tem_prova"]),
+                "corrigidos": sum(1 for a in alunos_status if a["tem_correcao"]),
+                "detalhes": alunos_status
+            }
+        }
+    
+    def verificar_pode_processar(self, atividade_id: str, aluno_id: str, 
+                                  tipo_alvo: TipoDocumento) -> Dict[str, Any]:
+        """
+        Verifica se um tipo de documento pode ser gerado.
+        Retorna o que está faltando.
+        """
+        documentos = self.listar_documentos(atividade_id, aluno_id)
+        tipos_existentes = [d.tipo for d in documentos]
+        
+        return verificar_dependencias(tipo_alvo, tipos_existentes)
+    
+    # ============================================================
+    # NAVEGAÇÃO HIERÁRQUICA
+    # ============================================================
+    
+    def get_arvore_navegacao(self) -> Dict[str, Any]:
+        """
+        Retorna árvore completa para navegação.
+        Estrutura: Matérias → Turmas → Atividades
+        """
+        arvore = []
+        
+        for materia in self.listar_materias():
+            turmas_data = []
+            
+            for turma in self.listar_turmas(materia.id):
+                atividades_data = []
+                
+                for atividade in self.listar_atividades(turma.id):
+                    docs = self.listar_documentos(atividade.id)
+                    atividades_data.append({
+                        "id": atividade.id,
+                        "nome": atividade.nome,
+                        "tipo": atividade.tipo,
+                        "total_documentos": len(docs)
+                    })
+                
+                turmas_data.append({
+                    "id": turma.id,
+                    "nome": turma.nome,
+                    "ano_letivo": turma.ano_letivo,
+                    "total_alunos": len(self.listar_alunos(turma.id)),
+                    "atividades": atividades_data
+                })
+            
+            arvore.append({
+                "id": materia.id,
+                "nome": materia.nome,
+                "turmas": turmas_data
+            })
+        
+        return {"materias": arvore}
 
 
-# Instância global
+# ============================================================
+# INSTÂNCIA GLOBAL
+# ============================================================
+
 storage = StorageManager()
-vector_store = VectorStore(storage)
+
+# Alias para compatibilidade (remover após atualizar todos os imports)
+StorageManagerV2 = StorageManager
+storage_v2 = storage

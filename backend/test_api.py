@@ -10,7 +10,7 @@ import asyncio
 import sys
 sys.path.insert(0, '.')
 
-from storage_v2 import StorageManagerV2
+from storage import StorageManager
 from models import TipoDocumento, NivelEnsino
 
 def test_storage():

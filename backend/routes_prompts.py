@@ -17,7 +17,7 @@ from pathlib import Path
 import json
 
 from prompts import PromptManager, PromptTemplate, EtapaProcessamento, prompt_manager
-from storage_v2 import storage_v2 as storage
+from storage import storage
 from models import TipoDocumento, Documento
 
 # Importar novo sistema de chat/models

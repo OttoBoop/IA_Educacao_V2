@@ -33,7 +33,7 @@ import argparse
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 try:
-    from storage_v2 import StorageManagerV2, storage_v2
+    from storage import StorageManager, storage
     from models import TipoDocumento, NivelEnsino
 
 except ImportError as e:
@@ -843,7 +843,7 @@ def main():
     args = parser.parse_args()
     
     # Usar storage global
-    storage = storage_v2
+    # storage já importado diretamente
     
     # Limpar se solicitado
     if args.limpar:

@@ -15,26 +15,34 @@ from .ai_providers import (
 
 from .storage import (
     StorageManager,
-    VectorStore,
-    DocumentType,
-    Questao,
-    Correcao,
-    storage,
-    vector_store
+    storage
 )
 
-from .pipeline import (
-    CorrectionPipeline,
-    PipelineConfig,
-    PipelineStage,
-    PipelineResult
+from .models import (
+    TipoDocumento,
+    Materia,
+    Turma,
+    Aluno,
+    Atividade,
+    Documento
+)
+
+from .executor import (
+    PipelineExecutor,
+    pipeline_executor,
+    EtapaProcessamento,
+    ResultadoExecucao
 )
 
 __version__ = "0.1.0"
 __all__ = [
-    "AIProvider", "AIResponse", "OpenAIProvider", "AnthropicProvider", 
+    # AI Providers
+    "AIProvider", "AIResponse", "OpenAIProvider", "AnthropicProvider",
     "LocalLLMProvider", "ai_registry", "setup_providers_from_env",
-    "StorageManager", "VectorStore", "DocumentType", "Questao", "Correcao",
-    "storage", "vector_store",
-    "CorrectionPipeline", "PipelineConfig", "PipelineStage", "PipelineResult"
+    # Storage
+    "StorageManager", "storage",
+    # Models
+    "TipoDocumento", "Materia", "Turma", "Aluno", "Atividade", "Documento",
+    # Pipeline Executor
+    "PipelineExecutor", "pipeline_executor", "EtapaProcessamento", "ResultadoExecucao"
 ]

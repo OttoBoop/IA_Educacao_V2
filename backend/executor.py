@@ -23,7 +23,7 @@ import os
 
 from models import TipoDocumento, Documento
 from prompts import PromptManager, PromptTemplate, EtapaProcessamento, prompt_manager
-from storage_v2 import StorageManagerV2, storage_v2 as storage
+from storage import StorageManager, storage
 from ai_providers import ai_registry, AIResponse
 
 # Import do sistema multimodal

@@ -144,7 +144,7 @@ async def handle_get_document_content(
 
     Retrieves document content from storage.
     """
-    from storage_v2 import storage_v2 as storage
+    from storage import storage
 
     document_id = input_data.get("document_id")
     document_type = input_data.get("document_type")
@@ -255,7 +255,7 @@ async def handle_get_student_info(
 
     Retrieves student information from storage.
     """
-    from storage_v2 import storage_v2 as storage
+    from storage import storage
 
     aluno_id = input_data.get("aluno_id") or (context.aluno_id if context else None)
     include_grades = input_data.get("include_grades", True)
@@ -328,7 +328,7 @@ async def handle_search_documents(
 
     Searches documents by text content.
     """
-    from storage_v2 import storage_v2 as storage
+    from storage import storage
 
     query = input_data.get("query", "")
     document_type = input_data.get("document_type")
@@ -407,7 +407,7 @@ async def handle_save_correction(
 
     Saves grading/correction results to storage.
     """
-    from storage_v2 import storage_v2 as storage
+    from storage import storage
     from models import TipoDocumento
     import json as json_module
     from datetime import datetime
@@ -508,7 +508,7 @@ async def handle_create_document(
     Creates one or more documents and saves them to storage.
     Supports batch document creation for pipelines (e.g., creating reports for all students).
     """
-    from storage_v2 import storage_v2 as storage
+    from storage import storage
     from models import TipoDocumento
     from pathlib import Path
     from datetime import datetime
