@@ -574,32 +574,30 @@ class PipelineExecutor:
         logger.info(f"Coletando arquivos para {etapa.value}: docs_base={len(docs_base)}, docs_aluno={len(docs_aluno)}")
 
         def _normalizar_e_verificar(doc) -> Optional[str]:
-            """Normaliza o caminho e verifica se existe"""
+            """
+            Resolve o caminho do documento usando storage.resolver_caminho_documento().
+            Isso automaticamente baixa do Supabase se não existir localmente.
+            """
             if not doc.caminho_arquivo:
                 logger.warning(f"  Doc {doc.id} ({doc.tipo.value}): caminho vazio")
                 return None
 
-            # IMPORTANTE: Normalizar barras para o sistema operacional atual
-            # Caminhos salvos no Windows podem ter '\', mas no Linux precisam de '/'
-            caminho_normalizado = doc.caminho_arquivo.replace('\\', '/')
+            try:
+                # Usar resolver_caminho_documento que já implementa:
+                # 1. Verificação local
+                # 2. Download do Supabase se não existir localmente
+                caminho_resolvido = self.storage.resolver_caminho_documento(doc)
 
-            # Remover prefixo 'data/' se existir (evita duplicação: base_path já é /path/to/data)
-            if caminho_normalizado.startswith('data/'):
-                caminho_normalizado = caminho_normalizado[5:]  # Remove 'data/'
-
-            # Resolver caminho relativo contra o base_path do storage
-            caminho_relativo = Path(caminho_normalizado)
-            caminho_absoluto = self.storage.base_path / caminho_relativo
-
-            if caminho_absoluto.exists():
-                logger.info(f"  Doc {doc.id} ({doc.tipo.value}): OK - {caminho_absoluto}")
-                return str(caminho_absoluto)
-            else:
-                logger.error(f"  Doc {doc.id} ({doc.tipo.value}): ARQUIVO NÃO ENCONTRADO")
-                logger.error(f"    Tentei: {caminho_absoluto} (exists={caminho_absoluto.exists()})")
-                logger.error(f"    Base path: {self.storage.base_path}")
-                logger.error(f"    Caminho original: {doc.caminho_arquivo}")
-                logger.error(f"    Caminho normalizado: {caminho_normalizado}")
+                if caminho_resolvido and caminho_resolvido.exists():
+                    logger.info(f"  Doc {doc.id} ({doc.tipo.value}): OK - {caminho_resolvido}")
+                    return str(caminho_resolvido)
+                else:
+                    logger.error(f"  Doc {doc.id} ({doc.tipo.value}): ARQUIVO NÃO ENCONTRADO")
+                    logger.error(f"    Caminho retornado: {caminho_resolvido}")
+                    logger.error(f"    Caminho original (BD): {doc.caminho_arquivo}")
+                    return None
+            except Exception as e:
+                logger.error(f"  Doc {doc.id} ({doc.tipo.value}): ERRO ao resolver caminho: {e}")
                 return None
 
         # Mapa de quais documentos cada etapa precisa

@@ -871,10 +871,8 @@ class StorageManager:
         """
         Resolve o caminho absoluto de um documento.
 
-        PRIORIDADE: Supabase primeiro (para ambiente de produção/Render),
-        depois verifica arquivos locais como fallback (para dev local).
-
-        Retorna o Path absoluto do arquivo.
+        SEMPRE usa Supabase como fonte primária.
+        Local é apenas cache/fallback para dev.
         """
         import sys
         # Normalizar: converter barras invertidas para barras normais
@@ -885,28 +883,16 @@ class StorageManager:
         if remote_path.startswith('data/'):
             remote_path = remote_path[5:]
 
-        caminho = Path(remote_path)
-
-        # Definir caminho local para salvar/verificar
+        # Definir caminho local para salvar
         local_path = self.base_path / remote_path
 
         sys.stderr.write(f"[resolver_caminho] Documento: {documento.nome_arquivo}\n")
-        sys.stderr.write(f"[resolver_caminho] Caminho original: {caminho_str}\n")
         sys.stderr.write(f"[resolver_caminho] Remote path: {remote_path}\n")
-        sys.stderr.write(f"[resolver_caminho] Local path: {local_path}\n")
-        sys.stderr.write(f"[resolver_caminho] Local existe: {local_path.exists()}\n")
-        sys.stderr.write(f"[resolver_caminho] Supabase disponível: {SUPABASE_AVAILABLE}\n")
         sys.stderr.flush()
 
-        # Se arquivo já existe localmente, retornar
-        if local_path.exists():
-            sys.stderr.write(f"[resolver_caminho] Usando arquivo local existente\n")
-            sys.stderr.flush()
-            return local_path
-
-        # PRIORIDADE: Tentar baixar do Supabase
+        # SEMPRE tentar Supabase primeiro
         if SUPABASE_AVAILABLE and supabase_storage:
-            sys.stderr.write(f"[resolver_caminho] Tentando Supabase: {remote_path}\n")
+            sys.stderr.write(f"[resolver_caminho] Baixando do Supabase: {remote_path}\n")
             sys.stderr.flush()
 
             # Criar diretório pai se não existir
@@ -915,20 +901,20 @@ class StorageManager:
             success, msg = supabase_storage.download(remote_path, str(local_path))
 
             if success:
-                sys.stderr.write(f"[resolver_caminho] Download Supabase OK: {local_path}\n")
+                sys.stderr.write(f"[resolver_caminho] Supabase OK: {local_path}\n")
                 sys.stderr.flush()
                 return local_path
             else:
                 sys.stderr.write(f"[resolver_caminho] Supabase falhou: {msg}\n")
                 sys.stderr.flush()
 
-        # Fallback: tentar caminhos alternativos locais (para dev)
-        caminho_novo = self.base_path / caminho
-        if caminho_novo.exists():
-            return caminho_novo
+        # Fallback: verificar local (para dev sem Supabase)
+        if local_path.exists():
+            sys.stderr.write(f"[resolver_caminho] Usando cache local: {local_path}\n")
+            sys.stderr.flush()
+            return local_path
 
-        # Retorna o caminho esperado (mesmo que não exista) para erro claro
-        sys.stderr.write(f"[resolver_caminho] ERRO: Arquivo não encontrado em lugar nenhum\n")
+        sys.stderr.write(f"[resolver_caminho] ERRO: Arquivo não encontrado\n")
         sys.stderr.flush()
         return local_path
     
