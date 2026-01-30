@@ -867,6 +867,19 @@ class PipelineExecutor:
             usar_multimodal=True
         )
     
+    async def extrair_gabarito(
+        self,
+        atividade_id: str,
+        provider_id: str = None
+    ) -> ResultadoExecucao:
+        """Extrai gabarito usando visão multimodal"""
+        return await self.executar_etapa(
+            etapa=EtapaProcessamento.EXTRAIR_GABARITO,
+            atividade_id=atividade_id,
+            provider_name=provider_id,
+            usar_multimodal=True
+        )
+
     async def extrair_respostas_aluno(
         self,
         atividade_id: str,

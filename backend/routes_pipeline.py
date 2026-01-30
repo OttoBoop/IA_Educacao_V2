@@ -131,7 +131,13 @@ async def executar_etapa(data: ExecutarEtapaRequest):
                 atividade_id=data.atividade_id,
                 provider_id=data.provider_id
             )
-        
+
+        elif etapa == "extrair_gabarito":
+            resultado = await pipeline_executor.extrair_gabarito(
+                atividade_id=data.atividade_id,
+                provider_id=data.provider_id
+            )
+
         elif etapa == "extrair_respostas":
             if not data.aluno_id:
                 raise HTTPException(400, "aluno_id é obrigatório")
