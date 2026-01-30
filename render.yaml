@@ -16,3 +16,10 @@ services:
         sync: false
       - key: E2B_API_KEY
         sync: false
+      # Supabase Storage (persistência de arquivos)
+      - key: SUPABASE_URL
+        value: https://anjmtluofshbppkesrlw.supabase.co
+      - key: SUPABASE_SERVICE_KEY
+        sync: false
+      - key: SUPABASE_BUCKET
+        value: documentos

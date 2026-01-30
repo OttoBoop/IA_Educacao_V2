@@ -26,6 +26,14 @@ from models import (
     verificar_dependencias, DEPENDENCIAS_DOCUMENTOS
 )
 
+# Import Supabase storage (para persistência em cloud)
+try:
+    from supabase_storage import supabase_storage
+    SUPABASE_AVAILABLE = supabase_storage.enabled
+except ImportError:
+    supabase_storage = None
+    SUPABASE_AVAILABLE = False
+
 
 # Diretório base para paths absolutos (compatível com Render)
 BASE_DIR = Path(__file__).parent
@@ -834,7 +842,16 @@ class StorageManager:
         ))
         conn.commit()
         conn.close()
-        
+
+        # Upload para Supabase (persistência em cloud)
+        if SUPABASE_AVAILABLE and supabase_storage:
+            remote_path = str(caminho_relativo).replace("\\", "/")
+            success, msg = supabase_storage.upload(str(destino), remote_path)
+            if success:
+                print(f"[Supabase] Upload OK: {remote_path}")
+            else:
+                print(f"[Supabase] Aviso: {msg}")
+
         return documento
     
     def get_documento(self, documento_id: str) -> Optional[Documento]:
@@ -858,6 +875,9 @@ class StorageManager:
         - Formato antigo: 'data/arquivos/...' (quando base_path era './')
         - Formato novo: 'arquivos/...' (quando base_path é './data')
 
+        Se o arquivo não existir localmente mas Supabase estiver configurado,
+        tenta fazer download do cloud.
+
         Retorna o Path absoluto do arquivo.
         """
         caminho = Path(documento.caminho_arquivo)
@@ -878,6 +898,25 @@ class StorageManager:
         # Tentar terceiro: caminho absoluto direto
         if caminho.is_absolute() and caminho.exists():
             return caminho
+
+        # Tentar quarto: baixar do Supabase se disponível
+        if SUPABASE_AVAILABLE and supabase_storage:
+            remote_path = caminho_str.replace("\\", "/")
+            # Remover 'data/' se existir para o path remoto
+            if remote_path.startswith('data/'):
+                remote_path = remote_path[5:]
+
+            # Definir caminho local para salvar
+            local_path = self.base_path / remote_path
+
+            print(f"[Supabase] Tentando baixar: {remote_path}")
+            success, msg = supabase_storage.download(remote_path, str(local_path))
+
+            if success:
+                print(f"[Supabase] Download OK: {local_path}")
+                return local_path
+            else:
+                print(f"[Supabase] Arquivo não encontrado no cloud: {remote_path}")
 
         # Fallback: retorna o caminho novo mesmo que não exista
         # (para mensagens de erro claras)
@@ -909,24 +948,33 @@ class StorageManager:
         return [Documento.from_dict(dict(row)) for row in rows]
     
     def deletar_documento(self, documento_id: str) -> bool:
-        """Deleta documento do banco e do sistema de arquivos"""
+        """Deleta documento do banco e do sistema de arquivos (local e cloud)"""
         doc = self.get_documento(documento_id)
         if not doc:
             return False
-        
-        # Remover arquivo
+
+        # Remover arquivo local
         if doc.caminho_arquivo:
-            arquivo = Path(doc.caminho_arquivo)
+            arquivo = self.resolver_caminho_documento(doc)
             if arquivo.exists():
                 arquivo.unlink()
-        
+
+            # Remover do Supabase também
+            if SUPABASE_AVAILABLE and supabase_storage:
+                remote_path = str(doc.caminho_arquivo).replace("\\", "/")
+                if remote_path.startswith('data/'):
+                    remote_path = remote_path[5:]
+                success, msg = supabase_storage.delete(remote_path)
+                if success:
+                    print(f"[Supabase] Deletado: {remote_path}")
+
         # Remover do banco
         conn = self._get_connection()
         c = conn.cursor()
         c.execute('DELETE FROM documentos WHERE id = ?', (documento_id,))
         conn.commit()
         conn.close()
-        
+
         return True
 
     def deletar_documentos_aluno_atividade(self, atividade_id: str, aluno_id: str) -> int:
