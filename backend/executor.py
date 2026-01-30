@@ -34,6 +34,17 @@ except ImportError:
     HAS_MULTIMODAL = False
     print("[WARN] Sistema multimodal não disponível (anexos.py não encontrado)")
 
+# Import do sistema de logging estruturado
+try:
+    from logging_config import get_logger, truncate_for_log
+    _logger = get_logger("pipeline.executor")
+except ImportError:
+    # Fallback para logging básico
+    import logging
+    _logger = logging.getLogger("pipeline.executor")
+    def truncate_for_log(text, max_length=500):
+        return text[:max_length] + "..." if len(text) > max_length else text
+
 
 # ============================================================
 # DATACLASSES DE RESULTADO
@@ -304,9 +315,18 @@ class PipelineExecutor:
         
         # Executar IA
         response = await provider.complete(prompt_renderizado, prompt_sistema_renderizado)
-        
-        # Parsear resposta
-        resposta_parsed = self._parsear_resposta(response.content)
+
+        # Parsear resposta com contexto para logging
+        resposta_parsed = self._parsear_resposta(
+            response.content,
+            context={
+                "stage": etapa.value if hasattr(etapa, 'value') else str(etapa),
+                "provider": provider.name,
+                "model": provider.model,
+                "atividade_id": atividade_id,
+                "aluno_id": aluno_id
+            }
+        )
         
         tempo_ms = (time.time() - inicio) * 1000
         
@@ -395,8 +415,17 @@ class PipelineExecutor:
                 tempo_ms=tempo_ms
             )
         
-        # Parsear resposta
-        resposta_parsed = self._parsear_resposta(resultado.resposta)
+        # Parsear resposta com contexto para logging
+        resposta_parsed = self._parsear_resposta(
+            resultado.resposta,
+            context={
+                "stage": etapa.value if hasattr(etapa, 'value') else str(etapa),
+                "provider": resultado.provider,
+                "model": resultado.modelo,
+                "atividade_id": atividade_id,
+                "aluno_id": aluno_id
+            }
+        )
         alertas = resposta_parsed.get("alertas", []) if resposta_parsed else []
         
         # Verificar se anexo foi processado
@@ -766,35 +795,105 @@ class PipelineExecutor:
         except Exception as e:
             return f"[Erro ao ler {documento.nome_arquivo}: {str(e)}]"
     
-    def _parsear_resposta(self, resposta: str) -> Optional[Dict[str, Any]]:
-        """Tenta extrair JSON da resposta"""
+    def _parsear_resposta(self, resposta: str, context: Optional[Dict[str, Any]] = None) -> Optional[Dict[str, Any]]:
+        """
+        Tenta extrair JSON da resposta com logging detalhado.
+
+        Args:
+            resposta: String de resposta da IA
+            context: Contexto para logging (stage, provider, model, etc.)
+
+        Returns:
+            Dict parseado ou None se falhar
+            Se retornar dict com "_error", indica falha com detalhes
+        """
+        ctx = context or {}
+
+        # Validar resposta vazia
         if not resposta:
-            return None
-        
+            _logger.warning(
+                "Resposta vazia recebida da IA",
+                stage=ctx.get("stage"),
+                provider=ctx.get("provider"),
+                model=ctx.get("model")
+            )
+            return {"_error": "empty_response", "_message": "Resposta vazia da IA"}
+
+        # Validar resposta só com espaços
+        if not resposta.strip():
+            _logger.warning(
+                "Resposta contém apenas espaços em branco",
+                stage=ctx.get("stage"),
+                provider=ctx.get("provider")
+            )
+            return {"_error": "whitespace_only", "_message": "Resposta apenas com espaços"}
+
+        # Tentativa 1: Parsear diretamente
         try:
-            # Tentar parsear diretamente
-            return json.loads(resposta)
-        except:
-            pass
-        
-        # Tentar extrair JSON de bloco de código
+            data = json.loads(resposta)
+            # Validar JSON vazio
+            if data == {} or data == []:
+                _logger.warning(
+                    "JSON vazio retornado pela IA",
+                    stage=ctx.get("stage"),
+                    provider=ctx.get("provider"),
+                    raw_response=truncate_for_log(resposta, 200)
+                )
+                return {"_error": "empty_json", "_message": "JSON vazio {}", "_raw": resposta[:500]}
+            return data
+        except json.JSONDecodeError as e:
+            _logger.debug(
+                f"Parsing direto falhou: {e.msg} na posição {e.pos}",
+                stage=ctx.get("stage")
+            )
+
+        # Tentativa 2: Extrair de bloco de código ```json
         json_match = re.search(r'```(?:json)?\s*([\s\S]*?)\s*```', resposta)
         if json_match:
-            try:
-                return json.loads(json_match.group(1))
-            except:
-                pass
-        
-        # Tentar encontrar {} ou []
+            json_str = json_match.group(1).strip()
+            if json_str:
+                try:
+                    data = json.loads(json_str)
+                    if data == {} or data == []:
+                        _logger.warning(
+                            "JSON vazio extraído de bloco de código",
+                            stage=ctx.get("stage")
+                        )
+                        return {"_error": "empty_json", "_message": "JSON vazio em bloco ```"}
+                    return data
+                except json.JSONDecodeError as e:
+                    _logger.debug(
+                        f"Parsing de bloco ``` falhou: {e.msg}",
+                        stage=ctx.get("stage")
+                    )
+
+        # Tentativa 3: Encontrar {} ou [] no texto
         for pattern in [r'\{[\s\S]*\}', r'\[[\s\S]*\]']:
             match = re.search(pattern, resposta)
             if match:
                 try:
-                    return json.loads(match.group())
-                except:
-                    pass
-        
-        return None
+                    data = json.loads(match.group())
+                    if data == {} or data == []:
+                        continue  # Tentar próximo pattern
+                    return data
+                except json.JSONDecodeError:
+                    continue
+
+        # Todas as tentativas falharam
+        _logger.error(
+            "Não foi possível extrair JSON da resposta",
+            stage=ctx.get("stage"),
+            provider=ctx.get("provider"),
+            model=ctx.get("model"),
+            raw_response=truncate_for_log(resposta, 500)
+        )
+
+        return {
+            "_error": "parse_failed",
+            "_message": "Não foi possível extrair JSON válido",
+            "_raw": resposta[:1000],
+            "_attempts": ["direct", "code_block", "regex"]
+        }
     
     async def _salvar_resultado(
         self,
@@ -1190,6 +1289,8 @@ Crie UM documento separado para cada aluno, nomeando como "relatorio_[nome_aluno
         model_id: Optional[str] = None,
         provider_name: Optional[str] = None,
         providers_map: Optional[Dict[str, str]] = None,
+        prompt_id: Optional[str] = None,
+        prompts_map: Optional[Dict[str, str]] = None,
         usar_multimodal: bool = True,
         selected_steps: Optional[List[str]] = None,
         force_rerun: bool = False
@@ -1197,13 +1298,16 @@ Crie UM documento separado para cada aluno, nomeando como "relatorio_[nome_aluno
         """
         Executa o pipeline completo para um aluno.
         Retorna resultados de cada etapa.
-        
+
         Args:
             selected_steps: Lista de etapas a executar. Se None, executa todas.
             force_rerun: Se True, re-executa mesmo que já existam resultados.
+            prompt_id: ID do prompt padrão para todas as etapas.
+            prompts_map: Dict com prompt_id por etapa (ex: {"extrair_questoes": "abc123"})
         """
         resultados = {}
         providers_map = providers_map or {}
+        prompts_map = prompts_map or {}
         
         # Todas as etapas disponíveis
         ALL_STEPS = [
@@ -1217,6 +1321,10 @@ Crie UM documento separado para cada aluno, nomeando como "relatorio_[nome_aluno
         def _resolve_provider(stage: EtapaProcessamento) -> Optional[str]:
             # Prioridade: providers_map > model_id > provider_name
             return providers_map.get(stage.value) or model_id or provider_name
+
+        def _resolve_prompt(stage: EtapaProcessamento) -> Optional[str]:
+            # Prioridade: prompts_map > prompt_id
+            return prompts_map.get(stage.value) or prompt_id
         
         def _should_run(step_name: str, doc_type: TipoDocumento, docs_list: List) -> bool:
             """Verifica se deve executar uma etapa"""
@@ -1236,24 +1344,26 @@ Crie UM documento separado para cada aluno, nomeando como "relatorio_[nome_aluno
                 EtapaProcessamento.EXTRAIR_QUESTOES,
                 atividade_id,
                 provider_name=_resolve_provider(EtapaProcessamento.EXTRAIR_QUESTOES),
+                prompt_id=_resolve_prompt(EtapaProcessamento.EXTRAIR_QUESTOES),
                 usar_multimodal=usar_multimodal,
                 criar_nova_versao=force_rerun
             )
             resultados["extrair_questoes"] = resultado
             if not resultado.sucesso:
                 return resultados
-        
+
         # 2. Extrair gabarito
         if _should_run("extrair_gabarito", TipoDocumento.EXTRACAO_GABARITO, docs):
             resultado = await self.executar_etapa(
                 EtapaProcessamento.EXTRAIR_GABARITO,
                 atividade_id,
                 provider_name=_resolve_provider(EtapaProcessamento.EXTRAIR_GABARITO),
+                prompt_id=_resolve_prompt(EtapaProcessamento.EXTRAIR_GABARITO),
                 usar_multimodal=usar_multimodal,
                 criar_nova_versao=force_rerun
             )
             resultados["extrair_gabarito"] = resultado
-        
+
         # 3. Extrair respostas do aluno
         if _should_run("extrair_respostas", TipoDocumento.EXTRACAO_RESPOSTAS, docs_aluno):
             resultado = await self.executar_etapa(
@@ -1261,13 +1371,14 @@ Crie UM documento separado para cada aluno, nomeando como "relatorio_[nome_aluno
                 atividade_id,
                 aluno_id,
                 provider_name=_resolve_provider(EtapaProcessamento.EXTRAIR_RESPOSTAS),
+                prompt_id=_resolve_prompt(EtapaProcessamento.EXTRAIR_RESPOSTAS),
                 usar_multimodal=usar_multimodal,
                 criar_nova_versao=force_rerun
             )
             resultados["extrair_respostas"] = resultado
             if not resultado.sucesso:
                 return resultados
-        
+
         # 4. Corrigir
         if _should_run("corrigir", TipoDocumento.CORRECAO, docs_aluno):
             resultado = await self.executar_etapa(
@@ -1275,13 +1386,14 @@ Crie UM documento separado para cada aluno, nomeando como "relatorio_[nome_aluno
                 atividade_id,
                 aluno_id,
                 provider_name=_resolve_provider(EtapaProcessamento.CORRIGIR),
+                prompt_id=_resolve_prompt(EtapaProcessamento.CORRIGIR),
                 usar_multimodal=usar_multimodal,
                 criar_nova_versao=force_rerun
             )
             resultados["corrigir"] = resultado
             if not resultado.sucesso:
                 return resultados
-        
+
         # 5. Analisar habilidades
         if _should_run("analisar_habilidades", TipoDocumento.ANALISE_HABILIDADES, docs_aluno):
             resultado = await self.executar_etapa(
@@ -1289,11 +1401,12 @@ Crie UM documento separado para cada aluno, nomeando como "relatorio_[nome_aluno
                 atividade_id,
                 aluno_id,
                 provider_name=_resolve_provider(EtapaProcessamento.ANALISAR_HABILIDADES),
+                prompt_id=_resolve_prompt(EtapaProcessamento.ANALISAR_HABILIDADES),
                 usar_multimodal=usar_multimodal,
                 criar_nova_versao=force_rerun
             )
             resultados["analisar_habilidades"] = resultado
-        
+
         # 6. Gerar relatório
         if _should_run("gerar_relatorio", TipoDocumento.RELATORIO_FINAL, docs_aluno):
             resultado = await self.executar_etapa(
@@ -1301,6 +1414,7 @@ Crie UM documento separado para cada aluno, nomeando como "relatorio_[nome_aluno
                 atividade_id,
                 aluno_id,
                 provider_name=_resolve_provider(EtapaProcessamento.GERAR_RELATORIO),
+                prompt_id=_resolve_prompt(EtapaProcessamento.GERAR_RELATORIO),
                 usar_multimodal=usar_multimodal,
                 criar_nova_versao=force_rerun
             )

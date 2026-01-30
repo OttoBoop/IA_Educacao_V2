@@ -3669,6 +3669,15 @@
                     <select class="form-select" id="input-pipeline-provider-default"></select>
                 </div>
                 <div class="form-group">
+                    <label class="form-label">
+                        Prompt (padrão para todas as etapas)
+                        <span class="tooltip-icon" data-tooltip="Prompts são instruções que dizem à IA como executar a tarefa. O padrão já foi otimizado, mas você pode personalizar por etapa." data-tooltip-pos="right">?</span>
+                    </label>
+                    <select class="form-select" id="input-pipeline-prompt-default">
+                        <option value="">Usar prompts padrão</option>
+                    </select>
+                </div>
+                <div class="form-group">
                     <!-- Accordion: Etapas a executar -->
                     <details id="pipeline-advanced-models" style="margin-top: 4px;">
                         <summary style="cursor: pointer; color: var(--text-muted); font-size: 0.85rem; padding: 8px 0;">
@@ -3676,8 +3685,9 @@
                         </summary>
                         <div style="padding: 12px; background: var(--bg-hover); border-radius: 8px; margin-top: 8px;">
                             <!-- Header -->
-                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; padding: 6px 12px; font-size: 0.7rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px;">
+                            <div style="display: grid; grid-template-columns: 1.2fr 1fr 1fr; gap: 8px; padding: 6px 8px; font-size: 0.7rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px;">
                                 <span>Etapa</span>
+                                <span>Prompt</span>
                                 <span>Modelo</span>
                             </div>
                             <div id="pipeline-steps-unified" style="display: flex; flex-direction: column; gap: 6px;"></div>
@@ -7365,12 +7375,14 @@
 
         async function carregarPipelineProviders() {
             try {
-                const [etapasData, modelsData] = await Promise.all([
+                const [etapasData, modelsData, promptsData] = await Promise.all([
                     api('/prompts/etapas'),
-                    api('/settings/models').catch(() => ({ models: [] }))
+                    api('/settings/models').catch(() => ({ models: [] })),
+                    api('/prompts').catch(() => ({ prompts: [] }))
                 ]);
 
                 const models = modelsData.models || [];
+                const prompts = promptsData.prompts || [];
                 const defaultModel = models.find(m => m.is_default);
                 const defaultModelId = defaultModel?.id || '';
 
@@ -7382,6 +7394,16 @@
                 const defaultSelect = document.getElementById('input-pipeline-provider-default');
                 if (defaultSelect) {
                     defaultSelect.innerHTML = modelOptions || '<option value="">Nenhum modelo configurado</option>';
+                }
+
+                // Popular select de prompt padrão (agrupa por etapa)
+                const defaultPromptSelect = document.getElementById('input-pipeline-prompt-default');
+                if (defaultPromptSelect) {
+                    // Manter a opção padrão e adicionar prompts disponíveis
+                    const promptOptions = prompts.map(p =>
+                        `<option value="${p.id}">${escapeHtml(p.nome)} (${p.etapa})${p.is_padrao ? ' ⭐' : ''}</option>`
+                    ).join('');
+                    defaultPromptSelect.innerHTML = '<option value="">Usar prompts padrão</option>' + promptOptions;
                 }
 
                 const etapasPermitidas = [
@@ -7404,25 +7426,37 @@
                     'gerar_relatorio': 'Gera relatório final com feedback detalhado'
                 };
 
-                // Container unificado: checkbox + modelo na mesma linha
+                // Container unificado: checkbox + prompt + modelo na mesma linha
                 const unifiedContainer = document.getElementById('pipeline-steps-unified');
                 if (unifiedContainer) {
                     const stageModelOptions = models.map(m => `<option value="${m.id}">${escapeHtml(m.nome)} (${m.modelo})${m.is_default ? ' ⭐' : ''}</option>`).join('');
-                    unifiedContainer.innerHTML = etapas.map(etapa => `
-                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; align-items: center;">
-                            <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;" title="${etapaTooltips[etapa.id] || ''}">
+
+                    unifiedContainer.innerHTML = etapas.map(etapa => {
+                        // Filtrar prompts para esta etapa específica
+                        const etapaPrompts = prompts.filter(p => p.etapa === etapa.id);
+                        const stagePromptOptions = etapaPrompts.map(p =>
+                            `<option value="${p.id}">${escapeHtml(p.nome)}${p.is_padrao ? ' ⭐' : ''}</option>`
+                        ).join('');
+
+                        return `
+                        <div style="display: grid; grid-template-columns: 1.2fr 1fr 1fr; gap: 8px; align-items: center;">
+                            <label style="display: flex; align-items: center; gap: 6px; cursor: pointer;" title="${etapaTooltips[etapa.id] || ''}">
                                 <input type="checkbox" data-step="${etapa.id}" class="pipeline-step-checkbox" checked>
-                                <span style="font-size: 0.85rem; color: var(--text-primary);">${etapa.nome}</span>
+                                <span style="font-size: 0.8rem; color: var(--text-primary);">${etapa.nome}</span>
                             </label>
-                            <select class="form-select" data-etapa="${etapa.id}" style="font-size: 0.8rem; padding: 6px 8px;">
-                                <option value="">Usar modelo acima ▲</option>
+                            <select class="form-select" data-prompt-etapa="${etapa.id}" style="font-size: 0.75rem; padding: 4px 6px;">
+                                <option value="">Padrão ▲</option>
+                                ${stagePromptOptions}
+                            </select>
+                            <select class="form-select" data-etapa="${etapa.id}" style="font-size: 0.75rem; padding: 4px 6px;">
+                                <option value="">Padrão ▲</option>
                                 ${stageModelOptions}
                             </select>
                         </div>
-                    `).join('');
+                    `}).join('');
                 }
             } catch (e) {
-                console.error('Erro ao carregar modelos:', e);
+                console.error('Erro ao carregar modelos/prompts:', e);
             }
         }
 
@@ -7746,6 +7780,7 @@
             const atividadeId = document.getElementById('input-pipeline-atividade-id').value;
             const modo = document.querySelector('input[name="pipeline-modo"]:checked').value;
             const defaultModelId = document.getElementById('input-pipeline-provider-default').value;
+            const defaultPromptId = document.getElementById('input-pipeline-prompt-default').value;
             const forceRerun = document.getElementById('input-pipeline-force-rerun').checked;
 
             // Coletar etapas selecionadas
@@ -7759,10 +7794,19 @@
                 return;
             }
 
+            // Coletar modelos por etapa
             const modelsPerStage = {};
             document.querySelectorAll('#pipeline-steps-unified select[data-etapa]').forEach(select => {
                 if (select.value && select.value !== defaultModelId) {
                     modelsPerStage[select.dataset.etapa] = select.value;
+                }
+            });
+
+            // Coletar prompts por etapa
+            const promptsPerStage = {};
+            document.querySelectorAll('#pipeline-steps-unified select[data-prompt-etapa]').forEach(select => {
+                if (select.value) {
+                    promptsPerStage[select.dataset.promptEtapa] = select.value;
                 }
             });
 
@@ -7810,7 +7854,9 @@
                     formData.append('atividade_id', atividadeId);
                     formData.append('apenas_com_prova', 'true');
                     if (defaultModelId) formData.append('model_id', defaultModelId);
+                    if (defaultPromptId) formData.append('prompt_id', defaultPromptId);
                     if (Object.keys(modelsPerStage).length) formData.append('providers', JSON.stringify(modelsPerStage));
+                    if (Object.keys(promptsPerStage).length) formData.append('prompts_per_stage', JSON.stringify(promptsPerStage));
                     formData.append('selected_steps', JSON.stringify(selectedSteps));
                     formData.append('force_rerun', forceRerun ? 'true' : 'false');
 
@@ -7821,7 +7867,9 @@
                     formData.append('atividade_id', atividadeId);
                     formData.append('aluno_id', alunoId);
                     if (defaultModelId) formData.append('model_id', defaultModelId);
+                    if (defaultPromptId) formData.append('prompt_id', defaultPromptId);
                     if (Object.keys(modelsPerStage).length) formData.append('providers', JSON.stringify(modelsPerStage));
+                    if (Object.keys(promptsPerStage).length) formData.append('prompts_per_stage', JSON.stringify(promptsPerStage));
                     formData.append('selected_steps', JSON.stringify(selectedSteps));
                     formData.append('force_rerun', forceRerun ? 'true' : 'false');
 
@@ -8877,7 +8925,8 @@
         }
 
         // Modelos de reasoning que não suportam temperatura
-        const REASONING_MODELS = ['o1', 'o1-mini', 'o1-pro', 'o3', 'o3-mini', 'o4-mini', 'deepseek-reasoner'];
+        // Deprecated: 'o1', 'o1-mini', 'o1-pro' (removidos pois estão deprecated)
+        const REASONING_MODELS = ['o3', 'o3-mini', 'o3-pro', 'o4-mini', 'gpt-5', 'gpt-5-mini', 'gpt-5-nano', 'gpt-5.1', 'gpt-5.2', 'deepseek-reasoner'];
 
         async function carregarModelosSugeridosInicial() {
             try {

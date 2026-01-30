@@ -693,42 +693,55 @@ async def executar_pipeline_completo(
     model_id: Optional[str] = Form(None),
     provider: Optional[str] = Form(None),
     providers: Optional[str] = Form(None),
+    prompt_id: Optional[str] = Form(None),
+    prompts_per_stage: Optional[str] = Form(None),
     selected_steps: Optional[str] = Form(None),
     force_rerun: bool = Form(False)
 ):
     """
     Executa o pipeline completo para um aluno.
     Executa todas as etapas necessárias em sequência.
-    
+
     Args:
         selected_steps: JSON array de etapas a executar. Se vazio, executa todas.
                         Valores: extrair_questoes, extrair_gabarito, extrair_respostas,
                                  corrigir, analisar_habilidades, gerar_relatorio
         force_rerun: Se True, re-executa etapas mesmo que já existam resultados.
                      Cria nova versão do documento ao invés de sobrescrever.
+        prompt_id: ID do prompt padrão a usar para todas as etapas
+        prompts_per_stage: JSON com prompt_id por etapa (ex: {"extrair_questoes": "abc123"})
     """
     from executor import executor
-    
+
     providers_map = None
     if providers:
         try:
             providers_map = json.loads(providers)
         except json.JSONDecodeError:
             raise HTTPException(400, "Formato inválido para providers. Use JSON.")
-    
+
+    prompts_map = None
+    if prompts_per_stage:
+        try:
+            prompts_map = json.loads(prompts_per_stage)
+        except json.JSONDecodeError:
+            raise HTTPException(400, "Formato inválido para prompts_per_stage. Use JSON.")
+
     steps_list = None
     if selected_steps:
         try:
             steps_list = json.loads(selected_steps)
         except json.JSONDecodeError:
             raise HTTPException(400, "Formato inválido para selected_steps. Use JSON array.")
-    
+
     resultados = await executor.executar_pipeline_completo(
         atividade_id=atividade_id,
         aluno_id=aluno_id,
         model_id=model_id,
         provider_name=provider,
         providers_map=providers_map,
+        prompt_id=prompt_id,
+        prompts_map=prompts_map,
         selected_steps=steps_list,
         force_rerun=force_rerun
     )
@@ -913,8 +926,13 @@ async def executar_lote(
 @router.post("/api/executar/pipeline-turma", tags=["Execução"])
 async def executar_pipeline_turma(
     atividade_id: str = Form(...),
+    model_id: Optional[str] = Form(None),
     provider: Optional[str] = Form(None),
     providers: Optional[str] = Form(None),
+    prompt_id: Optional[str] = Form(None),
+    prompts_per_stage: Optional[str] = Form(None),
+    selected_steps: Optional[str] = Form(None),
+    force_rerun: bool = Form(False),
     apenas_com_prova: bool = Form(True)  # Apenas alunos que têm prova enviada
 ):
     """
@@ -922,8 +940,13 @@ async def executar_pipeline_turma(
 
     Parâmetros:
     - atividade_id: ID da atividade
-    - provider: Provider de IA a usar (opcional)
+    - model_id: ID do modelo de IA padrão a usar
+    - provider: Provider de IA a usar (opcional, legacy)
     - providers: JSON com provider por etapa (opcional)
+    - prompt_id: ID do prompt padrão a usar para todas as etapas
+    - prompts_per_stage: JSON com prompt_id por etapa (ex: {"extrair_questoes": "abc123"})
+    - selected_steps: JSON array de etapas a executar
+    - force_rerun: Se True, re-executa etapas mesmo que já existam resultados
     - apenas_com_prova: Se True, executa apenas para alunos que têm prova enviada
     """
     from executor import executor
@@ -964,14 +987,33 @@ async def executar_pipeline_turma(
         except json.JSONDecodeError:
             raise HTTPException(400, "Formato inválido para providers. Use JSON.")
 
+    prompts_map = None
+    if prompts_per_stage:
+        try:
+            prompts_map = json.loads(prompts_per_stage)
+        except json.JSONDecodeError:
+            raise HTTPException(400, "Formato inválido para prompts_per_stage. Use JSON.")
+
+    steps_list = None
+    if selected_steps:
+        try:
+            steps_list = json.loads(selected_steps)
+        except json.JSONDecodeError:
+            raise HTTPException(400, "Formato inválido para selected_steps. Use JSON array.")
+
     resultados_por_aluno = {}
     for aluno in alunos_para_processar:
         try:
             resultados = await executor.executar_pipeline_completo(
                 atividade_id=atividade_id,
                 aluno_id=aluno.id,
+                model_id=model_id,
                 provider_name=provider,
-                providers_map=providers_map
+                providers_map=providers_map,
+                prompt_id=prompt_id,
+                prompts_map=prompts_map,
+                selected_steps=steps_list,
+                force_rerun=force_rerun
             )
 
             sucesso = all(r.sucesso for r in resultados.values())
