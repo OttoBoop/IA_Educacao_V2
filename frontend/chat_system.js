@@ -2298,7 +2298,16 @@ function injectChatStyles() {
             width: 50px;
             min-width: 50px;
         }
-        
+
+        .chat-context-panel.collapsed .context-header {
+            justify-content: center;
+            padding: 16px 8px;
+        }
+
+        .chat-context-panel.collapsed .context-header h3 {
+            display: none;
+        }
+
         .context-header {
             padding: 16px;
             border-bottom: 1px solid var(--border);
