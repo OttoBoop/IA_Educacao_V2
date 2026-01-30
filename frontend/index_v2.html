@@ -3670,15 +3670,22 @@
                 </div>
                 <div class="form-group">
                     <label class="form-label">Etapas a executar</label>
-                    <div id="pipeline-steps-unified" style="display: flex; flex-direction: column; gap: 4px;">
-                        <!-- Header -->
-                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; padding: 6px 12px; font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px;">
-                            <span>Etapa</span>
-                            <span>Modelo</span>
+                    <div id="pipeline-steps-checkboxes" style="display: flex; flex-direction: column; gap: 6px;"></div>
+
+                    <!-- Accordion para modelos por etapa -->
+                    <details id="pipeline-advanced-models" style="margin-top: 12px;">
+                        <summary style="cursor: pointer; color: var(--text-muted); font-size: 0.85rem; padding: 8px 0;">
+                            ⚙️ Configurar modelo por etapa (avançado)
+                        </summary>
+                        <div style="padding: 12px; background: var(--bg-hover); border-radius: 8px; margin-top: 8px;">
+                            <!-- Header -->
+                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; padding: 6px 12px; font-size: 0.7rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px;">
+                                <span>Etapa</span>
+                                <span>Modelo</span>
+                            </div>
+                            <div id="pipeline-steps-models" style="display: flex; flex-direction: column; gap: 6px;"></div>
                         </div>
-                        <!-- Rows populated by JS -->
-                        <div id="pipeline-steps-rows" style="display: flex; flex-direction: column; gap: 4px;"></div>
-                    </div>
+                    </details>
                 </div>
                 <div class="form-group">
                     <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
@@ -7390,18 +7397,26 @@
                 ];
                 const etapas = (etapasData.etapas || []).filter(e => etapasPermitidas.includes(e.id));
 
-                // Container unificado: checkbox + modelo em cada linha
-                const rowsContainer = document.getElementById('pipeline-steps-rows');
-                if (rowsContainer) {
+                // Container de checkboxes das etapas
+                const checkboxesContainer = document.getElementById('pipeline-steps-checkboxes');
+                if (checkboxesContainer) {
+                    checkboxesContainer.innerHTML = etapas.map(etapa => `
+                        <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; padding: 6px 8px; border-radius: 6px; background: var(--bg-hover);">
+                            <input type="checkbox" data-step="${etapa.id}" class="pipeline-step-checkbox" checked>
+                            <span style="font-size: 0.85rem; color: var(--text-primary);">${etapa.nome}</span>
+                        </label>
+                    `).join('');
+                }
+
+                // Container de modelos por etapa (avançado)
+                const modelsContainer = document.getElementById('pipeline-steps-models');
+                if (modelsContainer) {
                     const stageModelOptions = models.map(m => `<option value="${m.id}">${escapeHtml(m.nome)} (${m.modelo})${m.is_default ? ' ⭐' : ''}</option>`).join('');
-                    rowsContainer.innerHTML = etapas.map(etapa => `
-                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; align-items: center; padding: 8px 12px; border-radius: 6px; background: var(--bg-hover);">
-                            <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
-                                <input type="checkbox" data-step="${etapa.id}" class="pipeline-step-checkbox" checked>
-                                <span style="font-size: 0.85rem; color: var(--text-primary);">${etapa.nome}</span>
-                            </label>
+                    modelsContainer.innerHTML = etapas.map(etapa => `
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; align-items: center;">
+                            <span style="font-size: 0.85rem; color: var(--text-primary);">${etapa.nome}</span>
                             <select class="form-select" data-etapa="${etapa.id}" style="font-size: 0.8rem; padding: 6px 8px;">
-                                <option value="">Usar modelo selecionado</option>
+                                <option value="">Usar modelo acima ▲</option>
                                 ${stageModelOptions}
                             </select>
                         </div>
@@ -7746,7 +7761,7 @@
             }
 
             const modelsPerStage = {};
-            document.querySelectorAll('#pipeline-steps-rows select[data-etapa]').forEach(select => {
+            document.querySelectorAll('#pipeline-steps-models select[data-etapa]').forEach(select => {
                 if (select.value && select.value !== defaultModelId) {
                     modelsPerStage[select.dataset.etapa] = select.value;
                 }
