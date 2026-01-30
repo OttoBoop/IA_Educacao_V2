@@ -45,6 +45,10 @@ except ImportError:
     def truncate_for_log(text, max_length=500):
         return text[:max_length] + "..." if len(text) > max_length else text
 
+# Import dos modelos de validação (feito lazy para evitar erros de sintaxe)
+HAS_VALIDATION = False
+_validar_json_pipeline = None
+
 
 # ============================================================
 # DATACLASSES DE RESULTADO
@@ -272,7 +276,7 @@ class PipelineExecutor:
             return self._erro(etapa, "Nenhum provider de IA disponível")
         
         # Preparar variáveis (extrai texto dos documentos)
-        variaveis = self._preparar_variaveis_texto(etapa, atividade_id, aluno_id, materia, atividade)
+        variaveis = self._preparar_variaveis_texto(etapa, atividade_id, aluno_id, materia, atividade, usar_multimodal=False)
         if variaveis_extra:
             variaveis.update(variaveis_extra)
         
@@ -344,7 +348,7 @@ class PipelineExecutor:
         cliente = ClienteAPIMultimodal(config)
         
         # Preparar variáveis com conteúdo de documentos (reutiliza lógica do modo texto)
-        variaveis = self._preparar_variaveis_texto(etapa, atividade_id, aluno_id, materia, atividade)
+        variaveis = self._preparar_variaveis_texto(etapa, atividade_id, aluno_id, materia, atividade, usar_multimodal=True)
 
         if variaveis_extra:
             variaveis.update(variaveis_extra)
@@ -378,6 +382,28 @@ class PipelineExecutor:
                 provider=config.get("tipo", "unknown"),
                 modelo=config.get("modelo", "unknown"),
                 erro=f"Arquivo não encontrado para {etapa.value}. Verifique se o documento foi enviado corretamente.",
+                anexos_enviados=[],
+                tempo_ms=(time.time() - inicio) * 1000
+            )
+
+        # Verificar tamanho total dos arquivos (limite: 50MB para evitar erro 413)
+        LIMITE_TAMANHO_MB = 50
+        tamanho_total_bytes = sum(os.path.getsize(f) for f in arquivos if os.path.exists(f))
+        tamanho_total_mb = tamanho_total_bytes / (1024 * 1024)
+        
+        if tamanho_total_mb > LIMITE_TAMANHO_MB:
+            import logging
+            logger = logging.getLogger("pipeline")
+            logger.error(f"FALHA: Tamanho total dos arquivos ({tamanho_total_mb:.1f}MB) excede o limite de {LIMITE_TAMANHO_MB}MB!")
+            
+            return ResultadoExecucao(
+                sucesso=False,
+                etapa=etapa,
+                prompt_usado=prompt_renderizado,
+                prompt_id=prompt.id,
+                provider=config.get("tipo", "unknown"),
+                modelo=config.get("modelo", "unknown"),
+                erro=f"Tamanho total dos arquivos ({tamanho_total_mb:.1f}MB) excede o limite de {LIMITE_TAMANHO_MB}MB. Remova arquivos desnecessários ou use arquivos menores.",
                 anexos_enviados=[],
                 tempo_ms=(time.time() - inicio) * 1000
             )
@@ -723,9 +749,10 @@ class PipelineExecutor:
         atividade_id: str,
         aluno_id: Optional[str],
         materia: Any,
-        atividade: Any
+        atividade: Any,
+        usar_multimodal: bool = False
     ) -> Dict[str, str]:
-        """Prepara variáveis para o prompt extraindo TEXTO dos documentos (modo legado)"""
+        """Prepara variáveis para o prompt extraindo TEXTO dos documentos"""
         variaveis = {
             "materia": materia.nome if materia else "Não definida",
             "atividade": atividade.nome if atividade else "Não definida",
@@ -736,7 +763,12 @@ class PipelineExecutor:
         documentos = self.storage.listar_documentos(atividade_id, aluno_id)
         
         for doc in documentos:
-            conteudo = self._ler_documento_texto(doc)
+            if usar_multimodal and doc.tipo in [TipoDocumento.ENUNCIADO, TipoDocumento.GABARITO, TipoDocumento.PROVA_RESPONDIDA]:
+                # Em modo multimodal, não incluir conteúdo de PDFs/imagens no prompt
+                # Eles serão enviados como anexos
+                conteudo = ""
+            else:
+                conteudo = self._ler_documento_texto(doc, usar_multimodal)
             
             if doc.tipo == TipoDocumento.ENUNCIADO:
                 variaveis["conteudo_documento"] = conteudo
@@ -774,7 +806,7 @@ class PipelineExecutor:
         
         return variaveis
     
-    def _ler_documento_texto(self, documento: Documento) -> str:
+    def _ler_documento_texto(self, documento: Documento, usar_multimodal: bool = False) -> str:
         """
         Lê conteúdo de um documento como TEXTO.
         
@@ -801,11 +833,17 @@ class PipelineExecutor:
             
             # PDFs - NÃO extrair texto, indicar que precisa de multimodal
             elif ext == '.pdf':
-                return f"[DOCUMENTO PDF: {documento.nome_arquivo} - Use modo multimodal para processar]"
+                if usar_multimodal:
+                    return f"[DOCUMENTO ANEXADO: {documento.nome_arquivo} - Analise o documento anexado para extrair o conteúdo]"
+                else:
+                    return f"[DOCUMENTO PDF: {documento.nome_arquivo} - Use modo multimodal para processar]"
             
             # Imagens - NÃO processar, indicar que precisa de multimodal
             elif ext in ['.png', '.jpg', '.jpeg', '.gif', '.webp', '.bmp', '.tiff', '.tif']:
-                return f"[IMAGEM: {documento.nome_arquivo} - Use modo multimodal para processar]"
+                if usar_multimodal:
+                    return f"[IMAGEM ANEXADA: {documento.nome_arquivo} - Analise a imagem anexada para extrair o conteúdo]"
+                else:
+                    return f"[IMAGEM: {documento.nome_arquivo} - Use modo multimodal para processar]"
             
             # DOCX - tentar extrair texto (pode ser útil para alguns casos)
             elif ext == '.docx':
@@ -837,6 +875,7 @@ class PipelineExecutor:
             Se retornar dict com "_error", indica falha com detalhes
         """
         ctx = context or {}
+        global _validar_json_pipeline, HAS_VALIDATION
 
         # Validar resposta vazia
         if not resposta:
@@ -869,6 +908,44 @@ class PipelineExecutor:
                     raw_response=truncate_for_log(resposta, 200)
                 )
                 return {"_error": "empty_json", "_message": "JSON vazio {}", "_raw": resposta[:500]}
+
+            # Validar estrutura com Pydantic se disponível
+            if HAS_VALIDATION and ctx.get("stage"):
+                try:
+                    if _validar_json_pipeline is None:
+                        from pipeline_validation import validar_json_pipeline as vjp
+                        _validar_json_pipeline = vjp
+                        HAS_VALIDATION = True
+
+                    etapa_nome = ctx.get("stage")
+                    if isinstance(etapa_nome, EtapaProcessamento):
+                        etapa_nome = etapa_nome.value
+
+                    resultado_validacao = _validar_json_pipeline(etapa_nome, data)
+                    if isinstance(resultado_validacao, dict) and resultado_validacao.get("_error"):
+                        _logger.warning(
+                            "JSON parseado mas falhou na validação estrutural",
+                            stage=ctx.get("stage"),
+                            provider=ctx.get("provider"),
+                            validation_error=resultado_validacao.get("_message"),
+                            raw_response=truncate_for_log(resposta, 300)
+                        )
+                        # Retornar dados parseados mesmo com erro de validação, mas incluir aviso
+                        data["_validation_warning"] = resultado_validacao.get("_message")
+                    else:
+                        _logger.debug(
+                            "JSON validado com sucesso",
+                            stage=ctx.get("stage"),
+                            provider=ctx.get("provider")
+                        )
+                except Exception as ve:
+                    _logger.warning(
+                        "Erro durante validação JSON",
+                        stage=ctx.get("stage"),
+                        validation_error=str(ve)
+                    )
+                    data["_validation_error"] = str(ve)
+
             return data
         except json.JSONDecodeError as e:
             _logger.debug(
@@ -889,6 +966,42 @@ class PipelineExecutor:
                             stage=ctx.get("stage")
                         )
                         return {"_error": "empty_json", "_message": "JSON vazio em bloco ```"}
+
+                    # Validar estrutura com Pydantic se disponível
+                    if HAS_VALIDATION and ctx.get("stage"):
+                        try:
+                            if _validar_json_pipeline is None:
+                                from pipeline_validation import validar_json_pipeline as vjp
+                                _validar_json_pipeline = vjp
+                                HAS_VALIDATION = True
+
+                            etapa_nome = ctx.get("stage")
+                            if isinstance(etapa_nome, EtapaProcessamento):
+                                etapa_nome = etapa_nome.value
+
+                            resultado_validacao = _validar_json_pipeline(etapa_nome, data)
+                            if isinstance(resultado_validacao, dict) and resultado_validacao.get("_error"):
+                                _logger.warning(
+                                    "JSON extraído de bloco mas falhou na validação estrutural",
+                                    stage=ctx.get("stage"),
+                                    provider=ctx.get("provider"),
+                                    validation_error=resultado_validacao.get("_message")
+                                )
+                                data["_validation_warning"] = resultado_validacao.get("_message")
+                            else:
+                                _logger.debug(
+                                    "JSON de bloco de código validado com sucesso",
+                                    stage=ctx.get("stage"),
+                                    provider=ctx.get("provider")
+                                )
+                        except Exception as ve:
+                            _logger.warning(
+                                "Erro durante validação JSON de bloco",
+                                stage=ctx.get("stage"),
+                                validation_error=str(ve)
+                            )
+                            data["_validation_error"] = str(ve)
+
                     return data
                 except json.JSONDecodeError as e:
                     _logger.debug(
@@ -904,10 +1017,61 @@ class PipelineExecutor:
                     data = json.loads(match.group())
                     if data == {} or data == []:
                         continue  # Tentar próximo pattern
+
+                    # Validar estrutura com Pydantic se disponível
+                    if HAS_VALIDATION and ctx.get("stage"):
+                        try:
+                            if _validar_json_pipeline is None:
+                                from pipeline_validation import validar_json_pipeline as vjp
+                                _validar_json_pipeline = vjp
+                                HAS_VALIDATION = True
+
+                            etapa_nome = ctx.get("stage")
+                            if isinstance(etapa_nome, EtapaProcessamento):
+                                etapa_nome = etapa_nome.value
+
+                            resultado_validacao = _validar_json_pipeline(etapa_nome, data)
+                            if isinstance(resultado_validacao, dict) and resultado_validacao.get("_error"):
+                                _logger.warning(
+                                    "JSON extraído por regex mas falhou na validação estrutural",
+                                    stage=ctx.get("stage"),
+                                    provider=ctx.get("provider"),
+                                    validation_error=resultado_validacao.get("_message")
+                                )
+                                data["_validation_warning"] = resultado_validacao.get("_message")
+                            else:
+                                _logger.debug(
+                                    "JSON por regex validado com sucesso",
+                                    stage=ctx.get("stage"),
+                                    provider=ctx.get("provider")
+                                )
+                        except Exception as ve:
+                            _logger.warning(
+                                "Erro durante validação JSON por regex",
+                                stage=ctx.get("stage"),
+                                validation_error=str(ve)
+                            )
+                            data["_validation_error"] = str(ve)
+
                     return data
                 except json.JSONDecodeError:
                     continue
 
+        # Tentativa 4: Para relatórios, aceitar Markdown como válido
+        if ctx.get("stage") == "gerar_relatorio":
+            # Se parece ser Markdown (tem # ou - ou *), aceitar como válido
+            if any(char in resposta for char in ['#', '-', '*']) and len(resposta.strip()) > 50:
+                _logger.info(
+                    "Aceitando resposta Markdown para relatório",
+                    stage=ctx.get("stage")
+                )
+                return {
+                    "conteudo": resposta.strip(),
+                    "formato": "markdown",
+                    "aluno_nome": ctx.get("aluno_nome", "Desconhecido"),
+                    "atividade_id": ctx.get("atividade_id", "Desconhecido")
+                }
+        
         # Todas as tentativas falharam
         _logger.error(
             "Não foi possível extrair JSON da resposta",
@@ -916,11 +1080,10 @@ class PipelineExecutor:
             model=ctx.get("model"),
             raw_response=truncate_for_log(resposta, 500)
         )
-
         return {
             "_error": "parse_failed",
             "_message": "Não foi possível extrair JSON válido",
-            "_raw": resposta[:1000],
+            "_raw": resposta[:1000],  # Limitar tamanho
             "_attempts": ["direct", "code_block", "regex"]
         }
     
