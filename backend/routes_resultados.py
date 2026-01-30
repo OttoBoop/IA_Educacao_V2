@@ -237,9 +237,12 @@ async def exportar_pdf(atividade_id: str, aluno_id: str):
     from document_generators import generate_pdf
 
     # Buscar dados do resultado
-    resultado = visualizador.get_resultado_completo(atividade_id, aluno_id)
+    resultado = visualizador.get_resultado_aluno(atividade_id, aluno_id)
     if not resultado:
         raise HTTPException(404, "Resultado não encontrado")
+
+    # Converter para dict
+    resultado_dict = resultado.to_dict() if hasattr(resultado, 'to_dict') else resultado.__dict__
 
     # Buscar info do aluno e atividade para o título
     aluno = storage.get_aluno(aluno_id)
@@ -250,7 +253,7 @@ async def exportar_pdf(atividade_id: str, aluno_id: str):
         titulo = f"{atividade.nome} - {titulo}"
 
     try:
-        pdf_bytes = generate_pdf(resultado, titulo, "relatorio_final")
+        pdf_bytes = generate_pdf(resultado_dict, titulo, "relatorio_final")
 
         # Nome do arquivo para download
         nome_arquivo = f"relatorio_{atividade_id}_{aluno_id}.pdf"
