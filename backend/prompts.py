@@ -90,13 +90,17 @@ class PromptTemplate:
     
     def render(self, **kwargs) -> str:
         """Renderiza o prompt do usuário substituindo variáveis"""
-        return self._render_texto(self.texto, **kwargs)
+        texto = self._render_texto(self.texto, **kwargs)
+        self._verificar_variaveis_nao_substituidas(texto, "prompt_usuario")
+        return texto
 
     def render_sistema(self, **kwargs) -> str:
         """Renderiza o prompt de sistema substituindo variáveis"""
         if not self.texto_sistema:
             return ""
-        return self._render_texto(self.texto_sistema, **kwargs)
+        texto = self._render_texto(self.texto_sistema, **kwargs)
+        self._verificar_variaveis_nao_substituidas(texto, "prompt_sistema")
+        return texto
 
     @staticmethod
     def _render_texto(texto: str, **kwargs) -> str:
@@ -104,6 +108,16 @@ class PromptTemplate:
         for var, valor in kwargs.items():
             texto = texto.replace(f"{{{{{var}}}}}", str(valor))
         return texto
+
+    def _verificar_variaveis_nao_substituidas(self, texto: str, tipo: str) -> None:
+        """Verifica e loga variáveis que não foram substituídas"""
+        import re
+        import logging
+        nao_substituidas = re.findall(r'\{\{(\w+)\}\}', texto)
+        if nao_substituidas:
+            logging.warning(
+                f"[{self.etapa.value}] Variáveis não substituídas em {tipo}: {nao_substituidas}"
+            )
 
 
 # ============================================================
@@ -124,8 +138,7 @@ Analise o documento a seguir e extraia TODAS as questões encontradas.
 
 **Matéria:** {{materia}}
 
-**Documento:**
-{{conteudo_documento}}
+INSTRUÇÃO CRÍTICA: Retorne APENAS o JSON válido, sem texto adicional, explicações ou formatação Markdown. O resultado deve ser um JSON parseável que começa com { e termina com }.
 
 Para cada questão, retorne um JSON no seguinte formato:
 ```json
@@ -196,15 +209,14 @@ Se houver critérios de correção detalhados, inclua-os."""
         variaveis=["conteudo_documento", "questoes_extraidas", "nome_aluno"],
         texto="""Você é um assistente especializado em leitura de provas respondidas.
 
-Analise a prova respondida pelo aluno e extraia suas respostas.
+Analise o documento anexado (PDF) da prova respondida pelo aluno e extraia suas respostas.
 
 **Aluno:** {{nome_aluno}}
 
 **Questões da prova:**
 {{questoes_extraidas}}
 
-**Prova respondida:**
-{{conteudo_documento}}
+INSTRUÇÃO CRÍTICA: Retorne APENAS o JSON válido, sem texto adicional, explicações ou formatação Markdown. O resultado deve ser um JSON parseável que começa com { e termina com }.
 
 Para cada questão, retorne um JSON:
 ```json
@@ -335,15 +347,18 @@ Produza uma análise detalhada:
 **Análise de habilidades:**
 {{analise_habilidades}}
 
-Gere um relatório completo em formato Markdown que inclua:
+Gere um relatório completo em formato JSON válido. O JSON deve conter uma chave "conteudo" com o relatório em formato Markdown, e outras chaves estruturadas conforme necessário:
 
-1. **Resumo Executivo** - Visão geral do desempenho
-2. **Desempenho por Questão** - Tabela com nota de cada questão
-3. **Análise de Habilidades** - O que domina e o que precisa melhorar
-4. **Feedback Construtivo** - Mensagem motivadora para o aluno
-5. **Recomendações** - Próximos passos de estudo
+{
+  "conteudo": "# Relatório de Desempenho Escolar\n\n## Resumo Executivo\nVisão geral do desempenho...\n\n## Desempenho por Questão\n| Questão | Nota |\n|---------|------|\n...\n\n## Análise de Habilidades\n...\n\n## Feedback Construtivo\n...\n\n## Recomendações\n...",
+  "resumo_executivo": "Breve visão geral",
+  "nota_final": "{{nota_final}}",
+  "aluno": "{{nome_aluno}}",
+  "materia": "{{materia}}",
+  "atividade": "{{atividade}}"
+}
 
-O relatório deve ser profissional mas acessível, adequado para ser compartilhado com o aluno e responsáveis."""
+Certifique-se de que o Markdown na chave "conteudo" seja bem formatado para geração de documentos bonitos usando ferramentas de IA."""
     ),
     
     EtapaProcessamento.CHAT_GERAL: PromptTemplate(
