@@ -8,8 +8,11 @@ Uso:
     # Gerar dados de teste (primeira vez)
     python test_runner.py --generate-data --mini
 
-    # Executar todos os testes locais
+    # Executar todos os testes locais (usa modelos baratos por padrão)
     python test_runner.py --local
+
+    # Usar modelos mais caros/potentes
+    python test_runner.py --local --full
 
     # Por provider
     python test_runner.py --local --provider openai
@@ -31,6 +34,22 @@ Uso:
 
     # Gerar relatório
     python test_runner.py --local --report html
+
+Modelos por modo:
+    --cheap (padrão): Modelos novos e econômicos
+        OpenAI: gpt-5-mini ($0.25/$2.00)
+        Anthropic: claude-haiku-4-5-20251001 ($1.00/$5.00)
+        Google: gemini-3-flash ($0.30/$1.20)
+
+    --full: Modelos potentes
+        OpenAI: gpt-5 ($1.25/$10.00)
+        Anthropic: claude-sonnet-4-5-20250929 ($3.00/$15.00)
+        Google: gemini-3-pro ($2.00/$15.00)
+
+    --legacy: Modelos antigos (mais baratos)
+        OpenAI: gpt-4o-mini ($0.15/$0.60)
+        Anthropic: claude-3-5-haiku-20241022 ($0.80/$4.00)
+        Google: gemini-2.0-flash ($0.10/$0.40)
 """
 
 import argparse
@@ -48,6 +67,34 @@ BASE_DIR = Path(__file__).parent
 TESTS_DIR = BASE_DIR / "tests"
 REPORTS_DIR = BASE_DIR / "test_reports"
 LOGS_DIR = BASE_DIR / "logs"
+
+# Configuração de modelos por modo
+MODEL_CONFIGS = {
+    "cheap": {
+        "openai": "gpt-5-mini",           # $0.25/$2.00 - novo e barato
+        "anthropic": "claude-haiku-4-5-20251001",  # $1.00/$5.00 - Haiku 4.5
+        "google": "gemini-3-flash",       # $0.30/$1.20 - mais novo
+        "description": "Modelos novos e econômicos (recomendado para testes)"
+    },
+    "full": {
+        "openai": "gpt-5",                # $1.25/$10.00
+        "anthropic": "claude-sonnet-4-5-20250929",  # $3.00/$15.00
+        "google": "gemini-3-pro",         # $2.00/$15.00
+        "description": "Modelos potentes (maior custo)"
+    },
+    "reasoning": {
+        "openai": "o3-mini",              # $1.10/$4.40 - reasoning
+        "anthropic": "claude-sonnet-4-5-20250929",  # Com extended thinking
+        "google": "gemini-3-pro",         # Com thinking nativo
+        "description": "Modelos com reasoning/thinking"
+    },
+    "legacy": {
+        "openai": "gpt-4o-mini",          # $0.15/$0.60 - legado barato
+        "anthropic": "claude-3-5-haiku-20241022",  # $0.80/$4.00 - legado
+        "google": "gemini-2.0-flash",     # $0.10/$0.40 - legado
+        "description": "Modelos legados (mais baratos, menos capazes)"
+    }
+}
 
 
 def ensure_dirs():
@@ -75,6 +122,12 @@ def generate_test_data(mini: bool = False, completo: bool = False, limpar: bool 
     return result.returncode == 0
 
 
+def get_model_for_provider(provider: str, mode: str) -> str:
+    """Retorna o modelo apropriado para o provider baseado no modo."""
+    config = MODEL_CONFIGS.get(mode, MODEL_CONFIGS["cheap"])
+    return config.get(provider, config["openai"])
+
+
 def build_pytest_args(args) -> List[str]:
     """Constrói argumentos para pytest"""
     pytest_args = [str(TESTS_DIR)]
@@ -85,10 +138,30 @@ def build_pytest_args(args) -> List[str]:
     else:
         pytest_args.append("-v")  # Sempre verbose por padrão
 
+    # Determinar modo de modelo
+    if args.full:
+        model_mode = "full"
+    elif getattr(args, 'legacy', False):
+        model_mode = "legacy"
+    elif args.reasoning:
+        model_mode = "reasoning"
+    else:
+        model_mode = "cheap"
+
     # Provider/Model
     if args.model:
+        # Modelo específico tem prioridade
         pytest_args.extend(["--model", args.model])
-    if args.provider:
+    elif args.provider:
+        # Se provider especificado, usar modelo do modo atual
+        model = get_model_for_provider(args.provider, model_mode)
+        pytest_args.extend(["--model", model])
+        pytest_args.extend(["--provider", args.provider])
+    else:
+        # Passar o modo para conftest usar
+        pytest_args.extend(["--model-mode", model_mode])
+
+    if args.provider and args.model:
         pytest_args.extend(["--provider", args.provider])
 
     # Skip expensive
@@ -207,10 +280,30 @@ def print_summary(args):
 
     print(f"  Ambiente: {'Render' if args.render else 'Local'}")
 
+    # Determinar modo de modelo
+    if args.full:
+        model_mode = "full"
+    elif getattr(args, 'legacy', False):
+        model_mode = "legacy"
+    elif args.reasoning:
+        model_mode = "reasoning"
+    else:
+        model_mode = "cheap"
+
+    mode_config = MODEL_CONFIGS[model_mode]
+    print(f"  Modo: {model_mode} - {mode_config['description']}")
+
     if args.provider:
-        print(f"  Provider: {args.provider}")
-    if args.model:
+        model = get_model_for_provider(args.provider, model_mode)
+        print(f"  Provider: {args.provider} → {model}")
+    elif args.model:
         print(f"  Modelo: {args.model}")
+    else:
+        print(f"  Modelos padrão:")
+        print(f"    OpenAI: {mode_config['openai']}")
+        print(f"    Anthropic: {mode_config['anthropic']}")
+        print(f"    Google: {mode_config['google']}")
+
     if args.reasoning:
         print(f"  Tipo: Apenas reasoning")
     if args.skip_expensive:
@@ -246,6 +339,16 @@ Exemplos:
                       help="Executar testes locais")
     mode.add_argument("--render", action="store_true",
                       help="Executar testes para ambiente Render")
+
+    # Seleção de modelos
+    models = parser.add_argument_group("Seleção de Modelos")
+    model_mode = models.add_mutually_exclusive_group()
+    model_mode.add_argument("--cheap", action="store_true", default=True,
+                            help="Usar modelos novos e baratos (padrão): gpt-5-mini, claude-haiku-4-5, gemini-3-flash")
+    model_mode.add_argument("--full", action="store_true",
+                            help="Usar modelos potentes: gpt-5, claude-sonnet-4-5, gemini-3-pro")
+    model_mode.add_argument("--legacy", action="store_true",
+                            help="Usar modelos legados (mais baratos): gpt-4o-mini, claude-3-5-haiku, gemini-2.0-flash")
 
     # Filtros
     filters = parser.add_argument_group("Filtros")

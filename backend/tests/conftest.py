@@ -130,6 +130,31 @@ def sample_json_path(temp_data_dir: Path) -> Path:
 # COMMAND LINE OPTIONS
 # ============================================================
 
+# Configuração de modelos por modo (sync com test_runner.py)
+MODEL_CONFIGS = {
+    "cheap": {
+        "openai": "gpt-5-mini",
+        "anthropic": "claude-haiku-4-5-20251001",
+        "google": "gemini-3-flash",
+    },
+    "full": {
+        "openai": "gpt-5",
+        "anthropic": "claude-sonnet-4-5-20250929",
+        "google": "gemini-3-pro",
+    },
+    "reasoning": {
+        "openai": "o3-mini",
+        "anthropic": "claude-sonnet-4-5-20250929",
+        "google": "gemini-3-pro",
+    },
+    "legacy": {
+        "openai": "gpt-4o-mini",
+        "anthropic": "claude-3-5-haiku-20241022",
+        "google": "gemini-2.0-flash",
+    }
+}
+
+
 def pytest_addoption(parser):
     """Adiciona opções de linha de comando para testes."""
     parser.addoption(
@@ -142,7 +167,14 @@ def pytest_addoption(parser):
         "--model",
         action="store",
         default=None,
-        help="Modelo específico para testar: gpt-4o-mini, claude-haiku-4-5-20251001"
+        help="Modelo específico para testar: gpt-5-mini, claude-haiku-4-5-20251001"
+    )
+    parser.addoption(
+        "--model-mode",
+        action="store",
+        default="cheap",
+        choices=["cheap", "full", "reasoning", "legacy"],
+        help="Modo de seleção de modelos: cheap (padrão), full, reasoning, legacy"
     )
     parser.addoption(
         "--reasoning",
@@ -174,20 +206,21 @@ def selected_provider(request) -> str:
     """Retorna o provider/modelo selecionado via CLI ou default."""
     model = request.config.getoption("--model")
     provider = request.config.getoption("--provider")
+    model_mode = request.config.getoption("--model-mode")
 
+    # Modelo específico tem prioridade
     if model:
         return model
 
-    if provider:
-        # Mapear provider para modelo default (rápido e barato)
-        defaults = {
-            "openai": "gpt-4o-mini",
-            "anthropic": "claude-haiku-4-5-20251001",
-            "google": "gemini-2.5-flash"
-        }
-        return defaults.get(provider, "gpt-4o-mini")
+    # Obter config do modo
+    mode_config = MODEL_CONFIGS.get(model_mode, MODEL_CONFIGS["cheap"])
 
-    return "gpt-4o-mini"  # Default global
+    # Se provider especificado, usar modelo do modo atual
+    if provider:
+        return mode_config.get(provider, mode_config["openai"])
+
+    # Default: modelo OpenAI do modo atual
+    return mode_config["openai"]
 
 
 @pytest.fixture
@@ -206,6 +239,18 @@ def test_timeout(request) -> int:
 def is_reasoning_only(request) -> bool:
     """Verifica se deve testar apenas modelos reasoning."""
     return request.config.getoption("--reasoning")
+
+
+@pytest.fixture
+def model_mode(request) -> str:
+    """Retorna o modo de modelo atual (cheap, full, reasoning, legacy)."""
+    return request.config.getoption("--model-mode")
+
+
+@pytest.fixture
+def model_config(model_mode) -> Dict[str, str]:
+    """Retorna a configuração de modelos do modo atual."""
+    return MODEL_CONFIGS.get(model_mode, MODEL_CONFIGS["cheap"])
 
 
 # ============================================================
