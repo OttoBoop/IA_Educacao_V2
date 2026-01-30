@@ -188,7 +188,7 @@ function renderChatView(models, materias, alunos) {
                     <!-- Lista de Documentos Selecionados -->
                     <div class="context-section">
                         <div class="docs-header">
-                            <label class="form-label">Documentos: <strong id="docs-count">0</strong> / <span id="docs-total">0</span></label>
+                            <label class="form-label">Selecionados: <strong id="docs-count">0</strong> / <span id="docs-total">0</span></label>
                             <button class="btn btn-sm" onclick="toggleAllDocs()" title="Inverter seleção">↔️</button>
                         </div>
                         <div class="docs-list" id="context-docs-list">
@@ -363,7 +363,7 @@ async function loadTurmasForMateriasDropdown(materiaIds) {
     }
 
     try {
-        const turmasPromises = materiaIds.map(id => api(`/materias/${id}/turmas`).catch(() => ({ turmas: [] })));
+        const turmasPromises = materiaIds.map(id => api(`/turmas?materia_id=${id}`).catch(() => ({ turmas: [] })));
         const results = await Promise.all(turmasPromises);
         const todasTurmas = results.flatMap(r => r.turmas || []);
 
@@ -1389,8 +1389,10 @@ function updateDocumentsList() {
     const overrides = ctx.manualOverrides;
     const alunosSelecionados = new Set(ctx.filters.alunos || []);
 
-    document.getElementById('docs-count').textContent = docs.length;
-    document.getElementById('docs-total').textContent = allDocs.length;
+    // Mostrar documentos selecionados / total filtrado
+    const selectedIds = getSelectedDocumentIds();
+    document.getElementById('docs-count').textContent = selectedIds.length;
+    document.getElementById('docs-total').textContent = docs.length;
 
     if (docs.length === 0) {
         listDiv.innerHTML = `
