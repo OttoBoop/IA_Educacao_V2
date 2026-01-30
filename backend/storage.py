@@ -871,56 +871,64 @@ class StorageManager:
         """
         Resolve o caminho absoluto de um documento.
 
-        Lida com dois formatos de caminho_arquivo:
-        - Formato antigo: 'data/arquivos/...' (quando base_path era './')
-        - Formato novo: 'arquivos/...' (quando base_path é './data')
-
-        Se o arquivo não existir localmente mas Supabase estiver configurado,
-        tenta fazer download do cloud.
+        PRIORIDADE: Supabase primeiro (para ambiente de produção/Render),
+        depois verifica arquivos locais como fallback (para dev local).
 
         Retorna o Path absoluto do arquivo.
         """
+        import sys
         caminho = Path(documento.caminho_arquivo)
+        caminho_str = str(caminho).replace('\\', '/')
 
-        # Tentar primeiro: base_path + caminho (formato novo)
+        # Normalizar caminho remoto (remover 'data/' se existir)
+        remote_path = caminho_str
+        if remote_path.startswith('data/'):
+            remote_path = remote_path[5:]
+
+        # Definir caminho local para salvar/verificar
+        local_path = self.base_path / remote_path
+
+        sys.stderr.write(f"[resolver_caminho] Documento: {documento.nome_arquivo}\n")
+        sys.stderr.write(f"[resolver_caminho] Caminho original: {caminho_str}\n")
+        sys.stderr.write(f"[resolver_caminho] Remote path: {remote_path}\n")
+        sys.stderr.write(f"[resolver_caminho] Local path: {local_path}\n")
+        sys.stderr.write(f"[resolver_caminho] Local existe: {local_path.exists()}\n")
+        sys.stderr.write(f"[resolver_caminho] Supabase disponível: {SUPABASE_AVAILABLE}\n")
+        sys.stderr.flush()
+
+        # Se arquivo já existe localmente, retornar
+        if local_path.exists():
+            sys.stderr.write(f"[resolver_caminho] Usando arquivo local existente\n")
+            sys.stderr.flush()
+            return local_path
+
+        # PRIORIDADE: Tentar baixar do Supabase
+        if SUPABASE_AVAILABLE and supabase_storage:
+            sys.stderr.write(f"[resolver_caminho] Tentando Supabase: {remote_path}\n")
+            sys.stderr.flush()
+
+            # Criar diretório pai se não existir
+            local_path.parent.mkdir(parents=True, exist_ok=True)
+
+            success, msg = supabase_storage.download(remote_path, str(local_path))
+
+            if success:
+                sys.stderr.write(f"[resolver_caminho] Download Supabase OK: {local_path}\n")
+                sys.stderr.flush()
+                return local_path
+            else:
+                sys.stderr.write(f"[resolver_caminho] Supabase falhou: {msg}\n")
+                sys.stderr.flush()
+
+        # Fallback: tentar caminhos alternativos locais (para dev)
         caminho_novo = self.base_path / caminho
         if caminho_novo.exists():
             return caminho_novo
 
-        # Tentar segundo: remover 'data/' do início se existir (formato antigo)
-        caminho_str = str(caminho).replace('\\', '/')
-        if caminho_str.startswith('data/'):
-            caminho_sem_data = caminho_str[5:]  # Remove 'data/'
-            caminho_ajustado = self.base_path / caminho_sem_data
-            if caminho_ajustado.exists():
-                return caminho_ajustado
-
-        # Tentar terceiro: caminho absoluto direto
-        if caminho.is_absolute() and caminho.exists():
-            return caminho
-
-        # Tentar quarto: baixar do Supabase se disponível
-        if SUPABASE_AVAILABLE and supabase_storage:
-            remote_path = caminho_str.replace("\\", "/")
-            # Remover 'data/' se existir para o path remoto
-            if remote_path.startswith('data/'):
-                remote_path = remote_path[5:]
-
-            # Definir caminho local para salvar
-            local_path = self.base_path / remote_path
-
-            print(f"[Supabase] Tentando baixar: {remote_path}")
-            success, msg = supabase_storage.download(remote_path, str(local_path))
-
-            if success:
-                print(f"[Supabase] Download OK: {local_path}")
-                return local_path
-            else:
-                print(f"[Supabase] Arquivo não encontrado no cloud: {remote_path}")
-
-        # Fallback: retorna o caminho novo mesmo que não exista
-        # (para mensagens de erro claras)
-        return caminho_novo
+        # Retorna o caminho esperado (mesmo que não exista) para erro claro
+        sys.stderr.write(f"[resolver_caminho] ERRO: Arquivo não encontrado em lugar nenhum\n")
+        sys.stderr.flush()
+        return local_path
     
     def listar_documentos(self, atividade_id: str, aluno_id: str = None, 
                           tipo: TipoDocumento = None) -> List[Documento]:
