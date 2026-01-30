@@ -937,9 +937,9 @@ async def serve_frontend():
 
 
 # Servir arquivos estáticos do frontend
-# if FRONTEND_PATH.exists():
-#     app.mount("/static", StaticFiles(directory=str(FRONTEND_PATH)), 
-#               name="static")
+if FRONTEND_PATH.exists():
+    app.mount("/static", StaticFiles(directory=str(FRONTEND_PATH)),
+              name="static")
 
 
 # ============================================================
