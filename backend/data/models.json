@@ -116,7 +116,7 @@
       "extra_headers": {},
       "catalog_ref": null,
       "ativo": true,
-      "is_default": false,
+      "is_default": true,
       "criado_em": "2026-01-28T15:09:27.978829"
     },
     {
@@ -139,7 +139,7 @@
       "extra_headers": {},
       "catalog_ref": null,
       "ativo": true,
-      "is_default": true,
+      "is_default": false,
       "criado_em": "2026-01-28T15:09:51.395424"
     },
     {

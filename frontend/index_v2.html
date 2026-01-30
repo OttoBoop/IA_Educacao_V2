@@ -3665,23 +3665,20 @@
                     <div id="pipeline-turma-resumo" style="padding: 10px; background: var(--bg-hover); border-radius: 8px; margin-bottom: 12px;"></div>
                 </div>
                 <div class="form-group">
-                    <label class="form-label">Modelo de IA</label>
-                    <select class="form-select" id="input-pipeline-provider-default" onchange="onPipelineModelChange()"></select>
-                    <small style="color: var(--text-muted); display: block; margin-top: 4px;" id="pipeline-model-hint">
-                        Usando o modelo padrão global configurado
-                    </small>
+                    <label class="form-label">Modelo de IA (padrão para todas as etapas)</label>
+                    <select class="form-select" id="input-pipeline-provider-default"></select>
                 </div>
                 <div class="form-group">
                     <label class="form-label">Etapas a executar</label>
-                    <div id="pipeline-steps-only" style="display: flex; flex-direction: column; gap: 8px;"></div>
-
-                    <!-- Accordion para modelos por etapa -->
-                    <details id="pipeline-advanced-models" style="margin-top: 12px;">
-                        <summary style="cursor: pointer; color: var(--text-muted); font-size: 0.85rem; padding: 8px 0;">
-                            ⚙️ Configurar modelo por etapa (avançado)
-                        </summary>
-                        <div id="pipeline-provider-stages" style="display: flex; flex-direction: column; gap: 8px; margin-top: 8px; padding: 12px; background: var(--bg-hover); border-radius: 8px;"></div>
-                    </details>
+                    <div id="pipeline-steps-unified" style="display: flex; flex-direction: column; gap: 4px;">
+                        <!-- Header -->
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; padding: 6px 12px; font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px;">
+                            <span>Etapa</span>
+                            <span>Modelo</span>
+                        </div>
+                        <!-- Rows populated by JS -->
+                        <div id="pipeline-steps-rows" style="display: flex; flex-direction: column; gap: 4px;"></div>
+                    </div>
                 </div>
                 <div class="form-group">
                     <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
@@ -7372,22 +7369,15 @@
                 const models = modelsData.models || [];
                 const defaultModel = models.find(m => m.is_default);
                 const defaultModelId = defaultModel?.id || '';
-                const defaultModelNome = defaultModel ? `${defaultModel.nome} (${defaultModel.modelo})` : '';
 
-                // Opções: Padrão global + todos os modelos
-                const modelOptionsWithDefault = `<option value="">📌 Usar padrão global${defaultModelNome ? `: ${defaultModelNome}` : ''}</option>` +
-                    models.map(m => `<option value="${m.id}">${escapeHtml(m.nome)} (${m.modelo})${m.is_default ? ' ⭐' : ''}</option>`).join('');
+                // Opções: todos os modelos, com o padrão marcado com ⭐
+                const modelOptions = models.map(m =>
+                    `<option value="${m.id}" ${m.is_default ? 'selected' : ''}>${escapeHtml(m.nome)} (${m.modelo})${m.is_default ? ' ⭐ Padrão' : ''}</option>`
+                ).join('');
 
                 const defaultSelect = document.getElementById('input-pipeline-provider-default');
                 if (defaultSelect) {
-                    defaultSelect.innerHTML = modelOptionsWithDefault;
-                    defaultSelect.value = ''; // Padrão global por padrão
-                }
-
-                // Atualizar hint
-                const hint = document.getElementById('pipeline-model-hint');
-                if (hint && defaultModelNome) {
-                    hint.textContent = `Usando o modelo padrão global: ${defaultModelNome}`;
+                    defaultSelect.innerHTML = modelOptions || '<option value="">Nenhum modelo configurado</option>';
                 }
 
                 const etapasPermitidas = [
@@ -7400,28 +7390,18 @@
                 ];
                 const etapas = (etapasData.etapas || []).filter(e => etapasPermitidas.includes(e.id));
 
-                // Container principal: apenas checkboxes das etapas
-                const stepsContainer = document.getElementById('pipeline-steps-only');
-                if (stepsContainer) {
-                    stepsContainer.innerHTML = etapas.map(etapa => `
-                        <div style="display: flex; gap: 12px; align-items: center; padding: 8px; border-radius: 6px; background: var(--bg-hover);">
-                            <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; flex: 1;">
+                // Container unificado: checkbox + modelo em cada linha
+                const rowsContainer = document.getElementById('pipeline-steps-rows');
+                if (rowsContainer) {
+                    const stageModelOptions = models.map(m => `<option value="${m.id}">${escapeHtml(m.nome)} (${m.modelo})${m.is_default ? ' ⭐' : ''}</option>`).join('');
+                    rowsContainer.innerHTML = etapas.map(etapa => `
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; align-items: center; padding: 8px 12px; border-radius: 6px; background: var(--bg-hover);">
+                            <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
                                 <input type="checkbox" data-step="${etapa.id}" class="pipeline-step-checkbox" checked>
                                 <span style="font-size: 0.85rem; color: var(--text-primary);">${etapa.nome}</span>
                             </label>
-                        </div>
-                    `).join('');
-                }
-
-                // Container avançado: selects por etapa
-                const advancedContainer = document.getElementById('pipeline-provider-stages');
-                if (advancedContainer) {
-                    const stageModelOptions = models.map(m => `<option value="${m.id}">${escapeHtml(m.nome)} (${m.modelo})${m.is_default ? ' ⭐' : ''}</option>`).join('');
-                    advancedContainer.innerHTML = etapas.map(etapa => `
-                        <div style="display: flex; gap: 12px; align-items: center;">
-                            <div style="flex: 1; font-size: 0.85rem; color: var(--text-primary);">${etapa.nome}</div>
-                            <select class="form-select" data-etapa="${etapa.id}" style="flex: 1;">
-                                <option value="">Usar modelo selecionado acima</option>
+                            <select class="form-select" data-etapa="${etapa.id}" style="font-size: 0.8rem; padding: 6px 8px;">
+                                <option value="">Usar modelo selecionado</option>
                                 ${stageModelOptions}
                             </select>
                         </div>
@@ -7432,26 +7412,6 @@
             }
         }
 
-        function onPipelineModelChange() {
-            const select = document.getElementById('input-pipeline-provider-default');
-            const hint = document.getElementById('pipeline-model-hint');
-            if (!select || !hint) return;
-
-            if (select.value === '') {
-                // Usando padrão global - pegar nome do modelo padrão do option
-                const defaultOption = select.querySelector('option[value=""]');
-                const match = defaultOption?.textContent?.match(/: (.+)$/);
-                if (match) {
-                    hint.textContent = `Usando o modelo padrão global: ${match[1]}`;
-                } else {
-                    hint.textContent = 'Usando o modelo padrão global configurado';
-                }
-            } else {
-                // Modelo específico selecionado
-                const selectedOption = select.options[select.selectedIndex];
-                hint.textContent = `Usando: ${selectedOption.textContent} para todas as etapas`;
-            }
-        }
         
         // ============================================================
         // CRUD OPERATIONS
@@ -7786,7 +7746,7 @@
             }
 
             const modelsPerStage = {};
-            document.querySelectorAll('#pipeline-provider-stages select[data-etapa]').forEach(select => {
+            document.querySelectorAll('#pipeline-steps-rows select[data-etapa]').forEach(select => {
                 if (select.value && select.value !== defaultModelId) {
                     modelsPerStage[select.dataset.etapa] = select.value;
                 }
