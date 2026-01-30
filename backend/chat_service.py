@@ -25,6 +25,12 @@ from tools import ToolRegistry, ToolCall, ToolResult, ToolExecutionContext
 
 
 # ============================================================
+# DIRETÓRIO BASE (para paths absolutos, compatível com Render)
+# ============================================================
+BASE_DIR = Path(__file__).parent
+
+
+# ============================================================
 # TIPOS DE PROVIDERS E EMPRESAS
 # ============================================================
 
@@ -152,13 +158,8 @@ REASONING_MODELS = ['o3', 'o3-mini', 'o3-pro', 'o4-mini', 'gpt-5', 'gpt-5-mini',
 # API KEYS POR EMPRESA (COM CRIPTOGRAFIA)
 # ============================================================
 
-# Importar cryptography se disponível
-try:
-    from cryptography.fernet import Fernet
-    CRYPTO_AVAILABLE = True
-except ImportError:
-    CRYPTO_AVAILABLE = False
-    print("AVISO: cryptography não instalado. API keys serão armazenadas sem criptografia.")
+# Criptografia é OBRIGATÓRIA para API keys
+from cryptography.fernet import Fernet
 
 
 @dataclass
@@ -194,9 +195,12 @@ class ApiKeyConfig:
 
 
 class ApiKeyManager:
-    """Gerencia API Keys por empresa com criptografia opcional"""
+    """Gerencia API Keys por empresa com criptografia Fernet (obrigatória)"""
 
-    def __init__(self, config_path: str = "./data/api_keys.json"):
+    def __init__(self, config_path: str = None):
+        # Usar path absoluto baseado em __file__ para compatibilidade com Render
+        if config_path is None:
+            config_path = str(BASE_DIR / "data" / "api_keys.json")
         self.config_path = Path(config_path)
         self.config_path.parent.mkdir(parents=True, exist_ok=True)
         # Usar mesmo diretório do config_path para a chave de criptografia
@@ -205,47 +209,38 @@ class ApiKeyManager:
         self.keys: Dict[str, ApiKeyConfig] = {}
         self._load()
 
-    def _get_cipher(self):
-        """Obtém ou cria chave de criptografia"""
-        if not CRYPTO_AVAILABLE:
-            return None
-
-        try:
-            if self.key_file.exists():
-                key = self.key_file.read_bytes()
-            else:
-                key = Fernet.generate_key()
-                self.key_file.parent.mkdir(parents=True, exist_ok=True)
-                self.key_file.write_bytes(key)
-                # Tentar definir como oculto no Windows
-                try:
-                    import ctypes
-                    ctypes.windll.kernel32.SetFileAttributesW(str(self.key_file), 0x02)
-                except:
-                    pass
-            return Fernet(key)
-        except Exception as e:
-            print(f"Erro ao inicializar criptografia: {e}")
-            return None
-
-    def _encrypt(self, value: str) -> str:
-        """Criptografa um valor"""
-        if self._cipher and value:
+    def _get_cipher(self) -> Fernet:
+        """Obtém ou cria chave de criptografia (OBRIGATÓRIO)"""
+        if self.key_file.exists():
+            key = self.key_file.read_bytes()
+        else:
+            key = Fernet.generate_key()
+            self.key_file.parent.mkdir(parents=True, exist_ok=True)
+            self.key_file.write_bytes(key)
+            # Tentar definir como oculto no Windows
             try:
-                return self._cipher.encrypt(value.encode()).decode()
+                import ctypes
+                ctypes.windll.kernel32.SetFileAttributesW(str(self.key_file), 0x02)
             except:
                 pass
-        return value
+        return Fernet(key)
+
+    def _encrypt(self, value: str) -> str:
+        """Criptografa um valor (OBRIGATÓRIO)"""
+        if not value:
+            return value
+        return self._cipher.encrypt(value.encode()).decode()
 
     def _decrypt(self, value: str) -> str:
         """Descriptografa um valor"""
-        if self._cipher and value:
-            try:
-                return self._cipher.decrypt(value.encode()).decode()
-            except:
-                # Pode ser valor não criptografado (migração)
-                return value
-        return value
+        if not value:
+            return value
+        try:
+            return self._cipher.decrypt(value.encode()).decode()
+        except Exception:
+            # Pode ser valor não criptografado (migração de dados antigos)
+            # Retorna o valor original para permitir migração
+            return value
 
     def _is_encrypted(self, value: str) -> bool:
         """Verifica se um valor parece estar criptografado (base64 do Fernet)"""
@@ -468,8 +463,11 @@ class ModelConfig:
 
 class ModelManager:
     """Gerencia modelos configurados"""
-    
-    def __init__(self, config_path: str = "./data/models.json"):
+
+    def __init__(self, config_path: str = None):
+        # Usar path absoluto baseado em __file__ para compatibilidade com Render
+        if config_path is None:
+            config_path = str(BASE_DIR / "data" / "models.json")
         self.config_path = Path(config_path)
         self.config_path.parent.mkdir(parents=True, exist_ok=True)
         self.models: Dict[str, ModelConfig] = {}
@@ -1097,7 +1095,7 @@ class ChatClient:
         
         async with httpx.AsyncClient(timeout=300.0) as client:
             response = await client.post(
-                f"{self.base_url}/chat",
+                f"{self.base_url}/api/chat",
                 headers={"Content-Type": "application/json"},
                 json={
                     "model": self.config.modelo,
