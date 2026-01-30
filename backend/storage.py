@@ -844,11 +844,44 @@ class StorageManager:
         c.execute('SELECT * FROM documentos WHERE id = ?', (documento_id,))
         row = c.fetchone()
         conn.close()
-        
+
         if not row:
             return None
-        
+
         return Documento.from_dict(dict(row))
+
+    def resolver_caminho_documento(self, documento: Documento) -> Path:
+        """
+        Resolve o caminho absoluto de um documento.
+
+        Lida com dois formatos de caminho_arquivo:
+        - Formato antigo: 'data/arquivos/...' (quando base_path era './')
+        - Formato novo: 'arquivos/...' (quando base_path é './data')
+
+        Retorna o Path absoluto do arquivo.
+        """
+        caminho = Path(documento.caminho_arquivo)
+
+        # Tentar primeiro: base_path + caminho (formato novo)
+        caminho_novo = self.base_path / caminho
+        if caminho_novo.exists():
+            return caminho_novo
+
+        # Tentar segundo: remover 'data/' do início se existir (formato antigo)
+        caminho_str = str(caminho).replace('\\', '/')
+        if caminho_str.startswith('data/'):
+            caminho_sem_data = caminho_str[5:]  # Remove 'data/'
+            caminho_ajustado = self.base_path / caminho_sem_data
+            if caminho_ajustado.exists():
+                return caminho_ajustado
+
+        # Tentar terceiro: caminho absoluto direto
+        if caminho.is_absolute() and caminho.exists():
+            return caminho
+
+        # Fallback: retorna o caminho novo mesmo que não exista
+        # (para mensagens de erro claras)
+        return caminho_novo
     
     def listar_documentos(self, atividade_id: str, aluno_id: str = None, 
                           tipo: TipoDocumento = None) -> List[Documento]:

@@ -213,7 +213,7 @@ async def download_documento(documento_id: str):
     if not documento:
         raise HTTPException(404, "Documento não encontrado")
 
-    arquivo = storage.base_path / documento.caminho_arquivo
+    arquivo = storage.resolver_caminho_documento(documento)
     if not arquivo.exists():
         raise HTTPException(404, "Arquivo não encontrado")
 
@@ -232,7 +232,7 @@ async def view_documento(documento_id: str):
     if not documento:
         raise HTTPException(404, "Documento não encontrado")
 
-    arquivo = storage.base_path / documento.caminho_arquivo
+    arquivo = storage.resolver_caminho_documento(documento)
     if not arquivo.exists():
         raise HTTPException(404, "Arquivo não encontrado")
 
@@ -263,7 +263,7 @@ async def visualizar_documento(documento_id: str):
     if not documento:
         raise HTTPException(404, "Documento não encontrado")
     
-    arquivo = storage.base_path / documento.caminho_arquivo
+    arquivo = storage.resolver_caminho_documento(documento)
     if not arquivo.exists():
         raise HTTPException(404, "Arquivo não encontrado")
     
@@ -581,7 +581,7 @@ async def regenerar_documento(documento_id: str, formato: str, data: Optional[Re
         raise HTTPException(400, "Apenas documentos JSON podem ser regenerados")
     
     # Ler dados do JSON
-    arquivo = storage.base_path / documento.caminho_arquivo
+    arquivo = storage.resolver_caminho_documento(documento)
     if not arquivo.exists():
         raise HTTPException(404, "Arquivo JSON não encontrado")
     

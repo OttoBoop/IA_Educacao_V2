@@ -21,6 +21,7 @@ Opções:
 
 import sys
 import os
+import io
 import json
 import random
 import shutil
@@ -28,6 +29,11 @@ from pathlib import Path
 from datetime import datetime, timedelta
 from typing import List, Dict, Any, Optional
 import argparse
+
+# Corrigir encoding do console Windows para suportar UTF-8
+if sys.platform == 'win32':
+    sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8', errors='replace')
+    sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding='utf-8', errors='replace')
 
 # Adicionar o diretório atual ao path
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
@@ -212,7 +218,7 @@ RESPOSTAS_POR_MATERIA = {
     ],
     "Ciências": [
         "Célula vegetal tem parede celular e cloroplastos; animal não",
-        "6CO2 + 6H2O + luz → C6H12O6 + 6O2",
+        "6CO2 + 6H2O + luz -> C6H12O6 + 6O2",
         "Densidade = massa/volume. Ex: gelo flutua na água",
         "Mercúrio, Vênus, Terra, Marte, Júpiter, Saturno, Urano, Netuno"
     ],
@@ -272,7 +278,7 @@ PROBLEMAS_DOCUMENTO = {
 class TestDataGenerator:
     """Gerador de dados de teste para o sistema Prova AI"""
     
-    def __init__(self, storage: StorageManagerV2, verbose: bool = True):
+    def __init__(self, storage: StorageManager, verbose: bool = True):
         self.storage = storage
         self.verbose = verbose
         
@@ -329,7 +335,7 @@ class TestDataGenerator:
         """Cria matérias com suas turmas e atividades"""
         configs = configs or MATERIAS_CONFIG
         
-        self.log("📚 Criando matérias...")
+        self.log("[+] Criando matérias...")
         
         for config in configs:
             # Criar matéria
@@ -340,7 +346,7 @@ class TestDataGenerator:
             )
             self.materias_criadas[config["nome"]] = materia
             self.stats["materias"] += 1
-            self.log(f"✓ {materia.nome}", indent=1)
+            self.log(f"[v] {materia.nome}", indent=1)
             
             # Criar turmas
             for turma_nome in config.get("turmas", []):
@@ -353,7 +359,7 @@ class TestDataGenerator:
                 key = f"{config['nome']}_{turma_nome}"
                 self.turmas_criadas[key] = turma
                 self.stats["turmas"] += 1
-                self.log(f"  → Turma: {turma_nome}", indent=1)
+                self.log(f"  -> Turma: {turma_nome}", indent=1)
                 
                 # Criar atividades
                 for ativ_config in config.get("atividades", []):
@@ -375,7 +381,7 @@ class TestDataGenerator:
     
     def criar_alunos(self, quantidade: int = 20):
         """Cria alunos"""
-        self.log(f"👥 Criando {quantidade} alunos...")
+        self.log(f"[U] Criando {quantidade} alunos...")
         
         for i in range(quantidade):
             nome = self.gerar_nome_completo()
@@ -390,7 +396,7 @@ class TestDataGenerator:
             self.alunos_criados.append(aluno)
             self.stats["alunos"] += 1
         
-        self.log(f"✓ {quantidade} alunos criados", indent=1)
+        self.log(f"[v] {quantidade} alunos criados", indent=1)
     
     def vincular_alunos_turmas(self, alunos_por_turma: int = 10):
         """Vincula alunos às turmas de forma realista"""
@@ -426,7 +432,7 @@ class TestDataGenerator:
                     except:
                         pass  # Ignora se já vinculado
         
-        self.log(f"✓ {self.stats['vinculos']} vínculos criados", indent=1)
+        self.log(f"[v] {self.stats['vinculos']} vínculos criados", indent=1)
     
     # -----------------------------------------------------------------
     # CRIAÇÃO DE DOCUMENTOS
@@ -569,11 +575,11 @@ Questão 4: {respostas[3] if random.random() > 0.3 else 'Não deu tempo'}
             else:
                 self.log(f"  ⚠ Atividade '{atividade.nome}' sem gabarito (teste de aviso)", indent=1)
         
-        self.log(f"✓ Documentos base criados", indent=1)
+        self.log(f"[v] Documentos base criados", indent=1)
     
     def criar_provas_alunos(self, incluir_problemas: bool = True):
         """Cria provas respondidas pelos alunos"""
-        self.log("📝 Criando provas dos alunos...")
+        self.log("[>] Criando provas dos alunos...")
         
         for ativ_key, ativ_info in self.atividades_criadas.items():
             atividade = ativ_info["atividade"]
@@ -657,7 +663,7 @@ Questão 4: {respostas[3] if random.random() > 0.3 else 'Não deu tempo'}
                 except Exception as e:
                     self.log(f"⚠ Erro ao criar prova: {e}", indent=2)
         
-        self.log(f"✓ Provas dos alunos criadas", indent=1)
+        self.log(f"[v] Provas dos alunos criadas", indent=1)
     
     def criar_documentos_json_exemplo(self):
         """Cria alguns documentos JSON de exemplo (correções, análises)"""
@@ -749,7 +755,7 @@ Questão 4: {respostas[3] if random.random() > 0.3 else 'Não deu tempo'}
                 except Exception as e:
                     self.log(f"⚠ Erro ao criar correção JSON: {e}", indent=2)
         
-        self.log(f"✓ Documentos JSON criados", indent=1)
+        self.log(f"[v] Documentos JSON criados", indent=1)
     
     # -----------------------------------------------------------------
     # EXECUÇÃO PRINCIPAL
@@ -763,7 +769,7 @@ Questão 4: {respostas[3] if random.random() > 0.3 else 'Não deu tempo'}
         """Gera todos os dados de teste"""
         
         print("\n" + "=" * 60)
-        print("🎲 GERADOR DE DADOS DE TESTE - PROVA AI")
+        print("[*] GERADOR DE DADOS DE TESTE - PROVA AI")
         print("=" * 60 + "\n")
         
         self.criar_materias(materias_config)
@@ -777,11 +783,11 @@ Questão 4: {respostas[3] if random.random() > 0.3 else 'Não deu tempo'}
         print("\n" + "=" * 60)
         print("📊 RESUMO DOS DADOS CRIADOS")
         print("=" * 60)
-        print(f"  📚 Matérias:      {self.stats['materias']}")
-        print(f"  👥 Turmas:        {self.stats['turmas']}")
+        print(f"  [+] Matérias:      {self.stats['materias']}")
+        print(f"  [U] Turmas:        {self.stats['turmas']}")
         print(f"  🎓 Alunos:        {self.stats['alunos']}")
         print(f"  🔗 Vínculos:      {self.stats['vinculos']}")
-        print(f"  📝 Atividades:    {self.stats['atividades']}")
+        print(f"  [>] Atividades:    {self.stats['atividades']}")
         print(f"  📄 Documentos:    {self.stats['documentos']}")
         print(f"  ⚠️  Com problemas: {self.stats['documentos_problematicos']}")
         print("=" * 60 + "\n")
@@ -797,7 +803,7 @@ Questão 4: {respostas[3] if random.random() > 0.3 else 'Não deu tempo'}
         return self.stats
 
 
-def limpar_dados_teste(storage: StorageManagerV2):
+def limpar_dados_teste(storage: StorageManager):
     """Remove todos os dados do sistema"""
     print("\n⚠️  ATENÇÃO: Isso vai apagar TODOS os dados!")
     confirma = input("Digite 'CONFIRMAR' para continuar: ")
@@ -812,19 +818,19 @@ def limpar_dados_teste(storage: StorageManagerV2):
     db_path = storage.db_path
     if db_path.exists():
         db_path.unlink()
-        print(f"  ✓ Banco de dados removido: {db_path}")
+        print(f"  [v] Banco de dados removido: {db_path}")
     
     # Limpar arquivos
     arquivos_path = storage.arquivos_path
     if arquivos_path.exists():
         shutil.rmtree(arquivos_path)
-        print(f"  ✓ Arquivos removidos: {arquivos_path}")
+        print(f"  [v] Arquivos removidos: {arquivos_path}")
     
     # Recriar estrutura
     storage._init_database()
     arquivos_path.mkdir(parents=True, exist_ok=True)
     
-    print("\n✅ Sistema limpo e pronto para novos dados!\n")
+    print("\n[OK] Sistema limpo e pronto para novos dados!\n")
     return True
 
 
@@ -881,7 +887,7 @@ def main():
         materias_config=config
     )
     
-    print("✅ Dados de teste criados com sucesso!")
+    print("[OK] Dados de teste criados com sucesso!")
     print("\nPróximos passos:")
     print("  1. Inicie o servidor: python -m uvicorn main_v2:app --reload")
     print("  2. Acesse: http://localhost:8000")

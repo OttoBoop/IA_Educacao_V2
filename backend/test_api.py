@@ -19,7 +19,7 @@ def test_storage():
     print("=" * 50)
     
     # Usar pasta temporária para teste
-    storage = StorageManagerV2("./data_teste")
+    storage = StorageManager("./data_teste")
     
     # 1. Criar matéria
     print("\n1. Criando matéria...")
