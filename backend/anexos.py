@@ -12,7 +12,9 @@ Formatos suportados por provider:
 Para arquivos de texto/código, envia como texto no prompt.
 """
 
+import asyncio
 import base64
+import logging
 import mimetypes
 from pathlib import Path
 from typing import List, Dict, Any, Optional, Tuple
@@ -20,6 +22,10 @@ from dataclasses import dataclass, field
 from datetime import datetime
 import json
 import httpx
+
+from utils.retry import RetryConfig, retry_com_backoff
+
+logger = logging.getLogger(__name__)
 
 
 # ============================================================
@@ -385,21 +391,27 @@ class ResultadoEnvio:
     """Resultado do envio de mensagem com anexos"""
     sucesso: bool
     resposta: str = ""
-    
+
     # Metadados
     provider: str = ""
     modelo: str = ""
     tokens_entrada: int = 0
     tokens_saida: int = 0
-    
+
     # Verificação de anexos
     anexos_enviados: List[Dict[str, Any]] = field(default_factory=list)
     anexos_confirmados: bool = False
-    
+
     # Erros
     erro: Optional[str] = None
     erro_detalhes: Optional[str] = None
-    
+    erro_codigo: Optional[int] = None  # Código HTTP do erro
+
+    # Retry
+    retryable: bool = False  # Se o erro pode ser retentado
+    retry_after: Optional[int] = None  # Segundos para aguardar (do header Retry-After)
+    tentativas: int = 1  # Número de tentativas realizadas
+
     def to_dict(self) -> Dict[str, Any]:
         return {
             "sucesso": self.sucesso,
@@ -411,7 +423,11 @@ class ResultadoEnvio:
             "anexos_enviados": self.anexos_enviados,
             "anexos_confirmados": self.anexos_confirmados,
             "erro": self.erro,
-            "erro_detalhes": self.erro_detalhes
+            "erro_detalhes": self.erro_detalhes,
+            "erro_codigo": self.erro_codigo,
+            "retryable": self.retryable,
+            "retry_after": self.retry_after,
+            "tentativas": self.tentativas
         }
 
 
@@ -481,35 +497,49 @@ class ClienteAPIMultimodal:
                 anexos_enviados=[a.to_dict() for a in anexos_preparados]
             )
         
-        # Enviar para API apropriada
-        try:
+        # Configuração de retry para erros temporários
+        retry_config = RetryConfig(
+            max_tentativas=3,
+            backoff_base=2.0,
+            backoff_max=60.0,
+            erros_retryable={429, 500, 502, 503, 504}
+        )
+
+        # Função interna para chamada ao provider (para uso com retry)
+        async def _chamar_provider():
             if self.tipo in ["openai", "openrouter"]:
-                resultado = await self._enviar_openai(mensagem, anexos_preparados, system_prompt, historico)
+                return await self._enviar_openai(mensagem, anexos_preparados, system_prompt, historico)
             elif self.tipo == "anthropic":
-                resultado = await self._enviar_anthropic(mensagem, anexos_preparados, system_prompt, historico)
+                return await self._enviar_anthropic(mensagem, anexos_preparados, system_prompt, historico)
             elif self.tipo == "google":
-                resultado = await self._enviar_google(mensagem, anexos_preparados, system_prompt, historico)
+                return await self._enviar_google(mensagem, anexos_preparados, system_prompt, historico)
             else:
                 # Fallback: enviar textos, ignorar binários
-                resultado = await self._enviar_texto_apenas(mensagem, anexos_preparados, system_prompt, historico)
-            
+                return await self._enviar_texto_apenas(mensagem, anexos_preparados, system_prompt, historico)
+
+        # Enviar para API com retry automático
+        try:
+            resultado = await retry_com_backoff(_chamar_provider, retry_config)
+
             # Adicionar info dos anexos
             resultado.anexos_enviados = [a.to_dict() for a in anexos_preparados]
-            
+
             # Verificar se a IA confirmou receber os anexos
             if verificar_anexos and resultado.sucesso:
                 resultado.anexos_confirmados = self._verificar_confirmacao_anexos(
                     resultado.resposta,
                     anexos_preparados
                 )
-            
+
             return resultado
-            
+
         except Exception as e:
+            logger.error(f"Falha após {retry_config.max_tentativas} tentativas: {e}")
             return ResultadoEnvio(
                 sucesso=False,
-                erro="Erro ao enviar para API",
+                erro=f"Falha após {retry_config.max_tentativas} tentativas",
                 erro_detalhes=str(e),
+                tentativas=retry_config.max_tentativas,
                 anexos_enviados=[a.to_dict() for a in anexos_preparados]
             )
     
@@ -622,10 +652,20 @@ class ClienteAPIMultimodal:
             )
 
             if response.status_code != 200:
+                status = response.status_code
+                retry_after_header = response.headers.get('Retry-After')
+                retry_after = int(retry_after_header) if retry_after_header and retry_after_header.isdigit() else None
+
+                # Erros retryable: 429 (rate limit) e 5xx (servidor)
+                is_retryable = status == 429 or status >= 500
+
                 return ResultadoEnvio(
                     sucesso=False,
-                    erro=f"Erro API OpenAI: {response.status_code}",
+                    erro=f"Erro API OpenAI: {status}",
                     erro_detalhes=response.text,
+                    erro_codigo=status,
+                    retryable=is_retryable,
+                    retry_after=retry_after if status == 429 else None,
                     provider="openai",
                     modelo=self.modelo
                 )
@@ -717,14 +757,24 @@ class ClienteAPIMultimodal:
             )
             
             if response.status_code != 200:
+                status = response.status_code
+                retry_after_header = response.headers.get('Retry-After')
+                retry_after = int(retry_after_header) if retry_after_header and retry_after_header.isdigit() else None
+
+                # Erros retryable: 429 (rate limit) e 5xx (servidor)
+                is_retryable = status == 429 or status >= 500
+
                 return ResultadoEnvio(
                     sucesso=False,
-                    erro=f"Erro API Anthropic: {response.status_code}",
+                    erro=f"Erro API Anthropic: {status}",
                     erro_detalhes=response.text,
+                    erro_codigo=status,
+                    retryable=is_retryable,
+                    retry_after=retry_after if status == 429 else None,
                     provider="anthropic",
                     modelo=self.modelo
                 )
-            
+
             data = response.json()
             
             resposta_texto = ""
@@ -803,21 +853,31 @@ class ClienteAPIMultimodal:
             )
             
             if response.status_code != 200:
+                status = response.status_code
+                retry_after_header = response.headers.get('Retry-After')
+                retry_after = int(retry_after_header) if retry_after_header and retry_after_header.isdigit() else None
+
+                # Erros retryable: 429 (rate limit) e 5xx (servidor)
+                is_retryable = status == 429 or status >= 500
+
                 return ResultadoEnvio(
                     sucesso=False,
-                    erro=f"Erro API Google: {response.status_code}",
+                    erro=f"Erro API Google: {status}",
                     erro_detalhes=response.text,
+                    erro_codigo=status,
+                    retryable=is_retryable,
+                    retry_after=retry_after if status == 429 else None,
                     provider="google",
                     modelo=self.modelo
                 )
-            
+
             data = response.json()
-            
+
             resposta_texto = ""
             for candidate in data.get("candidates", []):
                 for part in candidate.get("content", {}).get("parts", []):
                     resposta_texto += part.get("text", "")
-            
+
             return ResultadoEnvio(
                 sucesso=True,
                 resposta=resposta_texto,

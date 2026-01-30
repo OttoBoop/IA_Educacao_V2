@@ -82,10 +82,16 @@ class ResultadoExecucao:
     anexos_enviados: List[Dict[str, Any]] = field(default_factory=list)
     anexos_confirmados: bool = False
     alertas: List[Dict[str, Any]] = field(default_factory=list)
-    
+
     # Erro (se falhou)
     erro: Optional[str] = None
-    
+    erro_codigo: Optional[int] = None  # Código HTTP do erro
+
+    # Retry
+    retryable: bool = False  # Se o erro pode ser retentado
+    retry_after: Optional[int] = None  # Segundos para aguardar
+    tentativas: int = 1  # Número de tentativas realizadas
+
     def to_dict(self) -> Dict[str, Any]:
         etapa_valor = self.etapa.value if isinstance(self.etapa, EtapaProcessamento) else self.etapa
         return {
@@ -103,7 +109,11 @@ class ResultadoExecucao:
             "anexos_enviados": self.anexos_enviados,
             "anexos_confirmados": self.anexos_confirmados,
             "alertas": self.alertas,
-            "erro": self.erro
+            "erro": self.erro,
+            "erro_codigo": self.erro_codigo,
+            "retryable": self.retryable,
+            "retry_after": self.retry_after,
+            "tentativas": self.tentativas
         }
 
 
@@ -279,10 +289,27 @@ class PipelineExecutor:
         variaveis = self._preparar_variaveis_texto(etapa, atividade_id, aluno_id, materia, atividade, usar_multimodal=False)
         if variaveis_extra:
             variaveis.update(variaveis_extra)
-        
+
+        # Log de debug: variáveis disponíveis
+        _logger.debug(
+            "Variáveis preparadas para renderização",
+            stage=etapa.value if hasattr(etapa, 'value') else str(etapa),
+            variaveis_disponiveis=list(variaveis.keys())
+        )
+
         # Renderizar prompt
         prompt_renderizado = prompt.render(**variaveis)
         prompt_sistema_renderizado = prompt.render_sistema(**variaveis) or None
+
+        # Verificar variáveis não substituídas
+        import re as re_module
+        nao_substituidas = re_module.findall(r'\{\{(\w+)\}\}', prompt_renderizado)
+        if nao_substituidas:
+            _logger.warning(
+                "Variáveis não substituídas no prompt",
+                stage=etapa.value if hasattr(etapa, 'value') else str(etapa),
+                variaveis_faltantes=nao_substituidas
+            )
         
         # Executar IA
         response = await provider.complete(prompt_renderizado, prompt_sistema_renderizado)
@@ -357,11 +384,53 @@ class PipelineExecutor:
         arquivos = self._coletar_arquivos_para_etapa(etapa, atividade_id, aluno_id)
 
         # Adicionar contexto de arquivos JSON já processados
-        variaveis.update(self._preparar_contexto_json(atividade_id, aluno_id, etapa))
-        
+        contexto_json = self._preparar_contexto_json(atividade_id, aluno_id, etapa)
+
+        # Verificar documentos faltantes e falhar se etapa depende deles
+        docs_faltantes = contexto_json.pop("_documentos_faltantes", [])
+        docs_carregados = contexto_json.pop("_documentos_carregados", [])
+
+        if docs_faltantes:
+            _logger.error(
+                f"Documentos obrigatórios faltando para {etapa.value}",
+                faltantes=docs_faltantes,
+                carregados=docs_carregados
+            )
+            # Retornar erro se documentos obrigatórios estão faltando
+            return ResultadoExecucao(
+                sucesso=False,
+                etapa=etapa,
+                prompt_usado="",
+                prompt_id=prompt.id,
+                provider=config.get("tipo", "unknown"),
+                modelo=config.get("modelo", "unknown"),
+                erro=f"Documentos obrigatórios faltando para {etapa.value}: {', '.join(docs_faltantes)}. Execute as etapas anteriores primeiro.",
+                anexos_enviados=[],
+                tempo_ms=(time.time() - inicio) * 1000
+            )
+
+        variaveis.update(contexto_json)
+
+        # Log de debug: variáveis disponíveis
+        _logger.debug(
+            "Variáveis preparadas para renderização (multimodal)",
+            stage=etapa.value if hasattr(etapa, 'value') else str(etapa),
+            variaveis_disponiveis=list(variaveis.keys())
+        )
+
         # Renderizar prompt
         prompt_renderizado = prompt.render(**variaveis)
         prompt_sistema_renderizado = prompt.render_sistema(**variaveis) or None
+
+        # Verificar variáveis não substituídas
+        import re as re_module
+        nao_substituidas = re_module.findall(r'\{\{(\w+)\}\}', prompt_renderizado)
+        if nao_substituidas:
+            _logger.warning(
+                "Variáveis não substituídas no prompt (multimodal)",
+                stage=etapa.value if hasattr(etapa, 'value') else str(etapa),
+                variaveis_faltantes=nao_substituidas
+            )
 
         # IMPORTANTE: Verificar se há arquivos para etapas que REQUEREM arquivos
         etapas_requerem_arquivo = [
@@ -427,10 +496,14 @@ class PipelineExecutor:
                 provider=resultado.provider,
                 modelo=resultado.modelo,
                 erro=resultado.erro,
+                erro_codigo=getattr(resultado, 'erro_codigo', None),
+                retryable=getattr(resultado, 'retryable', False),
+                retry_after=getattr(resultado, 'retry_after', None),
+                tentativas=getattr(resultado, 'tentativas', 1),
                 anexos_enviados=resultado.anexos_enviados,
                 tempo_ms=tempo_ms
             )
-        
+
         # Parsear resposta com contexto para logging
         resposta_parsed = self._parsear_resposta(
             resultado.resposta,
@@ -521,7 +594,7 @@ class PipelineExecutor:
 
         # Mapa de quais documentos cada etapa precisa
         if etapa == EtapaProcessamento.EXTRAIR_QUESTOES:
-            # Precisa do enunciado
+            # Precisa do enunciado original
             for doc in docs_base:
                 if doc.tipo == TipoDocumento.ENUNCIADO:
                     caminho = _normalizar_e_verificar(doc)
@@ -529,30 +602,90 @@ class PipelineExecutor:
                         arquivos.append(caminho)
 
         elif etapa == EtapaProcessamento.EXTRAIR_GABARITO:
-            # Precisa do gabarito
+            # Precisa do gabarito original + questões extraídas (JSON)
             for doc in docs_base:
                 if doc.tipo == TipoDocumento.GABARITO:
                     caminho = _normalizar_e_verificar(doc)
                     if caminho:
                         arquivos.append(caminho)
+            # Incluir questões extraídas para referência
+            for doc in docs_base:
+                if doc.tipo == TipoDocumento.EXTRACAO_QUESTOES and doc.extensao.lower() == '.json':
+                    caminho = _normalizar_e_verificar(doc)
+                    if caminho:
+                        arquivos.append(caminho)
 
         elif etapa == EtapaProcessamento.EXTRAIR_RESPOSTAS:
-            # Precisa da prova respondida do aluno
+            # Precisa da prova respondida + questões extraídas (JSON)
             for doc in docs_aluno:
                 if doc.tipo == TipoDocumento.PROVA_RESPONDIDA:
                     caminho = _normalizar_e_verificar(doc)
                     if caminho:
                         arquivos.append(caminho)
+            # Incluir questões extraídas para referência
+            for doc in docs_base:
+                if doc.tipo == TipoDocumento.EXTRACAO_QUESTOES and doc.extensao.lower() == '.json':
+                    caminho = _normalizar_e_verificar(doc)
+                    if caminho:
+                        arquivos.append(caminho)
 
-        elif etapa in [EtapaProcessamento.CORRIGIR, EtapaProcessamento.ANALISAR_HABILIDADES]:
-            # Pode precisar da prova do aluno para referência visual
+        elif etapa == EtapaProcessamento.CORRIGIR:
+            # Arquivos originais para referência visual
             for doc in docs_aluno:
                 if doc.tipo == TipoDocumento.PROVA_RESPONDIDA:
                     caminho = _normalizar_e_verificar(doc)
                     if caminho:
                         arquivos.append(caminho)
+            for doc in docs_base:
+                if doc.tipo == TipoDocumento.GABARITO:
+                    caminho = _normalizar_e_verificar(doc)
+                    if caminho:
+                        arquivos.append(caminho)
+            # JSONs processados (questões, gabarito extraído, respostas)
+            for doc in docs_base:
+                if doc.tipo in [TipoDocumento.EXTRACAO_QUESTOES, TipoDocumento.EXTRACAO_GABARITO] and doc.extensao.lower() == '.json':
+                    caminho = _normalizar_e_verificar(doc)
+                    if caminho:
+                        arquivos.append(caminho)
+            for doc in docs_aluno:
+                if doc.tipo == TipoDocumento.EXTRACAO_RESPOSTAS and doc.extensao.lower() == '.json':
+                    caminho = _normalizar_e_verificar(doc)
+                    if caminho:
+                        arquivos.append(caminho)
 
-        logger.info(f"Arquivos coletados para {etapa.value}: {len(arquivos)}")
+        elif etapa == EtapaProcessamento.ANALISAR_HABILIDADES:
+            # Prova do aluno para referência visual
+            for doc in docs_aluno:
+                if doc.tipo == TipoDocumento.PROVA_RESPONDIDA:
+                    caminho = _normalizar_e_verificar(doc)
+                    if caminho:
+                        arquivos.append(caminho)
+            # JSONs processados (questões, respostas, correção)
+            for doc in docs_base:
+                if doc.tipo == TipoDocumento.EXTRACAO_QUESTOES and doc.extensao.lower() == '.json':
+                    caminho = _normalizar_e_verificar(doc)
+                    if caminho:
+                        arquivos.append(caminho)
+            for doc in docs_aluno:
+                if doc.tipo in [TipoDocumento.EXTRACAO_RESPOSTAS, TipoDocumento.CORRECAO] and doc.extensao.lower() == '.json':
+                    caminho = _normalizar_e_verificar(doc)
+                    if caminho:
+                        arquivos.append(caminho)
+
+        elif etapa == EtapaProcessamento.GERAR_RELATORIO:
+            # JSONs processados (correção, análise de habilidades)
+            for doc in docs_base:
+                if doc.tipo == TipoDocumento.EXTRACAO_QUESTOES and doc.extensao.lower() == '.json':
+                    caminho = _normalizar_e_verificar(doc)
+                    if caminho:
+                        arquivos.append(caminho)
+            for doc in docs_aluno:
+                if doc.tipo in [TipoDocumento.CORRECAO, TipoDocumento.ANALISE_HABILIDADES] and doc.extensao.lower() == '.json':
+                    caminho = _normalizar_e_verificar(doc)
+                    if caminho:
+                        arquivos.append(caminho)
+
+        logger.info(f"Arquivos coletados para {etapa.value}: {len(arquivos)} - tipos: {[Path(a).suffix for a in arquivos]}")
         if not arquivos:
             logger.warning(f"ATENÇÃO: Nenhum arquivo encontrado para {etapa.value}!")
 
@@ -564,54 +697,126 @@ class PipelineExecutor:
         aluno_id: Optional[str],
         etapa: EtapaProcessamento
     ) -> Dict[str, str]:
-        """Prepara contexto de documentos JSON já processados"""
+        """
+        Prepara contexto de documentos JSON já processados.
+
+        Retorna dict com:
+        - Dados dos documentos encontrados
+        - "_documentos_faltantes": lista de documentos obrigatórios que não foram encontrados
+        - "_documentos_carregados": lista de documentos que foram carregados com sucesso
+        """
         contexto = {}
-        
+        documentos_faltantes = []
+        documentos_carregados = []
+
         docs_base = self.storage.listar_documentos(atividade_id)
         docs_aluno = self.storage.listar_documentos(atividade_id, aluno_id) if aluno_id else []
-        
-        # Para correção, incluir questões extraídas e respostas
+
+        # Helper para carregar documento JSON
+        def _carregar_json(doc, chave: str) -> bool:
+            try:
+                caminho = Path(doc.caminho_arquivo)
+                if not caminho.is_absolute():
+                    caminho = self.storage.base_path / caminho
+                if caminho.exists():
+                    with open(caminho, 'r', encoding='utf-8') as f:
+                        data = json.load(f)
+                        # Verificar se o JSON tem erro de parsing
+                        if isinstance(data, dict) and data.get("_error"):
+                            _logger.warning(
+                                f"Documento {chave} contém erro de parsing anterior",
+                                doc_id=doc.id,
+                                error=data.get("_error")
+                            )
+                            documentos_faltantes.append(f"{chave} (erro: {data.get('_error')})")
+                            return False
+                        contexto[chave] = json.dumps(data, ensure_ascii=False)
+                        documentos_carregados.append(chave)
+                        return True
+                else:
+                    _logger.warning(f"Arquivo não encontrado: {caminho}")
+            except Exception as e:
+                _logger.warning(f"Erro ao carregar {chave}: {e}")
+            return False
+
+        # Para correção, incluir questões extraídas, gabarito e respostas
         if etapa in [EtapaProcessamento.CORRIGIR, EtapaProcessamento.ANALISAR_HABILIDADES, EtapaProcessamento.GERAR_RELATORIO]:
+            encontrou_questoes = False
             for doc in docs_base:
                 if doc.tipo == TipoDocumento.EXTRACAO_QUESTOES and doc.extensao.lower() == '.json':
-                    try:
-                        with open(doc.caminho_arquivo, 'r', encoding='utf-8') as f:
-                            data = json.load(f)
-                            contexto["questoes_extraidas"] = json.dumps(data, ensure_ascii=False)
-                    except:
-                        pass
-            
+                    if _carregar_json(doc, "questoes_extraidas"):
+                        encontrou_questoes = True
+                        break
+            if not encontrou_questoes and etapa in [EtapaProcessamento.CORRIGIR, EtapaProcessamento.ANALISAR_HABILIDADES]:
+                documentos_faltantes.append("questoes_extraidas (execute 'extrair_questoes' primeiro)")
+
+            # Verificar gabarito extraído para correção
+            if etapa == EtapaProcessamento.CORRIGIR:
+                encontrou_gabarito = False
+                for doc in docs_base:
+                    if doc.tipo == TipoDocumento.EXTRACAO_GABARITO and doc.extensao.lower() == '.json':
+                        if _carregar_json(doc, "gabarito_extraido"):
+                            encontrou_gabarito = True
+                            break
+                if not encontrou_gabarito:
+                    # Tentar carregar gabarito original como fallback
+                    for doc in docs_base:
+                        if doc.tipo == TipoDocumento.GABARITO:
+                            _logger.warning("Gabarito extraído não encontrado, usando gabarito original")
+                            encontrou_gabarito = True
+                            break
+                if not encontrou_gabarito:
+                    documentos_faltantes.append("gabarito (faça upload do gabarito ou execute 'extrair_gabarito')")
+
+            encontrou_respostas = False
             for doc in docs_aluno:
                 if doc.tipo == TipoDocumento.EXTRACAO_RESPOSTAS and doc.extensao.lower() == '.json':
-                    try:
-                        with open(doc.caminho_arquivo, 'r', encoding='utf-8') as f:
-                            data = json.load(f)
-                            contexto["respostas_aluno"] = json.dumps(data, ensure_ascii=False)
-                    except:
-                        pass
-        
+                    if _carregar_json(doc, "respostas_aluno"):
+                        encontrou_respostas = True
+                        break
+            if not encontrou_respostas and etapa == EtapaProcessamento.CORRIGIR:
+                documentos_faltantes.append("respostas_aluno (execute 'extrair_respostas' primeiro)")
+
         # Para análise de habilidades e relatório, incluir correção
         if etapa in [EtapaProcessamento.ANALISAR_HABILIDADES, EtapaProcessamento.GERAR_RELATORIO]:
+            encontrou_correcoes = False
             for doc in docs_aluno:
                 if doc.tipo == TipoDocumento.CORRECAO and doc.extensao.lower() == '.json':
-                    try:
-                        with open(doc.caminho_arquivo, 'r', encoding='utf-8') as f:
-                            data = json.load(f)
-                            contexto["correcoes"] = json.dumps(data, ensure_ascii=False)
-                    except:
-                        pass
-        
+                    if _carregar_json(doc, "correcoes"):
+                        encontrou_correcoes = True
+                        break
+            if not encontrou_correcoes:
+                documentos_faltantes.append("correcoes")
+
         # Para relatório, incluir análise de habilidades
         if etapa == EtapaProcessamento.GERAR_RELATORIO:
+            encontrou_analise = False
             for doc in docs_aluno:
                 if doc.tipo == TipoDocumento.ANALISE_HABILIDADES and doc.extensao.lower() == '.json':
-                    try:
-                        with open(doc.caminho_arquivo, 'r', encoding='utf-8') as f:
-                            data = json.load(f)
-                            contexto["analise_habilidades"] = json.dumps(data, ensure_ascii=False)
-                    except:
-                        pass
-        
+                    if _carregar_json(doc, "analise_habilidades"):
+                        encontrou_analise = True
+                        break
+            if not encontrou_analise:
+                documentos_faltantes.append("analise_habilidades")
+
+        # Logar status dos documentos
+        if documentos_carregados:
+            _logger.info(
+                f"Documentos carregados para {etapa.value}",
+                documentos=documentos_carregados
+            )
+
+        if documentos_faltantes:
+            _logger.warning(
+                f"DOCUMENTOS FALTANTES para {etapa.value}",
+                faltantes=documentos_faltantes,
+                atividade_id=atividade_id,
+                aluno_id=aluno_id
+            )
+            contexto["_documentos_faltantes"] = documentos_faltantes
+
+        contexto["_documentos_carregados"] = documentos_carregados
+
         return contexto
     
     # ============================================================
@@ -780,13 +985,19 @@ class PipelineExecutor:
             
             elif doc.tipo == TipoDocumento.EXTRACAO_QUESTOES:
                 variaveis["questoes_extraidas"] = conteudo
-            
+
+            elif doc.tipo == TipoDocumento.EXTRACAO_GABARITO:
+                variaveis["gabarito_extraido"] = conteudo
+                # Usar como resposta_esperada se não houver outra
+                if "resposta_esperada" not in variaveis:
+                    variaveis["resposta_esperada"] = conteudo
+
             elif doc.tipo == TipoDocumento.EXTRACAO_RESPOSTAS:
                 variaveis["respostas_aluno"] = conteudo
-            
+
             elif doc.tipo == TipoDocumento.CORRECAO:
                 variaveis["correcoes"] = conteudo
-            
+
             elif doc.tipo == TipoDocumento.ANALISE_HABILIDADES:
                 variaveis["analise_habilidades"] = conteudo
         
@@ -796,7 +1007,42 @@ class PipelineExecutor:
             if aluno:
                 variaveis["nome_aluno"] = aluno.nome
                 variaveis["aluno"] = aluno.nome
-        
+
+        # Aliases para compatibilidade com diferentes prompts
+        # O prompt CORRIGIR usa {{questao}} mas o código fornece questoes_extraidas
+        if "questoes_extraidas" in variaveis:
+            variaveis["questao"] = variaveis["questoes_extraidas"]
+
+        # O prompt pode usar {{conteudo_documento}} para diferentes tipos de docs
+        if "prova_aluno" in variaveis and "conteudo_documento" not in variaveis:
+            variaveis["conteudo_documento"] = variaveis["prova_aluno"]
+        if "gabarito" in variaveis and "conteudo_documento" not in variaveis:
+            variaveis["conteudo_documento"] = variaveis["gabarito"]
+
+        # Gabarito extraído como resposta_esperada
+        if "gabarito_extraido" in variaveis and "resposta_esperada" not in variaveis:
+            variaveis["resposta_esperada"] = variaveis["gabarito_extraido"]
+        # Fallback: usar gabarito original se não houver extraído
+        if "gabarito" in variaveis and "resposta_esperada" not in variaveis:
+            variaveis["resposta_esperada"] = variaveis["gabarito"]
+
+        # Critérios podem não existir - usar string vazia
+        if "criterios" not in variaveis:
+            variaveis["criterios"] = "(Nenhum critério específico fornecido)"
+
+        # Calcular nota_final se houver correções (para gerar_relatorio)
+        if "correcoes" in variaveis and "nota_final" not in variaveis:
+            try:
+                import json as json_module
+                correcoes_data = json_module.loads(variaveis["correcoes"]) if isinstance(variaveis["correcoes"], str) else variaveis["correcoes"]
+                if isinstance(correcoes_data, dict) and "nota_final" in correcoes_data:
+                    variaveis["nota_final"] = str(correcoes_data["nota_final"])
+                elif isinstance(correcoes_data, list):
+                    total = sum(c.get("nota", 0) for c in correcoes_data if isinstance(c, dict))
+                    variaveis["nota_final"] = str(total)
+            except:
+                variaveis["nota_final"] = "N/A"
+
         return variaveis
     
     def _ler_documento_texto(self, documento: Documento, usar_multimodal: bool = False) -> str:
@@ -1536,6 +1782,55 @@ Crie UM documento separado para cada aluno, nomeando como "relatorio_[nome_aluno
                 return False, f"documento já existe (id={existing_doc.id}, tipo={doc_type.value})"
             return True, "documento não existe, executando"
 
+        async def _executar_com_retry(
+            stage: EtapaProcessamento,
+            aluno_id_param: Optional[str] = None,
+            max_retries: int = 2
+        ) -> ResultadoExecucao:
+            """
+            Executa etapa com retry automático para erros temporários (429, 5xx).
+            """
+            tentativas = 0
+            resultado = None
+
+            while tentativas <= max_retries:
+                resultado = await self.executar_etapa(
+                    stage,
+                    atividade_id,
+                    aluno_id_param,
+                    provider_name=_resolve_provider(stage),
+                    prompt_id=_resolve_prompt(stage),
+                    usar_multimodal=usar_multimodal,
+                    criar_nova_versao=force_rerun
+                )
+
+                if resultado.sucesso:
+                    if tentativas > 0:
+                        logger.info(f"  -> Sucesso após {tentativas + 1} tentativas")
+                    return resultado
+
+                # Verificar se é erro retryable
+                if not resultado.retryable or tentativas >= max_retries:
+                    return resultado
+
+                # Calcular tempo de espera
+                espera = resultado.retry_after or (2 * (2 ** tentativas))  # 2, 4, 8...
+                espera = min(espera, 60)  # máximo 60 segundos
+
+                tentativas += 1
+                logger.warning(
+                    f"  -> Erro retryable (código {resultado.erro_codigo}), "
+                    f"tentativa {tentativas}/{max_retries + 1}, "
+                    f"aguardando {espera}s..."
+                )
+                await asyncio.sleep(espera)
+
+            # Atualizar número de tentativas no resultado final
+            if resultado:
+                resultado.tentativas = tentativas + 1
+
+            return resultado
+
         # Carregar documentos existentes
         try:
             docs = self.storage.listar_documentos(atividade_id)
@@ -1559,18 +1854,11 @@ Crie UM documento separado para cada aluno, nomeando como "relatorio_[nome_aluno
         should_run, reason = _should_run("extrair_questoes", TipoDocumento.EXTRACAO_QUESTOES, docs)
         logger.info(f"[1/6] extrair_questoes: run={should_run}, reason={reason}")
         if should_run:
-            resultado = await self.executar_etapa(
-                EtapaProcessamento.EXTRAIR_QUESTOES,
-                atividade_id,
-                provider_name=_resolve_provider(EtapaProcessamento.EXTRAIR_QUESTOES),
-                prompt_id=_resolve_prompt(EtapaProcessamento.EXTRAIR_QUESTOES),
-                usar_multimodal=usar_multimodal,
-                criar_nova_versao=force_rerun
-            )
+            resultado = await _executar_com_retry(EtapaProcessamento.EXTRAIR_QUESTOES)
             resultados["extrair_questoes"] = resultado
-            logger.info(f"  -> sucesso={resultado.sucesso}, erro={resultado.erro[:100] if resultado.erro else 'N/A'}")
+            logger.info(f"  -> sucesso={resultado.sucesso}, tentativas={resultado.tentativas}, erro={resultado.erro[:100] if resultado.erro else 'N/A'}")
             if not resultado.sucesso:
-                logger.error(f"  -> FALHA: {resultado.erro}")
+                logger.error(f"  -> FALHA DEFINITIVA: {resultado.erro} (código: {resultado.erro_codigo})")
                 return resultados
         else:
             etapas_puladas["extrair_questoes"] = reason
@@ -1579,16 +1867,12 @@ Crie UM documento separado para cada aluno, nomeando como "relatorio_[nome_aluno
         should_run, reason = _should_run("extrair_gabarito", TipoDocumento.EXTRACAO_GABARITO, docs)
         logger.info(f"[2/6] extrair_gabarito: run={should_run}, reason={reason}")
         if should_run:
-            resultado = await self.executar_etapa(
-                EtapaProcessamento.EXTRAIR_GABARITO,
-                atividade_id,
-                provider_name=_resolve_provider(EtapaProcessamento.EXTRAIR_GABARITO),
-                prompt_id=_resolve_prompt(EtapaProcessamento.EXTRAIR_GABARITO),
-                usar_multimodal=usar_multimodal,
-                criar_nova_versao=force_rerun
-            )
+            resultado = await _executar_com_retry(EtapaProcessamento.EXTRAIR_GABARITO)
             resultados["extrair_gabarito"] = resultado
-            logger.info(f"  -> sucesso={resultado.sucesso}")
+            logger.info(f"  -> sucesso={resultado.sucesso}, tentativas={resultado.tentativas}")
+            if not resultado.sucesso:
+                logger.error(f"  -> FALHA DEFINITIVA: {resultado.erro} (código: {resultado.erro_codigo})")
+                return resultados
         else:
             etapas_puladas["extrair_gabarito"] = reason
 
@@ -1596,19 +1880,11 @@ Crie UM documento separado para cada aluno, nomeando como "relatorio_[nome_aluno
         should_run, reason = _should_run("extrair_respostas", TipoDocumento.EXTRACAO_RESPOSTAS, docs_aluno)
         logger.info(f"[3/6] extrair_respostas: run={should_run}, reason={reason}")
         if should_run:
-            resultado = await self.executar_etapa(
-                EtapaProcessamento.EXTRAIR_RESPOSTAS,
-                atividade_id,
-                aluno_id,
-                provider_name=_resolve_provider(EtapaProcessamento.EXTRAIR_RESPOSTAS),
-                prompt_id=_resolve_prompt(EtapaProcessamento.EXTRAIR_RESPOSTAS),
-                usar_multimodal=usar_multimodal,
-                criar_nova_versao=force_rerun
-            )
+            resultado = await _executar_com_retry(EtapaProcessamento.EXTRAIR_RESPOSTAS, aluno_id)
             resultados["extrair_respostas"] = resultado
-            logger.info(f"  -> sucesso={resultado.sucesso}")
+            logger.info(f"  -> sucesso={resultado.sucesso}, tentativas={resultado.tentativas}")
             if not resultado.sucesso:
-                logger.error(f"  -> FALHA: {resultado.erro}")
+                logger.error(f"  -> FALHA DEFINITIVA: {resultado.erro} (código: {resultado.erro_codigo})")
                 return resultados
         else:
             etapas_puladas["extrair_respostas"] = reason
@@ -1617,19 +1893,11 @@ Crie UM documento separado para cada aluno, nomeando como "relatorio_[nome_aluno
         should_run, reason = _should_run("corrigir", TipoDocumento.CORRECAO, docs_aluno)
         logger.info(f"[4/6] corrigir: run={should_run}, reason={reason}")
         if should_run:
-            resultado = await self.executar_etapa(
-                EtapaProcessamento.CORRIGIR,
-                atividade_id,
-                aluno_id,
-                provider_name=_resolve_provider(EtapaProcessamento.CORRIGIR),
-                prompt_id=_resolve_prompt(EtapaProcessamento.CORRIGIR),
-                usar_multimodal=usar_multimodal,
-                criar_nova_versao=force_rerun
-            )
+            resultado = await _executar_com_retry(EtapaProcessamento.CORRIGIR, aluno_id)
             resultados["corrigir"] = resultado
-            logger.info(f"  -> sucesso={resultado.sucesso}")
+            logger.info(f"  -> sucesso={resultado.sucesso}, tentativas={resultado.tentativas}")
             if not resultado.sucesso:
-                logger.error(f"  -> FALHA: {resultado.erro}")
+                logger.error(f"  -> FALHA DEFINITIVA: {resultado.erro} (código: {resultado.erro_codigo})")
                 return resultados
         else:
             etapas_puladas["corrigir"] = reason
@@ -1638,17 +1906,12 @@ Crie UM documento separado para cada aluno, nomeando como "relatorio_[nome_aluno
         should_run, reason = _should_run("analisar_habilidades", TipoDocumento.ANALISE_HABILIDADES, docs_aluno)
         logger.info(f"[5/6] analisar_habilidades: run={should_run}, reason={reason}")
         if should_run:
-            resultado = await self.executar_etapa(
-                EtapaProcessamento.ANALISAR_HABILIDADES,
-                atividade_id,
-                aluno_id,
-                provider_name=_resolve_provider(EtapaProcessamento.ANALISAR_HABILIDADES),
-                prompt_id=_resolve_prompt(EtapaProcessamento.ANALISAR_HABILIDADES),
-                usar_multimodal=usar_multimodal,
-                criar_nova_versao=force_rerun
-            )
+            resultado = await _executar_com_retry(EtapaProcessamento.ANALISAR_HABILIDADES, aluno_id)
             resultados["analisar_habilidades"] = resultado
-            logger.info(f"  -> sucesso={resultado.sucesso}")
+            logger.info(f"  -> sucesso={resultado.sucesso}, tentativas={resultado.tentativas}")
+            if not resultado.sucesso:
+                logger.error(f"  -> FALHA DEFINITIVA: {resultado.erro} (código: {resultado.erro_codigo})")
+                return resultados
         else:
             etapas_puladas["analisar_habilidades"] = reason
 
@@ -1656,17 +1919,12 @@ Crie UM documento separado para cada aluno, nomeando como "relatorio_[nome_aluno
         should_run, reason = _should_run("gerar_relatorio", TipoDocumento.RELATORIO_FINAL, docs_aluno)
         logger.info(f"[6/6] gerar_relatorio: run={should_run}, reason={reason}")
         if should_run:
-            resultado = await self.executar_etapa(
-                EtapaProcessamento.GERAR_RELATORIO,
-                atividade_id,
-                aluno_id,
-                provider_name=_resolve_provider(EtapaProcessamento.GERAR_RELATORIO),
-                prompt_id=_resolve_prompt(EtapaProcessamento.GERAR_RELATORIO),
-                usar_multimodal=usar_multimodal,
-                criar_nova_versao=force_rerun
-            )
+            resultado = await _executar_com_retry(EtapaProcessamento.GERAR_RELATORIO, aluno_id)
             resultados["gerar_relatorio"] = resultado
-            logger.info(f"  -> sucesso={resultado.sucesso}")
+            logger.info(f"  -> sucesso={resultado.sucesso}, tentativas={resultado.tentativas}")
+            if not resultado.sucesso:
+                logger.error(f"  -> FALHA DEFINITIVA: {resultado.erro} (código: {resultado.erro_codigo})")
+                return resultados
         else:
             etapas_puladas["gerar_relatorio"] = reason
 
