@@ -230,6 +230,42 @@ async def exportar_markdown(atividade_id: str, aluno_id: str):
     return PlainTextResponse(content=md, media_type="text/markdown")
 
 
+@router.get("/api/resultados/{atividade_id}/{aluno_id}/exportar/pdf", tags=["Exportação"])
+async def exportar_pdf(atividade_id: str, aluno_id: str):
+    """Exporta resultado completo em formato PDF"""
+    from fastapi.responses import Response
+    from document_generators import generate_pdf
+
+    # Buscar dados do resultado
+    resultado = visualizador.get_resultado_completo(atividade_id, aluno_id)
+    if not resultado:
+        raise HTTPException(404, "Resultado não encontrado")
+
+    # Buscar info do aluno e atividade para o título
+    aluno = storage.get_aluno(aluno_id)
+    atividade = storage.get_atividade(atividade_id)
+
+    titulo = f"Relatório - {aluno.nome if aluno else aluno_id}"
+    if atividade:
+        titulo = f"{atividade.nome} - {titulo}"
+
+    try:
+        pdf_bytes = generate_pdf(resultado, titulo, "relatorio_final")
+
+        # Nome do arquivo para download
+        nome_arquivo = f"relatorio_{atividade_id}_{aluno_id}.pdf"
+
+        return Response(
+            content=pdf_bytes,
+            media_type="application/pdf",
+            headers={
+                "Content-Disposition": f'attachment; filename="{nome_arquivo}"'
+            }
+        )
+    except Exception as e:
+        raise HTTPException(500, f"Erro ao gerar PDF: {str(e)}")
+
+
 @router.get("/api/resultados/{atividade_id}/exportar/ranking-csv", tags=["Exportação"])
 async def exportar_ranking_csv(atividade_id: str):
     """Exporta ranking da turma em CSV"""
