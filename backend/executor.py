@@ -195,8 +195,54 @@ class PipelineExecutor:
         raise ValueError("Nenhum provider de IA configurado")
     
     def _get_provider_legacy(self, provider_name: str = None):
-        """Obtém provider do ai_registry (sistema legado)"""
-        return ai_registry.get(provider_name) if provider_name else ai_registry.get_default()
+        """
+        Obtém provider para uso legado.
+        Tenta primeiro via model_manager (IDs tipo '6956e44763a4'),
+        depois via ai_registry (nomes tipo 'gpt-4o-mini').
+        """
+        if provider_name:
+            # Tentar primeiro via model_manager (sistema novo)
+            try:
+                from chat_service import model_manager, api_key_manager
+                from ai_providers import OpenAIProvider, AnthropicProvider, GeminiProvider
+
+                model = model_manager.get(provider_name)
+                if model:
+                    # Obter API key
+                    api_key = None
+                    if model.api_key_id:
+                        key_config = api_key_manager.get(model.api_key_id)
+                        if key_config:
+                            api_key = key_config.api_key
+
+                    if not api_key:
+                        key_config = api_key_manager.get_por_empresa(model.tipo)
+                        if key_config:
+                            api_key = key_config.api_key
+
+                    if api_key:
+                        # Criar provider baseado no tipo
+                        tipo = model.tipo.value
+                        model_id = model.get_model_id()
+
+                        if tipo == "openai":
+                            return OpenAIProvider(api_key=api_key, model=model_id, base_url=model.base_url)
+                        elif tipo == "anthropic":
+                            return AnthropicProvider(api_key=api_key, model=model_id)
+                        elif tipo == "google":
+                            return GeminiProvider(api_key=api_key, model=model_id)
+            except Exception as e:
+                import logging
+                logging.getLogger("pipeline").debug(f"model_manager lookup failed for '{provider_name}': {e}")
+
+            # Tentar via ai_registry
+            try:
+                return ai_registry.get(provider_name)
+            except ValueError:
+                pass  # Provider não encontrado no registry
+
+        # Fallback: provider padrão
+        return ai_registry.get_default()
     
     # ============================================================
     # MÉTODO PRINCIPAL - EXECUTAR ETAPA (LEGADO + MULTIMODAL)
@@ -1305,41 +1351,75 @@ Crie UM documento separado para cada aluno, nomeando como "relatorio_[nome_aluno
             prompt_id: ID do prompt padrão para todas as etapas.
             prompts_map: Dict com prompt_id por etapa (ex: {"extrair_questoes": "abc123"})
         """
+        import logging
+        logger = logging.getLogger("pipeline")
+
         resultados = {}
+        etapas_puladas = {}  # Registra motivo de cada etapa pulada
         providers_map = providers_map or {}
         prompts_map = prompts_map or {}
-        
+
+        logger.info(f"Pipeline iniciado: atividade={atividade_id}, aluno={aluno_id}, model={model_id or provider_name}")
+
         # Todas as etapas disponíveis
         ALL_STEPS = [
             "extrair_questoes", "extrair_gabarito", "extrair_respostas",
             "corrigir", "analisar_habilidades", "gerar_relatorio"
         ]
-        
+
         # Se não especificou etapas, executa todas
         steps_to_run = selected_steps if selected_steps else ALL_STEPS
+        logger.info(f"Etapas selecionadas: {steps_to_run}")
 
         def _resolve_provider(stage: EtapaProcessamento) -> Optional[str]:
             # Prioridade: providers_map > model_id > provider_name
-            return providers_map.get(stage.value) or model_id or provider_name
+            resolved = providers_map.get(stage.value) or model_id or provider_name
+            if not resolved:
+                logger.warning(f"Nenhum provider definido para etapa {stage.value}")
+            return resolved
 
         def _resolve_prompt(stage: EtapaProcessamento) -> Optional[str]:
             # Prioridade: prompts_map > prompt_id
             return prompts_map.get(stage.value) or prompt_id
-        
-        def _should_run(step_name: str, doc_type: TipoDocumento, docs_list: List) -> bool:
-            """Verifica se deve executar uma etapa"""
+
+        def _should_run(step_name: str, doc_type: TipoDocumento, docs_list: List) -> tuple:
+            """
+            Verifica se deve executar uma etapa.
+            Retorna (should_run: bool, reason: str)
+            """
             if step_name not in steps_to_run:
-                return False
+                return False, f"não selecionada (selecionadas: {steps_to_run})"
             if force_rerun:
-                return True
-            return not any(d.tipo == doc_type for d in docs_list)
-        
+                return True, "force_rerun ativado"
+
+            existing_doc = next((d for d in docs_list if d.tipo == doc_type), None)
+            if existing_doc:
+                return False, f"documento já existe (id={existing_doc.id}, tipo={doc_type.value})"
+            return True, "documento não existe, executando"
+
         # Carregar documentos existentes
-        docs = self.storage.listar_documentos(atividade_id)
-        docs_aluno = self.storage.listar_documentos(atividade_id, aluno_id)
+        try:
+            docs = self.storage.listar_documentos(atividade_id)
+            docs_aluno = self.storage.listar_documentos(atividade_id, aluno_id)
+            logger.info(f"Documentos encontrados: base={len(docs)}, aluno={len(docs_aluno)}")
+            logger.debug(f"Tipos base: {[d.tipo.value for d in docs]}")
+            logger.debug(f"Tipos aluno: {[d.tipo.value for d in docs_aluno]}")
+        except Exception as e:
+            logger.error(f"Erro ao carregar documentos: {e}")
+            # Retorna resultado de erro
+            return {
+                "_erro_carregamento": ResultadoExecucao(
+                    sucesso=False,
+                    etapa=EtapaProcessamento.EXTRAIR_QUESTOES,
+                    mensagem=f"Erro ao carregar documentos existentes: {str(e)}",
+                    erro=str(e)
+                )
+            }
         
         # 1. Extrair questões
-        if _should_run("extrair_questoes", TipoDocumento.EXTRACAO_QUESTOES, docs):
+        should_run, reason = _should_run("extrair_questoes", TipoDocumento.EXTRACAO_QUESTOES, docs)
+        logger.info(f"[1/6] extrair_questoes: run={should_run}, reason={reason}")
+        if should_run:
             resultado = await self.executar_etapa(
                 EtapaProcessamento.EXTRAIR_QUESTOES,
                 atividade_id,
@@ -1349,11 +1429,17 @@ Crie UM documento separado para cada aluno, nomeando como "relatorio_[nome_aluno
                 criar_nova_versao=force_rerun
             )
             resultados["extrair_questoes"] = resultado
+            logger.info(f"  -> sucesso={resultado.sucesso}, msg={resultado.mensagem[:100] if resultado.mensagem else 'N/A'}")
             if not resultado.sucesso:
+                logger.error(f"  -> FALHA: {resultado.erro}")
                 return resultados
+        else:
+            etapas_puladas["extrair_questoes"] = reason
 
         # 2. Extrair gabarito
-        if _should_run("extrair_gabarito", TipoDocumento.EXTRACAO_GABARITO, docs):
+        should_run, reason = _should_run("extrair_gabarito", TipoDocumento.EXTRACAO_GABARITO, docs)
+        logger.info(f"[2/6] extrair_gabarito: run={should_run}, reason={reason}")
+        if should_run:
             resultado = await self.executar_etapa(
                 EtapaProcessamento.EXTRAIR_GABARITO,
                 atividade_id,
@@ -1363,9 +1449,14 @@ Crie UM documento separado para cada aluno, nomeando como "relatorio_[nome_aluno
                 criar_nova_versao=force_rerun
             )
             resultados["extrair_gabarito"] = resultado
+            logger.info(f"  -> sucesso={resultado.sucesso}")
+        else:
+            etapas_puladas["extrair_gabarito"] = reason
 
         # 3. Extrair respostas do aluno
-        if _should_run("extrair_respostas", TipoDocumento.EXTRACAO_RESPOSTAS, docs_aluno):
+        should_run, reason = _should_run("extrair_respostas", TipoDocumento.EXTRACAO_RESPOSTAS, docs_aluno)
+        logger.info(f"[3/6] extrair_respostas: run={should_run}, reason={reason}")
+        if should_run:
             resultado = await self.executar_etapa(
                 EtapaProcessamento.EXTRAIR_RESPOSTAS,
                 atividade_id,
@@ -1376,11 +1467,17 @@ Crie UM documento separado para cada aluno, nomeando como "relatorio_[nome_aluno
                 criar_nova_versao=force_rerun
             )
             resultados["extrair_respostas"] = resultado
+            logger.info(f"  -> sucesso={resultado.sucesso}")
             if not resultado.sucesso:
+                logger.error(f"  -> FALHA: {resultado.erro}")
                 return resultados
+        else:
+            etapas_puladas["extrair_respostas"] = reason
 
         # 4. Corrigir
-        if _should_run("corrigir", TipoDocumento.CORRECAO, docs_aluno):
+        should_run, reason = _should_run("corrigir", TipoDocumento.CORRECAO, docs_aluno)
+        logger.info(f"[4/6] corrigir: run={should_run}, reason={reason}")
+        if should_run:
             resultado = await self.executar_etapa(
                 EtapaProcessamento.CORRIGIR,
                 atividade_id,
@@ -1391,11 +1488,17 @@ Crie UM documento separado para cada aluno, nomeando como "relatorio_[nome_aluno
                 criar_nova_versao=force_rerun
             )
             resultados["corrigir"] = resultado
+            logger.info(f"  -> sucesso={resultado.sucesso}")
             if not resultado.sucesso:
+                logger.error(f"  -> FALHA: {resultado.erro}")
                 return resultados
+        else:
+            etapas_puladas["corrigir"] = reason
 
         # 5. Analisar habilidades
-        if _should_run("analisar_habilidades", TipoDocumento.ANALISE_HABILIDADES, docs_aluno):
+        should_run, reason = _should_run("analisar_habilidades", TipoDocumento.ANALISE_HABILIDADES, docs_aluno)
+        logger.info(f"[5/6] analisar_habilidades: run={should_run}, reason={reason}")
+        if should_run:
             resultado = await self.executar_etapa(
                 EtapaProcessamento.ANALISAR_HABILIDADES,
                 atividade_id,
@@ -1406,9 +1509,14 @@ Crie UM documento separado para cada aluno, nomeando como "relatorio_[nome_aluno
                 criar_nova_versao=force_rerun
             )
             resultados["analisar_habilidades"] = resultado
+            logger.info(f"  -> sucesso={resultado.sucesso}")
+        else:
+            etapas_puladas["analisar_habilidades"] = reason
 
         # 6. Gerar relatório
-        if _should_run("gerar_relatorio", TipoDocumento.RELATORIO_FINAL, docs_aluno):
+        should_run, reason = _should_run("gerar_relatorio", TipoDocumento.RELATORIO_FINAL, docs_aluno)
+        logger.info(f"[6/6] gerar_relatorio: run={should_run}, reason={reason}")
+        if should_run:
             resultado = await self.executar_etapa(
                 EtapaProcessamento.GERAR_RELATORIO,
                 atividade_id,
@@ -1419,7 +1527,26 @@ Crie UM documento separado para cada aluno, nomeando como "relatorio_[nome_aluno
                 criar_nova_versao=force_rerun
             )
             resultados["gerar_relatorio"] = resultado
-        
+            logger.info(f"  -> sucesso={resultado.sucesso}")
+        else:
+            etapas_puladas["gerar_relatorio"] = reason
+
+        # Log final summary
+        logger.info(f"Pipeline concluído: {len(resultados)} etapas executadas, {len(etapas_puladas)} puladas")
+        if etapas_puladas:
+            logger.info(f"Etapas puladas: {etapas_puladas}")
+
+        # Se NENHUMA etapa foi executada, adicionar info especial para debugging
+        if not resultados and etapas_puladas:
+            logger.warning("ATENÇÃO: Nenhuma etapa foi executada! Todas foram puladas.")
+            # Adicionar um resultado especial para indicar isso
+            resultados["_info_pipeline"] = ResultadoExecucao(
+                sucesso=True,
+                etapa=EtapaProcessamento.EXTRAIR_QUESTOES,  # placeholder
+                mensagem=f"Nenhuma etapa executada. Motivos: {etapas_puladas}",
+                documento_gerado=None
+            )
+
         return resultados
 
 

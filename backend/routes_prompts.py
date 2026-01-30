@@ -746,16 +746,30 @@ async def executar_pipeline_completo(
         force_rerun=force_rerun
     )
     
-    # Resumo
-    sucesso_total = all(r.sucesso for r in resultados.values())
-    etapas_executadas = [k for k, v in resultados.items() if v.sucesso]
-    etapas_falharam = [k for k, v in resultados.items() if not v.sucesso]
-    
+    # Resumo - filtrar chaves especiais que começam com _
+    resultados_reais = {k: v for k, v in resultados.items() if not k.startswith("_")}
+    info_pipeline = resultados.get("_info_pipeline")
+
+    # Se não há resultados reais, verificar se foi um "sucesso vazio"
+    if not resultados_reais:
+        # Nenhuma etapa foi executada
+        return {
+            "sucesso": False,
+            "etapas_executadas": [],
+            "etapas_falharam": [],
+            "mensagem": info_pipeline.mensagem if info_pipeline else "Nenhuma etapa foi executada. Use force_rerun=true para re-executar etapas existentes.",
+            "resultados": {}
+        }
+
+    sucesso_total = all(r.sucesso for r in resultados_reais.values())
+    etapas_executadas = [k for k, v in resultados_reais.items() if v.sucesso]
+    etapas_falharam = [k for k, v in resultados_reais.items() if not v.sucesso]
+
     return {
         "sucesso": sucesso_total,
         "etapas_executadas": etapas_executadas,
         "etapas_falharam": etapas_falharam,
-        "resultados": {k: v.to_dict() for k, v in resultados.items()}
+        "resultados": {k: v.to_dict() for k, v in resultados_reais.items()}
     }
 
 
