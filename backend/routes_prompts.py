@@ -757,7 +757,7 @@ async def executar_pipeline_completo(
             "sucesso": False,
             "etapas_executadas": [],
             "etapas_falharam": [],
-            "mensagem": info_pipeline.mensagem if info_pipeline else "Nenhuma etapa foi executada. Use force_rerun=true para re-executar etapas existentes.",
+            "mensagem": info_pipeline.erro if info_pipeline else "Nenhuma etapa foi executada. Use force_rerun=true para re-executar etapas existentes.",
             "resultados": {}
         }
 

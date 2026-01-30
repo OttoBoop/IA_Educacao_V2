@@ -1429,7 +1429,7 @@ Crie UM documento separado para cada aluno, nomeando como "relatorio_[nome_aluno
                 criar_nova_versao=force_rerun
             )
             resultados["extrair_questoes"] = resultado
-            logger.info(f"  -> sucesso={resultado.sucesso}, msg={resultado.mensagem[:100] if resultado.mensagem else 'N/A'}")
+            logger.info(f"  -> sucesso={resultado.sucesso}, erro={resultado.erro[:100] if resultado.erro else 'N/A'}")
             if not resultado.sucesso:
                 logger.error(f"  -> FALHA: {resultado.erro}")
                 return resultados
@@ -1543,8 +1543,8 @@ Crie UM documento separado para cada aluno, nomeando como "relatorio_[nome_aluno
             resultados["_info_pipeline"] = ResultadoExecucao(
                 sucesso=True,
                 etapa=EtapaProcessamento.EXTRAIR_QUESTOES,  # placeholder
-                mensagem=f"Nenhuma etapa executada. Motivos: {etapas_puladas}",
-                documento_gerado=None
+                erro=f"Nenhuma etapa executada. Motivos: {etapas_puladas}",
+                documento_id=None
             )
 
         return resultados
