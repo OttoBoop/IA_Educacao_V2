@@ -5794,7 +5794,7 @@
                 });
                 const data = await parseApiResponse(response);
                 if (!response.ok) {
-                    const message = data?.detail || data?.message || data?.raw || 'Erro na requisição';
+                    const message = data?.error?.message || data?.detail || data?.message || data?.raw || 'Erro na requisição';
                     throw new Error(message);
                 }
                 return data;
@@ -5804,13 +5804,13 @@
                 throw error;
             }
         }
-        
+
         async function apiForm(endpoint, formData) {
             try {
                 const response = await fetch(`${API}${endpoint}`, { method: 'POST', body: formData });
                 const data = await parseApiResponse(response);
                 if (!response.ok) {
-                    const message = data?.detail || data?.message || data?.raw || 'Erro na requisição';
+                    const message = data?.error?.message || data?.detail || data?.message || data?.raw || 'Erro na requisição';
                     throw new Error(message);
                 }
                 return data;

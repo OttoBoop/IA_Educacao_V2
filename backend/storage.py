@@ -771,17 +771,17 @@ class StorageManager:
         """
         atividade = self.get_atividade(atividade_id)
         if not atividade:
-            return None
-        
+            raise ValueError(f"Atividade não encontrada: {atividade_id}")
+
         # Validar aluno_id para documentos que precisam
         if tipo not in TipoDocumento.documentos_sem_aluno() and not aluno_id:
             raise ValueError(f"Tipo {tipo.value} requer aluno_id")
-        
+
         # Validar se aluno existe e está na turma
         if aluno_id:
             aluno = self.get_aluno(aluno_id)
             if not aluno:
-                return None
+                raise ValueError(f"Aluno não encontrado: {aluno_id}")
         
         # Info do arquivo
         arquivo_path = Path(arquivo_origem)

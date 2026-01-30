@@ -585,16 +585,16 @@ async def upload_documento(
             ia_provider=ia_provider,
             criado_por="usuario"
         )
-        
-        if not documento:
-            raise HTTPException(400, "Erro ao salvar documento. Verifique atividade_id e aluno_id.")
-        
+
         return {
             "success": True,
             "documento": documento.to_dict(),
             "mensagem": f"Documento '{file.filename}' salvo com sucesso"
         }
-    
+
+    except ValueError as e:
+        raise HTTPException(400, str(e))
+
     finally:
         # Limpar temp
         os.unlink(tmp_path)

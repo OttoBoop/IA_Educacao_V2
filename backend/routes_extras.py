@@ -205,13 +205,9 @@ async def upload_documentos_lote(
                 aluno_id=aluno_id,
                 criado_por="usuario"
             )
-            
+
             os.unlink(tmp_path)
-            
-            if documento:
-                salvos.append(documento.to_dict())
-            else:
-                erros.append({"arquivo": file.filename, "erro": "Falha ao salvar"})
+            salvos.append(documento.to_dict())
                 
         except Exception as e:
             erros.append({"arquivo": file.filename, "erro": str(e)})
@@ -294,16 +290,12 @@ async def upload_provas_alunos(
                 aluno_id=aluno_encontrado.id,
                 criado_por="usuario"
             )
-            
+
             os.unlink(tmp_path)
-            
-            if documento:
-                salvos.append({
-                    "documento": documento.to_dict(),
-                    "aluno": aluno_encontrado.nome
-                })
-            else:
-                erros.append({"arquivo": file.filename, "erro": "Falha ao salvar"})
+            salvos.append({
+                "documento": documento.to_dict(),
+                "aluno": aluno_encontrado.nome
+            })
                 
         except Exception as e:
             erros.append({"arquivo": file.filename, "erro": str(e)})
