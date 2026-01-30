@@ -80,8 +80,7 @@ MODELOS_SUGERIDOS = {
         {"id": "gpt-4.1-mini", "nome": "GPT-4.1 Mini", "suporta_vision": True, "suporta_tools": True},
         {"id": "gpt-4.1-nano", "nome": "GPT-4.1 Nano", "suporta_vision": True, "suporta_tools": True},
         # Reasoning Models
-        {"id": "o1", "nome": "o1 (Reasoning)", "suporta_temperature": False, "suporta_tools": True, "suporta_reasoning": True},
-        {"id": "o1-pro", "nome": "o1 Pro (API Pro)", "suporta_temperature": False, "suporta_tools": True, "suporta_reasoning": True},
+        # Deprecated: 'o1', 'o1-pro' (removed as deprecated)
         {"id": "o3", "nome": "o3 (Reasoning)", "suporta_temperature": False, "suporta_tools": True, "suporta_reasoning": True},
         {"id": "o3-mini", "nome": "o3 Mini", "suporta_temperature": False, "suporta_tools": True, "suporta_reasoning": True},
         {"id": "o4-mini", "nome": "o4 Mini", "suporta_temperature": False, "suporta_tools": True, "suporta_reasoning": True},
@@ -145,7 +144,8 @@ MODELOS_SUGERIDOS = {
 }
 
 # Modelos que usam reasoning_effort ao invés de temperature
-REASONING_MODELS = ['o1', 'o1-pro', 'o3', 'o3-mini', 'o4-mini', 'deepseek-reasoner']
+# Deprecated: 'o1', 'o1-pro' (removidos pois estão deprecated)
+REASONING_MODELS = ['o3', 'o3-mini', 'o3-pro', 'o4-mini', 'gpt-5', 'gpt-5-mini', 'gpt-5-nano', 'gpt-5.1', 'gpt-5.2', 'deepseek-reasoner']
 
 
 # ============================================================
@@ -199,7 +199,8 @@ class ApiKeyManager:
     def __init__(self, config_path: str = "./data/api_keys.json"):
         self.config_path = Path(config_path)
         self.config_path.parent.mkdir(parents=True, exist_ok=True)
-        self.key_file = Path("./data/.encryption_key")
+        # Usar mesmo diretório do config_path para a chave de criptografia
+        self.key_file = self.config_path.parent / ".encryption_key"
         self._cipher = self._get_cipher()
         self.keys: Dict[str, ApiKeyConfig] = {}
         self._load()

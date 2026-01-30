@@ -99,7 +99,8 @@ class OpenAIProvider(AIProvider):
     """Provider para OpenAI (GPT-4, GPT-4o, GPT-5, o1, o3, o4-mini, etc.)"""
 
     # Modelos de raciocínio que não suportam temperature
-    REASONING_MODELS = {'o1', 'o1-mini', 'o1-pro', 'o3', 'o3-mini', 'o3-pro', 'o4-mini'}
+    # Deprecated: 'o1', 'o1-mini', 'o1-pro' (removidos pois estão deprecated)
+    REASONING_MODELS = {'o3', 'o3-mini', 'o3-pro', 'o4-mini', 'gpt-5', 'gpt-5-mini', 'gpt-5-nano', 'gpt-5.1', 'gpt-5.2'}
 
     def __init__(self, api_key: str, model: str = "gpt-4o"):
         super().__init__(api_key, model)
@@ -301,6 +302,7 @@ class AnthropicProvider(AIProvider):
         payload = {
             "model": self.model,
             "max_tokens": max_tokens,
+            "temperature": temperature,  # Claude suporta temperature 0-1
             "messages": [{"role": "user", "content": prompt}]
         }
         if system_prompt:

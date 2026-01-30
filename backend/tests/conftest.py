@@ -124,3 +124,301 @@ def sample_json_path(temp_data_dir: Path) -> Path:
     json_path = temp_data_dir / "test_data.json"
     json_path.write_text('{"questoes": [{"numero": 1, "enunciado": "Test"}]}', encoding='utf-8')
     return json_path
+
+
+# ============================================================
+# COMMAND LINE OPTIONS
+# ============================================================
+
+def pytest_addoption(parser):
+    """Adiciona opções de linha de comando para testes."""
+    parser.addoption(
+        "--provider",
+        action="store",
+        default=None,
+        help="Provider para testar: openai, anthropic, google"
+    )
+    parser.addoption(
+        "--model",
+        action="store",
+        default=None,
+        help="Modelo específico para testar: gpt-4o-mini, claude-haiku-4-5-20251001"
+    )
+    parser.addoption(
+        "--reasoning",
+        action="store_true",
+        default=False,
+        help="Testar apenas modelos reasoning (o1, o3, etc.)"
+    )
+    parser.addoption(
+        "--skip-expensive",
+        action="store_true",
+        default=False,
+        help="Pular modelos caros (opus, o3, gpt-5, etc.)"
+    )
+    parser.addoption(
+        "--timeout",
+        action="store",
+        default=60,
+        type=int,
+        help="Timeout em segundos para requisições de IA"
+    )
+
+
+# ============================================================
+# PROVIDER SELECTION FIXTURES
+# ============================================================
+
+@pytest.fixture
+def selected_provider(request) -> str:
+    """Retorna o provider/modelo selecionado via CLI ou default."""
+    model = request.config.getoption("--model")
+    provider = request.config.getoption("--provider")
+
+    if model:
+        return model
+
+    if provider:
+        # Mapear provider para modelo default (rápido e barato)
+        defaults = {
+            "openai": "gpt-4o-mini",
+            "anthropic": "claude-haiku-4-5-20251001",
+            "google": "gemini-2.5-flash"
+        }
+        return defaults.get(provider, "gpt-4o-mini")
+
+    return "gpt-4o-mini"  # Default global
+
+
+@pytest.fixture
+def skip_expensive(request) -> bool:
+    """Verifica se deve pular modelos caros."""
+    return request.config.getoption("--skip-expensive")
+
+
+@pytest.fixture
+def test_timeout(request) -> int:
+    """Timeout para requisições de IA."""
+    return request.config.getoption("--timeout")
+
+
+@pytest.fixture
+def is_reasoning_only(request) -> bool:
+    """Verifica se deve testar apenas modelos reasoning."""
+    return request.config.getoption("--reasoning")
+
+
+# ============================================================
+# DOCUMENT FACTORY FIXTURES
+# ============================================================
+
+@pytest.fixture
+def document_factory(temp_data_dir: Path):
+    """Fábrica de documentos de teste."""
+    from tests.fixtures.document_factory import DocumentFactory
+    return DocumentFactory(temp_data_dir / "documents")
+
+
+@pytest.fixture
+def test_scenario(document_factory):
+    """Cenário de teste completo com 2 alunos."""
+    return document_factory.criar_cenario_completo(
+        materia="Matemática",
+        num_alunos=2,
+        qualidades=["excelente", "medio"]
+    )
+
+
+@pytest.fixture
+def corrupted_document(document_factory):
+    """Documento corrompido para testes de erro."""
+    return document_factory.criar_documento_corrompido("json_invalido")
+
+
+@pytest.fixture
+def empty_document(document_factory):
+    """Documento vazio para testes."""
+    return document_factory.criar_documento_corrompido("arquivo_vazio")
+
+
+# ============================================================
+# ENVIRONMENT DETECTION
+# ============================================================
+
+@pytest.fixture
+def is_render_environment() -> bool:
+    """Detecta se está rodando no Render."""
+    import os
+    return os.getenv("RENDER") == "true"
+
+
+@pytest.fixture
+def api_keys_available() -> Dict[str, bool]:
+    """Verifica quais API keys estão disponíveis (env vars OU api_key_manager com path correto)."""
+    import os
+    from chat_service import ApiKeyManager, ProviderType
+
+    # Usar path absoluto para api_keys.json
+    api_keys_path = backend_dir / "data" / "api_keys.json"
+    key_manager = ApiKeyManager(config_path=str(api_keys_path)) if api_keys_path.exists() else None
+
+    return {
+        "openai": bool(os.getenv("OPENAI_API_KEY")) or (key_manager and key_manager.get_por_empresa(ProviderType.OPENAI) is not None),
+        "anthropic": bool(os.getenv("ANTHROPIC_API_KEY")) or (key_manager and key_manager.get_por_empresa(ProviderType.ANTHROPIC) is not None),
+        "google": bool(os.getenv("GOOGLE_API_KEY")) or (key_manager and key_manager.get_por_empresa(ProviderType.GOOGLE) is not None),
+        "deepseek": bool(os.getenv("DEEPSEEK_API_KEY")),
+        "mistral": bool(os.getenv("MISTRAL_API_KEY")),
+    }
+
+
+# ============================================================
+# AI PROVIDER FIXTURES
+# ============================================================
+
+@pytest.fixture
+def ai_provider(selected_provider):
+    """
+    Retorna um provider de IA configurado.
+    Usa ApiKeyManager com path absoluto para garantir que encontra as keys.
+    """
+    from chat_service import ApiKeyManager, ProviderType
+    from ai_providers import OpenAIProvider, AnthropicProvider, GeminiProvider
+
+    # Usar path absoluto para o arquivo de API keys
+    api_keys_path = backend_dir / "data" / "api_keys.json"
+
+    if not api_keys_path.exists():
+        pytest.fail(f"Arquivo de API keys não encontrado: {api_keys_path}")
+
+    # Criar manager com path correto
+    key_manager = ApiKeyManager(config_path=str(api_keys_path))
+
+    if not key_manager.keys:
+        pytest.fail(f"Nenhuma API key carregada de {api_keys_path}. Verifique se o arquivo .encryption_key existe em data/")
+
+    # Determinar provider baseado no modelo selecionado
+    model = selected_provider.lower()
+
+    if "gpt" in model or "o1" in model or "o3" in model or "o4" in model:
+        key_config = key_manager.get_por_empresa(ProviderType.OPENAI)
+        if key_config:
+            return OpenAIProvider(api_key=key_config.api_key, model=selected_provider)
+        pytest.fail("API key OpenAI não encontrada ou inativa")
+
+    elif "claude" in model:
+        key_config = key_manager.get_por_empresa(ProviderType.ANTHROPIC)
+        if key_config:
+            return AnthropicProvider(api_key=key_config.api_key, model=selected_provider)
+        pytest.fail("API key Anthropic não encontrada ou inativa")
+
+    elif "gemini" in model:
+        key_config = key_manager.get_por_empresa(ProviderType.GOOGLE)
+        if key_config:
+            return GeminiProvider(api_key=key_config.api_key, model=selected_provider)
+        pytest.fail("API key Google não encontrada ou inativa")
+
+    # Fallback: tentar OpenAI
+    key_config = key_manager.get_por_empresa(ProviderType.OPENAI)
+    if key_config:
+        return OpenAIProvider(api_key=key_config.api_key, model="gpt-4o-mini")
+
+    pytest.fail(f"Nenhum provider disponível para modelo: {selected_provider}")
+
+
+# ============================================================
+# MOCK AI RESPONSES
+# ============================================================
+
+@pytest.fixture
+def mock_json_response():
+    """Resposta JSON válida mockada."""
+    return {
+        "questoes": [
+            {
+                "numero": 1,
+                "enunciado": "Resolva: 2+2",
+                "resposta": "4",
+                "pontuacao": 2.0
+            }
+        ],
+        "total_questoes": 1,
+        "pontuacao_total": 2.0
+    }
+
+
+@pytest.fixture
+def mock_empty_json_response():
+    """Resposta JSON vazia mockada."""
+    return {}
+
+
+@pytest.fixture
+def mock_invalid_json_response():
+    """Resposta com JSON inválido mockada."""
+    return "Aqui está a resposta: {questoes: [invalido]}"
+
+
+@pytest.fixture
+def mock_correcao_response():
+    """Resposta de correção mockada."""
+    return {
+        "questoes": [
+            {
+                "numero": 1,
+                "nota": 1.8,
+                "nota_maxima": 2.0,
+                "feedback": "Resposta parcialmente correta",
+                "erros": ["Faltou mostrar o cálculo"]
+            }
+        ],
+        "nota_total": 1.8,
+        "nota_maxima": 2.0,
+        "observacoes": "Bom trabalho, mas mostre os cálculos"
+    }
+
+
+# ============================================================
+# SKIP MARKERS
+# ============================================================
+
+@pytest.fixture(autouse=True)
+def skip_if_no_api_key(request, api_keys_available):
+    """Pula testes automaticamente se API key não disponível."""
+    markers = list(request.node.iter_markers())
+
+    for marker in markers:
+        if marker.name == "openai" and not api_keys_available["openai"]:
+            pytest.skip("OPENAI_API_KEY não disponível")
+        elif marker.name == "anthropic" and not api_keys_available["anthropic"]:
+            pytest.skip("ANTHROPIC_API_KEY não disponível")
+        elif marker.name == "google" and not api_keys_available["google"]:
+            pytest.skip("GOOGLE_API_KEY não disponível")
+
+
+@pytest.fixture(autouse=True)
+def skip_expensive_if_requested(request, skip_expensive):
+    """Pula testes marcados como expensive se solicitado."""
+    if skip_expensive:
+        markers = list(request.node.iter_markers())
+        for marker in markers:
+            if marker.name == "expensive":
+                pytest.skip("Modelo caro pulado (--skip-expensive)")
+
+
+# ============================================================
+# LOGGING SETUP
+# ============================================================
+
+@pytest.fixture(scope="session", autouse=True)
+def setup_test_logging():
+    """Configura logging para testes."""
+    try:
+        from logging_config import setup_logging
+        setup_logging(
+            level="DEBUG",
+            log_dir=Path(__file__).parent.parent / "logs",
+            console_output=False,
+            file_output=True
+        )
+    except ImportError:
+        pass
