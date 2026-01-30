@@ -478,7 +478,9 @@ async function sendChatMessage() {
     
     // Preparar documentos de contexto
     const contextDocs = getSelectedDocumentIds();
-    
+    console.log('[CHAT] Enviando context_docs:', contextDocs.length, 'documentos');
+    console.log('[CHAT] IDs:', contextDocs.slice(0, 5), '... (primeiros 5)');
+
     try {
         const response = await api('/chat', {
             method: 'POST',
@@ -488,6 +490,7 @@ async function sendChatMessage() {
                 context_docs: contextDocs.length > 0 ? contextDocs : null
             })
         });
+        console.log('[CHAT] Resposta recebida, docs no contexto:', contextDocs.length);
         
         // Remover loading
         document.getElementById(loadingId)?.remove();

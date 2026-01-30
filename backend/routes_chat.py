@@ -277,17 +277,34 @@ async def chat_direto(data: ChatRequest):
 
     # Carregar contexto de documentos se fornecido
     contexto_docs = ""
+    sys.stderr.write(f"[CHAT_DIRETO] context_docs recebido: {data.context_docs}\n")
+    sys.stderr.write(f"[CHAT_DIRETO] context_docs len: {len(data.context_docs) if data.context_docs else 0}\n")
+    sys.stderr.flush()
+
     if data.context_docs and len(data.context_docs) > 0:
         docs_content = []
-        for doc_id in data.context_docs[:20]:  # Limitar a 20 documentos
+        docs_carregados = 0
+        docs_falha = 0
+        for doc_id in data.context_docs[:50]:  # Aumentado para 50 documentos
             try:
                 doc = storage.get_documento(doc_id)
                 if doc:
                     conteudo = _ler_conteudo_documento(doc)
                     if conteudo:
                         docs_content.append(f"### Documento: {doc.nome_arquivo} ({doc.tipo.value})\n{conteudo[:5000]}")
+                        docs_carregados += 1
+                    else:
+                        docs_falha += 1
+                        sys.stderr.write(f"[CHAT_DIRETO] Falha ao ler conteudo: {doc_id}\n")
+                else:
+                    docs_falha += 1
+                    sys.stderr.write(f"[CHAT_DIRETO] Documento não encontrado no storage: {doc_id}\n")
             except Exception as e:
+                docs_falha += 1
                 print(f"Erro ao carregar documento {doc_id}: {e}")
+
+        sys.stderr.write(f"[CHAT_DIRETO] Docs carregados: {docs_carregados}, falhas: {docs_falha}\n")
+        sys.stderr.flush()
 
         if docs_content:
             contexto_docs = "\n\n---\n\n".join(docs_content)
