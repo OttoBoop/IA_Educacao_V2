@@ -15,6 +15,22 @@ import json
 import os
 from pathlib import Path
 
+# Importar gerenciador de chaves criptografadas (importação adiada para evitar circular)
+_api_key_manager = None
+
+def _get_api_key_manager():
+    """Obtém instância do gerenciador de chaves (lazy loading para evitar import circular)"""
+    global _api_key_manager
+    if _api_key_manager is None:
+        from chat_service import api_key_manager, ProviderType
+        _api_key_manager = api_key_manager
+    return _api_key_manager
+
+def _get_provider_type():
+    """Obtém enum ProviderType (lazy loading)"""
+    from chat_service import ProviderType
+    return ProviderType
+
 
 @dataclass
 class AIResponse:
@@ -788,8 +804,10 @@ class AIProviderRegistry:
         name = config["name"]
         provider_type = config["provider_type"].lower()
         model = config["model"]
-        api_key = config.get("api_key", "")
         base_url = config.get("base_url")
+
+        # Buscar API key do gerenciador de chaves criptografadas
+        api_key = self._get_api_key_for_provider(provider_type)
 
         if provider_type == "openai" or provider_type == "openaiprovider":
             provider = OpenAIProvider(api_key=api_key, model=model)
@@ -806,19 +824,66 @@ class AIProviderRegistry:
             raise ValueError(f"Tipo de provider desconhecido: {provider_type}")
 
         self.providers[name] = provider
-        self.provider_configs[name] = config
+        # Não armazenar api_key na config
+        config_sem_key = {k: v for k, v in config.items() if k != "api_key"}
+        self.provider_configs[name] = config_sem_key
+
+    def _get_api_key_for_provider(self, provider_type: str) -> str:
+        """Busca API key do gerenciador de chaves criptografadas"""
+        try:
+            ProviderType = _get_provider_type()
+            key_manager = _get_api_key_manager()
+
+            # Mapear tipo de provider para ProviderType enum
+            type_mapping = {
+                "openai": ProviderType.OPENAI,
+                "openaiprovider": ProviderType.OPENAI,
+                "anthropic": ProviderType.ANTHROPIC,
+                "anthropicprovider": ProviderType.ANTHROPIC,
+                "google": ProviderType.GOOGLE,
+                "gemini": ProviderType.GOOGLE,
+                "geminiprovider": ProviderType.GOOGLE,
+            }
+
+            provider_enum = type_mapping.get(provider_type.lower())
+            if provider_enum:
+                key_config = key_manager.get_por_empresa(provider_enum)
+                if key_config:
+                    return key_config.api_key
+
+            # Fallback para variáveis de ambiente
+            env_vars = {
+                "openai": "OPENAI_API_KEY",
+                "openaiprovider": "OPENAI_API_KEY",
+                "anthropic": "ANTHROPIC_API_KEY",
+                "anthropicprovider": "ANTHROPIC_API_KEY",
+                "google": "GOOGLE_API_KEY",
+                "gemini": "GOOGLE_API_KEY",
+                "geminiprovider": "GOOGLE_API_KEY",
+            }
+            env_var = env_vars.get(provider_type.lower())
+            if env_var:
+                return os.getenv(env_var, "")
+
+            return ""
+        except Exception as e:
+            print(f"[WARN] Erro ao buscar API key para {provider_type}: {e}")
+            return ""
 
     def register(self, name: str, provider: AIProvider, set_default: bool = False,
                  api_key: str = None, base_url: str = None):
-        """Registra um provider com um nome e persiste a configuração"""
+        """Registra um provider com um nome e persiste a configuração
+
+        NOTA: O parâmetro api_key é ignorado. As chaves são gerenciadas pelo
+        sistema centralizado em api_keys.json (criptografado).
+        """
         self.providers[name] = provider
 
-        # Salvar configuração para persistência
+        # Salvar configuração para persistência (SEM api_key - gerenciado separadamente)
         self.provider_configs[name] = {
             "name": name,
             "provider_type": provider.name,
             "model": provider.model,
-            "api_key": api_key or getattr(provider, 'api_key', ''),
             "base_url": base_url or getattr(provider, 'base_url', None)
         }
 
@@ -885,46 +950,57 @@ ai_registry = AIProviderRegistry()
 
 
 def setup_providers_from_env():
-    """Configura providers a partir de variáveis de ambiente.
+    """Configura providers a partir de variáveis de ambiente ou api_keys.json.
 
     Só adiciona providers se não houver nenhum carregado do arquivo.
     Isso permite que os providers salvos tenham prioridade.
+
+    NOTA: As API keys são gerenciadas pelo sistema centralizado em api_keys.json
+    (criptografado). Variáveis de ambiente são usadas apenas como fallback.
     """
     # Se já existem providers carregados do arquivo, não sobrescrever
     if ai_registry.providers:
         print(f"[INFO] Usando {len(ai_registry.providers)} provider(s) do arquivo de configuração")
         return
 
-    print("[INFO] Nenhum provider salvo encontrado, configurando a partir do ambiente...")
+    print("[INFO] Nenhum provider salvo encontrado, configurando a partir do ambiente/keys...")
 
-    # OpenAI
-    if os.getenv("OPENAI_API_KEY"):
-        api_key = os.getenv("OPENAI_API_KEY")
-        ai_registry.register(
-            "openai-gpt4o",
-            OpenAIProvider(api_key, "gpt-4o"),
-            set_default=True,
-            api_key=api_key
-        )
-        ai_registry.register(
-            "openai-gpt4o-mini",
-            OpenAIProvider(api_key, "gpt-4o-mini"),
-            api_key=api_key
-        )
+    # Tentar obter chaves do gerenciador criptografado
+    try:
+        ProviderType = _get_provider_type()
+        key_manager = _get_api_key_manager()
 
-    # Anthropic
-    if os.getenv("ANTHROPIC_API_KEY"):
-        api_key = os.getenv("ANTHROPIC_API_KEY")
-        ai_registry.register(
-            "claude-sonnet",
-            AnthropicProvider(api_key, "claude-sonnet-4-20250514"),
-            api_key=api_key
-        )
-        ai_registry.register(
-            "claude-haiku",
-            AnthropicProvider(api_key, "claude-haiku-4-5-20251001"),
-            api_key=api_key
-        )
+        # OpenAI
+        openai_config = key_manager.get_por_empresa(ProviderType.OPENAI)
+        openai_key = openai_config.api_key if openai_config else os.getenv("OPENAI_API_KEY", "")
+
+        if openai_key:
+            ai_registry.register(
+                "openai-gpt4o",
+                OpenAIProvider(openai_key, "gpt-4o"),
+                set_default=True
+            )
+            ai_registry.register(
+                "openai-gpt4o-mini",
+                OpenAIProvider(openai_key, "gpt-4o-mini")
+            )
+
+        # Anthropic
+        anthropic_config = key_manager.get_por_empresa(ProviderType.ANTHROPIC)
+        anthropic_key = anthropic_config.api_key if anthropic_config else os.getenv("ANTHROPIC_API_KEY", "")
+
+        if anthropic_key:
+            ai_registry.register(
+                "claude-sonnet",
+                AnthropicProvider(anthropic_key, "claude-sonnet-4-20250514")
+            )
+            ai_registry.register(
+                "claude-haiku",
+                AnthropicProvider(anthropic_key, "claude-haiku-4-5-20251001")
+            )
+
+    except Exception as e:
+        print(f"[WARN] Erro ao carregar chaves do gerenciador: {e}")
 
     # Ollama (local) - sempre disponível como fallback
     if "ollama-llama3" not in ai_registry.providers:
