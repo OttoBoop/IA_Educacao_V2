@@ -493,12 +493,17 @@ Seja preciso e educativo nas correcoes."""
 
 
 def _ler_conteudo_documento(documento) -> Optional[str]:
-    """Lê conteúdo de um documento para incluir no contexto do chat"""
+    """Lê conteúdo de um documento para incluir no contexto do chat.
+
+    Usa storage.resolve_path() para baixar do Supabase se não existir localmente.
+    """
     import json
 
     try:
-        arquivo = Path(documento.caminho_arquivo)
-        if not arquivo.exists():
+        # Usar storage.resolve_path() para obter arquivo (baixa do Supabase se necessário)
+        arquivo = storage.resolve_path(documento.caminho_arquivo)
+        if arquivo is None or not arquivo.exists():
+            print(f"[Chat] Documento não encontrado: {documento.caminho_arquivo}")
             return None
 
         if documento.extensao.lower() == '.json':
