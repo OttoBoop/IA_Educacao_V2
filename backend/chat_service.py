@@ -1741,3 +1741,157 @@ def get_tipos_providers():
             "requer_api_key": tipo != ProviderType.OLLAMA
         })
     return tipos
+
+
+# ============================================================
+# FUNÇÃO UNIFICADA DE RESOLUÇÃO DE PROVIDER
+# ============================================================
+
+def resolve_provider_config(model_id: str = None) -> Dict[str, Any]:
+    """
+    Resolve configuração de provider de forma UNIFICADA.
+    Usado por chat E pipeline para garantir comportamento consistente.
+
+    Ordem de busca:
+    1. model_manager (models.json) - via model_id ou default
+    2. ai_registry (providers configurados em código)
+    3. Variáveis de ambiente (OPENAI_API_KEY, etc.)
+
+    Retorna dict com:
+        - tipo: str (openai, anthropic, google, etc.)
+        - api_key: str
+        - modelo: str (nome do modelo para a API)
+        - base_url: str ou None
+        - max_tokens: int
+        - temperature: float
+        - suporta_temperature: bool
+
+    Levanta ValueError com mensagem clara se nenhum provider disponível.
+    """
+    from ai_providers import ai_registry
+
+    # ====================================================
+    # PASSO 1: Tentar model_manager (sistema principal)
+    # ====================================================
+    model = None
+    if model_id:
+        model = model_manager.get(model_id)
+        if not model:
+            # Tentar ai_registry antes de falhar
+            try:
+                provider = ai_registry.get(model_id)
+                # Converter provider do ai_registry para dict
+                provider_type = "openai"
+                if "Anthropic" in provider.name or "claude" in provider.model.lower():
+                    provider_type = "anthropic"
+                elif "Gemini" in provider.name or "gemini" in provider.model.lower():
+                    provider_type = "google"
+
+                return {
+                    "tipo": provider_type,
+                    "api_key": getattr(provider, 'api_key', ''),
+                    "modelo": provider.model,
+                    "base_url": getattr(provider, 'base_url', None),
+                    "max_tokens": 4096,
+                    "temperature": 0.7,
+                    "suporta_temperature": True
+                }
+            except ValueError:
+                pass
+
+            # Listar disponíveis para mensagem de erro clara
+            modelos_disponiveis = [f"{m.id} ({m.nome})" for m in model_manager.listar()]
+            providers_registry = ai_registry.list_providers()
+
+            raise ValueError(
+                f"Modelo '{model_id}' não encontrado. "
+                f"Este ID pode ser de outro ambiente (local vs Render). "
+                f"Modelos em models.json: {modelos_disponiveis if modelos_disponiveis else 'Nenhum'}. "
+                f"Providers em ai_registry: {providers_registry if providers_registry else 'Nenhum'}."
+            )
+    else:
+        # Sem model_id, usar padrão
+        model = model_manager.get_default()
+        if not model:
+            # Tentar ai_registry default
+            try:
+                provider = ai_registry.get_default()
+                if provider:
+                    provider_type = "openai"
+                    if "Anthropic" in provider.name or "claude" in provider.model.lower():
+                        provider_type = "anthropic"
+                    elif "Gemini" in provider.name or "gemini" in provider.model.lower():
+                        provider_type = "google"
+
+                    return {
+                        "tipo": provider_type,
+                        "api_key": getattr(provider, 'api_key', ''),
+                        "modelo": provider.model,
+                        "base_url": getattr(provider, 'base_url', None),
+                        "max_tokens": 4096,
+                        "temperature": 0.7,
+                        "suporta_temperature": True
+                    }
+            except:
+                pass
+
+            raise ValueError(
+                "Nenhum modelo padrão configurado. "
+                "Configure um modelo em Configurações > Modelos ou defina variáveis de ambiente."
+            )
+
+    # ====================================================
+    # PASSO 2: Buscar API Key (ordem de prioridade)
+    # ====================================================
+    api_key = None
+
+    # 2a. API key específica do modelo
+    if model.api_key_id:
+        key_config = api_key_manager.get(model.api_key_id)
+        if key_config:
+            api_key = key_config.api_key
+
+    # 2b. API key por empresa/provider type
+    if not api_key:
+        key_config = api_key_manager.get_por_empresa(model.tipo)
+        if key_config:
+            api_key = key_config.api_key
+
+    # 2c. Ollama não precisa de API key
+    if not api_key and model.tipo == ProviderType.OLLAMA:
+        api_key = "ollama"
+
+    # 2d. Variáveis de ambiente (para Render/produção)
+    if not api_key:
+        env_var_map = {
+            ProviderType.OPENAI: "OPENAI_API_KEY",
+            ProviderType.ANTHROPIC: "ANTHROPIC_API_KEY",
+            ProviderType.GOOGLE: "GOOGLE_API_KEY",
+            ProviderType.GROQ: "GROQ_API_KEY",
+            ProviderType.MISTRAL: "MISTRAL_API_KEY",
+            ProviderType.OPENROUTER: "OPENROUTER_API_KEY",
+            ProviderType.DEEPSEEK: "DEEPSEEK_API_KEY",
+            ProviderType.XAI: "XAI_API_KEY",
+        }
+        env_var = env_var_map.get(model.tipo)
+        if env_var:
+            api_key = os.getenv(env_var)
+
+    if not api_key:
+        raise ValueError(
+            f"Nenhuma API key encontrada para modelo '{model.nome}' (tipo: {model.tipo.value}). "
+            f"Configure uma API key em Configurações > API Keys ou defina a variável de ambiente."
+        )
+
+    # ====================================================
+    # PASSO 3: Retornar configuração completa
+    # ====================================================
+    return {
+        "tipo": model.tipo.value,
+        "api_key": api_key,
+        "modelo": model.get_model_id(),
+        "base_url": model.base_url,
+        "max_tokens": model.max_tokens,
+        "temperature": model.temperature,
+        "suporta_temperature": model.suporta_temperature
+    }

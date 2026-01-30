@@ -128,245 +128,42 @@ class PipelineExecutor:
     # ============================================================
     # MÉTODOS AUXILIARES PARA OBTER PROVIDER
     # ============================================================
-    
+
     def _get_provider_config(self, provider_id: str = None) -> Dict[str, Any]:
         """
         Obtém configuração do provider para uso com ClienteAPIMultimodal.
-        Tenta primeiro o chat_service (model_manager), depois ai_registry.
-
-        IMPORTANTE: Não faz fallback automático. Se o provider_id não for encontrado,
-        retorna erro claro para o usuário corrigir.
+        Usa a função unificada resolve_provider_config do chat_service.
         """
-        # Tentar chat_service primeiro (sistema mais novo)
-        try:
-            from chat_service import model_manager, api_key_manager
-
-            if provider_id:
-                model = model_manager.get(provider_id)
-                if not model:
-                    # Listar modelos disponíveis para ajudar no debug
-                    modelos_disponiveis = [f"{m.id} ({m.nome})" for m in model_manager.listar()]
-                    raise ValueError(
-                        f"Modelo '{provider_id}' não encontrado em models.json. "
-                        f"Este ID pode ser de outro ambiente (local vs Render). "
-                        f"Modelos disponíveis: {modelos_disponiveis if modelos_disponiveis else 'Nenhum'}"
-                    )
-                print(f"[DEBUG] Provider ID solicitado: {provider_id}, modelo encontrado: {model.nome}")
-            else:
-                model = model_manager.get_default()
-                if not model:
-                    raise ValueError(
-                        "Nenhum modelo padrão configurado em models.json. "
-                        "Configure um modelo na interface de Configurações > Modelos."
-                    )
-                print(f"[DEBUG] Usando modelo padrão: {model.nome}")
-
-            print(f"[DEBUG] Modelo: tipo={model.tipo.value}, modelo={model.modelo}")
-
-            # Obter API key
-            api_key = None
-            if model.api_key_id:
-                key_config = api_key_manager.get(model.api_key_id)
-                if key_config:
-                    api_key = key_config.api_key
-                    print(f"[DEBUG] API key obtida via api_key_id: {model.api_key_id}")
-
-            if not api_key:
-                key_config = api_key_manager.get_por_empresa(model.tipo)
-                if key_config:
-                    api_key = key_config.api_key
-                    print(f"[DEBUG] API key obtida via empresa: {model.tipo.value}")
-
-            if not api_key:
-                raise ValueError(
-                    f"Nenhuma API key encontrada para modelo '{model.nome}' (tipo: {model.tipo.value}). "
-                    f"Configure uma API key para {model.tipo.value} em Configurações > API Keys."
-                )
-
-            return {
-                "tipo": model.tipo.value,
-                "api_key": api_key,
-                "modelo": model.get_model_id(),
-                "base_url": model.base_url,
-                "max_tokens": model.max_tokens,
-                "temperature": model.temperature,
-                "suporta_temperature": model.suporta_temperature
-            }
-
-        except ImportError:
-            print("[WARN] chat_service não disponível, tentando ai_registry")
-        except ValueError:
-            # Re-raise ValueError com mensagem clara
-            raise
-        except Exception as e:
-            print(f"[WARN] Erro ao buscar provider via chat_service: {e}")
-
-        # Fallback para ai_registry (sistema legado)
-        if provider_id:
-            # Tentar buscar no ai_registry pelo nome
-            try:
-                provider = ai_registry.get(provider_id)
-            except ValueError:
-                # Listar providers disponíveis
-                providers_disponiveis = ai_registry.list_providers()
-                raise ValueError(
-                    f"Provider '{provider_id}' não encontrado. "
-                    f"Este pode ser um ID de modelo do ambiente local que não existe no Render. "
-                    f"Providers disponíveis no ai_registry: {providers_disponiveis}"
-                )
-        else:
-            provider = ai_registry.get_default()
-
-        if provider:
-            # Detectar tipo real do provider
-            provider_type = "openai"
-            if "Anthropic" in provider.name or "claude" in provider.model.lower():
-                provider_type = "anthropic"
-            elif "Gemini" in provider.name or "gemini" in provider.model.lower():
-                provider_type = "google"
-
-            return {
-                "tipo": provider_type,
-                "api_key": getattr(provider, 'api_key', ''),
-                "modelo": provider.model,
-                "base_url": getattr(provider, 'base_url', None),
-                "max_tokens": 4096,
-                "temperature": 0.7,
-                "suporta_temperature": True
-            }
-
-        raise ValueError(
-            "Nenhum provider de IA configurado. "
-            "Configure um modelo em Configurações > Modelos ou adicione providers via ai_registry."
-        )
+        from chat_service import resolve_provider_config
+        config = resolve_provider_config(provider_id)
+        print(f"[DEBUG] Provider config: tipo={config['tipo']}, modelo={config['modelo']}")
+        return config
     
     def _get_provider_legacy(self, provider_name: str = None):
         """
-        Obtém provider para uso legado.
-        Tenta primeiro via model_manager (IDs tipo '6956e44763a4'),
-        depois via ai_registry (nomes tipo 'gpt-4o-mini').
-
-        IMPORTANTE: NÃO faz fallback automático. Se o provider não for encontrado,
-        retorna erro claro para o usuário corrigir.
+        Obtém provider para uso legado (modo texto).
+        Usa a função unificada resolve_provider_config e converte para objeto Provider.
         """
         from ai_providers import OpenAIProvider, AnthropicProvider, GeminiProvider
+        from chat_service import resolve_provider_config
 
-        if provider_name:
-            # Tentar primeiro via model_manager (sistema novo)
-            try:
-                from chat_service import model_manager, api_key_manager
+        # Usar função unificada para obter config
+        config = resolve_provider_config(provider_name)
 
-                model = model_manager.get(provider_name)
-                if model:
-                    # Obter API key
-                    api_key = None
-                    if model.api_key_id:
-                        key_config = api_key_manager.get(model.api_key_id)
-                        if key_config:
-                            api_key = key_config.api_key
+        # Converter config para objeto Provider
+        tipo = config["tipo"]
+        api_key = config["api_key"]
+        modelo = config["modelo"]
+        base_url = config.get("base_url")
 
-                    if not api_key:
-                        key_config = api_key_manager.get_por_empresa(model.tipo)
-                        if key_config:
-                            api_key = key_config.api_key
-
-                    if not api_key:
-                        raise ValueError(
-                            f"Nenhuma API key encontrada para modelo '{model.nome}' (tipo: {model.tipo.value}). "
-                            f"Configure uma API key para {model.tipo.value} em Configurações > API Keys."
-                        )
-
-                    # Criar provider baseado no tipo
-                    tipo = model.tipo.value
-                    model_id = model.get_model_id()
-
-                    if tipo == "openai":
-                        return OpenAIProvider(api_key=api_key, model=model_id, base_url=model.base_url)
-                    elif tipo == "anthropic":
-                        return AnthropicProvider(api_key=api_key, model=model_id)
-                    elif tipo == "google":
-                        return GeminiProvider(api_key=api_key, model=model_id)
-                    else:
-                        raise ValueError(f"Tipo de provider não suportado: {tipo}")
-                else:
-                    # Model não encontrado no model_manager, listar disponíveis
-                    modelos_disponiveis = [f"{m.id} ({m.nome})" for m in model_manager.listar()]
-                    # Continuar para tentar ai_registry antes de falhar
-                    _logger.debug(f"Modelo '{provider_name}' não encontrado em model_manager. Disponíveis: {modelos_disponiveis}")
-
-            except ImportError:
-                _logger.debug("chat_service não disponível, tentando ai_registry")
-            except ValueError:
-                raise  # Re-raise erros de API key
-
-            # Tentar via ai_registry
-            try:
-                return ai_registry.get(provider_name)
-            except ValueError:
-                # Listar tudo que está disponível para ajudar no debug
-                try:
-                    from chat_service import model_manager
-                    modelos_disponiveis = [f"{m.id} ({m.nome})" for m in model_manager.listar()]
-                except:
-                    modelos_disponiveis = []
-
-                providers_registry = ai_registry.list_providers()
-
-                raise ValueError(
-                    f"Provider '{provider_name}' não encontrado. "
-                    f"Este ID pode ser de outro ambiente (local vs Render). "
-                    f"Modelos em models.json: {modelos_disponiveis if modelos_disponiveis else 'Nenhum'}. "
-                    f"Providers em ai_registry: {providers_registry if providers_registry else 'Nenhum'}."
-                )
-
-        # Se nenhum provider_name foi passado, usar padrão do model_manager
-        try:
-            from chat_service import model_manager, api_key_manager
-
-            model = model_manager.get_default()
-            if model:
-                # Obter API key
-                api_key = None
-                if model.api_key_id:
-                    key_config = api_key_manager.get(model.api_key_id)
-                    if key_config:
-                        api_key = key_config.api_key
-
-                if not api_key:
-                    key_config = api_key_manager.get_por_empresa(model.tipo)
-                    if key_config:
-                        api_key = key_config.api_key
-
-                if not api_key:
-                    raise ValueError(
-                        f"Nenhuma API key encontrada para modelo padrão '{model.nome}' (tipo: {model.tipo.value}). "
-                        f"Configure uma API key em Configurações > API Keys."
-                    )
-
-                # Criar provider
-                tipo = model.tipo.value
-                model_id = model.get_model_id()
-
-                if tipo == "openai":
-                    return OpenAIProvider(api_key=api_key, model=model_id, base_url=model.base_url)
-                elif tipo == "anthropic":
-                    return AnthropicProvider(api_key=api_key, model=model_id)
-                elif tipo == "google":
-                    return GeminiProvider(api_key=api_key, model=model_id)
-        except ImportError:
-            pass
-        except ValueError:
-            raise
-
-        # Último recurso: ai_registry default
-        provider = ai_registry.get_default()
-        if provider:
-            return provider
-
-        raise ValueError(
-            "Nenhum provider de IA configurado. "
-            "Configure um modelo em Configurações > Modelos ou adicione providers via ai_registry."
-        )
+        if tipo == "openai":
+            return OpenAIProvider(api_key=api_key, model=modelo, base_url=base_url)
+        elif tipo == "anthropic":
+            return AnthropicProvider(api_key=api_key, model=modelo)
+        elif tipo == "google":
+            return GeminiProvider(api_key=api_key, model=modelo)
+        else:
+            raise ValueError(f"Tipo de provider não suportado para modo legado: {tipo}")
     
     # ============================================================
     # MÉTODO PRINCIPAL - EXECUTAR ETAPA (LEGADO + MULTIMODAL)
