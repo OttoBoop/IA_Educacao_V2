@@ -120,11 +120,11 @@ function renderChatView(models, materias, alunos) {
                     <div class="context-section">
                         <label class="form-label">Modo de Seleção</label>
                         <div class="context-mode-buttons">
-                            <button class="mode-btn" data-mode="all" onclick="setContextMode('all')">
-                                ✅ Todos
-                            </button>
                             <button class="mode-btn active" data-mode="filtered" onclick="setContextMode('filtered')">
                                 🔍 Filtrar
+                            </button>
+                            <button class="mode-btn" data-mode="all" onclick="setContextMode('all')">
+                                ✅ Todos
                             </button>
                             <button class="mode-btn" data-mode="manual" onclick="setContextMode('manual')">
                                 ✋ Manual
@@ -1597,19 +1597,24 @@ function getSelectedDocumentIds() {
 
 function updateContextStatus() {
     const selected = getSelectedDocumentIds();
-    const total = window.chatState.context.availableDocs.length;
+    const filteredDocs = getFilteredDocuments();
+    const totalFiltered = filteredDocs.length;
+    const totalAll = window.chatState.context.availableDocs.length;
     const statusEl = document.getElementById('context-status');
-    
+
     if (!statusEl) return;
-    
+
     if (selected.length === 0) {
-        statusEl.textContent = '📚 Contexto: Nenhum documento selecionado';
+        statusEl.textContent = '📚 Nenhum documento selecionado';
         statusEl.className = 'context-warning';
-    } else if (selected.length === total) {
-        statusEl.textContent = `📚 Contexto: Todos os ${total} documentos`;
+    } else if (selected.length === totalFiltered && totalFiltered === totalAll) {
+        statusEl.textContent = `📚 Todos os ${totalAll} documentos`;
+        statusEl.className = '';
+    } else if (selected.length === totalFiltered) {
+        statusEl.textContent = `📚 ${selected.length} documentos (todos filtrados)`;
         statusEl.className = '';
     } else {
-        statusEl.textContent = `📚 Contexto: ${selected.length} de ${total} documentos`;
+        statusEl.textContent = `📚 ${selected.length} de ${totalFiltered} documentos`;
         statusEl.className = '';
     }
 }
