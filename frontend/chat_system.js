@@ -11,7 +11,7 @@ window.chatState = {
     
     // Sistema de contexto
     context: {
-        mode: 'all', // 'all', 'filtered', 'manual'
+        mode: 'filtered', // 'all', 'filtered', 'manual'
         filters: {
             materias: null,
             turmas: null,
@@ -120,10 +120,10 @@ function renderChatView(models, materias, alunos) {
                     <div class="context-section">
                         <label class="form-label">Modo de Seleção</label>
                         <div class="context-mode-buttons">
-                            <button class="mode-btn active" data-mode="all" onclick="setContextMode('all')">
+                            <button class="mode-btn" data-mode="all" onclick="setContextMode('all')">
                                 ✅ Todos
                             </button>
-                            <button class="mode-btn" data-mode="filtered" onclick="setContextMode('filtered')">
+                            <button class="mode-btn active" data-mode="filtered" onclick="setContextMode('filtered')">
                                 🔍 Filtrar
                             </button>
                             <button class="mode-btn" data-mode="manual" onclick="setContextMode('manual')">
@@ -133,7 +133,7 @@ function renderChatView(models, materias, alunos) {
                     </div>
                     
                     <!-- Filtros (aparecem no modo 'filtered') -->
-                    <div class="context-filters" id="context-filters" style="display: none;">
+                    <div class="context-filters" id="context-filters" style="display: block;">
                         <!-- Filtro por Alunos -->
                         <div class="filter-group">
                             <label class="form-label">👤 Alunos</label>
@@ -2246,9 +2246,20 @@ function clearAllFilters() {
     // Limpar indicadores visuais
     limparIndicadoresVisuais();
 
-    // Reset turmas e atividades para estado inicial
-    document.getElementById('filter-turmas').innerHTML = '<option value="" disabled>Selecione matéria(s) primeiro</option>';
-    document.getElementById('filter-atividades').innerHTML = '<option value="" disabled>Selecione turma(s) primeiro</option>';
+    // Reset turmas e atividades para estado inicial usando createFilterDropdown
+    createFilterDropdown('filter-turmas-container', [], () => {}, {
+        placeholder: 'Selecione matéria(s) primeiro',
+        emptyText: 'Selecione matéria(s) primeiro'
+    });
+    createFilterDropdown('filter-atividades-container', [], () => {}, {
+        placeholder: 'Selecione turma(s) primeiro',
+        emptyText: 'Selecione turma(s) primeiro'
+    });
+
+    // Limpar cache de turmas e atividades
+    ctx.cache = ctx.cache || {};
+    ctx.cache.turmasDisponiveis = [];
+    ctx.cache.atividadesDisponiveis = [];
 
     updateDocumentsList();
 }
