@@ -372,7 +372,19 @@ class PipelineExecutor:
         if etapa in etapas_requerem_arquivo and not arquivos:
             import logging
             logger = logging.getLogger("pipeline")
-            logger.error(f"FALHA: Etapa {etapa.value} requer arquivos mas nenhum foi encontrado!")
+            
+            # Provide more detailed error message
+            tipo_esperado = {
+                EtapaProcessamento.EXTRAIR_QUESTOES: "ENUNCIADO (arquivo do enunciado da prova)",
+                EtapaProcessamento.EXTRAIR_GABARITO: "GABARITO (arquivo do gabarito da prova)",
+                EtapaProcessamento.EXTRAIR_RESPOSTAS: "PROVA_RESPONDIDA (arquivo da prova respondida pelo aluno)"
+            }
+            
+            tipo_nome = tipo_esperado.get(etapa, f"documento do tipo {etapa.value}")
+            logger.error(f"FALHA: Etapa {etapa.value} requer {tipo_nome} mas nenhum foi encontrado!")
+            logger.error(f"  Atividade ID: {atividade_id}")
+            logger.error(f"  Aluno ID: {aluno_id or 'N/A'}")
+            logger.error(f"  Documentos encontrados: {len(docs_base)} base, {len(docs_aluno)} aluno")
 
             return ResultadoExecucao(
                 sucesso=False,
@@ -381,7 +393,7 @@ class PipelineExecutor:
                 prompt_id=prompt.id,
                 provider=config.get("tipo", "unknown"),
                 modelo=config.get("modelo", "unknown"),
-                erro=f"Arquivo não encontrado para {etapa.value}. Verifique se o documento foi enviado corretamente.",
+                erro=f"Arquivo não encontrado para {etapa.value}. Esperado: {tipo_nome}. Verifique se o documento foi enviado corretamente.",
                 anexos_enviados=[],
                 tempo_ms=(time.time() - inicio) * 1000
             )

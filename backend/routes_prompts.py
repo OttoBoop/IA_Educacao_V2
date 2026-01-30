@@ -403,8 +403,16 @@ def _ler_conteudo_documento(doc) -> str:
 @router.get("/api/documentos/{documento_id}/conteudo", tags=["Documentos"])
 async def get_conteudo_documento(documento_id: str):
     """
-    Retorna o conteúdo de um documento.
+    [LEGACY - CONSIDER UNIFICATION] Retorna o conteúdo de um documento.
     Para JSONs, retorna parseado. Para outros, retorna texto ou info do arquivo.
+
+    ⚠️  UNIFICATION CANDIDATE: Multiple document access endpoints exist.
+    See routes_pipeline.py /api/documentos/{id}/download for full details.
+
+    POTENTIAL ERRORS from unification:
+    - This returns JSON content, others return FileResponse
+    - Different error handling for unsupported file types
+    - JSON parsing errors not handled in other endpoints
     """
     documento = storage.get_documento(documento_id)
     if not documento:
@@ -413,7 +421,15 @@ async def get_conteudo_documento(documento_id: str):
     arquivo = Path(documento.caminho_arquivo)
     
     if not arquivo.exists():
-        raise HTTPException(404, "Arquivo não encontrado no sistema")
+        # File doesn't exist - return info about the missing file
+        return {
+            "documento": documento.to_dict(),
+            "tipo_conteudo": "arquivo_inexistente",
+            "conteudo": None,
+            "erro": "Arquivo não encontrado no sistema de arquivos",
+            "pode_visualizar": False,
+            "caminho_esperado": str(arquivo)
+        }
     
     conteudo = None
     tipo_conteudo = "arquivo"
@@ -424,15 +440,27 @@ async def get_conteudo_documento(documento_id: str):
             with open(arquivo, 'r', encoding='utf-8') as f:
                 conteudo = json.load(f)
             tipo_conteudo = "json"
-        except:
-            pass
+        except Exception as e:
+            return {
+                "documento": documento.to_dict(),
+                "tipo_conteudo": "erro_json",
+                "conteudo": None,
+                "erro": f"Erro ao ler JSON: {str(e)}",
+                "pode_visualizar": False
+            }
     elif documento.extensao.lower() in ['.txt', '.md']:
         try:
             with open(arquivo, 'r', encoding='utf-8') as f:
                 conteudo = f.read()
             tipo_conteudo = "texto"
-        except:
-            pass
+        except Exception as e:
+            return {
+                "documento": documento.to_dict(),
+                "tipo_conteudo": "erro_texto",
+                "conteudo": None,
+                "erro": f"Erro ao ler texto: {str(e)}",
+                "pode_visualizar": False
+            }
     
     return {
         "documento": documento.to_dict(),
@@ -495,10 +523,12 @@ async def listar_providers_disponiveis():
 @router.post("/api/executar/etapa", tags=["Execução"])
 async def executar_etapa(data: ProcessarEtapaRequest):
     """
-    Executa uma etapa específica do pipeline.
+    [LEGACY - CONSIDER UNIFICATION] Executa uma etapa específica do pipeline.
 
     Usa o novo sistema de chat se disponível, senão fallback para executor antigo.
     Suporta prompt_customizado para override do texto do prompt.
+
+    ⚠️  UNIFICATION CANDIDATE: See /api/pipeline/executar in routes_pipeline.py for details
     """
     try:
         etapa = EtapaProcessamento(data.etapa)
@@ -699,17 +729,10 @@ async def executar_pipeline_completo(
     force_rerun: bool = Form(False)
 ):
     """
-    Executa o pipeline completo para um aluno.
+    [LEGACY - CONSIDER UNIFICATION] Executa o pipeline completo para um aluno.
     Executa todas as etapas necessárias em sequência.
 
-    Args:
-        selected_steps: JSON array de etapas a executar. Se vazio, executa todas.
-                        Valores: extrair_questoes, extrair_gabarito, extrair_respostas,
-                                 corrigir, analisar_habilidades, gerar_relatorio
-        force_rerun: Se True, re-executa etapas mesmo que já existam resultados.
-                     Cria nova versão do documento ao invés de sobrescrever.
-        prompt_id: ID do prompt padrão a usar para todas as etapas
-        prompts_per_stage: JSON com prompt_id por etapa (ex: {"extrair_questoes": "abc123"})
+    ⚠️  UNIFICATION CANDIDATE: See /api/pipeline/executar in routes_pipeline.py for details
     """
     from executor import executor
 
@@ -941,7 +964,7 @@ async def executar_lote(
 async def executar_pipeline_turma(
     atividade_id: str = Form(...),
     model_id: Optional[str] = Form(None),
-    provider: Optional[str] = Form(None),
+    provider: Optional[str] = Form(None),  # [LEGACY - MARK FOR DELETION] Provider de IA a usar (opcional, legacy)
     providers: Optional[str] = Form(None),
     prompt_id: Optional[str] = Form(None),
     prompts_per_stage: Optional[str] = Form(None),
@@ -950,12 +973,20 @@ async def executar_pipeline_turma(
     apenas_com_prova: bool = Form(True)  # Apenas alunos que têm prova enviada
 ):
     """
-    Executa o pipeline completo para TODOS os alunos de uma turma.
+    [LEGACY - CONSIDER UNIFICATION] Executa o pipeline completo para TODOS os alunos de uma turma.
+
+    ⚠️  UNIFICATION CANDIDATE: See /api/pipeline/executar in routes_pipeline.py for details
+
+    POTENTIAL ERRORS from unification:
+    - Mass processing could cause timeouts
+    - Resource exhaustion (CPU, memory, API rate limits)
+    - Partial failures leave system in inconsistent state
+    - No rollback mechanism for failed batch operations
 
     Parâmetros:
     - atividade_id: ID da atividade
     - model_id: ID do modelo de IA padrão a usar
-    - provider: Provider de IA a usar (opcional, legacy)
+    - provider: Provider de IA a usar ([LEGACY - MARK FOR DELETION] opcional, legacy)
     - providers: JSON com provider por etapa (opcional)
     - prompt_id: ID do prompt padrão a usar para todas as etapas
     - prompts_per_stage: JSON com prompt_id por etapa (ex: {"extrair_questoes": "abc123"})
