@@ -579,10 +579,18 @@ class PipelineExecutor:
                 logger.warning(f"  Doc {doc.id} ({doc.tipo.value}): caminho vazio")
                 return None
 
+            # IMPORTANTE: Normalizar barras para o sistema operacional atual
+            # Caminhos salvos no Windows podem ter '\', mas no Linux precisam de '/'
+            caminho_normalizado = doc.caminho_arquivo.replace('\\', '/')
+
+            # Remover prefixo 'data/' se existir (evita duplicação: base_path já é /path/to/data)
+            if caminho_normalizado.startswith('data/'):
+                caminho_normalizado = caminho_normalizado[5:]  # Remove 'data/'
+
             # Resolver caminho relativo contra o base_path do storage
-            caminho_relativo = Path(doc.caminho_arquivo)
+            caminho_relativo = Path(caminho_normalizado)
             caminho_absoluto = self.storage.base_path / caminho_relativo
-            
+
             if caminho_absoluto.exists():
                 logger.info(f"  Doc {doc.id} ({doc.tipo.value}): OK - {caminho_absoluto}")
                 return str(caminho_absoluto)
@@ -590,6 +598,8 @@ class PipelineExecutor:
                 logger.error(f"  Doc {doc.id} ({doc.tipo.value}): ARQUIVO NÃO ENCONTRADO")
                 logger.error(f"    Tentei: {caminho_absoluto} (exists={caminho_absoluto.exists()})")
                 logger.error(f"    Base path: {self.storage.base_path}")
+                logger.error(f"    Caminho original: {doc.caminho_arquivo}")
+                logger.error(f"    Caminho normalizado: {caminho_normalizado}")
                 return None
 
         # Mapa de quais documentos cada etapa precisa
