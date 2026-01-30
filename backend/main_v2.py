@@ -21,6 +21,7 @@ from pydantic import BaseModel, Field
 from typing import Optional, List, Dict, Any
 from datetime import datetime
 from pathlib import Path
+from contextlib import asynccontextmanager
 import os
 import json
 import tempfile
@@ -104,6 +105,18 @@ print("="*50 + "\n")
 # APP SETUP
 # ============================================================
 
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """Inicializa providers de IA"""
+    try:
+        setup_providers_from_env()
+        print(f"[OK] Providers carregados: {ai_registry.list_providers()}")
+    except Exception as e:
+        print(f"[ERROR] Erro ao carregar providers: {e}")
+        import traceback
+        traceback.print_exc()
+    yield
+
 app = FastAPI(
     title="Prova AI - Sistema de Correção v2.0",
     description="Sistema de correção automatizada de provas com IA",
@@ -120,12 +133,12 @@ app.add_middleware(
 )
 
 
-@app.middleware("http")
-async def add_trace_id(request: Request, call_next):
-    request.state.trace_id = str(uuid.uuid4())
-    response = await call_next(request)
-    response.headers["X-Trace-Id"] = request.state.trace_id
-    return response
+# @app.middleware("http")
+# async def add_trace_id(request: Request, call_next):
+#     request.state.trace_id = str(uuid.uuid4())
+#     response = await call_next(request)
+#     response.headers["X-Trace-Id"] = request.state.trace_id
+#     return response
 
 
 @app.exception_handler(HTTPException)
@@ -176,6 +189,10 @@ async def unhandled_exception_handler(request: Request, exc: Exception):
         },
     )
 
+# Incluir rotas de chat se disponíveis
+if HAS_CHAT:
+    app.include_router(chat_router)
+
 # Incluir rotas extras se disponíveis
 if HAS_EXTRAS:
     app.include_router(extras_router)
@@ -187,10 +204,6 @@ if HAS_PROMPTS:
 # Incluir rotas de resultados se disponíveis
 if HAS_RESULTADOS:
     app.include_router(resultados_router)
-
-# Incluir rotas de chat se disponíveis
-if HAS_CHAT:
-    app.include_router(chat_router)
 
 # Incluir rotas de pipeline se disponíveis
 if HAS_PIPELINE:
@@ -303,21 +316,7 @@ class VerificacaoRequest(BaseModel):
 
 
 # ============================================================
-# STARTUP
-# ============================================================
-
-@app.on_event("startup")
-async def startup():
-    """Inicializa providers de IA"""
-    try:
-        setup_providers_from_env()
-        print(f"[OK] Providers carregados: {ai_registry.list_providers()}")
-    except Exception as e:
-        print(f"[WARN] Erro ao carregar providers: {e}")
-
-
-# ============================================================
-# ENDPOINTS: MATÉRIAS
+# STARTUP (MOVED TO LIFESPAN)
 # ============================================================
 
 @app.post("/api/materias", tags=["Matérias"])
@@ -656,6 +655,20 @@ async def deletar_documentos_aluno_atividade(atividade_id: str, aluno_id: str):
     return {"success": True, "deleted_count": count, "atividade_id": atividade_id, "aluno_id": aluno_id}
 
 
+@app.delete("/api/atividades/{atividade_id}/alunos/{aluno_id}/documentos/ai", tags=["Documentos"])
+async def deletar_documentos_ai_aluno_atividade(atividade_id: str, aluno_id: str):
+    """Deleta apenas os documentos gerados por IA de um aluno em uma atividade específica"""
+    count = storage.excluir_documentos_ai_aluno_atividade(atividade_id, aluno_id)
+    return {"success": True, "deleted_count": count, "atividade_id": atividade_id, "aluno_id": aluno_id}
+
+
+@app.delete("/api/atividades/{atividade_id}/alunos/{aluno_id}/documentos/questoes", tags=["Documentos"])
+async def resetar_extracoes_questoes_aluno_atividade(atividade_id: str, aluno_id: str):
+    """Reseta as extrações de questões de um aluno em uma atividade específica"""
+    count = storage.resetar_extracoes_questoes_aluno_atividade(atividade_id, aluno_id)
+    return {"success": True, "deleted_count": count, "atividade_id": atividade_id, "aluno_id": aluno_id}
+
+
 @app.put("/api/documentos/{documento_id}/renomear", tags=["Documentos"])
 async def renomear_documento(documento_id: str, novo_nome: str = Form(...)):
     """Renomeia um documento"""
@@ -924,9 +937,9 @@ async def serve_frontend():
 
 
 # Servir arquivos estáticos do frontend
-if FRONTEND_PATH.exists():
-    app.mount("/static", StaticFiles(directory=str(FRONTEND_PATH)), 
-              name="static")
+# if FRONTEND_PATH.exists():
+#     app.mount("/static", StaticFiles(directory=str(FRONTEND_PATH)), 
+#               name="static")
 
 
 # ============================================================

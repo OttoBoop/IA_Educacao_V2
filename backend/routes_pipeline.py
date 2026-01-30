@@ -662,7 +662,7 @@ async def download_resultados_json(atividade_id: str, aluno_id: str = None):
     resultados = {}
     for doc in documentos:
         if doc.extensao == ".json":
-            arquivo = storage.base_path / doc.caminho_arquivo
+            arquivo = storage.resolver_caminho_documento(doc)
             if arquivo.exists():
                 try:
                     with open(arquivo, 'r', encoding='utf-8') as f:
@@ -710,7 +710,7 @@ async def get_texto_extraido(atividade_id: str, aluno_id: str = None):
 
     for doc in docs:
         if doc.tipo.value in tipos_extracao:
-            arquivo = storage.base_path / doc.caminho_arquivo
+            arquivo = storage.resolver_caminho_documento(doc)
             if arquivo.exists():
                 try:
                     with open(arquivo, 'r', encoding='utf-8') as f:
