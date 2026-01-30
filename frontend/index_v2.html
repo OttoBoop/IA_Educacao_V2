@@ -8012,16 +8012,34 @@
                 currentView = 'resultado_aluno';
                 currentAtividade = atividadeId;
                 currentAluno = alunoId;
-                const [resultadoResp, documentosResp] = await Promise.allSettled([
+                const [resultadoResp, documentosResp, atividadeResp, alunoResp] = await Promise.allSettled([
                     api(`/resultados/${atividadeId}/${alunoId}`),
-                    api(`/documentos?atividade_id=${atividadeId}&aluno_id=${alunoId}`)
+                    api(`/documentos?atividade_id=${atividadeId}&aluno_id=${alunoId}`),
+                    api(`/atividades/${atividadeId}`),
+                    api(`/alunos/${alunoId}`)
                 ]);
-                
+
                 // Nova lógica: endpoint agora retorna resultados parciais em vez de 404
                 const resultadoData = resultadoResp.status === 'fulfilled' ? resultadoResp.value : null;
                 const isComplete = resultadoData?.completo === true;
                 const resultado = isComplete ? (resultadoData.resultado || {}) : {};
                 const documentos = documentosResp.status === 'fulfilled' ? (documentosResp.value.documentos || []) : [];
+
+                // Configurar breadcrumb com nome do aluno
+                const atividadeData = atividadeResp.status === 'fulfilled' ? atividadeResp.value : null;
+                const alunoData = alunoResp.status === 'fulfilled' ? alunoResp.value : null;
+                if (atividadeData && alunoData) {
+                    const turmaData = await api(`/turmas/${atividadeData.atividade.turma_id}`);
+                    currentTurma = turmaData.turma.id;
+                    currentMateria = turmaData.materia.id;
+                    setBreadcrumb([
+                        {nome: 'Início', onclick: 'showDashboard()'},
+                        {nome: turmaData.materia.nome, onclick: `showMateria('${turmaData.materia.id}')`},
+                        {nome: turmaData.turma.nome, onclick: `showTurma('${turmaData.turma.id}')`},
+                        {nome: atividadeData.atividade.nome, onclick: `showAtividade('${atividadeId}')`},
+                        {nome: alunoData.aluno.nome, onclick: `showResultadoAluno('${atividadeId}', '${alunoId}')`}
+                    ]);
+                }
                 
                 // Renderizar status do pipeline se não está completo
                 let pipelineStatus = '';
