@@ -235,6 +235,7 @@ async def exportar_pdf(atividade_id: str, aluno_id: str):
     """Exporta resultado completo em formato PDF"""
     from fastapi.responses import Response
     from document_generators import generate_pdf
+    import traceback
 
     # Buscar dados do resultado
     resultado = visualizador.get_resultado_aluno(atividade_id, aluno_id)
@@ -242,13 +243,16 @@ async def exportar_pdf(atividade_id: str, aluno_id: str):
         raise HTTPException(404, "Resultado não encontrado")
 
     # Converter para dict
-    resultado_dict = resultado.to_dict() if hasattr(resultado, 'to_dict') else resultado.__dict__
+    try:
+        resultado_dict = resultado.to_dict() if hasattr(resultado, 'to_dict') else vars(resultado)
+    except Exception as e:
+        raise HTTPException(500, f"Erro ao converter resultado: {str(e)}")
 
     # Buscar info do aluno e atividade para o título
     aluno = storage.get_aluno(aluno_id)
     atividade = storage.get_atividade(atividade_id)
 
-    titulo = f"Relatório - {aluno.nome if aluno else aluno_id}"
+    titulo = f"Relatorio - {aluno.nome if aluno else aluno_id}"
     if atividade:
         titulo = f"{atividade.nome} - {titulo}"
 
@@ -266,7 +270,8 @@ async def exportar_pdf(atividade_id: str, aluno_id: str):
             }
         )
     except Exception as e:
-        raise HTTPException(500, f"Erro ao gerar PDF: {str(e)}")
+        tb = traceback.format_exc()
+        raise HTTPException(500, f"Erro ao gerar PDF: {str(e)}\n{tb}")
 
 
 @router.get("/api/resultados/{atividade_id}/exportar/ranking-csv", tags=["Exportação"])
