@@ -437,7 +437,30 @@ class PipelineExecutor:
         # Renderizar prompt
         prompt_renderizado = prompt.render(**variaveis)
         prompt_sistema_renderizado = prompt.render_sistema(**variaveis) or None
-        
+
+        # IMPORTANTE: Verificar se há arquivos para etapas que REQUEREM arquivos
+        etapas_requerem_arquivo = [
+            EtapaProcessamento.EXTRAIR_QUESTOES,
+            EtapaProcessamento.EXTRAIR_GABARITO,
+            EtapaProcessamento.EXTRAIR_RESPOSTAS
+        ]
+        if etapa in etapas_requerem_arquivo and not arquivos:
+            import logging
+            logger = logging.getLogger("pipeline")
+            logger.error(f"FALHA: Etapa {etapa.value} requer arquivos mas nenhum foi encontrado!")
+
+            return ResultadoExecucao(
+                sucesso=False,
+                etapa=etapa,
+                prompt_usado=prompt_renderizado,
+                prompt_id=prompt.id,
+                provider=config.get("tipo", "unknown"),
+                modelo=config.get("modelo", "unknown"),
+                erro=f"Arquivo não encontrado para {etapa.value}. Verifique se o documento foi enviado corretamente.",
+                anexos_enviados=[],
+                tempo_ms=(time.time() - inicio) * 1000
+            )
+
         # Enviar para IA com anexos
         resultado = await cliente.enviar_com_anexos(
             mensagem=prompt_renderizado,
@@ -517,43 +540,82 @@ class PipelineExecutor:
         aluno_id: Optional[str]
     ) -> List[str]:
         """Coleta arquivos relevantes para uma etapa específica"""
+        import logging
+        logger = logging.getLogger("pipeline")
+
         arquivos = []
-        
+
         # Documentos base da atividade
         docs_base = self.storage.listar_documentos(atividade_id)
-        
+
         # Documentos do aluno (se aplicável)
         docs_aluno = self.storage.listar_documentos(atividade_id, aluno_id) if aluno_id else []
-        
+
+        logger.info(f"Coletando arquivos para {etapa.value}: docs_base={len(docs_base)}, docs_aluno={len(docs_aluno)}")
+
+        def _normalizar_e_verificar(doc) -> Optional[str]:
+            """Normaliza o caminho e verifica se existe"""
+            if not doc.caminho_arquivo:
+                logger.warning(f"  Doc {doc.id} ({doc.tipo.value}): caminho vazio")
+                return None
+
+            # Normalizar caminhos (Windows backslash -> forward slash)
+            caminho = doc.caminho_arquivo.replace('\\', '/')
+            path = Path(caminho)
+
+            if path.exists():
+                logger.info(f"  Doc {doc.id} ({doc.tipo.value}): OK - {caminho}")
+                return str(path)
+            else:
+                # Tentar caminho relativo ao diretório atual
+                cwd_path = Path.cwd() / caminho
+                if cwd_path.exists():
+                    logger.info(f"  Doc {doc.id} ({doc.tipo.value}): OK (cwd) - {cwd_path}")
+                    return str(cwd_path)
+
+                logger.error(f"  Doc {doc.id} ({doc.tipo.value}): ARQUIVO NÃO ENCONTRADO")
+                logger.error(f"    Tentei: {path} (exists={path.exists()})")
+                logger.error(f"    Tentei: {cwd_path} (exists={cwd_path.exists()})")
+                logger.error(f"    CWD: {Path.cwd()}")
+                return None
+
         # Mapa de quais documentos cada etapa precisa
         if etapa == EtapaProcessamento.EXTRAIR_QUESTOES:
             # Precisa do enunciado
             for doc in docs_base:
                 if doc.tipo == TipoDocumento.ENUNCIADO:
-                    if Path(doc.caminho_arquivo).exists():
-                        arquivos.append(doc.caminho_arquivo)
-        
+                    caminho = _normalizar_e_verificar(doc)
+                    if caminho:
+                        arquivos.append(caminho)
+
         elif etapa == EtapaProcessamento.EXTRAIR_GABARITO:
             # Precisa do gabarito
             for doc in docs_base:
                 if doc.tipo == TipoDocumento.GABARITO:
-                    if Path(doc.caminho_arquivo).exists():
-                        arquivos.append(doc.caminho_arquivo)
-        
+                    caminho = _normalizar_e_verificar(doc)
+                    if caminho:
+                        arquivos.append(caminho)
+
         elif etapa == EtapaProcessamento.EXTRAIR_RESPOSTAS:
             # Precisa da prova respondida do aluno
             for doc in docs_aluno:
                 if doc.tipo == TipoDocumento.PROVA_RESPONDIDA:
-                    if Path(doc.caminho_arquivo).exists():
-                        arquivos.append(doc.caminho_arquivo)
-        
+                    caminho = _normalizar_e_verificar(doc)
+                    if caminho:
+                        arquivos.append(caminho)
+
         elif etapa in [EtapaProcessamento.CORRIGIR, EtapaProcessamento.ANALISAR_HABILIDADES]:
             # Pode precisar da prova do aluno para referência visual
             for doc in docs_aluno:
                 if doc.tipo == TipoDocumento.PROVA_RESPONDIDA:
-                    if Path(doc.caminho_arquivo).exists():
-                        arquivos.append(doc.caminho_arquivo)
-        
+                    caminho = _normalizar_e_verificar(doc)
+                    if caminho:
+                        arquivos.append(caminho)
+
+        logger.info(f"Arquivos coletados para {etapa.value}: {len(arquivos)}")
+        if not arquivos:
+            logger.warning(f"ATENÇÃO: Nenhum arquivo encontrado para {etapa.value}!")
+
         return arquivos
     
     def _preparar_contexto_json(
