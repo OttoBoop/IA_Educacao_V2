@@ -2,10 +2,15 @@
 PROVA AI - Sistema de Armazenamento Unificado
 
 Gerencia:
-1. Banco de dados SQLite com estrutura hierárquica
+1. Banco de dados (PostgreSQL em produção, SQLite em desenvolvimento)
 2. Sistema de arquivos organizado por Matéria/Turma/Atividade
 3. Metadados de documentos e processamento
 4. Verificação de dependências
+
+PERSISTÊNCIA:
+- Render tem filesystem efêmero - SQLite é apagado em cada deploy
+- Supabase PostgreSQL persiste entre deployments
+- Auto-detecta: se SUPABASE_URL configurado, usa PostgreSQL
 
 NOTA: Este arquivo é a unificação de storage.py e storage_v2.py
 O antigo storage.py (legado) foi removido em 2026-01-30.
@@ -26,13 +31,24 @@ from models import (
     verificar_dependencias, DEPENDENCIAS_DOCUMENTOS
 )
 
-# Import Supabase storage (para persistência em cloud)
+# Import Supabase storage (para persistência de arquivos em cloud)
 try:
     from supabase_storage import supabase_storage
-    SUPABASE_AVAILABLE = supabase_storage.enabled
+    SUPABASE_STORAGE_AVAILABLE = supabase_storage.enabled
 except ImportError:
     supabase_storage = None
-    SUPABASE_AVAILABLE = False
+    SUPABASE_STORAGE_AVAILABLE = False
+
+# Import Supabase database (para persistência de dados em PostgreSQL)
+try:
+    from supabase_db import supabase_db
+    SUPABASE_DB_AVAILABLE = supabase_db.enabled
+except ImportError:
+    supabase_db = None
+    SUPABASE_DB_AVAILABLE = False
+
+# Legacy alias for backward compatibility
+SUPABASE_AVAILABLE = SUPABASE_STORAGE_AVAILABLE
 
 
 # Diretório base para paths absolutos (compatível com Render)
@@ -42,6 +58,10 @@ BASE_DIR = Path(__file__).parent
 class StorageManager:
     """
     Gerenciador de armazenamento unificado.
+
+    BACKEND:
+        - PostgreSQL (Supabase): Usado em produção, persiste entre deploys
+        - SQLite: Usado em desenvolvimento local
 
     Estrutura de diretórios:
         data/
@@ -60,9 +80,9 @@ class StorageManager:
         │                   ├── correcao.json
         │                   └── relatorio.pdf
         │
-        └── database.db                      # SQLite
+        └── database.db                      # SQLite (apenas para dev local)
     """
-    
+
     def __init__(self, base_path: str = None):
         # Usar path absoluto baseado em __file__ para compatibilidade com Render
         if base_path is None:
@@ -70,9 +90,18 @@ class StorageManager:
         self.base_path = Path(base_path)
         self.arquivos_path = self.base_path / "arquivos"
         self.db_path = self.base_path / "database.db"
-        
+
+        # Determinar backend: PostgreSQL ou SQLite
+        self.use_postgresql = SUPABASE_DB_AVAILABLE
+        if self.use_postgresql:
+            print("[Storage] Usando PostgreSQL (Supabase) - dados persistem entre deploys")
+        else:
+            print("[Storage] Usando SQLite (local) - AVISO: dados perdidos em deploy no Render")
+
         self._setup_directories()
-        self._setup_database()
+        if not self.use_postgresql:
+            # SQLite precisa de setup local
+            self._setup_database()
     
     # ============================================================
     # SETUP
@@ -255,7 +284,7 @@ class StorageManager:
     # ============================================================
     # CRUD: MATÉRIAS
     # ============================================================
-    
+
     def criar_materia(self, nome: str, descricao: str = None, nivel: NivelEnsino = NivelEnsino.OUTRO) -> Materia:
         """Cria uma nova matéria"""
         materia = Materia(
@@ -264,108 +293,141 @@ class StorageManager:
             descricao=descricao,
             nivel=nivel
         )
-        
-        conn = self._get_connection()
-        c = conn.cursor()
-        c.execute('''
-            INSERT INTO materias (id, nome, descricao, nivel, criado_em, atualizado_em, metadata)
-            VALUES (?, ?, ?, ?, ?, ?, ?)
-        ''', (
-            materia.id, materia.nome, materia.descricao, materia.nivel.value,
-            materia.criado_em.isoformat(), materia.atualizado_em.isoformat(),
-            json.dumps(materia.metadata)
-        ))
-        conn.commit()
-        conn.close()
-        
+
+        if self.use_postgresql:
+            data = {
+                "id": materia.id,
+                "nome": materia.nome,
+                "descricao": materia.descricao,
+                "nivel": materia.nivel.value,
+                "criado_em": materia.criado_em.isoformat(),
+                "atualizado_em": materia.atualizado_em.isoformat(),
+                "metadata": materia.metadata
+            }
+            supabase_db.insert("materias", data)
+        else:
+            conn = self._get_connection()
+            c = conn.cursor()
+            c.execute('''
+                INSERT INTO materias (id, nome, descricao, nivel, criado_em, atualizado_em, metadata)
+                VALUES (?, ?, ?, ?, ?, ?, ?)
+            ''', (
+                materia.id, materia.nome, materia.descricao, materia.nivel.value,
+                materia.criado_em.isoformat(), materia.atualizado_em.isoformat(),
+                json.dumps(materia.metadata)
+            ))
+            conn.commit()
+            conn.close()
+
         # Criar diretório da matéria
         (self.arquivos_path / materia.id).mkdir(exist_ok=True)
-        
+
         return materia
-    
+
     def get_materia(self, materia_id: str) -> Optional[Materia]:
         """Busca matéria por ID"""
-        conn = self._get_connection()
-        c = conn.cursor()
-        c.execute('SELECT * FROM materias WHERE id = ?', (materia_id,))
-        row = c.fetchone()
-        conn.close()
-        
-        if not row:
-            return None
-        
-        return Materia.from_dict(dict(row))
-    
+        if self.use_postgresql:
+            row = supabase_db.select_one("materias", materia_id)
+            if not row:
+                return None
+            return Materia.from_dict(row)
+        else:
+            conn = self._get_connection()
+            c = conn.cursor()
+            c.execute('SELECT * FROM materias WHERE id = ?', (materia_id,))
+            row = c.fetchone()
+            conn.close()
+
+            if not row:
+                return None
+
+            return Materia.from_dict(dict(row))
+
     def listar_materias(self) -> List[Materia]:
         """Lista todas as matérias"""
-        conn = self._get_connection()
-        c = conn.cursor()
-        c.execute('SELECT * FROM materias ORDER BY nome')
-        rows = c.fetchall()
-        conn.close()
-        
-        return [Materia.from_dict(dict(row)) for row in rows]
-    
+        if self.use_postgresql:
+            rows = supabase_db.select("materias", order_by="nome")
+            return [Materia.from_dict(row) for row in rows]
+        else:
+            conn = self._get_connection()
+            c = conn.cursor()
+            c.execute('SELECT * FROM materias ORDER BY nome')
+            rows = c.fetchall()
+            conn.close()
+
+            return [Materia.from_dict(dict(row)) for row in rows]
+
     def atualizar_materia(self, materia_id: str, **kwargs) -> Optional[Materia]:
         """Atualiza campos de uma matéria"""
         materia = self.get_materia(materia_id)
         if not materia:
             return None
-        
+
         campos_permitidos = ['nome', 'descricao', 'nivel', 'metadata']
-        updates = []
-        valores = []
-        
+        update_data = {}
+
         for campo, valor in kwargs.items():
             if campo in campos_permitidos:
                 if campo == 'nivel' and isinstance(valor, NivelEnsino):
                     valor = valor.value
-                elif campo == 'metadata':
+                update_data[campo] = valor
+
+        if not update_data:
+            return materia
+
+        if self.use_postgresql:
+            supabase_db.update("materias", materia_id, update_data)
+        else:
+            updates = []
+            valores = []
+
+            for campo, valor in update_data.items():
+                if campo == 'metadata':
                     valor = json.dumps(valor)
                 updates.append(f"{campo} = ?")
                 valores.append(valor)
-        
-        if not updates:
-            return materia
-        
-        updates.append("atualizado_em = ?")
-        valores.append(datetime.now().isoformat())
-        valores.append(materia_id)
-        
-        conn = self._get_connection()
-        c = conn.cursor()
-        c.execute(f"UPDATE materias SET {', '.join(updates)} WHERE id = ?", valores)
-        conn.commit()
-        conn.close()
-        
+
+            updates.append("atualizado_em = ?")
+            valores.append(datetime.now().isoformat())
+            valores.append(materia_id)
+
+            conn = self._get_connection()
+            c = conn.cursor()
+            c.execute(f"UPDATE materias SET {', '.join(updates)} WHERE id = ?", valores)
+            conn.commit()
+            conn.close()
+
         return self.get_materia(materia_id)
-    
+
     def deletar_materia(self, materia_id: str) -> bool:
         """Deleta matéria e todos os dados relacionados"""
-        conn = self._get_connection()
-        c = conn.cursor()
-        c.execute('DELETE FROM materias WHERE id = ?', (materia_id,))
-        affected = c.rowcount
-        conn.commit()
-        conn.close()
-        
+        if self.use_postgresql:
+            success = supabase_db.delete("materias", materia_id)
+        else:
+            conn = self._get_connection()
+            c = conn.cursor()
+            c.execute('DELETE FROM materias WHERE id = ?', (materia_id,))
+            success = c.rowcount > 0
+            conn.commit()
+            conn.close()
+
         # Remover diretório
         dir_path = self.arquivos_path / materia_id
         if dir_path.exists():
             shutil.rmtree(dir_path)
-        
-        return affected > 0
+
+        return success
     
     # ============================================================
     # CRUD: TURMAS
     # ============================================================
-    
-    def criar_turma(self, materia_id: str, nome: str, ano_letivo: int = None, 
+
+    def criar_turma(self, materia_id: str, nome: str, ano_letivo: int = None,
                     periodo: str = None, descricao: str = None) -> Optional[Turma]:
         """Cria uma nova turma dentro de uma matéria"""
         if not self.get_materia(materia_id):
             return None
-        
+
         turma = Turma(
             id=self._generate_id("turma", materia_id, nome),
             materia_id=materia_id,
@@ -374,76 +436,104 @@ class StorageManager:
             periodo=periodo,
             descricao=descricao
         )
-        
-        conn = self._get_connection()
-        c = conn.cursor()
-        c.execute('''
-            INSERT INTO turmas (id, materia_id, nome, ano_letivo, periodo, descricao, criado_em, atualizado_em, metadata)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-        ''', (
-            turma.id, turma.materia_id, turma.nome, turma.ano_letivo, turma.periodo,
-            turma.descricao, turma.criado_em.isoformat(), turma.atualizado_em.isoformat(),
-            json.dumps(turma.metadata)
-        ))
-        conn.commit()
-        conn.close()
-        
+
+        if self.use_postgresql:
+            data = {
+                "id": turma.id,
+                "materia_id": turma.materia_id,
+                "nome": turma.nome,
+                "ano_letivo": turma.ano_letivo,
+                "periodo": turma.periodo,
+                "descricao": turma.descricao,
+                "criado_em": turma.criado_em.isoformat(),
+                "atualizado_em": turma.atualizado_em.isoformat(),
+                "metadata": turma.metadata
+            }
+            supabase_db.insert("turmas", data)
+        else:
+            conn = self._get_connection()
+            c = conn.cursor()
+            c.execute('''
+                INSERT INTO turmas (id, materia_id, nome, ano_letivo, periodo, descricao, criado_em, atualizado_em, metadata)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ''', (
+                turma.id, turma.materia_id, turma.nome, turma.ano_letivo, turma.periodo,
+                turma.descricao, turma.criado_em.isoformat(), turma.atualizado_em.isoformat(),
+                json.dumps(turma.metadata)
+            ))
+            conn.commit()
+            conn.close()
+
         # Criar diretório da turma
         (self.arquivos_path / materia_id / turma.id).mkdir(parents=True, exist_ok=True)
-        
+
         return turma
-    
+
     def get_turma(self, turma_id: str) -> Optional[Turma]:
         """Busca turma por ID"""
-        conn = self._get_connection()
-        c = conn.cursor()
-        c.execute('SELECT * FROM turmas WHERE id = ?', (turma_id,))
-        row = c.fetchone()
-        conn.close()
-        
-        if not row:
-            return None
-        
-        return Turma.from_dict(dict(row))
-    
+        if self.use_postgresql:
+            row = supabase_db.select_one("turmas", turma_id)
+            if not row:
+                return None
+            return Turma.from_dict(row)
+        else:
+            conn = self._get_connection()
+            c = conn.cursor()
+            c.execute('SELECT * FROM turmas WHERE id = ?', (turma_id,))
+            row = c.fetchone()
+            conn.close()
+
+            if not row:
+                return None
+
+            return Turma.from_dict(dict(row))
+
     def listar_turmas(self, materia_id: str = None) -> List[Turma]:
         """Lista turmas, opcionalmente filtradas por matéria"""
-        conn = self._get_connection()
-        c = conn.cursor()
-        
-        if materia_id:
-            c.execute('SELECT * FROM turmas WHERE materia_id = ? ORDER BY ano_letivo DESC, nome', (materia_id,))
+        if self.use_postgresql:
+            filters = {"materia_id": materia_id} if materia_id else None
+            rows = supabase_db.select("turmas", filters=filters, order_by="nome")
+            return [Turma.from_dict(row) for row in rows]
         else:
-            c.execute('SELECT * FROM turmas ORDER BY ano_letivo DESC, nome')
-        
-        rows = c.fetchall()
-        conn.close()
-        
-        return [Turma.from_dict(dict(row)) for row in rows]
-    
+            conn = self._get_connection()
+            c = conn.cursor()
+
+            if materia_id:
+                c.execute('SELECT * FROM turmas WHERE materia_id = ? ORDER BY ano_letivo DESC, nome', (materia_id,))
+            else:
+                c.execute('SELECT * FROM turmas ORDER BY ano_letivo DESC, nome')
+
+            rows = c.fetchall()
+            conn.close()
+
+            return [Turma.from_dict(dict(row)) for row in rows]
+
     def deletar_turma(self, turma_id: str) -> bool:
         """Deleta turma e todos os dados relacionados"""
         turma = self.get_turma(turma_id)
         if not turma:
             return False
-        
-        conn = self._get_connection()
-        c = conn.cursor()
-        c.execute('DELETE FROM turmas WHERE id = ?', (turma_id,))
-        conn.commit()
-        conn.close()
-        
+
+        if self.use_postgresql:
+            supabase_db.delete("turmas", turma_id)
+        else:
+            conn = self._get_connection()
+            c = conn.cursor()
+            c.execute('DELETE FROM turmas WHERE id = ?', (turma_id,))
+            conn.commit()
+            conn.close()
+
         # Remover diretório
         dir_path = self.arquivos_path / turma.materia_id / turma_id
         if dir_path.exists():
             shutil.rmtree(dir_path)
-        
+
         return True
     
     # ============================================================
     # CRUD: ALUNOS
     # ============================================================
-    
+
     def criar_aluno(self, nome: str, email: str = None, matricula: str = None) -> Aluno:
         """Cria um novo aluno"""
         aluno = Aluno(
@@ -452,186 +542,284 @@ class StorageManager:
             email=email,
             matricula=matricula
         )
-        
-        conn = self._get_connection()
-        c = conn.cursor()
-        c.execute('''
-            INSERT INTO alunos (id, nome, email, matricula, criado_em, atualizado_em, metadata)
-            VALUES (?, ?, ?, ?, ?, ?, ?)
-        ''', (
-            aluno.id, aluno.nome, aluno.email, aluno.matricula,
-            aluno.criado_em.isoformat(), aluno.atualizado_em.isoformat(),
-            json.dumps(aluno.metadata)
-        ))
-        conn.commit()
-        conn.close()
-        
+
+        if self.use_postgresql:
+            data = {
+                "id": aluno.id,
+                "nome": aluno.nome,
+                "email": aluno.email,
+                "matricula": aluno.matricula,
+                "criado_em": aluno.criado_em.isoformat(),
+                "atualizado_em": aluno.atualizado_em.isoformat(),
+                "metadata": aluno.metadata
+            }
+            supabase_db.insert("alunos", data)
+        else:
+            conn = self._get_connection()
+            c = conn.cursor()
+            c.execute('''
+                INSERT INTO alunos (id, nome, email, matricula, criado_em, atualizado_em, metadata)
+                VALUES (?, ?, ?, ?, ?, ?, ?)
+            ''', (
+                aluno.id, aluno.nome, aluno.email, aluno.matricula,
+                aluno.criado_em.isoformat(), aluno.atualizado_em.isoformat(),
+                json.dumps(aluno.metadata)
+            ))
+            conn.commit()
+            conn.close()
+
         return aluno
-    
+
     def get_aluno(self, aluno_id: str) -> Optional[Aluno]:
         """Busca aluno por ID"""
-        conn = self._get_connection()
-        c = conn.cursor()
-        c.execute('SELECT * FROM alunos WHERE id = ?', (aluno_id,))
-        row = c.fetchone()
-        conn.close()
-        
-        if not row:
-            return None
-        
-        return Aluno.from_dict(dict(row))
-    
+        if self.use_postgresql:
+            row = supabase_db.select_one("alunos", aluno_id)
+            if not row:
+                return None
+            return Aluno.from_dict(row)
+        else:
+            conn = self._get_connection()
+            c = conn.cursor()
+            c.execute('SELECT * FROM alunos WHERE id = ?', (aluno_id,))
+            row = c.fetchone()
+            conn.close()
+
+            if not row:
+                return None
+
+            return Aluno.from_dict(dict(row))
+
     def listar_alunos(self, turma_id: str = None) -> List[Aluno]:
         """Lista alunos, opcionalmente filtrados por turma"""
-        conn = self._get_connection()
-        c = conn.cursor()
-        
-        if turma_id:
-            c.execute('''
-                SELECT a.* FROM alunos a
-                JOIN alunos_turmas at ON a.id = at.aluno_id
-                WHERE at.turma_id = ? AND at.ativo = 1
-                ORDER BY a.nome
-            ''', (turma_id,))
+        if self.use_postgresql:
+            if turma_id:
+                # Get aluno IDs from vinculos first
+                vinculos = supabase_db.select("alunos_turmas",
+                    filters={"turma_id": turma_id, "ativo": True})
+                aluno_ids = [v["aluno_id"] for v in vinculos]
+                if not aluno_ids:
+                    return []
+                # Get alunos
+                alunos = []
+                for aluno_id in aluno_ids:
+                    aluno = self.get_aluno(aluno_id)
+                    if aluno:
+                        alunos.append(aluno)
+                return sorted(alunos, key=lambda a: a.nome)
+            else:
+                rows = supabase_db.select("alunos", order_by="nome")
+                return [Aluno.from_dict(row) for row in rows]
         else:
-            c.execute('SELECT * FROM alunos ORDER BY nome')
-        
-        rows = c.fetchall()
-        conn.close()
-        
-        return [Aluno.from_dict(dict(row)) for row in rows]
-    
+            conn = self._get_connection()
+            c = conn.cursor()
+
+            if turma_id:
+                c.execute('''
+                    SELECT a.* FROM alunos a
+                    JOIN alunos_turmas at ON a.id = at.aluno_id
+                    WHERE at.turma_id = ? AND at.ativo = 1
+                    ORDER BY a.nome
+                ''', (turma_id,))
+            else:
+                c.execute('SELECT * FROM alunos ORDER BY nome')
+
+            rows = c.fetchall()
+            conn.close()
+
+            return [Aluno.from_dict(dict(row)) for row in rows]
+
     def deletar_aluno(self, aluno_id: str) -> bool:
         """Deleta um aluno e todos os seus vínculos"""
         aluno = self.get_aluno(aluno_id)
         if not aluno:
             return False
-        
-        conn = self._get_connection()
-        c = conn.cursor()
-        
-        # Remove vínculos com turmas
-        c.execute('DELETE FROM alunos_turmas WHERE aluno_id = ?', (aluno_id,))
-        
-        # Remove documentos do aluno (opcional: pode querer manter)
-        c.execute('DELETE FROM documentos WHERE aluno_id = ?', (aluno_id,))
-        
-        # Remove resultados
-        c.execute('DELETE FROM resultados WHERE aluno_id = ?', (aluno_id,))
-        
-        # Remove o aluno
-        c.execute('DELETE FROM alunos WHERE id = ?', (aluno_id,))
-        affected = c.rowcount
-        
-        conn.commit()
-        conn.close()
-        
-        return affected > 0
-    
+
+        if self.use_postgresql:
+            # CASCADE should handle related records, but be explicit
+            supabase_db.delete_where("alunos_turmas", {"aluno_id": aluno_id})
+            supabase_db.delete_where("documentos", {"aluno_id": aluno_id})
+            supabase_db.delete_where("resultados", {"aluno_id": aluno_id})
+            supabase_db.delete("alunos", aluno_id)
+            return True
+        else:
+            conn = self._get_connection()
+            c = conn.cursor()
+
+            # Remove vínculos com turmas
+            c.execute('DELETE FROM alunos_turmas WHERE aluno_id = ?', (aluno_id,))
+
+            # Remove documentos do aluno (opcional: pode querer manter)
+            c.execute('DELETE FROM documentos WHERE aluno_id = ?', (aluno_id,))
+
+            # Remove resultados
+            c.execute('DELETE FROM resultados WHERE aluno_id = ?', (aluno_id,))
+
+            # Remove o aluno
+            c.execute('DELETE FROM alunos WHERE id = ?', (aluno_id,))
+            affected = c.rowcount
+
+            conn.commit()
+            conn.close()
+
+            return affected > 0
+
     def atualizar_aluno(self, aluno_id: str, **kwargs) -> Optional[Aluno]:
         """Atualiza campos de um aluno"""
         aluno = self.get_aluno(aluno_id)
         if not aluno:
             return None
-        
+
         campos_permitidos = ['nome', 'email', 'matricula', 'metadata']
-        updates = []
-        valores = []
-        
+        update_data = {}
+
         for campo, valor in kwargs.items():
             if campo in campos_permitidos:
+                update_data[campo] = valor
+
+        if not update_data:
+            return aluno
+
+        if self.use_postgresql:
+            supabase_db.update("alunos", aluno_id, update_data)
+        else:
+            updates = []
+            valores = []
+
+            for campo, valor in update_data.items():
                 if campo == 'metadata':
                     valor = json.dumps(valor)
                 updates.append(f"{campo} = ?")
                 valores.append(valor)
-        
-        if not updates:
-            return aluno
-        
-        updates.append("atualizado_em = ?")
-        valores.append(datetime.now().isoformat())
-        valores.append(aluno_id)
-        
-        conn = self._get_connection()
-        c = conn.cursor()
-        c.execute(f"UPDATE alunos SET {', '.join(updates)} WHERE id = ?", valores)
-        conn.commit()
-        conn.close()
-        
+
+            updates.append("atualizado_em = ?")
+            valores.append(datetime.now().isoformat())
+            valores.append(aluno_id)
+
+            conn = self._get_connection()
+            c = conn.cursor()
+            c.execute(f"UPDATE alunos SET {', '.join(updates)} WHERE id = ?", valores)
+            conn.commit()
+            conn.close()
+
         return self.get_aluno(aluno_id)
-    
+
     def vincular_aluno_turma(self, aluno_id: str, turma_id: str, observacoes: str = None) -> Optional[AlunoTurma]:
         """Vincula um aluno a uma turma"""
         if not self.get_aluno(aluno_id) or not self.get_turma(turma_id):
             return None
-        
+
         vinculo = AlunoTurma(
             id=self._generate_id("vinculo", aluno_id, turma_id),
             aluno_id=aluno_id,
             turma_id=turma_id,
             observacoes=observacoes
         )
-        
-        conn = self._get_connection()
-        c = conn.cursor()
-        
-        try:
-            c.execute('''
-                INSERT INTO alunos_turmas (id, aluno_id, turma_id, ativo, data_entrada, observacoes)
-                VALUES (?, ?, ?, ?, ?, ?)
-            ''', (
-                vinculo.id, vinculo.aluno_id, vinculo.turma_id,
-                1, vinculo.data_entrada.isoformat(), vinculo.observacoes
-            ))
-            conn.commit()
-        except sqlite3.IntegrityError:
-            # Vínculo já existe
+
+        if self.use_postgresql:
+            data = {
+                "id": vinculo.id,
+                "aluno_id": vinculo.aluno_id,
+                "turma_id": vinculo.turma_id,
+                "ativo": True,
+                "data_entrada": vinculo.data_entrada.isoformat(),
+                "observacoes": vinculo.observacoes
+            }
+            result = supabase_db.insert("alunos_turmas", data)
+            if not result:
+                return None  # Likely duplicate
+        else:
+            conn = self._get_connection()
+            c = conn.cursor()
+
+            try:
+                c.execute('''
+                    INSERT INTO alunos_turmas (id, aluno_id, turma_id, ativo, data_entrada, observacoes)
+                    VALUES (?, ?, ?, ?, ?, ?)
+                ''', (
+                    vinculo.id, vinculo.aluno_id, vinculo.turma_id,
+                    1, vinculo.data_entrada.isoformat(), vinculo.observacoes
+                ))
+                conn.commit()
+            except sqlite3.IntegrityError:
+                # Vínculo já existe
+                conn.close()
+                return None
+
             conn.close()
-            return None
-        
-        conn.close()
+
         return vinculo
-    
+
     def desvincular_aluno_turma(self, aluno_id: str, turma_id: str) -> bool:
         """Remove vínculo aluno-turma (soft delete)"""
-        conn = self._get_connection()
-        c = conn.cursor()
-        c.execute('''
-            UPDATE alunos_turmas 
-            SET ativo = 0, data_saida = ?
-            WHERE aluno_id = ? AND turma_id = ?
-        ''', (datetime.now().isoformat(), aluno_id, turma_id))
-        affected = c.rowcount
-        conn.commit()
-        conn.close()
-        return affected > 0
-    
+        if self.use_postgresql:
+            # Find the vinculo and update it
+            vinculos = supabase_db.select("alunos_turmas",
+                filters={"aluno_id": aluno_id, "turma_id": turma_id})
+            if vinculos:
+                supabase_db.update("alunos_turmas", vinculos[0]["id"], {
+                    "ativo": False,
+                    "data_saida": datetime.now().isoformat()
+                })
+                return True
+            return False
+        else:
+            conn = self._get_connection()
+            c = conn.cursor()
+            c.execute('''
+                UPDATE alunos_turmas
+                SET ativo = 0, data_saida = ?
+                WHERE aluno_id = ? AND turma_id = ?
+            ''', (datetime.now().isoformat(), aluno_id, turma_id))
+            affected = c.rowcount
+            conn.commit()
+            conn.close()
+            return affected > 0
+
     def get_turmas_do_aluno(self, aluno_id: str, apenas_ativas: bool = True) -> List[Dict[str, Any]]:
         """Retorna todas as turmas de um aluno, com info da matéria"""
-        conn = self._get_connection()
-        c = conn.cursor()
-        
-        query = '''
-            SELECT t.*, m.nome as materia_nome, at.observacoes, at.data_entrada
-            FROM turmas t
-            JOIN alunos_turmas at ON t.id = at.turma_id
-            JOIN materias m ON t.materia_id = m.id
-            WHERE at.aluno_id = ?
-        '''
-        if apenas_ativas:
-            query += ' AND at.ativo = 1'
-        query += ' ORDER BY m.nome, t.ano_letivo DESC'
-        
-        c.execute(query, (aluno_id,))
-        rows = c.fetchall()
-        conn.close()
-        
-        return [dict(row) for row in rows]
+        if self.use_postgresql:
+            # Get vinculos
+            filters = {"aluno_id": aluno_id}
+            if apenas_ativas:
+                filters["ativo"] = True
+            vinculos = supabase_db.select("alunos_turmas", filters=filters)
+
+            result = []
+            for v in vinculos:
+                turma = self.get_turma(v["turma_id"])
+                if turma:
+                    materia = self.get_materia(turma.materia_id)
+                    turma_dict = turma.to_dict()
+                    turma_dict["materia_nome"] = materia.nome if materia else ""
+                    turma_dict["observacoes"] = v.get("observacoes")
+                    turma_dict["data_entrada"] = v.get("data_entrada")
+                    result.append(turma_dict)
+            return result
+        else:
+            conn = self._get_connection()
+            c = conn.cursor()
+
+            query = '''
+                SELECT t.*, m.nome as materia_nome, at.observacoes, at.data_entrada
+                FROM turmas t
+                JOIN alunos_turmas at ON t.id = at.turma_id
+                JOIN materias m ON t.materia_id = m.id
+                WHERE at.aluno_id = ?
+            '''
+            if apenas_ativas:
+                query += ' AND at.ativo = 1'
+            query += ' ORDER BY m.nome, t.ano_letivo DESC'
+
+            c.execute(query, (aluno_id,))
+            rows = c.fetchall()
+            conn.close()
+
+            return [dict(row) for row in rows]
     
     # ============================================================
     # CRUD: ATIVIDADES
     # ============================================================
-    
+
     def criar_atividade(self, turma_id: str, nome: str, tipo: str = None,
                         data_aplicacao: datetime = None, nota_maxima: float = 10.0,
                         descricao: str = None) -> Optional[Atividade]:
@@ -639,7 +827,7 @@ class StorageManager:
         turma = self.get_turma(turma_id)
         if not turma:
             return None
-        
+
         atividade = Atividade(
             id=self._generate_id("atividade", turma_id, nome),
             turma_id=turma_id,
@@ -649,74 +837,104 @@ class StorageManager:
             nota_maxima=nota_maxima,
             descricao=descricao
         )
-        
-        conn = self._get_connection()
-        c = conn.cursor()
-        c.execute('''
-            INSERT INTO atividades (id, turma_id, nome, tipo, data_aplicacao, data_entrega, peso, nota_maxima, descricao, criado_em, atualizado_em, metadata)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-        ''', (
-            atividade.id, atividade.turma_id, atividade.nome, atividade.tipo,
-            atividade.data_aplicacao.isoformat() if atividade.data_aplicacao else None,
-            atividade.data_entrega.isoformat() if atividade.data_entrega else None,
-            atividade.peso, atividade.nota_maxima, atividade.descricao,
-            atividade.criado_em.isoformat(), atividade.atualizado_em.isoformat(),
-            json.dumps(atividade.metadata)
-        ))
-        conn.commit()
-        conn.close()
-        
+
+        if self.use_postgresql:
+            data = {
+                "id": atividade.id,
+                "turma_id": atividade.turma_id,
+                "nome": atividade.nome,
+                "tipo": atividade.tipo,
+                "data_aplicacao": atividade.data_aplicacao.isoformat() if atividade.data_aplicacao else None,
+                "data_entrega": atividade.data_entrega.isoformat() if atividade.data_entrega else None,
+                "peso": atividade.peso,
+                "nota_maxima": atividade.nota_maxima,
+                "descricao": atividade.descricao,
+                "criado_em": atividade.criado_em.isoformat(),
+                "atualizado_em": atividade.atualizado_em.isoformat(),
+                "metadata": atividade.metadata
+            }
+            supabase_db.insert("atividades", data)
+        else:
+            conn = self._get_connection()
+            c = conn.cursor()
+            c.execute('''
+                INSERT INTO atividades (id, turma_id, nome, tipo, data_aplicacao, data_entrega, peso, nota_maxima, descricao, criado_em, atualizado_em, metadata)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ''', (
+                atividade.id, atividade.turma_id, atividade.nome, atividade.tipo,
+                atividade.data_aplicacao.isoformat() if atividade.data_aplicacao else None,
+                atividade.data_entrega.isoformat() if atividade.data_entrega else None,
+                atividade.peso, atividade.nota_maxima, atividade.descricao,
+                atividade.criado_em.isoformat(), atividade.atualizado_em.isoformat(),
+                json.dumps(atividade.metadata)
+            ))
+            conn.commit()
+            conn.close()
+
         # Criar diretório da atividade
         materia_id = turma.materia_id
         ativ_path = self.arquivos_path / materia_id / turma_id / atividade.id
         ativ_path.mkdir(parents=True, exist_ok=True)
         (ativ_path / "_base").mkdir(exist_ok=True)  # Pasta para documentos base
-        
+
         return atividade
-    
+
     def get_atividade(self, atividade_id: str) -> Optional[Atividade]:
         """Busca atividade por ID"""
-        conn = self._get_connection()
-        c = conn.cursor()
-        c.execute('SELECT * FROM atividades WHERE id = ?', (atividade_id,))
-        row = c.fetchone()
-        conn.close()
-        
-        if not row:
-            return None
-        
-        return Atividade.from_dict(dict(row))
-    
+        if self.use_postgresql:
+            row = supabase_db.select_one("atividades", atividade_id)
+            if not row:
+                return None
+            return Atividade.from_dict(row)
+        else:
+            conn = self._get_connection()
+            c = conn.cursor()
+            c.execute('SELECT * FROM atividades WHERE id = ?', (atividade_id,))
+            row = c.fetchone()
+            conn.close()
+
+            if not row:
+                return None
+
+            return Atividade.from_dict(dict(row))
+
     def listar_atividades(self, turma_id: str) -> List[Atividade]:
         """Lista atividades de uma turma"""
-        conn = self._get_connection()
-        c = conn.cursor()
-        c.execute('SELECT * FROM atividades WHERE turma_id = ? ORDER BY data_aplicacao DESC, nome', (turma_id,))
-        rows = c.fetchall()
-        conn.close()
-        
-        return [Atividade.from_dict(dict(row)) for row in rows]
-    
+        if self.use_postgresql:
+            rows = supabase_db.select("atividades", filters={"turma_id": turma_id}, order_by="nome")
+            return [Atividade.from_dict(row) for row in rows]
+        else:
+            conn = self._get_connection()
+            c = conn.cursor()
+            c.execute('SELECT * FROM atividades WHERE turma_id = ? ORDER BY data_aplicacao DESC, nome', (turma_id,))
+            rows = c.fetchall()
+            conn.close()
+
+            return [Atividade.from_dict(dict(row)) for row in rows]
+
     def deletar_atividade(self, atividade_id: str) -> bool:
         """Deleta atividade e todos os documentos"""
         atividade = self.get_atividade(atividade_id)
         if not atividade:
             return False
-        
+
         turma = self.get_turma(atividade.turma_id)
-        
-        conn = self._get_connection()
-        c = conn.cursor()
-        c.execute('DELETE FROM atividades WHERE id = ?', (atividade_id,))
-        conn.commit()
-        conn.close()
-        
+
+        if self.use_postgresql:
+            supabase_db.delete("atividades", atividade_id)
+        else:
+            conn = self._get_connection()
+            c = conn.cursor()
+            c.execute('DELETE FROM atividades WHERE id = ?', (atividade_id,))
+            conn.commit()
+            conn.close()
+
         # Remover diretório
         if turma:
             dir_path = self.arquivos_path / turma.materia_id / turma.id / atividade_id
             if dir_path.exists():
                 shutil.rmtree(dir_path)
-        
+
         return True
     
     # ============================================================
@@ -743,7 +961,7 @@ class StorageManager:
             aluno_dir.mkdir(parents=True, exist_ok=True)
             return aluno_dir / nome_arquivo
     
-    def salvar_documento(self, 
+    def salvar_documento(self,
                          arquivo_origem: str,
                          tipo: TipoDocumento,
                          atividade_id: str,
@@ -756,7 +974,7 @@ class StorageManager:
                          documento_origem_id: str = None) -> Optional[Documento]:
         """
         Salva um documento no sistema.
-        
+
         Args:
             arquivo_origem: Caminho do arquivo a ser copiado
             tipo: Tipo do documento
@@ -782,27 +1000,27 @@ class StorageManager:
             aluno = self.get_aluno(aluno_id)
             if not aluno:
                 raise ValueError(f"Aluno não encontrado: {aluno_id}")
-        
+
         # Info do arquivo
         arquivo_path = Path(arquivo_origem)
         nome_original = arquivo_path.name
         extensao = arquivo_path.suffix
         tamanho = arquivo_path.stat().st_size if arquivo_path.exists() else 0
-        
+
         # Gerar nome único para o arquivo
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
         nome_arquivo = f"{tipo.value}_{timestamp}{extensao}"
-        
+
         # Calcular destino
         destino = self._get_caminho_documento(atividade, tipo, aluno_id, nome_arquivo)
         destino.parent.mkdir(parents=True, exist_ok=True)
-        
+
         # Copiar arquivo
         shutil.copy2(arquivo_origem, destino)
-        
+
         # Calcular caminho relativo para compatibilidade cross-platform
         caminho_relativo = destino.relative_to(self.base_path)
-        
+
         # Criar registro
         documento = Documento(
             id=self._generate_id("doc", atividade_id, tipo.value, aluno_id or "base"),
@@ -820,31 +1038,57 @@ class StorageManager:
             versao=versao,
             documento_origem_id=documento_origem_id
         )
-        
-        conn = self._get_connection()
-        c = conn.cursor()
-        c.execute('''
-            INSERT INTO documentos (
-                id, tipo, atividade_id, aluno_id, nome_arquivo, caminho_arquivo, extensao,
-                tamanho_bytes, ia_provider, ia_modelo, prompt_usado, prompt_versao,
-                tokens_usados, tempo_processamento_ms, status, criado_em, atualizado_em,
-                criado_por, versao, documento_origem_id, metadata
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-        ''', (
-            documento.id, documento.tipo.value, documento.atividade_id, documento.aluno_id,
-            documento.nome_arquivo, documento.caminho_arquivo, documento.extensao,
-            documento.tamanho_bytes, documento.ia_provider, documento.ia_modelo,
-            documento.prompt_usado, documento.prompt_versao, documento.tokens_usados,
-            documento.tempo_processamento_ms, documento.status.value,
-            documento.criado_em.isoformat(), documento.atualizado_em.isoformat(),
-            documento.criado_por, documento.versao, documento.documento_origem_id,
-            json.dumps(documento.metadata)
-        ))
-        conn.commit()
-        conn.close()
 
-        # Upload para Supabase (persistência em cloud)
-        if SUPABASE_AVAILABLE and supabase_storage:
+        if self.use_postgresql:
+            data = {
+                "id": documento.id,
+                "tipo": documento.tipo.value,
+                "atividade_id": documento.atividade_id,
+                "aluno_id": documento.aluno_id,
+                "nome_arquivo": documento.nome_arquivo,
+                "caminho_arquivo": documento.caminho_arquivo,
+                "extensao": documento.extensao,
+                "tamanho_bytes": documento.tamanho_bytes,
+                "ia_provider": documento.ia_provider,
+                "ia_modelo": documento.ia_modelo,
+                "prompt_usado": documento.prompt_usado,
+                "prompt_versao": documento.prompt_versao,
+                "tokens_usados": documento.tokens_usados,
+                "tempo_processamento_ms": documento.tempo_processamento_ms,
+                "status": documento.status.value,
+                "criado_em": documento.criado_em.isoformat(),
+                "atualizado_em": documento.atualizado_em.isoformat(),
+                "criado_por": documento.criado_por,
+                "versao": documento.versao,
+                "documento_origem_id": documento.documento_origem_id,
+                "metadata": documento.metadata
+            }
+            supabase_db.insert("documentos", data)
+        else:
+            conn = self._get_connection()
+            c = conn.cursor()
+            c.execute('''
+                INSERT INTO documentos (
+                    id, tipo, atividade_id, aluno_id, nome_arquivo, caminho_arquivo, extensao,
+                    tamanho_bytes, ia_provider, ia_modelo, prompt_usado, prompt_versao,
+                    tokens_usados, tempo_processamento_ms, status, criado_em, atualizado_em,
+                    criado_por, versao, documento_origem_id, metadata
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ''', (
+                documento.id, documento.tipo.value, documento.atividade_id, documento.aluno_id,
+                documento.nome_arquivo, documento.caminho_arquivo, documento.extensao,
+                documento.tamanho_bytes, documento.ia_provider, documento.ia_modelo,
+                documento.prompt_usado, documento.prompt_versao, documento.tokens_usados,
+                documento.tempo_processamento_ms, documento.status.value,
+                documento.criado_em.isoformat(), documento.atualizado_em.isoformat(),
+                documento.criado_por, documento.versao, documento.documento_origem_id,
+                json.dumps(documento.metadata)
+            ))
+            conn.commit()
+            conn.close()
+
+        # Upload para Supabase Storage (persistência de arquivos em cloud)
+        if SUPABASE_STORAGE_AVAILABLE and supabase_storage:
             remote_path = str(caminho_relativo).replace("\\", "/")
             success, msg = supabase_storage.upload(str(destino), remote_path)
             if success:
@@ -853,19 +1097,25 @@ class StorageManager:
                 print(f"[Supabase] Aviso: {msg}")
 
         return documento
-    
+
     def get_documento(self, documento_id: str) -> Optional[Documento]:
         """Busca documento por ID"""
-        conn = self._get_connection()
-        c = conn.cursor()
-        c.execute('SELECT * FROM documentos WHERE id = ?', (documento_id,))
-        row = c.fetchone()
-        conn.close()
+        if self.use_postgresql:
+            row = supabase_db.select_one("documentos", documento_id)
+            if not row:
+                return None
+            return Documento.from_dict(row)
+        else:
+            conn = self._get_connection()
+            c = conn.cursor()
+            c.execute('SELECT * FROM documentos WHERE id = ?', (documento_id,))
+            row = c.fetchone()
+            conn.close()
 
-        if not row:
-            return None
+            if not row:
+                return None
 
-        return Documento.from_dict(dict(row))
+            return Documento.from_dict(dict(row))
 
     def resolver_caminho_documento(self, documento: Documento) -> Path:
         """
@@ -932,31 +1182,44 @@ class StorageManager:
         logger.error(f"[resolver_caminho] ERRO: Arquivo não encontrado em lugar nenhum!")
         return local_path
     
-    def listar_documentos(self, atividade_id: str, aluno_id: str = None, 
+    def listar_documentos(self, atividade_id: str, aluno_id: str = None,
                           tipo: TipoDocumento = None) -> List[Documento]:
         """Lista documentos com filtros"""
-        conn = self._get_connection()
-        c = conn.cursor()
-        
-        query = 'SELECT * FROM documentos WHERE atividade_id = ?'
-        params = [atividade_id]
-        
-        if aluno_id is not None:
-            query += ' AND (aluno_id = ? OR aluno_id IS NULL)'
-            params.append(aluno_id)
-        
-        if tipo:
-            query += ' AND tipo = ?'
-            params.append(tipo.value)
-        
-        query += ' ORDER BY criado_em DESC'
-        
-        c.execute(query, params)
-        rows = c.fetchall()
-        conn.close()
-        
-        return [Documento.from_dict(dict(row)) for row in rows]
-    
+        if self.use_postgresql:
+            filters = {"atividade_id": atividade_id}
+            if tipo:
+                filters["tipo"] = tipo.value
+
+            rows = supabase_db.select("documentos", filters=filters, order_by="criado_em", order_desc=True)
+
+            # Filter by aluno_id in Python (Supabase doesn't support OR easily)
+            if aluno_id is not None:
+                rows = [r for r in rows if r.get("aluno_id") == aluno_id or r.get("aluno_id") is None]
+
+            return [Documento.from_dict(row) for row in rows]
+        else:
+            conn = self._get_connection()
+            c = conn.cursor()
+
+            query = 'SELECT * FROM documentos WHERE atividade_id = ?'
+            params = [atividade_id]
+
+            if aluno_id is not None:
+                query += ' AND (aluno_id = ? OR aluno_id IS NULL)'
+                params.append(aluno_id)
+
+            if tipo:
+                query += ' AND tipo = ?'
+                params.append(tipo.value)
+
+            query += ' ORDER BY criado_em DESC'
+
+            c.execute(query, params)
+            rows = c.fetchall()
+            conn.close()
+
+            return [Documento.from_dict(dict(row)) for row in rows]
+
     def deletar_documento(self, documento_id: str) -> bool:
         """Deleta documento do banco e do sistema de arquivos (local e cloud)"""
         doc = self.get_documento(documento_id)
@@ -969,8 +1232,8 @@ class StorageManager:
             if arquivo.exists():
                 arquivo.unlink()
 
-            # Remover do Supabase também
-            if SUPABASE_AVAILABLE and supabase_storage:
+            # Remover do Supabase Storage também
+            if SUPABASE_STORAGE_AVAILABLE and supabase_storage:
                 remote_path = str(doc.caminho_arquivo).replace("\\", "/")
                 if remote_path.startswith('data/'):
                     remote_path = remote_path[5:]
@@ -979,11 +1242,14 @@ class StorageManager:
                     print(f"[Supabase] Deletado: {remote_path}")
 
         # Remover do banco
-        conn = self._get_connection()
-        c = conn.cursor()
-        c.execute('DELETE FROM documentos WHERE id = ?', (documento_id,))
-        conn.commit()
-        conn.close()
+        if self.use_postgresql:
+            supabase_db.delete("documentos", documento_id)
+        else:
+            conn = self._get_connection()
+            c = conn.cursor()
+            c.execute('DELETE FROM documentos WHERE id = ?', (documento_id,))
+            conn.commit()
+            conn.close()
 
         return True
 

@@ -12,7 +12,9 @@ PyMuPDF>=1.25.0
 Pillow>=10.4.0
 
 # Database
-# SQLite is built-in
+# SQLite is built-in (dev only - ephemeral on Render)
+# PostgreSQL via Supabase (production - persists between deploys)
+supabase>=2.0.0
 
 # Data
 numpy>=1.26.4
