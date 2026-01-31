@@ -387,6 +387,108 @@ curl -s https://ia-educacao-v2.onrender.com/ | grep -o "grid-template-columns: 1
 
 **Commit**: `f5884f0 feat: Adicionar selecao de prompts no modal Pipeline`
 
+### Mobile Modal Scroll Issues (2026-01-30)
+
+**Bug**: Welcome modal não scrollava em dispositivos móveis.
+
+**Root Cause**: Múltiplos problemas de CSS mobile:
+- Modal não tinha `display: flex; flex-direction: column`
+- Modal-body não tinha `flex: 1; overflow-y: auto`
+- Tutorial modal tinha `overflow: hidden` bloqueando scroll
+- Touch targets abaixo de 44px (modal-close: 40px, section buttons: 36px)
+- Task panel z-index (150) maior que modais (100)
+- Faltava safe-area padding para dispositivos com notch
+
+**Impact**:
+- Usuários em mobile não conseguiam ver todo o conteúdo do welcome
+- Botões difíceis de tocar em telas touch
+- Task panel aparecia sobre modais abertos
+
+**Fix**:
+1. Adicionada estrutura flex aos modais (welcome, chat, tutorial)
+2. Modal-body com `flex: 1; overflow-y: auto`
+3. Touch targets aumentados para 44px mínimo
+4. `openModal()` agora fecha task panel antes de abrir
+5. Adicionado safe-area padding para chat input e print bar
+
+**Tests**: `test_mobile_modals.py` - 12 testes para mobile UI
+
+**Verification**:
+```bash
+# Testes locais
+RUN_UI_TESTS=1 pytest tests/ui/test_mobile_modals.py -v
+
+# Verificar CSS no site
+curl -s https://ia-educacao-v2.onrender.com/ | grep 'class="modal-overlay modal-chat"'
+
+# Verificar touch targets
+curl -s https://ia-educacao-v2.onrender.com/ | grep -c "min-height: 44px"
+```
+
+**Commit**: `6f59861 fix: corrigir scroll e touch targets em modais mobile`
+
+**Log detalhado**: [docs/logs/2026-01-30_mobile_modal_scroll_fix.md](../../../docs/logs/2026-01-30_mobile_modal_scroll_fix.md)
+
+### Chat Context Panel Bugs (2026-01-30)
+
+**Bug 1**: `clearAllFilters()` caused JavaScript error, breaking context panel toggle.
+
+**Root Cause**: Function tried to access non-existent DOM elements:
+```javascript
+// BROKEN - these elements don't exist in new dropdown system
+document.getElementById('filter-turmas').innerHTML = '...';
+document.getElementById('filter-atividades').innerHTML = '...';
+```
+The code referenced legacy `<select>` elements, but the current system uses custom dropdowns in `filter-turmas-container` and `filter-atividades-container`.
+
+**Error**: `TypeError: Cannot set properties of null (setting 'innerHTML')`
+
+**Fix**: Use `createFilterDropdown()` to properly reset dropdowns.
+
+**Commit**: `999ae4c fix: Corrigir bug do botão Limpar Filtros no Chat`
+
+---
+
+**Bug 2**: Toggle button invisible when context panel collapsed.
+
+**Root Cause**: Panel collapses to `width: 50px`, but header title "📚 Contexto" pushed toggle button outside visible area.
+
+**Symptoms**: User could collapse panel but couldn't expand it without page reload.
+
+**Fix**: Added CSS to hide title and center button when collapsed:
+```css
+.chat-context-panel.collapsed .context-header h3 { display: none; }
+.chat-context-panel.collapsed .context-header { justify-content: center; }
+```
+
+**Commit**: `b0fac4d fix: Manter botão toggle visível quando painel contexto colapsado`
+
+---
+
+**Tests Used for Discovery**:
+
+| Test Script | Purpose |
+|-------------|---------|
+| `test_clear_filters.py` | Executes `clearAllFilters()` and captures console errors |
+| `test_click_button.py` | Clicks toggle button and checks `bounding_box()` visibility |
+| `test_visual_completo.py` | Full user simulation with screenshots (local) |
+| `test_render_visual.py` | Full user simulation on production (Render) |
+
+**Test Commands**:
+```bash
+# Visual test locally (requires Playwright)
+cd IA_Educacao_V2
+.venv/Scripts/python.exe frontend/test_visual_completo.py
+
+# Verify CSS fix on Render
+curl -s "https://ia-educacao-v2.onrender.com/static/chat_system.js" | grep -A2 "collapsed .context-header h3"
+
+# Verify clearAllFilters fix
+curl -s "https://ia-educacao-v2.onrender.com/static/chat_system.js" | grep -A3 "Reset turmas e atividades"
+```
+
+**Key Lesson**: Unit tests and JavaScript execution (`page.evaluate()`) passed, but clicking the actual button revealed it was invisible. **Visual tests with real clicks are essential.**
+
 ---
 
 ## Troubleshooting
