@@ -308,6 +308,26 @@ class BrowserInterface:
         except Exception:
             pass  # Timeout is acceptable
 
+    async def reload(self, timeout: int = 30000) -> bool:
+        """Reload the current page."""
+        try:
+            await self.page.reload(timeout=timeout)
+            await self.page.wait_for_load_state("networkidle", timeout=timeout)
+            return True
+        except Exception as e:
+            self._console_errors.append(f"Reload failed: {e}")
+            return False
+
+    async def go_back(self, timeout: int = 30000) -> bool:
+        """Navigate back to the previous page."""
+        try:
+            await self.page.go_back(timeout=timeout)
+            await self.page.wait_for_load_state("networkidle", timeout=timeout)
+            return True
+        except Exception as e:
+            self._console_errors.append(f"Go back failed: {e}")
+            return False
+
     def clear_errors(self):
         """Clear captured console errors."""
         self._console_errors.clear()
