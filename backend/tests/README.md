@@ -70,7 +70,8 @@ tests/
 │
 ├── ui/                    # UI/Browser tests (Playwright)
 │   ├── __init__.py                # Module docstring
-│   └── test_click_navigation.py   # Click navigation & JS loading tests
+│   ├── test_click_navigation.py   # Click navigation & JS loading tests
+│   └── test_mobile_modals.py      # Mobile modal scroll & touch targets (BUG FIX 2026-01-30)
 │
 └── scenarios/             # End-to-end workflow tests
     ├── test_corrupted_docs.py     # Error handling for bad documents
@@ -188,6 +189,30 @@ pytest tests/ui/test_click_navigation.py::TestRegressions::test_static_files_are
 | `test_showChat_is_callable` | `ReferenceError: showChat is not defined` |
 | `test_chat_button_opens_modal` | Modal não abre ao clicar |
 | `test_no_reference_errors_on_load` | JS com erros de sintaxe |
+| `test_welcome_modal_has_flex_structure` | Modal sem scroll no mobile |
+| `test_modal_close_button_size` | Touch target < 44px |
+| `test_task_panel_closes_when_modal_opens` | Task panel sobre modais |
+
+### Mobile Modal Tests (test_mobile_modals.py)
+
+Testes TDD para problemas de scroll e touch em dispositivos móveis.
+
+| Classe | O que testa |
+|--------|-------------|
+| `TestWelcomeModalScroll` | Scroll funciona no welcome modal |
+| `TestChatModalScroll` | Estrutura flex no chat modal |
+| `TestTouchTargets` | Botões têm mínimo 44px |
+| `TestZIndexStacking` | Task panel fecha quando modal abre |
+| `TestSafeArea` | Padding para notch em iPhones |
+| `TestTutorialModalScroll` | Tutorial modal não tem overflow:hidden |
+
+```bash
+# Executar testes de mobile
+RUN_UI_TESTS=1 pytest tests/ui/test_mobile_modals.py -v
+
+# Executar em viewport específico
+RUN_UI_TESTS=1 pytest tests/ui/test_mobile_modals.py::TestTouchTargets -v
+```
 
 ## Model Configurations
 
@@ -314,6 +339,53 @@ pytest tests/unit/test_model_manager.py -v
 # Live (should return only 1 model with is_default: true)
 curl -s https://ia-educacao-v2.onrender.com/api/settings/models | grep -o '"is_default":true' | wc -l
 ```
+
+### Pipeline Prompts Selection Missing (2026-01-30)
+
+**Bug**: Modal "Pipeline Completo" had no option to select prompts per stage.
+
+**Root Cause**:
+- Frontend accordion only had 2 columns (ETAPA | MODELO), missing PROMPT
+- Backend endpoints didn't accept `prompt_id` or `prompts_per_stage` parameters
+- JavaScript didn't load prompts from `/api/prompts` endpoint
+
+**Impact**:
+- Users couldn't customize prompts for different pipeline stages
+- All stages used default prompts with no override option
+- Inconsistent with "Executar Etapa" modal which had prompt selection
+
+**Files Changed**:
+| File | Change |
+|------|--------|
+| `frontend/index_v2.html` | Added prompt select + 3-column accordion |
+| `backend/routes_prompts.py` | Added `prompt_id`, `prompts_per_stage` params |
+| `backend/executor.py` | Added `prompts_map` support in pipeline |
+
+**Fix**:
+1. Added "Prompt (padrao para todas as etapas)" select outside accordion
+2. Expanded accordion to 3 columns: ETAPA | PROMPT | MODELO
+3. Backend now accepts and propagates prompt selections per stage
+
+**Tests**: Playwright screenshot comparison (local vs production)
+
+**Verification**:
+```bash
+# Local test script
+python test_compare.py
+
+# Expected output:
+# local_web:    [OK] Select Prompt: True
+# prod_web:     [OK] Select Prompt: True
+# SUCESSO: Local e Producao estao sincronizados!
+
+# Verify HTML element exists
+curl -s https://ia-educacao-v2.onrender.com/ | grep -o "input-pipeline-prompt-default"
+
+# Verify 3-column grid
+curl -s https://ia-educacao-v2.onrender.com/ | grep -o "grid-template-columns: 1.2fr 1fr 1fr"
+```
+
+**Commit**: `f5884f0 feat: Adicionar selecao de prompts no modal Pipeline`
 
 ---
 
