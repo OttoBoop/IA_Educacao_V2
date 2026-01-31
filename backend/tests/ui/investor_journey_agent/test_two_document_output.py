@@ -237,3 +237,68 @@ class TestReportGeneratorUpdates:
                 or (output_dir / "journey_report.md").exists()
             )
             assert has_report
+
+
+class TestFileLocationPrinting:
+    """Tests for file location printing at end of journey (F4-T4)."""
+
+    def test_report_generator_returns_all_paths(self):
+        """Test that ReportGenerator.generate returns a result with all file paths."""
+        from tests.ui.investor_journey_agent.report_generator import ReportGenerator, GenerationResult
+
+        # Create a mock report
+        mock_report = MagicMock()
+        mock_report.persona = get_persona("investor")
+        mock_report.goal = "Test goal"
+        mock_report.url = "http://test.com"
+        mock_report.viewport_name = "iphone_14"
+        mock_report.start_time = datetime.now()
+        mock_report.end_time = datetime.now()
+        mock_report.success_rate = 0.8
+        mock_report.gave_up = False
+        mock_report.evaluation = None
+        mock_report.steps = []
+
+        with TemporaryDirectory() as tmpdir:
+            output_dir = Path(tmpdir)
+            mock_report.output_dir = output_dir
+
+            generator = ReportGenerator()
+            result = generator.generate(mock_report)
+
+            # Result should be a GenerationResult with all paths
+            assert isinstance(result, GenerationResult)
+            assert result.journey_log_path.exists()
+            assert result.journey_report_path.exists()
+            assert result.summary_json_path.exists()
+            assert result.screenshots_dir.exists() or result.screenshots_dir.parent.exists()
+
+    def test_generation_result_has_printable_summary(self):
+        """Test that GenerationResult can print a summary of file locations."""
+        from tests.ui.investor_journey_agent.report_generator import ReportGenerator, GenerationResult
+
+        mock_report = MagicMock()
+        mock_report.persona = get_persona("investor")
+        mock_report.goal = "Test goal"
+        mock_report.url = "http://test.com"
+        mock_report.viewport_name = "iphone_14"
+        mock_report.start_time = datetime.now()
+        mock_report.end_time = datetime.now()
+        mock_report.success_rate = 0.8
+        mock_report.gave_up = False
+        mock_report.evaluation = None
+        mock_report.steps = []
+
+        with TemporaryDirectory() as tmpdir:
+            output_dir = Path(tmpdir)
+            mock_report.output_dir = output_dir
+
+            generator = ReportGenerator()
+            result = generator.generate(mock_report)
+
+            # Should have a method to get printable summary
+            summary = result.get_file_locations_summary()
+
+            assert "journey_log.md" in summary
+            assert "journey_report.md" in summary
+            assert "summary.json" in summary

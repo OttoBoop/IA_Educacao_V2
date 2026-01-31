@@ -28,7 +28,7 @@ from .personas import PERSONAS, Persona, get_persona
 from .agent import InvestorJourneyAgent, JourneyReport, run_journey
 from .browser_interface import BrowserInterface, PageState, ClickableElement
 from .llm_brain import LLMBrain, Action, ActionType, JourneyStep, JourneyEvaluation
-from .report_generator import ReportGenerator
+from .report_generator import ReportGenerator, GenerationResult
 
 __all__ = [
     # Main agent
@@ -56,4 +56,5 @@ __all__ = [
     "JourneyEvaluation",
     # Report
     "ReportGenerator",
+    "GenerationResult",
 ]

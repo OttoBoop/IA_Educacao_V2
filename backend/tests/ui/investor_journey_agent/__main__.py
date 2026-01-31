@@ -165,7 +165,7 @@ async def main():
 
         # Generate report
         generator = ReportGenerator()
-        report_path = generator.generate(report)
+        result = generator.generate(report)
 
         print(f"\n{'='*60}")
         print("JOURNEY COMPLETE")
@@ -178,8 +178,8 @@ async def main():
             print(f"\nOverall Rating: {'*' * int(report.evaluation.overall_rating)}/5")
             print(f"Pain Points:    {len(report.evaluation.pain_points)}")
 
-        print(f"\nReport saved to: {report_path}")
-        print(f"Screenshots in:  {report.output_dir / 'screenshots'}")
+        # Print all generated file locations
+        print(f"\n{result.get_file_locations_summary()}")
         print(f"{'='*60}\n")
 
         # Return exit code based on success

@@ -11,6 +11,7 @@ Produces two documents:
 
 import json
 import re
+from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
 from typing import TYPE_CHECKING, List, Optional
@@ -19,6 +20,27 @@ if TYPE_CHECKING:
     from .agent import JourneyReport
     from .llm_brain import JourneyStep, JourneyEvaluation
     from .personas import Persona
+
+
+@dataclass
+class GenerationResult:
+    """Result of report generation with all file paths."""
+
+    journey_log_path: Path
+    journey_report_path: Path
+    summary_json_path: Path
+    screenshots_dir: Path
+
+    def get_file_locations_summary(self) -> str:
+        """Get a printable summary of all generated file locations."""
+        lines = [
+            "Generated files:",
+            f"  - Journey log:    {self.journey_log_path}",
+            f"  - Journey report: {self.journey_report_path}",
+            f"  - Summary JSON:   {self.summary_json_path}",
+            f"  - Screenshots:    {self.screenshots_dir}",
+        ]
+        return "\n".join(lines)
 
 
 def generate_output_folder_name(
@@ -181,7 +203,7 @@ class ReportGenerator:
     def __init__(self):
         self._log_generator = JourneyLogGenerator()
 
-    def generate(self, report: "JourneyReport") -> Path:
+    def generate(self, report: "JourneyReport") -> GenerationResult:
         """
         Generate a complete report.
 
@@ -189,13 +211,14 @@ class ReportGenerator:
             report: JourneyReport from the agent
 
         Returns:
-            Path to the generated report file
+            GenerationResult with paths to all generated files
         """
         report_path = report.output_dir / "journey_report.md"
         json_path = report.output_dir / "summary.json"
+        screenshots_dir = report.output_dir / "screenshots"
 
         # Generate intermediate journey log first
-        self._log_generator.generate_log(
+        log_path = self._log_generator.generate_log(
             output_dir=report.output_dir,
             persona=report.persona,
             goal=report.goal,
@@ -213,7 +236,12 @@ class ReportGenerator:
         json_data = self._generate_json(report)
         json_path.write_text(json.dumps(json_data, indent=2, ensure_ascii=False), encoding="utf-8")
 
-        return report_path
+        return GenerationResult(
+            journey_log_path=log_path,
+            journey_report_path=report_path,
+            summary_json_path=json_path,
+            screenshots_dir=screenshots_dir,
+        )
 
     def _generate_markdown(self, report: "JourneyReport") -> str:
         """Generate the markdown report."""
