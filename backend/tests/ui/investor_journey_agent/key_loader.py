@@ -15,6 +15,54 @@ from typing import Optional
 DEFAULT_API_KEYS_PATH = Path(__file__).parent.parent.parent.parent / "data" / "api_keys.json"
 
 
+def load_anthropic_key_with_decryption(config_path: Optional[str] = None) -> Optional[str]:
+    """
+    Load Anthropic API key using the app's ApiKeyManager (with decryption).
+
+    Uses the existing encryption system from chat_service.py.
+
+    Args:
+        config_path: Optional path to api_keys.json. If None, uses default path.
+
+    Returns:
+        The decrypted Anthropic API key, or None if not found.
+    """
+    # Determine which path to use
+    if config_path is not None:
+        path = Path(config_path)
+        if not path.exists():
+            # Explicit path doesn't exist, fall back to env var
+            env_key = os.getenv("ANTHROPIC_API_KEY")
+            return env_key if env_key else None
+    else:
+        path = DEFAULT_API_KEYS_PATH
+        if not path.exists():
+            # Default path doesn't exist, fall back to env var
+            env_key = os.getenv("ANTHROPIC_API_KEY")
+            return env_key if env_key else None
+
+    try:
+        from chat_service import ApiKeyManager, ProviderType
+
+        manager = ApiKeyManager(config_path=str(path))
+
+        # Get Anthropic key from manager
+        key_config = manager.get_por_empresa(ProviderType.ANTHROPIC)
+        if key_config and key_config.api_key:
+            return key_config.api_key
+
+    except ImportError:
+        # chat_service not available, fall through to env var
+        pass
+    except Exception:
+        # Any other error, fall through to env var
+        pass
+
+    # Fallback to environment variable
+    env_key = os.getenv("ANTHROPIC_API_KEY")
+    return env_key if env_key else None
+
+
 def load_anthropic_key(config_path: Optional[str] = None) -> Optional[str]:
     """
     Load Anthropic API key from the app's key store.
