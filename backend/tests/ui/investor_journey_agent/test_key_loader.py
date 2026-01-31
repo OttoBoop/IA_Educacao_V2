@@ -106,6 +106,46 @@ class TestKeyLoader:
         assert "api_keys.json" in str(DEFAULT_API_KEYS_PATH)
 
 
+class TestDecryptionIntegration:
+    """Tests for integration with app's encryption system."""
+
+    def test_load_encrypted_key_using_api_key_manager(self):
+        """Test that key loader can decrypt keys using the app's ApiKeyManager."""
+        from tests.ui.investor_journey_agent.key_loader import load_anthropic_key_with_decryption
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            # Use the app's ApiKeyManager to create encrypted keys
+            from chat_service import ApiKeyManager, ProviderType
+
+            config_path = Path(tmpdir) / "api_keys.json"
+            manager = ApiKeyManager(config_path=str(config_path))
+
+            # Add an Anthropic key (will be encrypted)
+            test_key = "sk-ant-api03-test-encrypted-key"
+            manager.adicionar(
+                empresa=ProviderType.ANTHROPIC,
+                api_key=test_key,
+                nome_exibicao="Test Encrypted Key"
+            )
+
+            # Load using our key loader with decryption
+            loaded_key = load_anthropic_key_with_decryption(config_path=str(config_path))
+
+            # Should decrypt and return the original key
+            assert loaded_key == test_key
+
+    def test_decryption_fallback_to_env_var(self):
+        """Test that decryption loader falls back to env var when no key in file."""
+        from tests.ui.investor_journey_agent.key_loader import load_anthropic_key_with_decryption
+
+        test_key = "sk-ant-env-fallback"
+
+        with patch.dict(os.environ, {"ANTHROPIC_API_KEY": test_key}):
+            key = load_anthropic_key_with_decryption(config_path="/nonexistent/path")
+
+            assert key == test_key
+
+
 class TestAgentConfigWithKeyLoader:
     """Tests for AgentConfig integration with key loader."""
 
