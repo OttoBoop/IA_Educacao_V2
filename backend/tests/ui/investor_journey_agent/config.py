@@ -79,10 +79,11 @@ PRODUCTION_URL = "https://ia-educacao-v2.onrender.com"
 class AgentConfig:
     """Configuration for the Investor Journey Agent."""
 
-    # API Keys (from environment or explicit)
-    anthropic_api_key: Optional[str] = field(
-        default_factory=lambda: os.getenv("ANTHROPIC_API_KEY")
-    )
+    # API Keys path (for loading from app's encrypted store)
+    api_keys_path: Optional[str] = None
+
+    # API Keys (loaded from file or environment)
+    anthropic_api_key: Optional[str] = field(default=None)
 
     # Model settings
     step_model: str = "claude-haiku-4-5-20251001"  # Cheap, fast for decisions
@@ -113,6 +114,11 @@ class AgentConfig:
             self.output_dir = Path("investor_journey_reports")
         elif isinstance(self.output_dir, str):
             self.output_dir = Path(self.output_dir)
+
+        # Load API key using key_loader if not explicitly provided
+        if self.anthropic_api_key is None:
+            from .key_loader import load_anthropic_key
+            self.anthropic_api_key = load_anthropic_key(config_path=self.api_keys_path)
 
 
 # Default configuration
