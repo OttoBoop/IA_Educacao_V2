@@ -487,8 +487,44 @@ class ModelManager:
                     for m in data.get("models", []):
                         config = ModelConfig.from_dict(m)
                         self.models[config.id] = config
+
+                # Validar unicidade de is_default
+                self._ensure_single_default()
             except Exception as e:
                 print(f"Erro ao carregar modelos: {e}")
+
+    def _ensure_single_default(self):
+        """Garante que apenas um modelo seja marcado como padrao.
+
+        Corrige automaticamente se multiplos defaults ou nenhum existir.
+        Prefere manter Haiku como default quando possivel.
+        """
+        defaults = [m for m in self.models.values() if m.is_default]
+
+        if len(defaults) > 1:
+            # ERRO: Multiplos defaults detectados
+            nomes = [m.nome for m in defaults]
+            print(f"[WARN] {len(defaults)} modelos marcados como padrao: {nomes}")
+            print("       Corrigindo automaticamente...")
+
+            # Manter Haiku (se existir) ou o primeiro
+            haiku = next((m for m in defaults if "haiku" in m.nome.lower()), None)
+            keep = haiku if haiku else defaults[0]
+
+            for m in self.models.values():
+                m.is_default = (m.id == keep.id)
+
+            print(f"       Modelo padrao definido: {keep.nome}")
+            self._save()  # Persistir correcao
+
+        elif len(defaults) == 0 and self.models:
+            # Nenhum default: definir Haiku ou primeiro
+            print("[WARN] Nenhum modelo padrao encontrado. Definindo automaticamente...")
+            haiku = next((m for m in self.models.values() if "haiku" in m.nome.lower()), None)
+            default = haiku if haiku else next(iter(self.models.values()))
+            default.is_default = True
+            print(f"       Modelo padrao definido: {default.nome}")
+            self._save()
     
     def _save(self):
         data = {"models": [m.to_dict() for m in self.models.values()]}
