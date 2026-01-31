@@ -115,10 +115,10 @@ class AgentConfig:
         elif isinstance(self.output_dir, str):
             self.output_dir = Path(self.output_dir)
 
-        # Load API key using key_loader if not explicitly provided
+        # Load API key using key_loader with decryption if not explicitly provided
         if self.anthropic_api_key is None:
-            from .key_loader import load_anthropic_key
-            self.anthropic_api_key = load_anthropic_key(config_path=self.api_keys_path)
+            from .key_loader import load_anthropic_key_with_decryption
+            self.anthropic_api_key = load_anthropic_key_with_decryption(config_path=self.api_keys_path)
 
 
 # Default configuration
