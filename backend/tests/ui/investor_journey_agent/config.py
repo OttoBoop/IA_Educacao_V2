@@ -95,6 +95,11 @@ class AgentConfig:
     wait_after_action_ms: int = 1000
     wait_for_network_idle: bool = True
 
+    # Rate limiting
+    max_llm_calls: int = 50  # Maximum LLM API calls per journey
+    max_tokens_per_request: int = 2000  # Maximum tokens per API request
+    journey_timeout_seconds: int = 600  # 10 minutes total journey timeout
+
     # Screenshot settings
     screenshot_quality: int = 80
     screenshot_format: str = "png"

@@ -75,6 +75,11 @@ class JourneyEvaluation:
     overall_rating: float  # 1-5
 
 
+class MaxLLMCallsExceededError(Exception):
+    """Raised when the maximum number of LLM calls is exceeded."""
+    pass
+
+
 class LLMBrain:
     """
     The 'brain' that uses Claude to decide what a persona would do.
@@ -87,6 +92,7 @@ class LLMBrain:
     def __init__(self, config: AgentConfig):
         self.config = config
         self.api_key = config.anthropic_api_key
+        self.call_count = 0  # Track LLM API calls
 
         if not self.api_key:
             raise ValueError(
@@ -179,6 +185,12 @@ Respond ONLY with valid JSON (no markdown, no explanation outside JSON):
 
         Uses vision to analyze the screenshot and DOM for context.
         """
+        # Check if max LLM calls exceeded
+        if self.call_count >= self.config.max_llm_calls:
+            raise MaxLLMCallsExceededError(
+                f"Maximum LLM calls ({self.config.max_llm_calls}) exceeded"
+            )
+
         history = history or []
         console_errors = console_errors or []
 
@@ -232,6 +244,9 @@ Respond ONLY with valid JSON (no markdown, no explanation outside JSON):
                 max_tokens=512,
                 system=system_prompt,
             )
+
+            # Increment call count after successful call
+            self.call_count += 1
 
             # Parse JSON response
             # Clean up response (remove markdown code blocks if present)
