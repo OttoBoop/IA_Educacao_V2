@@ -26,6 +26,8 @@ class ActionType(str, Enum):
     GIVE_UP = "give_up"
     DONE = "done"
     WAIT = "wait"
+    RELOAD = "reload"
+    BACK = "back"
 
 
 @dataclass
@@ -156,14 +158,21 @@ Available actions:
 - type: Type text into an input (provide selector and text)
 - scroll: Scroll the page (direction: "up" or "down")
 - wait: Wait for something to load
+- reload: Reload the page (useful when something seems broken)
+- back: Go back to the previous page
 - give_up: Stop trying because UX is too bad (this is valuable feedback!)
 - done: Goal achieved, stop journey
+
+When the previous action failed:
+- Consider what a real user would do: retry, try something else, reload, or give up
+- Your reaction should match your patience level and technical skill
+- Failure reactions are important UX feedback!
 
 Respond ONLY with valid JSON (no markdown, no explanation outside JSON):
 {{
   "thought": "What I'm thinking as this user...",
   "frustration_level": 0.0 to 1.0,
-  "action_type": "click|type|scroll|wait|give_up|done",
+  "action_type": "click|type|scroll|wait|reload|back|give_up|done",
   "target": "selector or description",
   "confidence": 0.0 to 1.0,
   "text_to_type": "text if typing",
@@ -222,7 +231,17 @@ Respond ONLY with valid JSON (no markdown, no explanation outside JSON):
 """
         if history:
             for step in history[-3:]:  # Last 3 steps
-                context_text += f"- Step {step.step_number}: {step.action.action_type.value} on {step.action.target} ({'success' if step.success else 'failed'})\n"
+                status = 'success' if step.success else 'failed'
+                context_text += f"- Step {step.step_number}: {step.action.action_type.value} on {step.action.target} ({status})\n"
+
+            # Check if the last action failed - add prominent failure notice
+            last_step = history[-1]
+            if not last_step.success:
+                context_text += f"\n**⚠️ LAST ACTION FAILED!**\n"
+                context_text += f"Action: {last_step.action.action_type.value} on {last_step.action.target}\n"
+                if last_step.error_message:
+                    context_text += f"Error: {last_step.error_message}\n"
+                context_text += "\nHow would you react to this failure? Consider your patience level and decide: retry, try something else, reload the page, or give up?\n"
         else:
             context_text += "None yet - this is the first step.\n"
 
