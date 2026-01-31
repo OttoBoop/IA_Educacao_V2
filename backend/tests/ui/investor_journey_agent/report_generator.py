@@ -3,16 +3,169 @@ Report Generator - Creates markdown reports from journey data.
 
 Generates human-readable reports with embedded screenshots
 and actionable insights.
+
+Produces two documents:
+- journey_log.md - Raw steps for Claude Code analysis (intermediate)
+- journey_report.md - Human-readable report (thorough)
 """
 
 import json
+import re
 from datetime import datetime
 from pathlib import Path
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, List, Optional
 
 if TYPE_CHECKING:
     from .agent import JourneyReport
     from .llm_brain import JourneyStep, JourneyEvaluation
+    from .personas import Persona
+
+
+def generate_output_folder_name(
+    persona_name: str,
+    viewport_name: str,
+    timestamp: Optional[datetime] = None,
+) -> str:
+    """
+    Generate folder name following YYYY-MM-DD_HH-MM_persona_viewport pattern.
+
+    Args:
+        persona_name: Name of the persona (e.g., "Investor", "Confused Teacher")
+        viewport_name: Name of the viewport (e.g., "iphone_14", "iPad Pro")
+        timestamp: Timestamp to use. If None, uses current time.
+
+    Returns:
+        Sanitized folder name (e.g., "2026-01-31_14-30_investor_iphone_14")
+    """
+    if timestamp is None:
+        timestamp = datetime.now()
+
+    # Format timestamp
+    time_str = timestamp.strftime("%Y-%m-%d_%H-%M")
+
+    # Sanitize persona and viewport names
+    def sanitize(name: str) -> str:
+        # Convert to lowercase, replace spaces with underscores
+        name = name.lower().replace(" ", "_")
+        # Remove any non-alphanumeric characters except underscore
+        name = re.sub(r"[^a-z0-9_]", "", name)
+        return name
+
+    persona_clean = sanitize(persona_name)
+    viewport_clean = sanitize(viewport_name)
+
+    return f"{time_str}_{persona_clean}_{viewport_clean}"
+
+
+class JourneyLogGenerator:
+    """
+    Generates the intermediate journey log for Claude Code analysis.
+
+    Creates journey_log.md with raw step data, suitable for AI analysis.
+    """
+
+    def generate_log(
+        self,
+        output_dir: Path,
+        persona: "Persona",
+        goal: str,
+        url: str,
+        viewport_name: str,
+        steps: List["JourneyStep"],
+        start_time: datetime,
+    ) -> Path:
+        """
+        Generate the journey log file.
+
+        Args:
+            output_dir: Directory to save the log
+            persona: The persona used for the journey
+            goal: The goal of the journey
+            url: Starting URL
+            viewport_name: Name of the viewport used
+            steps: List of journey steps
+            start_time: When the journey started
+
+        Returns:
+            Path to the generated journey_log.md file
+        """
+        log_path = output_dir / "journey_log.md"
+
+        lines = []
+
+        # Header
+        lines.append("# Journey Log\n")
+        lines.append("*Intermediate log for Claude Code analysis*\n")
+        lines.append("---\n")
+
+        # Metadata
+        lines.append("## Journey Metadata\n")
+        lines.append(f"- **Persona:** {persona.name}")
+        lines.append(f"- **Goal:** {goal}")
+        lines.append(f"- **URL:** {url}")
+        lines.append(f"- **Viewport:** {viewport_name}")
+        lines.append(f"- **Start Time:** {start_time.isoformat()}")
+        lines.append(f"- **Total Steps:** {len(steps)}")
+        lines.append("")
+
+        # Persona details
+        lines.append("## Persona Profile\n")
+        lines.append(f"**{persona.name}:** {persona.description}\n")
+        lines.append(f"- Patience: {persona.patience_level}/10")
+        lines.append(f"- Tech Savviness: {persona.tech_savviness}/10")
+        lines.append("")
+
+        # Steps
+        lines.append("## Steps\n")
+
+        for step in steps:
+            lines.append(f"### Step {step.step_number}\n")
+
+            # Screenshot reference
+            screenshot_name = Path(step.screenshot_path).name
+            lines.append(f"**Screenshot:** `{screenshot_name}`\n")
+
+            # URL
+            lines.append(f"**URL:** `{step.url}`\n")
+
+            # Action details
+            lines.append("**Action:**")
+            lines.append(f"- Type: `{step.action.action_type.value}`")
+            lines.append(f"- Target: `{step.action.target}`")
+            if step.action.text_to_type:
+                lines.append(f"- Text: `{step.action.text_to_type}`")
+            if step.action.scroll_direction:
+                lines.append(f"- Direction: `{step.action.scroll_direction}`")
+            lines.append("")
+
+            # Thought process
+            lines.append("**Thought:**")
+            lines.append(f"> {step.action.thought}\n")
+
+            # Metrics
+            lines.append("**Metrics:**")
+            lines.append(f"- Frustration: {step.action.frustration_level:.0%}")
+            lines.append(f"- Confidence: {step.action.confidence:.0%}")
+            lines.append("")
+
+            # Result
+            if step.success:
+                lines.append("**Result:** SUCCESS\n")
+            else:
+                lines.append("**Result:** FAILED")
+                if step.error_message:
+                    lines.append(f"- Error: {step.error_message}")
+                lines.append("")
+
+            lines.append("---\n")
+
+        # Footer
+        lines.append("\n*End of journey log*")
+
+        # Write file
+        log_path.write_text("\n".join(lines), encoding="utf-8")
+
+        return log_path
 
 
 class ReportGenerator:
@@ -20,9 +173,13 @@ class ReportGenerator:
     Generates markdown reports from journey data.
 
     Creates:
+    - journey_log.md - Intermediate log for Claude Code analysis
     - journey_report.md - Main human-readable report
     - summary.json - Machine-readable data
     """
+
+    def __init__(self):
+        self._log_generator = JourneyLogGenerator()
 
     def generate(self, report: "JourneyReport") -> Path:
         """
@@ -36,6 +193,17 @@ class ReportGenerator:
         """
         report_path = report.output_dir / "journey_report.md"
         json_path = report.output_dir / "summary.json"
+
+        # Generate intermediate journey log first
+        self._log_generator.generate_log(
+            output_dir=report.output_dir,
+            persona=report.persona,
+            goal=report.goal,
+            url=report.url,
+            viewport_name=report.viewport_name,
+            steps=report.steps,
+            start_time=report.start_time,
+        )
 
         # Generate markdown
         markdown = self._generate_markdown(report)
