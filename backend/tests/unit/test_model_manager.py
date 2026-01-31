@@ -3,9 +3,42 @@ PROVA AI - Testes de Unicidade de Modelo Padrao
 
 Este arquivo testa que apenas UM modelo pode ser marcado como padrao (is_default).
 
-Problema resolvido:
-- Bug onde models.json tinha dois modelos com is_default: true
-- Haiku (correto) e Llama (erro)
+===============================================================================
+BUG DOCUMENTADO: Multiplos Modelos Padrao (2026-01-30)
+===============================================================================
+
+PROBLEMA DETECTADO:
+    O arquivo models.json tinha DOIS modelos com is_default: true:
+    - Linha 119: Claude Haiku 4.5 (is_default: true) - CORRETO
+    - Linha 259: Llama 3.2 Local (is_default: true) - ERRO!
+
+CAUSA RAIZ:
+    O metodo ModelManager._load() carregava modelos do JSON sem validar
+    a unicidade do campo is_default. Isso permitia que dados corrompidos
+    (manualmente editados ou de migracoes antigas) persistissem.
+
+    NAO foi causado por:
+    - Sistemas legados ou endpoints duplicados
+    - Multiplos endpoints para definir modelo padrao
+    (Ha apenas um endpoint: POST /api/settings/models/{model_id}/default)
+
+IMPACTO:
+    - API /api/settings/models retornava dois modelos como default
+    - get_default() retornava resultado imprevisivel (primeiro encontrado)
+    - Comportamento nao-deterministico quando nenhum model_id era especificado
+
+SOLUCAO IMPLEMENTADA:
+    1. Adicionado metodo _ensure_single_default() em chat_service.py
+    2. Chamado automaticamente no final de _load()
+    3. Auto-corrige dados corrompidos, preferindo Haiku como default
+    4. Persiste a correcao no arquivo JSON
+
+VERIFICACAO:
+    - Testes locais: pytest tests/unit/test_model_manager.py -v
+    - Testes online: curl https://ia-educacao-v2.onrender.com/api/settings/models
+      Deve retornar apenas UM modelo com is_default: true
+
+===============================================================================
 
 Uso:
     cd IA_Educacao_V2/backend

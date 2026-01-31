@@ -43,6 +43,7 @@ tests/
 │   ├── test_file_types.py         # File format handling
 │   ├── test_fixes.py              # Bug fix validations
 │   ├── test_frontend_logic.py     # Frontend-related logic
+│   ├── test_model_manager.py      # Default model uniqueness (BUG FIX 2026-01-30)
 │   ├── test_model_selection.py    # Model selection logic
 │   ├── test_pdf_report.py         # PDF report generation
 │   └── test_pipeline_validation.py # JSON schema validation
@@ -79,6 +80,71 @@ tests/
     ├── test_model_comparison.py   # Multi-model comparison
     ├── test_skip_steps.py         # Partial pipeline execution
     └── test_system_prompts.py     # System prompt variations
+│
+└── utils/                 # Test utilities (NEW - Jan 2026)
+    ├── __init__.py               # Package exports
+    ├── log_parser.py             # Parse pytest output, categorize failures
+    ├── state_manager.py          # Save/rollback for auto-fix operations
+    ├── test_matcher.py           # Match tests to features
+    └── test_log_parser.py        # Tests for utilities
+```
+
+## Test Utilities (utils/)
+
+New utilities for automated test analysis and fixing:
+
+### log_parser.py
+- `TestResultParser`: Parse pytest console output or JSON reports
+- `FailureCategorizer`: Categorize failures (import, syntax, assertion, API, etc.)
+- `ReportGenerator`: Generate markdown/JSON analysis reports
+
+```python
+from tests.utils import TestResultParser, ReportGenerator
+
+parser = TestResultParser()
+result = parser.parse_pytest_output(pytest_output)
+
+generator = ReportGenerator()
+report = generator.generate_markdown(result, "pytest tests/ -v")
+```
+
+### state_manager.py
+- Save file state before making changes
+- Track fix attempts with history
+- Rollback if regressions detected
+- Clean up after successful fixes
+
+```python
+from tests.utils import StateManager
+
+state = StateManager()
+session_id = state.start_session("pytest tests/")
+state.save_file_state(Path("file.py"), "Fixing bug")
+# ... make changes and test ...
+state.record_fix_attempt("test_id", "category", "action", ["file.py"], "SUCCESS")
+state.cleanup_session(delete=True)  # Only if all tests pass
+```
+
+### test_matcher.py
+- Match tests to features/components
+- Evaluate test coverage sufficiency
+- Suggest new tests for gaps
+
+```python
+from tests.utils import TestMatcher
+
+matcher = TestMatcher()
+result = matcher.match_feature("document_upload")
+print(f"Found {len(result.matched_tests)} tests, coverage: {result.coverage_score:.0%}")
+```
+
+### Using with test_runner.py
+
+```bash
+# Run tests with failure analysis
+python test_runner.py --local --analyze-failures
+
+# Generates: test_reports/analysis_report.md
 ```
 
 ## UI Tests (Playwright)
@@ -220,6 +286,36 @@ Tests automatically skip if required API keys are missing.
    ```
 
 4. **Add to conftest.py** if you need shared fixtures.
+
+## Historical Bugs & Regressions
+
+This section documents bugs that were discovered and fixed, with tests added to prevent regressions.
+
+### Multiple Default Models (2026-01-30)
+
+**Bug**: `models.json` had TWO models with `is_default: true` (Claude Haiku and Llama 3.2).
+
+**Root Cause**: `ModelManager._load()` didn't validate uniqueness of `is_default` flag.
+
+**Impact**:
+- API returned multiple models as default, causing UI confusion
+- `get_default()` returned unpredictable results
+- Non-deterministic behavior in chat and pipelines
+
+**Fix**: Added `_ensure_single_default()` method that auto-corrects corrupted data on load.
+
+**Tests**: `test_model_manager.py` - 10 tests for default model uniqueness
+
+**Verification**:
+```bash
+# Local
+pytest tests/unit/test_model_manager.py -v
+
+# Live (should return only 1 model with is_default: true)
+curl -s https://ia-educacao-v2.onrender.com/api/settings/models | grep -o '"is_default":true' | wc -l
+```
+
+---
 
 ## Troubleshooting
 
