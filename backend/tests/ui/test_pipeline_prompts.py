@@ -6,11 +6,28 @@ Commit: f5884f0
 
 Requires: Playwright, local server OR production access
 Markers: @pytest.mark.ui, @pytest.mark.regression
+
+Run standalone: python tests/ui/test_pipeline_prompts.py
+Run with pytest: pytest tests/ui/test_pipeline_prompts.py -v
 """
 
-import pytest
-from playwright.sync_api import sync_playwright, Page
+import sys
 import time
+
+# Verificar se playwright esta instalado
+try:
+    from playwright.sync_api import sync_playwright, Page
+    PLAYWRIGHT_AVAILABLE = True
+except ImportError:
+    PLAYWRIGHT_AVAILABLE = False
+    print("[WARN] Playwright nao instalado. Rode: pip install playwright && playwright install chromium")
+
+# Importar pytest apenas se disponivel
+try:
+    import pytest
+    PYTEST_AVAILABLE = True
+except ImportError:
+    PYTEST_AVAILABLE = False
 
 # URLs para teste
 LOCAL_URL = "file:///c:/Users/otavi/Documents/prova-ai/IA_Educacao_V2/frontend/index_v2.html"
@@ -64,6 +81,13 @@ def populate_pipeline_modal(page: Page):
     """)
 
 
+# Skip se playwright nao disponivel
+requires_playwright = pytest.mark.skipif(
+    not PLAYWRIGHT_AVAILABLE,
+    reason="Playwright nao instalado"
+) if PYTEST_AVAILABLE else lambda f: f
+
+
 class TestPipelinePromptsRegression:
     """
     Testes de regressao para a funcionalidade de selecao de prompts no Pipeline.
@@ -72,6 +96,7 @@ class TestPipelinePromptsRegression:
     Fix: Adicionado select de prompt padrao + 3 colunas no accordion.
     """
 
+    @requires_playwright
     @pytest.mark.ui
     @pytest.mark.regression
     def test_prompt_select_exists_local(self):
@@ -91,6 +116,7 @@ class TestPipelinePromptsRegression:
 
             assert count > 0, "Select de prompt padrao nao encontrado no HTML local"
 
+    @requires_playwright
     @pytest.mark.ui
     @pytest.mark.regression
     @pytest.mark.slow
@@ -112,6 +138,7 @@ class TestPipelinePromptsRegression:
 
             assert count > 0, "Select de prompt padrao nao encontrado em producao"
 
+    @requires_playwright
     @pytest.mark.ui
     @pytest.mark.regression
     def test_accordion_has_three_columns(self):
@@ -130,6 +157,7 @@ class TestPipelinePromptsRegression:
             assert "grid-template-columns: 1.2fr 1fr 1fr" in html, \
                 "Accordion nao tem layout de 3 colunas"
 
+    @requires_playwright
     @pytest.mark.ui
     @pytest.mark.regression
     def test_accordion_header_has_prompt_column(self):
@@ -153,6 +181,7 @@ class TestPipelinePromptsRegression:
 class TestPipelinePromptsSync:
     """Testes de sincronizacao entre local e producao."""
 
+    @requires_playwright
     @pytest.mark.ui
     @pytest.mark.slow
     def test_local_and_production_are_synced(self):
@@ -181,5 +210,63 @@ class TestPipelinePromptsSync:
                 f"Dessincronizacao: local={local_has_prompt}, prod={prod_has_prompt}"
 
 
+def run_standalone():
+    """Roda testes sem pytest."""
+    if not PLAYWRIGHT_AVAILABLE:
+        print("[ERRO] Playwright nao instalado!")
+        print("Rode: pip install playwright && playwright install chromium")
+        return False
+
+    print("=" * 60)
+    print("TESTES STANDALONE - Pipeline Prompts UI")
+    print("=" * 60)
+
+    tests = TestPipelinePromptsRegression()
+    results = []
+
+    # Teste 1: Local prompt select
+    print("\n[TEST] test_prompt_select_exists_local...")
+    try:
+        tests.test_prompt_select_exists_local()
+        print("[PASS]")
+        results.append(True)
+    except Exception as e:
+        print(f"[FAIL] {e}")
+        results.append(False)
+
+    # Teste 2: 3 colunas
+    print("\n[TEST] test_accordion_has_three_columns...")
+    try:
+        tests.test_accordion_has_three_columns()
+        print("[PASS]")
+        results.append(True)
+    except Exception as e:
+        print(f"[FAIL] {e}")
+        results.append(False)
+
+    # Teste 3: Header com PROMPT
+    print("\n[TEST] test_accordion_header_has_prompt_column...")
+    try:
+        tests.test_accordion_header_has_prompt_column()
+        print("[PASS]")
+        results.append(True)
+    except Exception as e:
+        print(f"[FAIL] {e}")
+        results.append(False)
+
+    # Resumo
+    print("\n" + "=" * 60)
+    passed = sum(results)
+    total = len(results)
+    print(f"RESULTADO: {passed}/{total} testes passaram")
+    print("=" * 60)
+
+    return all(results)
+
+
 if __name__ == "__main__":
-    pytest.main([__file__, "-v"])
+    if PYTEST_AVAILABLE and len(sys.argv) > 1 and sys.argv[1] == "--pytest":
+        pytest.main([__file__, "-v"])
+    else:
+        success = run_standalone()
+        sys.exit(0 if success else 1)
