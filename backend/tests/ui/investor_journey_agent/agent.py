@@ -292,6 +292,14 @@ class InvestorJourneyAgent:
                 await asyncio.sleep(1)
                 return True, None
 
+            elif action.action_type == ActionType.RELOAD:
+                success = await self._browser.reload()
+                return success, None if success else "Could not reload page"
+
+            elif action.action_type == ActionType.BACK:
+                success = await self._browser.go_back()
+                return success, None if success else "Could not go back"
+
             else:
                 return True, None
 
