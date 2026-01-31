@@ -23,6 +23,8 @@ try:
     SUPABASE_AVAILABLE = True
 except ImportError:
     SUPABASE_AVAILABLE = False
+    Client = None  # Type hint fallback
+    create_client = None
     print("[SupabaseDB] supabase-py not installed. Run: pip install supabase")
 
 
@@ -60,7 +62,7 @@ class SupabaseDB:
         return self._enabled
 
     @property
-    def client(self) -> Optional[Client]:
+    def client(self):
         """Returns the Supabase client"""
         return self._client
 
