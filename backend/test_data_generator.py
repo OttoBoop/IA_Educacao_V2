@@ -827,7 +827,7 @@ def limpar_dados_teste(storage: StorageManager):
         print(f"  [v] Arquivos removidos: {arquivos_path}")
     
     # Recriar estrutura
-    storage._init_database()
+    storage._setup_database()
     arquivos_path.mkdir(parents=True, exist_ok=True)
     
     print("\n[OK] Sistema limpo e pronto para novos dados!\n")

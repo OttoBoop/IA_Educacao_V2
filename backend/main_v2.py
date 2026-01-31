@@ -105,9 +105,39 @@ print("="*50 + "\n")
 # APP SETUP
 # ============================================================
 
+def initialize_fantasy_data_if_empty():
+    """
+    Check if database is empty and initialize with fantasy data.
+
+    This handles Render's ephemeral filesystem - SQLite is reset on each deployment.
+    Files are already in Supabase Storage; this recreates the metadata.
+    """
+    try:
+        materias = storage.listar_materias()
+        if len(materias) == 0:
+            print("[!] Database is empty - initializing fantasy data...")
+
+            # Import and run generator
+            from test_data_generator import TestDataGenerator
+            generator = TestDataGenerator(storage, verbose=True)
+            stats = generator.gerar_tudo(
+                num_alunos=20,
+                alunos_por_turma=10,
+                incluir_problemas=True
+            )
+
+            print(f"[OK] Fantasy data initialized: {stats['materias']} materias, {stats['documentos']} docs")
+        else:
+            print(f"[OK] Database has {len(materias)} materias - skipping initialization")
+    except Exception as e:
+        print(f"[WARN] Could not initialize fantasy data: {e}")
+        import traceback
+        traceback.print_exc()
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    """Inicializa providers de IA"""
+    """Inicializa providers de IA e dados de teste"""
     try:
         setup_providers_from_env()
         print(f"[OK] Providers carregados: {ai_registry.list_providers()}")
@@ -115,12 +145,17 @@ async def lifespan(app: FastAPI):
         print(f"[ERROR] Erro ao carregar providers: {e}")
         import traceback
         traceback.print_exc()
+
+    # Initialize fantasy data if database is empty (handles Render's ephemeral filesystem)
+    initialize_fantasy_data_if_empty()
+
     yield
 
 app = FastAPI(
     title="Prova AI - Sistema de Correção v2.0",
     description="Sistema de correção automatizada de provas com IA",
-    version="2.0.0"
+    version="2.0.0",
+    lifespan=lifespan
 )
 
 # CORS
