@@ -815,3 +815,113 @@ class TestIncompleteReports:
         assert "First action" in html
         assert "Second action" in html
         assert "Third action failed" in html
+
+
+# ============================================================
+# F3-T2/T3: Narrator Integration in Agent + CLI
+# ============================================================
+
+
+class TestNarratorIntegration:
+    """F3-T2/T3: Narrator wired into agent and CLI."""
+
+    def test_agent_accepts_narrator_parameter(self):
+        """Agent should accept an optional narrator parameter."""
+        from tests.ui.investor_journey_agent.agent import InvestorJourneyAgent
+        from tests.ui.investor_journey_agent.progress_narrator import ProgressNarrator
+
+        narrator = ProgressNarrator(interval=3)
+        # Should not raise - narrator is accepted as a parameter
+        agent = InvestorJourneyAgent(
+            persona="investor",
+            viewport="iphone_14",
+            narrator=narrator,
+        )
+        assert agent.narrator is narrator
+
+    def test_agent_narrator_defaults_to_none(self):
+        """Agent should work without a narrator (backwards compatible)."""
+        from tests.ui.investor_journey_agent.agent import InvestorJourneyAgent
+
+        agent = InvestorJourneyAgent(persona="investor")
+        assert agent.narrator is None
+
+    def test_cli_has_narrate_flag(self):
+        """CLI parser should have --no-narrate flag."""
+        from tests.ui.investor_journey_agent.__main__ import parse_args
+        import sys
+
+        # Simulate --no-narrate flag
+        old_argv = sys.argv
+        try:
+            sys.argv = ["prog", "--no-narrate"]
+            args = parse_args()
+            assert hasattr(args, "no_narrate")
+            assert args.no_narrate is True
+        finally:
+            sys.argv = old_argv
+
+    def test_cli_narrate_defaults_to_false(self):
+        """--no-narrate should default to False (narration ON by default)."""
+        from tests.ui.investor_journey_agent.__main__ import parse_args
+        import sys
+
+        old_argv = sys.argv
+        try:
+            sys.argv = ["prog"]
+            args = parse_args()
+            assert hasattr(args, "no_narrate")
+            assert args.no_narrate is False
+        finally:
+            sys.argv = old_argv
+
+
+# ============================================================
+# F4-T1/T2: Error Resilience in Agent
+# ============================================================
+
+
+class TestAgentErrorResilience:
+    """F4-T1/T2: Agent handles errors gracefully with partial reports."""
+
+    def test_journey_report_has_incomplete_field(self):
+        """JourneyReport should have incomplete and incomplete_reason fields."""
+        from tests.ui.investor_journey_agent.agent import JourneyReport
+        from tests.ui.investor_journey_agent.personas import get_persona
+
+        report = JourneyReport(
+            persona=get_persona("investor"),
+            goal="test",
+            url="http://test.com",
+            viewport_name="iphone_14",
+            start_time=datetime.now(),
+            end_time=datetime.now(),
+            steps=[],
+            evaluation=None,
+            output_dir=Path("/tmp"),
+            incomplete=True,
+            incomplete_reason="LLM API timeout",
+        )
+
+        assert report.incomplete is True
+        assert report.incomplete_reason == "LLM API timeout"
+
+    def test_journey_report_incomplete_defaults_to_false(self):
+        """JourneyReport incomplete should default to False."""
+        from tests.ui.investor_journey_agent.agent import JourneyReport
+        from tests.ui.investor_journey_agent.personas import get_persona
+
+        report = JourneyReport(
+            persona=get_persona("investor"),
+            goal="test",
+            url="http://test.com",
+            viewport_name="iphone_14",
+            start_time=datetime.now(),
+            end_time=datetime.now(),
+            steps=[],
+            evaluation=None,
+            output_dir=Path("/tmp"),
+        )
+
+        assert report.incomplete is False
+        assert report.incomplete_reason is None
