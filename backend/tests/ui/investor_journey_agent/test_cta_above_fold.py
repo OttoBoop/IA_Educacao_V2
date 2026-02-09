@@ -24,7 +24,7 @@ def _find_mobile_media_block(html: str) -> str:
     """Extract content inside the @media (max-width: 768px) block that
     contains welcome modal CSS adjustments."""
     # Find all @media blocks for max-width: 768px
-    pattern = r"@media\s*\([^)]*max-width:\s*768px[^)]*\)\s*\{"
+    pattern = r"@media[^{]*max-width:\s*768px[^{]*\{"
     blocks = []
     for m in re.finditer(pattern, html):
         start = m.end() - 1  # position of opening {
