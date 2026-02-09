@@ -11,8 +11,11 @@ from pathlib import Path
 
 import pytest
 
+from tests.ui.investor_journey_agent.config import VIEWPORT_CONFIGS
+
 # Path to the frontend HTML file
 INDEX_PATH = Path(__file__).parents[4] / "frontend" / "index_v2.html"
+INDEX_URL = INDEX_PATH.as_uri()
 
 
 @pytest.fixture
@@ -129,4 +132,45 @@ class TestWelcomeModalMobileCSS:
         has_reduction = "margin" in rule or "padding" in rule or "gap" in rule
         assert has_reduction, (
             "Mobile CSS must reduce .welcome-tips spacing"
+        )
+
+
+# ============================================================
+# F3-T2: CTA visibility verification via Playwright
+# ============================================================
+
+
+@pytest.fixture
+async def iphone_page():
+    """Launch Playwright with iPhone 14 viewport and load the welcome modal."""
+    from tests.ui.investor_journey_agent.browser_interface import BrowserInterface
+
+    viewport = VIEWPORT_CONFIGS["iphone_14"]
+    bi = BrowserInterface(viewport_config=viewport, headless=True)
+    await bi.start()
+    await bi.goto(INDEX_URL)
+    # Wait for the welcome modal to be visible
+    await bi.page.wait_for_selector("#modal-welcome.active", timeout=5000)
+    yield bi
+    await bi.close()
+
+
+class TestCTAVisibility:
+    """F3-T2: CTA button must be visible without scrolling on iPhone 14."""
+
+    @pytest.mark.asyncio
+    async def test_cta_button_bottom_within_viewport(self, iphone_page):
+        """The CTA button's bottom edge must be within the iPhone 14 viewport.
+
+        iPhone 14 viewport height is 852px. The CTA button must be fully
+        visible without scrolling.
+        """
+        viewport_height = VIEWPORT_CONFIGS["iphone_14"]["height"]
+        # Find the CTA button by role and text
+        btn = iphone_page.page.get_by_role("button", name="Começar a Usar")
+        box = await btn.bounding_box()
+        assert box is not None, "CTA button not found or not visible"
+        assert box["y"] + box["height"] <= viewport_height, (
+            f"CTA button bottom ({box['y'] + box['height']:.0f}px) exceeds "
+            f"viewport height ({viewport_height}px) — not visible without scrolling"
         )
