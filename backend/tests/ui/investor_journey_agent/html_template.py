@@ -114,6 +114,10 @@ class HTMLReportRenderer:
         duration = (report.end_time - report.start_time).total_seconds()
         success_rate = report.success_rate
 
+        # Check for incomplete flag (set when journey ends early due to errors)
+        is_incomplete = getattr(report, "incomplete", False)
+        incomplete_reason = getattr(report, "incomplete_reason", None)
+
         return f"""<!DOCTYPE html>
 <html lang="pt-BR">
 <head>
@@ -124,6 +128,7 @@ class HTMLReportRenderer:
 </head>
 <body>
     <div class="container">
+        {self._render_incomplete_banner(is_incomplete, incomplete_reason)}
         {self._render_header(persona, report)}
         {self._render_summary(report, duration, success_rate)}
         {self._render_timeline(steps)}
@@ -136,6 +141,32 @@ class HTMLReportRenderer:
     {self._render_js()}
 </body>
 </html>"""
+
+    def _render_incomplete_banner(
+        self, is_incomplete: bool, reason: Optional[str]
+    ) -> str:
+        """Render a warning banner for incomplete journeys."""
+        if not is_incomplete:
+            return ""
+
+        reason_html = (
+            f"<p>{_escape_html(reason)}</p>" if reason else ""
+        )
+
+        return f"""
+    <div class="journey-incomplete" style="
+        background: rgba(239, 68, 68, 0.1);
+        border: 1px solid rgba(239, 68, 68, 0.3);
+        border-radius: 12px;
+        padding: 1rem 1.5rem;
+        margin-bottom: 1.5rem;
+        text-align: center;
+    ">
+        <strong style="color: var(--accent-red); font-size: 1rem;">
+            Incomplete Journey
+        </strong>
+        {reason_html}
+    </div>"""
 
     def _render_css(self) -> str:
         """Render inline CSS for dark theme."""

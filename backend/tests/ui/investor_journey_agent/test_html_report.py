@@ -758,3 +758,60 @@ class TestProgressNarrator:
         assert final is not None
         assert isinstance(final, str)
         assert len(final) > 0
+
+
+# ============================================================
+# F4: Error Resilience - Incomplete Reports
+# ============================================================
+
+
+class TestIncompleteReports:
+    """F4: HTML reports should indicate when journey ended early."""
+
+    def test_incomplete_banner_shown_when_flagged(self):
+        """HTML should show 'Incomplete' banner when report is marked incomplete."""
+        from tests.ui.investor_journey_agent.html_template import HTMLReportRenderer
+
+        report = _make_mock_report()
+        report.incomplete = True
+        report.incomplete_reason = "Network timeout after step 3"
+
+        renderer = HTMLReportRenderer()
+        html = renderer.render(report)
+
+        assert "incomplete" in html.lower()
+        assert "Network timeout" in html
+
+    def test_no_incomplete_banner_for_normal_reports(self):
+        """Normal reports should not show incomplete banner."""
+        from tests.ui.investor_journey_agent.html_template import HTMLReportRenderer
+
+        report = _make_mock_report()
+        report.incomplete = False
+
+        renderer = HTMLReportRenderer()
+        html = renderer.render(report)
+
+        # Should not have the incomplete warning section
+        # (the word "incomplete" might appear elsewhere, check for the banner specifically)
+        assert "journey-incomplete" not in html
+
+    def test_partial_report_preserves_completed_steps(self):
+        """Even incomplete reports should show all steps that were completed."""
+        from tests.ui.investor_journey_agent.html_template import HTMLReportRenderer
+
+        steps = [
+            _make_step(step_number=1, thought="First action", success=True),
+            _make_step(step_number=2, thought="Second action", success=True),
+            _make_step(step_number=3, thought="Third action failed", success=False, error="Connection lost"),
+        ]
+        report = _make_mock_report(steps=steps)
+        report.incomplete = True
+        report.incomplete_reason = "Connection lost"
+
+        renderer = HTMLReportRenderer()
+        html = renderer.render(report)
+
+        assert "First action" in html
+        assert "Second action" in html
+        assert "Third action failed" in html
