@@ -214,51 +214,95 @@ class BrowserInterface:
             return f"Error getting DOM: {e}"
 
     async def get_clickable_elements(self) -> List[ClickableElement]:
-        """Get all clickable elements on the page."""
+        """Get all clickable elements on the page with occlusion detection."""
         script = """
         () => {
             const elements = [];
             const selectors = 'button, a, [role="button"], [onclick], input[type="submit"], input[type="button"]';
 
+            // Check if an element at (x, y) belongs to the target element
+            function isOwnElement(target, x, y) {
+                const topEl = document.elementFromPoint(x, y);
+                if (!topEl) return null; // point is outside viewport
+                // Check if topEl is the target, or a descendant, or an ancestor
+                return target.contains(topEl) || topEl.contains(target);
+            }
+
             document.querySelectorAll(selectors).forEach((el) => {
                 const rect = el.getBoundingClientRect();
-                const isVisible = rect.width > 0 && rect.height > 0 &&
-                                  rect.top < window.innerHeight && rect.bottom > 0 &&
-                                  rect.left < window.innerWidth && rect.right > 0;
+                const hasSize = rect.width > 0 && rect.height > 0;
+                if (!hasSize) return;
 
-                if (isVisible) {
-                    // Build a reliable selector
-                    let selector;
-                    if (el.id) {
-                        selector = `#${el.id}`;
-                    } else if (el.getAttribute('onclick')) {
-                        const onclick = el.getAttribute('onclick').replace(/'/g, "\\'");
-                        selector = `[onclick="${onclick}"]`;
-                    } else {
-                        // Use nth-child within parent for correct indexing
-                        const parent = el.parentElement;
-                        const siblings = parent ? Array.from(parent.children) : [];
-                        const childIndex = siblings.indexOf(el) + 1;
-                        const tag = el.tagName.toLowerCase();
-                        const cls = el.className ? `.${el.className.trim().split(/\\s+/)[0]}` : '';
-                        selector = cls
-                            ? `${tag}${cls}:nth-child(${childIndex})`
-                            : `${tag}:nth-child(${childIndex})`;
+                const inViewport = rect.top < window.innerHeight && rect.bottom > 0 &&
+                                   rect.left < window.innerWidth && rect.right > 0;
+
+                // Determine occlusion status
+                let occlusion_status;
+                if (!inViewport) {
+                    occlusion_status = 'off_screen';
+                } else {
+                    // 5-point sampling: center + 4 quadrant midpoints
+                    const cx = rect.left + rect.width / 2;
+                    const cy = rect.top + rect.height / 2;
+                    const qw = rect.width / 4;
+                    const qh = rect.height / 4;
+
+                    const points = [
+                        [cx, cy],             // center
+                        [cx - qw, cy - qh],   // top-left quadrant
+                        [cx + qw, cy - qh],   // top-right quadrant
+                        [cx - qw, cy + qh],   // bottom-left quadrant
+                        [cx + qw, cy + qh],   // bottom-right quadrant
+                    ];
+
+                    let visibleCount = 0;
+                    for (const [px, py] of points) {
+                        const owns = isOwnElement(el, px, py);
+                        if (owns === true) visibleCount++;
+                        // owns === null means outside viewport, treat as occluded
                     }
-                    elements.push({
-                        selector: selector,
-                        tag: el.tagName.toLowerCase(),
-                        text: el.textContent?.trim().slice(0, 100) || '',
-                        aria_label: el.getAttribute('aria-label'),
-                        role: el.getAttribute('role'),
-                        bounding_box: {
-                            x: rect.x,
-                            y: rect.y,
-                            width: rect.width,
-                            height: rect.height
-                        }
-                    });
+
+                    if (visibleCount === 5) {
+                        occlusion_status = 'visible';
+                    } else if (visibleCount === 0) {
+                        occlusion_status = 'fully_occluded';
+                    } else {
+                        occlusion_status = 'partially_occluded';
+                    }
                 }
+
+                // Build a reliable selector
+                let selector;
+                if (el.id) {
+                    selector = `#${el.id}`;
+                } else if (el.getAttribute('onclick')) {
+                    const onclick = el.getAttribute('onclick').replace(/'/g, "\\'");
+                    selector = `[onclick="${onclick}"]`;
+                } else {
+                    const parent = el.parentElement;
+                    const siblings = parent ? Array.from(parent.children) : [];
+                    const childIndex = siblings.indexOf(el) + 1;
+                    const tag = el.tagName.toLowerCase();
+                    const cls = el.className ? `.${el.className.trim().split(/\\s+/)[0]}` : '';
+                    selector = cls
+                        ? `${tag}${cls}:nth-child(${childIndex})`
+                        : `${tag}:nth-child(${childIndex})`;
+                }
+
+                elements.push({
+                    selector: selector,
+                    tag: el.tagName.toLowerCase(),
+                    text: el.textContent?.trim().slice(0, 100) || '',
+                    aria_label: el.getAttribute('aria-label'),
+                    role: el.getAttribute('role'),
+                    occlusion_status: occlusion_status,
+                    bounding_box: {
+                        x: rect.x,
+                        y: rect.y,
+                        width: rect.width,
+                        height: rect.height
+                    }
+                });
             });
 
             return elements;
