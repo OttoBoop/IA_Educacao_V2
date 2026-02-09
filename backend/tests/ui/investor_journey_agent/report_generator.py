@@ -30,6 +30,7 @@ class GenerationResult:
     journey_report_path: Path
     summary_json_path: Path
     screenshots_dir: Path
+    html_report_path: Optional[Path] = None
 
     def get_file_locations_summary(self) -> str:
         """Get a printable summary of all generated file locations."""
@@ -40,6 +41,8 @@ class GenerationResult:
             f"  - Summary JSON:   {self.summary_json_path}",
             f"  - Screenshots:    {self.screenshots_dir}",
         ]
+        if self.html_report_path:
+            lines.append(f"  - HTML report:    {self.html_report_path}")
         return "\n".join(lines)
 
 
@@ -192,12 +195,13 @@ class JourneyLogGenerator:
 
 class ReportGenerator:
     """
-    Generates markdown reports from journey data.
+    Generates reports from journey data.
 
     Creates:
     - journey_log.md - Intermediate log for Claude Code analysis
-    - journey_report.md - Main human-readable report
+    - journey_report.md - Human-readable markdown report
     - summary.json - Machine-readable data
+    - journey_report.html - Self-contained HTML report for sharing
     """
 
     def __init__(self):
@@ -236,12 +240,28 @@ class ReportGenerator:
         json_data = self._generate_json(report)
         json_path.write_text(json.dumps(json_data, indent=2, ensure_ascii=False), encoding="utf-8")
 
+        # Generate HTML report
+        html_path = self._generate_html(report)
+
         return GenerationResult(
             journey_log_path=log_path,
             journey_report_path=report_path,
             summary_json_path=json_path,
             screenshots_dir=screenshots_dir,
+            html_report_path=html_path,
         )
+
+    def _generate_html(self, report: "JourneyReport") -> Path:
+        """Generate self-contained HTML report."""
+        from .html_template import HTMLReportRenderer
+
+        renderer = HTMLReportRenderer()
+        html = renderer.render(report)
+
+        html_path = report.output_dir / "journey_report.html"
+        html_path.write_text(html, encoding="utf-8")
+
+        return html_path
 
     def _generate_markdown(self, report: "JourneyReport") -> str:
         """Generate the markdown report."""

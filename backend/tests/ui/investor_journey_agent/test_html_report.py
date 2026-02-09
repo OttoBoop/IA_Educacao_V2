@@ -586,3 +586,105 @@ class TestPainPointsSection:
         html = renderer.render(report)
 
         assert "3.5" in html or "3,5" in html
+
+
+# ============================================================
+# F2: Report Generator Integration
+# ============================================================
+
+
+class TestReportGeneratorHTML:
+    """F2: ReportGenerator should produce HTML alongside markdown/JSON."""
+
+    def test_generate_creates_html_file(self):
+        """F2-T1/T3: generate() should create journey_report.html."""
+        from tests.ui.investor_journey_agent.report_generator import ReportGenerator
+
+        with TemporaryDirectory() as tmpdir:
+            output_dir = Path(tmpdir)
+            # Create screenshots dir (agent normally does this)
+            (output_dir / "screenshots").mkdir()
+
+            report = _make_mock_report()
+            report.output_dir = output_dir
+
+            generator = ReportGenerator()
+            result = generator.generate(report)
+
+            html_files = list(output_dir.glob("*.html"))
+            assert len(html_files) == 1, f"Expected 1 HTML file, found {len(html_files)}"
+            assert html_files[0].stat().st_size > 0
+
+    def test_generation_result_has_html_path(self):
+        """F2-T2: GenerationResult should include html_report_path."""
+        from tests.ui.investor_journey_agent.report_generator import ReportGenerator
+
+        with TemporaryDirectory() as tmpdir:
+            output_dir = Path(tmpdir)
+            (output_dir / "screenshots").mkdir()
+
+            report = _make_mock_report()
+            report.output_dir = output_dir
+
+            generator = ReportGenerator()
+            result = generator.generate(report)
+
+            assert hasattr(result, "html_report_path")
+            assert result.html_report_path is not None
+            assert result.html_report_path.exists()
+            assert result.html_report_path.suffix == ".html"
+
+    def test_html_file_is_self_contained(self):
+        """HTML file produced by generator should be self-contained."""
+        from tests.ui.investor_journey_agent.report_generator import ReportGenerator
+        import re
+
+        with TemporaryDirectory() as tmpdir:
+            output_dir = Path(tmpdir)
+            (output_dir / "screenshots").mkdir()
+
+            report = _make_mock_report()
+            report.output_dir = output_dir
+
+            generator = ReportGenerator()
+            result = generator.generate(report)
+
+            html = result.html_report_path.read_text(encoding="utf-8")
+            assert "<!DOCTYPE html>" in html
+            external_links = re.findall(r'<link[^>]+href=["\']https?://', html)
+            assert len(external_links) == 0
+
+    def test_existing_outputs_still_generated(self):
+        """F2 regression: markdown, JSON, and log still produced."""
+        from tests.ui.investor_journey_agent.report_generator import ReportGenerator
+
+        with TemporaryDirectory() as tmpdir:
+            output_dir = Path(tmpdir)
+            (output_dir / "screenshots").mkdir()
+
+            report = _make_mock_report()
+            report.output_dir = output_dir
+
+            generator = ReportGenerator()
+            result = generator.generate(report)
+
+            assert result.journey_log_path.exists()
+            assert result.journey_report_path.exists()
+            assert result.summary_json_path.exists()
+
+    def test_file_locations_summary_includes_html(self):
+        """F2-T4: get_file_locations_summary() should mention HTML report."""
+        from tests.ui.investor_journey_agent.report_generator import ReportGenerator
+
+        with TemporaryDirectory() as tmpdir:
+            output_dir = Path(tmpdir)
+            (output_dir / "screenshots").mkdir()
+
+            report = _make_mock_report()
+            report.output_dir = output_dir
+
+            generator = ReportGenerator()
+            result = generator.generate(report)
+
+            summary = result.get_file_locations_summary()
+            assert ".html" in summary or "html" in summary.lower()
