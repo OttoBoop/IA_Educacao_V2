@@ -136,6 +136,22 @@ PERSONAS = {
         ],
         language="pt-BR",
     ),
+    "tester": Persona(
+        name="QA Tester",
+        description="A focused QA tester verifying specific fixes and features. "
+        "You have a checklist of things to verify and you methodically "
+        "go through each one. You are thorough and detail-oriented. "
+        "Your goal is passed via the --goal flag with specific items to check.",
+        patience_level=9,
+        tech_savviness=10,
+        goals=[],  # Populated dynamically via --goal flag
+        frustration_triggers=[
+            "Test item cannot be found or accessed",
+            "Feature does not work as specified in checklist",
+            "Regression in previously working features",
+        ],
+        language="pt-BR",
+    ),
 }
 
 
