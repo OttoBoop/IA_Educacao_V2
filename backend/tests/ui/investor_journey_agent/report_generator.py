@@ -34,15 +34,18 @@ class GenerationResult:
 
     def get_file_locations_summary(self) -> str:
         """Get a printable summary of all generated file locations."""
+        output_dir = self.journey_log_path.parent.resolve()
         lines = [
+            f"Output folder: {output_dir}",
+            "",
             "Generated files:",
-            f"  - Journey log:    {self.journey_log_path}",
-            f"  - Journey report: {self.journey_report_path}",
-            f"  - Summary JSON:   {self.summary_json_path}",
-            f"  - Screenshots:    {self.screenshots_dir}",
+            f"  - Journey log:    {self.journey_log_path.name}",
+            f"  - Journey report: {self.journey_report_path.name}",
+            f"  - Summary JSON:   {self.summary_json_path.name}",
+            f"  - Screenshots:    {self.screenshots_dir.name}/",
         ]
         if self.html_report_path:
-            lines.append(f"  - HTML report:    {self.html_report_path}")
+            lines.append(f"  - HTML report:    {self.html_report_path.name}")
         return "\n".join(lines)
 
 

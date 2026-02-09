@@ -217,14 +217,33 @@ class BrowserInterface:
             const elements = [];
             const selectors = 'button, a, [role="button"], [onclick], input[type="submit"], input[type="button"]';
 
-            document.querySelectorAll(selectors).forEach((el, index) => {
+            document.querySelectorAll(selectors).forEach((el) => {
                 const rect = el.getBoundingClientRect();
                 const isVisible = rect.width > 0 && rect.height > 0 &&
-                                  rect.top < window.innerHeight && rect.bottom > 0;
+                                  rect.top < window.innerHeight && rect.bottom > 0 &&
+                                  rect.left < window.innerWidth && rect.right > 0;
 
                 if (isVisible) {
+                    // Build a reliable selector
+                    let selector;
+                    if (el.id) {
+                        selector = `#${el.id}`;
+                    } else if (el.getAttribute('onclick')) {
+                        const onclick = el.getAttribute('onclick').replace(/'/g, "\\'");
+                        selector = `[onclick="${onclick}"]`;
+                    } else {
+                        // Use nth-child within parent for correct indexing
+                        const parent = el.parentElement;
+                        const siblings = parent ? Array.from(parent.children) : [];
+                        const childIndex = siblings.indexOf(el) + 1;
+                        const tag = el.tagName.toLowerCase();
+                        const cls = el.className ? `.${el.className.trim().split(/\\s+/)[0]}` : '';
+                        selector = cls
+                            ? `${tag}${cls}:nth-child(${childIndex})`
+                            : `${tag}:nth-child(${childIndex})`;
+                    }
                     elements.push({
-                        selector: el.id ? `#${el.id}` : `${el.tagName.toLowerCase()}:nth-of-type(${index + 1})`,
+                        selector: selector,
                         tag: el.tagName.toLowerCase(),
                         text: el.textContent?.trim().slice(0, 100) || '',
                         aria_label: el.getAttribute('aria-label'),

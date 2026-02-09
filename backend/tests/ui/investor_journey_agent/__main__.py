@@ -26,6 +26,7 @@ Examples:
 import argparse
 import asyncio
 import sys
+import webbrowser
 from pathlib import Path
 
 # Fix Windows console encoding for Unicode (LLM responses contain emojis)
@@ -129,6 +130,12 @@ Examples:
         help="Disable periodic progress narration during the run",
     )
 
+    parser.add_argument(
+        "--no-open",
+        action="store_true",
+        help="Don't auto-open HTML report in browser after generation",
+    )
+
     return parser.parse_args()
 
 
@@ -197,6 +204,12 @@ async def main():
         # Print all generated file locations
         print(f"\n{result.get_file_locations_summary()}")
         print(f"{'='*60}\n")
+
+        # Auto-open HTML report in browser
+        if not args.no_open and result.html_report_path and result.html_report_path.exists():
+            html_url = result.html_report_path.resolve().as_uri()
+            print(f"Opening HTML report in browser...")
+            webbrowser.open(html_url)
 
         # Return exit code based on success
         if report.gave_up:
