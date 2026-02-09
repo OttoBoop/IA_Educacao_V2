@@ -25,6 +25,7 @@ class ClickableElement:
     role: Optional[str] = None
     is_visible: bool = True
     bounding_box: Optional[Dict[str, float]] = None
+    occlusion_status: str = "visible"
 
     def to_description(self) -> str:
         """Human-readable description of the element."""
@@ -35,6 +36,8 @@ class ClickableElement:
             parts.append(f"(aria: {self.aria_label})")
         if self.role:
             parts.append(f"[role={self.role}]")
+        if self.occlusion_status != "visible":
+            parts.append(f"[{self.occlusion_status}]")
         return " ".join(parts)
 
 
