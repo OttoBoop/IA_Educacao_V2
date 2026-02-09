@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Occlusion Test Fixture</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { width: 100vw; height: 100vh; position: relative; }
+
+        /* Visible button - top-left, no overlay */
+        #btn-visible {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            width: 120px;
+            height: 40px;
+            z-index: 1;
+        }
+
+        /* Button behind full-screen overlay */
+        #btn-occluded {
+            position: absolute;
+            top: 200px;
+            left: 200px;
+            width: 120px;
+            height: 40px;
+            z-index: 1;
+        }
+
+        /* Full-screen overlay (simulates a modal) */
+        #overlay {
+            position: fixed;
+            top: 150px;
+            left: 150px;
+            width: 300px;
+            height: 300px;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 100;
+        }
+
+        /* Partially occluded button - center is visible, right side is behind partial-overlay */
+        #btn-partial {
+            position: absolute;
+            top: 100px;
+            left: 500px;
+            width: 200px;
+            height: 40px;
+            z-index: 1;
+        }
+
+        /* Partial overlay - covers the right half of btn-partial */
+        #partial-overlay {
+            position: absolute;
+            top: 80px;
+            left: 600px;
+            width: 200px;
+            height: 80px;
+            background: rgba(255, 0, 0, 0.3);
+            z-index: 100;
+        }
+
+        /* Off-screen button - positioned outside viewport */
+        #btn-offscreen {
+            position: absolute;
+            top: -1000px;
+            left: 20px;
+            width: 120px;
+            height: 40px;
+        }
+    </style>
+</head>
+<body>
+    <!-- Fully visible button (no overlay above it) -->
+    <button id="btn-visible" onclick="alert('visible')">Visible Button</button>
+
+    <!-- Button completely behind the overlay -->
+    <button id="btn-occluded" onclick="alert('occluded')">Occluded Button</button>
+
+    <!-- Full overlay (simulates a modal) -->
+    <div id="overlay"></div>
+
+    <!-- Button partially behind the partial-overlay -->
+    <button id="btn-partial" onclick="alert('partial')">Partial Button</button>
+
+    <!-- Partial overlay covering right side of btn-partial -->
+    <div id="partial-overlay"></div>
+
+    <!-- Off-screen button -->
+    <button id="btn-offscreen" onclick="alert('offscreen')">Off-screen Button</button>
+</body>
+</html>
