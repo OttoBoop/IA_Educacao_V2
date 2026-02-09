@@ -86,3 +86,74 @@ class TestFlowCardOnclick:
         assert "showChat()" in card_tag, (
             "Chat card onclick must call showChat()"
         )
+
+
+# ============================================================
+# F2-T2: Flow card mobile CSS affordance
+# ============================================================
+
+
+def _extract_css_block(html: str, selector: str) -> str:
+    """Extract a CSS rule block for a given selector from inline <style> tags.
+
+    Returns the full rule text including the selector and braces.
+    Handles selectors that may appear multiple times; returns all matches concatenated.
+    """
+    import re
+
+    results = []
+    # Find all occurrences of the selector
+    idx = 0
+    while True:
+        pos = html.find(selector, idx)
+        if pos == -1:
+            break
+        # Find the opening brace
+        brace_start = html.find("{", pos)
+        if brace_start == -1:
+            break
+        # Find matching closing brace (handle nesting)
+        depth = 0
+        brace_end = brace_start
+        for i in range(brace_start, len(html)):
+            if html[i] == "{":
+                depth += 1
+            elif html[i] == "}":
+                depth -= 1
+                if depth == 0:
+                    brace_end = i
+                    break
+        results.append(html[pos : brace_end + 1])
+        idx = brace_end + 1
+    return "\n".join(results)
+
+
+class TestFlowCardMobileCSS:
+    """F2-T2: Flow cards must have cursor: pointer and click affordance on mobile."""
+
+    def test_flow_card_has_cursor_pointer(self, html):
+        """Flow card base CSS must include cursor: pointer."""
+        css = _extract_css_block(html, ".flow-card {")
+        assert "cursor: pointer" in css or "cursor:pointer" in css, (
+            "Flow card is missing cursor: pointer in base CSS"
+        )
+
+    def test_flow_card_active_state_exists(self, html):
+        """.flow-card:active must be defined for mobile touch feedback."""
+        assert ".flow-card:active" in html, (
+            "Flow card is missing :active state for touch feedback"
+        )
+
+    def test_flow_card_active_has_visual_feedback(self, html):
+        """.flow-card:active must have visual feedback (transform or opacity or background)."""
+        css = _extract_css_block(html, ".flow-card:active")
+        has_feedback = (
+            "transform" in css
+            or "opacity" in css
+            or "background" in css
+            or "scale" in css
+        )
+        assert has_feedback, (
+            "Flow card :active state must have visual feedback "
+            "(transform, opacity, background, or scale)"
+        )
