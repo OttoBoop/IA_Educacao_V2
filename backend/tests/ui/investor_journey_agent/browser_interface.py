@@ -134,8 +134,12 @@ class BrowserInterface:
     async def goto(self, url: str, timeout: int = 60000) -> bool:
         """Navigate to a URL."""
         try:
-            await self.page.goto(url, timeout=timeout)
-            await self.page.wait_for_load_state("networkidle", timeout=30000)
+            await self.page.goto(url, timeout=timeout, wait_until="domcontentloaded")
+            # Best-effort wait for network idle — don't fail if it times out
+            try:
+                await self.page.wait_for_load_state("networkidle", timeout=15000)
+            except Exception:
+                pass  # Page loaded fine, just has ongoing network activity
             return True
         except Exception as e:
             self._console_errors.append(f"Navigation error: {e}")

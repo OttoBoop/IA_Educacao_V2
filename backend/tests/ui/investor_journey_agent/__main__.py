@@ -36,13 +36,15 @@ if sys.platform == "win32":
 
 from .agent import InvestorJourneyAgent
 from .config import AgentConfig, VIEWPORT_CONFIGS, LOCAL_URL, PRODUCTION_URL
+from .event_emitter import EventEmitter
+from .command_receiver import CommandReceiver
 from .personas import PERSONAS
 from .progress_narrator import ProgressNarrator
 from .report_generator import ReportGenerator
 
 
-def parse_args():
-    """Parse command line arguments."""
+def build_parser():
+    """Build the argument parser. Separated for testability."""
     parser = argparse.ArgumentParser(
         description="Investor Journey Agent - Simulate user journeys with AI",
         formatter_class=argparse.RawDescriptionHelpFormatter,
@@ -136,7 +138,26 @@ Examples:
         help="Don't auto-open HTML report in browser after generation",
     )
 
-    return parser.parse_args()
+    # Interactive mode (for Claude Code IPC)
+    parser.add_argument(
+        "--interactive",
+        action="store_true",
+        help="Enable IPC mode: emit events to events.jsonl, accept commands from commands.jsonl",
+    )
+
+    parser.add_argument(
+        "--resume",
+        type=str,
+        default=None,
+        help="Resume from a saved state directory (reads state.json)",
+    )
+
+    return parser
+
+
+def parse_args():
+    """Parse command line arguments."""
+    return build_parser().parse_args()
 
 
 async def main():
@@ -158,6 +179,27 @@ async def main():
     # Create narrator (enabled by default)
     narrator = None if args.no_narrate else ProgressNarrator(interval=3)
 
+    # Interactive mode: set up IPC components
+    event_emitter = None
+    command_receiver = None
+    if args.interactive:
+        # Output dir needs to be resolved early for IPC
+        from datetime import datetime
+        output_dir = config.output_dir / datetime.now().strftime("%Y%m%d_%H%M%S")
+        output_dir.mkdir(parents=True, exist_ok=True)
+        config.output_dir = output_dir.parent  # Agent will use output_dir parent
+
+        event_emitter = EventEmitter(
+            output_dir=output_dir,
+            max_steps=args.max_steps,
+            persona=args.persona,
+        )
+        command_receiver = CommandReceiver(output_dir=output_dir)
+
+        # Print IPC dir as first line for caller to parse
+        print(f"IPC_DIR={output_dir}")
+        sys.stdout.flush()
+
     # Create agent
     agent = InvestorJourneyAgent(
         persona=args.persona,
@@ -166,6 +208,8 @@ async def main():
         config=config,
         headless=not args.no_headless,
         narrator=narrator,
+        event_emitter=event_emitter,
+        command_receiver=command_receiver,
     )
 
     print(f"\n{'='*60}")

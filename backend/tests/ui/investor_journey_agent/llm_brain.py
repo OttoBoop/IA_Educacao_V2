@@ -188,6 +188,7 @@ Respond ONLY with valid JSON (no markdown, no explanation outside JSON):
         goal: str,
         history: List[JourneyStep] = None,
         console_errors: List[str] = None,
+        user_guidance: Optional[str] = None,
     ) -> Action:
         """
         Decide what action the persona would take next.
@@ -247,6 +248,9 @@ Respond ONLY with valid JSON (no markdown, no explanation outside JSON):
 
         if console_errors:
             context_text += f"\n**Console Errors:** {', '.join(console_errors[:5])}"
+
+        if user_guidance:
+            context_text += f"\n\n**Guidance from operator:** {user_guidance}"
 
         context_text += "\n\nWhat would you do next? Remember to respond ONLY with JSON."
 

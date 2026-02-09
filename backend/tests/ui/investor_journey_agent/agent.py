@@ -11,7 +11,9 @@ from datetime import datetime
 from pathlib import Path
 from typing import List, Optional, Literal, Callable
 
+from .command_receiver import CommandReceiver
 from .config import AgentConfig, VIEWPORT_CONFIGS, DEFAULT_CONFIG
+from .event_emitter import EventEmitter
 from .personas import Persona, PERSONAS, get_persona
 from .browser_interface import BrowserInterface
 from .llm_brain import LLMBrain, Action, ActionType, JourneyStep, JourneyEvaluation
@@ -73,6 +75,8 @@ class InvestorJourneyAgent:
         on_step: Optional[Callable[[JourneyStep], None]] = None,
         headless: bool = True,
         narrator: Optional["ProgressNarrator"] = None,
+        event_emitter: Optional[EventEmitter] = None,
+        command_receiver: Optional[CommandReceiver] = None,
     ):
         """
         Initialize the agent.
@@ -85,6 +89,8 @@ class InvestorJourneyAgent:
             on_step: Callback called after each step
             headless: Run browser in headless mode
             narrator: Optional ProgressNarrator for periodic summaries
+            event_emitter: Optional EventEmitter for structured IPC output
+            command_receiver: Optional CommandReceiver for IPC commands
         """
         # Resolve persona
         if isinstance(persona, str):
@@ -104,6 +110,8 @@ class InvestorJourneyAgent:
         self.on_step = on_step
         self.headless = headless
         self.narrator = narrator
+        self.event_emitter = event_emitter
+        self.command_receiver = command_receiver
 
         # Will be initialized in run_journey
         self._browser: Optional[BrowserInterface] = None
@@ -155,7 +163,8 @@ class InvestorJourneyAgent:
 
             success = await browser.goto(url)
             if not success:
-                print("Failed to load initial page!")
+                errors = browser._console_errors
+                print(f"Failed to load initial page! Errors: {errors}")
                 return JourneyReport(
                     persona=self.persona,
                     goal=goal,
@@ -173,9 +182,28 @@ class InvestorJourneyAgent:
             incomplete_reason = None
             step_number = 0
 
+            user_guidance = None  # For mid-journey guidance from operator
+
             try:
                 while step_number < max_steps:
                     step_number += 1
+
+                    # Poll for external commands
+                    if self.command_receiver:
+                        for cmd in self.command_receiver.poll_all():
+                            if cmd.command_type == "stop":
+                                reason = cmd.data.get("reason", "Stopped by external command")
+                                incomplete = True
+                                incomplete_reason = reason
+                                print(f"\n[STOP] {reason}")
+                                if self.event_emitter:
+                                    self.event_emitter.emit_stopped(reason=reason, steps_completed=len(steps))
+                                break
+                            elif cmd.command_type == "guidance":
+                                user_guidance = cmd.data.get("instruction", "")
+                                print(f"\n[GUIDANCE] {user_guidance}")
+                        if incomplete:
+                            break
 
                     # Get current state
                     state = await browser.get_state()
@@ -192,7 +220,9 @@ class InvestorJourneyAgent:
                         goal=goal,
                         history=steps,
                         console_errors=state.console_errors,
+                        user_guidance=user_guidance,
                     )
+                    user_guidance = None  # Clear after use (one-shot)
 
                     # Print step info
                     self._print_step(step_number, action)
@@ -207,6 +237,8 @@ class InvestorJourneyAgent:
                             success=True,
                         )
                         steps.append(step)
+                        if self.event_emitter:
+                            self.event_emitter.emit_step(step)
                         if self.on_step:
                             self.on_step(step)
                         self._narrate_step(step)
@@ -223,6 +255,8 @@ class InvestorJourneyAgent:
                             error_message="User gave up due to frustration",
                         )
                         steps.append(step)
+                        if self.event_emitter:
+                            self.event_emitter.emit_step(step)
                         if self.on_step:
                             self.on_step(step)
                         self._narrate_step(step)
@@ -248,6 +282,8 @@ class InvestorJourneyAgent:
                     )
                     steps.append(step)
 
+                    if self.event_emitter:
+                        self.event_emitter.emit_step(step)
                     if self.on_step:
                         self.on_step(step)
                     self._narrate_step(step)
@@ -256,10 +292,26 @@ class InvestorJourneyAgent:
                     await browser.wait_for_idle()
                     await asyncio.sleep(self.config.wait_after_action_ms / 1000)
 
+            except KeyboardInterrupt:
+                incomplete = True
+                incomplete_reason = "Interrupted by user (KeyboardInterrupt)"
+                print(f"\n[INTERRUPTED] Journey stopped by user")
+                if self.event_emitter:
+                    self.event_emitter.emit_stopped(
+                        reason="Interrupted by user",
+                        steps_completed=len(steps),
+                    )
+
             except Exception as e:
                 incomplete = True
                 incomplete_reason = str(e)
                 print(f"\n[ERROR] Journey interrupted: {e}")
+                if self.event_emitter:
+                    import traceback
+                    self.event_emitter.emit_error(
+                        error=str(e),
+                        traceback_str=traceback.format_exc(),
+                    )
 
             # Print final narrator summary
             if self.narrator:
@@ -276,6 +328,14 @@ class InvestorJourneyAgent:
                 )
 
         end_time = datetime.now()
+
+        # Emit final event
+        if self.event_emitter and not incomplete:
+            self.event_emitter.emit_complete(
+                success_rate=sum(1 for s in steps if s.success) / len(steps) if steps else 0.0,
+                total_steps=len(steps),
+                gave_up=bool(steps and steps[-1].action.action_type == ActionType.GIVE_UP),
+            )
 
         return JourneyReport(
             persona=self.persona,
