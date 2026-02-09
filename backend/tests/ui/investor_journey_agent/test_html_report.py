@@ -688,3 +688,73 @@ class TestReportGeneratorHTML:
 
             summary = result.get_file_locations_summary()
             assert ".html" in summary or "html" in summary.lower()
+
+
+# ============================================================
+# F3: Progress Narration
+# ============================================================
+
+
+class TestProgressNarrator:
+    """F3: Periodic progress summaries during agent runs."""
+
+    def test_narrator_module_exists(self):
+        """ProgressNarrator class should be importable."""
+        from tests.ui.investor_journey_agent.progress_narrator import ProgressNarrator
+
+        assert ProgressNarrator is not None
+
+    def test_narrator_produces_summary_at_interval(self):
+        """Narrator should produce a summary string every N steps."""
+        from tests.ui.investor_journey_agent.progress_narrator import ProgressNarrator
+
+        narrator = ProgressNarrator(interval=3)
+
+        # Steps 1 and 2 should return None (not at interval)
+        assert narrator.on_step(_make_step(step_number=1, frustration=0.1, success=True)) is None
+        assert narrator.on_step(_make_step(step_number=2, frustration=0.3, success=False, error="Timeout")) is None
+
+        # Step 3 should return a summary
+        result = narrator.on_step(_make_step(step_number=3, frustration=0.5, success=True))
+        assert result is not None
+        assert isinstance(result, str)
+        assert len(result) > 0
+
+    def test_narrator_summary_contains_key_info(self):
+        """Summary should include step number, frustration, and success rate."""
+        from tests.ui.investor_journey_agent.progress_narrator import ProgressNarrator
+
+        narrator = ProgressNarrator(interval=2)
+        narrator.on_step(_make_step(step_number=1, frustration=0.2, success=True))
+        summary = narrator.on_step(_make_step(step_number=2, frustration=0.6, success=False, error="err"))
+
+        assert summary is not None
+        # Should mention step number or progress
+        assert "2" in summary
+        # Should mention frustration trend
+        assert "frustration" in summary.lower() or "%" in summary
+        # Should mention success rate
+        assert "50%" in summary or "1/2" in summary or "success" in summary.lower()
+
+    def test_narrator_no_summary_between_intervals(self):
+        """Steps between intervals should not produce a summary."""
+        from tests.ui.investor_journey_agent.progress_narrator import ProgressNarrator
+
+        narrator = ProgressNarrator(interval=5)
+
+        for i in range(1, 5):
+            result = narrator.on_step(_make_step(step_number=i))
+            assert result is None, f"Step {i} should not produce summary"
+
+    def test_narrator_final_summary(self):
+        """Narrator should have a method to produce a final summary."""
+        from tests.ui.investor_journey_agent.progress_narrator import ProgressNarrator
+
+        narrator = ProgressNarrator(interval=10)
+        narrator.on_step(_make_step(step_number=1, frustration=0.1, success=True))
+        narrator.on_step(_make_step(step_number=2, frustration=0.8, success=False, error="fail"))
+
+        final = narrator.final_summary()
+        assert final is not None
+        assert isinstance(final, str)
+        assert len(final) > 0
