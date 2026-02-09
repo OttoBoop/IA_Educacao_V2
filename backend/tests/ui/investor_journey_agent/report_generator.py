@@ -255,13 +255,19 @@ class ReportGenerator:
         )
 
     def _generate_html(self, report: "JourneyReport") -> Path:
-        """Generate self-contained HTML report."""
+        """Generate self-contained HTML report with descriptive filename."""
         from .html_template import HTMLReportRenderer
 
         renderer = HTMLReportRenderer()
         html = renderer.render(report)
 
-        html_path = report.output_dir / "journey_report.html"
+        # Build descriptive filename: persona_viewport_YYYYMMDD_HHMM.html
+        persona_clean = re.sub(r"[^a-z0-9_]", "", report.persona.name.lower().replace(" ", "_"))
+        viewport_clean = re.sub(r"[^a-z0-9_]", "", report.viewport_name.lower().replace(" ", "_"))
+        time_str = report.start_time.strftime("%Y%m%d_%H%M")
+        html_filename = f"{persona_clean}_{viewport_clean}_{time_str}.html"
+
+        html_path = report.output_dir / html_filename
         html_path.write_text(html, encoding="utf-8")
 
         return html_path

@@ -689,6 +689,87 @@ class TestReportGeneratorHTML:
             summary = result.get_file_locations_summary()
             assert ".html" in summary or "html" in summary.lower()
 
+    def test_html_filename_contains_persona(self):
+        """HTML filename should contain the persona name."""
+        from tests.ui.investor_journey_agent.report_generator import ReportGenerator
+
+        with TemporaryDirectory() as tmpdir:
+            output_dir = Path(tmpdir)
+            (output_dir / "screenshots").mkdir()
+
+            report = _make_mock_report(persona_name="investor")
+            report.output_dir = output_dir
+
+            generator = ReportGenerator()
+            result = generator.generate(report)
+
+            filename = result.html_report_path.name
+            assert "investor" in filename.lower(), (
+                f"HTML filename '{filename}' should contain persona name 'investor'"
+            )
+
+    def test_html_filename_contains_viewport(self):
+        """HTML filename should contain the viewport/device name."""
+        from tests.ui.investor_journey_agent.report_generator import ReportGenerator
+
+        with TemporaryDirectory() as tmpdir:
+            output_dir = Path(tmpdir)
+            (output_dir / "screenshots").mkdir()
+
+            report = _make_mock_report()
+            report.output_dir = output_dir
+            report.viewport_name = "iphone_14"
+
+            generator = ReportGenerator()
+            result = generator.generate(report)
+
+            filename = result.html_report_path.name
+            assert "iphone_14" in filename.lower(), (
+                f"HTML filename '{filename}' should contain viewport 'iphone_14'"
+            )
+
+    def test_html_filename_contains_timestamp(self):
+        """HTML filename should contain a timestamp for uniqueness."""
+        from tests.ui.investor_journey_agent.report_generator import ReportGenerator
+
+        with TemporaryDirectory() as tmpdir:
+            output_dir = Path(tmpdir)
+            (output_dir / "screenshots").mkdir()
+
+            report = _make_mock_report()
+            report.output_dir = output_dir
+            # start_time is 2026-02-08 21:00:00
+
+            generator = ReportGenerator()
+            result = generator.generate(report)
+
+            filename = result.html_report_path.name
+            assert "2026" in filename, (
+                f"HTML filename '{filename}' should contain year from timestamp"
+            )
+
+    def test_html_filename_persona_before_timestamp(self):
+        """Persona and device should come before the timestamp in filename."""
+        from tests.ui.investor_journey_agent.report_generator import ReportGenerator
+
+        with TemporaryDirectory() as tmpdir:
+            output_dir = Path(tmpdir)
+            (output_dir / "screenshots").mkdir()
+
+            report = _make_mock_report(persona_name="investor")
+            report.output_dir = output_dir
+            report.viewport_name = "iphone_14"
+
+            generator = ReportGenerator()
+            result = generator.generate(report)
+
+            filename = result.html_report_path.stem  # without .html
+            persona_pos = filename.lower().find("investor")
+            timestamp_pos = filename.find("2026")
+            assert persona_pos < timestamp_pos, (
+                f"In filename '{filename}', persona should come before timestamp"
+            )
+
 
 # ============================================================
 # F3: Progress Narration
