@@ -1,15 +1,82 @@
 """
-Tests for BrowserInterface reload and back navigation actions.
+Tests for BrowserInterface reload and back navigation actions,
+and ClickableElement dataclass fields.
 
 These tests verify that the browser interface supports reload and back
-actions that personas can use when encountering failures.
+actions that personas can use when encountering failures, and that
+ClickableElement includes occlusion status tracking.
 """
 
 import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
 
-from tests.ui.investor_journey_agent.browser_interface import BrowserInterface
+from tests.ui.investor_journey_agent.browser_interface import (
+    BrowserInterface,
+    ClickableElement,
+)
 from tests.ui.investor_journey_agent.config import VIEWPORT_CONFIGS
+
+
+# ============================================================
+# F1-T1: ClickableElement occlusion_status field
+# ============================================================
+
+
+class TestClickableElementOcclusionStatus:
+    """F1-T1: ClickableElement must have an occlusion_status field."""
+
+    def test_has_occlusion_status_field(self):
+        """ClickableElement should have an occlusion_status attribute."""
+        el = ClickableElement(selector="#btn", tag="button", text="Click me")
+        assert hasattr(el, "occlusion_status")
+
+    def test_default_occlusion_status_is_visible(self):
+        """occlusion_status should default to 'visible' when not specified."""
+        el = ClickableElement(selector="#btn", tag="button", text="Click me")
+        assert el.occlusion_status == "visible"
+
+    def test_occlusion_status_accepts_fully_occluded(self):
+        """Should accept 'fully_occluded' as a valid status."""
+        el = ClickableElement(
+            selector="#btn", tag="button", text="Click me",
+            occlusion_status="fully_occluded",
+        )
+        assert el.occlusion_status == "fully_occluded"
+
+    def test_occlusion_status_accepts_partially_occluded(self):
+        """Should accept 'partially_occluded' as a valid status."""
+        el = ClickableElement(
+            selector="#btn", tag="button", text="Click me",
+            occlusion_status="partially_occluded",
+        )
+        assert el.occlusion_status == "partially_occluded"
+
+    def test_occlusion_status_accepts_off_screen(self):
+        """Should accept 'off_screen' as a valid status."""
+        el = ClickableElement(
+            selector="#btn", tag="button", text="Click me",
+            occlusion_status="off_screen",
+        )
+        assert el.occlusion_status == "off_screen"
+
+    def test_to_description_includes_occlusion_when_not_visible(self):
+        """to_description() should mention occlusion status when element is not visible."""
+        el = ClickableElement(
+            selector="#btn", tag="button", text="Click me",
+            occlusion_status="fully_occluded",
+        )
+        desc = el.to_description()
+        assert "occluded" in desc.lower()
+
+    def test_to_description_omits_occlusion_when_visible(self):
+        """to_description() should NOT mention occlusion when element is visible."""
+        el = ClickableElement(
+            selector="#btn", tag="button", text="Click me",
+            occlusion_status="visible",
+        )
+        desc = el.to_description()
+        assert "occluded" not in desc.lower()
+        assert "off_screen" not in desc.lower()
 
 
 class TestBrowserInterfaceReload:
