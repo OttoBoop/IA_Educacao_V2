@@ -282,6 +282,70 @@ def check_api_keys():
     return available, missing
 
 
+def analyze_failures(pytest_output: str, command: str) -> Optional[Path]:
+    """
+    Analisa falhas de teste e gera relatório detalhado.
+
+    Args:
+        pytest_output: Saída do pytest
+        command: Comando executado
+
+    Returns:
+        Path do relatório gerado ou None se não houver falhas
+    """
+    try:
+        from tests.utils.log_parser import TestResultParser, ReportGenerator
+
+        parser = TestResultParser()
+        result = parser.parse_pytest_output(pytest_output)
+
+        if result.failed == 0 and result.errors == 0:
+            print("\n[OK] Sem falhas para analisar")
+            return None
+
+        # Gerar relatório
+        generator = ReportGenerator()
+        report_content = generator.generate_markdown(result, command)
+
+        # Salvar relatório
+        report_path = REPORTS_DIR / "analysis_report.md"
+        report_path.write_text(report_content, encoding="utf-8")
+
+        print(f"\n[REPORT] Relatorio de analise gerado: {report_path}")
+        print(f"   - Testes: {result.total} total, {result.passed} passed, {result.failed} failed")
+        print(f"   - Taxa de sucesso: {result.success_rate:.1f}%")
+
+        if result.failures:
+            print("\n[SUMMARY] Resumo de falhas:")
+            # Agrupar por categoria
+            by_category = {}
+            for f in result.failures:
+                cat = f.category.value
+                if cat not in by_category:
+                    by_category[cat] = []
+                by_category[cat].append(f)
+
+            for cat, failures in by_category.items():
+                print(f"   - {cat.replace('_', ' ').title()}: {len(failures)}")
+
+        # Também salvar JSON para análise programática
+        json_report = generator.generate_json(result)
+        json_path = REPORTS_DIR / "analysis_report.json"
+        with open(json_path, "w", encoding="utf-8") as f:
+            import json as json_module
+            json_module.dump(json_report, f, indent=2)
+
+        return report_path
+
+    except ImportError as e:
+        print(f"\n[WARN] Nao foi possivel importar modulo de analise: {e}")
+        print("   Execute: pip install -e .")
+        return None
+    except Exception as e:
+        print(f"\n[WARN] Erro ao analisar falhas: {e}")
+        return None
+
+
 def print_summary(args):
     """Imprime resumo da configuração"""
     print("\n" + "=" * 60)
@@ -409,6 +473,13 @@ Exemplos:
     utils.add_argument("--list-tests", action="store_true",
                        help="Listar testes disponíveis")
 
+    # Análise de falhas
+    analysis = parser.add_argument_group("Análise de Falhas")
+    analysis.add_argument("--analyze-failures", action="store_true",
+                          help="Analisar falhas e gerar relatório detalhado")
+    analysis.add_argument("--with-rollback", action="store_true",
+                          help="Salvar estado antes de auto-fix (requer --analyze-failures)")
+
     args = parser.parse_args()
 
     # Verificar API keys
@@ -454,7 +525,52 @@ Exemplos:
         # Imprimir configuração
         print_summary(args)
 
-        # Executar
+        # Se análise de falhas, capturar saída
+        if args.analyze_failures:
+            import io
+            import sys as sys_module
+            from contextlib import redirect_stdout, redirect_stderr
+
+            # Capturar saída
+            output_buffer = io.StringIO()
+
+            # Construir comando para exibição
+            pytest_args = build_pytest_args(args)
+            command = f"pytest {' '.join(pytest_args)}"
+
+            # Executar pytest com captura
+            print("\n" + "=" * 60)
+            print("EXECUTANDO TESTES (com análise de falhas)")
+            print("=" * 60)
+            print(f"Comando: {command}")
+            print("=" * 60 + "\n")
+
+            # Usar subprocess para capturar saída completa
+            import subprocess
+            env = os.environ.copy()
+            env["PYTHONPATH"] = str(BASE_DIR)
+
+            cmd = [sys_module.executable, "-m", "pytest"] + pytest_args
+            result = subprocess.run(
+                cmd,
+                cwd=str(BASE_DIR),
+                env=env,
+                capture_output=True,
+                text=True
+            )
+
+            # Mostrar saída
+            print(result.stdout)
+            if result.stderr:
+                print(result.stderr)
+
+            # Analisar falhas
+            full_output = result.stdout + "\n" + result.stderr
+            analyze_failures(full_output, command)
+
+            return result.returncode
+
+        # Executar normalmente
         return run_pytest(args)
 
     # Se nenhuma ação, mostrar ajuda

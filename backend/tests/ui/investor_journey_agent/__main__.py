@@ -28,6 +28,11 @@ import asyncio
 import sys
 from pathlib import Path
 
+# Fix Windows console encoding for Unicode (LLM responses contain emojis)
+if sys.platform == "win32":
+    sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+    sys.stderr.reconfigure(encoding="utf-8", errors="replace")
+
 from .agent import InvestorJourneyAgent
 from .config import AgentConfig, VIEWPORT_CONFIGS, LOCAL_URL, PRODUCTION_URL
 from .personas import PERSONAS

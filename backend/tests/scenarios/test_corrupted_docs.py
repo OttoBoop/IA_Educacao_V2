@@ -128,7 +128,21 @@ class TestCorruptedDocuments:
 
         # Fallback: deve mencionar questoes em branco ou nota zero
         content_lower = response.content.lower()
-        assert any(word in content_lower for word in ["branco", "vazio", "zero", "0", "nao respondeu", "nao-respondeu"])
+        # Expanded keyword list to handle AI response variations
+        blank_keywords = [
+            # Portuguese
+            "branco", "vazio", "zero", "0", "nao respondeu", "nao-respondeu",
+            "nenhuma resposta", "sem resposta", "não respondida", "não respondido",
+            "em branco", "deixou em branco", "questão vazia", "questao vazia",
+            # English (AI might respond in English)
+            "blank", "empty", "unanswered", "not answered", "no answer",
+            "no response", "left blank",
+            # Numbers and scores
+            "nota 0", "nota: 0", "nota_total: 0", "nota_total\":0", "nota_total\": 0",
+            "questoes_em_branco", "todas as questões",
+        ]
+        assert any(word in content_lower for word in blank_keywords), \
+            f"AI response should mention blank/zero but got: {response.content[:200]}"
 
     @pytest.mark.asyncio
     async def test_tratamento_json_malformado(self):
