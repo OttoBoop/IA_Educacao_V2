@@ -24,64 +24,65 @@ def html():
 # ============================================================
 
 
+def _find_flow_card_tag(html: str, title: str) -> str:
+    """Find the opening <div class="flow-card" ...> tag for a flow card by title.
+
+    Searches backwards from the title text for 'class="flow-card"' to find
+    the parent card div, skipping inner elements like flow-card-icon.
+    """
+    title_idx = html.find(title)
+    assert title_idx != -1, f"'{title}' text not found in HTML"
+    # Search backwards for the flow-card class (not flow-card-icon)
+    search_area = html[:title_idx]
+    card_class_idx = search_area.rfind('class="flow-card"')
+    assert card_class_idx != -1, f"flow-card class not found before '{title}'"
+    # Find the opening < of that div
+    tag_start = search_area.rfind("<", 0, card_class_idx)
+    # Get everything from <div to the title text
+    return html[tag_start:title_idx]
+
+
 class TestFlowCardOnclick:
     """F2-T1: Flow cards must have onclick handlers."""
 
     def test_pipeline_card_has_onclick(self, html):
         """Pipeline de Correção card must have an onclick attribute."""
-        # Find the flow-card containing "Pipeline de Correção"
-        # and verify it has onclick
-        pipeline_idx = html.find("Pipeline de Correção")
-        assert pipeline_idx != -1, "Pipeline de Correção text not found"
-        # Look backwards for the opening div.flow-card tag
-        card_start = html.rfind("<div", 0, pipeline_idx)
-        card_tag = html[card_start:pipeline_idx]
+        card_tag = _find_flow_card_tag(html, "Pipeline de Correção")
         assert "onclick" in card_tag, (
             "Pipeline flow card is missing onclick handler"
         )
 
     def test_pipeline_card_calls_close_welcome(self, html):
         """Pipeline card onclick must call closeWelcome()."""
-        pipeline_idx = html.find("Pipeline de Correção")
-        card_start = html.rfind("<div", 0, pipeline_idx)
-        card_tag = html[card_start:pipeline_idx]
+        card_tag = _find_flow_card_tag(html, "Pipeline de Correção")
         assert "closeWelcome()" in card_tag, (
             "Pipeline card onclick must call closeWelcome()"
         )
 
     def test_pipeline_card_calls_show_dashboard(self, html):
         """Pipeline card onclick must call showDashboard()."""
-        pipeline_idx = html.find("Pipeline de Correção")
-        card_start = html.rfind("<div", 0, pipeline_idx)
-        card_tag = html[card_start:pipeline_idx]
+        card_tag = _find_flow_card_tag(html, "Pipeline de Correção")
         assert "showDashboard()" in card_tag, (
             "Pipeline card onclick must call showDashboard()"
         )
 
     def test_chat_card_has_onclick(self, html):
         """Chat com Documentos card must have an onclick attribute."""
-        chat_idx = html.find("Chat com Documentos")
-        assert chat_idx != -1, "Chat com Documentos text not found"
-        card_start = html.rfind("<div", 0, chat_idx)
-        card_tag = html[card_start:chat_idx]
+        card_tag = _find_flow_card_tag(html, "Chat com Documentos")
         assert "onclick" in card_tag, (
             "Chat flow card is missing onclick handler"
         )
 
     def test_chat_card_calls_close_welcome(self, html):
         """Chat card onclick must call closeWelcome()."""
-        chat_idx = html.find("Chat com Documentos")
-        card_start = html.rfind("<div", 0, chat_idx)
-        card_tag = html[card_start:chat_idx]
+        card_tag = _find_flow_card_tag(html, "Chat com Documentos")
         assert "closeWelcome()" in card_tag, (
             "Chat card onclick must call closeWelcome()"
         )
 
     def test_chat_card_calls_show_chat(self, html):
         """Chat card onclick must call showChat()."""
-        chat_idx = html.find("Chat com Documentos")
-        card_start = html.rfind("<div", 0, chat_idx)
-        card_tag = html[card_start:chat_idx]
+        card_tag = _find_flow_card_tag(html, "Chat com Documentos")
         assert "showChat()" in card_tag, (
             "Chat card onclick must call showChat()"
         )
