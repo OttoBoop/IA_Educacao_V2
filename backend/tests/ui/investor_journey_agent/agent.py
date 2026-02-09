@@ -30,6 +30,8 @@ class JourneyReport:
     steps: List[JourneyStep]
     evaluation: Optional[JourneyEvaluation]
     output_dir: Path
+    incomplete: bool = False
+    incomplete_reason: Optional[str] = None
 
     @property
     def success_rate(self) -> float:
@@ -70,6 +72,7 @@ class InvestorJourneyAgent:
         config: Optional[AgentConfig] = None,
         on_step: Optional[Callable[[JourneyStep], None]] = None,
         headless: bool = True,
+        narrator: Optional["ProgressNarrator"] = None,
     ):
         """
         Initialize the agent.
@@ -81,6 +84,7 @@ class InvestorJourneyAgent:
             config: Agent configuration
             on_step: Callback called after each step
             headless: Run browser in headless mode
+            narrator: Optional ProgressNarrator for periodic summaries
         """
         # Resolve persona
         if isinstance(persona, str):
@@ -99,6 +103,7 @@ class InvestorJourneyAgent:
         self.config = config or DEFAULT_CONFIG
         self.on_step = on_step
         self.headless = headless
+        self.narrator = narrator
 
         # Will be initialized in run_journey
         self._browser: Optional[BrowserInterface] = None
@@ -164,89 +169,105 @@ class InvestorJourneyAgent:
                 )
 
             # Main journey loop
+            incomplete = False
+            incomplete_reason = None
             step_number = 0
-            while step_number < max_steps:
-                step_number += 1
 
-                # Get current state
-                state = await browser.get_state()
+            try:
+                while step_number < max_steps:
+                    step_number += 1
 
-                # Save screenshot
-                screenshot_path = screenshots_dir / f"step_{step_number:02d}.png"
-                await browser.save_screenshot(screenshot_path)
+                    # Get current state
+                    state = await browser.get_state()
 
-                # Get LLM decision
-                action = await self._brain.decide_next_action(
-                    screenshot_base64=state.screenshot_base64,
-                    dom_snapshot=state.dom_snapshot,
-                    persona=self.persona,
-                    goal=goal,
-                    history=steps,
-                    console_errors=state.console_errors,
-                )
+                    # Save screenshot
+                    screenshot_path = screenshots_dir / f"step_{step_number:02d}.png"
+                    await browser.save_screenshot(screenshot_path)
 
-                # Print step info
-                self._print_step(step_number, action)
+                    # Get LLM decision
+                    action = await self._brain.decide_next_action(
+                        screenshot_base64=state.screenshot_base64,
+                        dom_snapshot=state.dom_snapshot,
+                        persona=self.persona,
+                        goal=goal,
+                        history=steps,
+                        console_errors=state.console_errors,
+                    )
 
-                # Check for terminal actions
-                if action.action_type == ActionType.DONE:
+                    # Print step info
+                    self._print_step(step_number, action)
+
+                    # Check for terminal actions
+                    if action.action_type == ActionType.DONE:
+                        step = JourneyStep(
+                            step_number=step_number,
+                            url=state.url,
+                            screenshot_path=str(screenshot_path),
+                            action=action,
+                            success=True,
+                        )
+                        steps.append(step)
+                        if self.on_step:
+                            self.on_step(step)
+                        self._narrate_step(step)
+                        print("\n[DONE] Goal achieved!")
+                        break
+
+                    if action.action_type == ActionType.GIVE_UP:
+                        step = JourneyStep(
+                            step_number=step_number,
+                            url=state.url,
+                            screenshot_path=str(screenshot_path),
+                            action=action,
+                            success=False,
+                            error_message="User gave up due to frustration",
+                        )
+                        steps.append(step)
+                        if self.on_step:
+                            self.on_step(step)
+                        self._narrate_step(step)
+                        print(f"\n[GAVE UP] {action.thought}")
+                        break
+
+                    # Ask for confirmation if configured
+                    if self.config.ask_before_action:
+                        if not await self._confirm_action(action):
+                            print("Action skipped by user")
+                            continue
+
+                    # Execute the action
+                    success, error = await self._execute_action(action)
+
                     step = JourneyStep(
                         step_number=step_number,
                         url=state.url,
                         screenshot_path=str(screenshot_path),
                         action=action,
-                        success=True,
+                        success=success,
+                        error_message=error,
                     )
                     steps.append(step)
+
                     if self.on_step:
                         self.on_step(step)
-                    print("\n[DONE] Goal achieved!")
-                    break
+                    self._narrate_step(step)
 
-                if action.action_type == ActionType.GIVE_UP:
-                    step = JourneyStep(
-                        step_number=step_number,
-                        url=state.url,
-                        screenshot_path=str(screenshot_path),
-                        action=action,
-                        success=False,
-                        error_message="User gave up due to frustration",
-                    )
-                    steps.append(step)
-                    if self.on_step:
-                        self.on_step(step)
-                    print(f"\n[GAVE UP] {action.thought}")
-                    break
+                    # Wait for page to settle
+                    await browser.wait_for_idle()
+                    await asyncio.sleep(self.config.wait_after_action_ms / 1000)
 
-                # Ask for confirmation if configured
-                if self.config.ask_before_action:
-                    if not await self._confirm_action(action):
-                        print("Action skipped by user")
-                        continue
+            except Exception as e:
+                incomplete = True
+                incomplete_reason = str(e)
+                print(f"\n[ERROR] Journey interrupted: {e}")
 
-                # Execute the action
-                success, error = await self._execute_action(action)
-
-                step = JourneyStep(
-                    step_number=step_number,
-                    url=state.url,
-                    screenshot_path=str(screenshot_path),
-                    action=action,
-                    success=success,
-                    error_message=error,
-                )
-                steps.append(step)
-
-                if self.on_step:
-                    self.on_step(step)
-
-                # Wait for page to settle
-                await browser.wait_for_idle()
-                await asyncio.sleep(self.config.wait_after_action_ms / 1000)
+            # Print final narrator summary
+            if self.narrator:
+                print(self.narrator.final_summary())
 
             # Generate evaluation if in-depth mode
             evaluation = None
-            if self.mode == "in_depth" and steps:
+            if self.mode == "in_depth" and steps and not incomplete:
                 print("\nGenerating in-depth analysis...")
                 evaluation = await self._brain.evaluate_journey(
                     steps=steps,
@@ -266,6 +287,8 @@ class InvestorJourneyAgent:
             steps=steps,
             evaluation=evaluation,
             output_dir=output_dir,
+            incomplete=incomplete,
+            incomplete_reason=incomplete_reason,
         )
 
     async def _execute_action(self, action: Action) -> tuple[bool, Optional[str]]:
@@ -305,6 +328,13 @@ class InvestorJourneyAgent:
 
         except Exception as e:
             return False, str(e)
+
+    def _narrate_step(self, step: JourneyStep):
+        """Feed step to narrator and print summary if produced."""
+        if self.narrator:
+            summary = self.narrator.on_step(step)
+            if summary:
+                print(summary)
 
     def _print_step(self, step_number: int, action: Action):
         """Print step information to console."""

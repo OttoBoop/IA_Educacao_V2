@@ -36,6 +36,7 @@ if sys.platform == "win32":
 from .agent import InvestorJourneyAgent
 from .config import AgentConfig, VIEWPORT_CONFIGS, LOCAL_URL, PRODUCTION_URL
 from .personas import PERSONAS
+from .progress_narrator import ProgressNarrator
 from .report_generator import ReportGenerator
 
 
@@ -122,6 +123,12 @@ Examples:
         help=f"Use local URL ({LOCAL_URL}) instead of production",
     )
 
+    parser.add_argument(
+        "--no-narrate",
+        action="store_true",
+        help="Disable periodic progress narration during the run",
+    )
+
     return parser.parse_args()
 
 
@@ -141,6 +148,9 @@ async def main():
     if args.output:
         config.output_dir = Path(args.output)
 
+    # Create narrator (enabled by default)
+    narrator = None if args.no_narrate else ProgressNarrator(interval=3)
+
     # Create agent
     agent = InvestorJourneyAgent(
         persona=args.persona,
@@ -148,6 +158,7 @@ async def main():
         mode=args.mode,
         config=config,
         headless=not args.no_headless,
+        narrator=narrator,
     )
 
     print(f"\n{'='*60}")
