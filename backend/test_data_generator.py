@@ -379,6 +379,8 @@ class TestDataGenerator:
                 descricao=config.get("descricao"),
                 nivel=config.get("nivel", NivelEnsino.FUNDAMENTAL_2)
             )
+            # Tag as fantasy data
+            self.storage.atualizar_materia(materia.id, metadata={"criado_por": "test_generator"})
             self.materias_criadas[config["nome"]] = materia
             self.stats["materias"] += 1
             self.log(f"[v] {materia.nome}", indent=1)
@@ -428,6 +430,8 @@ class TestDataGenerator:
                 email=email,
                 matricula=matricula
             )
+            # Tag as fantasy data
+            self.storage.atualizar_aluno(aluno.id, metadata={"criado_por": "test_generator"})
             self.alunos_criados.append(aluno)
             self.stats["alunos"] += 1
         
@@ -874,6 +878,35 @@ def limpar_dados_teste(storage: StorageManager):
     
     print("\n[OK] Sistema limpo e pronto para novos dados!\n")
     return True
+
+
+def limpar_dados_fantasy(storage: StorageManager) -> dict:
+    """
+    Remove APENAS dados de teste (criado_por='test_generator').
+    Preserva dados criados pelo usuario.
+
+    Returns:
+        dict com contagem de itens deletados por tipo
+    """
+    stats = {"materias_deleted": 0, "alunos_deleted": 0}
+
+    # Deletar materias fantasy (cascade deletes turmas, atividades, documentos)
+    materias = storage.listar_materias()
+    for materia in materias:
+        meta = materia.metadata if isinstance(materia.metadata, dict) else {}
+        if meta.get("criado_por") == "test_generator":
+            storage.deletar_materia(materia.id)
+            stats["materias_deleted"] += 1
+
+    # Deletar alunos fantasy
+    alunos = storage.listar_alunos()
+    for aluno in alunos:
+        meta = aluno.metadata if isinstance(aluno.metadata, dict) else {}
+        if meta.get("criado_por") == "test_generator":
+            storage.deletar_aluno(aluno.id)
+            stats["alunos_deleted"] += 1
+
+    return stats
 
 
 # =================================================================

@@ -433,3 +433,157 @@ def test_criar_provas_alunos_propagates_error(generator_with_data, mock_storage)
     # Act & Assert
     with pytest.raises(RuntimeError, match="Storage full"):
         generator_with_data.criar_provas_alunos(incluir_problemas=False)
+
+
+# ============================================================
+# TESTES FG-T5: Fantasy data tagging
+# ============================================================
+
+def test_criar_materias_tags_metadata(mock_storage):
+    """
+    FG-T5: Verifica que materias criadas pelo generator recebem
+    metadata com criado_por='test_generator'.
+    """
+    from test_data_generator import TestDataGenerator, MATERIAS_CONFIG_MINI
+
+    generator = TestDataGenerator(storage=mock_storage, verbose=False)
+
+    # Mock criar_materia to return a materia-like object
+    materia = Mock()
+    materia.id = "mat-001"
+    materia.nome = "Matematica"
+    materia.metadata = {}
+    mock_storage.criar_materia.return_value = materia
+
+    # Mock criar_turma and criar_atividade to avoid side effects
+    turma = Mock()
+    turma.id = "turma-001"
+    turma.nome = "9A"
+    mock_storage.criar_turma.return_value = turma
+    mock_storage.criar_atividade.return_value = Mock(id="ativ-001", nome="Prova")
+
+    generator.criar_materias([{
+        "nome": "Matematica",
+        "descricao": "Test",
+        "turmas": ["9A"],
+        "atividades": [{"nome": "Prova", "tipo": "prova"}]
+    }])
+
+    # Assert: atualizar_materia was called with metadata tagging
+    mock_storage.atualizar_materia.assert_called_once_with(
+        "mat-001", metadata={"criado_por": "test_generator"}
+    )
+
+
+def test_criar_alunos_tags_metadata(mock_storage):
+    """
+    FG-T5: Verifica que alunos criados pelo generator recebem
+    metadata com criado_por='test_generator'.
+    """
+    from test_data_generator import TestDataGenerator
+
+    generator = TestDataGenerator(storage=mock_storage, verbose=False)
+
+    aluno = Mock()
+    aluno.id = "aluno-001"
+    aluno.nome = "Ana Silva"
+    aluno.metadata = {}
+    mock_storage.criar_aluno.return_value = aluno
+
+    generator.criar_alunos(quantidade=1)
+
+    # Assert: atualizar_aluno was called with metadata tagging
+    mock_storage.atualizar_aluno.assert_called_once_with(
+        "aluno-001", metadata={"criado_por": "test_generator"}
+    )
+
+
+# ============================================================
+# TESTES FG-T7: Fantasy data cleanup
+# ============================================================
+
+def test_limpar_dados_fantasy_exists():
+    """
+    FG-T7: Verifica que a funcao limpar_dados_fantasy existe.
+    """
+    from test_data_generator import limpar_dados_fantasy
+    assert callable(limpar_dados_fantasy)
+
+
+def test_limpar_dados_fantasy_deletes_tagged_materias(mock_storage):
+    """
+    FG-T7: Verifica que limpar_dados_fantasy deleta materias
+    com metadata criado_por='test_generator'.
+    """
+    from test_data_generator import limpar_dados_fantasy
+
+    # Mock listar_materias to return mix of fantasy and user data
+    materia_fantasy = Mock()
+    materia_fantasy.id = "mat-fantasy"
+    materia_fantasy.nome = "Matematica"
+    materia_fantasy.metadata = {"criado_por": "test_generator"}
+
+    materia_user = Mock()
+    materia_user.id = "mat-user"
+    materia_user.nome = "Econometria"
+    materia_user.metadata = {}
+
+    mock_storage.listar_materias.return_value = [materia_fantasy, materia_user]
+    mock_storage.listar_alunos.return_value = []
+    mock_storage.deletar_materia.return_value = True
+
+    result = limpar_dados_fantasy(mock_storage)
+
+    # Assert: only fantasy materia was deleted
+    mock_storage.deletar_materia.assert_called_once_with("mat-fantasy")
+    # User materia should NOT be deleted
+    assert result["materias_deleted"] == 1
+
+
+def test_limpar_dados_fantasy_deletes_tagged_alunos(mock_storage):
+    """
+    FG-T7: Verifica que limpar_dados_fantasy deleta alunos
+    com metadata criado_por='test_generator'.
+    """
+    from test_data_generator import limpar_dados_fantasy
+
+    # No materias to delete
+    mock_storage.listar_materias.return_value = []
+
+    # Mix of fantasy and user alunos
+    aluno_fantasy = Mock()
+    aluno_fantasy.id = "aluno-fantasy"
+    aluno_fantasy.metadata = {"criado_por": "test_generator"}
+
+    aluno_user = Mock()
+    aluno_user.id = "aluno-user"
+    aluno_user.metadata = {}
+
+    mock_storage.listar_alunos.return_value = [aluno_fantasy, aluno_user]
+    mock_storage.deletar_aluno.return_value = True
+
+    result = limpar_dados_fantasy(mock_storage)
+
+    # Assert: only fantasy aluno deleted
+    mock_storage.deletar_aluno.assert_called_once_with("aluno-fantasy")
+    assert result["alunos_deleted"] == 1
+
+
+def test_limpar_dados_fantasy_preserves_user_data(mock_storage):
+    """
+    FG-T7: Verifica que limpar_dados_fantasy NAO deleta dados de usuario.
+    """
+    from test_data_generator import limpar_dados_fantasy
+
+    materia_user = Mock()
+    materia_user.id = "mat-user"
+    materia_user.metadata = {"custom_field": "value"}  # No criado_por
+
+    mock_storage.listar_materias.return_value = [materia_user]
+    mock_storage.listar_alunos.return_value = []
+
+    result = limpar_dados_fantasy(mock_storage)
+
+    # Assert: nothing deleted
+    mock_storage.deletar_materia.assert_not_called()
+    assert result["materias_deleted"] == 0
