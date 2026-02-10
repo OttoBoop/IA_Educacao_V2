@@ -29,7 +29,7 @@ python test_online.py
 
 ## Deprecated Scripts (`deprecated/`)
 
-These scripts test **DISABLED routers** (see `docs/guides/API_UNIFICATION_GUIDE.md`):
+These scripts test **DISABLED routers** (see `docs/guides/GENERAL_DEPRECATION_AND_UNIFICATION_GUIDE.md`):
 
 | Script | Disabled Router | Notes |
 |--------|-----------------|-------|
@@ -37,7 +37,7 @@ These scripts test **DISABLED routers** (see `docs/guides/API_UNIFICATION_GUIDE.
 | `test_resultados_endpoint.py` | `resultados` | Tests `/api/resultados/{atividade}/{aluno}` |
 | `teste_chat_online.py` | `chat` | Comprehensive chat test with documents |
 
-### Router Status (from API_UNIFICATION_GUIDE.md)
+### Router Status (from GENERAL_DEPRECATION_AND_UNIFICATION_GUIDE.md)
 
 | Router | Status |
 |--------|--------|

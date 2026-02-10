@@ -31,12 +31,12 @@ class TestDocumentationStructure:
 
     def test_api_unification_guide_exists(self):
         """API Unification Guide should exist in docs/guides/."""
-        guide_path = PROJECT_ROOT / "docs" / "guides" / "API_UNIFICATION_GUIDE.md"
-        assert guide_path.exists(), f"API_UNIFICATION_GUIDE.md not found at {guide_path}"
+        guide_path = PROJECT_ROOT / "docs" / "guides" / "GENERAL_DEPRECATION_AND_UNIFICATION_GUIDE.md"
+        assert guide_path.exists(), f"GENERAL_DEPRECATION_AND_UNIFICATION_GUIDE.md not found at {guide_path}"
 
     def test_api_unification_guide_has_required_sections(self):
         """API Unification Guide should have all required sections."""
-        guide_path = PROJECT_ROOT / "docs" / "guides" / "API_UNIFICATION_GUIDE.md"
+        guide_path = PROJECT_ROOT / "docs" / "guides" / "GENERAL_DEPRECATION_AND_UNIFICATION_GUIDE.md"
 
         if not guide_path.exists():
             pytest.skip("Guide doesn't exist yet - run test_api_unification_guide_exists first")
@@ -88,7 +88,7 @@ class TestAgentsHaveUnificationInstructions:
             pytest.skip("Agent file doesn't exist")
 
         content = agent_path.read_text(encoding='utf-8')
-        assert "Unificação" in content or "unificação" in content, \
+        assert "Unification" in content or "unification" in content or "Deprecation" in content, \
             "discover.md should have API unification instructions"
 
     def test_plan_agent_has_unification_section(self):
@@ -99,7 +99,7 @@ class TestAgentsHaveUnificationInstructions:
             pytest.skip("Agent file doesn't exist")
 
         content = agent_path.read_text(encoding='utf-8')
-        assert "Unificação" in content or "unificação" in content, \
+        assert "Unification" in content or "unification" in content or "Deprecation" in content, \
             "plan.md should have API unification instructions"
 
     def test_tdd_agent_has_unification_section(self):
@@ -110,7 +110,7 @@ class TestAgentsHaveUnificationInstructions:
             pytest.skip("Agent file doesn't exist")
 
         content = agent_path.read_text(encoding='utf-8')
-        assert "Unificação" in content or "unificação" in content, \
+        assert "Unification" in content or "unification" in content or "Deprecation" in content, \
             "tdd.md should have API unification instructions"
 
 
@@ -118,11 +118,11 @@ class TestClaudeMdHasUnificationReference:
     """Tests that CLAUDE.md references the unification guide."""
 
     def test_claude_md_references_unification_guide(self):
-        """CLAUDE.md should reference API_UNIFICATION_GUIDE.md."""
+        """CLAUDE.md should reference GENERAL_DEPRECATION_AND_UNIFICATION_GUIDE.md."""
         claude_path = PROJECT_ROOT / "CLAUDE.md"
 
         assert claude_path.exists(), "CLAUDE.md not found at project root"
 
         content = claude_path.read_text(encoding='utf-8')
-        assert "API_UNIFICATION_GUIDE" in content or "API Unification" in content, \
-            "CLAUDE.md should reference the API Unification Guide"
+        assert "GENERAL_DEPRECATION_AND_UNIFICATION_GUIDE" in content or "Deprecation & Unification" in content, \
+            "CLAUDE.md should reference the General Deprecation & Unification Guide"
