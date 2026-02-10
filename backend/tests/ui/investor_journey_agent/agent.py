@@ -16,6 +16,7 @@ from .config import AgentConfig, VIEWPORT_CONFIGS, DEFAULT_CONFIG
 from .event_emitter import EventEmitter
 from .personas import Persona, PERSONAS, get_persona
 from .browser_interface import BrowserInterface
+from .intent_resolver import IntentResolver
 from .llm_brain import LLMBrain, Action, ActionType, JourneyStep, JourneyEvaluation
 
 
@@ -147,6 +148,7 @@ class InvestorJourneyAgent:
 
         # Initialize components
         self._brain = LLMBrain(self.config)
+        self._resolver = IntentResolver()
 
         async with BrowserInterface(
             viewport_config=self.viewport_config,
@@ -206,12 +208,8 @@ class InvestorJourneyAgent:
                         if incomplete:
                             break
 
-                    # Get current state
+                    # Get current state (pre-action)
                     state = await browser.get_state()
-
-                    # Save screenshot
-                    screenshot_path = screenshots_dir / f"step_{step_number:02d}.png"
-                    await browser.save_screenshot(screenshot_path)
 
                     # Get LLM decision
                     action = await self._brain.decide_next_action(
@@ -232,6 +230,8 @@ class InvestorJourneyAgent:
 
                     # Check for terminal actions
                     if action.action_type == ActionType.DONE:
+                        screenshot_path = screenshots_dir / f"step_{step_number:02d}.png"
+                        await browser.save_screenshot(screenshot_path)
                         step = JourneyStep(
                             step_number=step_number,
                             url=state.url,
@@ -249,6 +249,8 @@ class InvestorJourneyAgent:
                         break
 
                     if action.action_type == ActionType.GIVE_UP:
+                        screenshot_path = screenshots_dir / f"step_{step_number:02d}.png"
+                        await browser.save_screenshot(screenshot_path)
                         step = JourneyStep(
                             step_number=step_number,
                             url=state.url,
@@ -272,8 +274,23 @@ class InvestorJourneyAgent:
                             print("Action skipped by user")
                             continue
 
-                    # Execute the action
-                    success, error = await self._execute_action(action)
+                    # Execute the action (with IntentResolver for clicks)
+                    retry_result = await self._resolver.execute_with_retry(
+                        action=action,
+                        clickable_elements=state.clickable_elements,
+                        browser=browser,
+                    )
+
+                    if retry_result is not None:
+                        # IntentResolver handled it (click action)
+                        success, error = retry_result
+                    else:
+                        # Non-click action — use default execution
+                        success, error = await self._execute_action(action)
+
+                    # Save screenshot AFTER action (post-action)
+                    screenshot_path = screenshots_dir / f"step_{step_number:02d}.png"
+                    await browser.save_screenshot(screenshot_path)
 
                     step = JourneyStep(
                         step_number=step_number,

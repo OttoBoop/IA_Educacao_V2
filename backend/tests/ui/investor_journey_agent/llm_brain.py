@@ -35,12 +35,14 @@ class Action:
     """An action decided by the LLM."""
 
     action_type: ActionType
-    target: str  # Selector or description
+    target: str  # Natural-language description of what to interact with
     thought: str  # Persona's reasoning
     frustration_level: float  # 0.0 to 1.0
     confidence: float  # 0.0 to 1.0
     text_to_type: Optional[str] = None  # For TYPE action
     scroll_direction: Optional[str] = None  # For SCROLL action
+    element_index: Optional[int] = None  # 1-based index into clickable elements list
+    intent_description: Optional[str] = None  # Natural-language description of intent
 
 
 @dataclass
@@ -151,17 +153,20 @@ Use this context to understand what you're looking at and navigate accordingly.
         return f"""{persona.to_prompt_context()}
 {context_block}Your current goal: {goal}
 
-Based on the screenshot and DOM structure I show you, decide what to do next.
+Based on the screenshot and the numbered list of clickable elements, decide what to do next.
 
 IMPORTANT:
 - Think like a real user, not a test automation engineer
 - Express genuine confusion when UI is unclear
 - Consider "giving up" if things are too frustrating
 - Your frustration is a valuable UX signal
+- For click/type actions, pick an element from the numbered list by its index number (element_index)
+- Describe what you want to do in natural language (intent_description)
+- Do NOT generate CSS selectors — just pick from the list
 
 Available actions:
-- click: Click an element (provide selector like "#button-id" or ".class-name")
-- type: Type text into an input (provide selector and text)
+- click: Click an element (pick element_index from the numbered list)
+- type: Type text into an input (pick element_index and provide text_to_type)
 - scroll: Scroll the page (direction: "up" or "down")
 - wait: Wait for something to load
 - reload: Reload the page (useful when something seems broken)
@@ -179,12 +184,56 @@ Respond ONLY with valid JSON (no markdown, no explanation outside JSON):
   "thought": "What I'm thinking as this user...",
   "frustration_level": 0.0 to 1.0,
   "action_type": "click|type|scroll|wait|reload|back|give_up|done",
-  "target": "selector or description",
+  "target": "description of what you want to interact with",
+  "element_index": 1,
+  "intent_description": "what you want to do with this element",
   "confidence": 0.0 to 1.0,
   "text_to_type": "text if typing",
   "scroll_direction": "up or down if scrolling"
 }}
 """
+
+    def _format_clickable_elements(self, clickable_elements: list) -> str:
+        """Format clickable elements as a numbered list for the LLM (no raw selectors)."""
+        visible = [el for el in clickable_elements if el.occlusion_status == "visible"]
+        occluded = [el for el in clickable_elements if el.occlusion_status not in ("visible", "off_screen")]
+
+        result = ""
+        if visible:
+            result += "\n**Clickable elements (pick by number):**\n"
+            for i, el in enumerate(visible[:15], start=1):
+                desc_parts = [f"<{el.tag}>"]
+                if el.text:
+                    desc_parts.append(f'"{el.text[:60]}"')
+                if el.aria_label:
+                    desc_parts.append(f"(aria: {el.aria_label})")
+                if el.role:
+                    desc_parts.append(f"[role={el.role}]")
+                result += f"[{i}] {' '.join(desc_parts)}\n"
+
+        if occluded:
+            result += "\n**Elements blocked by overlay (cannot click directly):**\n"
+            for el in occluded[:5]:
+                desc_parts = [f"<{el.tag}>"]
+                if el.text:
+                    desc_parts.append(f'"{el.text[:60]}"')
+                result += f"- {' '.join(desc_parts)} [{el.occlusion_status}]\n"
+
+        return result
+
+    def _parse_action_response(self, data: dict) -> "Action":
+        """Parse a JSON dict into an Action object."""
+        return Action(
+            action_type=ActionType(data.get("action_type", "wait")),
+            target=data.get("target", ""),
+            thought=data.get("thought", ""),
+            frustration_level=float(data.get("frustration_level", 0.0)),
+            confidence=float(data.get("confidence", 0.5)),
+            text_to_type=data.get("text_to_type"),
+            scroll_direction=data.get("scroll_direction"),
+            element_index=data.get("element_index"),
+            intent_description=data.get("intent_description"),
+        )
 
     async def decide_next_action(
         self,
@@ -227,20 +276,9 @@ Respond ONLY with valid JSON (no markdown, no explanation outside JSON):
             }
         )
 
-        # Build clickable elements section
+        # Build clickable elements section (numbered, no raw selectors)
         clickable_elements = clickable_elements or []
-        visible_elements = [el for el in clickable_elements if el.occlusion_status == "visible"]
-        occluded_elements = [el for el in clickable_elements if el.occlusion_status not in ("visible", "off_screen")]
-
-        clickable_section = ""
-        if visible_elements:
-            clickable_section = "\n**Clickable elements you can interact with (visible on screen):**\n"
-            for el in visible_elements[:15]:
-                clickable_section += f'- `{el.selector}` → {el.to_description()}\n'
-        if occluded_elements:
-            clickable_section += "\n**Elements blocked by overlay (cannot click directly):**\n"
-            for el in occluded_elements[:5]:
-                clickable_section += f'- `{el.selector}` → {el.to_description()}\n'
+        clickable_section = self._format_clickable_elements(clickable_elements)
 
         # Add context text
         context_text = f"""
@@ -306,15 +344,7 @@ Respond ONLY with valid JSON (no markdown, no explanation outside JSON):
 
             data = json.loads(response_text.strip())
 
-            return Action(
-                action_type=ActionType(data.get("action_type", "wait")),
-                target=data.get("target", ""),
-                thought=data.get("thought", ""),
-                frustration_level=float(data.get("frustration_level", 0.0)),
-                confidence=float(data.get("confidence", 0.5)),
-                text_to_type=data.get("text_to_type"),
-                scroll_direction=data.get("scroll_direction"),
-            )
+            return self._parse_action_response(data)
 
         except json.JSONDecodeError as e:
             # If parsing fails, return a safe wait action
