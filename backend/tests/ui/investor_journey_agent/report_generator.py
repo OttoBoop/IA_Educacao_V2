@@ -39,13 +39,13 @@ class GenerationResult:
             f"Output folder: {output_dir}",
             "",
             "Generated files:",
-            f"  - Journey log:    {self.journey_log_path.name}",
-            f"  - Journey report: {self.journey_report_path.name}",
-            f"  - Summary JSON:   {self.summary_json_path.name}",
-            f"  - Screenshots:    {self.screenshots_dir.name}/",
+            f"  - Journey log:    {self.journey_log_path.resolve()}",
+            f"  - Journey report: {self.journey_report_path.resolve()}",
+            f"  - Summary JSON:   {self.summary_json_path.resolve()}",
+            f"  - Screenshots:    {self.screenshots_dir.resolve()}/",
         ]
         if self.html_report_path:
-            lines.append(f"  - HTML report:    {self.html_report_path.name}")
+            lines.append(f"  - HTML report:    {self.html_report_path.resolve()}")
         return "\n".join(lines)
 
 

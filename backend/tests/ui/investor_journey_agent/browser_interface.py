@@ -334,9 +334,13 @@ class BrowserInterface:
             is_loading=False,
         )
 
-    async def click(self, selector: str, timeout: int = 5000) -> bool:
-        """Click an element."""
+    async def click(self, selector: str, timeout: int = 10000) -> bool:
+        """Click an element, scrolling it into view first."""
         try:
+            # Scroll element into view before clicking
+            handle = await self.page.query_selector(selector)
+            if handle:
+                await handle.scroll_into_view_if_needed(timeout=timeout)
             await self.page.click(selector, timeout=timeout)
             await self.page.wait_for_timeout(500)  # Wait for animations
             return True

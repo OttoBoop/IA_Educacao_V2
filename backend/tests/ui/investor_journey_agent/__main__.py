@@ -25,6 +25,7 @@ Examples:
 
 import argparse
 import asyncio
+import os
 import sys
 import webbrowser
 from pathlib import Path
@@ -276,9 +277,12 @@ async def main():
 
         # Auto-open HTML report in browser
         if not args.no_open and result.html_report_path and result.html_report_path.exists():
-            html_url = result.html_report_path.resolve().as_uri()
+            html_path = str(result.html_report_path.resolve())
             print(f"Opening HTML report in browser...")
-            webbrowser.open(html_url)
+            if sys.platform == "win32":
+                os.startfile(html_path)
+            else:
+                webbrowser.open(result.html_report_path.resolve().as_uri())
 
         # Return exit code based on success
         if report.gave_up:
@@ -289,7 +293,9 @@ async def main():
         print("\n\nJourney interrupted by user.")
         return 130
     except Exception as e:
+        import traceback
         print(f"\n\nError: {e}")
+        traceback.print_exc()
         return 1
 
 

@@ -196,6 +196,7 @@ Respond ONLY with valid JSON (no markdown, no explanation outside JSON):
         console_errors: List[str] = None,
         user_guidance: Optional[str] = None,
         website_context: Optional[str] = None,
+        clickable_elements: List = None,
     ) -> Action:
         """
         Decide what action the persona would take next.
@@ -226,6 +227,21 @@ Respond ONLY with valid JSON (no markdown, no explanation outside JSON):
             }
         )
 
+        # Build clickable elements section
+        clickable_elements = clickable_elements or []
+        visible_elements = [el for el in clickable_elements if el.occlusion_status == "visible"]
+        occluded_elements = [el for el in clickable_elements if el.occlusion_status not in ("visible", "off_screen")]
+
+        clickable_section = ""
+        if visible_elements:
+            clickable_section = "\n**Clickable elements you can interact with (visible on screen):**\n"
+            for el in visible_elements[:15]:
+                clickable_section += f'- `{el.selector}` → {el.to_description()}\n'
+        if occluded_elements:
+            clickable_section += "\n**Elements blocked by overlay (cannot click directly):**\n"
+            for el in occluded_elements[:5]:
+                clickable_section += f'- `{el.selector}` → {el.to_description()}\n'
+
         # Add context text
         context_text = f"""
 ## Current Page Analysis
@@ -234,7 +250,7 @@ Respond ONLY with valid JSON (no markdown, no explanation outside JSON):
 ```
 {dom_snapshot[:3000]}
 ```
-
+{clickable_section}
 **Previous Actions ({len(history)} steps so far):**
 """
         if history:

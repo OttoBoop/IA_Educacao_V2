@@ -223,6 +223,7 @@ class InvestorJourneyAgent:
                         console_errors=state.console_errors,
                         user_guidance=user_guidance,
                         website_context=website_context,
+                        clickable_elements=state.clickable_elements,
                     )
                     user_guidance = None  # Clear after use (one-shot)
 
