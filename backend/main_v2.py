@@ -105,30 +105,87 @@ print("="*50 + "\n")
 # APP SETUP
 # ============================================================
 
+def _check_document_completeness() -> bool:
+    """
+    Spot-check whether all 4 document types exist in the database.
+    Returns True if complete, False if any type is missing.
+    """
+    from models import TipoDocumento
+    materias = storage.listar_materias()
+    for materia in materias:
+        turmas = storage.listar_turmas(materia.id)
+        for turma in turmas:
+            atividades = storage.listar_atividades(turma.id)
+            if not atividades:
+                continue
+            # Check first atividade for all 4 doc types
+            atividade = atividades[0]
+            for doc_type in [TipoDocumento.ENUNCIADO, TipoDocumento.GABARITO,
+                             TipoDocumento.PROVA_RESPONDIDA, TipoDocumento.CORRECAO]:
+                docs = storage.listar_documentos(atividade.id, tipo=doc_type)
+                if len(docs) == 0:
+                    print(f"[!] Missing {doc_type.value} for atividade '{atividade.nome}' — data is incomplete")
+                    return False
+            # Found atividade with all 4 types
+            return True
+    return False
+
+
+def _wipe_old_untagged_data():
+    """
+    Delete old fantasy data that lacks criado_por tags (pre-overhaul data).
+    Preserves any data with non-empty metadata (user-created or tagged).
+    """
+    materias = storage.listar_materias()
+    deleted = 0
+    for materia in materias:
+        meta = materia.metadata if isinstance(materia.metadata, dict) else {}
+        # Delete if no metadata or empty metadata (old generator data)
+        # Also delete if tagged as test_generator (cleanup from failed runs)
+        if not meta or meta.get("criado_por") == "test_generator":
+            print(f"  [wipe] Deleting materia '{materia.nome}' (id={materia.id})")
+            storage.deletar_materia(materia.id)
+            deleted += 1
+    # Also delete untagged alunos
+    alunos = storage.listar_alunos()
+    alunos_deleted = 0
+    for aluno in alunos:
+        meta = aluno.metadata if isinstance(aluno.metadata, dict) else {}
+        if not meta or meta.get("criado_por") == "test_generator":
+            storage.deletar_aluno(aluno.id)
+            alunos_deleted += 1
+    print(f"[!] Wiped {deleted} materias, {alunos_deleted} alunos (old untagged data)")
+
+
 def initialize_fantasy_data_if_empty():
     """
-    Check if database is empty and initialize with fantasy data.
+    Check if database is empty or incomplete and initialize with fantasy data.
 
-    This handles Render's ephemeral filesystem - SQLite is reset on each deployment.
-    Files are already in Supabase Storage; this recreates the metadata.
+    Handles two scenarios:
+    1. Empty DB (fresh deploy or SQLite reset) → seed from scratch
+    2. Incomplete data (old generator failed silently) → wipe and re-seed
     """
     try:
         materias = storage.listar_materias()
         if len(materias) == 0:
             print("[!] Database is empty - initializing fantasy data...")
-
-            # Import and run generator
-            from test_data_generator import TestDataGenerator
-            generator = TestDataGenerator(storage, verbose=True)
-            stats = generator.gerar_tudo(
-                num_alunos=10,
-                alunos_por_turma=5,
-                incluir_problemas=True
-            )
-
-            print(f"[OK] Fantasy data initialized: {stats['materias']} materias, {stats['documentos']} docs")
+        elif not _check_document_completeness():
+            print("[!] Data is incomplete (missing document types) - wiping and re-seeding...")
+            _wipe_old_untagged_data()
         else:
-            print(f"[OK] Database has {len(materias)} materias - skipping initialization")
+            print(f"[OK] Database has {len(materias)} materias with all document types - skipping initialization")
+            return
+
+        # Import and run generator
+        from test_data_generator import TestDataGenerator
+        generator = TestDataGenerator(storage, verbose=True)
+        stats = generator.gerar_tudo(
+            num_alunos=10,
+            alunos_por_turma=5,
+            incluir_problemas=True
+        )
+
+        print(f"[OK] Fantasy data initialized: {stats['materias']} materias, {stats['documentos']} docs")
     except Exception as e:
         print(f"[WARN] Could not initialize fantasy data: {e}")
         import traceback

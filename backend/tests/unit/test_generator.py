@@ -783,3 +783,111 @@ def test_limpar_dados_fantasy_preserves_user_data(mock_storage):
     # Assert: nothing deleted
     mock_storage.deletar_materia.assert_not_called()
     assert result["materias_deleted"] == 0
+
+
+# ============================================================
+# TESTES FG-T9: Smart initialization (incomplete data detection)
+# ============================================================
+
+def test_check_document_completeness_returns_false_when_missing_types(mock_storage):
+    """
+    FG-T9: _check_document_completeness returns False when a doc type is missing.
+    """
+    from main_v2 import _check_document_completeness
+    from models import TipoDocumento
+
+    materia = Mock(id="mat-001")
+    turma = Mock(id="turma-001")
+    atividade = Mock(id="ativ-001", nome="Prova 1")
+
+    mock_storage.listar_materias.return_value = [materia]
+    mock_storage.listar_turmas.return_value = [turma]
+    mock_storage.listar_atividades.return_value = [atividade]
+
+    # Only enunciado exists, others missing
+    def mock_listar_docs(atividade_id, tipo=None):
+        if tipo == TipoDocumento.ENUNCIADO:
+            return [Mock()]
+        return []
+
+    mock_storage.listar_documentos.side_effect = mock_listar_docs
+
+    with patch("main_v2.storage", mock_storage):
+        result = _check_document_completeness()
+
+    assert result is False
+
+
+def test_check_document_completeness_returns_true_when_all_types_exist(mock_storage):
+    """
+    FG-T9: _check_document_completeness returns True when all 4 doc types exist.
+    """
+    from main_v2 import _check_document_completeness
+
+    materia = Mock(id="mat-001")
+    turma = Mock(id="turma-001")
+    atividade = Mock(id="ativ-001", nome="Prova 1")
+
+    mock_storage.listar_materias.return_value = [materia]
+    mock_storage.listar_turmas.return_value = [turma]
+    mock_storage.listar_atividades.return_value = [atividade]
+
+    # All 4 types exist
+    mock_storage.listar_documentos.return_value = [Mock()]
+
+    with patch("main_v2.storage", mock_storage):
+        result = _check_document_completeness()
+
+    assert result is True
+
+
+def test_wipe_old_untagged_data_deletes_empty_metadata(mock_storage):
+    """
+    FG-T9: _wipe_old_untagged_data deletes materias/alunos with empty metadata.
+    """
+    from main_v2 import _wipe_old_untagged_data
+
+    # Old untagged materia (empty metadata)
+    materia_old = Mock(id="mat-old", nome="Matematica", metadata={})
+    # User materia (has custom metadata)
+    materia_user = Mock(id="mat-user", nome="Econometria", metadata={"custom": "data"})
+
+    mock_storage.listar_materias.return_value = [materia_old, materia_user]
+
+    aluno_old = Mock(id="aluno-old", metadata={})
+    mock_storage.listar_alunos.return_value = [aluno_old]
+    mock_storage.deletar_materia.return_value = True
+    mock_storage.deletar_aluno.return_value = True
+
+    with patch("main_v2.storage", mock_storage):
+        _wipe_old_untagged_data()
+
+    # Old untagged materia should be deleted
+    mock_storage.deletar_materia.assert_called_once_with("mat-old")
+    # User materia should NOT be deleted
+    mock_storage.deletar_aluno.assert_called_once_with("aluno-old")
+
+
+def test_initialize_reseeds_when_data_incomplete(mock_storage):
+    """
+    FG-T9: initialize_fantasy_data_if_empty re-seeds when data is incomplete.
+    """
+    from main_v2 import initialize_fantasy_data_if_empty
+
+    materia = Mock(id="mat-001", nome="Matematica", metadata={})
+    mock_storage.listar_materias.return_value = [materia]
+
+    mock_gen_instance = MagicMock()
+    mock_gen_instance.gerar_tudo.return_value = {"materias": 3, "documentos": 20}
+
+    with patch("main_v2.storage", mock_storage), \
+         patch("main_v2._check_document_completeness", return_value=False), \
+         patch("main_v2._wipe_old_untagged_data") as mock_wipe, \
+         patch("test_data_generator.TestDataGenerator", return_value=mock_gen_instance):
+
+        initialize_fantasy_data_if_empty()
+
+        # Should wipe old data
+        mock_wipe.assert_called_once()
+        # Should re-seed
+        mock_gen_instance.gerar_tudo.assert_called_once()
