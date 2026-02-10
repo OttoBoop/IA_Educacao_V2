@@ -807,30 +807,18 @@ Questão 4: {respostas[3] if random.random() > 0.3 else 'Não deu tempo'}
     # EXECUÇÃO PRINCIPAL
     # -----------------------------------------------------------------
     
-    def gerar_tudo(self,
-                   num_alunos: int = 10,
-                   alunos_por_turma: int = 5,
-                   incluir_problemas: bool = True,
-                   materias_config: List[Dict] = None):
-        """Gera todos os dados de teste"""
-        
-        print("\n" + "=" * 60)
-        print("[*] GERADOR DE DADOS DE TESTE - PROVA AI")
-        print("=" * 60 + "\n")
-        
-        self.criar_materias(materias_config)
-        self.criar_alunos(num_alunos)
-        self.vincular_alunos_turmas(alunos_por_turma)
-        self.criar_documentos_base(incluir_problemas)
-        self.criar_provas_alunos(incluir_problemas)
-        self.criar_documentos_json_exemplo()
+    def _verificar_documentos(self):
+        """
+        Verifica que todos os tipos de documentos foram criados.
 
-        # Verificação pós-geração
+        Raises:
+            Exception: Se algum tipo de documento estiver faltando (count == 0)
+        """
         print("\n" + "=" * 60)
         print("🔍 VERIFICAÇÃO DOS DOCUMENTOS CRIADOS")
         print("=" * 60)
 
-        doc_types = [
+        required_doc_types = [
             TipoDocumento.ENUNCIADO,
             TipoDocumento.GABARITO,
             TipoDocumento.PROVA_RESPONDIDA,
@@ -838,7 +826,7 @@ Questão 4: {respostas[3] if random.random() > 0.3 else 'Não deu tempo'}
         ]
 
         counts = {}
-        for doc_type in doc_types:
+        for doc_type in required_doc_types:
             total = 0
             for ativ_info in self.atividades_criadas.values():
                 atividade = ativ_info["atividade"]
@@ -851,11 +839,31 @@ Questão 4: {respostas[3] if random.random() > 0.3 else 'Não deu tempo'}
               f"{counts[TipoDocumento.PROVA_RESPONDIDA]} prova_respondida(s), "
               f"{counts[TipoDocumento.CORRECAO]} correção(ões)")
 
-        for doc_type in doc_types:
+        for doc_type in required_doc_types:
             if counts[doc_type] == 0:
                 raise Exception(f"Verification failed: no documents of type '{doc_type.value}' found (count: 0)")
 
         print("=" * 60 + "\n")
+
+    def gerar_tudo(self,
+                   num_alunos: int = 10,
+                   alunos_por_turma: int = 5,
+                   incluir_problemas: bool = True,
+                   materias_config: List[Dict] = None):
+        """Gera todos os dados de teste"""
+
+        print("\n" + "=" * 60)
+        print("[*] GERADOR DE DADOS DE TESTE - PROVA AI")
+        print("=" * 60 + "\n")
+
+        self.criar_materias(materias_config)
+        self.criar_alunos(num_alunos)
+        self.vincular_alunos_turmas(alunos_por_turma)
+        self.criar_documentos_base(incluir_problemas)
+        self.criar_provas_alunos(incluir_problemas)
+        self.criar_documentos_json_exemplo()
+
+        self._verificar_documentos()
 
         # Relatório final
         print("\n" + "=" * 60)
