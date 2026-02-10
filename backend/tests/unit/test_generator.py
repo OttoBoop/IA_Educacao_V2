@@ -499,6 +499,202 @@ def test_criar_alunos_tags_metadata(mock_storage):
 
 
 # ============================================================
+# TESTES FG-T6: Post-generation verification
+# ============================================================
+
+def test_gerar_tudo_verifies_document_counts(mock_storage):
+    """
+    FG-T6: Verifica que gerar_tudo() executa verificacao pos-geracao.
+
+    COMPORTAMENTO ESPERADO:
+        - Apos criar todos os documentos, gerar_tudo() deve:
+          1. Query storage para contar documentos de cada tipo
+          2. Verificar que TODOS os 4 tipos existem (count > 0):
+             - enunciado
+             - gabarito
+             - prova_respondida
+             - correcao
+          3. Logar os counts
+
+    COMPORTAMENTO ATUAL (BUG):
+        - gerar_tudo() termina sem verificacao
+        - Este teste FALHA porque a verificacao nao existe
+
+    EXPECTATIVA:
+        Este teste DEVE FALHAR ate que a verificacao seja implementada
+    """
+    from test_data_generator import TestDataGenerator, MATERIAS_CONFIG_MINI
+    from models import TipoDocumento
+
+    generator = TestDataGenerator(storage=mock_storage, verbose=False)
+
+    # Mock all creation methods to avoid side effects
+    mock_storage.criar_materia.return_value = Mock(id="mat-001", nome="Matematica", metadata={})
+    mock_storage.criar_turma.return_value = Mock(id="turma-001", nome="9A")
+    mock_storage.criar_atividade.return_value = Mock(id="ativ-001", nome="Prova 1")
+    mock_storage.criar_aluno.return_value = Mock(id="aluno-001", nome="Ana Silva", metadata={})
+    mock_storage.vincular_aluno_turma.return_value = None
+    mock_storage.listar_alunos.return_value = [Mock(id="aluno-001", nome="Ana Silva")]
+    mock_storage.salvar_documento.return_value = Mock(id="doc-001")
+
+    # Mock listar_documentos to return documents for each type
+    # This is what verification SHOULD call
+    def mock_listar_docs(atividade_id, aluno_id=None, tipo=None):
+        if tipo == TipoDocumento.ENUNCIADO:
+            return [Mock(tipo="enunciado")]
+        elif tipo == TipoDocumento.GABARITO:
+            return [Mock(tipo="gabarito")]
+        elif tipo == TipoDocumento.PROVA_RESPONDIDA:
+            return [Mock(tipo="prova_respondida")]
+        elif tipo == TipoDocumento.CORRECAO:
+            return [Mock(tipo="correcao")]
+        return []
+
+    mock_storage.listar_documentos.side_effect = mock_listar_docs
+
+    # Act
+    generator.gerar_tudo(num_alunos=1, alunos_por_turma=1, incluir_problemas=False)
+
+    # Assert: listar_documentos was called to verify each doc type
+    # Should have called with each of the 4 types
+    calls = mock_storage.listar_documentos.call_args_list
+    tipos_verificados = set()
+    for call in calls:
+        if 'tipo' in call.kwargs and call.kwargs['tipo']:
+            tipos_verificados.add(call.kwargs['tipo'])
+
+    expected_types = {
+        TipoDocumento.ENUNCIADO,
+        TipoDocumento.GABARITO,
+        TipoDocumento.PROVA_RESPONDIDA,
+        TipoDocumento.CORRECAO
+    }
+
+    assert tipos_verificados == expected_types, (
+        f"gerar_tudo() should verify all 4 document types. "
+        f"Expected: {expected_types}, Got: {tipos_verificados}"
+    )
+
+
+def test_verification_fails_when_zero_documents(mock_storage):
+    """
+    FG-T6: Verifica que a verificacao falha quando faltam documentos.
+
+    COMPORTAMENTO ESPERADO:
+        - Se storage retorna lista vazia para um tipo de documento,
+          a verificacao deve lancar excecao clara indicando qual tipo esta faltando
+        - Exemplo: "Verification failed: no documents of type 'gabarito' found"
+
+    COMPORTAMENTO ATUAL (BUG):
+        - Nenhuma verificacao acontece
+        - Este teste FALHA porque nenhuma excecao e lancada
+
+    EXPECTATIVA:
+        Este teste DEVE FALHAR ate que a verificacao seja implementada
+    """
+    from test_data_generator import TestDataGenerator
+    from models import TipoDocumento
+
+    generator = TestDataGenerator(storage=mock_storage, verbose=False)
+
+    # Mock all creation methods
+    mock_storage.criar_materia.return_value = Mock(id="mat-001", nome="Matematica", metadata={})
+    mock_storage.criar_turma.return_value = Mock(id="turma-001", nome="9A")
+    mock_storage.criar_atividade.return_value = Mock(id="ativ-001", nome="Prova 1")
+    mock_storage.criar_aluno.return_value = Mock(id="aluno-001", nome="Ana Silva", metadata={})
+    mock_storage.vincular_aluno_turma.return_value = None
+    mock_storage.listar_alunos.return_value = [Mock(id="aluno-001", nome="Ana Silva")]
+    mock_storage.salvar_documento.return_value = Mock(id="doc-001")
+
+    # Mock listar_documentos: return empty for GABARITO (missing!)
+    def mock_listar_docs_missing_gabarito(atividade_id, aluno_id=None, tipo=None):
+        if tipo == TipoDocumento.ENUNCIADO:
+            return [Mock(tipo="enunciado")]
+        elif tipo == TipoDocumento.GABARITO:
+            return []  # MISSING!
+        elif tipo == TipoDocumento.PROVA_RESPONDIDA:
+            return [Mock(tipo="prova_respondida")]
+        elif tipo == TipoDocumento.CORRECAO:
+            return [Mock(tipo="correcao")]
+        return []
+
+    mock_storage.listar_documentos.side_effect = mock_listar_docs_missing_gabarito
+
+    # Act & Assert: Should raise exception about missing gabarito
+    with pytest.raises(Exception, match="gabarito|verification failed|no documents|count.*0"):
+        generator.gerar_tudo(num_alunos=1, alunos_por_turma=1, incluir_problemas=False)
+
+
+def test_verification_logs_counts(mock_storage, capsys):
+    """
+    FG-T6: Verifica que a verificacao loga os counts de cada tipo.
+
+    COMPORTAMENTO ESPERADO:
+        - A verificacao deve imprimir algo como:
+          "Verified: 2 enunciados, 2 gabaritos, 2 provas_respondidas, 2 correcoes"
+        - Ou logs separados para cada tipo
+
+    COMPORTAMENTO ATUAL (BUG):
+        - Nenhuma log de verificacao acontece
+        - Este teste FALHA porque nao encontra o log esperado
+
+    EXPECTATIVA:
+        Este teste DEVE FALHAR ate que a verificacao seja implementada
+    """
+    from test_data_generator import TestDataGenerator
+    from models import TipoDocumento
+
+    generator = TestDataGenerator(storage=mock_storage, verbose=True)  # verbose=True to see logs
+
+    # Mock all creation methods
+    mock_storage.criar_materia.return_value = Mock(id="mat-001", nome="Matematica", metadata={})
+    mock_storage.criar_turma.return_value = Mock(id="turma-001", nome="9A")
+    mock_storage.criar_atividade.return_value = Mock(id="ativ-001", nome="Prova 1")
+    mock_storage.criar_aluno.return_value = Mock(id="aluno-001", nome="Ana Silva", metadata={})
+    mock_storage.vincular_aluno_turma.return_value = None
+    mock_storage.listar_alunos.return_value = [Mock(id="aluno-001", nome="Ana Silva")]
+    mock_storage.salvar_documento.return_value = Mock(id="doc-001")
+
+    # Mock listar_documentos to return specific counts
+    def mock_listar_docs_with_counts(atividade_id, aluno_id=None, tipo=None):
+        if tipo == TipoDocumento.ENUNCIADO:
+            return [Mock(tipo="enunciado"), Mock(tipo="enunciado")]  # 2 docs
+        elif tipo == TipoDocumento.GABARITO:
+            return [Mock(tipo="gabarito"), Mock(tipo="gabarito")]  # 2 docs
+        elif tipo == TipoDocumento.PROVA_RESPONDIDA:
+            return [Mock(tipo="prova_respondida"), Mock(tipo="prova_respondida")]  # 2 docs
+        elif tipo == TipoDocumento.CORRECAO:
+            return [Mock(tipo="correcao"), Mock(tipo="correcao")]  # 2 docs
+        return []
+
+    mock_storage.listar_documentos.side_effect = mock_listar_docs_with_counts
+
+    # Act
+    generator.gerar_tudo(num_alunos=1, alunos_por_turma=1, incluir_problemas=False)
+
+    # Capture printed output
+    captured = capsys.readouterr()
+    output = captured.out.lower()
+
+    # Assert: Should contain verification log with counts
+    # Look for patterns like "verified", "enunciado", "gabarito", etc with counts
+    assert "verif" in output or "check" in output, (
+        "gerar_tudo() should log verification results. "
+        f"No 'verif' or 'check' found in output:\n{captured.out}"
+    )
+
+    # Should mention all 4 types
+    assert "enunciado" in output, "Verification log should mention 'enunciado'"
+    assert "gabarito" in output, "Verification log should mention 'gabarito'"
+    assert ("prova_respondida" in output or "prova respondida" in output), (
+        "Verification log should mention 'prova_respondida'"
+    )
+    assert ("correção" in output or "correcao" in output or "correction" in output), (
+        "Verification log should mention 'correcao'"
+    )
+
+
+# ============================================================
 # TESTES FG-T7: Fantasy data cleanup
 # ============================================================
 
