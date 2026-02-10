@@ -111,6 +111,9 @@ class AgentConfig:
     # User interaction
     ask_before_action: bool = True
 
+    # Website context (description of what the website is/does)
+    website_context: Optional[str] = None
+
     # Output settings
     output_dir: Optional[Path] = None
 

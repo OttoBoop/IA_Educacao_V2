@@ -139,11 +139,17 @@ class LLMBrain:
             data = response.json()
             return data["content"][0]["text"]
 
-    def _build_decision_system_prompt(self, persona: Persona, goal: str) -> str:
+    def _build_decision_system_prompt(self, persona: Persona, goal: str, website_context: str = None) -> str:
         """Build the system prompt for decision-making."""
-        return f"""{persona.to_prompt_context()}
+        context_block = ""
+        if website_context:
+            context_block = f"""
+The creator described this website as: "{website_context}"
+Use this context to understand what you're looking at and navigate accordingly.
 
-Your current goal: {goal}
+"""
+        return f"""{persona.to_prompt_context()}
+{context_block}Your current goal: {goal}
 
 Based on the screenshot and DOM structure I show you, decide what to do next.
 
@@ -189,6 +195,7 @@ Respond ONLY with valid JSON (no markdown, no explanation outside JSON):
         history: List[JourneyStep] = None,
         console_errors: List[str] = None,
         user_guidance: Optional[str] = None,
+        website_context: Optional[str] = None,
     ) -> Action:
         """
         Decide what action the persona would take next.
@@ -258,7 +265,7 @@ Respond ONLY with valid JSON (no markdown, no explanation outside JSON):
 
         messages = [{"role": "user", "content": user_content}]
 
-        system_prompt = self._build_decision_system_prompt(persona, goal)
+        system_prompt = self._build_decision_system_prompt(persona, goal, website_context=website_context)
 
         try:
             response_text = await self._call_claude(

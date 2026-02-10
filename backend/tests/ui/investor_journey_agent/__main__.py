@@ -41,6 +41,16 @@ from .command_receiver import CommandReceiver
 from .personas import PERSONAS
 from .progress_narrator import ProgressNarrator
 from .report_generator import ReportGenerator
+from .url_utils import resolve_url
+from .context_store import load_context, save_context
+
+
+def resolve_context(cli_context, url, store_path=None):
+    """Resolve website context: CLI flag overrides saved, saves new context."""
+    if cli_context:
+        save_context(url, cli_context, store_path=store_path)
+        return cli_context
+    return load_context(url, store_path=store_path)
 
 
 def build_parser():
@@ -152,6 +162,13 @@ Examples:
         help="Resume from a saved state directory (reads state.json)",
     )
 
+    parser.add_argument(
+        "--context",
+        type=str,
+        default=None,
+        help="Website description to help the AI persona understand what it's looking at",
+    )
+
     return parser
 
 
@@ -164,13 +181,20 @@ async def main():
     """Main entry point."""
     args = parse_args()
 
-    # Resolve URL
-    url = LOCAL_URL if args.local else args.url
+    # Resolve URL (supports file paths, file:// URLs, and http(s) URLs)
+    if args.local:
+        url = LOCAL_URL
+    else:
+        url = resolve_url(args.url)
+
+    # Resolve website context (CLI flag overrides saved, auto-loads from store)
+    website_context = resolve_context(cli_context=args.context, url=url)
 
     # Create config
     config = AgentConfig(
         ask_before_action=args.ask,
         max_steps=args.max_steps,
+        website_context=website_context,
     )
 
     if args.output:
@@ -228,6 +252,7 @@ async def main():
             url=url,
             goal=args.goal,
             max_steps=args.max_steps,
+            website_context=website_context,
         )
 
         # Generate report

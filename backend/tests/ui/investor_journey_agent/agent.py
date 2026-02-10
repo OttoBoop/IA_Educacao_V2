@@ -122,6 +122,7 @@ class InvestorJourneyAgent:
         url: str,
         goal: str,
         max_steps: Optional[int] = None,
+        website_context: Optional[str] = None,
     ) -> JourneyReport:
         """
         Run a simulated user journey.
@@ -221,6 +222,7 @@ class InvestorJourneyAgent:
                         history=steps,
                         console_errors=state.console_errors,
                         user_guidance=user_guidance,
+                        website_context=website_context,
                     )
                     user_guidance = None  # Clear after use (one-shot)
 
