@@ -75,8 +75,8 @@ TEST_FILES = {
 # TESTE 1: DETECÇÃO DE MIME TYPE
 # ============================================================
 
-def test_mime_detection():
-    """Testa se todos os tipos de arquivo são detectados corretamente"""
+def check_mime_detection():
+    """Testa se todos os tipos de arquivo são detectados corretamente (standalone script, not a pytest test)"""
     print("\n" + "=" * 60)
     print("TESTE 1: DETECÇÃO DE MIME TYPE")
     print("=" * 60)
@@ -380,7 +380,7 @@ async def main():
     print("=" * 60)
 
     # Teste 1: MIME detection (sempre executa)
-    mime_results = test_mime_detection()
+    mime_results = check_mime_detection()
 
     # Teste 2: Endpoints HTTP
     print("\n  Testando endpoints HTTP...")

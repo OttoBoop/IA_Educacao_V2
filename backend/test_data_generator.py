@@ -25,13 +25,15 @@ import io
 import json
 import random
 import shutil
+import tempfile
 from pathlib import Path
 from datetime import datetime, timedelta
 from typing import List, Dict, Any, Optional
 import argparse
 
 # Corrigir encoding do console Windows para suportar UTF-8
-if sys.platform == 'win32':
+# Only when running as script (not when imported by pytest)
+if sys.platform == 'win32' and __name__ == '__main__':
     sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8', errors='replace')
     sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding='utf-8', errors='replace')
 
@@ -120,6 +122,39 @@ MATERIAS_CONFIG = [
         "atividades": [
             {"nome": "Test 1 - Verb Tenses", "tipo": "prova", "nota_maxima": 10},
             {"nome": "Reading Comprehension", "tipo": "exercicio", "nota_maxima": 5}
+        ]
+    }
+]
+
+# Configuração menor para deploy rápido (Render startup / demonstração)
+MATERIAS_CONFIG_MINI = [
+    {
+        "nome": "Matemática",
+        "descricao": "Álgebra, geometria, aritmética e estatística",
+        "nivel": NivelEnsino.FUNDAMENTAL_2,
+        "turmas": ["9º Ano A"],
+        "atividades": [
+            {"nome": "Prova 1 - Equações do 1º Grau", "tipo": "prova", "nota_maxima": 10},
+            {"nome": "Trabalho - Estatística", "tipo": "trabalho", "nota_maxima": 5}
+        ]
+    },
+    {
+        "nome": "Português",
+        "descricao": "Gramática, interpretação de texto e redação",
+        "nivel": NivelEnsino.FUNDAMENTAL_2,
+        "turmas": ["9º Ano A"],
+        "atividades": [
+            {"nome": "Prova 1 - Interpretação de Texto", "tipo": "prova", "nota_maxima": 10},
+            {"nome": "Redação - Dissertação Argumentativa", "tipo": "trabalho", "nota_maxima": 10}
+        ]
+    },
+    {
+        "nome": "Ciências",
+        "descricao": "Física, química e biologia básicas",
+        "nivel": NivelEnsino.FUNDAMENTAL_2,
+        "turmas": ["9º Ano A"],
+        "atividades": [
+            {"nome": "Prova 1 - Sistema Solar", "tipo": "prova", "nota_maxima": 10}
         ]
     }
 ]
@@ -333,7 +368,7 @@ class TestDataGenerator:
     
     def criar_materias(self, configs: List[Dict] = None):
         """Cria matérias com suas turmas e atividades"""
-        configs = configs or MATERIAS_CONFIG
+        configs = configs or MATERIAS_CONFIG_MINI
         
         self.log("[+] Criando matérias...")
         
@@ -429,8 +464,11 @@ class TestDataGenerator:
                     try:
                         self.storage.vincular_aluno_turma(aluno.id, turma.id)
                         self.stats["vinculos"] += 1
-                    except:
-                        pass  # Ignora se já vinculado
+                    except Exception as e:
+                        if "já vinculado" in str(e) or "already linked" in str(e) or "duplicate" in str(e).lower():
+                            self.log(f"  [skip] Aluno {aluno.id} já vinculado à turma {turma.id}", indent=2)
+                        else:
+                            raise
         
         self.log(f"[v] {self.stats['vinculos']} vínculos criados", indent=1)
     
@@ -532,7 +570,7 @@ Questão 4: {respostas[3] if random.random() > 0.3 else 'Não deu tempo'}
                 enunciado_conteudo = self.gerar_enunciado(materia, turma, atividade.nome)
                 
                 # Criar arquivo temporário
-                temp_path = Path(f"/tmp/enunciado_{atividade.id}.txt")
+                temp_path = Path(tempfile.gettempdir()) / f"enunciado_{atividade.id}.txt"
                 self.criar_documento_texto(temp_path, enunciado_conteudo)
                 
                 doc = self.storage.salvar_documento(
@@ -549,13 +587,14 @@ Questão 4: {respostas[3] if random.random() > 0.3 else 'Não deu tempo'}
                 temp_path.unlink(missing_ok=True)
             except Exception as e:
                 self.log(f"⚠ Erro ao criar enunciado: {e}", indent=2)
+                raise
             
             # Criar gabarito (alguns podem faltar para testar avisos)
             if random.random() > 0.1 or not incluir_problemas:  # 90% têm gabarito
                 try:
                     gabarito_conteudo = self.gerar_gabarito(materia, turma, atividade.nome)
                     
-                    temp_path = Path(f"/tmp/gabarito_{atividade.id}.txt")
+                    temp_path = Path(tempfile.gettempdir()) / f"gabarito_{atividade.id}.txt"
                     self.criar_documento_texto(temp_path, gabarito_conteudo)
                     
                     doc = self.storage.salvar_documento(
@@ -572,6 +611,7 @@ Questão 4: {respostas[3] if random.random() > 0.3 else 'Não deu tempo'}
                     temp_path.unlink(missing_ok=True)
                 except Exception as e:
                     self.log(f"⚠ Erro ao criar gabarito: {e}", indent=2)
+                    raise
             else:
                 self.log(f"  ⚠ Atividade '{atividade.nome}' sem gabarito (teste de aviso)", indent=1)
         
@@ -613,7 +653,7 @@ Questão 4: {respostas[3] if random.random() > 0.3 else 'Não deu tempo'}
                         prob_config = PROBLEMAS_DOCUMENTO[problema]
                         conteudo = prob_config["conteudo"]
                         
-                        temp_path = Path(f"/tmp/prova_{atividade.id}_{aluno.id}.txt")
+                        temp_path = Path(tempfile.gettempdir()) / f"prova_{atividade.id}_{aluno.id}.txt"
                         self.criar_documento_texto(temp_path, conteudo)
                         
                         doc = self.storage.salvar_documento(
@@ -639,7 +679,7 @@ Questão 4: {respostas[3] if random.random() > 0.3 else 'Não deu tempo'}
                         # Criar prova normal
                         conteudo = self.gerar_prova_aluno(materia, aluno.nome, qualidade)
                         
-                        temp_path = Path(f"/tmp/prova_{atividade.id}_{aluno.id}.txt")
+                        temp_path = Path(tempfile.gettempdir()) / f"prova_{atividade.id}_{aluno.id}.txt"
                         self.criar_documento_texto(temp_path, conteudo)
                         
                         doc = self.storage.salvar_documento(
@@ -662,6 +702,7 @@ Questão 4: {respostas[3] if random.random() > 0.3 else 'Não deu tempo'}
                     
                 except Exception as e:
                     self.log(f"⚠ Erro ao criar prova: {e}", indent=2)
+                    raise
         
         self.log(f"[v] Provas dos alunos criadas", indent=1)
     
@@ -734,7 +775,7 @@ Questão 4: {respostas[3] if random.random() > 0.3 else 'Não deu tempo'}
                 correcao_json["nota_total"] = sum(q["nota"] for q in correcao_json["questoes"])
                 
                 try:
-                    temp_path = Path(f"/tmp/correcao_{atividade.id}_{aluno.id}.json")
+                    temp_path = Path(tempfile.gettempdir()) / f"correcao_{atividade.id}_{aluno.id}.json"
                     self.criar_documento_texto(temp_path, correcao_json, formato="json")
                     
                     doc = self.storage.salvar_documento(
@@ -754,6 +795,7 @@ Questão 4: {respostas[3] if random.random() > 0.3 else 'Não deu tempo'}
                     temp_path.unlink(missing_ok=True)
                 except Exception as e:
                     self.log(f"⚠ Erro ao criar correção JSON: {e}", indent=2)
+                    raise
         
         self.log(f"[v] Documentos JSON criados", indent=1)
     
@@ -761,9 +803,9 @@ Questão 4: {respostas[3] if random.random() > 0.3 else 'Não deu tempo'}
     # EXECUÇÃO PRINCIPAL
     # -----------------------------------------------------------------
     
-    def gerar_tudo(self, 
-                   num_alunos: int = 20,
-                   alunos_por_turma: int = 10,
+    def gerar_tudo(self,
+                   num_alunos: int = 10,
+                   alunos_por_turma: int = 5,
                    incluir_problemas: bool = True,
                    materias_config: List[Dict] = None):
         """Gera todos os dados de teste"""
@@ -874,9 +916,9 @@ def main():
         num_alunos = 50
         alunos_por_turma = 15
     else:
-        config = MATERIAS_CONFIG
-        num_alunos = args.alunos
-        alunos_por_turma = 10
+        config = MATERIAS_CONFIG_MINI
+        num_alunos = args.alunos if args.alunos != 20 else 10
+        alunos_por_turma = 5
     
     # Gerar dados
     generator = TestDataGenerator(storage)

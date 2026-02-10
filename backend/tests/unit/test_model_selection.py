@@ -78,9 +78,9 @@ def _check_chat_model_selection(model: dict) -> tuple[bool, str]:
         return False, f"Exception: {str(e)[:100]}"
 
 
-def test_pipeline_model_selection() -> dict:
+def check_pipeline_model_selection() -> dict:
     """
-    Test that pipeline uses the correct model.
+    Check that pipeline uses the correct model (standalone script, not a pytest test).
     Returns results for each model tested.
     """
     print_header("Testing Pipeline Model Selection")
@@ -192,8 +192,8 @@ def test_pipeline_model_selection() -> dict:
     return results
 
 
-def test_chat_model_selection_all():
-    """Test chat model selection for all models"""
+def check_chat_model_selection_all():
+    """Check chat model selection for all models (standalone script, not a pytest test)"""
     print_header("Testing Chat Model Selection")
 
     models = get_models()
@@ -230,12 +230,12 @@ def main():
     all_results = {}
 
     # Test 1: Chat model selection
-    chat_results = test_chat_model_selection_all()
+    chat_results = check_chat_model_selection_all()
     for k, v in chat_results.items():
         all_results[f"chat_{k}"] = v
 
     # Test 2: Pipeline model selection
-    pipeline_results = test_pipeline_model_selection()
+    pipeline_results = check_pipeline_model_selection()
     all_results.update(pipeline_results)
 
     # Summary

@@ -65,8 +65,8 @@ def _check_model_chat(model: dict) -> tuple[bool, str]:
         return False, f"Exception: {str(e)[:100]}"
 
 
-def test_all_models():
-    """Test all configured models"""
+def check_all_models():
+    """Check all configured models (standalone script, not a pytest test)"""
     print_header("Testing All Configured Models")
 
     models = get_models()
@@ -169,8 +169,8 @@ def test_document_integrity():
         return None
 
 
-def test_model_configuration():
-    """Verify model configurations are correct"""
+def check_model_configuration():
+    """Verify model configurations are correct (standalone script, not a pytest test)"""
     print_header("Verifying Model Configurations")
 
     models = get_models()
@@ -218,11 +218,11 @@ def main():
     all_results = {}
 
     # Test 1: Model configurations
-    config_results = test_model_configuration()
+    config_results = check_model_configuration()
     all_results.update(config_results)
 
     # Test 2: All model chat functionality
-    chat_results = test_all_models()
+    chat_results = check_all_models()
     all_results.update(chat_results)
 
     # Test 3: Document integrity

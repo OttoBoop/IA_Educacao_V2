@@ -373,17 +373,7 @@ class TestDocumentSubmissions:
 class TestBackwardCompatibility:
     """Tests that SQLite fallback still works"""
 
-    @pytest.mark.skip(reason="SQLite fallback requires fresh Python interpreter - tested manually")
+    @pytest.mark.skip(reason="SQLite not used — project uses PostgreSQL/Supabase exclusively")
     def test_sqlite_fallback_when_no_postgresql(self):
-        """Should fall back to SQLite when PostgreSQL not available
-
-        Note: This test is skipped because supabase_db is initialized at module
-        import time. To properly test SQLite fallback, run without SUPABASE_URL
-        in a fresh Python interpreter.
-
-        Manual test:
-        1. Unset SUPABASE_URL
-        2. Run: python -c "from storage import storage; print(storage.use_postgresql)"
-        3. Should print: False
-        """
+        """Skipped: project uses PostgreSQL/Supabase exclusively, no SQLite fallback needed."""
         pass

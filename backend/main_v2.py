@@ -121,8 +121,8 @@ def initialize_fantasy_data_if_empty():
             from test_data_generator import TestDataGenerator
             generator = TestDataGenerator(storage, verbose=True)
             stats = generator.gerar_tudo(
-                num_alunos=20,
-                alunos_por_turma=10,
+                num_alunos=10,
+                alunos_por_turma=5,
                 incluir_problemas=True
             )
 
