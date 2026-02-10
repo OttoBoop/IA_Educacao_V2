@@ -824,7 +824,39 @@ Questão 4: {respostas[3] if random.random() > 0.3 else 'Não deu tempo'}
         self.criar_documentos_base(incluir_problemas)
         self.criar_provas_alunos(incluir_problemas)
         self.criar_documentos_json_exemplo()
-        
+
+        # Verificação pós-geração
+        print("\n" + "=" * 60)
+        print("🔍 VERIFICAÇÃO DOS DOCUMENTOS CRIADOS")
+        print("=" * 60)
+
+        doc_types = [
+            TipoDocumento.ENUNCIADO,
+            TipoDocumento.GABARITO,
+            TipoDocumento.PROVA_RESPONDIDA,
+            TipoDocumento.CORRECAO
+        ]
+
+        counts = {}
+        for doc_type in doc_types:
+            total = 0
+            for ativ_info in self.atividades_criadas.values():
+                atividade = ativ_info["atividade"]
+                docs = self.storage.listar_documentos(atividade.id, tipo=doc_type)
+                total += len(docs)
+            counts[doc_type] = total
+
+        print(f"  Verificação: {counts[TipoDocumento.ENUNCIADO]} enunciado(s), "
+              f"{counts[TipoDocumento.GABARITO]} gabarito(s), "
+              f"{counts[TipoDocumento.PROVA_RESPONDIDA]} prova_respondida(s), "
+              f"{counts[TipoDocumento.CORRECAO]} correção(ões)")
+
+        for doc_type in doc_types:
+            if counts[doc_type] == 0:
+                raise Exception(f"Verification failed: no documents of type '{doc_type.value}' found (count: 0)")
+
+        print("=" * 60 + "\n")
+
         # Relatório final
         print("\n" + "=" * 60)
         print("📊 RESUMO DOS DADOS CRIADOS")
