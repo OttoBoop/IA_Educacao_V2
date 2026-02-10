@@ -114,6 +114,9 @@ class HTMLReportRenderer:
         duration = (report.end_time - report.start_time).total_seconds()
         success_rate = report.success_rate
 
+        # Store persona name for step card rendering
+        self._current_persona_name = persona.name
+
         # Check for incomplete flag (set when journey ends early due to errors)
         is_incomplete = getattr(report, "incomplete", False)
         incomplete_reason = getattr(report, "incomplete_reason", None)
@@ -138,6 +141,7 @@ class HTMLReportRenderer:
         {self._render_footer()}
     </div>
     {self._render_lightbox()}
+    <button class="back-to-top" id="back-to-top" onclick="scrollToTop()" title="Back to top">&uarr;</button>
     {self._render_js()}
 </body>
 </html>"""
@@ -322,6 +326,12 @@ class HTMLReportRenderer:
     /* Timeline */
     .timeline-section {
         margin-bottom: 2rem;
+        position: sticky;
+        top: 0;
+        z-index: 100;
+        background: var(--bg-primary);
+        padding-top: 0.5rem;
+        padding-bottom: 0.5rem;
     }
     .timeline-section h2 {
         font-size: 1.2rem;
@@ -460,47 +470,6 @@ class HTMLReportRenderer:
         display: block;
     }
 
-    /* Collapsible Thought */
-    .thought-toggle {
-        width: 100%;
-        background: none;
-        border: 1px solid var(--border);
-        border-radius: 8px;
-        padding: 0.7rem 1rem;
-        color: var(--text-secondary);
-        font-size: 0.85rem;
-        cursor: pointer;
-        text-align: left;
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        transition: background 0.15s;
-    }
-    .thought-toggle:hover {
-        background: var(--bg-hover);
-    }
-    .thought-toggle .arrow {
-        transition: transform 0.2s;
-        font-size: 0.7rem;
-    }
-    .thought-toggle.expanded .arrow {
-        transform: rotate(90deg);
-    }
-    .thought-content {
-        display: none;
-        padding: 1rem;
-        margin-top: 0.5rem;
-        background: var(--bg-secondary);
-        border-radius: 8px;
-        color: var(--text-secondary);
-        font-size: 0.85rem;
-        line-height: 1.7;
-        font-style: italic;
-    }
-    .thought-content.visible {
-        display: block;
-    }
-
     /* Pain Points */
     .pain-points-section, .recommendations-section {
         margin-bottom: 2rem;
@@ -617,6 +586,117 @@ class HTMLReportRenderer:
         background: none;
         border: none;
         line-height: 1;
+    }
+
+    /* Collapsible Screenshots */
+    .screenshot-container {
+        margin-bottom: 1rem;
+        border-radius: 8px;
+        overflow: hidden;
+        border: 1px solid var(--border);
+    }
+    .screenshot-toggle-bar {
+        width: 100%;
+        padding: 0.7rem 1rem;
+        background: var(--bg-hover);
+        color: var(--text-secondary);
+        font-size: 0.85rem;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        transition: background 0.15s;
+    }
+    .screenshot-toggle-bar:hover {
+        background: var(--bg-card);
+    }
+    .screenshot-toggle-bar .arrow {
+        transition: transform 0.2s;
+        font-size: 0.7rem;
+    }
+    .screenshot-container[data-state="expanded"] .screenshot-toggle-bar .arrow {
+        transform: rotate(90deg);
+    }
+    .screenshot-content {
+        overflow: hidden;
+    }
+    .controls-bar {
+        display: flex;
+        gap: 0.5rem;
+        margin-bottom: 1rem;
+    }
+    .controls-bar button {
+        padding: 0.4rem 0.8rem;
+        background: var(--bg-card);
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        color: var(--text-secondary);
+        font-size: 0.8rem;
+        cursor: pointer;
+        transition: background 0.15s;
+    }
+    .controls-bar button:hover {
+        background: var(--bg-hover);
+    }
+
+    /* Collapsible Step Cards */
+    .step-header {
+        cursor: pointer;
+    }
+    .step-collapse-arrow {
+        font-size: 0.7rem;
+        transition: transform 0.2s;
+    }
+    .step-card[data-collapsed="true"] .step-collapse-arrow {
+        transform: rotate(-90deg);
+    }
+
+    /* Chat-style Thought Bubble */
+    .thought-bubble {
+        display: flex;
+        align-items: flex-start;
+        gap: 0.6rem;
+        margin-top: 0.5rem;
+    }
+    .thought-bubble-icon {
+        font-size: 1.4rem;
+        line-height: 1;
+        flex-shrink: 0;
+        margin-top: 0.3rem;
+    }
+    .thought-bubble-text {
+        background: var(--bg-secondary);
+        border-radius: 0 12px 12px 12px;
+        padding: 0.8rem 1rem;
+        color: var(--text-secondary);
+        font-size: 0.85rem;
+        line-height: 1.7;
+        font-style: italic;
+        flex: 1;
+    }
+
+    /* Back to Top */
+    .back-to-top {
+        position: fixed;
+        bottom: 2rem;
+        right: 2rem;
+        width: 40px;
+        height: 40px;
+        border-radius: 50%;
+        background: var(--accent-blue);
+        color: white;
+        border: none;
+        font-size: 1.2rem;
+        cursor: pointer;
+        display: none;
+        align-items: center;
+        justify-content: center;
+        z-index: 99;
+        box-shadow: 0 2px 8px var(--shadow);
+        transition: opacity 0.2s;
+    }
+    .back-to-top.visible {
+        display: flex;
     }
 </style>"""
 
@@ -739,6 +819,12 @@ class HTMLReportRenderer:
         return f"""
     <div class="steps-section">
         <h2>Step-by-Step Journey</h2>
+        <div class="controls-bar">
+            <button onclick="expandAllScreenshots()">Expand All Screenshots</button>
+            <button onclick="collapseAllScreenshots()">Collapse All Screenshots</button>
+            <button onclick="expandAllSteps()">Expand All Steps</button>
+            <button onclick="collapseAllSteps()">Collapse All Steps</button>
+        </div>
         {"".join(cards)}
     </div>"""
 
@@ -757,8 +843,16 @@ class HTMLReportRenderer:
         # Screenshot
         screenshot_src = encode_screenshot_base64(Path(step.screenshot_path))
         screenshot_html = f"""
-        <div class="step-screenshot" onclick="openLightbox(this)">
-            <img src="{screenshot_src}" alt="Step {step.step_number} screenshot" loading="lazy">
+        <div class="screenshot-container" data-state="collapsed">
+            <div class="screenshot-toggle-bar" onclick="toggleScreenshot(this.parentElement)">
+                <span>View Screenshot</span>
+                <span class="arrow">&#9654;</span>
+            </div>
+            <div class="screenshot-content" style="display:none;">
+                <div class="step-screenshot" onclick="openLightbox(this)">
+                    <img src="{screenshot_src}" alt="Step {step.step_number} screenshot" loading="lazy">
+                </div>
+            </div>
         </div>"""
 
         # Error message
@@ -773,26 +867,27 @@ class HTMLReportRenderer:
             <span class="action-target">{_escape_html(action.target)}</span>
         </div>"""
 
-        # Thought (collapsible)
-        thought_preview = _escape_html(action.thought[:80]) + ("..." if len(action.thought) > 80 else "")
+        # Thought (chat bubble)
+        persona_name = getattr(self, '_current_persona_name', 'User')
+        emoji = _persona_emoji(persona_name)
         thought_html = f"""
-        <button class="thought-toggle" onclick="toggleThought(this)">
-            <span>{thought_preview}</span>
-            <span class="arrow">&#9654;</span>
-        </button>
-        <div class="thought-content">
-            {_escape_html(action.thought)}
+        <div class="thought-bubble">
+            <span class="thought-bubble-icon" title="{_escape_html(persona_name)}">{emoji}</span>
+            <div class="thought-bubble-text">
+                {_escape_html(action.thought)}
+            </div>
         </div>"""
 
         return f"""
-    <div class="step-card" id="step-{step.step_number}">
-        <div class="step-header">
+    <div class="step-card" id="step-{step.step_number}" data-collapsed="false">
+        <div class="step-header" onclick="toggleStep(this.parentElement)">
             <span class="step-number">Step {step.step_number}</span>
             <div class="step-meta">
                 <span class="frustration-badge" style="background: {frust_color}22; color: {frust_color};">
                     {frustration_pct}
                 </span>
                 {status_html}
+                <span class="step-collapse-arrow">&#9660;</span>
             </div>
         </div>
         <div class="step-body">
@@ -892,21 +987,96 @@ class HTMLReportRenderer:
         document.getElementById('lightbox').classList.remove('active');
     }
 
-    function toggleThought(btn) {
-        var content = btn.nextElementSibling;
-        btn.classList.toggle('expanded');
-        content.classList.toggle('visible');
-    }
-
     function scrollToStep(n) {
         var el = document.getElementById('step-' + n);
         if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }
 
+    function toggleScreenshot(container) {
+        var content = container.querySelector('.screenshot-content');
+        var state = container.getAttribute('data-state');
+        if (state === 'collapsed') {
+            container.setAttribute('data-state', 'expanded');
+            content.style.display = 'block';
+        } else {
+            container.setAttribute('data-state', 'collapsed');
+            content.style.display = 'none';
+        }
+    }
+
+    function setAllScreenshotsState(state, display) {
+        var containers = document.querySelectorAll('.screenshot-container');
+        containers.forEach(function(c) {
+            c.setAttribute('data-state', state);
+            c.querySelector('.screenshot-content').style.display = display;
+        });
+    }
+
+    function expandAllScreenshots() {
+        setAllScreenshotsState('expanded', 'block');
+    }
+
+    function collapseAllScreenshots() {
+        setAllScreenshotsState('collapsed', 'none');
+    }
+
+    function toggleStep(card) {
+        var body = card.querySelector('.step-body');
+        var collapsed = card.getAttribute('data-collapsed') === 'true';
+        if (collapsed) {
+            card.setAttribute('data-collapsed', 'false');
+            body.style.display = '';
+        } else {
+            card.setAttribute('data-collapsed', 'true');
+            body.style.display = 'none';
+        }
+    }
+
+    function setAllStepsState(collapsed) {
+        var cards = document.querySelectorAll('.step-card');
+        cards.forEach(function(c) {
+            c.setAttribute('data-collapsed', collapsed ? 'true' : 'false');
+            c.querySelector('.step-body').style.display = collapsed ? 'none' : '';
+        });
+    }
+
+    function expandAllSteps() {
+        setAllStepsState(false);
+    }
+
+    function collapseAllSteps() {
+        setAllStepsState(true);
+    }
+
+    function scrollToTop() {
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    window.addEventListener('scroll', function() {
+        var btn = document.getElementById('back-to-top');
+        if (window.scrollY > 400) {
+            btn.classList.add('visible');
+        } else {
+            btn.classList.remove('visible');
+        }
+    });
+
     document.addEventListener('keydown', function(e) {
         if (e.key === 'Escape') closeLightbox();
     });
 </script>"""
+
+
+def _persona_emoji(name: str) -> str:
+    """Map persona name to an emoji icon for chat bubbles."""
+    mapping = {
+        "investor": "\U0001F4BC",       # briefcase
+        "student": "\U0001F393",        # graduation cap
+        "confused teacher": "\U0001F914", # thinking face
+        "power user": "\u26A1",         # lightning
+        "qa tester": "\U0001F50D",      # magnifying glass
+    }
+    return mapping.get(name.lower(), "\U0001F464")  # default: bust silhouette
 
 
 def _escape_html(text: str) -> str:

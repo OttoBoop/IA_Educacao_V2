@@ -488,10 +488,11 @@ class TestInteractiveJS:
         renderer = HTMLReportRenderer()
         html = renderer.render(_make_mock_report())
 
-        # Either <details>/<summary> or custom collapsible with toggle class
+        # Either <details>/<summary> or custom collapsible with toggle class or chat bubble
         has_details = "<details" in html.lower()
         has_toggle = "collapsible" in html.lower() or "toggle" in html.lower() or "expandable" in html.lower()
-        assert has_details or has_toggle
+        has_bubble = "thought-bubble" in html.lower()
+        assert has_details or has_toggle or has_bubble
 
 
 # ============================================================
@@ -1006,3 +1007,247 @@ class TestAgentErrorResilience:
 
         assert report.incomplete is False
         assert report.incomplete_reason is None
+
+
+# ============================================================
+# F1: Collapsible Screenshots
+# ============================================================
+
+
+class TestCollapsibleScreenshots:
+    """F1: Screenshots should be collapsible with toggle controls."""
+
+    def test_screenshot_wrapped_in_collapsible_container(self):
+        """Screenshot should be wrapped in a container with data-state="collapsed"."""
+        from tests.ui.investor_journey_agent.html_template import HTMLReportRenderer
+
+        with TemporaryDirectory() as tmpdir:
+            screenshot_path = Path(tmpdir) / "screenshots" / "step_01.png"
+            _create_fake_screenshot(screenshot_path)
+
+            step = _make_step(screenshot_path=str(screenshot_path))
+            report = _make_mock_report(steps=[step])
+
+            renderer = HTMLReportRenderer()
+            html = renderer.render(report)
+
+            assert "screenshot-container" in html
+            assert 'data-state="collapsed"' in html
+
+    def test_screenshot_toggle_bar_text(self):
+        """Screenshot container should have 'View Screenshot' toggle text."""
+        from tests.ui.investor_journey_agent.html_template import HTMLReportRenderer
+
+        with TemporaryDirectory() as tmpdir:
+            screenshot_path = Path(tmpdir) / "screenshots" / "step_01.png"
+            _create_fake_screenshot(screenshot_path)
+
+            step = _make_step(screenshot_path=str(screenshot_path))
+            report = _make_mock_report(steps=[step])
+
+            renderer = HTMLReportRenderer()
+            html = renderer.render(report)
+
+            assert "View Screenshot" in html
+
+    def test_toggle_screenshot_js_function(self):
+        """HTML should contain a toggleScreenshot JS function."""
+        from tests.ui.investor_journey_agent.html_template import HTMLReportRenderer
+
+        report = _make_mock_report()
+
+        renderer = HTMLReportRenderer()
+        html = renderer.render(report)
+
+        assert "toggleScreenshot" in html
+        assert "<script>" in html
+
+    def test_controls_bar_with_screenshot_toggles(self):
+        """HTML should have controls bar with Expand/Collapse All Screenshot buttons."""
+        from tests.ui.investor_journey_agent.html_template import HTMLReportRenderer
+
+        steps = [
+            _make_step(step_number=1),
+            _make_step(step_number=2),
+            _make_step(step_number=3),
+        ]
+        report = _make_mock_report(steps=steps)
+
+        renderer = HTMLReportRenderer()
+        html = renderer.render(report)
+
+        assert "controls-bar" in html
+        assert "expandAllScreenshots" in html
+        assert "collapseAllScreenshots" in html
+
+    def test_screenshot_still_embedded_as_base64(self):
+        """Regression: Screenshots should still be embedded as base64 data URIs."""
+        from tests.ui.investor_journey_agent.html_template import HTMLReportRenderer
+
+        with TemporaryDirectory() as tmpdir:
+            screenshot_path = Path(tmpdir) / "screenshots" / "step_01.png"
+            _create_fake_screenshot(screenshot_path)
+
+            step = _make_step(screenshot_path=str(screenshot_path))
+            report = _make_mock_report(steps=[step])
+
+            renderer = HTMLReportRenderer()
+            html = renderer.render(report)
+
+            assert "data:image/png;base64," in html
+
+
+# ============================================================
+# F2: Chat-style Thought Display
+# ============================================================
+
+
+class TestChatStyleThoughts:
+    """F2: Replace collapsible thought toggle with chat-bubble layout."""
+
+    def test_thought_rendered_as_chat_bubble(self):
+        """Thought should be rendered as a chat bubble with thought-bubble class."""
+        from tests.ui.investor_journey_agent.html_template import HTMLReportRenderer
+
+        step = _make_step(thought="I want to click this button")
+        report = _make_mock_report(steps=[step])
+
+        renderer = HTMLReportRenderer()
+        html = renderer.render(report)
+
+        assert "thought-bubble" in html
+
+    def test_thought_bubble_shows_full_text(self):
+        """Thought bubble should show full text, not truncated to 80 chars."""
+        from tests.ui.investor_journey_agent.html_template import HTMLReportRenderer
+
+        # Create a thought with more than 80 characters
+        long_thought = "This is a very long thought that exceeds eighty characters and should be displayed in full without any truncation happening"
+        assert len(long_thought) > 80, "Test thought must be longer than 80 chars"
+
+        step = _make_step(thought=long_thought)
+        report = _make_mock_report(steps=[step])
+
+        renderer = HTMLReportRenderer()
+        html = renderer.render(report)
+
+        # The full thought should appear in the HTML, not just the first 80 chars
+        assert long_thought in html, "Full thought text should be visible"
+        # The old behavior would show "..." after 80 chars
+        truncated_version = long_thought[:80] + "..."
+        # We don't want to see the truncated version as the only occurrence
+        # The full version should be present
+
+    def test_thought_bubble_has_persona_icon(self):
+        """Thought bubble should have a persona icon with thought-bubble-icon class."""
+        from tests.ui.investor_journey_agent.html_template import HTMLReportRenderer
+
+        step = _make_step(thought="I'm looking for the grades")
+        report = _make_mock_report(steps=[step])
+
+        renderer = HTMLReportRenderer()
+        html = renderer.render(report)
+
+        assert "thought-bubble-icon" in html
+
+    def test_persona_emoji_helper_exists(self):
+        """_persona_emoji function should exist and return emoji for persona names."""
+        from tests.ui.investor_journey_agent.html_template import _persona_emoji
+
+        result = _persona_emoji("Investor")
+        assert isinstance(result, str)
+        assert len(result) > 0
+
+
+# ============================================================
+# F3: Collapsible Step Cards
+# ============================================================
+
+
+class TestCollapsibleStepCards:
+    """F3: Entire step cards should be collapsible via header click."""
+
+    def test_step_card_has_data_collapsed_attribute(self):
+        """Step cards should have data-collapsed='false' attribute (expanded by default)."""
+        from tests.ui.investor_journey_agent.html_template import HTMLReportRenderer
+
+        step = _make_step(step_number=1)
+        report = _make_mock_report(steps=[step])
+
+        renderer = HTMLReportRenderer()
+        html = renderer.render(report)
+
+        assert 'data-collapsed="false"' in html
+
+    def test_step_header_has_toggle_onclick(self):
+        """Step header should have onclick to toggle the step card."""
+        from tests.ui.investor_journey_agent.html_template import HTMLReportRenderer
+
+        step = _make_step(step_number=1)
+        report = _make_mock_report(steps=[step])
+
+        renderer = HTMLReportRenderer()
+        html = renderer.render(report)
+
+        assert "toggleStep" in html
+
+    def test_toggle_step_js_function_exists(self):
+        """HTML should contain toggleStep JS function."""
+        from tests.ui.investor_journey_agent.html_template import HTMLReportRenderer
+
+        renderer = HTMLReportRenderer()
+        html = renderer.render(_make_mock_report())
+
+        assert "function toggleStep" in html
+
+    def test_controls_bar_has_step_toggles(self):
+        """Controls bar should have Expand/Collapse All Steps buttons."""
+        from tests.ui.investor_journey_agent.html_template import HTMLReportRenderer
+
+        steps = [_make_step(step_number=i) for i in range(1, 4)]
+        report = _make_mock_report(steps=steps)
+
+        renderer = HTMLReportRenderer()
+        html = renderer.render(report)
+
+        assert "expandAllSteps" in html
+        assert "collapseAllSteps" in html
+
+
+# ============================================================
+# F4: Visual Polish
+# ============================================================
+
+
+class TestVisualPolish:
+    """F4: Sticky timeline and back-to-top button."""
+
+    def test_timeline_has_sticky_positioning(self):
+        """Timeline section CSS should include sticky positioning."""
+        from tests.ui.investor_journey_agent.html_template import HTMLReportRenderer
+
+        steps = [_make_step(step_number=1)]
+        report = _make_mock_report(steps=steps)
+
+        renderer = HTMLReportRenderer()
+        html = renderer.render(report)
+
+        assert "sticky" in html
+
+    def test_back_to_top_button_exists(self):
+        """HTML should contain a back-to-top button."""
+        from tests.ui.investor_journey_agent.html_template import HTMLReportRenderer
+
+        renderer = HTMLReportRenderer()
+        html = renderer.render(_make_mock_report())
+
+        assert "back-to-top" in html
+
+    def test_scroll_to_top_js_function(self):
+        """HTML should contain a scrollToTop JS function."""
+        from tests.ui.investor_journey_agent.html_template import HTMLReportRenderer
+
+        renderer = HTMLReportRenderer()
+        html = renderer.render(_make_mock_report())
+
+        assert "scrollToTop" in html
