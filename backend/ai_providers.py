@@ -43,12 +43,14 @@ def _local_llm_disabled() -> bool:
     """Permite desabilitar provider local (ex: Ollama) via env var."""
     return os.getenv("PROVA_AI_DISABLE_LOCAL_LLM", "").lower() in ("1", "true", "yes")
 @dataclass
-class AIResponse:
+class AIResponse:s
     """Resposta padronizada de qualquer provider de IA"""
     content: str
     provider: str
-    model: str
+    model: strS
     tokens_used: int
+    input_tokens: int = 0
+    output_tokens: int = 0
     latency_ms: float
     input_tokens: int = 0
     output_tokens: int = 0
@@ -64,6 +66,7 @@ class AIResponse:
             "input_tokens": self.input_tokens,
             "output_tokens": self.output_tokens,
             "latency_ms": self.latency_ms,
+            "output_tokens": self.output_tokens,
             "timestamp": self.timestamp.isoformat(),
             "metadata": self.metadata
         }
