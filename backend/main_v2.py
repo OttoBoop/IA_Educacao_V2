@@ -983,6 +983,25 @@ async def listar_niveis_ensino():
 
 
 # ============================================================
+# ENDPOINTS: HEALTH CHECK
+# ============================================================
+
+from supabase_db import supabase_db
+
+@app.get("/api/health", tags=["Health"])
+async def health_check():
+    """Check system health — Supabase connectivity."""
+    try:
+        ok, msg = supabase_db.test_connection()
+        if ok:
+            return {"status": "healthy", "supabase": True}
+        else:
+            return {"status": "degraded", "supabase": False, "message": msg}
+    except Exception as e:
+        return {"status": "degraded", "supabase": False, "message": str(e)}
+
+
+# ============================================================
 # ENDPOINTS: DEBUG (remover em produção)
 # ============================================================
 
