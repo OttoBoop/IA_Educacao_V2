@@ -95,9 +95,13 @@ HAS_PIPELINE = pipeline_router is not None
 code_executor_router = _try_import_router("routes_code_executor")
 HAS_CODE_EXECUTOR = code_executor_router is not None
 
+tasks_router = _try_import_router("routes_tasks")
+HAS_TASKS = tasks_router is not None
+
 print("="*50)
 print(f"RESUMO: extras={HAS_EXTRAS}, prompts={HAS_PROMPTS}, resultados={HAS_RESULTADOS}")
 print(f"        chat={HAS_CHAT}, pipeline={HAS_PIPELINE}, code_executor={HAS_CODE_EXECUTOR}")
+print(f"        tasks={HAS_TASKS}")
 print("="*50 + "\n")
 
 
@@ -304,6 +308,10 @@ if HAS_PIPELINE:
 # Incluir rotas de code executor se disponíveis
 if HAS_CODE_EXECUTOR:
     app.include_router(code_executor_router)
+
+# Incluir rotas de task progress se disponíveis
+if HAS_TASKS:
+    app.include_router(tasks_router)
 
 # Storage já importado diretamente de storage.py
 

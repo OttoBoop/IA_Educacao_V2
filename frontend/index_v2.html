@@ -3402,6 +3402,17 @@
                     </div>
                     <div id="tree-materias"></div>
                 </div>
+
+                <div class="tree-section">
+                    <div class="tree-section-header">
+                        <span>Tarefas</span>
+                    </div>
+                    <div id="tree-tarefas">
+                        <div class="tarefas-empty-state" style="padding: 12px; color: var(--text-muted); font-size: 0.85rem; text-align: center;">
+                            Nenhuma tarefa em execução
+                        </div>
+                    </div>
+                </div>
             </nav>
             
             <div class="sidebar-footer">
@@ -8626,6 +8637,75 @@
             toast.textContent = message;
             toast.className = `toast ${type} show`;
             setTimeout(() => toast.classList.remove('show'), 3000);
+        }
+
+        // ============================================================
+        // NOTIFICATION SYSTEM — Web Audio API sounds + pipeline toast
+        // F5-T1: Sound notifications for pipeline events
+        // ============================================================
+
+        const notificationAudio = {
+            _ctx: null,
+            getContext() {
+                if (!this._ctx) {
+                    this._ctx = new (window.AudioContext || window.webkitAudioContext)();
+                }
+                return this._ctx;
+            }
+        };
+
+        function playSuccessSound() {
+            try {
+                const ctx = notificationAudio.getContext();
+                if (ctx.state === 'suspended') ctx.resume();
+                const oscillator = ctx.createOscillator();
+                const gain = ctx.createGain();
+                oscillator.connect(gain);
+                gain.connect(ctx.destination);
+                oscillator.type = 'sine';
+                oscillator.frequency.setValueAtTime(440, ctx.currentTime);
+                oscillator.frequency.setValueAtTime(554, ctx.currentTime + 0.1);
+                oscillator.frequency.setValueAtTime(659, ctx.currentTime + 0.2);
+                gain.gain.setValueAtTime(0.3, ctx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.4);
+                oscillator.start(ctx.currentTime);
+                oscillator.stop(ctx.currentTime + 0.4);
+            } catch (e) {
+                console.warn('Could not play success sound:', e);
+            }
+        }
+
+        function playErrorSound() {
+            try {
+                const ctx = notificationAudio.getContext();
+                if (ctx.state === 'suspended') ctx.resume();
+                const oscillator = ctx.createOscillator();
+                const gain = ctx.createGain();
+                oscillator.connect(gain);
+                gain.connect(ctx.destination);
+                oscillator.type = 'square';
+                oscillator.frequency.setValueAtTime(220, ctx.currentTime);
+                oscillator.frequency.setValueAtTime(180, ctx.currentTime + 0.2);
+                gain.gain.setValueAtTime(0.2, ctx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.5);
+                oscillator.start(ctx.currentTime);
+                oscillator.stop(ctx.currentTime + 0.5);
+            } catch (e) {
+                console.warn('Could not play error sound:', e);
+            }
+        }
+
+        function playNotificationSound(type) {
+            if (type === 'success') playSuccessSound();
+            else if (type === 'error') playErrorSound();
+        }
+
+        function showPipelineToast(message, type = 'success') {
+            const toast = document.getElementById('toast');
+            toast.textContent = message;
+            toast.className = `toast ${type} show`;
+            setTimeout(() => toast.classList.remove('show'), 5000);
+            playNotificationSound(type);
         }
 
 
