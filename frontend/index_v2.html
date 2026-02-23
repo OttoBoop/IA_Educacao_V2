@@ -3330,9 +3330,34 @@
             }
         }
 
+        /* ============================================
+           HEALTH WARNING BANNER
+           ============================================ */
+        .health-banner {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            z-index: 9999;
+            background: var(--warning);
+            color: #000;
+            text-align: center;
+            padding: 10px 16px;
+            font-size: 0.9rem;
+            font-weight: 600;
+        }
+        .health-banner.active {
+            display: block;
+        }
+        body.health-degraded .app {
+            margin-top: 42px;
+        }
+
     </style>
 </head>
 <body>
+    <div id="health-banner" class="health-banner">&#9888;&#65039; Sistema com problemas. Dados podem não ser salvos corretamente.</div>
     <div class="app">
         <!-- Sidebar -->
         <aside class="sidebar">
@@ -5817,6 +5842,28 @@
         }
 
         // ============================================================
+        // HEALTH CHECK
+        // ============================================================
+
+        async function checkHealth() {
+            const banner = document.getElementById('health-banner');
+            try {
+                const res = await fetch(`${API}/health`);
+                const data = await res.json();
+                if (data.status === 'healthy') {
+                    banner.classList.remove('active');
+                    document.body.classList.remove('health-degraded');
+                } else {
+                    banner.classList.add('active');
+                    document.body.classList.add('health-degraded');
+                }
+            } catch (e) {
+                banner.classList.add('active');
+                document.body.classList.add('health-degraded');
+            }
+        }
+
+        // ============================================================
         // INICIALIZAÇÃO
         // ============================================================
 
@@ -5829,6 +5876,8 @@
             loadNiveisEnsino();
             loadChatGeralProviders();
             checkFirstVisit();
+            checkHealth();
+            setInterval(checkHealth, 300000);
 
             // Close mobile sidebar when clicking nav items
             document.querySelector('.nav-tree')?.addEventListener('click', (e) => {
