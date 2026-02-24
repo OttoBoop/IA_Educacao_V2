@@ -108,11 +108,45 @@ def generate_pdf(data: Dict[str, Any], title: str = "Documento",
     )
     
     story = []
-    
+
     # Título
     story.append(Paragraph(title, title_style))
     story.append(Spacer(1, 12))
-    
+
+    # Check for pipeline error — add prominent error section at the top
+    if "_erro_pipeline" in data:
+        erro = data["_erro_pipeline"]
+        erro_style = ParagraphStyle(
+            'ErroTitle',
+            parent=styles['Heading1'],
+            fontSize=18,
+            textColor=colors.red,
+            alignment=TA_CENTER,
+            spaceBefore=10,
+            spaceAfter=15
+        )
+        story.append(Paragraph("ERRO DE PROCESSAMENTO", erro_style))
+
+        erro_table_data = [
+            ["Campo", "Valor"],
+            ["Tipo", str(erro.get("tipo", "-"))],
+            ["Mensagem", str(erro.get("mensagem", "-"))],
+            ["Etapa", str(erro.get("etapa", "-"))],
+            ["Severidade", str(erro.get("severidade", "-"))],
+        ]
+        erro_table = Table(erro_table_data, colWidths=[3*cm, 12*cm])
+        erro_table.setStyle(TableStyle([
+            ('BACKGROUND', (0, 0), (-1, 0), colors.red),
+            ('TEXTCOLOR', (0, 0), (-1, 0), colors.white),
+            ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+            ('BACKGROUND', (0, 1), (-1, -1), colors.HexColor('#fff0f0')),
+            ('GRID', (0, 0), (-1, -1), 0.5, colors.gray),
+            ('ALIGN', (0, 0), (-1, 0), 'CENTER'),
+            ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+        ]))
+        story.append(erro_table)
+        story.append(Spacer(1, 20))
+
     # Geração baseada no tipo
     if doc_type == "correcao":
         story.extend(_build_correcao_pdf(data, styles, heading_style, body_style))
@@ -308,7 +342,17 @@ def _build_generic_pdf(data: Dict, styles, heading_style, body_style) -> List:
 def _generate_text_fallback(data: Dict, title: str) -> str:
     """Fallback para texto quando reportlab não está disponível"""
     lines = [f"{'='*50}", f" {title}", f"{'='*50}", ""]
-    
+
+    # Error section if pipeline error present
+    if "_erro_pipeline" in data:
+        erro = data["_erro_pipeline"]
+        lines.append("!!! ERRO DE PROCESSAMENTO !!!")
+        lines.append(f"Tipo: {erro.get('tipo', '-')}")
+        lines.append(f"Mensagem: {erro.get('mensagem', '-')}")
+        lines.append(f"Etapa: {erro.get('etapa', '-')}")
+        lines.append(f"Severidade: {erro.get('severidade', '-')}")
+        lines.append("")
+
     for key, value in data.items():
         if key.startswith("_"):
             continue

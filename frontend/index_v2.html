@@ -5514,9 +5514,33 @@
             if (!resultado || Object.keys(resultado).length === 0) {
                 return '<div class="empty-state"><div class="empty-icon">📭</div><div class="empty-title">Sem dados</div></div>';
             }
-            
+
             let html = '<div class="visual-data">';
-            
+
+            // Check for pipeline error — show ERRO badge instead of normal content
+            if (resultado.erro_pipeline) {
+                const erro = resultado.erro_pipeline;
+                html += `
+                    <div class="data-section">
+                        <div class="data-section-title"><span class="badge badge-danger">ERRO</span> Erro de Processamento</div>
+                        <div class="data-grid">
+                            <div class="data-item">
+                                <div class="data-label">Tipo</div>
+                                <div class="data-value danger">${escapeHtml(erro.tipo || 'Desconhecido')}</div>
+                            </div>
+                            <div class="data-item">
+                                <div class="data-label">Mensagem</div>
+                                <div class="data-value">${escapeHtml(erro.mensagem || '-')}</div>
+                            </div>
+                            <div class="data-item">
+                                <div class="data-label">Etapa</div>
+                                <div class="data-value">${escapeHtml(erro.etapa || '-')}</div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }
+
             // Resumo geral (nota, acertos, etc)
             const nota = resultado.nota_final ?? resultado.nota ?? resultado.pontuacao ?? null;
             const acertos = resultado.acertos ?? resultado.questoes_corretas ?? null;
@@ -8404,6 +8428,26 @@
                     ]);
                 }
                 
+                // Renderizar banner de erro se resultado tem erro_pipeline
+                let erroBanner = '';
+                if (resultadoData && (resultadoData.erro_pipeline || resultadoData.status === 'erro')) {
+                    const erro = resultadoData.erro_pipeline || {};
+                    erroBanner = `
+                        <div class="alert alert-danger" style="border-left: 4px solid var(--danger);">
+                            <span class="alert-icon">⚠️</span>
+                            <div class="alert-content">
+                                <div class="alert-title">ERRO DE PROCESSAMENTO</div>
+                                <div class="alert-text">
+                                    <strong>Tipo:</strong> ${escapeHtml(erro.tipo || 'Desconhecido')}<br>
+                                    <strong>Mensagem:</strong> ${escapeHtml(erro.mensagem || 'Erro durante o processamento')}<br>
+                                    <strong>Etapa:</strong> ${escapeHtml(erro.etapa || '-')}<br>
+                                    <strong>Severidade:</strong> ${escapeHtml(erro.severidade || '-')}
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                }
+
                 // Renderizar status do pipeline se não está completo
                 let pipelineStatus = '';
                 if (resultadoData && !isComplete) {
@@ -8530,6 +8574,7 @@
                         <button class="btn btn-danger" onclick="excluirDocumentosAluno('${atividadeId}', '${alunoId}')">🗑️ Excluir Todos Documentos</button>
                         <button class="btn" onclick="showAtividade('${atividadeId}')">← Voltar para Atividade</button>
                     </div>
+                    ${erroBanner}
                     ${pipelineStatus}
                     ${resultadoFinal}
                     <div class="card">
