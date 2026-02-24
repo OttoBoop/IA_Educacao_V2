@@ -95,6 +95,44 @@ class StatusProcessamento(Enum):
     ERRO = "erro"                # Falhou
 
 
+# ============================================================
+# FRAMEWORK DE ERROS DO PIPELINE
+# ============================================================
+
+# Constantes de tipo de erro (extensível — adicionar novas strings para novos tipos)
+ERRO_DOCUMENTO_FALTANTE = "DOCUMENTO_FALTANTE"
+ERRO_QUESTOES_FALTANTES = "QUESTOES_FALTANTES"
+
+
+class SeveridadeErro(Enum):
+    """Severidade de um erro no pipeline."""
+    CRITICO = "critico"
+    ALTO = "alto"
+    MEDIO = "medio"
+
+
+def criar_erro_pipeline(tipo: str, mensagem: str, severidade, etapa: str) -> dict:
+    """Cria um dict estruturado de erro para incluir nos JSONs do pipeline.
+
+    Args:
+        tipo: Tipo de erro (ex: ERRO_DOCUMENTO_FALTANTE)
+        mensagem: Descrição humana do erro
+        severidade: SeveridadeErro enum ou string
+        etapa: Nome da etapa que gerou o erro
+
+    Returns:
+        Dict com tipo, mensagem, severidade, etapa, timestamp
+    """
+    sev_value = severidade.value if isinstance(severidade, SeveridadeErro) else str(severidade)
+    return {
+        "tipo": tipo,
+        "mensagem": mensagem,
+        "severidade": sev_value,
+        "etapa": etapa,
+        "timestamp": datetime.now().isoformat()
+    }
+
+
 class NivelEnsino(Enum):
     """Níveis de ensino (opcional, para organização)"""
     FUNDAMENTAL_1 = "fundamental_1"
