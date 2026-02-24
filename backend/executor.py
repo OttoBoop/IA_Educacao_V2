@@ -1155,7 +1155,7 @@ class PipelineExecutor:
         o documento deve ser processado via multimodal.
         """
         try:
-            arquivo = Path(documento.caminho_arquivo)
+            arquivo = self.storage.resolver_caminho_documento(documento)
             if not arquivo.exists():
                 return f"[Arquivo não encontrado: {documento.nome_arquivo}]"
             
