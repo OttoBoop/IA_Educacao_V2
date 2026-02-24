@@ -4476,7 +4476,8 @@
     <!-- Toast -->
     <div class="toast" id="toast"></div>
 
-    <!-- Task Panel (Fila de Tarefas) -->
+    <!-- DEPRECATED (F6-T1): FAB task panel replaced by sidebar TAREFAS section.
+         Code preserved for reference. Remove after sidebar is fully validated.
     <button class="task-fab" id="task-fab" onclick="toggleTaskPanel()">
         📋
         <span class="badge" id="task-badge" style="display:none;">0</span>
@@ -4496,6 +4497,15 @@
             </div>
         </div>
     </div>
+    JS functions also deprecated:
+    function toggleTaskPanel() {
+        const panel = document.getElementById('task-panel');
+        panel.classList.toggle('show');
+    }
+    function clearCompletedTasks() {
+        taskQueue.clearCompleted();
+    }
+    END DEPRECATED -->
 
 <!--
 ╔══════════════════════════════════════════════════════════════════╗
@@ -4642,28 +4652,27 @@
             },
 
             updateUI() {
+                // DEPRECATED (F6-T1): FAB elements removed — skip FAB UI updates
                 const fab = document.getElementById('task-fab');
                 const badge = document.getElementById('task-badge');
                 const body = document.getElementById('task-panel-body');
 
+                if (!fab || !body) return;
+
                 const runningCount = this.getRunningCount();
                 const totalTasks = this.tasks.length;
 
-                // Mostrar FAB se houver tarefas
                 if (totalTasks > 0) {
                     fab.classList.add('show');
-                    if (runningCount > 0) {
-                        badge.style.display = 'flex';
+                    if (badge) {
+                        badge.style.display = runningCount > 0 ? 'flex' : 'none';
                         badge.textContent = runningCount;
-                    } else {
-                        badge.style.display = 'none';
                     }
                 } else {
                     fab.classList.remove('show');
-                    badge.style.display = 'none';
+                    if (badge) badge.style.display = 'none';
                 }
 
-                // Renderizar tarefas
                 if (totalTasks === 0) {
                     body.innerHTML = `
                         <div class="empty-state" style="padding: 24px; text-align: center;">
@@ -4692,14 +4701,7 @@
             }
         };
 
-        function toggleTaskPanel() {
-            const panel = document.getElementById('task-panel');
-            panel.classList.toggle('show');
-        }
-
-        function clearCompletedTasks() {
-            taskQueue.clearCompleted();
-        }
+        // DEPRECATED (F6-T1): FAB functions removed — see HTML comment block above FAB HTML
 
         function viewTaskResult(taskId) {
             const task = taskQueue.tasks.find(t => t.id === taskId);
@@ -6018,7 +6020,71 @@
                 children.classList.toggle('expanded');
             }
         }
-        
+
+        // ============================================================
+        // TAREFAS HIERARCHY RENDERING (F2-T2)
+        // ============================================================
+
+        function renderTarefasTree(tasks) {
+            const container = document.getElementById('tree-tarefas');
+            if (!container) return;
+
+            // Status icon mapping: completed, running, pending, failed
+            const stageIcons = {completed: '\u2705', running: '\u23F3', pending: '\u2B1C', failed: '\u274C'};
+            const stageNames = {
+                extrair_questoes: 'Extrair Quest\u00F5es',
+                extrair_gabarito: 'Extrair Gabarito',
+                extrair_respostas: 'Extrair Respostas',
+                corrigir: 'Corrigir',
+                analisar_habilidades: 'Analisar Habilidades',
+                gerar_relatorio: 'Gerar Relat\u00F3rio'
+            };
+
+            if (!tasks || Object.keys(tasks).length === 0) {
+                container.innerHTML = '<div class="tarefas-empty-state" style="padding: 12px; color: var(--text-muted); font-size: 0.85rem; text-align: center;">Nenhuma tarefa em execu\u00E7\u00E3o</div>';
+                return;
+            }
+
+            let totalStages = 0;
+            let completedStages = 0;
+            let html = '';
+
+            for (const [taskId, task] of Object.entries(tasks)) {
+                for (const [alunoId, aluno] of Object.entries(task.students || {})) {
+                    const stages = aluno.stages || {};
+
+                    html += '<div class="tarefa-aluno" data-task="' + taskId + '" data-aluno="' + alunoId + '">';
+                    html += '<div class="tarefa-toggle" onclick="toggleTarefaTree(this)">';
+                    html += '<span class="tree-toggle">\u25B6</span> ';
+                    html += '<span>' + escapeHtml(aluno.nome || alunoId) + '</span>';
+                    html += '</div>';
+                    html += '<div class="tree-children">';
+
+                    for (const [stage, status] of Object.entries(stages)) {
+                        totalStages++;
+                        if (status === 'completed') completedStages++;
+                        const icon = stageIcons[status] || '\u2B1C';
+                        const name = stageNames[stage] || stage;
+                        html += '<div class="tarefa-stage ' + status + '">';
+                        html += icon + ' ' + name;
+                        html += '</div>';
+                    }
+
+                    html += '</div></div>';
+                }
+            }
+
+            const progress = '<div class="tarefas-progress" style="padding: 8px 12px; font-size: 0.8rem; color: var(--text-muted); border-bottom: 1px solid var(--border);">' + completedStages + '/' + totalStages + ' etapas</div>';
+            container.innerHTML = progress + html;
+        }
+
+        function toggleTarefaTree(el) {
+            const children = el.nextElementSibling;
+            if (children) children.classList.toggle('expanded');
+            const toggle = el.querySelector('.tree-toggle');
+            if (toggle) toggle.classList.toggle('expanded');
+        }
+
         // ============================================================
         // VIEWS
         // ============================================================
