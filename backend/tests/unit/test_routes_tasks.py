@@ -93,6 +93,63 @@ class TestTaskProgressEndpoint:
         )
 
 
+class TestTaskCancelEndpoint:
+    """Tests for POST /api/task-cancel/{task_id}. F1-T2."""
+
+    def test_cancel_endpoint_exists(self, client):
+        """POST /api/task-cancel/{id} must return task-specific response, not generic 404."""
+        response = client.post("/api/task-cancel/nonexistent-task")
+        data = response.json()
+        # Must be a task-specific error, not FastAPI's generic "Not Found"
+        assert "task_id" in str(data).lower() or "tarefa" in str(data).lower(), (
+            "Cancel endpoint should return task-specific error, not generic 404"
+        )
+
+    def test_cancel_sets_flag(self, client):
+        """Cancelling a running task sets cancel_requested to True."""
+        from routes_tasks import task_registry
+
+        task_registry["cancel-test-001"] = {
+            "task_id": "cancel-test-001",
+            "type": "pipeline-completo",
+            "status": "running",
+            "cancel_requested": False,
+            "students": {},
+        }
+        try:
+            response = client.post("/api/task-cancel/cancel-test-001")
+            assert response.status_code == 200
+            assert task_registry["cancel-test-001"]["cancel_requested"] is True
+        finally:
+            task_registry.pop("cancel-test-001", None)
+
+    def test_cancel_returns_404_for_unknown(self, client):
+        """Unknown task_id returns 404 with task-specific message."""
+        response = client.post("/api/task-cancel/unknown-cancel-xyz")
+        assert response.status_code == 404
+        data = response.json()
+        assert "detail" in data
+        assert "unknown-cancel-xyz" in data["detail"] or "tarefa" in data["detail"].lower()
+
+    def test_cancel_response_confirms_cancellation(self, client):
+        """Cancel response includes confirmation that cancel was requested."""
+        from routes_tasks import task_registry
+
+        task_registry["cancel-confirm-test"] = {
+            "task_id": "cancel-confirm-test",
+            "type": "pipeline-completo",
+            "status": "running",
+            "cancel_requested": False,
+            "students": {},
+        }
+        try:
+            response = client.post("/api/task-cancel/cancel-confirm-test")
+            data = response.json()
+            assert data.get("cancel_requested") is True or "cancel" in str(data).lower()
+        finally:
+            task_registry.pop("cancel-confirm-test", None)
+
+
 class TestTaskRegistryModule:
     """Tests for the task_registry dict and helper functions."""
 
