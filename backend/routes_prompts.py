@@ -418,8 +418,8 @@ async def get_conteudo_documento(documento_id: str):
     if not documento:
         raise HTTPException(404, "Documento não encontrado")
     
-    arquivo = Path(documento.caminho_arquivo)
-    
+    arquivo = storage.resolver_caminho_documento(documento)
+
     if not arquivo.exists():
         # File doesn't exist - return info about the missing file
         return {

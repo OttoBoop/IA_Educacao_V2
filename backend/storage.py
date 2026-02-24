@@ -1027,7 +1027,7 @@ class StorageManager:
             tipo=tipo,
             atividade_id=atividade_id,
             aluno_id=aluno_id,
-            nome_arquivo=nome_original,
+            nome_arquivo=nome_arquivo,
             caminho_arquivo=str(caminho_relativo),
             extensao=extensao,
             tamanho_bytes=tamanho,
