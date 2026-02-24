@@ -21,7 +21,7 @@ import re
 import tempfile
 import os
 
-from models import TipoDocumento, Documento
+from models import TipoDocumento, Documento, criar_erro_pipeline, ERRO_DOCUMENTO_FALTANTE, ERRO_QUESTOES_FALTANTES, SeveridadeErro
 from prompts import PromptManager, PromptTemplate, EtapaProcessamento, prompt_manager
 from storage import StorageManager, storage
 from ai_providers import ai_registry, AIResponse
@@ -396,7 +396,27 @@ class PipelineExecutor:
                 faltantes=docs_faltantes,
                 carregados=docs_carregados
             )
-            # Retornar erro se documentos obrigatórios estão faltando
+            # Criar erro estruturado para o JSON
+            erro_pipeline = criar_erro_pipeline(
+                tipo=ERRO_DOCUMENTO_FALTANTE,
+                mensagem=f"Documentos obrigatórios faltando para {etapa.value}: {', '.join(docs_faltantes)}. Execute as etapas anteriores primeiro.",
+                severidade=SeveridadeErro.CRITICO,
+                etapa=etapa.value if hasattr(etapa, 'value') else str(etapa)
+            )
+            # Salvar JSON com erro para debug e UI
+            erro_content = {
+                "_erro_pipeline": erro_pipeline,
+                "_documentos_faltantes": docs_faltantes,
+                "_documentos_carregados": docs_carregados
+            }
+            if salvar_resultado:
+                await self._salvar_resultado(
+                    etapa, atividade_id, aluno_id,
+                    "", erro_content,
+                    config.get("tipo", "unknown"), config.get("modelo", "unknown"),
+                    prompt.id, 0, (time.time() - inicio) * 1000,
+                    gerar_formatos_extras=False
+                )
             return ResultadoExecucao(
                 sucesso=False,
                 etapa=etapa,
@@ -404,7 +424,7 @@ class PipelineExecutor:
                 prompt_id=prompt.id,
                 provider=config.get("tipo", "unknown"),
                 modelo=config.get("modelo", "unknown"),
-                erro=f"Documentos obrigatórios faltando para {etapa.value}: {', '.join(docs_faltantes)}. Execute as etapas anteriores primeiro.",
+                erro=erro_pipeline["mensagem"],
                 anexos_enviados=[],
                 tempo_ms=(time.time() - inicio) * 1000
             )
@@ -523,6 +543,44 @@ class PipelineExecutor:
                 "tipo": "aviso",
                 "mensagem": "Não foi possível confirmar se a IA processou os documentos corretamente"
             })
+
+        # Validar extração de questões - detectar questões faltantes
+        if etapa == EtapaProcessamento.EXTRAIR_QUESTOES and resposta_parsed:
+            questoes = resposta_parsed.get("questoes", [])
+            if len(questoes) == 0:
+                erro_pipeline = criar_erro_pipeline(
+                    tipo=ERRO_QUESTOES_FALTANTES,
+                    mensagem="Nenhuma questão foi extraída do documento. Verifique se o arquivo de enunciado está correto e legível.",
+                    severidade=SeveridadeErro.CRITICO,
+                    etapa=etapa.value if hasattr(etapa, 'value') else str(etapa)
+                )
+                # Salvar JSON com erro
+                erro_content = {
+                    "_erro_pipeline": erro_pipeline,
+                    "questoes": []
+                }
+                if salvar_resultado:
+                    await self._salvar_resultado(
+                        etapa, atividade_id, aluno_id,
+                        resultado.resposta, erro_content,
+                        resultado.provider, resultado.modelo, prompt.id,
+                        resultado.tokens_entrada + resultado.tokens_saida,
+                        tempo_ms, gerar_formatos_extras=False
+                    )
+                return ResultadoExecucao(
+                    sucesso=False,
+                    etapa=etapa,
+                    prompt_usado=prompt_renderizado,
+                    prompt_id=prompt.id,
+                    provider=resultado.provider,
+                    modelo=resultado.modelo,
+                    resposta_raw=resultado.resposta,
+                    resposta_parsed=erro_content,
+                    erro=erro_pipeline["mensagem"],
+                    anexos_enviados=resultado.anexos_enviados,
+                    anexos_confirmados=resultado.anexos_confirmados,
+                    tempo_ms=tempo_ms
+                )
 
         # Validar extração de respostas - detectar falha silenciosa
         if etapa == EtapaProcessamento.EXTRAIR_RESPOSTAS and resposta_parsed:
