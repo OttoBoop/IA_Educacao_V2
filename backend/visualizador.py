@@ -63,6 +63,9 @@ class VisaoAluno:
     # Metadados do processamento
     corrigido_em: Optional[datetime] = None
     corrigido_por_ia: str = ""
+
+    # Pipeline error info (when processing failed)
+    erro_pipeline: Optional[Dict[str, Any]] = None
     
     def to_dict(self) -> Dict[str, Any]:
         return {
@@ -84,7 +87,8 @@ class VisaoAluno:
             "recomendacoes": self.recomendacoes,
             "feedback_geral": self.feedback_geral,
             "corrigido_em": self.corrigido_em.isoformat() if self.corrigido_em else None,
-            "corrigido_por_ia": self.corrigido_por_ia
+            "corrigido_por_ia": self.corrigido_por_ia,
+            **({"erro_pipeline": self.erro_pipeline} if self.erro_pipeline else {})
         }
 
 
@@ -137,12 +141,16 @@ class VisualizadorResultados:
             corrigido_por_ia=correcao_doc.ia_provider or ""
         )
         
+        # Check for pipeline error in correction data
+        if "_erro_pipeline" in correcao_data:
+            visao.erro_pipeline = correcao_data["_erro_pipeline"]
+
         # Processar correção
         self._processar_correcao(visao, correcao_data)
-        
+
         # Processar análise de habilidades
         self._processar_analise(visao, analise_data)
-        
+
         return visao
     
     def _ler_json(self, documento: Documento) -> Dict[str, Any]:

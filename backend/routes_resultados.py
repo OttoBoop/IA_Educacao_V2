@@ -100,7 +100,14 @@ async def get_resultado_aluno(atividade_id: str, aluno_id: str):
                     # File exists but can't be read
                     dados_parciais[tipo] = {"_error": "erro_leitura", "_mensagem": str(e)}
     
-    return {
+    # Detect pipeline errors in partial data
+    erro_pipeline = None
+    for tipo, dados in dados_parciais.items():
+        if isinstance(dados, dict) and "_erro_pipeline" in dados:
+            erro_pipeline = dados["_erro_pipeline"]
+            break
+
+    response = {
         "sucesso": True,
         "completo": False,
         "progresso": progresso,
@@ -117,6 +124,12 @@ async def get_resultado_aluno(atividade_id: str, aluno_id: str):
         ],
         "mensagem": f"Pipeline em progresso: {etapas_completas}/{total_etapas} etapas concluídas"
     }
+
+    if erro_pipeline:
+        response["status"] = "erro"
+        response["erro_pipeline"] = erro_pipeline
+
+    return response
 
 
 @router.get("/api/resultados/{atividade_id}/{aluno_id}/questao/{numero}", tags=["Resultados"])
