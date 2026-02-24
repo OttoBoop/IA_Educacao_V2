@@ -1,5 +1,5 @@
 """
-Tests for pipeline error framework (F2-T1, F3-T1, F4-T1, F3-T2, F5-T1, F5-T2).
+Tests for pipeline error framework (F2-T1, F3-T1, F4-T1, F3-T2, F5-T1, F5-T2, F6-T1, F6-T2, F7-T1).
 
 F2-T1: Error constants, SeveridadeErro enum, criar_erro_pipeline() helper.
 F3-T1: Missing document detection saves JSON with _erro_pipeline.
@@ -7,6 +7,9 @@ F4-T1: Missing questions detection saves JSON with _erro_pipeline.
 F3-T2: Pipeline orchestration marks overall result as ERRO when stage fails.
 F5-T1: API propagates _erro_pipeline in response JSON.
 F5-T2: Visualizador includes erro_pipeline in VisaoAluno.
+F6-T1: UI red error banner in result detail view.
+F6-T2: UI red ERRO badge in result rendering.
+F7-T1: PDF includes "ERRO DE PROCESSAMENTO" section when data has _erro_pipeline.
 """
 import pytest
 import json
@@ -648,3 +651,122 @@ class TestF5T2_VisualizadorPropagaErro:
         resultado_dict = resultado.to_dict()
         assert "erro_pipeline" not in resultado_dict, \
             "Normal result should NOT have erro_pipeline"
+
+
+# ============================================================
+# F6-T1: UI red error banner in result detail view
+# ============================================================
+
+FRONTEND_HTML = Path(__file__).parent.parent.parent.parent / "frontend" / "index_v2.html"
+
+
+class TestF6T1_UIBannerErro:
+    """F6-T1: showResultadoAluno should render a red error banner when result has error."""
+
+    @pytest.fixture
+    def html_content(self):
+        """Read the frontend HTML file."""
+        assert FRONTEND_HTML.exists(), f"Frontend file not found: {FRONTEND_HTML}"
+        return FRONTEND_HTML.read_text(encoding="utf-8")
+
+    def test_show_resultado_aluno_checks_erro_pipeline(self, html_content):
+        """showResultadoAluno function should check for erro_pipeline in response data."""
+        # Find the showResultadoAluno function body
+        start = html_content.find("function showResultadoAluno")
+        assert start != -1, "showResultadoAluno function must exist"
+        # Check that it references erro_pipeline
+        func_body = html_content[start:start + 5000]
+        assert "erro_pipeline" in func_body, \
+            "showResultadoAluno should check for erro_pipeline in response data"
+
+    def test_show_resultado_aluno_renders_alert_danger(self, html_content):
+        """showResultadoAluno should render alert-danger when error is present."""
+        start = html_content.find("function showResultadoAluno")
+        func_body = html_content[start:start + 5000]
+        assert "alert-danger" in func_body, \
+            "showResultadoAluno should render alert-danger banner for errors"
+
+    def test_show_resultado_aluno_shows_error_type(self, html_content):
+        """Error banner should display the error type (tipo)."""
+        start = html_content.find("function showResultadoAluno")
+        func_body = html_content[start:start + 5000]
+        assert ".tipo" in func_body or '["tipo"]' in func_body or "tipo" in func_body, \
+            "Error banner should display error tipo"
+
+
+# ============================================================
+# F6-T2: UI red ERRO badge in result visual rendering
+# ============================================================
+
+class TestF6T2_UIBadgeErro:
+    """F6-T2: renderResultadoVisual should show ERRO badge instead of nota when error present."""
+
+    @pytest.fixture
+    def html_content(self):
+        """Read the frontend HTML file."""
+        assert FRONTEND_HTML.exists(), f"Frontend file not found: {FRONTEND_HTML}"
+        return FRONTEND_HTML.read_text(encoding="utf-8")
+
+    def test_render_resultado_visual_checks_erro_pipeline(self, html_content):
+        """renderResultadoVisual should check for erro_pipeline in result data."""
+        start = html_content.find("function renderResultadoVisual")
+        assert start != -1, "renderResultadoVisual function must exist"
+        func_body = html_content[start:start + 3000]
+        assert "erro_pipeline" in func_body, \
+            "renderResultadoVisual should check for erro_pipeline"
+
+    def test_render_resultado_visual_shows_erro_badge(self, html_content):
+        """renderResultadoVisual should show a red ERRO badge when error is present."""
+        start = html_content.find("function renderResultadoVisual")
+        func_body = html_content[start:start + 3000]
+        assert "ERRO" in func_body, \
+            "renderResultadoVisual should display ERRO text when error present"
+        assert "badge-danger" in func_body or "danger" in func_body, \
+            "renderResultadoVisual should use danger styling for error badge"
+
+
+# ============================================================
+# F7-T1: PDF includes "ERRO DE PROCESSAMENTO" section
+# ============================================================
+
+class TestF7T1_PDFErroSection:
+    """F7-T1: generate_pdf() adds error section when data has _erro_pipeline."""
+
+    def test_pdf_with_erro_pipeline_contains_error_text(self):
+        """PDF generated from data with _erro_pipeline should contain ERRO DE PROCESSAMENTO."""
+        from document_generators import generate_pdf
+
+        data_with_error = {
+            "_erro_pipeline": {
+                "tipo": "DOCUMENTO_FALTANTE",
+                "mensagem": "Documentos necessarios nao encontrados",
+                "severidade": "critico",
+                "etapa": "corrigir",
+                "timestamp": "2026-02-24T12:00:00"
+            },
+            "nota": 0,
+            "questoes": []
+        }
+
+        pdf_bytes = generate_pdf(data_with_error, title="Resultado", doc_type="correcao")
+        assert isinstance(pdf_bytes, bytes), "generate_pdf should return bytes"
+
+        # Check PDF content for error text (decode bytes to find text strings)
+        pdf_text = pdf_bytes.decode("latin-1", errors="ignore")
+        assert "ERRO DE PROCESSAMENTO" in pdf_text, \
+            "PDF with _erro_pipeline should contain 'ERRO DE PROCESSAMENTO' text"
+
+    def test_pdf_without_erro_pipeline_no_error_section(self):
+        """Normal PDF should NOT contain ERRO DE PROCESSAMENTO."""
+        from document_generators import generate_pdf
+
+        normal_data = {
+            "nota": 8.5,
+            "nota_maxima": 10,
+            "questoes": [{"numero": 1, "pontos_obtidos": 8.5, "pontos_maximos": 10}]
+        }
+
+        pdf_bytes = generate_pdf(normal_data, title="Resultado", doc_type="correcao")
+        pdf_text = pdf_bytes.decode("latin-1", errors="ignore")
+        assert "ERRO DE PROCESSAMENTO" not in pdf_text, \
+            "Normal PDF should NOT contain error section"
