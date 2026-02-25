@@ -1473,13 +1473,29 @@ class PipelineExecutor:
                 doc_original = next((d for d in docs_tipo if d.versao == 1), docs_tipo[0])
                 documento_origem_id = doc_original.id
         
+        # Mapeamento de narrativa: etapa → (campo_no_json, TipoDocumento_narrativo)
+        narrativa_map = {
+            EtapaProcessamento.CORRIGIR: ("narrativa_correcao", TipoDocumento.CORRECAO_NARRATIVA),
+            EtapaProcessamento.ANALISAR_HABILIDADES: ("narrativa_habilidades", TipoDocumento.ANALISE_HABILIDADES_NARRATIVA),
+            EtapaProcessamento.GERAR_RELATORIO: ("relatorio_narrativo", TipoDocumento.RELATORIO_NARRATIVO),
+        }
+
         # Criar arquivo temporário com resultado
         conteudo = resposta_parsed if resposta_parsed else {"resposta_raw": resposta_raw}
-        
+
+        # Extrair campo narrativo antes de salvar o JSON técnico
+        narrativa_info = narrativa_map.get(etapa)
+        narrativa_conteudo = None
+        if narrativa_info and isinstance(conteudo, dict):
+            campo_narrativa, tipo_narrativa = narrativa_info
+            # Extrai e remove do dict (não modifica o original — trabalha em cópia)
+            conteudo = dict(conteudo)
+            narrativa_conteudo = conteudo.pop(campo_narrativa, None)
+
         with tempfile.NamedTemporaryFile(mode='w', suffix='.json', delete=False, encoding='utf-8') as f:
             json.dump(conteudo, f, ensure_ascii=False, indent=2)
             temp_path = f.name
-        
+
         try:
             # Salvar documento JSON (sempre)
             documento = self.storage.salvar_documento(
@@ -1494,9 +1510,9 @@ class PipelineExecutor:
                 versao=versao,
                 documento_origem_id=documento_origem_id
             )
-            
+
             documento_id = documento.id if documento else None
-            
+
             # Gerar formatos extras (PDF, CSV) se configurado
             if gerar_formatos_extras and documento_id:
                 await self._gerar_formatos_extras(
@@ -1506,12 +1522,34 @@ class PipelineExecutor:
                     atividade_id=atividade_id,
                     aluno_id=aluno_id
                 )
-            
-            return documento_id
-            
+
         finally:
-            # Limpar temp
+            # Limpar temp JSON
             os.unlink(temp_path)
+
+        # Salvar documento Markdown narrativo (se extraído)
+        if narrativa_conteudo and narrativa_info:
+            _, tipo_narrativa = narrativa_info
+            temp_md_path = None
+            try:
+                with tempfile.NamedTemporaryFile(mode='w', suffix='.md', delete=False, encoding='utf-8') as f:
+                    f.write(narrativa_conteudo)
+                    temp_md_path = f.name
+                self.storage.salvar_documento(
+                    arquivo_origem=temp_md_path,
+                    tipo=tipo_narrativa,
+                    atividade_id=atividade_id,
+                    aluno_id=aluno_id,
+                    ia_provider=provider,
+                    ia_modelo=modelo,
+                    prompt_usado=prompt_id,
+                    criado_por="sistema",
+                )
+            finally:
+                if temp_md_path:
+                    os.unlink(temp_md_path)
+
+        return documento_id
     
     async def _gerar_formatos_extras(
         self,
