@@ -1492,6 +1492,14 @@ class PipelineExecutor:
             conteudo = dict(conteudo)
             narrativa_conteudo = conteudo.pop(campo_narrativa, None)
 
+        # Validar que campo narrativo está presente para stages analíticos
+        if narrativa_info and not narrativa_conteudo:
+            campo_narrativa = narrativa_info[0]
+            raise ValueError(
+                f"Campo narrativo '{campo_narrativa}' obrigatório está ausente ou vazio "
+                f"para etapa '{etapa.value}'. O stage não pode continuar sem narrativa."
+            )
+
         with tempfile.NamedTemporaryFile(mode='w', suffix='.json', delete=False, encoding='utf-8') as f:
             json.dump(conteudo, f, ensure_ascii=False, indent=2)
             temp_path = f.name
