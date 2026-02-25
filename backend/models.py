@@ -57,7 +57,11 @@ class TipoDocumento(Enum):
     CORRECAO = "correcao"                      # Correção questão por questão
     ANALISE_HABILIDADES = "analise_habilidades"# Análise de competências
     RELATORIO_FINAL = "relatorio_final"        # Relatório para o professor
-    
+    # === DOCUMENTOS NARRATIVOS GERADOS PELA IA (Markdown pedagógico) ===
+    CORRECAO_NARRATIVA = "correcao_narrativa"                          # Análise pedagógica por questão (Markdown)
+    ANALISE_HABILIDADES_NARRATIVA = "analise_habilidades_narrativa"    # Síntese de padrões (Markdown)
+    RELATORIO_NARRATIVO = "relatorio_narrativo"                        # Relatório holístico (Markdown)
+
     @classmethod
     def documentos_base(cls) -> List['TipoDocumento']:
         """Retorna tipos que são documentos base da atividade"""
@@ -83,7 +87,8 @@ class TipoDocumento(Enum):
         """Retorna tipos gerados pela IA"""
         return [
             cls.EXTRACAO_QUESTOES, cls.EXTRACAO_GABARITO, cls.EXTRACAO_RESPOSTAS,
-            cls.CORRECAO, cls.ANALISE_HABILIDADES, cls.RELATORIO_FINAL
+            cls.CORRECAO, cls.ANALISE_HABILIDADES, cls.RELATORIO_FINAL,
+            cls.CORRECAO_NARRATIVA, cls.ANALISE_HABILIDADES_NARRATIVA, cls.RELATORIO_NARRATIVO,
         ]
 
 
