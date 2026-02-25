@@ -496,10 +496,10 @@ class PromptManager:
             conn.commit()
     
     def _seed_prompts_padrao(self):
-        """Insere prompts padrão se não existirem"""
+        """Insere prompts padrão se não existirem; atualiza texto e texto_sistema se já existirem."""
         conn = self._get_connection()
         c = conn.cursor()
-        
+
         for prompt in PROMPTS_PADRAO.values():
             c.execute('SELECT id FROM prompts WHERE id = ?', (prompt.id,))
             if not c.fetchone():
@@ -511,7 +511,14 @@ class PromptManager:
                     prompt.descricao, 1, 1, None, json.dumps(prompt.variaveis),
                     1, prompt.criado_em.isoformat(), prompt.atualizado_em.isoformat(), "sistema"
                 ))
-        
+            else:
+                # Sincroniza texto e texto_sistema do PROMPTS_PADRAO — garante que restarts
+                # após atualizações de código propaguem novos prompts para o banco existente.
+                c.execute(
+                    'UPDATE prompts SET texto = ?, texto_sistema = ?, atualizado_em = ? WHERE id = ?',
+                    (prompt.texto, prompt.texto_sistema, datetime.now().isoformat(), prompt.id)
+                )
+
         conn.commit()
         conn.close()
     
