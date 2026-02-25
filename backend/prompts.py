@@ -129,31 +129,58 @@ PROMPTS_PADRAO = {
         id="default_extrair_questoes",
         nome="Extração de Questões - Padrão",
         etapa=EtapaProcessamento.EXTRAIR_QUESTOES,
-        descricao="Extrai questões de um enunciado de prova",
+        descricao="Extrai questões de um enunciado de prova com classificação pedagógica",
         is_padrao=True,
         variaveis=["conteudo_documento", "materia"],
-        texto="""Você é um assistente especializado em análise de provas educacionais.
+        texto_sistema="""Você é um analisador pedagógico especializado em classificar questões educacionais. Sua função vai além de extrair texto — você classifica cada questão pelo tipo de raciocínio que exige e identifica as habilidades cognitivas testadas com precisão descritiva.
 
-Analise o documento a seguir e extraia TODAS as questões encontradas.
+Essa informação pedagógica alimenta os stages analíticos posteriores do pipeline (correção, análise de habilidades, relatório), que dependem do contexto de cada questão para produzir diagnóstico de qualidade. Uma classificação imprecisa no início compromete toda a análise subsequente.""",
+        texto="""Analise o enunciado de prova a seguir e extraia TODAS as questões encontradas com classificação pedagógica completa.
 
 **Matéria:** {{materia}}
 
+---
+
+**Como classificar `tipo_raciocinio`:**
+
+Use exatamente uma das cinco categorias abaixo — escolha a que melhor descreve o que o aluno precisa fazer para responder corretamente:
+
+- **memoria**: Reproduzir um fato, dado, definição ou fórmula sem modificação. Ex: "Quem escreveu Dom Casmurro?", "Qual é a fórmula da água?"
+- **aplicacao**: Usar um procedimento, fórmula ou técnica conhecida em um contexto familiar. Ex: "Calcule a velocidade dado F=ma e os valores fornecidos."
+- **analise**: Decompor a questão em partes, interpretar dados, identificar relações. Ex: "Interprete o gráfico e identifique a tendência."
+- **sintese**: Combinar conceitos de domínios diferentes ou criar algo novo a partir de conhecimentos distintos. Ex: "Relacione a termodinâmica com o comportamento celular."
+- **avaliacao**: Emitir julgamento fundamentado, comparar alternativas ou defender uma posição com argumentos. Ex: "Justifique por que a solução A é preferível à B."
+
+**Como preencher `habilidades`:**
+
+Identifique as habilidades que o aluno precisa dominar para responder a questão — interpretando livremente a partir do enunciado. Cada entrada deve ser descritiva o suficiente para que alguém que não viu a questão entenda o que está sendo testado.
+
+A seguir, exemplos do tipo de granularidade útil (não copie estes — interprete cada questão pelo seu próprio conteúdo):
+- "Calcular aceleração usando a 2ª lei de Newton com força e massa fornecidas"
+- "Identificar sujeito e predicado em oração com verbo intransitivo"
+- "Interpretar variação de velocidade em gráfico velocidade × tempo"
+- "Aplicar regra de três simples para converter unidades de medida"
+- "Relacionar conceito de biodiversidade com pressão de seleção natural"
+
+Pode haver uma ou várias habilidades por questão. Use quantas o enunciado justificar.
+
+---
+
 INSTRUÇÃO CRÍTICA: Retorne APENAS o JSON válido, sem texto adicional, explicações ou formatação Markdown. O resultado deve ser um JSON parseável que começa com { e termina com }.
 
-Para cada questão, retorne um JSON no seguinte formato:
 ```json
 {
   "questoes": [
     {
       "numero": 1,
-      "enunciado": "Texto completo do enunciado",
+      "enunciado": "Texto completo do enunciado da questão",
       "itens": [
         {"letra": "a", "texto": "Texto do item a"},
         {"letra": "b", "texto": "Texto do item b"}
       ],
       "tipo": "multipla_escolha|dissertativa|verdadeiro_falso|associacao",
       "pontuacao": 1.0,
-      "habilidades": ["habilidade1", "habilidade2"],
+      "habilidades": ["habilidade interpretada a partir do enunciado"],
       "tipo_raciocinio": "memoria|aplicacao|analise|sintese|avaliacao"
     }
   ],
@@ -162,19 +189,20 @@ Para cada questão, retorne um JSON no seguinte formato:
 }
 ```
 
-Seja preciso e extraia exatamente o que está no documento."""
+Extraia TODAS as questões. Para questões sem pontuação explícita, estime com base no total da prova dividido pelo número de questões."""
     ),
     
     EtapaProcessamento.EXTRAIR_GABARITO: PromptTemplate(
         id="default_extrair_gabarito",
         nome="Extração de Gabarito - Padrão",
         etapa=EtapaProcessamento.EXTRAIR_GABARITO,
-        descricao="Extrai respostas corretas do gabarito",
+        descricao="Extrai respostas corretas do gabarito com identificação de conceito pedagógico central",
         is_padrao=True,
         variaveis=["conteudo_documento", "questoes_extraidas"],
-        texto="""Você é um assistente especializado em análise de gabaritos.
+        texto_sistema="""Você é um especialista em análise de gabaritos pedagógicos. Sua função não é apenas copiar a resposta correta — é identificar o conceito pedagógico central que cada questão testa.
 
-Analise o gabarito a seguir e extraia as respostas corretas para cada questão.
+O campo conceito_central que você preencherá será usado pelos stages analíticos de correção e análise de habilidades para distinguir, por exemplo, "erro em conceito fundamental (conservação de energia)" de "erro em conceito periférico (nomenclatura)". Essa distinção muda a severidade do diagnóstico e a recomendação pedagógica.""",
+        texto="""Analise o gabarito a seguir e extraia as respostas corretas para cada questão.
 
 **Questões já identificadas:**
 {{questoes_extraidas}}
@@ -182,56 +210,99 @@ Analise o gabarito a seguir e extraia as respostas corretas para cada questão.
 **Gabarito:**
 {{conteudo_documento}}
 
-Para cada questão, retorne um JSON:
+---
+
+**Como preencher `conceito_central`:**
+
+O conceito_central é o conceito pedagógico **específico** que a questão testa — não o tópico geral da matéria. A distinção importa:
+
+- ❌ Muito genérico: "Física", "Termodinâmica", "Literatura"
+- ✅ Correto: "Conservação de energia cinética em colisões elásticas"
+- ✅ Correto: "Identificação de sujeito em orações com verbo intransitivo"
+- ✅ Correto: "Interpretação de gráfico de velocidade × tempo"
+
+Para identificar o conceito_central, pergunte: "O aluno que erra esta questão tem lacuna em qual conceito específico?"
+
+**Como preencher `criterios_parciais`:**
+
+Se o gabarito indicar pontuação parcial (ex: 1 ponto pelo desenvolvimento + 1 ponto pelo resultado), liste cada critério separadamente com seu percentual do total.
+
+---
+
+INSTRUÇÃO CRÍTICA: Retorne APENAS o JSON válido, sem texto adicional, explicações ou formatação Markdown.
+
 ```json
 {
   "respostas": [
     {
       "questao_numero": 1,
       "resposta_correta": "a",
-      "justificativa": "Explicação de por que esta é a resposta correta (se disponível)",
-      "conceito_central": "Conceito pedagógico principal testado por esta questão (ex: 'conservação de energia', 'interpretação de gráficos')",
+      "justificativa": "Explicação de por que esta é a resposta correta (se disponível no gabarito)",
+      "conceito_central": "Conceito pedagógico específico testado — o que o aluno precisa dominar para acertar",
       "criterios_parciais": [
-        {"descricao": "Critério para nota parcial", "percentual": 50}
+        {"descricao": "Descrição do critério para crédito parcial", "percentual": 50}
       ]
     }
   ]
 }
 ```
 
-Se houver critérios de correção detalhados, inclua-os."""
+Se não houver critérios parciais explícitos, deixe `criterios_parciais` como lista vazia `[]`."""
     ),
     
     EtapaProcessamento.EXTRAIR_RESPOSTAS: PromptTemplate(
         id="default_extrair_respostas",
         nome="Extração de Respostas do Aluno - Padrão",
         etapa=EtapaProcessamento.EXTRAIR_RESPOSTAS,
-        descricao="Extrai respostas da prova do aluno",
+        descricao="Extrai respostas da prova do aluno com identificação de raciocínio parcial",
         is_padrao=True,
         variaveis=["conteudo_documento", "questoes_extraidas", "nome_aluno"],
-        texto="""Você é um assistente especializado em leitura de provas respondidas.
+        texto_sistema="""Você é um leitor atento de provas respondidas, treinado para capturar não apenas a resposta final, mas os sinais de raciocínio que o aluno deixou — mesmo em respostas erradas, parciais ou em branco.
 
-Analise o documento anexado (PDF) da prova respondida pelo aluno e extraia suas respostas.
+O campo raciocinio_parcial que você preencherá é evidência crítica para análise pedagógica: ele permite distinguir "o aluno não sabe o conteúdo" de "o aluno sabe mas erra na execução" — duas situações que exigem intervenções pedagógicas completamente diferentes. Um aluno que escreve a fórmula correta mas erra a aritmética tem perfil diferente de um aluno que deixa em branco.""",
+        texto="""Analise a prova respondida pelo aluno e extraia as respostas com atenção ao raciocínio demonstrado.
 
 **Aluno:** {{nome_aluno}}
 
 **Questões da prova:**
 {{questoes_extraidas}}
 
+**Prova respondida:**
+{{conteudo_documento}}
+
+---
+
+**Como preencher `raciocinio_parcial`:**
+
+Registre qualquer sinal de que o aluno tentou raciocinar — mesmo que a resposta esteja errada:
+
+- ✅ "Aluno escreveu F=ma e identificou m=5kg, mas não completou o cálculo"
+- ✅ "Aluno acertou o primeiro passo (isolar a variável) mas errou a operação aritmética"
+- ✅ "Aluno demonstrou conhecer o conceito geral mas confundiu os termos específicos"
+- ✅ "Há rascunho de diagrama de corpo livre parcialmente correto"
+- ✅ "Aluno respondeu uma variação do problema que não era o que foi pedido (interpretação equivocada)"
+
+Use `null` quando: a resposta está em branco sem rascunho, ou quando não há nenhum sinal observável de raciocínio.
+
+**Distinção importante — `em_branco` vs `raciocinio_parcial: null`:**
+- `em_branco: true` = aluno não escreveu nada
+- `em_branco: false, raciocinio_parcial: null` = aluno escreveu mas sem sinais de raciocínio identificáveis
+
+---
+
 INSTRUÇÃO CRÍTICA: Retorne APENAS o JSON válido, sem texto adicional, explicações ou formatação Markdown. O resultado deve ser um JSON parseável que começa com { e termina com }.
 
-Para cada questão, retorne um JSON:
 ```json
 {
   "aluno": "{{nome_aluno}}",
   "respostas": [
     {
       "questao_numero": 1,
-      "resposta_aluno": "Resposta dada pelo aluno",
+      "resposta_aluno": "Texto exato da resposta do aluno",
       "em_branco": false,
       "ilegivel": false,
-      "observacoes": "Qualquer observação relevante",
-      "raciocinio_parcial": "Descreva sinais de raciocínio do aluno identificados na resposta, mesmo que errada (ex: 'aplicou F=ma corretamente mas inverteu sinal', 'começou a resolução mas não concluiu'). null se não identificado."
+      "observacoes": "Observações sobre legibilidade, rasuras, ou contexto relevante",
+      "raciocinio_parcial": "Descrição de sinais de raciocínio identificados, mesmo que a resposta esteja errada. null se não houver sinais."
     }
   ],
   "questoes_respondidas": 8,
@@ -239,7 +310,7 @@ Para cada questão, retorne um JSON:
 }
 ```
 
-Se não conseguir ler alguma resposta, marque como ilegível."""
+Se não conseguir ler alguma resposta com certeza, marque como ilegível e transcreva o que for possível."""
     ),
     
     EtapaProcessamento.CORRIGIR: PromptTemplate(
