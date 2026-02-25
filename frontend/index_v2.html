@@ -3406,6 +3406,7 @@
                 <div class="tree-section">
                     <div class="tree-section-header">
                         <span>Tarefas</span>
+                        <button class="btn btn-sm" onclick="cancelAllTasks()" title="Cancelar Tudo" style="font-size: 0.7rem; padding: 2px 6px; color: var(--danger);">✕ Cancelar Tudo</button>
                     </div>
                     <div id="tree-tarefas">
                         <div class="tarefas-empty-state" style="padding: 12px; color: var(--text-muted); font-size: 0.85rem; text-align: center;">
@@ -4569,6 +4570,7 @@
         const taskQueue = {
             tasks: [],
             results: [],
+            pipelineTasks: {},
             maxResults: 20,
 
             addTask(type, description, atividadeId, alunoId = null) {
@@ -4651,53 +4653,27 @@
                 );
             },
 
+            addBackendTask(backendTaskId, taskData) {
+                this.pipelineTasks[backendTaskId] = taskData;
+                this.updateUI();
+            },
+
+            updateFromBackend(backendTaskId, taskData) {
+                this.pipelineTasks[backendTaskId] = taskData;
+                this.updateUI();
+            },
+
+            getPollingIds() {
+                return Object.keys(this.pipelineTasks).filter(id =>
+                    this.pipelineTasks[id].status === 'running'
+                );
+            },
+
+            _sidebarRender: null,
+
             updateUI() {
-                // DEPRECATED (F6-T1): FAB elements removed — skip FAB UI updates
-                const fab = document.getElementById('task-fab');
-                const badge = document.getElementById('task-badge');
-                const body = document.getElementById('task-panel-body');
-
-                if (!fab || !body) return;
-
-                const runningCount = this.getRunningCount();
-                const totalTasks = this.tasks.length;
-
-                if (totalTasks > 0) {
-                    fab.classList.add('show');
-                    if (badge) {
-                        badge.style.display = runningCount > 0 ? 'flex' : 'none';
-                        badge.textContent = runningCount;
-                    }
-                } else {
-                    fab.classList.remove('show');
-                    if (badge) badge.style.display = 'none';
-                }
-
-                if (totalTasks === 0) {
-                    body.innerHTML = `
-                        <div class="empty-state" style="padding: 24px; text-align: center;">
-                            <div style="font-size: 2rem;">📭</div>
-                            <div style="color: var(--text-muted); font-size: 0.85rem;">Nenhuma tarefa em execução</div>
-                        </div>
-                    `;
-                } else {
-                    body.innerHTML = this.tasks.map(task => `
-                        <div class="task-item ${task.status}">
-                            <div class="task-item-header">
-                                <span class="task-item-title">${escapeHtml(task.description)}</span>
-                                <span class="task-item-status">
-                                    ${task.status === 'running' ? '<span class="spinner"></span>' : ''}
-                                    ${task.status === 'success' ? '✅' : ''}
-                                    ${task.status === 'error' ? '❌' : ''}
-                                </span>
-                            </div>
-                            <div class="task-item-actions">
-                                ${task.status === 'success' && task.result ? `<button class="btn btn-xs btn-primary" onclick="viewTaskResult('${task.id}')">Ver Resultado</button>` : ''}
-                                ${task.status !== 'running' ? `<button class="btn btn-xs" onclick="taskQueue.removeTask('${task.id}')">Remover</button>` : ''}
-                            </div>
-                        </div>
-                    `).join('');
-                }
+                // Render backend pipeline tasks to sidebar (F3-T1)
+                if (this._sidebarRender) this._sidebarRender(this.pipelineTasks);
             }
         };
 
@@ -6074,6 +6050,7 @@
             let html = '';
 
             for (const [taskId, task] of Object.entries(tasks)) {
+                const alunoCount = Object.keys(task.students || {}).length;
                 for (const [alunoId, aluno] of Object.entries(task.students || {})) {
                     const stages = aluno.stages || {};
 
@@ -6081,8 +6058,9 @@
                     html += '<div class="tarefa-toggle" onclick="toggleTarefaTree(this)">';
                     html += '<span class="tree-toggle">\u25B6</span> ';
                     html += '<span>' + escapeHtml(aluno.nome || alunoId) + '</span>';
+                    html += '<button class="tarefa-cancel" onclick="event.stopPropagation(); cancelTask(\'' + taskId + '\')" title="Cancelar">\u00D7</button>';
                     html += '</div>';
-                    html += '<div class="tree-children">';
+                    html += '<div class="tree-children' + (alunoCount <= 2 ? ' expanded' : '') + '">';
 
                     for (const [stage, status] of Object.entries(stages)) {
                         totalStages++;
@@ -6107,6 +6085,24 @@
             if (children) children.classList.toggle('expanded');
             const toggle = el.querySelector('.tree-toggle');
             if (toggle) toggle.classList.toggle('expanded');
+        }
+
+        // Wire sidebar render into taskQueue (F3-T1)
+        taskQueue._sidebarRender = renderTarefasTree;
+
+        function cancelTask(backendTaskId) {
+            const task = taskQueue.pipelineTasks[backendTaskId];
+            if (task) {
+                task.cancel_requested = true;
+                taskQueue.updateUI();
+            }
+        }
+
+        function cancelAllTasks() {
+            const ids = Object.keys(taskQueue.pipelineTasks);
+            ids.forEach(taskId => {
+                cancelTask(taskId);
+            });
         }
 
         // ============================================================

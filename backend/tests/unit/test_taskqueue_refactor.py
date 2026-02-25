@@ -75,26 +75,30 @@ class TestBackendTaskRegistration:
 class TestSidebarRendering:
     """Tests that taskQueue renders to sidebar instead of FAB."""
 
-    def test_update_ui_targets_sidebar(self, active_html):
-        """taskQueue.updateUI() must call renderTarefasTree for sidebar rendering."""
+    def test_update_ui_delegates_to_sidebar(self, active_html):
+        """taskQueue.updateUI() must delegate rendering to sidebar via _sidebarRender."""
         taskqueue_pos = active_html.find("const taskQueue")
         assert taskqueue_pos > 0, "taskQueue object not found"
         taskqueue_area = active_html[taskqueue_pos:taskqueue_pos + 8000]
-        assert "renderTarefasTree" in taskqueue_area, (
-            "taskQueue must call renderTarefasTree() to render tasks in sidebar"
+        assert "_sidebarRender" in taskqueue_area, (
+            "taskQueue must have _sidebarRender delegate for sidebar rendering"
         )
 
-    def test_update_ui_passes_task_data(self, active_html):
-        """updateUI must pass task data to renderTarefasTree."""
+    def test_sidebar_render_wired_to_render_tarefas_tree(self, active_html):
+        """taskQueue._sidebarRender must be wired to renderTarefasTree after its definition."""
+        assert (
+            "taskQueue._sidebarRender = renderTarefasTree" in active_html
+        ), "taskQueue._sidebarRender must be wired to renderTarefasTree"
+
+    def test_update_ui_passes_pipeline_tasks(self, active_html):
+        """updateUI must pass pipelineTasks to the sidebar render delegate."""
         taskqueue_pos = active_html.find("const taskQueue")
         assert taskqueue_pos > 0, "taskQueue object not found"
         taskqueue_area = active_html[taskqueue_pos:taskqueue_pos + 8000]
-        # Must pass backendTasks or pipelineTasks to renderTarefasTree
         assert (
-            "renderTarefasTree(this.backendTasks" in taskqueue_area
-            or "renderTarefasTree(this.pipelineTasks" in taskqueue_area
-            or "renderTarefasTree(backendTasks" in taskqueue_area
-        ), "updateUI must pass backend task data to renderTarefasTree()"
+            "_sidebarRender(this.pipelineTasks" in taskqueue_area
+            or "_sidebarRender(this.backendTasks" in taskqueue_area
+        ), "updateUI must pass pipeline task data to _sidebarRender()"
 
 
 class TestPollingSupport:
