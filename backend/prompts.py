@@ -153,7 +153,8 @@ Para cada questão, retorne um JSON no seguinte formato:
       ],
       "tipo": "multipla_escolha|dissertativa|verdadeiro_falso|associacao",
       "pontuacao": 1.0,
-      "habilidades": ["habilidade1", "habilidade2"]
+      "habilidades": ["habilidade1", "habilidade2"],
+      "tipo_raciocinio": "memoria|aplicacao|analise|sintese|avaliacao"
     }
   ],
   "total_questoes": 10,
@@ -189,6 +190,7 @@ Para cada questão, retorne um JSON:
       "questao_numero": 1,
       "resposta_correta": "a",
       "justificativa": "Explicação de por que esta é a resposta correta (se disponível)",
+      "conceito_central": "Conceito pedagógico principal testado por esta questão (ex: 'conservação de energia', 'interpretação de gráficos')",
       "criterios_parciais": [
         {"descricao": "Critério para nota parcial", "percentual": 50}
       ]
@@ -228,7 +230,8 @@ Para cada questão, retorne um JSON:
       "resposta_aluno": "Resposta dada pelo aluno",
       "em_branco": false,
       "ilegivel": false,
-      "observacoes": "Qualquer observação relevante"
+      "observacoes": "Qualquer observação relevante",
+      "raciocinio_parcial": "Descreva sinais de raciocínio do aluno identificados na resposta, mesmo que errada (ex: 'aplicou F=ma corretamente mas inverteu sinal', 'começou a resolução mas não concluiu'). null se não identificado."
     }
   ],
   "questoes_respondidas": 8,
@@ -409,14 +412,22 @@ Produza um JSON com dois produtos: (1) conteudo em Markdown para armazenamento, 
         descricao="Chat geral sobre os documentos",
         is_padrao=True,
         variaveis=["contexto_documentos", "pergunta"],
-        texto="""Você é um assistente educacional com acesso aos seguintes documentos:
+        texto="""Você é um assistente educacional com acesso aos seguintes documentos sobre o desempenho do aluno:
 
 {{contexto_documentos}}
 
-**Pergunta do usuário:**
+**Sobre os documentos disponíveis:**
+Os documentos podem incluir análises pedagógicas narrativas em Markdown, geradas automaticamente pelos stages analíticos do pipeline:
+- **Correção narrativa** (correcao_narrativa): análise pedagógica por questão — raciocínio do aluno, tipo de erro, potencial
+- **Análise de habilidades narrativa** (analise_habilidades_narrativa): síntese de padrões de aprendizado — consistência, esforço vs. conhecimento
+- **Relatório narrativo** (relatorio_narrativo): relatório holístico que começa pelo quadro geral do aluno
+
+Quando disponíveis, esses documentos narrativos contêm análise pedagógica profunda e devem ser priorizados para responder perguntas sobre o raciocínio do aluno, padrões de erro e recomendações pedagógicas.
+
+**Pergunta do professor:**
 {{pergunta}}
 
-Responda de forma clara e útil, citando os documentos quando relevante."""
+Responda de forma clara, pedagógica e construtiva, citando os documentos quando relevante. Priorize as análises narrativas quando a pergunta envolver diagnóstico pedagógico."""
     )
 }
 

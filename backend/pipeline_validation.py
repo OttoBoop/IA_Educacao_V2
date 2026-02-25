@@ -55,6 +55,7 @@ class Questao(BaseModel):
     tipo: TipoQuestao = Field(..., description="Tipo da questão")
     pontuacao: float = Field(..., description="Pontuação da questão", ge=0)
     habilidades: List[str] = Field(default_factory=list, description="Habilidades relacionadas")
+    tipo_raciocinio: Optional[str] = Field(None, description="Tipo de raciocínio exigido: memória, aplicação, análise, síntese, avaliação")
 
 
 class ExtracaoQuestoes(BaseModel):
@@ -76,6 +77,7 @@ class RespostaGabarito(BaseModel):
     resposta_correta: str = Field(..., description="Resposta correta", min_length=1)
     justificativa: str = Field(default="", description="Justificativa da resposta correta")
     criterios_parciais: List[CriterioParcial] = Field(default_factory=list, description="Critérios para correção parcial")
+    conceito_central: Optional[str] = Field(None, description="Conceito pedagógico principal testado pela questão")
 
 
 class ExtracaoGabarito(BaseModel):
@@ -90,6 +92,7 @@ class RespostaAluno(BaseModel):
     em_branco: bool = Field(default=False, description="Se a questão foi deixada em branco")
     ilegivel: bool = Field(default=False, description="Se a resposta é ilegível")
     observacoes: str = Field(default="", description="Observações adicionais")
+    raciocinio_parcial: Optional[str] = Field(None, description="Raciocínio parcial do aluno identificado — sinais de entendimento mesmo em respostas erradas")
 
 
 class ExtracaoRespostas(BaseModel):
