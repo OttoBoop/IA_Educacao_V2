@@ -8426,8 +8426,8 @@
                 
                 // Renderizar banner de erro se resultado tem erro_pipeline
                 let erroBanner = '';
-                if (resultadoData && (resultadoData.erro_pipeline || resultadoData.status === 'erro')) {
-                    const erro = resultadoData.erro_pipeline || {};
+                if (resultado && resultado.erro_pipeline) {
+                    const erro = resultado.erro_pipeline;
                     erroBanner = `
                         <div class="alert alert-danger" style="border-left: 4px solid var(--danger);">
                             <span class="alert-icon">⚠️</span>
@@ -8527,12 +8527,13 @@
                 })).join('');
                 
                 // Só mostrar resultado final se completo
+                const hasErroPipeline = resultado && resultado.erro_pipeline;
                 const resultadoFinal = isComplete ? `
                     <!-- Fase 3: Seção de Documentos Prontos destacada -->
-                    <div class="docs-ready-section">
+                    <div class="docs-ready-section" style="${hasErroPipeline ? 'background: rgba(239,68,68,0.05); border-color: var(--danger);' : ''}">
                         <div class="docs-ready-header">
-                            <div class="docs-ready-title">
-                                <span>✅</span> Correção Concluída!
+                            <div class="docs-ready-title" style="${hasErroPipeline ? 'color: var(--danger);' : ''}">
+                                <span>${hasErroPipeline ? '⚠️' : '✅'}</span> ${hasErroPipeline ? 'Erro no Pipeline' : 'Correção Concluída!'}
                             </div>
                             <div class="docs-ready-actions">
                                 <a class="btn-download-pdf" href="${API}/resultados/${atividadeId}/${alunoId}/exportar/pdf" target="_blank">
@@ -8543,7 +8544,7 @@
                             </div>
                         </div>
                         <p style="margin: 0; color: var(--text-muted); font-size: 0.9rem;">
-                            O pipeline de correção foi executado com sucesso. Use os botões acima para exportar o relatório.
+                            ${hasErroPipeline ? 'O pipeline foi interrompido. Corrija os documentos e re-execute o pipeline.' : 'O pipeline de correção foi executado com sucesso. Use os botões acima para exportar o relatório.'}
                         </p>
                     </div>
 
