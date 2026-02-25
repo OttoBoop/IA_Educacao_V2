@@ -112,6 +112,7 @@ class CorrecaoQuestao(BaseModel):
     erros_conceituais: List[str] = Field(default_factory=list, description="Erros conceituais identificados")
     habilidades_demonstradas: List[str] = Field(default_factory=list, description="Habilidades demonstradas")
     habilidades_faltantes: List[str] = Field(default_factory=list, description="Habilidades que precisam ser desenvolvidas")
+    narrativa_correcao: Optional[str] = Field(None, description="Análise pedagógica narrativa: raciocínio do aluno, tipo de erro, potencial")
 
 
 class AnaliseHabilidades(BaseModel):
@@ -125,6 +126,7 @@ class AnaliseHabilidades(BaseModel):
     recomendacoes: List[str] = Field(default_factory=list, description="Recomendações de estudo")
     pontos_fortes: List[str] = Field(default_factory=list, description="Pontos fortes do aluno")
     areas_atencao: List[str] = Field(default_factory=list, description="Áreas que precisam de atenção")
+    narrativa_habilidades: Optional[str] = Field(None, description="Síntese narrativa de padrões de aprendizado: consistência, esforço vs. conhecimento, transferência de conceitos")
 
 
 class RelatorioFinal(BaseModel):
@@ -135,6 +137,7 @@ class RelatorioFinal(BaseModel):
     aluno: str = Field(..., description="Nome do aluno", min_length=1)
     materia: str = Field(..., description="Matéria da prova", min_length=1)
     atividade: str = Field(..., description="Nome/título da atividade", min_length=1)
+    relatorio_narrativo: Optional[str] = Field(None, description="Narrativa holística: visão geral do aluno, combinando nota, habilidades e análise numa leitura fluida")
 
 
 # ============================================================

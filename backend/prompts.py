@@ -274,11 +274,12 @@ Avalie a resposta e retorne um JSON:
   "pontos_melhorar": ["O que precisa melhorar"],
   "erros_conceituais": ["Erros de conceito identificados"],
   "habilidades_demonstradas": ["Habilidades que o aluno mostrou"],
-  "habilidades_faltantes": ["Habilidades que precisam ser desenvolvidas"]
+  "habilidades_faltantes": ["Habilidades que precisam ser desenvolvidas"],
+  "narrativa_correcao": "## Questão N — Análise\n\n**O que o aluno tentou fazer:** [Descreva o raciocínio do aluno — o que ele estava pensando, qual estratégia tentou aplicar, onde o raciocínio estava correto antes de errar]\n\n**Tipo de erro:** [Classifique: conceitual / cálculo / interpretação / omissão / unidade — explique brevemente por que este tipo]\n\n**Potencial:** [Alto/Médio/Baixo — justifique com base no raciocínio demonstrado. Linguagem construtiva, adequada para leitura pelo aluno]"
 }
 ```
 
-Seja justo, construtivo e educativo no feedback."""
+Seja justo, construtivo e educativo. A narrativa_correcao deve ser substantiva (mínimo 3 parágrafos) e identificar o raciocínio específico do aluno nesta questão."""
     ),
     
     EtapaProcessamento.ANALISAR_HABILIDADES: PromptTemplate(
@@ -322,7 +323,8 @@ Produza uma análise detalhada:
     "Recomendação de estudo 2"
   ],
   "pontos_fortes": ["Ponto forte 1"],
-  "areas_atencao": ["Área que precisa de atenção"]
+  "areas_atencao": ["Área que precisa de atenção"],
+  "narrativa_habilidades": "## Perfil de Aprendizado — [Nome do Aluno]\n\n**Consistência:** [Descreva se os erros são aleatórios ou sistemáticos. Identifique padrões que se repetem entre questões. Ex: sempre erra conversão de unidade, sempre acerta raciocínio lógico mas erra cálculo]\n\n**O que o aluno tentou fazer:** [Descreva as estratégias que o aluno usou em toda a prova — não só o que errou, mas o que tentou. Inclua casos de transferência de conceitos entre domínios]\n\n**Esforço vs. Conhecimento:** [Diferencie: questões em branco = ausência de conteúdo; questões respondidas incorretamente = conceito errado ou erro de execução; questões parciais = conceito presente mas lacuna específica]\n\n**Recomendação Principal:** [Uma recomendação prática e específica para este aluno, baseada nos padrões identificados]"
 }
 ```"""
     ),
@@ -347,7 +349,7 @@ Produza uma análise detalhada:
 **Análise de habilidades:**
 {{analise_habilidades}}
 
-Gere um relatório completo em formato JSON válido. O JSON deve conter uma chave "conteudo" com o relatório em formato Markdown, e outras chaves estruturadas conforme necessário:
+Gere um relatório completo em formato JSON válido:
 
 {
   "conteudo": "# Relatório de Desempenho Escolar\n\n## Resumo Executivo\nVisão geral do desempenho...\n\n## Desempenho por Questão\n| Questão | Nota |\n|---------|------|\n...\n\n## Análise de Habilidades\n...\n\n## Feedback Construtivo\n...\n\n## Recomendações\n...",
@@ -355,10 +357,11 @@ Gere um relatório completo em formato JSON válido. O JSON deve conter uma chav
   "nota_final": "{{nota_final}}",
   "aluno": "{{nome_aluno}}",
   "materia": "{{materia}}",
-  "atividade": "{{atividade}}"
+  "atividade": "{{atividade}}",
+  "relatorio_narrativo": "## Visão Geral\n\n[Comece pelo quadro geral do aluno — quem é este aluno como estudante? Qual é a história da prova? Não comece pelos detalhes, comece pelo todo. O que a nota revela? O que ela esconde?]\n\n## Análise do Desempenho\n\n[Afunile para os padrões: quais questões revelam o aluno? Onde ele se destacou? Onde travou? Combine a análise de habilidades com as correções individuais para construir um retrato coerente]\n\n## Para o Aluno\n\n[Seção em linguagem direta ao aluno — construtiva, específica, sem jargão técnico. O que você quer que o aluno leve desta prova? Uma mensagem que o motive a melhorar no ponto certo]"
 }
 
-Certifique-se de que o Markdown na chave "conteudo" seja bem formatado para geração de documentos bonitos usando ferramentas de IA."""
+O relatorio_narrativo deve ter linguagem fluida, que o professor possa mostrar ao aluno e aos pais. Comece sempre com ## Visão Geral antes de detalhar."""
     ),
     
     EtapaProcessamento.CHAT_GERAL: PromptTemplate(
