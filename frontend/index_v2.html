@@ -6133,6 +6133,9 @@
         taskQueue._sidebarRender = renderTarefasTree;
 
         function cancelTask(backendTaskId) {
+            // Signal backend to cancel (F6-T1)
+            fetch('/api/task-cancel/' + backendTaskId, { method: 'POST' })
+                .catch(err => console.warn('[Cancel] Failed:', err.message));
             const task = taskQueue.pipelineTasks[backendTaskId];
             if (task) {
                 task.cancel_requested = true;
@@ -8294,6 +8297,7 @@
                         : {}
                 };
                 taskQueue.addBackendTask(taskId, initialState);
+                startPolling(taskId);
                 showToast('🚀 Pipeline iniciado! Acompanhe o progresso no painel de tarefas.', 'success');
             } catch (e) {
                 showToast('❌ Erro ao iniciar pipeline: ' + (e.message || 'Erro desconhecido'), 'error');
