@@ -8198,12 +8198,7 @@
             closeModal('modal-pipeline-completo');
 
             const taskType = modo === 'turma' ? 'pipeline-turma' : 'pipeline';
-            const stepsInfo = selectedSteps.length < 6 ? ` (${selectedSteps.length} etapas)` : '';
-            const description = modo === 'turma' ? `Pipeline Turma Toda${stepsInfo}` : `Pipeline Aluno${stepsInfo}`;
             const alunoIdForTask = modo === 'aluno' ? document.getElementById('input-pipeline-aluno').value : null;
-
-            const task = taskQueue.addTask(taskType, description, atividadeId, alunoIdForTask);
-            showToast('🚀 Pipeline iniciado! Acompanhe no painel de tarefas.', 'success');
 
             // Abrir painel de tarefas
             document.getElementById('task-panel').classList.add('show');
@@ -8237,9 +8232,27 @@
                     result = await apiForm('/executar/pipeline-completo', formData);
                 }
 
-                taskQueue.completeTask(task.id, result);
+                // Register task in sidebar using backend-assigned task_id
+                const taskId = result.task_id;
+                const pendingStages = {
+                    extrair_questoes: 'pending',
+                    extrair_gabarito: 'pending',
+                    extrair_respostas: 'pending',
+                    corrigir: 'pending',
+                    analisar_habilidades: 'pending',
+                    gerar_relatorio: 'pending'
+                };
+                const initialState = {
+                    task_id: taskId,
+                    status: 'running',
+                    students: alunoIdForTask
+                        ? { [alunoIdForTask]: { stages: pendingStages } }
+                        : {}
+                };
+                taskQueue.addBackendTask(taskId, initialState);
+                showToast('🚀 Pipeline iniciado! Acompanhe o progresso no painel de tarefas.', 'success');
             } catch (e) {
-                taskQueue.failTask(task.id, e.message || 'Erro ao executar pipeline');
+                showToast('❌ Erro ao iniciar pipeline: ' + (e.message || 'Erro desconhecido'), 'error');
             }
         }
 
@@ -8306,8 +8319,7 @@
             closeModal('modal-execucao');
 
             const etapaLabel = window._etapasData?.find(e => e.id === etapa)?.nome || etapa;
-            const task = taskQueue.addTask(taskKey, `Etapa: ${etapaLabel}`, atividadeId, alunoId);
-            showToast(`🔄 Executando "${etapaLabel}"... Acompanhe no painel de tarefas.`, 'success');
+            showToast(`🔄 Executando "${etapaLabel}"...`, 'info');
 
             // Abrir painel de tarefas
             document.getElementById('task-panel').classList.add('show');
@@ -8329,10 +8341,10 @@
                     body: JSON.stringify(payload)
                 });
 
-                taskQueue.completeTask(task.id, result?.resultado || result);
+                showToast(`✅ "${etapaLabel}" concluída!`, 'success');
             } catch (e) {
                 console.error('Erro ao executar etapa:', e);
-                taskQueue.failTask(task.id, e.message || 'Erro ao executar etapa');
+                showToast(`❌ "${etapaLabel}" falhou: ${e.message || 'Erro ao executar etapa'}`, 'error');
             }
         }
 
