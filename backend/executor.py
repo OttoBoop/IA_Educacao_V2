@@ -1861,9 +1861,91 @@ Crie UM documento separado para cada aluno, nomeando como "relatorio_[nome_aluno
         }
     
     # ============================================================
+    # RELATÓRIO DE DESEMPENHO — métodos de síntese agregada
+    # ============================================================
+
+    async def gerar_relatorio_desempenho_tarefa(
+        self,
+        atividade_id: str,
+        provider_id: Optional[str] = None,
+    ) -> Dict[str, Any]:
+        """
+        Síntese narrativa agregada para uma atividade.
+
+        Busca todos os RELATORIO_NARRATIVO da atividade e gera um relatório
+        coletivo usando o prompt RELATORIO_DESEMPENHO_TAREFA.
+        Requer pelo menos 2 alunos com narrativas — falha caso contrário.
+        """
+        narrativos = self.storage.listar_documentos(
+            atividade_id, tipo=TipoDocumento.RELATORIO_NARRATIVO
+        )
+        if len(narrativos) < 2:
+            return {
+                "sucesso": False,
+                "erro": (
+                    f"São necessários pelo menos 2 alunos com RELATORIO_NARRATIVO para gerar o "
+                    f"relatório de desempenho da tarefa. Encontrados: {len(narrativos)}."
+                ),
+            }
+        # Full synthesis implemented in B3
+        raise NotImplementedError(
+            "gerar_relatorio_desempenho_tarefa: síntese LLM será implementada em B3."
+        )
+
+    async def gerar_relatorio_desempenho_turma(
+        self,
+        turma_id: str,
+        provider_id: Optional[str] = None,
+    ) -> Dict[str, Any]:
+        """
+        Narrativa holística de uma turma ao longo de todas as atividades.
+
+        Busca todos os alunos da turma e seus RELATORIO_NARRATIVO em todas as
+        atividades. Requer pelo menos 2 alunos com resultados.
+        """
+        alunos = self.storage.listar_alunos(turma_id)
+        if len(alunos) < 2:
+            return {
+                "sucesso": False,
+                "erro": (
+                    f"São necessários pelo menos 2 alunos com resultados para gerar o "
+                    f"relatório de desempenho da turma. Encontrados: {len(alunos)}."
+                ),
+            }
+        # Full synthesis implemented in C3
+        raise NotImplementedError(
+            "gerar_relatorio_desempenho_turma: síntese LLM será implementada em C3."
+        )
+
+    async def gerar_relatorio_desempenho_materia(
+        self,
+        materia_id: str,
+        provider_id: Optional[str] = None,
+    ) -> Dict[str, Any]:
+        """
+        Narrativa cross-turma para uma matéria.
+
+        Busca todas as turmas da matéria. Requer pelo menos 2 turmas com
+        resultados para uma comparação significativa.
+        """
+        turmas = self.storage.listar_turmas(materia_id)
+        if len(turmas) < 2:
+            return {
+                "sucesso": False,
+                "erro": (
+                    f"São necessárias pelo menos 2 turmas com resultados para gerar o "
+                    f"relatório de desempenho da matéria. Encontradas: {len(turmas)}."
+                ),
+            }
+        # Full synthesis implemented in D3
+        raise NotImplementedError(
+            "gerar_relatorio_desempenho_materia: síntese LLM será implementada em D3."
+        )
+
+    # ============================================================
     # PIPELINE COMPLETO (mantido do original)
     # ============================================================
-    
+
     async def executar_pipeline_completo(
         self,
         atividade_id: str,
