@@ -190,7 +190,8 @@ Respond ONLY with valid JSON (no markdown, no explanation outside JSON):
   "intent_description": "what you want to do with this element",
   "confidence": 0.0 to 1.0,
   "text_to_type": "text if typing",
-  "scroll_direction": "up or down if scrolling"
+  "scroll_direction": "up or down if scrolling",
+  "wait_duration_seconds": null or integer seconds to wait (e.g. 45 for pipeline operations)
 }}
 """
 
@@ -234,6 +235,7 @@ Respond ONLY with valid JSON (no markdown, no explanation outside JSON):
             scroll_direction=data.get("scroll_direction"),
             element_index=data.get("element_index"),
             intent_description=data.get("intent_description"),
+            wait_duration_seconds=data.get("wait_duration_seconds"),
         )
 
     async def decide_next_action(

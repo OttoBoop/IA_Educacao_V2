@@ -445,7 +445,7 @@ class InvestorJourneyAgent:
                 return success, None if success else "Could not scroll"
 
             elif action.action_type == ActionType.WAIT:
-                await asyncio.sleep(1)
+                await asyncio.sleep(action.wait_duration_seconds or 1)
                 return True, None
 
             elif action.action_type == ActionType.RELOAD:
