@@ -42,9 +42,9 @@ class TestTesterPersonaAttributes(unittest.TestCase):
         """Tester should have high tech savviness (>= 9) as a QA professional."""
         self.assertGreaterEqual(self.persona.tech_savviness, 9)
 
-    def test_goals_are_empty_by_default(self):
-        """Tester goals should be empty - populated dynamically via --goal flag."""
-        self.assertEqual(self.persona.goals, [])
+    def test_has_default_goals(self):
+        """Tester persona should have default goals for pipeline verification (F7-T1)."""
+        self.assertGreaterEqual(len(self.persona.goals), 3)
 
     def test_has_frustration_triggers(self):
         """Tester should have QA-relevant frustration triggers."""

@@ -144,11 +144,19 @@ PERSONAS = {
         "Your goal is passed via the --goal flag with specific items to check.",
         patience_level=9,
         tech_savviness=10,
-        goals=[],  # Populated dynamically via --goal flag
+        goals=[
+            "Verify each checklist item methodically before moving to the next",
+            "Confirm pipeline operations complete successfully end-to-end",
+            "Detect regressions in features that were previously working",
+            "Document the exact state of the UI at each verification step",
+            "Report pass/fail for every item in the verification checklist",
+        ],
         frustration_triggers=[
             "Test item cannot be found or accessed",
             "Feature does not work as specified in checklist",
             "Regression in previously working features",
+            "Pipeline operation times out or hangs without feedback",
+            "UI state is inconsistent or does not reflect backend changes",
         ],
         language="pt-BR",
     ),

@@ -120,6 +120,14 @@ Examples:
     )
 
     parser.add_argument(
+        "--setup",
+        type=str,
+        default=None,
+        help="Path to a Python file to exec() before the step loop (e.g., setup.py). "
+        "Script receives 'page' and 'browser' in its local namespace.",
+    )
+
+    parser.add_argument(
         "--output",
         type=str,
         default=None,
