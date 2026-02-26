@@ -208,109 +208,30 @@ class InvestorJourneyAgent:
                         if incomplete:
                             break
 
-                    # Get current state (pre-action)
-                    state = await browser.get_state()
-
-                    # Get LLM decision
-                    action = await self._brain.decide_next_action(
-                        screenshot_base64=state.screenshot_base64,
-                        dom_snapshot=state.dom_snapshot,
-                        persona=self.persona,
+                    # Execute one step (get state → decide → execute → record)
+                    step = await self._do_step(
+                        step_number=step_number,
+                        steps=steps,
                         goal=goal,
-                        history=steps,
-                        console_errors=state.console_errors,
-                        user_guidance=user_guidance,
+                        screenshots_dir=screenshots_dir,
                         website_context=website_context,
-                        clickable_elements=state.clickable_elements,
+                        user_guidance=user_guidance,
                     )
                     user_guidance = None  # Clear after use (one-shot)
 
-                    # Print step info
-                    self._print_step(step_number, action)
+                    if step is None:
+                        # Step was skipped (user confirmation denied)
+                        continue
 
-                    # Check for terminal actions
-                    if action.action_type == ActionType.DONE:
-                        screenshot_path = screenshots_dir / f"step_{step_number:02d}.png"
-                        await browser.save_screenshot(screenshot_path)
-                        step = JourneyStep(
-                            step_number=step_number,
-                            url=state.url,
-                            screenshot_path=str(screenshot_path),
-                            action=action,
-                            success=True,
-                        )
-                        steps.append(step)
-                        if self.event_emitter:
-                            self.event_emitter.emit_step(step)
-                        if self.on_step:
-                            self.on_step(step)
-                        self._narrate_step(step)
+                    steps.append(step)
+
+                    if step.action.action_type == ActionType.DONE:
                         print("\n[DONE] Goal achieved!")
                         break
 
-                    if action.action_type == ActionType.GIVE_UP:
-                        screenshot_path = screenshots_dir / f"step_{step_number:02d}.png"
-                        await browser.save_screenshot(screenshot_path)
-                        step = JourneyStep(
-                            step_number=step_number,
-                            url=state.url,
-                            screenshot_path=str(screenshot_path),
-                            action=action,
-                            success=False,
-                            error_message="User gave up due to frustration",
-                        )
-                        steps.append(step)
-                        if self.event_emitter:
-                            self.event_emitter.emit_step(step)
-                        if self.on_step:
-                            self.on_step(step)
-                        self._narrate_step(step)
-                        print(f"\n[GAVE UP] {action.thought}")
+                    if step.action.action_type == ActionType.GIVE_UP:
+                        print(f"\n[GAVE UP] {step.action.thought}")
                         break
-
-                    # Ask for confirmation if configured
-                    if self.config.ask_before_action:
-                        if not await self._confirm_action(action):
-                            print("Action skipped by user")
-                            continue
-
-                    # Execute the action (with IntentResolver for clicks)
-                    retry_result = await self._resolver.execute_with_retry(
-                        action=action,
-                        clickable_elements=state.clickable_elements,
-                        browser=browser,
-                    )
-
-                    if retry_result is not None:
-                        # IntentResolver handled it (click action)
-                        success, error = retry_result
-                    else:
-                        # Non-click action — use default execution
-                        success, error = await self._execute_action(action)
-
-                    # Save screenshot AFTER action (post-action)
-                    screenshot_path = screenshots_dir / f"step_{step_number:02d}.png"
-                    await browser.save_screenshot(screenshot_path)
-
-                    step = JourneyStep(
-                        step_number=step_number,
-                        url=state.url,
-                        screenshot_path=str(screenshot_path),
-                        action=action,
-                        success=success,
-                        error_message=error,
-                    )
-                    steps.append(step)
-
-                    if self.event_emitter:
-                        self.event_emitter.emit_step(step)
-                    if self.on_step:
-                        self.on_step(step)
-                    self._narrate_step(step)
-
-                    # Wait for page to settle
-                    await browser.wait_for_idle()
-                    await asyncio.sleep(self.config.wait_after_action_ms / 1000)
 
             except KeyboardInterrupt:
                 incomplete = True
@@ -370,6 +291,103 @@ class InvestorJourneyAgent:
             incomplete=incomplete,
             incomplete_reason=incomplete_reason,
         )
+
+    async def _do_step(
+        self,
+        step_number: int,
+        steps: List[JourneyStep],
+        goal: str,
+        screenshots_dir: Path,
+        website_context: Optional[str] = None,
+        user_guidance: Optional[str] = None,
+    ) -> Optional[JourneyStep]:
+        """
+        Execute a single step of the journey: get state → decide → execute → record.
+
+        Returns:
+            JourneyStep if the step was taken (check action_type for DONE/GIVE_UP)
+            None if the step was skipped by user confirmation
+        """
+        # Get current state (pre-action)
+        state = await self._browser.get_state()
+
+        # Get LLM decision
+        action = await self._brain.decide_next_action(
+            screenshot_base64=state.screenshot_base64,
+            dom_snapshot=state.dom_snapshot,
+            persona=self.persona,
+            goal=goal,
+            history=steps,
+            console_errors=state.console_errors,
+            user_guidance=user_guidance,
+            website_context=website_context,
+            clickable_elements=state.clickable_elements,
+        )
+
+        # Print step info
+        self._print_step(step_number, action)
+
+        # Handle terminal actions (DONE / GIVE_UP) — save screenshot and return
+        if action.action_type in (ActionType.DONE, ActionType.GIVE_UP):
+            screenshot_path = screenshots_dir / f"step_{step_number:02d}.png"
+            await self._browser.save_screenshot(screenshot_path)
+            step = JourneyStep(
+                step_number=step_number,
+                url=state.url,
+                screenshot_path=str(screenshot_path),
+                action=action,
+                success=action.action_type == ActionType.DONE,
+                error_message=None if action.action_type == ActionType.DONE else "User gave up due to frustration",
+            )
+            if self.event_emitter:
+                self.event_emitter.emit_step(step)
+            if self.on_step:
+                self.on_step(step)
+            self._narrate_step(step)
+            return step
+
+        # Ask for confirmation if configured
+        if self.config.ask_before_action:
+            if not await self._confirm_action(action):
+                print("Action skipped by user")
+                return None
+
+        # Execute the action (with IntentResolver for clicks)
+        retry_result = await self._resolver.execute_with_retry(
+            action=action,
+            clickable_elements=state.clickable_elements,
+            browser=self._browser,
+        )
+
+        if retry_result is not None:
+            success, error = retry_result
+        else:
+            success, error = await self._execute_action(action)
+
+        # Save screenshot AFTER action (post-action)
+        screenshot_path = screenshots_dir / f"step_{step_number:02d}.png"
+        await self._browser.save_screenshot(screenshot_path)
+
+        step = JourneyStep(
+            step_number=step_number,
+            url=state.url,
+            screenshot_path=str(screenshot_path),
+            action=action,
+            success=success,
+            error_message=error,
+        )
+
+        if self.event_emitter:
+            self.event_emitter.emit_step(step)
+        if self.on_step:
+            self.on_step(step)
+        self._narrate_step(step)
+
+        # Wait for page to settle
+        await self._browser.wait_for_idle()
+        await asyncio.sleep(self.config.wait_after_action_ms / 1000)
+
+        return step
 
     async def _execute_action(self, action: Action) -> tuple[bool, Optional[str]]:
         """Execute an action and return (success, error_message)."""

@@ -90,7 +90,7 @@ class AgentConfig:
     analysis_model: str = "claude-sonnet-4-5-20250929"  # Quality for final analysis
 
     # Agent behavior
-    max_steps: int = 50
+    max_steps: int = 200
     timeout_per_step_ms: int = 10000
     wait_after_action_ms: int = 1000
     wait_for_network_idle: bool = True
