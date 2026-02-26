@@ -169,7 +169,7 @@ Available actions:
 - click: Click an element (pick element_index from the numbered list)
 - type: Type text into an input (pick element_index and provide text_to_type)
 - scroll: Scroll the page (direction: "up" or "down")
-- wait: Wait for something to load
+- wait: Wait for something to load (use wait_duration_seconds=45 for pipeline operations that take time)
 - reload: Reload the page (useful when something seems broken)
 - back: Go back to the previous page
 - give_up: Stop trying because UX is too bad (this is valuable feedback!)

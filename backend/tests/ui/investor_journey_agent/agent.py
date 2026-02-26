@@ -18,6 +18,7 @@ from .personas import Persona, PERSONAS, get_persona
 from .browser_interface import BrowserInterface
 from .intent_resolver import IntentResolver
 from .llm_brain import LLMBrain, Action, ActionType, JourneyStep, JourneyEvaluation
+from .url_utils import resolve_start_url
 
 
 @dataclass
@@ -124,6 +125,8 @@ class InvestorJourneyAgent:
         goal: str,
         max_steps: Optional[int] = None,
         website_context: Optional[str] = None,
+        start_url: Optional[str] = None,
+        setup: Optional[str] = None,
     ) -> JourneyReport:
         """
         Run a simulated user journey.
@@ -132,6 +135,9 @@ class InvestorJourneyAgent:
             url: Starting URL
             goal: What the persona is trying to achieve
             max_steps: Maximum steps before stopping
+            website_context: Optional description of the website
+            start_url: Optional fragment/path to navigate to after base URL
+            setup: Optional path to a Python file to exec() before the step loop
 
         Returns:
             JourneyReport with all steps and evaluation
@@ -179,6 +185,17 @@ class InvestorJourneyAgent:
                     evaluation=None,
                     output_dir=output_dir,
                 )
+
+            # Navigate to start_url if provided (deep-link navigation)
+            if start_url:
+                resolved = resolve_start_url(url, start_url)
+                print(f"[START-URL] Navigating to: {resolved}")
+                await browser.goto(resolved)
+
+            # Run setup script if provided
+            if setup:
+                print(f"[SETUP] Running setup file: {setup}")
+                self._run_setup(setup, page=browser.page, browser=browser)
 
             # Main journey loop
             incomplete = False
@@ -423,6 +440,24 @@ class InvestorJourneyAgent:
             except ValueError:
                 print("Please enter a valid integer.")
                 continue
+
+    def _run_setup(self, path: str, page, browser) -> None:
+        """
+        Execute a setup Python file before the journey loop.
+
+        Args:
+            path: Path to the .py setup file
+            page: The browser page object (exposed as 'page' in the script)
+            browser: The browser interface (exposed as 'browser' in the script)
+
+        Raises:
+            RuntimeError: If the setup file raises an exception (includes file path)
+        """
+        try:
+            code = Path(path).read_text(encoding="utf-8")
+            exec(code, {"page": page, "browser": browser})
+        except Exception as e:
+            raise RuntimeError(f"Setup file failed: {path}: {e}") from e
 
     async def _execute_action(self, action: Action) -> tuple[bool, Optional[str]]:
         """Execute an action and return (success, error_message)."""

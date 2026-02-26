@@ -5,7 +5,7 @@ Handles detection of file paths vs URLs and conversion to proper file:// URLs.
 """
 
 from pathlib import Path
-from urllib.parse import urlparse
+from urllib.parse import urlparse, urljoin
 
 
 def resolve_url(url_or_path: str) -> str:
@@ -43,3 +43,27 @@ def resolve_url(url_or_path: str) -> str:
         return resolved.as_uri()
 
     raise FileNotFoundError(f"File not found: {url_or_path}")
+
+
+def resolve_start_url(base_url: str, start_url: str) -> str:
+    """
+    Resolve a start_url relative to the base_url.
+
+    - If start_url starts with '#', append it to the full base_url.
+    - If start_url starts with '/', replace the path on the base_url's origin.
+
+    Args:
+        base_url: The base URL the journey navigated to (e.g. "https://example.com/home")
+        start_url: A fragment ("#turmas") or absolute path ("/dashboard")
+
+    Returns:
+        Fully resolved URL string.
+    """
+    parsed = urlparse(base_url)
+    if start_url.startswith("#"):
+        # Append fragment to the full base_url (including existing path)
+        return base_url.rstrip("#") + start_url
+    else:
+        # Replace path: use origin + start_url (start_url starts with '/')
+        origin = f"{parsed.scheme}://{parsed.netloc}"
+        return origin + start_url
