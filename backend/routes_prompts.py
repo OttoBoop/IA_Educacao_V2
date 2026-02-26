@@ -949,8 +949,40 @@ async def executar_lote(
     }
 
 
+async def _executar_pipeline_turma_background(
+    alunos_para_processar: list,
+    atividade_id: str,
+    model_id,
+    provider: str,
+    providers_map,
+    prompt_id,
+    prompts_map,
+    steps_list,
+    force_rerun: bool,
+):
+    """Background helper: runs pipeline for every student in the turma sequentially."""
+    from executor import executor
+
+    for aluno in alunos_para_processar:
+        try:
+            await executor.executar_pipeline_completo(
+                atividade_id=atividade_id,
+                aluno_id=aluno.id,
+                model_id=model_id,
+                provider_name=provider,
+                providers_map=providers_map,
+                prompt_id=prompt_id,
+                prompts_map=prompts_map,
+                selected_steps=steps_list,
+                force_rerun=force_rerun,
+            )
+        except Exception:
+            pass  # Individual student failures don't block remaining students
+
+
 @router.post("/api/executar/pipeline-turma", tags=["Execução"])
 async def executar_pipeline_turma(
+    background_tasks: BackgroundTasks,
     atividade_id: str = Form(...),
     model_id: Optional[str] = Form(None),
     provider: Optional[str] = Form(None),  # [LEGACY - MARK FOR DELETION] Provider de IA a usar (opcional, legacy)
@@ -963,28 +995,11 @@ async def executar_pipeline_turma(
 ):
     """
     [LEGACY - CONSIDER UNIFICATION] Executa o pipeline completo para TODOS os alunos de uma turma.
+    Registra a tarefa em task_registry e inicia execução como BackgroundTask.
+    Retorna task_id imediatamente para polling via /api/task-progress/{task_id}.
 
     ⚠️  UNIFICATION CANDIDATE: See /api/pipeline/executar in routes_pipeline.py for details
-
-    POTENTIAL ERRORS from unification:
-    - Mass processing could cause timeouts
-    - Resource exhaustion (CPU, memory, API rate limits)
-    - Partial failures leave system in inconsistent state
-    - No rollback mechanism for failed batch operations
-
-    Parâmetros:
-    - atividade_id: ID da atividade
-    - model_id: ID do modelo de IA padrão a usar
-    - provider: Provider de IA a usar ([LEGACY - MARK FOR DELETION] opcional, legacy)
-    - providers: JSON com provider por etapa (opcional)
-    - prompt_id: ID do prompt padrão a usar para todas as etapas
-    - prompts_per_stage: JSON com prompt_id por etapa (ex: {"extrair_questoes": "abc123"})
-    - selected_steps: JSON array de etapas a executar
-    - force_rerun: Se True, re-executa etapas mesmo que já existam resultados
-    - apenas_com_prova: Se True, executa apenas para alunos que têm prova enviada
     """
-    from executor import executor
-
     # Buscar atividade e turma
     atividade = storage.get_atividade(atividade_id)
     if not atividade:
@@ -1035,46 +1050,25 @@ async def executar_pipeline_turma(
         except json.JSONDecodeError:
             raise HTTPException(400, "Formato inválido para selected_steps. Use JSON array.")
 
-    resultados_por_aluno = {}
-    for aluno in alunos_para_processar:
-        try:
-            resultados = await executor.executar_pipeline_completo(
-                atividade_id=atividade_id,
-                aluno_id=aluno.id,
-                model_id=model_id,
-                provider_name=provider,
-                providers_map=providers_map,
-                prompt_id=prompt_id,
-                prompts_map=prompts_map,
-                selected_steps=steps_list,
-                force_rerun=force_rerun
-            )
+    # Register all students synchronously so task_id exists before response is returned.
+    task_id = register_pipeline_task(
+        task_type="pipeline_turma",
+        atividade_id=atividade_id,
+        aluno_ids=[aluno.id for aluno in alunos_para_processar],
+    )
 
-            sucesso = all(r.sucesso for r in resultados.values())
-            resultados_por_aluno[aluno.id] = {
-                "nome": aluno.nome,
-                "sucesso": sucesso,
-                "etapas_executadas": [k for k, v in resultados.items() if v.sucesso],
-                "etapas_falharam": [k for k, v in resultados.items() if not v.sucesso],
-                "erro": None
-            }
-        except Exception as e:
-            resultados_por_aluno[aluno.id] = {
-                "nome": aluno.nome,
-                "sucesso": False,
-                "etapas_executadas": [],
-                "etapas_falharam": [],
-                "erro": str(e)
-            }
+    # Run the student loop in the background — endpoint returns task_id immediately.
+    background_tasks.add_task(
+        _executar_pipeline_turma_background,
+        alunos_para_processar=alunos_para_processar,
+        atividade_id=atividade_id,
+        model_id=model_id,
+        provider=provider,
+        providers_map=providers_map,
+        prompt_id=prompt_id,
+        prompts_map=prompts_map,
+        steps_list=steps_list,
+        force_rerun=force_rerun,
+    )
 
-    total_sucesso = sum(1 for r in resultados_por_aluno.values() if r["sucesso"])
-    total_falhas = sum(1 for r in resultados_por_aluno.values() if not r["sucesso"])
-
-    return {
-        "sucesso": total_falhas == 0,
-        "mensagem": f"Pipeline executado para {total_sucesso} de {len(alunos_para_processar)} alunos",
-        "total_alunos": len(alunos_para_processar),
-        "total_sucesso": total_sucesso,
-        "total_falhas": total_falhas,
-        "resultados": resultados_por_aluno
-    }
+    return {"task_id": task_id, "status": "started"}
