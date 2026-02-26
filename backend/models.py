@@ -61,6 +61,10 @@ class TipoDocumento(Enum):
     CORRECAO_NARRATIVA = "correcao_narrativa"                          # Análise pedagógica por questão (Markdown)
     ANALISE_HABILIDADES_NARRATIVA = "analise_habilidades_narrativa"    # Síntese de padrões (Markdown)
     RELATORIO_NARRATIVO = "relatorio_narrativo"                        # Relatório holístico (Markdown)
+    # === RELATÓRIOS DE DESEMPENHO AGREGADOS (nível atividade/turma/matéria) ===
+    RELATORIO_DESEMPENHO_TAREFA = "relatorio_desempenho_tarefa"        # Análise agregada de uma atividade
+    RELATORIO_DESEMPENHO_TURMA = "relatorio_desempenho_turma"          # Análise holística de uma turma
+    RELATORIO_DESEMPENHO_MATERIA = "relatorio_desempenho_materia"      # Análise cross-turma de uma matéria
 
     @classmethod
     def documentos_base(cls) -> List['TipoDocumento']:
@@ -89,6 +93,7 @@ class TipoDocumento(Enum):
             cls.EXTRACAO_QUESTOES, cls.EXTRACAO_GABARITO, cls.EXTRACAO_RESPOSTAS,
             cls.CORRECAO, cls.ANALISE_HABILIDADES, cls.RELATORIO_FINAL,
             cls.CORRECAO_NARRATIVA, cls.ANALISE_HABILIDADES_NARRATIVA, cls.RELATORIO_NARRATIVO,
+            cls.RELATORIO_DESEMPENHO_TAREFA, cls.RELATORIO_DESEMPENHO_TURMA, cls.RELATORIO_DESEMPENHO_MATERIA,
         ]
 
 
@@ -593,7 +598,26 @@ DEPENDENCIAS_DOCUMENTOS = {
     TipoDocumento.RELATORIO_FINAL: {
         "obrigatorios": [TipoDocumento.CORRECAO],
         "opcionais": [TipoDocumento.ANALISE_HABILIDADES, TipoDocumento.CRITERIOS_CORRECAO]
-    }
+    },
+
+    # === RELATÓRIOS DE DESEMPENHO AGREGADOS ===
+    # Para relatório de desempenho por tarefa: precisa dos relatórios narrativos de cada aluno
+    TipoDocumento.RELATORIO_DESEMPENHO_TAREFA: {
+        "obrigatorios": [TipoDocumento.RELATORIO_NARRATIVO],
+        "opcionais": []
+    },
+
+    # Para relatório de desempenho por turma: precisa dos relatórios narrativos de cada aluno
+    TipoDocumento.RELATORIO_DESEMPENHO_TURMA: {
+        "obrigatorios": [TipoDocumento.RELATORIO_NARRATIVO],
+        "opcionais": []
+    },
+
+    # Para relatório de desempenho por matéria: precisa dos relatórios narrativos de todas as turmas
+    TipoDocumento.RELATORIO_DESEMPENHO_MATERIA: {
+        "obrigatorios": [TipoDocumento.RELATORIO_NARRATIVO],
+        "opcionais": []
+    },
 }
 
 

@@ -23,6 +23,10 @@ class EtapaProcessamento(Enum):
     ANALISAR_HABILIDADES = "analisar_habilidades"
     GERAR_RELATORIO = "gerar_relatorio"
     CHAT_GERAL = "chat_geral"
+    # === RELATÓRIOS DE DESEMPENHO AGREGADOS (nível turma/matéria) ===
+    RELATORIO_DESEMPENHO_TAREFA = "relatorio_desempenho_tarefa"
+    RELATORIO_DESEMPENHO_TURMA = "relatorio_desempenho_turma"
+    RELATORIO_DESEMPENHO_MATERIA = "relatorio_desempenho_materia"
 
 
 @dataclass

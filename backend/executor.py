@@ -1452,7 +1452,10 @@ class PipelineExecutor:
             EtapaProcessamento.EXTRAIR_RESPOSTAS: TipoDocumento.EXTRACAO_RESPOSTAS,
             EtapaProcessamento.CORRIGIR: TipoDocumento.CORRECAO,
             EtapaProcessamento.ANALISAR_HABILIDADES: TipoDocumento.ANALISE_HABILIDADES,
-            EtapaProcessamento.GERAR_RELATORIO: TipoDocumento.RELATORIO_FINAL
+            EtapaProcessamento.GERAR_RELATORIO: TipoDocumento.RELATORIO_FINAL,
+            EtapaProcessamento.RELATORIO_DESEMPENHO_TAREFA: TipoDocumento.RELATORIO_DESEMPENHO_TAREFA,
+            EtapaProcessamento.RELATORIO_DESEMPENHO_TURMA: TipoDocumento.RELATORIO_DESEMPENHO_TURMA,
+            EtapaProcessamento.RELATORIO_DESEMPENHO_MATERIA: TipoDocumento.RELATORIO_DESEMPENHO_MATERIA,
         }
         
         tipo = tipo_map.get(etapa)
