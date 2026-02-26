@@ -10,6 +10,7 @@ ATUALIZADO: Integrado com chat_service.py (novo sistema de models/providers)
 """
 
 from fastapi import APIRouter, BackgroundTasks, HTTPException, Form, UploadFile, File
+from fastapi.responses import RedirectResponse
 from pydantic import BaseModel
 from typing import Optional, List, Dict, Any
 from datetime import datetime
@@ -1076,3 +1077,21 @@ async def executar_pipeline_todos_os_alunos(
     )
 
     return {"task_id": task_id, "status": "started"}
+
+
+# ============================================================
+# BACKWARD-COMPAT REDIRECT: old pipeline-turma URL → new URL
+# ============================================================
+
+@router.post("/api/executar/pipeline-turma", tags=["Execução"], include_in_schema=False)
+async def redirect_legacy_pipeline_todos_os_alunos():
+    """HTTP 301 redirect: /api/executar/pipeline-turma → /api/executar/pipeline-todos-os-alunos.
+
+    Provides backward compatibility for any existing bookmarks or external integrations
+    still calling the old endpoint URL.
+    """
+    return RedirectResponse(
+        url="/api/executar/pipeline-todos-os-alunos",
+        status_code=301,
+    )
+
