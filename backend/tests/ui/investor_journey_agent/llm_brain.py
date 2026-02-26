@@ -43,6 +43,7 @@ class Action:
     scroll_direction: Optional[str] = None  # For SCROLL action
     element_index: Optional[int] = None  # 1-based index into clickable elements list
     intent_description: Optional[str] = None  # Natural-language description of intent
+    wait_duration_seconds: Optional[int] = None  # For WAIT action: how many seconds to wait
 
 
 @dataclass

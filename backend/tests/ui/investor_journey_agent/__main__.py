@@ -113,6 +113,13 @@ Examples:
     )
 
     parser.add_argument(
+        "--start-url",
+        type=str,
+        default=None,
+        help="Navigate to this URL/fragment after base URL (e.g. /#turmas, /dashboard)",
+    )
+
+    parser.add_argument(
         "--output",
         type=str,
         default=None,

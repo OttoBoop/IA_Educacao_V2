@@ -188,50 +188,66 @@ class InvestorJourneyAgent:
             user_guidance = None  # For mid-journey guidance from operator
 
             try:
-                while step_number < max_steps:
-                    step_number += 1
+                while True:  # outer pause/resume loop
+                    while step_number < max_steps:
+                        step_number += 1
 
-                    # Poll for external commands
-                    if self.command_receiver:
-                        for cmd in self.command_receiver.poll_all():
-                            if cmd.command_type == "stop":
-                                reason = cmd.data.get("reason", "Stopped by external command")
-                                incomplete = True
-                                incomplete_reason = reason
-                                print(f"\n[STOP] {reason}")
-                                if self.event_emitter:
-                                    self.event_emitter.emit_stopped(reason=reason, steps_completed=len(steps))
+                        # Poll for external commands
+                        if self.command_receiver:
+                            for cmd in self.command_receiver.poll_all():
+                                if cmd.command_type == "stop":
+                                    reason = cmd.data.get("reason", "Stopped by external command")
+                                    incomplete = True
+                                    incomplete_reason = reason
+                                    print(f"\n[STOP] {reason}")
+                                    if self.event_emitter:
+                                        self.event_emitter.emit_stopped(reason=reason, steps_completed=len(steps))
+                                    break
+                                elif cmd.command_type == "guidance":
+                                    user_guidance = cmd.data.get("instruction", "")
+                                    print(f"\n[GUIDANCE] {user_guidance}")
+                            if incomplete:
                                 break
-                            elif cmd.command_type == "guidance":
-                                user_guidance = cmd.data.get("instruction", "")
-                                print(f"\n[GUIDANCE] {user_guidance}")
-                        if incomplete:
+
+                        # Execute one step (get state → decide → execute → record)
+                        step = await self._do_step(
+                            step_number=step_number,
+                            steps=steps,
+                            goal=goal,
+                            screenshots_dir=screenshots_dir,
+                            website_context=website_context,
+                            user_guidance=user_guidance,
+                        )
+                        user_guidance = None  # Clear after use (one-shot)
+
+                        if step is None:
+                            # Step was skipped (user confirmation denied)
+                            continue
+
+                        steps.append(step)
+
+                        if step.action.action_type == ActionType.DONE:
+                            print("\n[DONE] Goal achieved!")
                             break
 
-                    # Execute one step (get state → decide → execute → record)
-                    step = await self._do_step(
-                        step_number=step_number,
-                        steps=steps,
-                        goal=goal,
-                        screenshots_dir=screenshots_dir,
-                        website_context=website_context,
-                        user_guidance=user_guidance,
-                    )
-                    user_guidance = None  # Clear after use (one-shot)
+                        if step.action.action_type == ActionType.GIVE_UP:
+                            print(f"\n[GAVE UP] {step.action.thought}")
+                            break
 
-                    if step is None:
-                        # Step was skipped (user confirmation denied)
-                        continue
+                    # Inner loop exited. Determine why:
+                    if incomplete:
+                        break  # Stopped by command
 
-                    steps.append(step)
+                    if steps and steps[-1].action.action_type in (ActionType.DONE, ActionType.GIVE_UP):
+                        break  # Journey ended naturally
 
-                    if step.action.action_type == ActionType.DONE:
-                        print("\n[DONE] Goal achieved!")
+                    # Hit step limit — pause and ask user how many more steps
+                    extra = await self._pause_and_extend(step_number=step_number)
+                    if extra == 0:
+                        incomplete = True
+                        incomplete_reason = f"Paused by user at step {step_number}"
                         break
-
-                    if step.action.action_type == ActionType.GIVE_UP:
-                        print(f"\n[GAVE UP] {step.action.thought}")
-                        break
+                    max_steps += extra  # Extend the limit for N more steps
 
             except KeyboardInterrupt:
                 incomplete = True
@@ -388,6 +404,25 @@ class InvestorJourneyAgent:
         await asyncio.sleep(self.config.wait_after_action_ms / 1000)
 
         return step
+
+    async def _pause_and_extend(self, step_number: int) -> int:
+        """
+        Prompt the user to extend the journey after reaching the step limit.
+
+        Returns:
+            0 to stop the journey
+            N > 0 to extend by N more steps
+        """
+        loop = asyncio.get_running_loop()
+        prompt = f"\n[PAUSED] Journey paused at step {step_number}. How many more steps? [0 to stop]: "
+        while True:
+            try:
+                raw = await loop.run_in_executor(None, input, prompt)
+                n = int(raw.strip())
+                return n
+            except ValueError:
+                print("Please enter a valid integer.")
+                continue
 
     async def _execute_action(self, action: Action) -> tuple[bool, Optional[str]]:
         """Execute an action and return (success, error_message)."""
