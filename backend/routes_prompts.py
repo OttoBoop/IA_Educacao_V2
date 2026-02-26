@@ -9,7 +9,7 @@ Endpoints para:
 ATUALIZADO: Integrado com chat_service.py (novo sistema de models/providers)
 """
 
-from fastapi import APIRouter, HTTPException, Form, UploadFile, File
+from fastapi import APIRouter, BackgroundTasks, HTTPException, Form, UploadFile, File
 from pydantic import BaseModel
 from typing import Optional, List, Dict, Any
 from datetime import datetime
@@ -19,6 +19,7 @@ import json
 from prompts import PromptManager, PromptTemplate, EtapaProcessamento, prompt_manager
 from storage import storage
 from models import TipoDocumento, Documento
+from routes_tasks import register_pipeline_task
 
 # Importar novo sistema de chat/models
 try:
@@ -718,6 +719,7 @@ async def _executar_com_chat_service(
 
 @router.post("/api/executar/pipeline-completo", tags=["Execução"])
 async def executar_pipeline_completo(
+    background_tasks: BackgroundTasks,
     atividade_id: str = Form(...),
     aluno_id: str = Form(...),
     model_id: Optional[str] = Form(None),
@@ -730,7 +732,8 @@ async def executar_pipeline_completo(
 ):
     """
     [LEGACY - CONSIDER UNIFICATION] Executa o pipeline completo para um aluno.
-    Executa todas as etapas necessárias em sequência.
+    Registra a tarefa em task_registry e inicia execução como BackgroundTask.
+    Retorna task_id imediatamente para polling via /api/task-progress/{task_id}.
 
     ⚠️  UNIFICATION CANDIDATE: See /api/pipeline/executar in routes_pipeline.py for details
     """
@@ -757,7 +760,17 @@ async def executar_pipeline_completo(
         except json.JSONDecodeError:
             raise HTTPException(400, "Formato inválido para selected_steps. Use JSON array.")
 
-    resultados = await executor.executar_pipeline_completo(
+    # Register the task in task_registry synchronously so the task_id
+    # exists before the response is returned and polling can start immediately.
+    task_id = register_pipeline_task(
+        task_type="pipeline",
+        atividade_id=atividade_id,
+        aluno_ids=[aluno_id],
+    )
+
+    # Run pipeline execution in the background — endpoint returns task_id immediately.
+    background_tasks.add_task(
+        executor.executar_pipeline_completo,
         atividade_id=atividade_id,
         aluno_id=aluno_id,
         model_id=model_id,
@@ -766,34 +779,10 @@ async def executar_pipeline_completo(
         prompt_id=prompt_id,
         prompts_map=prompts_map,
         selected_steps=steps_list,
-        force_rerun=force_rerun
+        force_rerun=force_rerun,
     )
-    
-    # Resumo - filtrar chaves especiais que começam com _
-    resultados_reais = {k: v for k, v in resultados.items() if not k.startswith("_")}
-    info_pipeline = resultados.get("_info_pipeline")
 
-    # Se não há resultados reais, verificar se foi um "sucesso vazio"
-    if not resultados_reais:
-        # Nenhuma etapa foi executada
-        return {
-            "sucesso": False,
-            "etapas_executadas": [],
-            "etapas_falharam": [],
-            "mensagem": info_pipeline.erro if info_pipeline else "Nenhuma etapa foi executada. Use force_rerun=true para re-executar etapas existentes.",
-            "resultados": {}
-        }
-
-    sucesso_total = all(r.sucesso for r in resultados_reais.values())
-    etapas_executadas = [k for k, v in resultados_reais.items() if v.sucesso]
-    etapas_falharam = [k for k, v in resultados_reais.items() if not v.sucesso]
-
-    return {
-        "sucesso": sucesso_total,
-        "etapas_executadas": etapas_executadas,
-        "etapas_falharam": etapas_falharam,
-        "resultados": {k: v.to_dict() for k, v in resultados_reais.items()}
-    }
+    return {"task_id": task_id, "status": "started"}
 
 
 @router.get("/api/executar/status-etapas/{atividade_id}/{aluno_id}", tags=["Execução"])
