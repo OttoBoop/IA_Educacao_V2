@@ -286,9 +286,9 @@ def capture_tutorial_images():
                                     <span class="btn-icon">👤</span>
                                     Pipeline Aluno
                                 </button>
-                                <button class="btn btn-primary" id="btn-pipeline-turma">
+                                <button class="btn btn-primary" id="btn-pipeline-todos-os-alunos">
                                     <span class="btn-icon">👥</span>
-                                    Pipeline Turma Toda
+                                    Pipeline Todos os Alunos
                                 </button>
                             </div>
                         </div>
@@ -387,12 +387,12 @@ def capture_tutorial_images():
                     addLabel(rect.left - 100, rect.bottom + 10, 'Pipeline um aluno', '#22c55e');
                 }
 
-                // Botao Pipeline Turma
-                const turmaBtn = document.getElementById('btn-pipeline-turma');
-                if (turmaBtn) {
-                    const rect = turmaBtn.getBoundingClientRect();
+                // Botao Pipeline Todos os Alunos
+                const todosBtn = document.getElementById('btn-pipeline-todos-os-alunos');
+                if (todosBtn) {
+                    const rect = todosBtn.getBoundingClientRect();
                     addCircle(rect.left - 20, rect.top + rect.height/2, '3', '#a855f7');
-                    addLabel(rect.left - 100, rect.bottom + 10, 'Pipeline turma toda', '#a855f7');
+                    addLabel(rect.left - 100, rect.bottom + 10, 'Pipeline todos os alunos', '#a855f7');
                 }
 
                 // Botao Upload em Lote

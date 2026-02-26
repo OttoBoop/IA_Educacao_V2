@@ -9,7 +9,7 @@ Tests verify that executor.py executar_pipeline_completo:
 
 And that routes_prompts.py correctly passes task_id to the executor:
 - executar_pipeline_completo endpoint passes task_id via background_tasks.add_task
-- _executar_pipeline_turma_background helper accepts and forwards task_id
+- _executar_pipeline_todos_os_alunos_background helper accepts and forwards task_id
 
 F3-T3 from PLAN_Task_Panel_Integration_Fix.md — RED PHASE
 
@@ -138,33 +138,33 @@ class TestRoutesPipelineWiring:
         )
 
     def test_turma_helper_accepts_task_id_param(self, routes_prompts_content):
-        """_executar_pipeline_turma_background must accept task_id as a parameter.
+        """_executar_pipeline_todos_os_alunos_background must accept task_id as a parameter.
 
-        The turma background helper must receive task_id from the endpoint and pass it
+        The todos-os-alunos background helper must receive task_id from the endpoint and pass it
         to executor.executar_pipeline_completo() for each student so all students'
         stage progress is tracked under the same task_id.
         """
         func_start = _get_function_body(
-            routes_prompts_content, "async def _executar_pipeline_turma_background", window=450
+            routes_prompts_content, "async def _executar_pipeline_todos_os_alunos_background", window=450
         )
         assert "task_id" in func_start, (
-            "_executar_pipeline_turma_background must declare task_id as a parameter. "
+            "_executar_pipeline_todos_os_alunos_background must declare task_id as a parameter. "
             "The endpoint passes task_id when calling background_tasks.add_task(helper, task_id=task_id, ...). "
             "The helper then passes task_id to each executor.executar_pipeline_completo() call."
         )
 
     def test_turma_endpoint_passes_task_id_to_helper(self, routes_prompts_content):
-        """executar_pipeline_turma must pass task_id=task_id to _executar_pipeline_turma_background.
+        """executar_pipeline_todos_os_alunos must pass task_id=task_id to _executar_pipeline_todos_os_alunos_background.
 
         Without passing task_id to the helper, the background loop runs with task_id=None
         and cannot call update_stage_progress() for any student. All stages stay pending.
         """
-        func_body = _get_function_body(routes_prompts_content, "async def executar_pipeline_turma")
+        func_body = _get_function_body(routes_prompts_content, "async def executar_pipeline_todos_os_alunos")
         add_task_pos = func_body.find("add_task")
-        assert add_task_pos > 0, "add_task() call not found in executar_pipeline_turma"
+        assert add_task_pos > 0, "add_task() call not found in executar_pipeline_todos_os_alunos"
         add_task_block = func_body[add_task_pos : add_task_pos + 500]
         assert "task_id=task_id" in add_task_block, (
-            "background_tasks.add_task(_executar_pipeline_turma_background, ...) must include "
+            "background_tasks.add_task(_executar_pipeline_todos_os_alunos_background, ...) must include "
             "task_id=task_id so the helper can track progress for each student. "
             "Currently task_id is registered but not forwarded to the background helper."
         )

@@ -112,7 +112,7 @@ async def executar_etapa(data: ExecutarEtapaRequest):
     - /api/pipeline/executar (this - single step)
     - /api/executar/etapa (routes_prompts.py - single step with chat service)
     - /api/executar/pipeline-completo (routes_prompts.py - full pipeline for one student)
-    - /api/executar/pipeline-turma (routes_prompts.py - full pipeline for all students)
+    - /api/executar/pipeline-todos-os-alunos (routes_prompts.py - full pipeline for all students)
 
     POTENTIAL ERRORS from unification:
     - Different request/response formats

@@ -3820,9 +3820,9 @@
                     <label class="form-label">Aluno *</label>
                     <select class="form-select" id="input-pipeline-aluno"></select>
                 </div>
-                <div id="pipeline-turma-info" style="display: none;">
+                <div id="pipeline-todos-os-alunos-info" style="display: none;">
                     <div class="alert alert-info" style="margin-bottom: 12px;">⚠️ Será executado para todos os alunos que têm prova enviada</div>
-                    <div id="pipeline-turma-resumo" style="padding: 10px; background: var(--bg-hover); border-radius: 8px; margin-bottom: 12px;"></div>
+                    <div id="pipeline-todos-os-alunos-resumo" style="padding: 10px; background: var(--bg-hover); border-radius: 8px; margin-bottom: 12px;"></div>
                 </div>
                 <div class="form-group">
                     <label class="form-label">Modelo de IA (padrão para todas as etapas)</label>
@@ -4952,11 +4952,11 @@
                         <ul>
                             <li><strong>⚙️ Executar Etapa:</strong> Executa uma etapa específica</li>
                             <li><strong>⚡ Pipeline Aluno:</strong> Processa todas as etapas para um aluno</li>
-                            <li><strong>🚀 Pipeline Turma:</strong> Processa toda a turma de uma vez</li>
+                            <li><strong>🚀 Pipeline Todos os Alunos:</strong> Processa toda a turma de uma vez</li>
                             <li><strong>📚 Upload em Lote:</strong> Envia várias provas</li>
                         </ul>
                         <div class="tutorial-highlight">
-                            <strong>▶️ Recomendação:</strong> Use "Pipeline Turma" para processar todos os alunos de uma vez!
+                            <strong>▶️ Recomendação:</strong> Use "Pipeline Todos os Alunos" para processar todos os alunos de uma vez!
                         </div>
                     `
                 },
@@ -5334,7 +5334,7 @@
                             </div>
                             <div class="help-step">
                                 <div class="help-step-number">2</div>
-                                <div class="help-step-text"><strong>🚀 Pipeline Turma:</strong> Corrige TODOS os alunos de uma vez</div>
+                                <div class="help-step-text"><strong>🚀 Pipeline Todos os Alunos:</strong> Corrige TODOS os alunos de uma vez</div>
                             </div>
                             <p style="margin-top: 12px;">⏱️ A IA executa 6 etapas: Extração → Correção → Análise → Relatório</p>
                             <p>📊 Cada etapa gera um documento que você pode revisar!</p>
@@ -6279,7 +6279,7 @@
                     <div style="display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 16px;">
                         <button class="btn" onclick="openModalExecucao('${atividadeId}')" data-tooltip="Execute uma etapa específica do pipeline de correção" data-tooltip-pos="bottom">⚙️ Executar Etapa</button>
                         <button class="btn btn-primary" onclick="openModalPipelineCompleto('${atividadeId}', 'aluno')" data-tooltip="Corrige automaticamente a prova de um aluno específico" data-tooltip-pos="bottom">⚡ Pipeline Aluno</button>
-                        <button class="btn btn-success" onclick="openModalPipelineCompleto('${atividadeId}', 'turma')" data-tooltip="Corrige automaticamente as provas de TODOS os alunos da turma" data-tooltip-pos="bottom">🚀 Pipeline Turma Toda</button>
+                        <button class="btn btn-success" onclick="openModalPipelineCompleto('${atividadeId}', 'turma')" data-tooltip="Corrige automaticamente as provas de TODOS os alunos da turma" data-tooltip-pos="bottom">🚀 Pipeline Todos os Alunos</button>
                         <button class="btn" onclick="openModalUploadProvas('${atividadeId}')" data-tooltip="Envie várias provas de alunos de uma vez (PDF ou imagens)" data-tooltip-pos="bottom">📚 Upload Provas em Lote</button>
                     </div>
                     ${alertas}
@@ -7452,7 +7452,7 @@
                 const atividadeData = window._atividadeData;
                 const alunosDetalhes = atividadeData?.alunos?.detalhes || [];
                 const alunosComProva = alunosDetalhes.filter(a => a.tem_prova);
-                document.getElementById('pipeline-turma-resumo').innerHTML = `<strong>${alunosComProva.length}</strong> aluno(s) com prova enviada`;
+                document.getElementById('pipeline-todos-os-alunos-resumo').innerHTML = `<strong>${alunosComProva.length}</strong> aluno(s) com prova enviada`;
 
                 openModal('modal-pipeline-completo');
             } catch (e) {
@@ -8133,7 +8133,7 @@
         function onPipelineModoChange() {
             const modo = document.querySelector('input[name="pipeline-modo"]:checked').value;
             document.getElementById('pipeline-aluno-container').style.display = modo === 'aluno' ? 'block' : 'none';
-            document.getElementById('pipeline-turma-info').style.display = modo === 'turma' ? 'block' : 'none';
+            document.getElementById('pipeline-todos-os-alunos-info').style.display = modo === 'turma' ? 'block' : 'none';
             document.getElementById('btn-executar-pipeline').textContent = modo === 'turma' ? 'Executar para Turma Toda' : 'Executar Pipeline';
         }
 
@@ -8188,7 +8188,7 @@
                     return;
                 }
             } else {
-                if (taskQueue.isRunning('pipeline-turma', atividadeId)) {
+                if (taskQueue.isRunning('pipeline-todos-os-alunos', atividadeId)) {
                     showToast('Já existe um pipeline de turma em execução', 'warning');
                     return;
                 }
@@ -8197,7 +8197,7 @@
             // Fechar modal imediatamente e iniciar tarefa em background
             closeModal('modal-pipeline-completo');
 
-            const taskType = modo === 'turma' ? 'pipeline-turma' : 'pipeline';
+            const taskType = modo === 'turma' ? 'pipeline-todos-os-alunos' : 'pipeline';
             const alunoIdForTask = modo === 'aluno' ? document.getElementById('input-pipeline-aluno').value : null;
 
             // Abrir painel de tarefas
@@ -8216,7 +8216,7 @@
                     formData.append('selected_steps', JSON.stringify(selectedSteps));
                     formData.append('force_rerun', forceRerun ? 'true' : 'false');
 
-                    result = await apiForm('/executar/pipeline-turma', formData);
+                    result = await apiForm('/executar/pipeline-todos-os-alunos', formData);
                 } else {
                     const alunoId = document.getElementById('input-pipeline-aluno').value;
                     const formData = new FormData();

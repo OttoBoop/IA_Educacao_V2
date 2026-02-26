@@ -950,7 +950,7 @@ async def executar_lote(
     }
 
 
-async def _executar_pipeline_turma_background(
+async def _executar_pipeline_todos_os_alunos_background(
     task_id: str,
     alunos_para_processar: list,
     atividade_id: str,
@@ -983,8 +983,8 @@ async def _executar_pipeline_turma_background(
             pass  # Individual student failures don't block remaining students
 
 
-@router.post("/api/executar/pipeline-turma", tags=["Execução"])
-async def executar_pipeline_turma(
+@router.post("/api/executar/pipeline-todos-os-alunos", tags=["Execução"])
+async def executar_pipeline_todos_os_alunos(
     background_tasks: BackgroundTasks,
     atividade_id: str = Form(...),
     model_id: Optional[str] = Form(None),
@@ -1055,14 +1055,14 @@ async def executar_pipeline_turma(
 
     # Register all students synchronously so task_id exists before response is returned.
     task_id = register_pipeline_task(
-        task_type="pipeline_turma",
+        task_type="pipeline_todos_os_alunos",
         atividade_id=atividade_id,
         aluno_ids=[aluno.id for aluno in alunos_para_processar],
     )
 
     # Run the student loop in the background — endpoint returns task_id immediately.
     background_tasks.add_task(
-        _executar_pipeline_turma_background,
+        _executar_pipeline_todos_os_alunos_background,
         task_id=task_id,
         alunos_para_processar=alunos_para_processar,
         atividade_id=atividade_id,

@@ -99,7 +99,7 @@ class TestHappyPath:
         assert any(word in content_lower for word in ["nota", "questão", "questao", "feedback", "pontos"])
 
     @pytest.mark.asyncio
-    async def test_pipeline_turma_dois_alunos(self, test_scenario, selected_provider):
+    async def test_pipeline_todos_os_alunos_dois_alunos(self, test_scenario, selected_provider):
         """
         Pipeline para turma com 2 alunos.
 
