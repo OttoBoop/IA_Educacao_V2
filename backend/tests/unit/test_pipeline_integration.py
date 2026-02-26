@@ -105,6 +105,42 @@ class TestPipelineRegistrationWiring:
             "Completion is detected via polling /api/task-progress — not awaited in the call."
         )
 
+    def test_executar_pipeline_completo_does_not_reference_deprecated_task_panel(self, active_html):
+        """executarPipelineCompleto must NOT reference getElementById('task-panel').
+
+        Regression guard for the MC-1 null reference crash:
+        - #task-panel is inside an HTML comment (deprecated since F6-T1)
+        - getElementById('task-panel') returns null at runtime
+        - Calling .classList.add('show') on null crashes the function BEFORE the API call
+        - Result: pipeline never triggers, addBackendTask never runs, TAREFAS stays empty
+
+        Fix: open the sidebar with toggleMobileSidebar() instead.
+        """
+        func_body = _get_function_body(
+            active_html, "async function executarPipelineCompleto"
+        )
+        assert "getElementById('task-panel')" not in func_body, (
+            "executarPipelineCompleto must NOT call getElementById('task-panel'). "
+            "#task-panel is deprecated and commented out — this causes a null reference crash "
+            "that silently kills the function before the API call. "
+            "Use toggleMobileSidebar() to open the sidebar instead."
+        )
+
+    def test_executar_pipeline_completo_opens_sidebar_with_toggle(self, active_html):
+        """executarPipelineCompleto must call toggleMobileSidebar() to open the task sidebar.
+
+        On mobile: toggleMobileSidebar() adds .mobile-open to the sidebar, making it visible.
+        On desktop: sidebar is always visible, the guard prevents a double-toggle.
+        This replaces the broken getElementById('task-panel').classList.add('show') pattern.
+        """
+        func_body = _get_function_body(
+            active_html, "async function executarPipelineCompleto"
+        )
+        assert "toggleMobileSidebar" in func_body, (
+            "executarPipelineCompleto must call toggleMobileSidebar() to open the TAREFAS sidebar. "
+            "This is the correct replacement for the deprecated task-panel FAB approach."
+        )
+
     def test_backend_response_provides_task_id(self, active_html):
         """executarPipelineCompleto must extract task_id from the backend API response.
 

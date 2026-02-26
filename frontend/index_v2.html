@@ -8200,8 +8200,10 @@
             const taskType = modo === 'turma' ? 'pipeline-todos-os-alunos' : 'pipeline';
             const alunoIdForTask = modo === 'aluno' ? document.getElementById('input-pipeline-aluno').value : null;
 
-            // Abrir painel de tarefas
-            document.getElementById('task-panel').classList.add('show');
+            // Abrir sidebar de tarefas (mobile: abre sidebar; desktop: já visível)
+            if (!document.querySelector('.sidebar')?.classList.contains('mobile-open')) {
+                toggleMobileSidebar();
+            }
 
             try {
                 let result;
@@ -8321,8 +8323,10 @@
             const etapaLabel = window._etapasData?.find(e => e.id === etapa)?.nome || etapa;
             showToast(`🔄 Executando "${etapaLabel}"...`, 'info');
 
-            // Abrir painel de tarefas
-            document.getElementById('task-panel').classList.add('show');
+            // Abrir sidebar de tarefas (mobile: abre sidebar; desktop: já visível)
+            if (!document.querySelector('.sidebar')?.classList.contains('mobile-open')) {
+                toggleMobileSidebar();
+            }
 
             try {
                 const payload = {
