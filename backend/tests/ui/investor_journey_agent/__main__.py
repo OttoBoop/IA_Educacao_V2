@@ -269,6 +269,8 @@ async def main():
             goal=args.goal,
             max_steps=args.max_steps,
             website_context=website_context,
+            start_url=args.start_url,
+            setup=args.setup,
         )
 
         # Generate report
