@@ -108,6 +108,43 @@ class TestMultiPersonaExecution:
         assert "student" in content
         assert "confused_teacher" in content
 
+    def test_command_lists_tester_persona(self):
+        """F1-T1: journey.md must include 'tester' in its persona list."""
+        content = JOURNEY_CMD.read_text(encoding="utf-8").lower()
+        assert "tester" in content, (
+            "journey.md does not list the 'tester' persona. "
+            "Add it to Step 2.1 persona list and Available Personas table."
+        )
+
+
+# ============================================================
+# F1-T1: Tester Persona Visibility
+# ============================================================
+
+
+class TestTesterPersonaVisibility:
+    """F1-T1: Tester persona must be visible in journey.md with correct attributes."""
+
+    def test_tester_persona_patience_9(self):
+        """Tester entry in journey.md should show patience 9/10."""
+        content = JOURNEY_CMD.read_text(encoding="utf-8")
+        assert "tester" in content.lower(), "journey.md must include tester persona"
+        assert "9/10" in content, (
+            "journey.md tester entry should show patience 9/10. "
+            "No other persona has patience 9/10 — this uniquely identifies the tester."
+        )
+
+    def test_tester_persona_tech_10(self):
+        """Tester entry in journey.md should show tech savviness 10/10."""
+        content = JOURNEY_CMD.read_text(encoding="utf-8")
+        assert "tester" in content.lower(), "journey.md must include tester persona"
+        # power_user also has 10/10 so we check for the tester section specifically
+        lines = content.lower().split("\n")
+        tester_lines = [l for l in lines if "tester" in l]
+        assert any("10/10" in l for l in tester_lines), (
+            "The tester line in journey.md should show 10/10 tech savviness"
+        )
+
 
 # ============================================================
 # F1-T3: Post-Run Analysis
