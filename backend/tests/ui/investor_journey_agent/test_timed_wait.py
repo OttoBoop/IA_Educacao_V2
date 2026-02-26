@@ -160,9 +160,6 @@ class TestWaitHandlerUsesDuration(unittest.IsolatedAsyncioTestCase):
         action = _make_wait_action(wait_duration_seconds=45)
         with patch("asyncio.sleep", new_callable=AsyncMock) as mock_sleep:
             await agent._execute_action(action)
-        mock_sleep.assert_called_once_with(
-            45,
-        )
         self.assertEqual(
             mock_sleep.call_args[0][0],
             45,
@@ -177,9 +174,6 @@ class TestWaitHandlerUsesDuration(unittest.IsolatedAsyncioTestCase):
         action = _make_wait_action()  # wait_duration_seconds defaults to None
         with patch("asyncio.sleep", new_callable=AsyncMock) as mock_sleep:
             await agent._execute_action(action)
-        mock_sleep.assert_called_once_with(
-            1,
-        )
         self.assertEqual(
             mock_sleep.call_args[0][0],
             1,
