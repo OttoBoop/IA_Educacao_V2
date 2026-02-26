@@ -20,7 +20,7 @@ import json
 from prompts import PromptManager, PromptTemplate, EtapaProcessamento, prompt_manager
 from storage import storage
 from models import TipoDocumento, Documento
-from routes_tasks import register_pipeline_task
+from routes_tasks import register_pipeline_task, complete_pipeline_task
 
 # Importar novo sistema de chat/models
 try:
@@ -1094,4 +1094,156 @@ async def redirect_legacy_pipeline_todos_os_alunos():
         url="/api/executar/pipeline-todos-os-alunos",
         status_code=301,
     )
+
+
+# ============================================================
+# RELATÓRIO DE DESEMPENHO — aggregate synthesis endpoints
+# ============================================================
+
+@router.post("/api/executar/pipeline-desempenho-tarefa", tags=["Execução"])
+async def executar_pipeline_desempenho_tarefa(
+    background_tasks: BackgroundTasks,
+    atividade_id: str = Form(...),
+    provider_id: Optional[str] = Form(None),
+):
+    """
+    Gera relatório de desempenho agregado para uma atividade.
+
+    Busca todos os RELATORIO_NARRATIVO dos alunos e sintetiza um relatório
+    coletivo questão-a-questão com exemplos concretos de alunos.
+    Requer pelo menos 2 alunos com narrativas completas.
+    """
+    atividade = storage.get_atividade(atividade_id)
+    if not atividade:
+        raise HTTPException(404, "Atividade não encontrada")
+
+    task_id = register_pipeline_task(
+        task_type="pipeline_desempenho_tarefa",
+        atividade_id=atividade_id,
+        aluno_ids=[],
+    )
+
+    background_tasks.add_task(
+        _executar_desempenho_tarefa_background,
+        task_id=task_id,
+        atividade_id=atividade_id,
+        provider_id=provider_id,
+    )
+
+    return {"task_id": task_id, "status": "started"}
+
+
+async def _executar_desempenho_tarefa_background(
+    task_id: str,
+    atividade_id: str,
+    provider_id: Optional[str],
+):
+    from executor import executor
+    try:
+        await executor.gerar_relatorio_desempenho_tarefa(
+            atividade_id=atividade_id,
+            provider_id=provider_id,
+        )
+        complete_pipeline_task(task_id, "completed")
+    except Exception:
+        complete_pipeline_task(task_id, "failed")
+
+
+@router.post("/api/executar/pipeline-desempenho-turma", tags=["Execução"])
+async def executar_pipeline_desempenho_turma(
+    background_tasks: BackgroundTasks,
+    turma_id: str = Form(...),
+    provider_id: Optional[str] = Form(None),
+):
+    """
+    Gera relatório de desempenho holístico para uma turma.
+
+    Busca relatórios narrativos de todos os alunos ao longo de todas as
+    atividades e sintetiza progressão, problemas persistentes, perfil
+    coletivo e evolução individual.
+    Requer pelo menos 2 alunos na turma.
+    """
+    turma = storage.get_turma(turma_id)
+    if not turma:
+        raise HTTPException(404, "Turma não encontrada")
+
+    task_id = register_pipeline_task(
+        task_type="pipeline_desempenho_turma",
+        atividade_id=turma_id,
+        aluno_ids=[],
+    )
+
+    background_tasks.add_task(
+        _executar_desempenho_turma_background,
+        task_id=task_id,
+        turma_id=turma_id,
+        provider_id=provider_id,
+    )
+
+    return {"task_id": task_id, "status": "started"}
+
+
+async def _executar_desempenho_turma_background(
+    task_id: str,
+    turma_id: str,
+    provider_id: Optional[str],
+):
+    from executor import executor
+    try:
+        await executor.gerar_relatorio_desempenho_turma(
+            turma_id=turma_id,
+            provider_id=provider_id,
+        )
+        complete_pipeline_task(task_id, "completed")
+    except Exception:
+        complete_pipeline_task(task_id, "failed")
+
+
+@router.post("/api/executar/pipeline-desempenho-materia", tags=["Execução"])
+async def executar_pipeline_desempenho_materia(
+    background_tasks: BackgroundTasks,
+    materia_id: str = Form(...),
+    provider_id: Optional[str] = Form(None),
+):
+    """
+    Gera relatório de desempenho cross-turma para uma matéria.
+
+    Compara o desempenho de todas as turmas da matéria, identificando
+    padrões cross-turma e efetividade curricular.
+    Requer pelo menos 2 turmas com resultados.
+    """
+    materia = storage.get_materia(materia_id)
+    if not materia:
+        raise HTTPException(404, "Matéria não encontrada")
+
+    task_id = register_pipeline_task(
+        task_type="pipeline_desempenho_materia",
+        atividade_id=materia_id,
+        aluno_ids=[],
+    )
+
+    background_tasks.add_task(
+        _executar_desempenho_materia_background,
+        task_id=task_id,
+        materia_id=materia_id,
+        provider_id=provider_id,
+    )
+
+    return {"task_id": task_id, "status": "started"}
+
+
+async def _executar_desempenho_materia_background(
+    task_id: str,
+    materia_id: str,
+    provider_id: Optional[str],
+):
+    from executor import executor
+    try:
+        await executor.gerar_relatorio_desempenho_materia(
+            materia_id=materia_id,
+            provider_id=provider_id,
+        )
+        complete_pipeline_task(task_id, "completed")
+    except Exception:
+        complete_pipeline_task(task_id, "failed")
 

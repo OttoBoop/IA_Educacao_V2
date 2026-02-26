@@ -1887,10 +1887,90 @@ Crie UM documento separado para cada aluno, nomeando como "relatorio_[nome_aluno
                     f"relatório de desempenho da tarefa. Encontrados: {len(narrativos)}."
                 ),
             }
-        # Full synthesis implemented in B3
-        raise NotImplementedError(
-            "gerar_relatorio_desempenho_tarefa: síntese LLM será implementada em B3."
+
+        # Read narrative file contents
+        conteudos = []
+        excluidos = []
+        for doc in narrativos:
+            try:
+                with open(doc.caminho_arquivo, 'r', encoding='utf-8') as f:
+                    conteudos.append({
+                        "aluno_id": doc.aluno_id,
+                        "conteudo": f.read(),
+                    })
+            except Exception:
+                excluidos.append(doc.aluno_id)
+
+        if len(conteudos) < 2:
+            return {
+                "sucesso": False,
+                "erro": (
+                    f"Apenas {len(conteudos)} narrativa(s) legível(is) de {len(narrativos)} "
+                    f"encontrada(s). São necessárias pelo menos 2."
+                ),
+            }
+
+        # Fetch context
+        atividade = self.storage.get_atividade(atividade_id)
+        turma = self.storage.get_turma(atividade.turma_id) if atividade else None
+        materia = self.storage.get_materia(turma.materia_id) if turma else None
+
+        # Get prompt
+        prompt = self.prompt_manager.get_prompt_padrao(
+            EtapaProcessamento.RELATORIO_DESEMPENHO_TAREFA,
+            materia.id if materia else None,
         )
+        if not prompt:
+            return {"sucesso": False, "erro": "Prompt RELATORIO_DESEMPENHO_TAREFA não encontrado"}
+
+        # Build variables
+        relatorios_texto = "\n\n---\n\n".join([
+            f"### Aluno: {c['aluno_id']}\n\n{c['conteudo']}" for c in conteudos
+        ])
+        variaveis = {
+            "relatorios_narrativos": relatorios_texto,
+            "atividade": atividade.nome if atividade else atividade_id,
+            "materia": materia.nome if materia else "N/A",
+            "total_alunos": str(len(narrativos)),
+            "alunos_incluidos": str(len(conteudos)),
+            "alunos_excluidos": str(len(excluidos)),
+        }
+
+        # Render prompt
+        prompt_renderizado = prompt.render(**variaveis)
+        prompt_sistema = prompt.render_sistema(**variaveis) or None
+
+        # Call LLM
+        resultado = await self.executar_com_tools(
+            mensagem=prompt_renderizado,
+            atividade_id=atividade_id,
+            provider_id=provider_id,
+            system_prompt=prompt_sistema,
+            tools_to_use=[],
+        )
+
+        # Save result
+        if resultado.sucesso:
+            await self._salvar_resultado(
+                etapa=EtapaProcessamento.RELATORIO_DESEMPENHO_TAREFA,
+                atividade_id=atividade_id,
+                aluno_id=None,
+                resposta_raw=resultado.resposta_raw,
+                resposta_parsed=None,
+                provider=resultado.provider,
+                modelo=resultado.modelo,
+                prompt_id=prompt.id,
+                tokens=resultado.tokens_entrada + (resultado.tokens_saida or 0),
+                tempo_ms=resultado.tempo_ms,
+            )
+
+        return {
+            "sucesso": resultado.sucesso,
+            "etapa": "relatorio_desempenho_tarefa",
+            "alunos_incluidos": len(conteudos),
+            "alunos_excluidos": len(excluidos),
+            "erro": resultado.erro if not resultado.sucesso else None,
+        }
 
     async def gerar_relatorio_desempenho_turma(
         self,
@@ -1912,10 +1992,101 @@ Crie UM documento separado para cada aluno, nomeando como "relatorio_[nome_aluno
                     f"relatório de desempenho da turma. Encontrados: {len(alunos)}."
                 ),
             }
-        # Full synthesis implemented in C3
-        raise NotImplementedError(
-            "gerar_relatorio_desempenho_turma: síntese LLM será implementada em C3."
+
+        # Fetch context
+        turma = self.storage.get_turma(turma_id)
+        materia = self.storage.get_materia(turma.materia_id) if turma else None
+
+        # Fetch atividades for this turma
+        atividades = self.storage.listar_atividades(turma_id)
+
+        # Gather narratives across all atividades for each student
+        conteudos = []
+        atividades_cobertas = set()
+        for atividade in atividades:
+            docs = self.storage.listar_documentos(
+                atividade.id, tipo=TipoDocumento.RELATORIO_NARRATIVO,
+            )
+            for doc in docs:
+                try:
+                    with open(doc.caminho_arquivo, 'r', encoding='utf-8') as f:
+                        conteudos.append({
+                            "aluno_id": doc.aluno_id,
+                            "atividade": atividade.nome,
+                            "conteudo": f.read(),
+                        })
+                        atividades_cobertas.add(atividade.nome)
+                except Exception:
+                    pass
+
+        if len(conteudos) < 2:
+            return {
+                "sucesso": False,
+                "erro": (
+                    f"Apenas {len(conteudos)} narrativa(s) encontrada(s) para a turma. "
+                    f"São necessárias pelo menos 2."
+                ),
+            }
+
+        # Get prompt
+        prompt = self.prompt_manager.get_prompt_padrao(
+            EtapaProcessamento.RELATORIO_DESEMPENHO_TURMA,
+            materia.id if materia else None,
         )
+        if not prompt:
+            return {"sucesso": False, "erro": "Prompt RELATORIO_DESEMPENHO_TURMA não encontrado"}
+
+        # Build variables
+        relatorios_texto = "\n\n---\n\n".join([
+            f"### Aluno: {c['aluno_id']} | Atividade: {c['atividade']}\n\n{c['conteudo']}"
+            for c in conteudos
+        ])
+        variaveis = {
+            "relatorios_narrativos": relatorios_texto,
+            "turma": turma.nome if turma else turma_id,
+            "materia": materia.nome if materia else "N/A",
+            "total_alunos": str(len(alunos)),
+            "atividades_cobertas": ", ".join(sorted(atividades_cobertas)) or "Nenhuma",
+        }
+
+        # Render prompt
+        prompt_renderizado = prompt.render(**variaveis)
+        prompt_sistema = prompt.render_sistema(**variaveis) or None
+
+        # Call LLM — use first atividade_id as reference (aggregate report)
+        atividade_ref = atividades[0].id if atividades else turma_id
+        resultado = await self.executar_com_tools(
+            mensagem=prompt_renderizado,
+            atividade_id=atividade_ref,
+            turma_id=turma_id,
+            provider_id=provider_id,
+            system_prompt=prompt_sistema,
+            tools_to_use=[],
+        )
+
+        # Save result
+        if resultado.sucesso:
+            await self._salvar_resultado(
+                etapa=EtapaProcessamento.RELATORIO_DESEMPENHO_TURMA,
+                atividade_id=atividade_ref,
+                aluno_id=None,
+                resposta_raw=resultado.resposta_raw,
+                resposta_parsed=None,
+                provider=resultado.provider,
+                modelo=resultado.modelo,
+                prompt_id=prompt.id,
+                tokens=resultado.tokens_entrada + (resultado.tokens_saida or 0),
+                tempo_ms=resultado.tempo_ms,
+            )
+
+        return {
+            "sucesso": resultado.sucesso,
+            "etapa": "relatorio_desempenho_turma",
+            "total_alunos": len(alunos),
+            "narrativas_encontradas": len(conteudos),
+            "atividades_cobertas": len(atividades_cobertas),
+            "erro": resultado.erro if not resultado.sucesso else None,
+        }
 
     async def gerar_relatorio_desempenho_materia(
         self,
@@ -1937,10 +2108,99 @@ Crie UM documento separado para cada aluno, nomeando como "relatorio_[nome_aluno
                     f"relatório de desempenho da matéria. Encontradas: {len(turmas)}."
                 ),
             }
-        # Full synthesis implemented in D3
-        raise NotImplementedError(
-            "gerar_relatorio_desempenho_materia: síntese LLM será implementada em D3."
+
+        # Fetch context
+        materia = self.storage.get_materia(materia_id)
+
+        # Gather narratives across all turmas
+        conteudos = []
+        atividade_ref = None
+        for turma in turmas:
+            alunos = self.storage.listar_alunos(turma.id)
+            atividades = self.storage.listar_atividades(turma.id)
+            for atividade in atividades:
+                if atividade_ref is None:
+                    atividade_ref = atividade.id
+                docs = self.storage.listar_documentos(
+                    atividade.id, tipo=TipoDocumento.RELATORIO_NARRATIVO,
+                )
+                for doc in docs:
+                    try:
+                        with open(doc.caminho_arquivo, 'r', encoding='utf-8') as f:
+                            conteudos.append({
+                                "turma": turma.nome,
+                                "aluno_id": doc.aluno_id,
+                                "atividade": atividade.nome,
+                                "conteudo": f.read(),
+                            })
+                    except Exception:
+                        pass
+
+        if len(conteudos) < 2:
+            return {
+                "sucesso": False,
+                "erro": (
+                    f"Apenas {len(conteudos)} narrativa(s) encontrada(s) para a matéria. "
+                    f"São necessárias pelo menos 2."
+                ),
+            }
+
+        # Get prompt
+        prompt = self.prompt_manager.get_prompt_padrao(
+            EtapaProcessamento.RELATORIO_DESEMPENHO_MATERIA,
+            materia.id if materia else None,
         )
+        if not prompt:
+            return {"sucesso": False, "erro": "Prompt RELATORIO_DESEMPENHO_MATERIA não encontrado"}
+
+        # Build variables
+        relatorios_texto = "\n\n---\n\n".join([
+            f"### Turma: {c['turma']} | Aluno: {c['aluno_id']} | Atividade: {c['atividade']}\n\n{c['conteudo']}"
+            for c in conteudos
+        ])
+        turma_nomes = sorted(set(c["turma"] for c in conteudos))
+        variaveis = {
+            "relatorios_narrativos": relatorios_texto,
+            "materia": materia.nome if materia else materia_id,
+            "turmas": ", ".join(turma_nomes),
+            "total_turmas": str(len(turmas)),
+        }
+
+        # Render prompt
+        prompt_renderizado = prompt.render(**variaveis)
+        prompt_sistema = prompt.render_sistema(**variaveis) or None
+
+        # Call LLM
+        resultado = await self.executar_com_tools(
+            mensagem=prompt_renderizado,
+            atividade_id=atividade_ref or materia_id,
+            provider_id=provider_id,
+            system_prompt=prompt_sistema,
+            tools_to_use=[],
+        )
+
+        # Save result
+        if resultado.sucesso:
+            await self._salvar_resultado(
+                etapa=EtapaProcessamento.RELATORIO_DESEMPENHO_MATERIA,
+                atividade_id=atividade_ref or materia_id,
+                aluno_id=None,
+                resposta_raw=resultado.resposta_raw,
+                resposta_parsed=None,
+                provider=resultado.provider,
+                modelo=resultado.modelo,
+                prompt_id=prompt.id,
+                tokens=resultado.tokens_entrada + (resultado.tokens_saida or 0),
+                tempo_ms=resultado.tempo_ms,
+            )
+
+        return {
+            "sucesso": resultado.sucesso,
+            "etapa": "relatorio_desempenho_materia",
+            "total_turmas": len(turmas),
+            "narrativas_encontradas": len(conteudos),
+            "erro": resultado.erro if not resultado.sucesso else None,
+        }
 
     # ============================================================
     # PIPELINE COMPLETO (mantido do original)
