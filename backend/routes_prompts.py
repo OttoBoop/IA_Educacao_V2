@@ -771,6 +771,7 @@ async def executar_pipeline_completo(
     # Run pipeline execution in the background — endpoint returns task_id immediately.
     background_tasks.add_task(
         executor.executar_pipeline_completo,
+        task_id=task_id,
         atividade_id=atividade_id,
         aluno_id=aluno_id,
         model_id=model_id,
@@ -950,6 +951,7 @@ async def executar_lote(
 
 
 async def _executar_pipeline_turma_background(
+    task_id: str,
     alunos_para_processar: list,
     atividade_id: str,
     model_id,
@@ -966,6 +968,7 @@ async def _executar_pipeline_turma_background(
     for aluno in alunos_para_processar:
         try:
             await executor.executar_pipeline_completo(
+                task_id=task_id,
                 atividade_id=atividade_id,
                 aluno_id=aluno.id,
                 model_id=model_id,
@@ -1060,6 +1063,7 @@ async def executar_pipeline_turma(
     # Run the student loop in the background — endpoint returns task_id immediately.
     background_tasks.add_task(
         _executar_pipeline_turma_background,
+        task_id=task_id,
         alunos_para_processar=alunos_para_processar,
         atividade_id=atividade_id,
         model_id=model_id,

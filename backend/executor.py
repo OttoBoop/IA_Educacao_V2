@@ -1872,7 +1872,8 @@ Crie UM documento separado para cada aluno, nomeando como "relatorio_[nome_aluno
         prompts_map: Optional[Dict[str, str]] = None,
         usar_multimodal: bool = True,
         selected_steps: Optional[List[str]] = None,
-        force_rerun: bool = False
+        force_rerun: bool = False,
+        task_id: Optional[str] = None
     ) -> Dict[str, ResultadoExecucao]:
         """
         Executa o pipeline completo para um aluno.
@@ -1883,8 +1884,10 @@ Crie UM documento separado para cada aluno, nomeando como "relatorio_[nome_aluno
             force_rerun: Se True, re-executa mesmo que já existam resultados.
             prompt_id: ID do prompt padrão para todas as etapas.
             prompts_map: Dict com prompt_id por etapa (ex: {"extrair_questoes": "abc123"})
+            task_id: Optional task registry ID for progress tracking.
         """
         import logging
+        from routes_tasks import update_stage_progress, complete_pipeline_task, task_registry
         logger = logging.getLogger("pipeline")
 
         resultados = {}
@@ -2011,12 +2014,21 @@ Crie UM documento separado para cada aluno, nomeando como "relatorio_[nome_aluno
         should_run, reason = _should_run("extrair_questoes", TipoDocumento.EXTRACAO_QUESTOES, docs)
         logger.info(f"[1/6] extrair_questoes: run={should_run}, reason={reason}")
         if should_run:
+            if task_id and task_registry.get(task_id, {}).get("cancel_requested"):
+                complete_pipeline_task(task_id, "cancelled")
+                return resultados
+            if task_id:
+                update_stage_progress(task_id, aluno_id, "extrair_questoes", "running")
             resultado = await _executar_com_retry(EtapaProcessamento.EXTRAIR_QUESTOES)
+            if task_id:
+                update_stage_progress(task_id, aluno_id, "extrair_questoes", "completed" if resultado.sucesso else "failed")
             resultados["extrair_questoes"] = resultado
             logger.info(f"  -> sucesso={resultado.sucesso}, tentativas={resultado.tentativas}, erro={resultado.erro[:100] if resultado.erro else 'N/A'}")
             if not resultado.sucesso:
                 logger.error(f"  -> FALHA DEFINITIVA: {resultado.erro} (código: {resultado.erro_codigo})")
                 _marcar_erro_pipeline(resultado)
+                if task_id:
+                    complete_pipeline_task(task_id, "failed")
                 return resultados
         else:
             etapas_puladas["extrair_questoes"] = reason
@@ -2025,12 +2037,21 @@ Crie UM documento separado para cada aluno, nomeando como "relatorio_[nome_aluno
         should_run, reason = _should_run("extrair_gabarito", TipoDocumento.EXTRACAO_GABARITO, docs)
         logger.info(f"[2/6] extrair_gabarito: run={should_run}, reason={reason}")
         if should_run:
+            if task_id and task_registry.get(task_id, {}).get("cancel_requested"):
+                complete_pipeline_task(task_id, "cancelled")
+                return resultados
+            if task_id:
+                update_stage_progress(task_id, aluno_id, "extrair_gabarito", "running")
             resultado = await _executar_com_retry(EtapaProcessamento.EXTRAIR_GABARITO)
+            if task_id:
+                update_stage_progress(task_id, aluno_id, "extrair_gabarito", "completed" if resultado.sucesso else "failed")
             resultados["extrair_gabarito"] = resultado
             logger.info(f"  -> sucesso={resultado.sucesso}, tentativas={resultado.tentativas}")
             if not resultado.sucesso:
                 logger.error(f"  -> FALHA DEFINITIVA: {resultado.erro} (código: {resultado.erro_codigo})")
                 _marcar_erro_pipeline(resultado)
+                if task_id:
+                    complete_pipeline_task(task_id, "failed")
                 return resultados
         else:
             etapas_puladas["extrair_gabarito"] = reason
@@ -2039,12 +2060,21 @@ Crie UM documento separado para cada aluno, nomeando como "relatorio_[nome_aluno
         should_run, reason = _should_run("extrair_respostas", TipoDocumento.EXTRACAO_RESPOSTAS, docs_aluno)
         logger.info(f"[3/6] extrair_respostas: run={should_run}, reason={reason}")
         if should_run:
+            if task_id and task_registry.get(task_id, {}).get("cancel_requested"):
+                complete_pipeline_task(task_id, "cancelled")
+                return resultados
+            if task_id:
+                update_stage_progress(task_id, aluno_id, "extrair_respostas", "running")
             resultado = await _executar_com_retry(EtapaProcessamento.EXTRAIR_RESPOSTAS, aluno_id)
+            if task_id:
+                update_stage_progress(task_id, aluno_id, "extrair_respostas", "completed" if resultado.sucesso else "failed")
             resultados["extrair_respostas"] = resultado
             logger.info(f"  -> sucesso={resultado.sucesso}, tentativas={resultado.tentativas}")
             if not resultado.sucesso:
                 logger.error(f"  -> FALHA DEFINITIVA: {resultado.erro} (código: {resultado.erro_codigo})")
                 _marcar_erro_pipeline(resultado)
+                if task_id:
+                    complete_pipeline_task(task_id, "failed")
                 return resultados
         else:
             etapas_puladas["extrair_respostas"] = reason
@@ -2053,12 +2083,21 @@ Crie UM documento separado para cada aluno, nomeando como "relatorio_[nome_aluno
         should_run, reason = _should_run("corrigir", TipoDocumento.CORRECAO, docs_aluno)
         logger.info(f"[4/6] corrigir: run={should_run}, reason={reason}")
         if should_run:
+            if task_id and task_registry.get(task_id, {}).get("cancel_requested"):
+                complete_pipeline_task(task_id, "cancelled")
+                return resultados
+            if task_id:
+                update_stage_progress(task_id, aluno_id, "corrigir", "running")
             resultado = await _executar_com_retry(EtapaProcessamento.CORRIGIR, aluno_id)
+            if task_id:
+                update_stage_progress(task_id, aluno_id, "corrigir", "completed" if resultado.sucesso else "failed")
             resultados["corrigir"] = resultado
             logger.info(f"  -> sucesso={resultado.sucesso}, tentativas={resultado.tentativas}")
             if not resultado.sucesso:
                 logger.error(f"  -> FALHA DEFINITIVA: {resultado.erro} (código: {resultado.erro_codigo})")
                 _marcar_erro_pipeline(resultado)
+                if task_id:
+                    complete_pipeline_task(task_id, "failed")
                 return resultados
         else:
             etapas_puladas["corrigir"] = reason
@@ -2067,12 +2106,21 @@ Crie UM documento separado para cada aluno, nomeando como "relatorio_[nome_aluno
         should_run, reason = _should_run("analisar_habilidades", TipoDocumento.ANALISE_HABILIDADES, docs_aluno)
         logger.info(f"[5/6] analisar_habilidades: run={should_run}, reason={reason}")
         if should_run:
+            if task_id and task_registry.get(task_id, {}).get("cancel_requested"):
+                complete_pipeline_task(task_id, "cancelled")
+                return resultados
+            if task_id:
+                update_stage_progress(task_id, aluno_id, "analisar_habilidades", "running")
             resultado = await _executar_com_retry(EtapaProcessamento.ANALISAR_HABILIDADES, aluno_id)
+            if task_id:
+                update_stage_progress(task_id, aluno_id, "analisar_habilidades", "completed" if resultado.sucesso else "failed")
             resultados["analisar_habilidades"] = resultado
             logger.info(f"  -> sucesso={resultado.sucesso}, tentativas={resultado.tentativas}")
             if not resultado.sucesso:
                 logger.error(f"  -> FALHA DEFINITIVA: {resultado.erro} (código: {resultado.erro_codigo})")
                 _marcar_erro_pipeline(resultado)
+                if task_id:
+                    complete_pipeline_task(task_id, "failed")
                 return resultados
         else:
             etapas_puladas["analisar_habilidades"] = reason
@@ -2081,12 +2129,21 @@ Crie UM documento separado para cada aluno, nomeando como "relatorio_[nome_aluno
         should_run, reason = _should_run("gerar_relatorio", TipoDocumento.RELATORIO_FINAL, docs_aluno)
         logger.info(f"[6/6] gerar_relatorio: run={should_run}, reason={reason}")
         if should_run:
+            if task_id and task_registry.get(task_id, {}).get("cancel_requested"):
+                complete_pipeline_task(task_id, "cancelled")
+                return resultados
+            if task_id:
+                update_stage_progress(task_id, aluno_id, "gerar_relatorio", "running")
             resultado = await _executar_com_retry(EtapaProcessamento.GERAR_RELATORIO, aluno_id)
+            if task_id:
+                update_stage_progress(task_id, aluno_id, "gerar_relatorio", "completed" if resultado.sucesso else "failed")
             resultados["gerar_relatorio"] = resultado
             logger.info(f"  -> sucesso={resultado.sucesso}, tentativas={resultado.tentativas}")
             if not resultado.sucesso:
                 logger.error(f"  -> FALHA DEFINITIVA: {resultado.erro} (código: {resultado.erro_codigo})")
                 _marcar_erro_pipeline(resultado)
+                if task_id:
+                    complete_pipeline_task(task_id, "failed")
                 return resultados
         else:
             etapas_puladas["gerar_relatorio"] = reason
@@ -2106,6 +2163,9 @@ Crie UM documento separado para cada aluno, nomeando como "relatorio_[nome_aluno
                 erro=f"Nenhuma etapa executada. Motivos: {etapas_puladas}",
                 documento_id=None
             )
+
+        if task_id:
+            complete_pipeline_task(task_id, "completed")
 
         return resultados
 
