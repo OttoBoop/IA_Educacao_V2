@@ -4677,6 +4677,45 @@
             }
         };
 
+        // ============================================================
+        // POLLING: Real-time task progress updates (F5-T1)
+        // ============================================================
+        const _pollIntervals = {};
+        const _pollFailures = {};
+
+        function startPolling(taskId) {
+            if (_pollIntervals[taskId]) return; // Already polling this task
+            _pollFailures[taskId] = 0;
+            pollTaskProgress(taskId); // Poll immediately
+            _pollIntervals[taskId] = setInterval(() => pollTaskProgress(taskId), 3000);
+        }
+
+        async function pollTaskProgress(taskId) {
+            try {
+                const response = await fetch(`/api/task-progress/${taskId}`);
+                if (!response.ok) throw new Error(`HTTP ${response.status}`);
+                const data = await response.json();
+                _pollFailures[taskId] = 0;
+                if (taskQueue.pipelineTasks[taskId]) {
+                    delete taskQueue.pipelineTasks[taskId].sem_conexao;
+                }
+                taskQueue.updateFromBackend(taskId, data);
+                // Stop polling on terminal status
+                if (data.status === 'completed' || data.status === 'failed' || data.status === 'cancelled') {
+                    clearInterval(_pollIntervals[taskId]);
+                    delete _pollIntervals[taskId];
+                    delete _pollFailures[taskId];
+                }
+            } catch (err) {
+                _pollFailures[taskId] = (_pollFailures[taskId] || 0) + 1;
+                console.warn(`[Poll] Failed for ${taskId} (${_pollFailures[taskId]}/3):`, err.message);
+                if (_pollFailures[taskId] >= 3 && taskQueue.pipelineTasks[taskId]) {
+                    taskQueue.pipelineTasks[taskId].sem_conexao = true;
+                    taskQueue.updateUI();
+                }
+            }
+        }
+
         // DEPRECATED (F6-T1): FAB functions removed — see HTML comment block above FAB HTML
 
         function viewTaskResult(taskId) {
@@ -6050,6 +6089,9 @@
             let html = '';
 
             for (const [taskId, task] of Object.entries(tasks)) {
+                if (task.sem_conexao) {
+                    html += '<div class="tarefas-sem-conexao" style="padding: 8px 12px; color: var(--danger); font-size: 0.8rem; border-bottom: 1px solid var(--border);">&#x26A0; Sem conex\u00E3o — tentando reconectar...</div>';
+                }
                 const alunoCount = Object.keys(task.students || {}).length;
                 for (const [alunoId, aluno] of Object.entries(task.students || {})) {
                     const stages = aluno.stages || {};
