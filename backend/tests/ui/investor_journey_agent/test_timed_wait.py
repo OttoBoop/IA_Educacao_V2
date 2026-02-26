@@ -1,10 +1,11 @@
 """
-Tests for F4-T1/F4-T2/F4-T3: Timed WAIT Action.
+Tests for F4-T1/F4-T2/F4-T3/F4-T4: Timed WAIT Action.
 
 - F4-T1: Action dataclass must have `wait_duration_seconds: Optional[int] = None`
 - F4-T2: _parse_action_response parses wait_duration_seconds from JSON dict
          _build_decision_system_prompt schema includes wait_duration_seconds
 - F4-T3: _execute_action WAIT handler calls asyncio.sleep(wait_duration_seconds or 1)
+- F4-T4: _build_decision_system_prompt explains WHEN to use timed WAIT (e.g. pipeline ops)
 """
 
 import asyncio
@@ -180,6 +181,32 @@ class TestWaitHandlerUsesDuration(unittest.IsolatedAsyncioTestCase):
             "WAIT action with wait_duration_seconds=None must call asyncio.sleep(1), "
             "the default. Change the WAIT handler in _execute_action() to use "
             "`asyncio.sleep(action.wait_duration_seconds or 1)`.",
+        )
+
+
+# ============================================================
+# F4-T4: LLM prompt explains WHEN to use timed WAIT
+# ============================================================
+
+
+class TestDecisionPromptExplainsTimedWait(unittest.TestCase):
+    """F4-T4: _build_decision_system_prompt must explain when to use timed WAIT."""
+
+    def _make_brain(self):
+        """Create LLMBrain bypassing __init__ (no API key needed)."""
+        return LLMBrain.__new__(LLMBrain)
+
+    def test_prompt_instructs_llm_to_use_wait_duration_for_pipeline(self):
+        """Prompt must include a concrete example like 'wait_duration_seconds=45' for pipelines."""
+        brain = self._make_brain()
+        persona = get_persona("investor")
+        prompt = brain._build_decision_system_prompt(persona, "explore the app")
+        self.assertIn(
+            "wait_duration_seconds=45",
+            prompt,
+            "The LLM prompt must explain when to use WAIT with wait_duration_seconds. "
+            "Update the 'wait' action description in _build_decision_system_prompt() to say "
+            "something like 'use wait_duration_seconds=45 for pipeline operations that take time'.",
         )
 
 
