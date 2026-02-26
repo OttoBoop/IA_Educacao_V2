@@ -79,5 +79,22 @@ class TestTesterPersonaPrompt(unittest.TestCase):
         self.assertIn("expert", self.context)
 
 
+class TestTesterPersonaDefaultGoals(unittest.TestCase):
+    """F7-T1: Tester persona must have ≥3 default goals for pipeline verification."""
+
+    def setUp(self):
+        self.persona = get_persona("tester")
+
+    def test_tester_has_at_least_three_default_goals(self):
+        """Tester persona must have at least 3 default goals covering pipeline verification."""
+        self.assertGreaterEqual(
+            len(self.persona.goals),
+            3,
+            f"PERSONAS['tester'].goals must have ≥3 entries for pipeline verification. "
+            f"Currently has {len(self.persona.goals)}: {self.persona.goals}. "
+            "Add default goals to the tester persona in personas.py.",
+        )
+
+
 if __name__ == "__main__":
     unittest.main()
