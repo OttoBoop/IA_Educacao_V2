@@ -115,3 +115,53 @@ class TestPerTaskCancelButton:
             or "function cancelarTarefa" in active_html
             or "function cancelPipelineTask" in active_html
         ), "Individual task cancel function must exist"
+
+
+class TestCancelBackendWiring:
+    """
+    Tests that cancelTask() calls the backend /api/task-cancel/ endpoint.
+
+    F2-T3 from PLAN_Task_Panel_Integration_Fix.md — RED PHASE
+    These tests SHOULD FAIL until F6-T1 is implemented.
+
+    Root cause they guard against:
+      cancelTask() was only setting task.cancel_requested = true locally (frontend only).
+      The backend never received the cancel signal, so pipelines continued running even
+      after the user clicked cancel. The backend cancel flag was never set.
+    """
+
+    def test_cancel_task_calls_backend_api(self, active_html):
+        """cancelTask(backendTaskId) must call POST /api/task-cancel/{task_id}.
+
+        Setting task.cancel_requested = true locally is NOT enough — the backend
+        runs in a separate process with its own task_registry. The cancel signal
+        must be sent via HTTP so the backend sets cancel_requested = True in
+        task_registry and stops the pipeline after the current stage.
+        """
+        func_pos = active_html.find("function cancelTask")
+        assert func_pos > 0, "cancelTask function not found"
+        func_body = active_html[func_pos : func_pos + 1500]
+        assert (
+            "task-cancel" in func_body
+            or "/api/task-cancel" in func_body
+        ), (
+            "cancelTask must call POST /api/task-cancel/{task_id} to signal the backend. "
+            "Currently only sets task.cancel_requested = true locally — backend ignores this. "
+            "Implement: fetch('/api/task-cancel/' + backendTaskId, { method: 'POST' })"
+        )
+
+    def test_cancel_task_uses_fetch(self, active_html):
+        """cancelTask must use fetch() to make the HTTP cancel request to the backend.
+
+        A local flag (task.cancel_requested = true) does NOT reach the backend server.
+        The cancel request must be sent via HTTP using fetch() so the backend's
+        cancel_requested flag is set in task_registry and the pipeline stops.
+        """
+        func_pos = active_html.find("function cancelTask")
+        assert func_pos > 0, "cancelTask function not found"
+        func_body = active_html[func_pos : func_pos + 1500]
+        assert "fetch" in func_body, (
+            "cancelTask must use fetch() to call POST /api/task-cancel/{task_id}. "
+            "The current implementation only mutates frontend state. "
+            "Backend cancellation requires an HTTP call to routes_tasks.py."
+        )
