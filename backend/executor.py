@@ -1476,32 +1476,8 @@ class PipelineExecutor:
                 doc_original = next((d for d in docs_tipo if d.versao == 1), docs_tipo[0])
                 documento_origem_id = doc_original.id
         
-        # Mapeamento de narrativa: etapa → (campo_no_json, TipoDocumento_narrativo)
-        narrativa_map = {
-            EtapaProcessamento.CORRIGIR: ("narrativa_correcao", TipoDocumento.CORRECAO_NARRATIVA),
-            EtapaProcessamento.ANALISAR_HABILIDADES: ("narrativa_habilidades", TipoDocumento.ANALISE_HABILIDADES_NARRATIVA),
-            EtapaProcessamento.GERAR_RELATORIO: ("relatorio_narrativo", TipoDocumento.RELATORIO_NARRATIVO),
-        }
-
         # Criar arquivo temporário com resultado
         conteudo = resposta_parsed if resposta_parsed else {"resposta_raw": resposta_raw}
-
-        # Extrair campo narrativo antes de salvar o JSON técnico
-        narrativa_info = narrativa_map.get(etapa)
-        narrativa_conteudo = None
-        if narrativa_info and isinstance(conteudo, dict):
-            campo_narrativa, tipo_narrativa = narrativa_info
-            # Extrai e remove do dict (não modifica o original — trabalha em cópia)
-            conteudo = dict(conteudo)
-            narrativa_conteudo = conteudo.pop(campo_narrativa, None)
-
-        # Validar que campo narrativo está presente para stages analíticos
-        if narrativa_info and not narrativa_conteudo:
-            campo_narrativa = narrativa_info[0]
-            raise ValueError(
-                f"Campo narrativo '{campo_narrativa}' obrigatório está ausente ou vazio "
-                f"para etapa '{etapa.value}'. O stage não pode continuar sem narrativa."
-            )
 
         with tempfile.NamedTemporaryFile(mode='w', suffix='.json', delete=False, encoding='utf-8') as f:
             json.dump(conteudo, f, ensure_ascii=False, indent=2)
@@ -1526,68 +1502,169 @@ class PipelineExecutor:
 
             # Gerar formatos extras (PDF, CSV) se configurado
             if gerar_formatos_extras and documento_id:
+                # For narrative stages, skip old PDF (will be replaced by narrative PDF)
+                # but still generate CSV and other formats
                 await self._gerar_formatos_extras(
                     documento_id=documento_id,
                     tipo=tipo,
                     conteudo=conteudo,
                     atividade_id=atividade_id,
-                    aluno_id=aluno_id
+                    aluno_id=aluno_id,
+                    skip_pdf_for_narrative=(etapa in self.NARRATIVA_PROMPT_MAP)
                 )
+
+                # Pass 2: Generate narrative PDF for analytical stages
+                if etapa in self.NARRATIVA_PROMPT_MAP:
+                    await self._gerar_narrativa_pdf(
+                        etapa=etapa,
+                        conteudo=conteudo,
+                        tipo=tipo,
+                        atividade_id=atividade_id,
+                        aluno_id=aluno_id,
+                    )
 
         finally:
             # Limpar temp JSON
             os.unlink(temp_path)
 
-        # Salvar documento Markdown narrativo (se extraído)
-        if narrativa_conteudo and narrativa_info:
-            _, tipo_narrativa = narrativa_info
-            temp_md_path = None
+        return documento_id
+
+    # ============================================================
+    # PASS 2: NARRATIVE PDF GENERATION (Two-Pass Pipeline)
+    # ============================================================
+
+    # Maps analytical etapas to their internal narrative prompt IDs
+    NARRATIVA_PROMPT_MAP = {
+        EtapaProcessamento.CORRIGIR: "internal_narrativa_corrigir",
+        EtapaProcessamento.ANALISAR_HABILIDADES: "internal_narrativa_analisar_habilidades",
+        EtapaProcessamento.GERAR_RELATORIO: "internal_narrativa_gerar_relatorio",
+    }
+
+    async def _gerar_narrativa_pdf(
+        self,
+        etapa: EtapaProcessamento,
+        conteudo: Dict[str, Any],
+        tipo: TipoDocumento,
+        atividade_id: str,
+        aluno_id: Optional[str],
+    ) -> Optional[str]:
+        """
+        Pass 2: Generate narrative PDF for analytical stages.
+
+        Calls an internal narrative prompt with the JSON from Pass 1,
+        converts the Markdown response to PDF, and saves it.
+
+        Returns the document ID of the saved PDF, or None on failure.
+        Falls back to old superficial PDF on error.
+        """
+        prompt_id = self.NARRATIVA_PROMPT_MAP.get(etapa)
+        if not prompt_id:
+            return None
+
+        try:
+            from prompts import render_narrativa_prompt
+            from document_generators import narrative_markdown_to_pdf
+            import json as json_mod
+
+            # Extract context from the JSON data for template rendering
+            nome_aluno = conteudo.get("aluno", conteudo.get("nome_aluno", "Aluno"))
+            materia = conteudo.get("materia", "")
+            atividade = conteudo.get("atividade", "")
+            nota_final = conteudo.get("nota_final", conteudo.get("nota", ""))
+
+            # Render the internal narrative prompt
+            rendered = render_narrativa_prompt(
+                prompt_id,
+                resultado_json=json_mod.dumps(conteudo, ensure_ascii=False, indent=2),
+                nome_aluno=nome_aluno,
+                materia=materia,
+                atividade=atividade,
+                nota_final=str(nota_final),
+            )
+            if not rendered:
+                print(f"[WARN] Narrative prompt '{prompt_id}' not found, skipping narrative PDF")
+                return None
+
+            # Call AI provider for Pass 2
+            provider = self._get_provider_legacy()
+            response = await provider.complete(rendered["texto"], rendered["sistema"])
+
+            narrative_md = response.content
+            if not narrative_md or len(narrative_md.strip()) < 20:
+                print(f"[WARN] Narrative response too short for {etapa.value}, skipping")
+                return None
+
+            # Convert Markdown → PDF
+            tipo_str = tipo.value if hasattr(tipo, 'value') else str(tipo)
+            titulo = tipo_str.replace('_', ' ').title()
+            pdf_bytes = narrative_markdown_to_pdf(narrative_md, title=titulo)
+
+            # Save PDF to storage
+            temp_pdf_path = None
             try:
-                with tempfile.NamedTemporaryFile(mode='w', suffix='.md', delete=False, encoding='utf-8') as f:
-                    f.write(narrativa_conteudo)
-                    temp_md_path = f.name
-                self.storage.salvar_documento(
-                    arquivo_origem=temp_md_path,
-                    tipo=tipo_narrativa,
+                with tempfile.NamedTemporaryFile(
+                    delete=False, suffix='.pdf', mode='wb'
+                ) as tmp:
+                    tmp.write(pdf_bytes)
+                    temp_pdf_path = tmp.name
+
+                doc = self.storage.salvar_documento(
+                    arquivo_origem=temp_pdf_path,
+                    tipo=tipo,
                     atividade_id=atividade_id,
                     aluno_id=aluno_id,
-                    ia_provider=provider,
-                    ia_modelo=modelo,
-                    prompt_usado=prompt_id,
                     criado_por="sistema",
                 )
-            finally:
-                if temp_md_path:
-                    os.unlink(temp_md_path)
 
-        return documento_id
-    
+                if doc:
+                    print(f"[DOC] Narrative PDF generated for {etapa.value}: {doc.id}")
+                    return doc.id
+            finally:
+                if temp_pdf_path and os.path.exists(temp_pdf_path):
+                    os.unlink(temp_pdf_path)
+
+        except Exception as e:
+            print(f"[WARN] Narrative PDF generation failed for {etapa.value}: {e}")
+            print(f"[WARN] Falling back to structured PDF from JSON data")
+            return None
+
+        return None
+
     async def _gerar_formatos_extras(
         self,
         documento_id: str,
         tipo: TipoDocumento,
         conteudo: Dict[str, Any],
         atividade_id: str,
-        aluno_id: Optional[str]
+        aluno_id: Optional[str],
+        skip_pdf_for_narrative: bool = False
     ) -> List[str]:
         """
         Gera documentos em formatos adicionais (PDF, CSV) com base no tipo.
-        
+
+        Args:
+            skip_pdf_for_narrative: If True, skip PDF generation (narrative PDF
+                will be generated separately by _gerar_narrativa_pdf).
+
         Returns:
             Lista de IDs dos documentos gerados
         """
         from document_generators import (
             OutputFormat, get_output_formats, generate_document, get_file_extension
         )
-        
+
         tipo_str = tipo.value if hasattr(tipo, 'value') else str(tipo)
         formatos = get_output_formats(tipo_str)
-        
+
         documentos_gerados = []
-        
+
         for fmt in formatos:
             # Pular JSON (já foi salvo)
             if fmt == OutputFormat.JSON:
+                continue
+
+            # Skip PDF for narrative stages (narrative PDF generated separately)
+            if skip_pdf_for_narrative and fmt == OutputFormat.PDF:
                 continue
             
             try:

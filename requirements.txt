@@ -31,3 +31,5 @@ e2b-code-interpreter>=1.0.0
 
 # Document Generation
 reportlab>=4.2.0
+markdown>=3.5
+xhtml2pdf>=0.2.16

@@ -57,10 +57,14 @@ class TipoDocumento(Enum):
     CORRECAO = "correcao"                      # Correção questão por questão
     ANALISE_HABILIDADES = "analise_habilidades"# Análise de competências
     RELATORIO_FINAL = "relatorio_final"        # Relatório para o professor
-    # === DOCUMENTOS NARRATIVOS GERADOS PELA IA (Markdown pedagógico) ===
-    CORRECAO_NARRATIVA = "correcao_narrativa"                          # Análise pedagógica por questão (Markdown)
-    ANALISE_HABILIDADES_NARRATIVA = "analise_habilidades_narrativa"    # Síntese de padrões (Markdown)
-    RELATORIO_NARRATIVO = "relatorio_narrativo"                        # Relatório holístico (Markdown)
+    # === DEPRECATED (Two-Pass Pipeline, 2026-02-27) ===
+    # These narrative .md types are no longer created. Narrative content is now
+    # generated as PDF via Pass 2 internal prompts and saved under the standard
+    # CORRECAO / ANALISE_HABILIDADES / RELATORIO_FINAL types.
+    # Kept in enum for backwards compatibility with existing DB records.
+    CORRECAO_NARRATIVA = "correcao_narrativa"                          # DEPRECATED — use CORRECAO PDF
+    ANALISE_HABILIDADES_NARRATIVA = "analise_habilidades_narrativa"    # DEPRECATED — use ANALISE_HABILIDADES PDF
+    RELATORIO_NARRATIVO = "relatorio_narrativo"                        # DEPRECATED — use RELATORIO_FINAL PDF
     # === RELATÓRIOS DE DESEMPENHO AGREGADOS (nível atividade/turma/matéria) ===
     RELATORIO_DESEMPENHO_TAREFA = "relatorio_desempenho_tarefa"        # Análise agregada de uma atividade
     RELATORIO_DESEMPENHO_TURMA = "relatorio_desempenho_turma"          # Análise holística de uma turma

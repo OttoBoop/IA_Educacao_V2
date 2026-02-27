@@ -339,6 +339,115 @@ def _build_generic_pdf(data: Dict, styles, heading_style, body_style) -> List:
     return story
 
 
+def narrative_markdown_to_pdf(md_text: str, title: str = "Documento") -> bytes:
+    """
+    Convert narrative Markdown to a styled PDF via HTML intermediate.
+
+    Used by the two-pass pipeline: Pass 2 generates rich Markdown narrative,
+    this function converts it to a professional PDF for the professor.
+
+    Args:
+        md_text: Markdown text from the narrative prompt
+        title: Document title (e.g., "Correção Narrativa — Maria Silva")
+
+    Returns:
+        bytes: PDF content
+    """
+    try:
+        import markdown as md_lib
+        from xhtml2pdf import pisa
+
+        html_body = md_lib.markdown(md_text or "", extensions=['extra'])
+        full_html = f"""<!DOCTYPE html>
+<html><head><meta charset="utf-8"/>
+<style>
+  @page {{ size: A4; margin: 2cm; }}
+  body {{ font-family: Helvetica, Arial, sans-serif; line-height: 1.6; color: #333; }}
+  h1 {{ color: #2c3e50; text-align: center; margin-bottom: 1em; font-size: 20pt; }}
+  h2 {{ color: #34495e; border-bottom: 1px solid #ddd; padding-bottom: 4px; margin-top: 1.2em; font-size: 14pt; }}
+  h3 {{ color: #555; margin-top: 1em; font-size: 12pt; }}
+  p {{ margin-bottom: 0.5em; font-size: 11pt; }}
+  ul, ol {{ margin-left: 1.5em; font-size: 11pt; }}
+  li {{ margin-bottom: 0.3em; }}
+  strong {{ color: #2c3e50; }}
+  blockquote {{ border-left: 3px solid #3498db; padding-left: 1em; color: #555; margin: 0.8em 0; }}
+  .footer {{ font-size: 8pt; color: #999; margin-top: 2em; text-align: right; }}
+</style>
+</head><body>
+  <h1>{title}</h1>
+  {html_body}
+  <p class="footer">Gerado em {datetime.now().strftime('%d/%m/%Y %H:%M')}</p>
+</body></html>"""
+
+        buffer = io.BytesIO()
+        pisa_status = pisa.CreatePDF(
+            full_html.encode('utf-8'),
+            dest=buffer,
+            encoding='utf-8'
+        )
+        buffer.seek(0)
+        return buffer.read()
+
+    except ImportError:
+        # Fallback: use reportlab with basic text rendering
+        return _narrative_reportlab_fallback(md_text, title)
+
+
+def _narrative_reportlab_fallback(md_text: str, title: str) -> bytes:
+    """Fallback PDF generation using ReportLab when xhtml2pdf is not available."""
+    try:
+        from reportlab.lib.pagesizes import A4
+        from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer
+        from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+        from reportlab.lib.units import cm
+        from reportlab.lib import colors
+        from reportlab.lib.enums import TA_CENTER
+
+        buffer = io.BytesIO()
+        doc = SimpleDocTemplate(buffer, pagesize=A4,
+                                leftMargin=2*cm, rightMargin=2*cm,
+                                topMargin=2*cm, bottomMargin=2*cm)
+
+        styles = getSampleStyleSheet()
+        title_style = ParagraphStyle('NarrTitle', parent=styles['Heading1'],
+                                      fontSize=18, alignment=TA_CENTER,
+                                      textColor=colors.HexColor('#2c3e50'))
+        heading_style = ParagraphStyle('NarrHeading', parent=styles['Heading2'],
+                                        fontSize=14, textColor=colors.HexColor('#34495e'))
+        body_style = ParagraphStyle('NarrBody', parent=styles['Normal'],
+                                     fontSize=11, leading=14, spaceAfter=6)
+
+        story = [Paragraph(title, title_style), Spacer(1, 12)]
+
+        for line in (md_text or "").split('\n'):
+            stripped = line.strip()
+            if not stripped:
+                story.append(Spacer(1, 6))
+            elif stripped.startswith('## '):
+                story.append(Paragraph(stripped[3:], heading_style))
+            elif stripped.startswith('### '):
+                story.append(Paragraph(stripped[4:], body_style))
+            elif stripped.startswith('- ') or stripped.startswith('* '):
+                story.append(Paragraph(f"\u2022 {stripped[2:]}", body_style))
+            else:
+                text = stripped.replace('**', '<b>').replace('**', '</b>')
+                story.append(Paragraph(text, body_style))
+
+        footer_style = ParagraphStyle('Footer', parent=styles['Normal'],
+                                       fontSize=8, textColor=colors.gray)
+        story.append(Spacer(1, 20))
+        story.append(Paragraph(f"Gerado em {datetime.now().strftime('%d/%m/%Y %H:%M')}", footer_style))
+
+        doc.build(story)
+        buffer.seek(0)
+        return buffer.read()
+
+    except ImportError:
+        # Last resort: plain text as bytes
+        text = f"{title}\n{'='*50}\n\n{md_text or ''}\n\nGerado em {datetime.now().strftime('%d/%m/%Y %H:%M')}"
+        return text.encode('utf-8')
+
+
 def _generate_text_fallback(data: Dict, title: str) -> str:
     """Fallback para texto quando reportlab não está disponível"""
     lines = [f"{'='*50}", f" {title}", f"{'='*50}", ""]
