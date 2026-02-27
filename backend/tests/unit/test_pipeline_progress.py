@@ -153,3 +153,124 @@ class TestCompletePipelineTask:
             assert task_registry[task_id]["status"] == "failed"
         finally:
             task_registry.pop(task_id, None)
+
+
+class TestRegisterPipelineTaskNames:
+    """F1-T3b: register_pipeline_task must accept and store human-readable names.
+
+    The frontend hierarchy (Matéria → Turma → Aluno → Sub-etapas) needs
+    materia_nome, turma_nome, and atividade_nome in the task_registry entry
+    so the sidebar can render group headers without extra API calls.
+    """
+
+    def test_stores_atividade_nome(self):
+        """register_pipeline_task with atividade_nome stores it in the entry."""
+        from routes_tasks import task_registry, register_pipeline_task
+
+        task_id = register_pipeline_task(
+            task_type="pipeline-completo",
+            atividade_id="ativ-name-001",
+            aluno_ids=["a1"],
+            atividade_nome="Prova 1 - Sistema Solar",
+        )
+        try:
+            task = task_registry[task_id]
+            assert task["atividade_nome"] == "Prova 1 - Sistema Solar"
+        finally:
+            task_registry.pop(task_id, None)
+
+    def test_stores_turma_nome(self):
+        """register_pipeline_task with turma_nome stores it in the entry."""
+        from routes_tasks import task_registry, register_pipeline_task
+
+        task_id = register_pipeline_task(
+            task_type="pipeline-completo",
+            atividade_id="ativ-name-002",
+            aluno_ids=["a1"],
+            turma_id="turma-001",
+            turma_nome="9º Ano A",
+        )
+        try:
+            task = task_registry[task_id]
+            assert task["turma_nome"] == "9º Ano A"
+        finally:
+            task_registry.pop(task_id, None)
+
+    def test_stores_materia_nome(self):
+        """register_pipeline_task with materia_nome stores it in the entry."""
+        from routes_tasks import task_registry, register_pipeline_task
+
+        task_id = register_pipeline_task(
+            task_type="pipeline-completo",
+            atividade_id="ativ-name-003",
+            aluno_ids=["a1"],
+            materia_nome="Ciências",
+        )
+        try:
+            task = task_registry[task_id]
+            assert task["materia_nome"] == "Ciências"
+        finally:
+            task_registry.pop(task_id, None)
+
+    def test_stores_all_three_names(self):
+        """All three names stored together in one call."""
+        from routes_tasks import task_registry, register_pipeline_task
+
+        task_id = register_pipeline_task(
+            task_type="pipeline_todos_os_alunos",
+            atividade_id="ativ-name-004",
+            aluno_ids=["a1", "a2"],
+            turma_id="turma-002",
+            materia_nome="Ciências",
+            turma_nome="9º Ano A",
+            atividade_nome="Prova 1 - Sistema Solar",
+        )
+        try:
+            task = task_registry[task_id]
+            assert task["materia_nome"] == "Ciências"
+            assert task["turma_nome"] == "9º Ano A"
+            assert task["atividade_nome"] == "Prova 1 - Sistema Solar"
+        finally:
+            task_registry.pop(task_id, None)
+
+    def test_names_default_to_none(self):
+        """When names are not provided, they default to None (backward compat)."""
+        from routes_tasks import task_registry, register_pipeline_task
+
+        task_id = register_pipeline_task(
+            task_type="pipeline-completo",
+            atividade_id="ativ-name-005",
+            aluno_ids=["a1"],
+        )
+        try:
+            task = task_registry[task_id]
+            assert task.get("materia_nome") is None
+            assert task.get("turma_nome") is None
+            assert task.get("atividade_nome") is None
+        finally:
+            task_registry.pop(task_id, None)
+
+    def test_names_included_in_progress_response(self):
+        """GET /api/task-progress/{id} response includes the name fields."""
+        from routes_tasks import task_registry, register_pipeline_task
+
+        task_id = register_pipeline_task(
+            task_type="pipeline_todos_os_alunos",
+            atividade_id="ativ-name-006",
+            aluno_ids=["a1"],
+            materia_nome="Matemática",
+            turma_nome="8º Ano B",
+            atividade_nome="Prova 2 - Frações",
+        )
+        try:
+            # The endpoint returns task_registry[task_id] directly,
+            # so if the names are in the dict, they're in the response.
+            task = task_registry[task_id]
+            assert "materia_nome" in task
+            assert "turma_nome" in task
+            assert "atividade_nome" in task
+            assert task["materia_nome"] == "Matemática"
+            assert task["turma_nome"] == "8º Ano B"
+            assert task["atividade_nome"] == "Prova 2 - Frações"
+        finally:
+            task_registry.pop(task_id, None)
