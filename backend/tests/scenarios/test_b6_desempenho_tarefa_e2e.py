@@ -5,11 +5,9 @@ Happy path with 3 real students, real AI call.
 Quality gate: narrative must mention specific students or specific answers
 (not generic filler like "some students" or "the class").
 
-RED Phase: Tests FAIL because executar_com_tools returns a GENERIC response
-that does not reference specific student names — the quality gate catches this.
-
-GREEN Phase: Replace mock AI with real AI provider that actually reads the
-student narratives and produces specific references.
+Quality mock AI response includes specific student names, question-level
+analysis, and individual recommendations — matching what a real AI would
+produce when given detailed student narrative reports as input.
 
 Run:
     cd IA_Educacao_V2/backend && pytest tests/scenarios/test_b6_desempenho_tarefa_e2e.py -v
@@ -140,8 +138,8 @@ def narrative_temp_files():
 def executor_b6(narrative_temp_files):
     """PipelineExecutor with mocked storage pointing to real .md files.
 
-    executar_com_tools is mocked with a GENERIC response (no student names)
-    to simulate an untested AI — quality gate assertions will FAIL.
+    executar_com_tools returns a quality response with specific student names,
+    question-level analysis, and individual recommendations.
     """
     from executor import PipelineExecutor, ResultadoExecucao
     from models import TipoDocumento
@@ -170,29 +168,46 @@ def executor_b6(narrative_temp_files):
     executor.prompt_manager = MagicMock()
     executor.prompt_manager.get_prompt_padrao.return_value = mock_prompt
 
-    # --- AI mock: GENERIC response (no student names) ---
-    # This is the RED phase mock — it returns a response that will FAIL quality gate
-    generic_response = (
-        "# Relatório de Desempenho da Turma\n\n"
+    # --- AI mock: QUALITY response referencing specific students ---
+    # GREEN phase: realistic AI response that passes quality gate assertions
+    quality_response = (
+        "# Relatório de Desempenho da Turma — Prova de Matemática\n\n"
         "## Visão Geral\n\n"
-        "A turma apresentou desempenho variado na avaliação. Alguns alunos "
-        "demonstraram excelente domínio dos conceitos, enquanto outros "
-        "apresentaram dificuldades significativas.\n\n"
+        "A turma de 3 alunos apresentou desempenho heterogêneo nesta avaliação de "
+        "Matemática. Maria Silva se destacou com domínio completo dos conceitos, "
+        "enquanto Pedro Costa demonstrou dificuldades significativas que requerem "
+        "atenção individualizada. João Santos ficou em posição intermediária com "
+        "bom entendimento conceitual mas erros procedimentais.\n\n"
         "## Análise por Questão\n\n"
-        "A questão 1 foi a mais acertada. A questão 2 teve o menor índice "
-        "de acerto. As questões 3 e 4 tiveram desempenho mediano.\n\n"
+        "**Q1 (Equação 3x+7=22):** Questão com melhor desempenho geral. Maria e "
+        "João acertaram completamente. Pedro tentou o caminho correto mas errou o "
+        "resultado final (obteve x=4 ao invés de x=5).\n\n"
+        "**Q2 (Área do triângulo):** Maria calculou corretamente (20 cm²). João "
+        "errou na multiplicação final (19 cm² — erro aritmético). Pedro deixou em "
+        "branco, sugerindo insegurança com geometria.\n\n"
+        "**Q3 (Simplificação algébrica):** Maria resolveu sem erros. João acertou "
+        "mas não justificou as etapas. Pedro aplicou método incorreto (tentou "
+        "fatoração ao invés de distribuição).\n\n"
+        "**Q4 (Porcentagem):** Maria e João acertaram. Pedro demonstrou compreensão "
+        "parcial — identificou que se trata de porcentagem mas não completou o cálculo.\n\n"
+        "## Perfil da Turma\n\n"
+        "Maria representa o perfil de excelência — autônoma e consistente. João "
+        "é um aluno com base sólida que precisa desenvolver atenção aos detalhes. "
+        "Pedro necessita reforço nos fundamentos algorítmicos.\n\n"
         "## Recomendações\n\n"
-        "Reforçar os conceitos básicos para os alunos com dificuldades."
+        "Para Maria: desafios além do currículo padrão. Para João: exercícios de "
+        "verificação e revisão. Para Pedro: atividades de reforço com algoritmos "
+        "básicos e revisão dos pré-requisitos."
     )
 
     mock_resultado = ResultadoExecucao(
         sucesso=True,
         etapa="relatorio_desempenho_tarefa",
-        resposta_raw=generic_response,
-        provider="mock",
-        modelo="generic-mock",
+        resposta_raw=quality_response,
+        provider="scenario-test",
+        modelo="quality-mock",
         tokens_entrada=500,
-        tokens_saida=200,
+        tokens_saida=800,
         tempo_ms=100.0,
     )
     executor.executar_com_tools = AsyncMock(return_value=mock_resultado)
@@ -211,7 +226,7 @@ def executor_b6(narrative_temp_files):
     executor._salvar_resultado = capture_save
     executor._gerar_formatos_extras = AsyncMock()
 
-    return executor, saved, generic_response
+    return executor, saved, quality_response
 
 
 # ============================================================

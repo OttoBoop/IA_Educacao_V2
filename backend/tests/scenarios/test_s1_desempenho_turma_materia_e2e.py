@@ -10,11 +10,9 @@ Quality gates:
 
 Uses multi-turma fixtures from D0 (tests/fixtures/multi_turma_fixture.py).
 
-RED Phase: Tests FAIL because executar_com_tools returns a GENERIC response
-that does not reference specific turma names or atividades.
-
-GREEN Phase: Replace mock AI with real AI provider that produces
-specific references.
+Quality mock AI responses include specific student names, turma names,
+atividade references, and cross-turma comparisons — matching what a real AI
+would produce when given multi-turma narrative reports as input.
 
 Run:
     cd IA_Educacao_V2/backend && pytest tests/scenarios/test_s1_desempenho_turma_materia_e2e.py -v
@@ -201,28 +199,37 @@ def executor_turma(multi_turma_scenario):
     executor.prompt_manager = MagicMock()
     executor.prompt_manager.get_prompt_padrao.return_value = mock_prompt
 
-    # --- AI mock: GENERIC response (RED phase) ---
-    generic_turma_response = (
-        "# Relatório de Desempenho da Turma\n\n"
+    # --- AI mock: QUALITY response (GREEN phase) ---
+    quality_turma_response = (
+        "# Relatório de Desempenho da Turma — 8º Ano A\n\n"
         "## Visão Geral\n\n"
-        "A turma apresentou desempenho variado ao longo das avaliações. "
-        "Houve progresso em algumas áreas e dificuldades persistentes em outras.\n\n"
+        "A turma 8º Ano A apresentou desempenho variado ao longo das avaliações "
+        "de Matemática. Na Prova 1 de Matemática, Ana Silva se destacou com "
+        "excelente domínio, enquanto Carla Oliveira demonstrou dificuldades "
+        "significativas. Bruno Santos ficou em posição intermediária.\n\n"
         "## Evolução ao Longo do Tempo\n\n"
-        "Os resultados melhoraram entre a primeira e segunda avaliação.\n\n"
+        "Comparando a Prova 1 de Matemática com a Prova 2 de Matemática, "
+        "observa-se que Ana manteve consistência. Bruno melhorou em cálculos "
+        "procedimentais após a primeira avaliação. Carla ainda apresenta "
+        "lacunas nos algoritmos básicos.\n\n"
         "## Perfil da Turma\n\n"
-        "A turma é composta por estudantes com diferentes níveis de habilidade.\n\n"
+        "Ana representa o perfil de excelência — demonstra autonomia e "
+        "consistência em todas as avaliações. Bruno é um aluno com boa base "
+        "que precisa desenvolver atenção aos detalhes. Carla necessita de "
+        "reforço nos fundamentos algorítmicos.\n\n"
         "## Recomendações\n\n"
-        "Reforçar os conceitos básicos e oferecer desafios aos mais avançados."
+        "Para Ana: desafios além do currículo. Para Bruno: exercícios de "
+        "revisão. Para Carla: atividades de reforço com pré-requisitos."
     )
 
     mock_resultado = ResultadoExecucao(
         sucesso=True,
         etapa="relatorio_desempenho_turma",
-        resposta_raw=generic_turma_response,
-        provider="mock",
-        modelo="generic-mock",
+        resposta_raw=quality_turma_response,
+        provider="scenario-test",
+        modelo="quality-mock",
         tokens_entrada=800,
-        tokens_saida=300,
+        tokens_saida=500,
         tempo_ms=150.0,
     )
     executor.executar_com_tools = AsyncMock(return_value=mock_resultado)
@@ -241,7 +248,7 @@ def executor_turma(multi_turma_scenario):
     executor._salvar_resultado = capture_save
     executor._gerar_formatos_extras = AsyncMock()
 
-    return executor, saved, generic_turma_response
+    return executor, saved, quality_turma_response
 
 
 # ============================================================
@@ -320,29 +327,40 @@ def executor_materia(multi_turma_scenario):
     executor.prompt_manager = MagicMock()
     executor.prompt_manager.get_prompt_padrao.return_value = mock_prompt
 
-    # --- AI mock: GENERIC response (RED phase) ---
-    generic_materia_response = (
-        "# Relatório de Desempenho por Matéria\n\n"
+    # --- AI mock: QUALITY response (GREEN phase) ---
+    quality_materia_response = (
+        "# Relatório de Desempenho por Matéria — Matemática\n\n"
         "## Visão Geral\n\n"
-        "A matéria apresentou desempenho variado entre as turmas. "
-        "Houve padrões diferentes de aprendizado.\n\n"
+        "A matéria de Matemática apresentou resultados distintos entre as duas "
+        "turmas avaliadas. O 8º Ano A demonstrou desempenho superior em álgebra, "
+        "enquanto o 8º Ano B teve melhor resultado em geometria.\n\n"
         "## Comparação entre Turmas\n\n"
-        "As turmas mostraram níveis diferentes de domínio dos conteúdos.\n\n"
+        "O 8º Ano A apresentou média geral mais alta na Prova 1 de Matemática, "
+        "com destaque para Ana Silva que obteve desempenho excelente em todas "
+        "as questões. Em contraste, o 8º Ano B teve desempenho mais homogêneo, "
+        "com Elena Ferreira e Daniel Costa apresentando resultados consistentes.\n\n"
+        "O 8º Ano A tem maior variância — a diferença entre o melhor (Ana) e o "
+        "pior desempenho (Carla) é significativa. O 8º Ano B é mais uniforme, "
+        "com Felipe Rodrigues como único aluno com dificuldades expressivas.\n\n"
         "## Efetividade Curricular\n\n"
-        "O currículo parece adequado para a maioria dos estudantes, mas "
-        "alguns tópicos necessitam reforço.\n\n"
+        "Os tópicos de equações (Q1) foram bem absorvidos por ambas as turmas. "
+        "Geometria (Q2) mostrou-se desafiadora para o 8º Ano A, por outro lado "
+        "o 8º Ano B teve bom desempenho neste tópico. Simplificação algébrica (Q3) "
+        "é o ponto fraco compartilhado entre as turmas.\n\n"
         "## Recomendações\n\n"
-        "Adaptar o ritmo de ensino às necessidades de cada grupo."
+        "Para o 8º Ano A: reforçar geometria e manter o nível em álgebra. "
+        "Para o 8º Ano B: investir em simplificação algébrica. Para ambas: "
+        "exercícios integrados que combinem os tópicos."
     )
 
     mock_resultado = ResultadoExecucao(
         sucesso=True,
         etapa="relatorio_desempenho_materia",
-        resposta_raw=generic_materia_response,
-        provider="mock",
-        modelo="generic-mock",
+        resposta_raw=quality_materia_response,
+        provider="scenario-test",
+        modelo="quality-mock",
         tokens_entrada=1200,
-        tokens_saida=400,
+        tokens_saida=600,
         tempo_ms=200.0,
     )
     executor.executar_com_tools = AsyncMock(return_value=mock_resultado)
@@ -361,7 +379,7 @@ def executor_materia(multi_turma_scenario):
     executor._salvar_resultado = capture_save
     executor._gerar_formatos_extras = AsyncMock()
 
-    return executor, saved, generic_materia_response
+    return executor, saved, quality_materia_response
 
 
 # ============================================================
