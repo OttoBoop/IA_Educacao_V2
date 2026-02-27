@@ -186,3 +186,43 @@ class TestImmediateResponse:
             "{ sucesso, etapas_executadas, etapas_falharam, resultados }. "
             "The pipeline result is now tracked via task_registry + polling."
         )
+
+
+class TestNameWiring:
+    """F1-T3b: Verify call sites pass names to register_pipeline_task."""
+
+    def test_resolve_names_helper_exists(self, routes_prompts_content):
+        """_resolve_names_from_atividade must be defined in routes_prompts.py."""
+        assert "_resolve_names_from_atividade" in routes_prompts_content, (
+            "routes_prompts.py must define _resolve_names_from_atividade() "
+            "to look up matéria/turma/atividade names for task_registry entries."
+        )
+
+    def test_pipeline_completo_passes_names(self, routes_prompts_content):
+        """executar_pipeline_completo must pass names to register_pipeline_task."""
+        func_body = _get_function_body(
+            routes_prompts_content, "async def executar_pipeline_completo"
+        )
+        assert "_resolve_names_from_atividade" in func_body or "atividade_nome" in func_body, (
+            "executar_pipeline_completo must pass atividade/turma/materia names "
+            "to register_pipeline_task via _resolve_names_from_atividade() or explicit kwargs."
+        )
+
+    def test_pipeline_todos_os_alunos_passes_names(self, routes_prompts_content):
+        """executar_pipeline_todos_os_alunos must pass names to register_pipeline_task."""
+        func_body = _get_function_body(
+            routes_prompts_content, "async def executar_pipeline_todos_os_alunos"
+        )
+        assert "_resolve_names_from_atividade" in func_body or "atividade_nome" in func_body, (
+            "executar_pipeline_todos_os_alunos must pass names "
+            "to register_pipeline_task for sidebar hierarchy rendering."
+        )
+
+    def test_desempenho_tarefa_passes_names(self, routes_prompts_content):
+        """executar_pipeline_desempenho_tarefa must pass names."""
+        func_body = _get_function_body(
+            routes_prompts_content, "async def executar_pipeline_desempenho_tarefa"
+        )
+        assert "_resolve_names_from_atividade" in func_body or "atividade_nome" in func_body, (
+            "executar_pipeline_desempenho_tarefa must pass names to register_pipeline_task."
+        )

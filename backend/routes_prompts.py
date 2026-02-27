@@ -22,6 +22,24 @@ from storage import storage
 from models import TipoDocumento, Documento
 from routes_tasks import register_pipeline_task, complete_pipeline_task
 
+
+def _resolve_names_from_atividade(atividade_id):
+    """Look up matéria/turma/atividade names for task_registry.
+
+    Returns dict with materia_nome, turma_nome, atividade_nome (any may be None).
+    """
+    names = {"materia_nome": None, "turma_nome": None, "atividade_nome": None}
+    atividade = storage.get_atividade(atividade_id)
+    if atividade:
+        names["atividade_nome"] = atividade.nome
+        turma = storage.get_turma(atividade.turma_id)
+        if turma:
+            names["turma_nome"] = turma.nome
+            materia = storage.get_materia(turma.materia_id)
+            if materia:
+                names["materia_nome"] = materia.nome
+    return names
+
 # Importar novo sistema de chat/models
 try:
     from chat_service import (
@@ -763,10 +781,12 @@ async def executar_pipeline_completo(
 
     # Register the task in task_registry synchronously so the task_id
     # exists before the response is returned and polling can start immediately.
+    names = _resolve_names_from_atividade(atividade_id)
     task_id = register_pipeline_task(
         task_type="pipeline",
         atividade_id=atividade_id,
         aluno_ids=[aluno_id],
+        **names,
     )
 
     # Run pipeline execution in the background — endpoint returns task_id immediately.
@@ -1055,10 +1075,13 @@ async def executar_pipeline_todos_os_alunos(
             raise HTTPException(400, "Formato inválido para selected_steps. Use JSON array.")
 
     # Register all students synchronously so task_id exists before response is returned.
+    names = _resolve_names_from_atividade(atividade_id)
     task_id = register_pipeline_task(
         task_type="pipeline_todos_os_alunos",
         atividade_id=atividade_id,
         aluno_ids=[aluno.id for aluno in alunos_para_processar],
+        turma_id=atividade.turma_id,
+        **names,
     )
 
     # Run the student loop in the background — endpoint returns task_id immediately.
@@ -1117,10 +1140,12 @@ async def executar_pipeline_desempenho_tarefa(
     if not atividade:
         raise HTTPException(404, "Atividade não encontrada")
 
+    names = _resolve_names_from_atividade(atividade_id)
     task_id = register_pipeline_task(
         task_type="pipeline_desempenho_tarefa",
         atividade_id=atividade_id,
         aluno_ids=[],
+        **names,
     )
 
     background_tasks.add_task(
@@ -1167,10 +1192,14 @@ async def executar_pipeline_desempenho_turma(
     if not turma:
         raise HTTPException(404, "Turma não encontrada")
 
+    materia = storage.get_materia(turma.materia_id) if turma else None
     task_id = register_pipeline_task(
         task_type="pipeline_desempenho_turma",
         atividade_id=turma_id,
         aluno_ids=[],
+        turma_id=turma_id,
+        turma_nome=turma.nome,
+        materia_nome=materia.nome if materia else None,
     )
 
     background_tasks.add_task(
@@ -1220,6 +1249,7 @@ async def executar_pipeline_desempenho_materia(
         task_type="pipeline_desempenho_materia",
         atividade_id=materia_id,
         aluno_ids=[],
+        materia_nome=materia.nome,
     )
 
     background_tasks.add_task(

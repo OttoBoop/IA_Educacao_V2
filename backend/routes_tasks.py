@@ -68,7 +68,15 @@ async def cancel_task(task_id: str):
 # ── Helper functions for pipeline integration ────────────────
 
 
-def register_pipeline_task(task_type, atividade_id, aluno_ids, turma_id=None):
+def register_pipeline_task(
+    task_type,
+    atividade_id,
+    aluno_ids,
+    turma_id=None,
+    materia_nome=None,
+    turma_nome=None,
+    atividade_nome=None,
+):
     """Register a new pipeline task in the registry.
 
     Returns the generated task_id.
@@ -84,6 +92,9 @@ def register_pipeline_task(task_type, atividade_id, aluno_ids, turma_id=None):
         "type": task_type,
         "atividade_id": atividade_id,
         "turma_id": turma_id,
+        "materia_nome": materia_nome,
+        "turma_nome": turma_nome,
+        "atividade_nome": atividade_nome,
         "status": "running",
         "cancel_requested": False,
         "students": students,
