@@ -166,7 +166,65 @@
         
         .tree-toggle.expanded { transform: rotate(90deg); }
         .tree-toggle.hidden { visibility: hidden; }
-        
+
+        /* TAREFAS tree styles */
+        .tarefa-aluno {
+            border-bottom: 1px solid var(--border);
+        }
+        .tarefa-aluno.cancelled {
+            opacity: 0.5;
+        }
+        .tarefa-toggle {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            padding: 8px 12px;
+            cursor: pointer;
+            font-size: 0.85rem;
+            transition: background 0.15s;
+        }
+        .tarefa-toggle:hover { background: var(--bg-hover); }
+        .tarefa-toggle span:nth-child(2) {
+            flex: 1;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .tarefa-cancel {
+            background: none;
+            border: none;
+            color: var(--danger, #e74c3c);
+            font-size: 1.1rem;
+            font-weight: bold;
+            cursor: pointer;
+            padding: 4px 8px;
+            min-width: 32px;
+            min-height: 32px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 4px;
+            transition: background 0.15s;
+            flex-shrink: 0;
+        }
+        .tarefa-cancel:hover { background: rgba(231, 76, 60, 0.15); }
+        .tarefa-stage {
+            padding: 3px 12px 3px 20px;
+            font-size: 0.8rem;
+            color: var(--text-muted);
+        }
+        .tarefa-stage.completed { color: var(--success, #27ae60); }
+        .tarefa-stage.running { color: var(--primary); }
+        .tarefa-stage.failed { color: var(--danger, #e74c3c); }
+        .tarefa-cancelled-label {
+            font-size: 0.75rem;
+            color: var(--danger, #e74c3c);
+            padding: 2px 8px;
+            background: rgba(231, 76, 60, 0.1);
+            border-radius: 4px;
+            margin-left: auto;
+        }
+
         .sidebar-footer {
             padding: 12px;
             border-top: 1px solid var(--border);
@@ -6092,15 +6150,20 @@
                 if (task.sem_conexao) {
                     html += '<div class="tarefas-sem-conexao" style="padding: 8px 12px; color: var(--danger); font-size: 0.8rem; border-bottom: 1px solid var(--border);">&#x26A0; Sem conex\u00E3o — tentando reconectar...</div>';
                 }
+                const isCancelled = task.cancel_requested || task.status === 'cancelled';
                 const alunoCount = Object.keys(task.students || {}).length;
                 for (const [alunoId, aluno] of Object.entries(task.students || {})) {
                     const stages = aluno.stages || {};
 
-                    html += '<div class="tarefa-aluno" data-task="' + taskId + '" data-aluno="' + alunoId + '">';
+                    html += '<div class="tarefa-aluno' + (isCancelled ? ' cancelled' : '') + '" data-task="' + taskId + '" data-aluno="' + alunoId + '">';
                     html += '<div class="tarefa-toggle" onclick="toggleTarefaTree(this)">';
                     html += '<span class="tree-toggle">\u25B6</span> ';
                     html += '<span>' + escapeHtml(aluno.nome || alunoId) + '</span>';
-                    html += '<button class="tarefa-cancel" onclick="event.stopPropagation(); cancelTask(\'' + taskId + '\')" title="Cancelar">\u00D7</button>';
+                    if (isCancelled) {
+                        html += '<span class="tarefa-cancelled-label">Cancelado</span>';
+                    } else {
+                        html += '<button class="tarefa-cancel" onclick="event.stopPropagation(); cancelTask(\'' + taskId + '\')" title="Cancelar">\u00D7</button>';
+                    }
                     html += '</div>';
                     html += '<div class="tree-children' + (alunoCount <= 2 ? ' expanded' : '') + '">';
 
@@ -8349,7 +8412,8 @@
                 }
             }
 
-            // Fechar modal imediatamente e iniciar tarefa em background
+            // Fechar TODOS os modais ativos para não bloquear a sidebar
+            document.querySelectorAll('.modal-overlay.active').forEach(m => m.classList.remove('active'));
             closeModal('modal-pipeline-completo');
 
             const taskType = modo === 'turma' ? 'pipeline-todos-os-alunos' : 'pipeline';
