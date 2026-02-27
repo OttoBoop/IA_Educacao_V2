@@ -4763,6 +4763,12 @@
                     clearInterval(_pollIntervals[taskId]);
                     delete _pollIntervals[taskId];
                     delete _pollFailures[taskId];
+                    // F5-T2: Notify professor via toast + sound
+                    if (data.status === 'completed') {
+                        showPipelineToast('Pipeline concluído com sucesso!', 'success');
+                    } else if (data.status === 'failed') {
+                        showPipelineToast('Pipeline falhou. Verifique os detalhes.', 'error');
+                    }
                 }
             } catch (err) {
                 _pollFailures[taskId] = (_pollFailures[taskId] || 0) + 1;
