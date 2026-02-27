@@ -1890,7 +1890,7 @@ Crie UM documento separado para cada aluno, nomeando como "relatorio_[nome_aluno
 
         # Read narrative file contents
         conteudos = []
-        excluidos = []
+        avisos = []
         for doc in narrativos:
             try:
                 with open(doc.caminho_arquivo, 'r', encoding='utf-8') as f:
@@ -1898,8 +1898,11 @@ Crie UM documento separado para cada aluno, nomeando como "relatorio_[nome_aluno
                         "aluno_id": doc.aluno_id,
                         "conteudo": f.read(),
                     })
-            except Exception:
-                excluidos.append(doc.aluno_id)
+            except Exception as e:
+                avisos.append({
+                    "aluno_id": doc.aluno_id,
+                    "motivo": f"Arquivo narrativo ilegível: {e}",
+                })
 
         if len(conteudos) < 2:
             return {
@@ -1933,7 +1936,7 @@ Crie UM documento separado para cada aluno, nomeando como "relatorio_[nome_aluno
             "materia": materia.nome if materia else "N/A",
             "total_alunos": str(len(narrativos)),
             "alunos_incluidos": str(len(conteudos)),
-            "alunos_excluidos": str(len(excluidos)),
+            "alunos_excluidos": str(len(avisos)),
         }
 
         # Render prompt
@@ -1968,7 +1971,9 @@ Crie UM documento separado para cada aluno, nomeando como "relatorio_[nome_aluno
             "sucesso": resultado.sucesso,
             "etapa": "relatorio_desempenho_tarefa",
             "alunos_incluidos": len(conteudos),
-            "alunos_excluidos": len(excluidos),
+            "alunos_excluidos": len(avisos),
+            "avisos": avisos,
+            "status": "PARCIAL" if avisos else "COMPLETO",
             "erro": resultado.erro if not resultado.sucesso else None,
         }
 
@@ -2002,11 +2007,14 @@ Crie UM documento separado para cada aluno, nomeando como "relatorio_[nome_aluno
 
         # Gather narratives across all atividades for each student
         conteudos = []
+        avisos = []
         atividades_cobertas = set()
+        alunos_por_atividade = {}  # atividade_nome → set of aluno_ids with narratives
         for atividade in atividades:
             docs = self.storage.listar_documentos(
                 atividade.id, tipo=TipoDocumento.RELATORIO_NARRATIVO,
             )
+            alunos_com_narrativa = set()
             for doc in docs:
                 try:
                     with open(doc.caminho_arquivo, 'r', encoding='utf-8') as f:
@@ -2016,8 +2024,21 @@ Crie UM documento separado para cada aluno, nomeando como "relatorio_[nome_aluno
                             "conteudo": f.read(),
                         })
                         atividades_cobertas.add(atividade.nome)
-                except Exception:
-                    pass
+                        alunos_com_narrativa.add(doc.aluno_id)
+                except Exception as e:
+                    avisos.append({
+                        "aluno_id": doc.aluno_id,
+                        "motivo": f"Arquivo narrativo ilegível: {e}",
+                    })
+            alunos_por_atividade[atividade.nome] = alunos_com_narrativa
+
+        # Detect atividades with coverage gaps (not all enrolled students have narratives)
+        all_aluno_ids = {a.id for a in alunos}
+        atividades_com_lacunas = []
+        for ativ_nome, alunos_ativ in alunos_por_atividade.items():
+            faltantes = all_aluno_ids - alunos_ativ
+            if faltantes:
+                atividades_com_lacunas.append(ativ_nome)
 
         if len(conteudos) < 2:
             return {
@@ -2085,6 +2106,9 @@ Crie UM documento separado para cada aluno, nomeando como "relatorio_[nome_aluno
             "total_alunos": len(alunos),
             "narrativas_encontradas": len(conteudos),
             "atividades_cobertas": len(atividades_cobertas),
+            "avisos": avisos,
+            "atividades_com_lacunas": atividades_com_lacunas,
+            "status": "PARCIAL" if avisos or atividades_com_lacunas else "COMPLETO",
             "erro": resultado.erro if not resultado.sucesso else None,
         }
 
@@ -2114,10 +2138,13 @@ Crie UM documento separado para cada aluno, nomeando como "relatorio_[nome_aluno
 
         # Gather narratives across all turmas
         conteudos = []
+        avisos = []
+        cobertura = {}  # turma_nome → {"narrativas": count}
         atividade_ref = None
         for turma in turmas:
             alunos = self.storage.listar_alunos(turma.id)
             atividades = self.storage.listar_atividades(turma.id)
+            narrativas_turma = 0
             for atividade in atividades:
                 if atividade_ref is None:
                     atividade_ref = atividade.id
@@ -2133,8 +2160,13 @@ Crie UM documento separado para cada aluno, nomeando como "relatorio_[nome_aluno
                                 "atividade": atividade.nome,
                                 "conteudo": f.read(),
                             })
-                    except Exception:
-                        pass
+                            narrativas_turma += 1
+                    except Exception as e:
+                        avisos.append({
+                            "aluno_id": doc.aluno_id,
+                            "motivo": f"Arquivo narrativo ilegível: {e}",
+                        })
+            cobertura[turma.nome] = {"narrativas": narrativas_turma}
 
         if len(conteudos) < 2:
             return {
@@ -2199,6 +2231,9 @@ Crie UM documento separado para cada aluno, nomeando como "relatorio_[nome_aluno
             "etapa": "relatorio_desempenho_materia",
             "total_turmas": len(turmas),
             "narrativas_encontradas": len(conteudos),
+            "cobertura": cobertura,
+            "avisos": avisos,
+            "status": "PARCIAL" if avisos else "COMPLETO",
             "erro": resultado.erro if not resultado.sucesso else None,
         }
 
