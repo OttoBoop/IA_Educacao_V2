@@ -6226,19 +6226,63 @@
                         </div>
                         <button class="btn btn-danger btn-sm" onclick="excluirMateria('${materiaId}')">🗑️ Excluir Matéria</button>
                     </div>
+                    <div class="tabs">
+                        <div class="tab active" onclick="showMateriaTab('turmas', '${materiaId}')">Turmas (${data.total_turmas})</div>
+                        <div class="tab" onclick="showMateriaTab('desempenho', '${materiaId}')">📊 Desempenho</div>
+                    </div>
+                    <div id="materia-tab-content">
                     <div class="card">
                         <div class="card-header"><h3 class="card-title">Turmas (${data.total_turmas})</h3><button class="btn btn-primary btn-sm" onclick="openModalTurma('${materiaId}')">+ Nova Turma</button></div>
                         ${data.turmas.length === 0 ? `<div class="empty-state"><div class="empty-icon">👥</div><div class="empty-title">Nenhuma turma</div><div class="empty-text">Crie uma turma para começar</div></div>` : `<div class="card-grid">${data.turmas.map(t => `<div class="card-grid-item" onclick="showTurma('${t.id}')"><div class="card-icon">👥</div><div class="card-name">${t.nome}</div><div class="card-meta">${t.ano_letivo || ''} ${t.periodo || ''}</div></div>`).join('')}</div>`}
                     </div>
+                    </div>
                 `;
+                window._materiaData = data;
             } catch (e) { showToast('Erro ao carregar matéria', 'error'); }
+        }
+
+        async function showMateriaTab(tab, materiaId) {
+            if (tab === 'turmas') {
+                showMateria(materiaId);
+                return;
+            }
+            // desempenho tab
+            document.querySelectorAll('#content > .tabs .tab').forEach((t, i) =>
+                t.classList.toggle('active', i === 1)
+            );
+            const container = document.getElementById('materia-tab-content');
+            if (!container) return;
+            container.innerHTML = `
+                <div id="materia-desempenho-content">
+                    <div class="card">
+                        <div class="card-header">
+                            <h3 class="card-title">📊 Relatório de Desempenho da Matéria</h3>
+                            <button class="btn btn-primary" onclick="executarDesempenho('materia', '${materiaId}')">▶️ Gerar Relatório</button>
+                        </div>
+                        <div style="padding: 12px; color: var(--text-muted); font-size: 0.9rem;">
+                            Gera um relatório narrativo comparando o desempenho entre todas as turmas desta matéria, identificando padrões e avaliando a efetividade do currículo.
+                        </div>
+                        <div id="desempenho-materia-docs">
+                            <div style="padding: 8px 12px; color: var(--text-muted);">Carregando documentos...</div>
+                        </div>
+                    </div>
+                </div>
+            `;
+            loadDesempenhoDocs('materia', materiaId);
         }
         
         async function showTurma(turmaId) {
             currentView = 'turma';
             currentTurma = turmaId;
             currentAtividade = null;
-            
+
+            // Loading state: show spinner + debounce before fetch
+            const card = document.querySelector(`.card-grid-item[onclick*="${turmaId}"]`);
+            if (card) {
+                card.classList.add('card-loading');
+                card.style.pointerEvents = 'none';
+            }
+
             try {
                 const data = await api(`/turmas/${turmaId}`);
                 currentMateria = data.turma.materia_id;
@@ -6264,6 +6308,7 @@
                     <div class="tabs">
                         <div class="tab active" onclick="showTurmaTab('atividades', '${turmaId}')">Atividades (${data.total_atividades})</div>
                         <div class="tab" onclick="showTurmaTab('alunos', '${turmaId}')">Alunos (${data.total_alunos})</div>
+                        <div class="tab" onclick="showTurmaTab('desempenho', '${turmaId}')">📊 Desempenho</div>
                     </div>
                     <div id="turma-content">
                         <div class="card">
@@ -6273,15 +6318,37 @@
                     </div>
                 `;
                 window._turmaData = data;
-            } catch (e) { showToast('Erro ao carregar turma', 'error'); }
+            } catch (e) {
+                if (card) {
+                    card.classList.remove('card-loading');
+                    card.style.pointerEvents = '';
+                }
+                showToast('Erro ao carregar turma', 'error');
+            }
         }
-        
+
         async function showTurmaTab(tab, turmaId) {
-            document.querySelectorAll('.tabs .tab').forEach((t, i) => t.classList.toggle('active', (tab === 'atividades' && i === 0) || (tab === 'alunos' && i === 1)));
+            document.querySelectorAll('.tabs .tab').forEach((t, i) => t.classList.toggle('active', (tab === 'atividades' && i === 0) || (tab === 'alunos' && i === 1) || (tab === 'desempenho' && i === 2)));
             const data = window._turmaData;
             const container = document.getElementById('turma-content');
-            
-            if (tab === 'alunos') {
+
+            if (tab === 'desempenho') {
+                container.innerHTML = `
+                    <div class="card">
+                        <div class="card-header">
+                            <h3 class="card-title">📊 Relatório de Desempenho da Turma</h3>
+                            <button class="btn btn-primary" onclick="executarDesempenho('turma', '${turmaId}')">▶️ Gerar Relatório</button>
+                        </div>
+                        <div style="padding: 12px; color: var(--text-muted); font-size: 0.9rem;">
+                            Gera um relatório narrativo sobre o desempenho de toda a turma: progresso ao longo do tempo, problemas persistentes, perfil da classe e evolução individual.
+                        </div>
+                        <div id="desempenho-turma-docs">
+                            <div style="padding: 8px 12px; color: var(--text-muted);">Carregando documentos...</div>
+                        </div>
+                    </div>
+                `;
+                loadDesempenhoDocs('turma', turmaId);
+            } else if (tab === 'alunos') {
                 container.innerHTML = `
                     <div class="card">
                         <div class="card-header"><h3 class="card-title">Alunos</h3><button class="btn btn-primary btn-sm" onclick="openModalAluno('${data.turma.id}')">+ Novo Aluno</button></div>
@@ -6321,6 +6388,11 @@
                         </h1>
                         <p class="page-subtitle">${turma.turma.nome} • Nota máx: ${data.atividade.nota_maxima}</p>
                     </div>
+                    <div class="tabs">
+                        <div class="tab active" onclick="showAtividadeTab('geral', '${atividadeId}')">Visão Geral</div>
+                        <div class="tab" onclick="showAtividadeTab('desempenho', '${atividadeId}')">📊 Desempenho da Turma</div>
+                    </div>
+                    <div id="atividade-tab-content">
                     <div style="display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 16px;">
                         <button class="btn" onclick="openModalExecucao('${atividadeId}')" data-tooltip="Execute uma etapa específica do pipeline de correção" data-tooltip-pos="bottom">⚙️ Executar Etapa</button>
                         <button class="btn btn-primary" onclick="openModalPipelineCompleto('${atividadeId}', 'aluno')" data-tooltip="Corrige automaticamente a prova de um aluno específico" data-tooltip-pos="bottom">⚡ Pipeline Aluno</button>
@@ -6343,12 +6415,43 @@
                             ${data.alunos.detalhes.map(a => `<tr><td><strong>${a.aluno_nome}</strong></td><td>${a.tem_prova ? '<span class="badge badge-success">✓</span>' : '<span class="badge badge-danger">Falta</span>'}</td><td>${a.tem_correcao ? '<span class="badge badge-success">✓</span>' : '<span class="badge badge-warning">Pendente</span>'}</td><td>${a.tem_relatorio ? '<span class="badge badge-success">✓</span>' : '<span class="badge badge-warning">Pendente</span>'}</td><td><button class="btn btn-sm" onclick="showResultadoAluno('${atividadeId}', '${a.aluno_id}')">Ver Resultado</button></td></tr>`).join('')}
                         </tbody></table></div>
                     </div>
+                    </div>
                 `;
                 window._atividadeData = data;
                 window._turmaData = turma;
             } catch (e) { showToast('Erro ao carregar atividade', 'error'); }
         }
-        
+
+        async function showAtividadeTab(tab, atividadeId) {
+            if (tab === 'geral') {
+                showAtividade(atividadeId);
+                return;
+            }
+            // desempenho tab
+            document.querySelectorAll('#content > .tabs .tab').forEach((t, i) =>
+                t.classList.toggle('active', i === 1)
+            );
+            const container = document.getElementById('atividade-tab-content');
+            if (!container) return;
+            container.innerHTML = `
+                <div id="atividade-desempenho-content">
+                    <div class="card">
+                        <div class="card-header">
+                            <h3 class="card-title">📊 Relatório de Desempenho da Turma</h3>
+                            <button class="btn btn-primary" onclick="executarDesempenho('tarefa', '${atividadeId}')">▶️ Gerar Relatório</button>
+                        </div>
+                        <div style="padding: 12px; color: var(--text-muted); font-size: 0.9rem;">
+                            Gera um relatório narrativo analisando o desempenho de todos os alunos nesta atividade, com análise questão a questão e exemplos específicos.
+                        </div>
+                        <div id="desempenho-tarefa-docs">
+                            <div style="padding: 8px 12px; color: var(--text-muted);">Carregando documentos...</div>
+                        </div>
+                    </div>
+                </div>
+            `;
+            loadDesempenhoDocs('tarefa', atividadeId);
+        }
+
         function formatDateTime(value) {
             if (!value) return '';
             try {
@@ -7189,7 +7292,14 @@
             if (taskPanel) taskPanel.classList.remove('show');
             document.getElementById(id).classList.add('active');
         }
-        function closeModal(id) { document.getElementById(id).classList.remove('active'); }
+        function closeModal(id) {
+            const el = document.getElementById(id);
+            if (!el) {
+                console.warn(`closeModal: element with id '${id}' not found`);
+                return;
+            }
+            el.classList.remove('active');
+        }
         function openModalTurma(materiaId) { document.getElementById('input-turma-materia-id').value = materiaId; openModal('modal-turma'); }
         function openModalAtividade(turmaId) { document.getElementById('input-ativ-turma-id').value = turmaId; openModal('modal-atividade'); }
         // ============================================================
@@ -8301,6 +8411,84 @@
                 showToast('🚀 Pipeline iniciado! Acompanhe o progresso no painel de tarefas.', 'success');
             } catch (e) {
                 showToast('❌ Erro ao iniciar pipeline: ' + (e.message || 'Erro desconhecido'), 'error');
+            }
+        }
+
+        // ============================================================
+        // DESEMPENHO PIPELINE - Shared functions for B5/C5/D5
+        // ============================================================
+
+        async function executarDesempenho(level, entityId) {
+            const endpoints = {
+                'tarefa': '/executar/pipeline-desempenho-tarefa',
+                'turma': '/executar/pipeline-desempenho-turma',
+                'materia': '/executar/pipeline-desempenho-materia'
+            };
+            const paramNames = {
+                'tarefa': 'atividade_id',
+                'turma': 'turma_id',
+                'materia': 'materia_id'
+            };
+
+            const endpoint = endpoints[level];
+            const paramName = paramNames[level];
+
+            try {
+                const formData = new FormData();
+                formData.append(paramName, entityId);
+
+                showToast('📊 Gerando relatório de desempenho...', 'success');
+                const result = await apiForm(endpoint, formData);
+
+                showToast('📊 Relatório de desempenho gerado com sucesso!', 'success');
+                loadDesempenhoDocs(level, entityId);
+
+                if (result.documento_id) {
+                    visualizarDocumento(result.documento_id);
+                }
+            } catch (e) {
+                showToast('❌ Erro ao gerar relatório: ' + (e.message || 'Erro desconhecido'), 'error');
+            }
+        }
+
+        async function loadDesempenhoDocs(level, entityId) {
+            const containerIds = {
+                'tarefa': 'desempenho-tarefa-docs',
+                'turma': 'desempenho-turma-docs',
+                'materia': 'desempenho-materia-docs'
+            };
+            const docTypes = {
+                'tarefa': 'RELATORIO_DESEMPENHO_TAREFA',
+                'turma': 'RELATORIO_DESEMPENHO_TURMA',
+                'materia': 'RELATORIO_DESEMPENHO_MATERIA'
+            };
+            const paramNames = {
+                'tarefa': 'atividade_id',
+                'turma': 'turma_id',
+                'materia': 'materia_id'
+            };
+
+            const container = document.getElementById(containerIds[level]);
+            if (!container) return;
+
+            try {
+                const data = await api(`/documentos/todos?tipo=${docTypes[level]}`);
+                const docs = (data.documentos || []).filter(d =>
+                    d[paramNames[level]] === entityId || d.atividade_id === entityId
+                );
+
+                if (docs.length === 0) {
+                    container.innerHTML = '<div style="padding: 8px 12px; color: var(--text-muted);">Nenhum relatório gerado ainda. Clique em "Gerar Relatório" para começar.</div>';
+                    return;
+                }
+
+                container.innerHTML = docs.map(doc => renderDocumentoItem(doc, {
+                    icon: '📊',
+                    showVisualizar: true,
+                    showExcluir: true
+                })).join('');
+            } catch (e) {
+                container.innerHTML = '<div style="padding: 8px 12px; color: var(--text-muted);">Nenhum relatório gerado ainda. Clique em "Gerar Relatório" para começar.</div>';
             }
         }
 
