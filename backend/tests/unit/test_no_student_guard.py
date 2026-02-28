@@ -160,6 +160,62 @@ class TestOpenModalUploadGuard:
 
 
 # ===========================================================================
+# F1-T4: Guard on openModalPipelineCompleto() for both modes
+# ===========================================================================
+
+class TestOpenModalPipelineCompletoGuard:
+    """Verify that openModalPipelineCompleto() blocks when no students (both modes)."""
+
+    def test_guard_calls_hasStudentsInTurma(self):
+        """openModalPipelineCompleto must call hasStudentsInTurma() in its body."""
+        src = _read_index_v2()
+        body = _extract_function_body(src, 'openModalPipelineCompleto')
+        assert 'hasStudentsInTurma' in body, (
+            'openModalPipelineCompleto must call hasStudentsInTurma()'
+        )
+
+    def test_guard_shows_warning_toast(self):
+        """The guard must show a Portuguese warning toast."""
+        src = _read_index_v2()
+        body = _extract_function_body(src, 'openModalPipelineCompleto')
+        assert NO_STUDENT_TOAST_MSG in body, (
+            f'openModalPipelineCompleto must show toast: "{NO_STUDENT_TOAST_MSG}"'
+        )
+        assert "'warning'" in body or '"warning"' in body, (
+            'Toast must use warning type'
+        )
+
+    def test_guard_returns_early(self):
+        """The guard must return early (before openModal) when no students."""
+        src = _read_index_v2()
+        body = _extract_function_body(src, 'openModalPipelineCompleto')
+        guard_pos = body.find('hasStudentsInTurma')
+        assert guard_pos != -1, 'hasStudentsInTurma not found in openModalPipelineCompleto'
+        after_guard = body[guard_pos:]
+        return_pos = after_guard.find('return')
+        open_modal_pos = after_guard.find('openModal(')
+        assert return_pos != -1, (
+            'openModalPipelineCompleto must have a return statement after the guard'
+        )
+        assert return_pos < open_modal_pos, (
+            'The early return must come before openModal call'
+        )
+
+    def test_guard_is_unconditional(self):
+        """The guard must fire before any mode-specific logic (blocks both aluno and turma)."""
+        src = _read_index_v2()
+        body = _extract_function_body(src, 'openModalPipelineCompleto')
+        guard_pos = body.find('hasStudentsInTurma')
+        assert guard_pos != -1, 'hasStudentsInTurma not found'
+        # The guard must come before any pipeline-modo reference
+        modo_ref = body.find('pipeline-modo')
+        if modo_ref != -1:
+            assert guard_pos < modo_ref, (
+                'The hasStudentsInTurma guard must come before mode-specific logic'
+            )
+
+
+# ===========================================================================
 # F1-T3: Guard on openModalUploadProvas()
 # ===========================================================================
 
