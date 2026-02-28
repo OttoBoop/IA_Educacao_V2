@@ -27,7 +27,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..'))
 
 from models import TipoDocumento, Documento, StatusProcessamento
 from prompts import EtapaProcessamento
-from executor import PipelineExecutor, ResultadoExecucao, build_student_pipeline_result
+from executor import PipelineExecutor, ResultadoExecucao, build_student_pipeline_result, _latest_by_type
 
 
 # ============================================================
@@ -713,3 +713,149 @@ class TestDefaultProviderConfig:
 
         assert hasattr(registry, "provider_health")
         assert isinstance(registry.provider_health, dict)
+
+
+# ============================================================
+# F5-T1: Document deduplication — _latest_by_type + context
+# ============================================================
+
+def _make_doc_with_time(tipo, caminho, criado_em, aluno_id=None, extensao=".json"):
+    """Helper that creates a Documento with an explicit criado_em timestamp."""
+    return Documento(
+        id=f"doc_{tipo.value}_{criado_em.isoformat()}",
+        tipo=tipo,
+        atividade_id="test_atividade",
+        aluno_id=aluno_id,
+        nome_arquivo=Path(caminho).name,
+        caminho_arquivo=caminho,
+        extensao=extensao,
+        tamanho_bytes=100,
+        status=StatusProcessamento.CONCLUIDO,
+        criado_em=criado_em,
+        atualizado_em=criado_em,
+    )
+
+
+class TestLatestByType:
+    """_latest_by_type must always pick the most recent document per type."""
+
+    def test_picks_newest_of_multiple_same_type(self):
+        """Given 3 EXTRACAO_QUESTOES docs with different timestamps,
+        _latest_by_type returns only the newest one."""
+        old = _make_doc_with_time(
+            TipoDocumento.EXTRACAO_QUESTOES, "old/tmpabc.json",
+            datetime(2026, 1, 1, 10, 0, 0))
+        middle = _make_doc_with_time(
+            TipoDocumento.EXTRACAO_QUESTOES, "mid/tmpdef.json",
+            datetime(2026, 1, 15, 10, 0, 0))
+        newest = _make_doc_with_time(
+            TipoDocumento.EXTRACAO_QUESTOES, "new/tmpghi.json",
+            datetime(2026, 2, 1, 10, 0, 0))
+
+        result = _latest_by_type(
+            [old, middle, newest],
+            [TipoDocumento.EXTRACAO_QUESTOES]
+        )
+
+        assert len(result) == 1, f"Expected 1 doc, got {len(result)}"
+        assert result[0].id == newest.id, (
+            f"Expected newest doc ({newest.id}), got {result[0].id}"
+        )
+
+    def test_returns_one_per_type_when_multiple_types(self):
+        """Given mixed types, returns exactly one per requested type."""
+        q_old = _make_doc_with_time(
+            TipoDocumento.EXTRACAO_QUESTOES, "q_old.json",
+            datetime(2026, 1, 1))
+        q_new = _make_doc_with_time(
+            TipoDocumento.EXTRACAO_QUESTOES, "q_new.json",
+            datetime(2026, 2, 1))
+        g_old = _make_doc_with_time(
+            TipoDocumento.EXTRACAO_GABARITO, "g_old.json",
+            datetime(2026, 1, 1))
+        g_new = _make_doc_with_time(
+            TipoDocumento.EXTRACAO_GABARITO, "g_new.json",
+            datetime(2026, 2, 1))
+
+        result = _latest_by_type(
+            [q_old, g_old, q_new, g_new],
+            [TipoDocumento.EXTRACAO_QUESTOES, TipoDocumento.EXTRACAO_GABARITO]
+        )
+
+        assert len(result) == 2
+        ids = {d.id for d in result}
+        assert q_new.id in ids
+        assert g_new.id in ids
+
+    def test_ignores_unrequested_types(self):
+        """Documents of types not in the requested list are ignored."""
+        questoes = _make_doc_with_time(
+            TipoDocumento.EXTRACAO_QUESTOES, "q.json",
+            datetime(2026, 1, 1))
+        enunciado = _make_doc_with_time(
+            TipoDocumento.ENUNCIADO, "e.pdf",
+            datetime(2026, 2, 1), extensao=".pdf")
+
+        result = _latest_by_type(
+            [questoes, enunciado],
+            [TipoDocumento.EXTRACAO_QUESTOES]
+        )
+
+        assert len(result) == 1
+        assert result[0].tipo == TipoDocumento.EXTRACAO_QUESTOES
+
+    def test_empty_docs_returns_empty(self):
+        """Empty input returns empty output."""
+        result = _latest_by_type([], [TipoDocumento.EXTRACAO_QUESTOES])
+        assert result == []
+
+
+class TestContextJsonDedup:
+    """_preparar_contexto_json must load the NEWEST document per type,
+    not the oldest. This prevents stale data from confusing the AI."""
+
+    def test_context_loads_newest_extraction(self, executor_with_mock_storage, temp_dir):
+        """When multiple EXTRACAO_QUESTOES docs exist, context should
+        load content from the NEWEST one."""
+        executor = executor_with_mock_storage
+
+        # OLD extraction (stale data with wrong content)
+        old_path = temp_dir / "old_questoes.json"
+        old_path.write_text(
+            json.dumps({"questoes": [{"numero": 1, "resposta": "WRONG"}], "version": "old"}),
+            encoding="utf-8"
+        )
+        old_doc = _make_doc_with_time(
+            TipoDocumento.EXTRACAO_QUESTOES, str(old_path),
+            datetime(2026, 1, 1, 10, 0, 0))
+
+        # NEW extraction (correct data)
+        new_path = temp_dir / "new_questoes.json"
+        new_path.write_text(
+            json.dumps({"questoes": [{"numero": 1, "resposta": "CORRECT"}], "version": "new"}),
+            encoding="utf-8"
+        )
+        new_doc = _make_doc_with_time(
+            TipoDocumento.EXTRACAO_QUESTOES, str(new_path),
+            datetime(2026, 2, 1, 10, 0, 0))
+
+        # Return docs in WRONG order (oldest first — simulating unsorted storage)
+        executor.storage.listar_documentos.return_value = [old_doc, new_doc]
+
+        # resolver returns the doc's own path
+        def resolve(doc):
+            return Path(doc.caminho_arquivo)
+        executor.storage.resolver_caminho_documento.side_effect = resolve
+
+        resultado = executor._preparar_contexto_json(
+            "test_atividade", "aluno1", EtapaProcessamento.CORRIGIR
+        )
+
+        # The loaded content MUST be from the newest doc
+        loaded = resultado.get("questoes_extraidas")
+        assert loaded is not None, "questoes_extraidas should be loaded"
+        parsed = json.loads(loaded)
+        assert parsed["version"] == "new", (
+            f"Expected newest version ('new'), got '{parsed.get('version')}'. "
+            "Context loaded stale data from an old document!"
+        )

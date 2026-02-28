@@ -26,6 +26,22 @@ from prompts import PromptManager, PromptTemplate, EtapaProcessamento, prompt_ma
 from storage import StorageManager, storage
 from ai_providers import ai_registry, AIResponse
 
+
+def _latest_by_type(docs: list, types: list) -> list:
+    """Return only the most recent document per type (by criado_em).
+
+    This avoids sending duplicate/stale versions to the AI model.
+    Used by both _coletar_arquivos_para_etapa (attachments) and
+    _preparar_contexto_json (prompt context).
+    """
+    latest = {}
+    for doc in docs:
+        if doc.tipo in types:
+            existing = latest.get(doc.tipo)
+            if existing is None or doc.criado_em > existing.criado_em:
+                latest[doc.tipo] = doc
+    return list(latest.values())
+
 # Maps prerequisite document types to the pipeline step that produces them.
 # Used by dependency validation to generate clear error messages like
 # "execute primeiro extrair_questoes" instead of "extracao_questoes missing".
@@ -650,17 +666,6 @@ class PipelineExecutor:
 
         logger.info(f"Coletando arquivos para {etapa.value}: docs_base={len(docs_base)}, docs_aluno={len(docs_aluno)}")
 
-        def _latest_by_type(docs, types):
-            """Return only the most recent document per type (by criado_em).
-            This avoids sending duplicate versions to the AI model."""
-            latest = {}
-            for doc in docs:
-                if doc.tipo in types:
-                    existing = latest.get(doc.tipo)
-                    if existing is None or doc.criado_em > existing.criado_em:
-                        latest[doc.tipo] = doc
-            return list(latest.values())
-
         def _normalizar_e_verificar(doc) -> Optional[str]:
             """
             Resolve o caminho do documento usando storage.resolver_caminho_documento().
@@ -830,62 +835,56 @@ class PipelineExecutor:
             return False
 
         # Para correção, incluir questões extraídas, gabarito e respostas
+        # Use _latest_by_type to always pick the newest version of each doc
         if etapa in [EtapaProcessamento.CORRIGIR, EtapaProcessamento.ANALISAR_HABILIDADES, EtapaProcessamento.GERAR_RELATORIO]:
             encontrou_questoes = False
-            for doc in docs_base:
-                if doc.tipo == TipoDocumento.EXTRACAO_QUESTOES and doc.extensao.lower() == '.json':
+            for doc in _latest_by_type(docs_base, [TipoDocumento.EXTRACAO_QUESTOES]):
+                if doc.extensao.lower() == '.json':
                     if _carregar_json(doc, "questoes_extraidas"):
                         encontrou_questoes = True
-                        break
             if not encontrou_questoes and etapa in [EtapaProcessamento.CORRIGIR, EtapaProcessamento.ANALISAR_HABILIDADES]:
                 documentos_faltantes.append("questoes_extraidas (execute 'extrair_questoes' primeiro)")
 
             # Verificar gabarito extraído para correção
             if etapa == EtapaProcessamento.CORRIGIR:
                 encontrou_gabarito = False
-                for doc in docs_base:
-                    if doc.tipo == TipoDocumento.EXTRACAO_GABARITO and doc.extensao.lower() == '.json':
+                for doc in _latest_by_type(docs_base, [TipoDocumento.EXTRACAO_GABARITO]):
+                    if doc.extensao.lower() == '.json':
                         if _carregar_json(doc, "gabarito_extraido"):
                             encontrou_gabarito = True
-                            break
                 if not encontrou_gabarito:
                     # Tentar carregar gabarito original como fallback
-                    for doc in docs_base:
-                        if doc.tipo == TipoDocumento.GABARITO:
-                            _logger.warning("Gabarito extraído não encontrado, usando gabarito original")
-                            encontrou_gabarito = True
-                            break
+                    for doc in _latest_by_type(docs_base, [TipoDocumento.GABARITO]):
+                        _logger.warning("Gabarito extraído não encontrado, usando gabarito original")
+                        encontrou_gabarito = True
                 if not encontrou_gabarito:
                     documentos_faltantes.append("gabarito (faça upload do gabarito ou execute 'extrair_gabarito')")
 
             encontrou_respostas = False
-            for doc in docs_aluno:
-                if doc.tipo == TipoDocumento.EXTRACAO_RESPOSTAS and doc.extensao.lower() == '.json':
+            for doc in _latest_by_type(docs_aluno, [TipoDocumento.EXTRACAO_RESPOSTAS]):
+                if doc.extensao.lower() == '.json':
                     if _carregar_json(doc, "respostas_aluno"):
                         encontrou_respostas = True
-                        break
             if not encontrou_respostas and etapa == EtapaProcessamento.CORRIGIR:
                 documentos_faltantes.append("respostas_aluno (execute 'extrair_respostas' primeiro)")
 
         # Para análise de habilidades e relatório, incluir correção
         if etapa in [EtapaProcessamento.ANALISAR_HABILIDADES, EtapaProcessamento.GERAR_RELATORIO]:
             encontrou_correcoes = False
-            for doc in docs_aluno:
-                if doc.tipo == TipoDocumento.CORRECAO and doc.extensao.lower() == '.json':
+            for doc in _latest_by_type(docs_aluno, [TipoDocumento.CORRECAO]):
+                if doc.extensao.lower() == '.json':
                     if _carregar_json(doc, "correcoes"):
                         encontrou_correcoes = True
-                        break
             if not encontrou_correcoes:
                 documentos_faltantes.append("correcoes")
 
         # Para relatório, incluir análise de habilidades
         if etapa == EtapaProcessamento.GERAR_RELATORIO:
             encontrou_analise = False
-            for doc in docs_aluno:
-                if doc.tipo == TipoDocumento.ANALISE_HABILIDADES and doc.extensao.lower() == '.json':
+            for doc in _latest_by_type(docs_aluno, [TipoDocumento.ANALISE_HABILIDADES]):
+                if doc.extensao.lower() == '.json':
                     if _carregar_json(doc, "analise_habilidades"):
                         encontrou_analise = True
-                        break
             if not encontrou_analise:
                 documentos_faltantes.append("analise_habilidades")
 
