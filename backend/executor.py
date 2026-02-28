@@ -1736,6 +1736,8 @@ Seja preciso, educativo e construtivo em suas análises."""
         O modelo pode usar create_document para criar múltiplos
         relatórios individuais em uma única chamada.
         """
+        import logging
+        logger = logging.getLogger("pipeline")
         # Buscar alunos da turma
         alunos = self.storage.listar_alunos(turma_id)
         
@@ -1757,8 +1759,8 @@ Seja preciso, educativo e construtivo em suas análises."""
                             "nome": aluno.nome,
                             "correcao": dados
                         })
-                except:
-                    pass
+                except (FileNotFoundError, json.JSONDecodeError, UnicodeDecodeError) as e:
+                    logger.warning(f"Erro ao ler correção do aluno {aluno.nome}: {e}")
         
         if not dados_alunos:
             return {"sucesso": False, "erro": "Nenhuma correção encontrada para os alunos"}
@@ -1917,6 +1919,45 @@ Crie UM documento separado para cada aluno, nomeando como "relatorio_[nome_aluno
 
             return resultado
 
+        # Required prerequisite documents for each step
+        STEP_DEPENDENCIES = {
+            "corrigir": {
+                "required_base": [TipoDocumento.EXTRACAO_QUESTOES],
+                "required_aluno": [TipoDocumento.EXTRACAO_RESPOSTAS],
+                "step_names": {"extracao_questoes": "extrair_questoes", "extracao_respostas": "extrair_respostas"},
+            },
+            "analisar_habilidades": {
+                "required_base": [],
+                "required_aluno": [TipoDocumento.CORRECAO],
+                "step_names": {"correcao": "corrigir"},
+            },
+            "gerar_relatorio": {
+                "required_base": [],
+                "required_aluno": [TipoDocumento.CORRECAO],
+                "step_names": {"correcao": "corrigir"},
+            },
+        }
+
+        def _check_dependencies(step_name: str) -> Optional[str]:
+            """Check if required prerequisite documents exist. Returns error message or None."""
+            deps = STEP_DEPENDENCIES.get(step_name)
+            if not deps:
+                return None
+
+            missing = []
+            for doc_type in deps["required_base"]:
+                if not any(d.tipo == doc_type for d in docs):
+                    step = deps["step_names"].get(doc_type.value, doc_type.value)
+                    missing.append(step)
+            for doc_type in deps["required_aluno"]:
+                if not any(d.tipo == doc_type for d in docs_aluno):
+                    step = deps["step_names"].get(doc_type.value, doc_type.value)
+                    missing.append(step)
+
+            if missing:
+                return f"Dependências faltando: execute primeiro {', '.join(missing)}"
+            return None
+
         # Carregar documentos existentes
         try:
             docs = self.storage.listar_documentos(atividade_id)
@@ -1979,6 +2020,15 @@ Crie UM documento separado para cada aluno, nomeando como "relatorio_[nome_aluno
         should_run, reason = _should_run("corrigir", TipoDocumento.CORRECAO, docs_aluno)
         logger.info(f"[4/6] corrigir: run={should_run}, reason={reason}")
         if should_run:
+            dep_error = _check_dependencies("corrigir")
+            if dep_error:
+                resultados["corrigir"] = ResultadoExecucao(
+                    sucesso=False,
+                    etapa=EtapaProcessamento.CORRIGIR,
+                    erro=dep_error
+                )
+                logger.error(f"  -> DEPENDÊNCIAS FALTANDO: {dep_error}")
+                return resultados
             resultado = await _executar_com_retry(EtapaProcessamento.CORRIGIR, aluno_id)
             resultados["corrigir"] = resultado
             logger.info(f"  -> sucesso={resultado.sucesso}, tentativas={resultado.tentativas}")
@@ -1992,6 +2042,15 @@ Crie UM documento separado para cada aluno, nomeando como "relatorio_[nome_aluno
         should_run, reason = _should_run("analisar_habilidades", TipoDocumento.ANALISE_HABILIDADES, docs_aluno)
         logger.info(f"[5/6] analisar_habilidades: run={should_run}, reason={reason}")
         if should_run:
+            dep_error = _check_dependencies("analisar_habilidades")
+            if dep_error:
+                resultados["analisar_habilidades"] = ResultadoExecucao(
+                    sucesso=False,
+                    etapa=EtapaProcessamento.ANALISAR_HABILIDADES,
+                    erro=dep_error
+                )
+                logger.error(f"  -> DEPENDÊNCIAS FALTANDO: {dep_error}")
+                return resultados
             resultado = await _executar_com_retry(EtapaProcessamento.ANALISAR_HABILIDADES, aluno_id)
             resultados["analisar_habilidades"] = resultado
             logger.info(f"  -> sucesso={resultado.sucesso}, tentativas={resultado.tentativas}")
@@ -2005,6 +2064,15 @@ Crie UM documento separado para cada aluno, nomeando como "relatorio_[nome_aluno
         should_run, reason = _should_run("gerar_relatorio", TipoDocumento.RELATORIO_FINAL, docs_aluno)
         logger.info(f"[6/6] gerar_relatorio: run={should_run}, reason={reason}")
         if should_run:
+            dep_error = _check_dependencies("gerar_relatorio")
+            if dep_error:
+                resultados["gerar_relatorio"] = ResultadoExecucao(
+                    sucesso=False,
+                    etapa=EtapaProcessamento.GERAR_RELATORIO,
+                    erro=dep_error
+                )
+                logger.error(f"  -> DEPENDÊNCIAS FALTANDO: {dep_error}")
+                return resultados
             resultado = await _executar_com_retry(EtapaProcessamento.GERAR_RELATORIO, aluno_id)
             resultados["gerar_relatorio"] = resultado
             logger.info(f"  -> sucesso={resultado.sucesso}, tentativas={resultado.tentativas}")

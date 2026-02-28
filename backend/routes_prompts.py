@@ -396,7 +396,7 @@ def _ler_conteudo_documento(doc) -> str:
                 return f.read()
         else:
             return f"[Arquivo: {doc.nome_arquivo}]"
-    except Exception as e:
+    except (FileNotFoundError, json.JSONDecodeError, UnicodeDecodeError) as e:
         return f"[Erro ao ler: {e}]"
 
 

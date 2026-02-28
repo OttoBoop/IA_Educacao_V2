@@ -613,11 +613,12 @@ async def regenerar_documento(documento_id: str, formato: str, data: Optional[Re
     novo_nome = f"{nome_base}{extensao}"
     
     # Criar arquivo temporário e salvar via storage
+    tmp_path = None
     try:
         with tempfile.NamedTemporaryFile(delete=False, suffix=extensao, mode='wb' if isinstance(content, bytes) else 'w', encoding=None if isinstance(content, bytes) else 'utf-8') as tmp:
             tmp.write(content)
             tmp_path = tmp.name
-        
+
         # Salvar no storage com mesmo contexto do original
         novo_doc = storage.salvar_documento(
             arquivo_origem=tmp_path,
@@ -626,10 +627,7 @@ async def regenerar_documento(documento_id: str, formato: str, data: Optional[Re
             aluno_id=documento.aluno_id,
             criado_por="sistema"
         )
-        
-        # Limpar temp
-        os.unlink(tmp_path)
-        
+
         return {
             "sucesso": True,
             "documento_original": documento_id,
@@ -642,9 +640,12 @@ async def regenerar_documento(documento_id: str, formato: str, data: Optional[Re
             "url_download": f"/api/documentos/{novo_doc.id}/download",
             "url_view": f"/api/documentos/{novo_doc.id}/view"
         }
-        
+
     except Exception as e:
         raise HTTPException(500, f"Erro ao salvar documento: {e}")
+    finally:
+        if tmp_path and os.path.exists(tmp_path):
+            os.unlink(tmp_path)
 
 
 # ============================================================
