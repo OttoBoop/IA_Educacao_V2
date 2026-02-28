@@ -1,12 +1,14 @@
 """Tests for Pipeline Grading Resilience.
 
 Wave 1 (F1-T1, F2-T1, F4-T1) — DONE
-Wave 2 (F1-T2, F2-T2, F3-T1, F4-T2) — RED phase
+Wave 2 (F1-T2, F2-T2, F3-T1, F4-T2) — DONE
+Wave 2b (F3-T2) — RED phase
 
 F1-T2: _coletar_arquivos_para_etapa() edge case handling
 F2-T2: Temp file cleanup with finally blocks
 F3-T1: Dependency validation in executar_pipeline_completo()
 F4-T2: Replace bare except: with specific exceptions
+F3-T2: Map TipoDocumento → EtapaProcessamento for error messages
 """
 import sys
 import os
@@ -557,3 +559,76 @@ class TestSpecificExceptions:
         with patch("builtins.open", side_effect=PermissionError("Access denied")):
             with pytest.raises(PermissionError):
                 _ler_conteudo_documento(doc)
+
+
+# ============================================================
+# F3-T2: Map TipoDocumento → EtapaProcessamento for errors
+# ============================================================
+
+class TestTipoToEtapaMapping:
+    """F3-T2: A proper module-level mapping from TipoDocumento to
+    EtapaProcessamento should exist for clear dependency error messages."""
+
+    def test_tipo_to_etapa_mapping_exists(self):
+        """executor module should export a TIPO_TO_ETAPA mapping dict."""
+        from executor import TIPO_TO_ETAPA
+
+        assert isinstance(TIPO_TO_ETAPA, dict), (
+            "TIPO_TO_ETAPA should be a dict, got: " + type(TIPO_TO_ETAPA).__name__
+        )
+
+    def test_mapping_covers_critical_document_types(self):
+        """Mapping must cover all document types that are pipeline prerequisites:
+        EXTRACAO_QUESTOES, EXTRACAO_RESPOSTAS, CORRECAO."""
+        from executor import TIPO_TO_ETAPA
+
+        required_types = [
+            TipoDocumento.EXTRACAO_QUESTOES,
+            TipoDocumento.EXTRACAO_RESPOSTAS,
+            TipoDocumento.CORRECAO,
+        ]
+        for tipo in required_types:
+            assert tipo in TIPO_TO_ETAPA, (
+                f"{tipo.name} must be in TIPO_TO_ETAPA mapping"
+            )
+
+    def test_mapping_values_are_etapa_enum_members(self):
+        """Mapping values should be EtapaProcessamento enum members,
+        not plain strings."""
+        from executor import TIPO_TO_ETAPA
+
+        for tipo, etapa in TIPO_TO_ETAPA.items():
+            assert isinstance(etapa, EtapaProcessamento), (
+                f"TIPO_TO_ETAPA[{tipo.name}] should be EtapaProcessamento, "
+                f"got {type(etapa).__name__}: {etapa}"
+            )
+
+    @pytest.mark.asyncio
+    async def test_dependency_error_uses_etapa_value(
+        self, executor_with_mock_storage
+    ):
+        """Dependency error messages should use EtapaProcessamento.value
+        (e.g., 'extrair_questoes') derived from the TIPO_TO_ETAPA mapping,
+        not hardcoded strings."""
+        executor = executor_with_mock_storage
+        executor.storage.listar_documentos.return_value = []
+        executor.executar_etapa = AsyncMock(
+            return_value=ResultadoExecucao(
+                sucesso=True, etapa=EtapaProcessamento.CORRIGIR
+            )
+        )
+
+        result = await executor.executar_pipeline_completo(
+            atividade_id="ativ1",
+            aluno_id="aluno1",
+            selected_steps=["corrigir"],
+            provider_name="test-provider",
+        )
+
+        corrigir_result = result.get("corrigir")
+        assert corrigir_result is not None
+        assert not corrigir_result.sucesso
+        # Error should mention the step name derived from EtapaProcessamento
+        error_msg = (corrigir_result.erro or "").lower()
+        assert "extrair_questoes" in error_msg
+        assert "extrair_respostas" in error_msg
