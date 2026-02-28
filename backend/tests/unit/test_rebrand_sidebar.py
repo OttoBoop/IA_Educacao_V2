@@ -48,3 +48,19 @@ class TestSidebarBrandName:
     def test_no_old_brand_in_sidebar(self, html_content):
         """Sidebar must not contain 'Prova AI' brand text."""
         assert "<span>Prova AI</span>" not in html_content
+
+
+class TestSidebarTagline:
+    """The sidebar must display the tagline 'Mais que um Número'."""
+
+    def test_tagline_element_exists(self, html_content):
+        """A logo-tagline element must exist with the tagline text."""
+        assert "logo-tagline" in html_content
+
+    def test_tagline_text_correct(self, html_content):
+        """Tagline must read 'Mais que um Número'."""
+        assert "Mais que um N\u00famero" in html_content
+
+    def test_tagline_css_class_defined(self, html_content):
+        """CSS class .logo-tagline must be defined."""
+        assert ".logo-tagline" in html_content
