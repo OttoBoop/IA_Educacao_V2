@@ -7647,6 +7647,10 @@
             return options.join('');
         }
 
+        function hasStudentsInTurma() {
+            return (window._atividadeData?.alunos?.total ?? 0) > 0;
+        }
+
         function openModalUploadProvas(atividadeId) {
             document.getElementById('input-upload-provas-atividade-id').value = atividadeId;
             openModal('modal-upload-provas');
