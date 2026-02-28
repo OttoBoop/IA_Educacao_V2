@@ -549,6 +549,16 @@ DESEMPENHO_TIPO_MAP = {
 _RUN_GROUP_THRESHOLD_SECONDS = 60
 
 
+def _make_run(doc_list):
+    """Create a run dict from a list of Documento objects."""
+    run_date = doc_list[0].criado_em
+    return {
+        "id": f"run-{run_date.strftime('%Y%m%d-%H%M%S')}",
+        "date": run_date.isoformat(),
+        "docs": [_doc_to_dict(d) for d in doc_list],
+    }
+
+
 def _group_docs_into_runs(docs):
     """Group documents by pipeline run based on timestamp proximity.
 
@@ -559,36 +569,19 @@ def _group_docs_into_runs(docs):
     if not docs:
         return []
 
-    # Sort by criado_em descending (newest first)
     sorted_docs = sorted(docs, key=lambda d: d.criado_em, reverse=True)
-
     runs = []
     current_run_docs = [sorted_docs[0]]
 
     for doc in sorted_docs[1:]:
-        prev_doc = current_run_docs[-1]
-        time_diff = abs((prev_doc.criado_em - doc.criado_em).total_seconds())
+        time_diff = abs((current_run_docs[-1].criado_em - doc.criado_em).total_seconds())
         if time_diff <= _RUN_GROUP_THRESHOLD_SECONDS:
             current_run_docs.append(doc)
         else:
-            # Finalize current run
-            run_date = current_run_docs[0].criado_em
-            runs.append({
-                "id": f"run-{run_date.strftime('%Y%m%d-%H%M%S')}",
-                "date": run_date.isoformat(),
-                "docs": [_doc_to_dict(d) for d in current_run_docs],
-            })
+            runs.append(_make_run(current_run_docs))
             current_run_docs = [doc]
 
-    # Finalize last run
-    if current_run_docs:
-        run_date = current_run_docs[0].criado_em
-        runs.append({
-            "id": f"run-{run_date.strftime('%Y%m%d-%H%M%S')}",
-            "date": run_date.isoformat(),
-            "docs": [_doc_to_dict(d) for d in current_run_docs],
-        })
-
+    runs.append(_make_run(current_run_docs))
     return runs
 
 
