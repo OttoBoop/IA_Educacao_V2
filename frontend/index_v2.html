@@ -7771,6 +7771,10 @@
         }
 
         async function openModalPipelineCompleto(atividadeId, modo = 'aluno') {
+            if (!hasStudentsInTurma()) {
+                showToast('Nenhum aluno na turma. Adicione alunos antes de enviar provas.', 'warning');
+                return;
+            }
             try {
                 document.getElementById('input-pipeline-atividade-id').value = atividadeId;
                 await ensureAtividadeData(atividadeId);
