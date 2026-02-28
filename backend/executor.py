@@ -650,6 +650,17 @@ class PipelineExecutor:
 
         logger.info(f"Coletando arquivos para {etapa.value}: docs_base={len(docs_base)}, docs_aluno={len(docs_aluno)}")
 
+        def _latest_by_type(docs, types):
+            """Return only the most recent document per type (by criado_em).
+            This avoids sending duplicate versions to the AI model."""
+            latest = {}
+            for doc in docs:
+                if doc.tipo in types:
+                    existing = latest.get(doc.tipo)
+                    if existing is None or doc.criado_em > existing.criado_em:
+                        latest[doc.tipo] = doc
+            return list(latest.values())
+
         def _normalizar_e_verificar(doc) -> Optional[str]:
             """
             Resolve o caminho do documento usando storage.resolver_caminho_documento().
@@ -688,84 +699,79 @@ class PipelineExecutor:
 
         elif etapa == EtapaProcessamento.EXTRAIR_GABARITO:
             # Precisa do gabarito original + questões extraídas (JSON)
-            for doc in docs_base:
-                if doc.tipo == TipoDocumento.GABARITO:
-                    caminho = _normalizar_e_verificar(doc)
-                    if caminho:
-                        arquivos.append(caminho)
-            # Incluir questões extraídas para referência
-            for doc in docs_base:
-                if doc.tipo == TipoDocumento.EXTRACAO_QUESTOES and doc.extensao.lower() == '.json':
+            for doc in _latest_by_type(docs_base, [TipoDocumento.GABARITO]):
+                caminho = _normalizar_e_verificar(doc)
+                if caminho:
+                    arquivos.append(caminho)
+            # Incluir questões extraídas para referência — only latest version
+            for doc in _latest_by_type(docs_base, [TipoDocumento.EXTRACAO_QUESTOES]):
+                if doc.extensao.lower() == '.json':
                     caminho = _normalizar_e_verificar(doc)
                     if caminho:
                         arquivos.append(caminho)
 
         elif etapa == EtapaProcessamento.EXTRAIR_RESPOSTAS:
             # Precisa da prova respondida + questões extraídas (JSON)
-            for doc in docs_aluno:
-                if doc.tipo == TipoDocumento.PROVA_RESPONDIDA:
-                    caminho = _normalizar_e_verificar(doc)
-                    if caminho:
-                        arquivos.append(caminho)
-            # Incluir questões extraídas para referência
-            for doc in docs_base:
-                if doc.tipo == TipoDocumento.EXTRACAO_QUESTOES and doc.extensao.lower() == '.json':
+            for doc in _latest_by_type(docs_aluno, [TipoDocumento.PROVA_RESPONDIDA]):
+                caminho = _normalizar_e_verificar(doc)
+                if caminho:
+                    arquivos.append(caminho)
+            # Incluir questões extraídas para referência — only latest version
+            for doc in _latest_by_type(docs_base, [TipoDocumento.EXTRACAO_QUESTOES]):
+                if doc.extensao.lower() == '.json':
                     caminho = _normalizar_e_verificar(doc)
                     if caminho:
                         arquivos.append(caminho)
 
         elif etapa == EtapaProcessamento.CORRIGIR:
-            # Arquivos originais para referência visual
-            for doc in docs_aluno:
-                if doc.tipo == TipoDocumento.PROVA_RESPONDIDA:
+            # Arquivos originais para referência visual (only latest)
+            for doc in _latest_by_type(docs_aluno, [TipoDocumento.PROVA_RESPONDIDA]):
+                caminho = _normalizar_e_verificar(doc)
+                if caminho:
+                    arquivos.append(caminho)
+            for doc in _latest_by_type(docs_base, [TipoDocumento.GABARITO]):
+                caminho = _normalizar_e_verificar(doc)
+                if caminho:
+                    arquivos.append(caminho)
+            # JSONs processados — only latest version per type
+            for doc in _latest_by_type(docs_base, [TipoDocumento.EXTRACAO_QUESTOES, TipoDocumento.EXTRACAO_GABARITO]):
+                if doc.extensao.lower() == '.json':
                     caminho = _normalizar_e_verificar(doc)
                     if caminho:
                         arquivos.append(caminho)
-            for doc in docs_base:
-                if doc.tipo == TipoDocumento.GABARITO:
-                    caminho = _normalizar_e_verificar(doc)
-                    if caminho:
-                        arquivos.append(caminho)
-            # JSONs processados (questões, gabarito extraído, respostas)
-            for doc in docs_base:
-                if doc.tipo in [TipoDocumento.EXTRACAO_QUESTOES, TipoDocumento.EXTRACAO_GABARITO] and doc.extensao.lower() == '.json':
-                    caminho = _normalizar_e_verificar(doc)
-                    if caminho:
-                        arquivos.append(caminho)
-            for doc in docs_aluno:
-                if doc.tipo == TipoDocumento.EXTRACAO_RESPOSTAS and doc.extensao.lower() == '.json':
+            for doc in _latest_by_type(docs_aluno, [TipoDocumento.EXTRACAO_RESPOSTAS]):
+                if doc.extensao.lower() == '.json':
                     caminho = _normalizar_e_verificar(doc)
                     if caminho:
                         arquivos.append(caminho)
 
         elif etapa == EtapaProcessamento.ANALISAR_HABILIDADES:
-            # Prova do aluno para referência visual
-            for doc in docs_aluno:
-                if doc.tipo == TipoDocumento.PROVA_RESPONDIDA:
+            # Prova do aluno para referência visual (only latest)
+            for doc in _latest_by_type(docs_aluno, [TipoDocumento.PROVA_RESPONDIDA]):
+                caminho = _normalizar_e_verificar(doc)
+                if caminho:
+                    arquivos.append(caminho)
+            # JSONs processados — only latest version per type
+            for doc in _latest_by_type(docs_base, [TipoDocumento.EXTRACAO_QUESTOES]):
+                if doc.extensao.lower() == '.json':
                     caminho = _normalizar_e_verificar(doc)
                     if caminho:
                         arquivos.append(caminho)
-            # JSONs processados (questões, respostas, correção)
-            for doc in docs_base:
-                if doc.tipo == TipoDocumento.EXTRACAO_QUESTOES and doc.extensao.lower() == '.json':
-                    caminho = _normalizar_e_verificar(doc)
-                    if caminho:
-                        arquivos.append(caminho)
-            for doc in docs_aluno:
-                if doc.tipo in [TipoDocumento.EXTRACAO_RESPOSTAS, TipoDocumento.CORRECAO] and doc.extensao.lower() == '.json':
+            for doc in _latest_by_type(docs_aluno, [TipoDocumento.EXTRACAO_RESPOSTAS, TipoDocumento.CORRECAO]):
+                if doc.extensao.lower() == '.json':
                     caminho = _normalizar_e_verificar(doc)
                     if caminho:
                         arquivos.append(caminho)
 
         elif etapa == EtapaProcessamento.GERAR_RELATORIO:
-            # JSONs processados (correção, análise de habilidades)
-            for doc in docs_base:
-                if doc.tipo == TipoDocumento.EXTRACAO_QUESTOES and doc.extensao.lower() == '.json':
+            # JSONs processados — only latest version per type
+            for doc in _latest_by_type(docs_base, [TipoDocumento.EXTRACAO_QUESTOES]):
+                if doc.extensao.lower() == '.json':
                     caminho = _normalizar_e_verificar(doc)
                     if caminho:
                         arquivos.append(caminho)
-            for doc in docs_aluno:
-                if doc.tipo in [TipoDocumento.CORRECAO, TipoDocumento.ANALISE_HABILIDADES] and doc.extensao.lower() == '.json':
+            for doc in _latest_by_type(docs_aluno, [TipoDocumento.CORRECAO, TipoDocumento.ANALISE_HABILIDADES]):
+                if doc.extensao.lower() == '.json':
                     caminho = _normalizar_e_verificar(doc)
                     if caminho:
                         arquivos.append(caminho)
