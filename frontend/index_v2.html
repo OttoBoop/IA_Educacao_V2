@@ -6405,18 +6405,20 @@
                     <div class="card">
                         <div class="card-header">
                             <h3 class="card-title">📊 Relatório de Desempenho da Matéria</h3>
-                            <button class="btn btn-primary" onclick="executarDesempenho('materia', '${materiaId}')">▶️ Gerar Relatório</button>
+                            <div id="desempenho-generate-area-materia" class="desempenho-generate-area">
+                                <button class="btn btn-primary" onclick="executarDesempenho('materia', '${materiaId}')">▶️ Gerar Relatório</button>
+                            </div>
                         </div>
                         <div style="padding: 12px; color: var(--text-muted); font-size: 0.9rem;">
                             Gera um relatório narrativo comparando o desempenho entre todas as turmas desta matéria, identificando padrões e avaliando a efetividade do currículo.
                         </div>
-                        <div id="desempenho-materia-docs">
-                            <div style="padding: 8px 12px; color: var(--text-muted);">Carregando documentos...</div>
+                        <div id="desempenho-runs-materia">
+                            <div style="padding: 8px 12px; color: var(--text-muted);">Carregando...</div>
                         </div>
                     </div>
                 </div>
             `;
-            loadDesempenhoDocs('materia', materiaId);
+            loadDesempenhoData('materia', materiaId);
         }
         
         async function showTurma(turmaId) {
@@ -6486,17 +6488,19 @@
                     <div class="card">
                         <div class="card-header">
                             <h3 class="card-title">📊 Relatório de Desempenho da Turma</h3>
-                            <button class="btn btn-primary" onclick="executarDesempenho('turma', '${turmaId}')">▶️ Gerar Relatório</button>
+                            <div id="desempenho-generate-area-turma" class="desempenho-generate-area">
+                                <button class="btn btn-primary" onclick="executarDesempenho('turma', '${turmaId}')">▶️ Gerar Relatório</button>
+                            </div>
                         </div>
                         <div style="padding: 12px; color: var(--text-muted); font-size: 0.9rem;">
                             Gera um relatório narrativo sobre o desempenho de toda a turma: progresso ao longo do tempo, problemas persistentes, perfil da classe e evolução individual.
                         </div>
-                        <div id="desempenho-turma-docs">
-                            <div style="padding: 8px 12px; color: var(--text-muted);">Carregando documentos...</div>
+                        <div id="desempenho-runs-turma">
+                            <div style="padding: 8px 12px; color: var(--text-muted);">Carregando...</div>
                         </div>
                     </div>
                 `;
-                loadDesempenhoDocs('turma', turmaId);
+                loadDesempenhoData('turma', turmaId);
             } else if (tab === 'alunos') {
                 container.innerHTML = `
                     <div class="card">
@@ -6601,18 +6605,20 @@
                     <div class="card">
                         <div class="card-header">
                             <h3 class="card-title">📊 Relatório de Desempenho da Turma</h3>
-                            <button class="btn btn-primary" onclick="executarDesempenho('tarefa', '${atividadeId}')">▶️ Gerar Relatório</button>
+                            <div id="desempenho-generate-area-tarefa" class="desempenho-generate-area">
+                                <button class="btn btn-primary" onclick="executarDesempenho('tarefa', '${atividadeId}')">▶️ Gerar Relatório</button>
+                            </div>
                         </div>
                         <div style="padding: 12px; color: var(--text-muted); font-size: 0.9rem;">
                             Gera um relatório narrativo analisando o desempenho de todos os alunos nesta atividade, com análise questão a questão e exemplos específicos.
                         </div>
-                        <div id="desempenho-tarefa-docs">
-                            <div style="padding: 8px 12px; color: var(--text-muted);">Carregando documentos...</div>
+                        <div id="desempenho-runs-tarefa">
+                            <div style="padding: 8px 12px; color: var(--text-muted);">Carregando...</div>
                         </div>
                     </div>
                 </div>
             `;
-            loadDesempenhoDocs('tarefa', atividadeId);
+            loadDesempenhoData('tarefa', atividadeId);
         }
 
         function formatDateTime(value) {
@@ -8602,8 +8608,111 @@
         }
 
         // ============================================================
-        // DESEMPENHO PIPELINE - Shared functions for B5/C5/D5
+        // DESEMPENHO PIPELINE - Overhaul (B-T1/B-T2/B-T3)
         // ============================================================
+
+        function desempenhoDocLabel(tipo) {
+            const labels = {
+                'RELATORIO_DESEMPENHO_TAREFA': 'Relatório de Desempenho (Atividade)',
+                'RELATORIO_DESEMPENHO_TURMA': 'Relatório de Desempenho (Turma)',
+                'RELATORIO_DESEMPENHO_MATERIA': 'Relatório de Desempenho (Matéria)',
+            };
+            return labels[tipo] || tipo;
+        }
+
+        function renderDesempenhoRuns(runs, level, entityId) {
+            if (!runs || runs.length === 0) return '';
+            return runs.map((run, idx) => {
+                const runDate = new Date(run.date);
+                const dateStr = runDate.toLocaleString('pt-BR');
+                const runNum = runs.length - idx;
+                const docsHtml = run.docs.map(doc => {
+                    const label = desempenhoDocLabel(doc.tipo);
+                    const ext = doc.extensao ? doc.extensao.toUpperCase() : '';
+                    return `
+                        <div style="display: flex; align-items: center; justify-content: space-between; padding: 8px 12px; border-bottom: 1px solid var(--border);">
+                            <div style="display: flex; align-items: center; gap: 8px;">
+                                <span class="badge badge-primary">${ext || '📄'}</span>
+                                <span>${label}</span>
+                            </div>
+                            <div style="display: flex; gap: 4px;">
+                                <button class="btn btn-sm" onclick="visualizarDocumento('${doc.id}')">👁️ Ver</button>
+                                <button class="btn btn-sm btn-danger" onclick="excluirDocumento('${doc.id}'); setTimeout(() => loadDesempenhoData('${level}', '${entityId}'), 500);">🗑️</button>
+                            </div>
+                        </div>
+                    `;
+                }).join('');
+                return `
+                    <div class="card" style="margin-bottom: 12px;">
+                        <div class="card-header" style="padding: 10px 16px;">
+                            <h3 class="card-title" style="font-size: 0.95rem;">📦 Run #${runNum} — ${dateStr}</h3>
+                            <button class="btn btn-sm btn-danger" onclick="deleteDesempenhoRun('${run.id}', '${level}', '${entityId}')">🗑️ Excluir Run</button>
+                        </div>
+                        ${docsHtml}
+                    </div>
+                `;
+            }).join('');
+        }
+
+        async function deleteDesempenhoRun(runId, level, entityId) {
+            if (!confirm('Excluir todos os documentos desta execução?')) return;
+            try {
+                const resp = await fetch(API_BASE + `/api/desempenho/run/${runId}?level=${level}&entity_id=${entityId}`, {
+                    method: 'DELETE'
+                });
+                if (!resp.ok) throw new Error('Falha ao excluir');
+                const data = await resp.json();
+                showToast(`🗑️ ${data.deleted_count} documento(s) excluído(s)`, 'success');
+                loadDesempenhoData(level, entityId);
+            } catch (e) {
+                showToast('❌ Erro ao excluir run: ' + (e.message || 'Erro desconhecido'), 'error');
+            }
+        }
+
+        async function loadDesempenhoData(level, entityId) {
+            const container = document.getElementById(`desempenho-runs-${level}`);
+            const generateArea = document.getElementById(`desempenho-generate-area-${level}`);
+            if (!container) return;
+
+            try {
+                const data = await api(`/api/desempenho/${level}/${entityId}`);
+                const hasAtividades = data.has_atividades;
+                const runs = data.runs || [];
+
+                // B-T3: Update generate button based on has_atividades
+                if (generateArea) {
+                    if (!hasAtividades) {
+                        generateArea.innerHTML = `
+                            <button class="btn btn-primary" disabled>▶️ Gerar Relatório</button>
+                            <div style="color: var(--text-muted); font-size: 0.8rem; margin-top: 4px;">
+                                Nenhuma atividade corrigida. Corrija atividades primeiro para gerar o relatório.
+                            </div>
+                        `;
+                    }
+                }
+
+                // B-T3: Empty state when no runs exist
+                if (runs.length === 0) {
+                    container.innerHTML = `
+                        <div class="empty-state" style="padding: 30px 20px;">
+                            <div class="empty-icon">📊</div>
+                            <div class="empty-title">Nenhum relatório gerado</div>
+                            <div class="empty-text">Clique em "Gerar Relatório" para criar uma análise de desempenho.</div>
+                        </div>
+                    `;
+                    return;
+                }
+
+                // B-T2: Render grouped runs
+                container.innerHTML = renderDesempenhoRuns(runs, level, entityId);
+            } catch (e) {
+                container.innerHTML = `
+                    <div style="padding: 12px; color: var(--text-muted);">
+                        Erro ao carregar dados de desempenho.
+                    </div>
+                `;
+            }
+        }
 
         async function executarDesempenho(level, entityId) {
             const endpoints = {
@@ -8628,54 +8737,13 @@
                 const result = await apiForm(endpoint, formData);
 
                 showToast('📊 Relatório de desempenho gerado com sucesso!', 'success');
-                loadDesempenhoDocs(level, entityId);
+                loadDesempenhoData(level, entityId);
 
                 if (result.documento_id) {
                     visualizarDocumento(result.documento_id);
                 }
             } catch (e) {
                 showToast('❌ Erro ao gerar relatório: ' + (e.message || 'Erro desconhecido'), 'error');
-            }
-        }
-
-        async function loadDesempenhoDocs(level, entityId) {
-            const containerIds = {
-                'tarefa': 'desempenho-tarefa-docs',
-                'turma': 'desempenho-turma-docs',
-                'materia': 'desempenho-materia-docs'
-            };
-            const docTypes = {
-                'tarefa': 'RELATORIO_DESEMPENHO_TAREFA',
-                'turma': 'RELATORIO_DESEMPENHO_TURMA',
-                'materia': 'RELATORIO_DESEMPENHO_MATERIA'
-            };
-            const paramNames = {
-                'tarefa': 'atividade_id',
-                'turma': 'turma_id',
-                'materia': 'materia_id'
-            };
-
-            const container = document.getElementById(containerIds[level]);
-            if (!container) return;
-
-            try {
-                const data = await api(`/documentos/todos?tipo=${docTypes[level]}`);
-                const docs = (data.documentos || []).filter(d =>
-                    d[paramNames[level]] === entityId || d.atividade_id === entityId
-                );
-
-                if (docs.length === 0) {
-                    container.innerHTML = '<div style="padding: 8px 12px; color: var(--text-muted);">Nenhum relatório gerado ainda. Clique em "Gerar Relatório" para começar.</div>';
-                    return;
-                }
-
-                container.innerHTML = docs.map(doc => renderDocumentoItem(doc, {
-                    icon: '📊',
-                    showVisualizar: true,
-                    showExcluir: true
-                })).join('');
-            } catch (e) {
-                container.innerHTML = '<div style="padding: 8px 12px; color: var(--text-muted);">Nenhum relatório gerado ainda. Clique em "Gerar Relatório" para começar.</div>';
             }
         }
 
