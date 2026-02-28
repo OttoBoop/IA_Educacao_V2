@@ -1059,9 +1059,12 @@ class PipelineExecutor:
             "nota_maxima": str(atividade.nota_maxima) if atividade else "10"
         }
         
-        # Buscar documentos relevantes
-        documentos = self.storage.listar_documentos(atividade_id, aluno_id)
-        
+        # Buscar documentos relevantes — deduplicated to latest per type
+        all_docs = self.storage.listar_documentos(atividade_id, aluno_id)
+        # Keep only the newest document per type to avoid overwriting
+        # prompt variables with stale data from old pipeline runs
+        documentos = _latest_by_type(all_docs, list(TipoDocumento))
+
         for doc in documentos:
             if usar_multimodal and doc.tipo in [TipoDocumento.ENUNCIADO, TipoDocumento.GABARITO, TipoDocumento.PROVA_RESPONDIDA]:
                 # Em modo multimodal, não incluir conteúdo de PDFs/imagens no prompt

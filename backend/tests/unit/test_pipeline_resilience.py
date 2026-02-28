@@ -859,3 +859,57 @@ class TestContextJsonDedup:
             f"Expected newest version ('new'), got '{parsed.get('version')}'. "
             "Context loaded stale data from an old document!"
         )
+
+
+class TestVariaveisTextoDedup:
+    """_preparar_variaveis_texto must use newest document per type.
+    BUG: When iterating DESC-ordered docs, the LAST match overwrites
+    with the OLDEST document. Variables like {{questao}} get stale data."""
+
+    def test_variables_use_newest_extraction(self, executor_with_mock_storage, temp_dir):
+        """When multiple EXTRACAO_QUESTOES exist, the prompt variable
+        'questoes_extraidas' must come from the newest, not oldest."""
+        executor = executor_with_mock_storage
+
+        # OLD extraction content (stale — references tmpafjz7tqh.json)
+        old_path = temp_dir / "old_q.json"
+        old_path.write_text('{"questoes": [{"n":1}], "source": "tmpafjz7tqh.json"}', encoding="utf-8")
+        old_doc = _make_doc_with_time(
+            TipoDocumento.EXTRACAO_QUESTOES, str(old_path),
+            datetime(2026, 1, 1))
+
+        # NEW extraction content (correct)
+        new_path = temp_dir / "new_q.json"
+        new_path.write_text('{"questoes": [{"n":1},{"n":2}], "source": "latest.json"}', encoding="utf-8")
+        new_doc = _make_doc_with_time(
+            TipoDocumento.EXTRACAO_QUESTOES, str(new_path),
+            datetime(2026, 2, 1))
+
+        # Return DESC order (newest first) — old loop would overwrite with oldest
+        executor.storage.listar_documentos.return_value = [new_doc, old_doc]
+
+        # Mock _ler_documento_texto to return the file contents
+        def mock_read(doc, multimodal=False):
+            return Path(doc.caminho_arquivo).read_text(encoding='utf-8')
+        executor._ler_documento_texto = mock_read
+
+        # Mock atividade/materia
+        executor.storage.get_atividade = MagicMock(return_value=MagicMock(
+            nome="A1", nota_maxima=10))
+        executor.storage.get_materia = MagicMock(return_value=MagicMock(nome="Calc"))
+
+        variaveis = executor._preparar_variaveis_texto(
+            EtapaProcessamento.CORRIGIR, "ativ1", "aluno1",
+            materia=MagicMock(nome="Calc"),
+            atividade=MagicMock(nome="A1", nota_maxima=10),
+            usar_multimodal=True
+        )
+
+        content = variaveis.get("questoes_extraidas", "")
+        assert "latest.json" in content, (
+            f"Expected newest extraction content with 'latest.json', "
+            f"got: {content[:200]}. Variables used stale/oldest document!"
+        )
+        assert "tmpafjz7tqh" not in content, (
+            "Found old temp filename in prompt variables — stale data leak!"
+        )
