@@ -4663,19 +4663,26 @@
                 history.pushState({ view: 'dashboard' }, '');
                 return;
             }
+            // Restore globals from state immediately
+            currentView = state.view;
+            currentMateria = state.materiaId || null;
+            currentTurma = state.turmaId || null;
+            currentAtividade = state.atividadeId || null;
+            currentAluno = state.alunoId || null;
+
             _isRestoringFromHistory = true;
             try {
                 switch (state.view) {
                     case 'dashboard': await showDashboard(); break;
-                    case 'materia': state.materiaId ? await showMateria(state.materiaId) : await showDashboard(); break;
-                    case 'turma': state.turmaId ? await showTurma(state.turmaId) : await showDashboard(); break;
-                    case 'atividade': state.atividadeId ? await showAtividade(state.atividadeId) : await showDashboard(); break;
+                    case 'materia': if (state.materiaId) await showMateria(state.materiaId); break;
+                    case 'turma': if (state.turmaId) await showTurma(state.turmaId); break;
+                    case 'atividade': if (state.atividadeId) await showAtividade(state.atividadeId); break;
                     case 'alunos': await showAlunos(); break;
                     case 'prompts': await showPrompts(); break;
                     case 'providers': await showProviders(); break;
                     case 'chat_geral': await showChatGeral(state.atividadeId, state.alunoId); break;
-                    case 'aluno': state.alunoId ? await showAluno(state.alunoId) : await showDashboard(); break;
-                    case 'resultado_aluno': (state.atividadeId && state.alunoId) ? await showResultadoAluno(state.atividadeId, state.alunoId) : await showDashboard(); break;
+                    case 'aluno': if (state.alunoId) await showAluno(state.alunoId); break;
+                    case 'resultado_aluno': if (state.atividadeId && state.alunoId) await showResultadoAluno(state.atividadeId, state.alunoId); break;
                     default: await showDashboard();
                 }
             } finally {
