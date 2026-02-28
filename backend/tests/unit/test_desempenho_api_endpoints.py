@@ -319,56 +319,99 @@ class TestDesempenhoGetEndpoint:
 # ============================================================
 
 class TestDesempenhoDeleteRunEndpoint:
-    """A-T2: DELETE /api/desempenho/run/{run_id}
+    """A-T2: DELETE /api/desempenho/run/{run_id}?level=...&entity_id=...
 
     Tests that the endpoint deletes all documents belonging to a pipeline run
     and returns appropriate responses.
     """
 
     def test_delete_endpoint_exists(self, client):
-        """DELETE /api/desempenho/run/{run_id} must exist."""
+        """DELETE /api/desempenho/run/{run_id} must exist and accept level+entity_id params."""
+        t = datetime(2026, 2, 27, 12, 8, 25)
+        doc = _make_desempenho_doc("doc-1", TipoDocumento.RELATORIO_DESEMPENHO_TAREFA, "ativ-001", t)
+
         with patch("routes_extras.storage") as mock_storage:
-            mock_storage.listar_documentos.return_value = []
-            response = client.delete("/api/desempenho/run/some-run-id")
-        assert response.status_code != 405, (
-            "DELETE /api/desempenho/run/{{run_id}} must exist (got Method Not Allowed)"
-        )
-        assert response.status_code != 404 or "run" in response.text.lower(), (
-            "Endpoint must exist — got generic 404"
+            mock_storage.listar_documentos.return_value = [doc]
+            mock_storage.deletar_documento.return_value = True
+            mock_storage.get_atividade.return_value = MagicMock(id="ativ-001", nome="Prova 1", turma_id="t1")
+            response = client.delete(
+                "/api/desempenho/run/run-20260227-120825",
+                params={"level": "tarefa", "entity_id": "ativ-001"},
+            )
+        assert response.status_code == 200, (
+            f"Expected 200, got {response.status_code}. "
+            "DELETE /api/desempenho/run/{{run_id}} endpoint must exist."
         )
 
     def test_delete_returns_404_for_nonexistent_run(self, client):
-        """Deleting a run that doesn't exist should return 404."""
+        """Deleting a run_id that doesn't match any grouped run should return 404."""
         with patch("routes_extras.storage") as mock_storage:
             mock_storage.listar_documentos.return_value = []
-            response = client.delete("/api/desempenho/run/nonexistent-run-123")
+            mock_storage.get_atividade.return_value = MagicMock(id="ativ-001", nome="Prova 1", turma_id="t1")
+            response = client.delete(
+                "/api/desempenho/run/run-99990101-000000",
+                params={"level": "tarefa", "entity_id": "ativ-001"},
+            )
         assert response.status_code == 404, (
             f"Expected 404 for nonexistent run, got {response.status_code}"
         )
 
     def test_delete_removes_all_docs_in_run(self, client):
-        """After deleting a run, all its documents should be removed."""
-        with patch("routes_extras.storage") as mock_storage:
-            # Simulate finding docs for this run
-            doc1 = _make_desempenho_doc("doc-1", TipoDocumento.RELATORIO_DESEMPENHO_TAREFA, "ativ-001")
-            doc2 = _make_desempenho_doc("doc-2", TipoDocumento.RELATORIO_DESEMPENHO_TAREFA, "ativ-001")
-            mock_storage.get_documento.side_effect = lambda id: doc1 if id == "doc-1" else doc2
-            mock_storage.deletar_documento.return_value = True
-            # The endpoint needs a way to find docs by run_id — implementation will define this
-            response = client.delete("/api/desempenho/run/run-abc-123")
+        """All documents in the matching run must be deleted via deletar_documento."""
+        t = datetime(2026, 2, 27, 12, 8, 25)
+        doc1 = _make_desempenho_doc("doc-1", TipoDocumento.RELATORIO_DESEMPENHO_TAREFA, "ativ-001", t)
+        doc2 = _make_desempenho_doc(
+            "doc-2", TipoDocumento.RELATORIO_DESEMPENHO_TAREFA, "ativ-001",
+            datetime(2026, 2, 27, 12, 8, 26),  # 1 second later — same run
+        )
 
-        # If endpoint exists and run has docs, it should delete them
-        if response.status_code == 200:
-            assert mock_storage.deletar_documento.call_count >= 1, (
-                "Must call deletar_documento for each doc in the run"
+        with patch("routes_extras.storage") as mock_storage:
+            mock_storage.listar_documentos.return_value = [doc1, doc2]
+            mock_storage.deletar_documento.return_value = True
+            mock_storage.get_atividade.return_value = MagicMock(id="ativ-001", nome="Prova 1", turma_id="t1")
+            response = client.delete(
+                "/api/desempenho/run/run-20260227-120825",
+                params={"level": "tarefa", "entity_id": "ativ-001"},
             )
 
-    def test_delete_returns_count_of_deleted_docs(self, client):
-        """Successful delete should return the count of deleted documents."""
-        with patch("routes_extras.storage") as mock_storage:
-            mock_storage.deletar_documento.return_value = True
-            response = client.delete("/api/desempenho/run/run-abc-123")
+        assert response.status_code == 200, f"Expected 200, got {response.status_code}"
+        assert mock_storage.deletar_documento.call_count == 2, (
+            f"Must call deletar_documento for each doc in the run. "
+            f"Expected 2 calls, got {mock_storage.deletar_documento.call_count}"
+        )
 
-        if response.status_code == 200:
-            data = response.json()
-            assert "deleted_count" in data, "Response must include deleted_count"
+    def test_delete_returns_deleted_count(self, client):
+        """Successful delete should return the count of deleted documents."""
+        t = datetime(2026, 2, 27, 12, 8, 25)
+        doc = _make_desempenho_doc("doc-1", TipoDocumento.RELATORIO_DESEMPENHO_TAREFA, "ativ-001", t)
+
+        with patch("routes_extras.storage") as mock_storage:
+            mock_storage.listar_documentos.return_value = [doc]
+            mock_storage.deletar_documento.return_value = True
+            mock_storage.get_atividade.return_value = MagicMock(id="ativ-001", nome="Prova 1", turma_id="t1")
+            response = client.delete(
+                "/api/desempenho/run/run-20260227-120825",
+                params={"level": "tarefa", "entity_id": "ativ-001"},
+            )
+
+        assert response.status_code == 200
+        data = response.json()
+        assert "deleted_count" in data, "Response must include deleted_count"
+        assert data["deleted_count"] == 1, f"Expected 1 deleted doc, got {data['deleted_count']}"
+
+    def test_delete_requires_level_and_entity_id(self, client):
+        """DELETE without level and entity_id query params should fail."""
+        response = client.delete("/api/desempenho/run/run-20260227-120825")
+        assert response.status_code in [400, 422], (
+            f"Expected 400/422 when level and entity_id are missing, got {response.status_code}"
+        )
+
+    def test_delete_invalid_level_returns_400(self, client):
+        """DELETE with invalid level should return 400."""
+        response = client.delete(
+            "/api/desempenho/run/run-20260227-120825",
+            params={"level": "invalido", "entity_id": "ativ-001"},
+        )
+        assert response.status_code == 400, (
+            f"Expected 400 for invalid level, got {response.status_code}"
+        )
