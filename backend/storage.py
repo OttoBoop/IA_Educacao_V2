@@ -1105,8 +1105,11 @@ class StorageManager:
             success, msg = supabase_storage.upload(str(destino), remote_path)
             if success:
                 print(f"[Supabase] Upload OK: {remote_path}")
+                documento.metadata["supabase_uploaded"] = True
             else:
                 print(f"[Supabase] Aviso: {msg}")
+                documento.metadata["supabase_uploaded"] = False
+                documento.metadata["supabase_error"] = msg
 
         return documento
 

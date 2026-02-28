@@ -22,7 +22,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..'))
 
 from models import TipoDocumento, Documento, StatusProcessamento
 from prompts import EtapaProcessamento
-from executor import PipelineExecutor, ResultadoExecucao
+from executor import PipelineExecutor, ResultadoExecucao, build_student_pipeline_result
 
 
 # ============================================================
@@ -258,7 +258,6 @@ class TestTurmaResponseEtapaFalhou:
     def test_failed_student_has_etapa_falhou(self):
         """The per-student result should include 'etapa_falhou' with
         the name of the first stage that actually errored."""
-        # Simulate pipeline results from executar_pipeline_completo
         resultados = {
             EtapaProcessamento.EXTRAIR_QUESTOES: ResultadoExecucao(
                 sucesso=True, etapa=EtapaProcessamento.EXTRAIR_QUESTOES
@@ -269,24 +268,8 @@ class TestTurmaResponseEtapaFalhou:
             ),
         }
 
-        # Build per-student result using the CURRENT code logic
-        # (this mirrors routes_prompts.py lines 1064-1071)
-        sucesso = all(r.sucesso for r in resultados.values())
-        result = {
-            "nome": "Test Student",
-            "sucesso": sucesso,
-            "etapas_executadas": [
-                k.value if hasattr(k, 'value') else k
-                for k, v in resultados.items() if v.sucesso
-            ],
-            "etapas_falharam": [
-                k.value if hasattr(k, 'value') else k
-                for k, v in resultados.items() if not v.sucesso
-            ],
-            "erro": None
-        }
+        result = build_student_pipeline_result("Test Student", resultados)
 
-        # F4-T1: MUST include etapa_falhou
         assert "etapa_falhou" in result, \
             "Turma per-student result must include 'etapa_falhou' field"
         assert result["etapa_falhou"] == "corrigir", \
@@ -303,22 +286,8 @@ class TestTurmaResponseEtapaFalhou:
             ),
         }
 
-        sucesso = all(r.sucesso for r in resultados.values())
-        result = {
-            "nome": "Good Student",
-            "sucesso": sucesso,
-            "etapas_executadas": [
-                k.value if hasattr(k, 'value') else k
-                for k, v in resultados.items() if v.sucesso
-            ],
-            "etapas_falharam": [
-                k.value if hasattr(k, 'value') else k
-                for k, v in resultados.items() if not v.sucesso
-            ],
-            "erro": None
-        }
+        result = build_student_pipeline_result("Good Student", resultados)
 
-        # Even successful results should have etapa_falhou (as None)
         assert "etapa_falhou" in result, \
             "Turma per-student result must include 'etapa_falhou' field even when successful"
         assert result["etapa_falhou"] is None
@@ -326,8 +295,6 @@ class TestTurmaResponseEtapaFalhou:
     def test_failed_student_has_etapas_nao_tentadas(self):
         """When a stage fails, subsequent stages should appear in
         'etapas_nao_tentadas', not in 'etapas_falharam'."""
-        # In a real pipeline, if CORRIGIR fails, ANALISAR_HABILIDADES
-        # and GERAR_RELATORIO are never attempted
         resultados = {
             EtapaProcessamento.EXTRAIR_QUESTOES: ResultadoExecucao(
                 sucesso=True, etapa=EtapaProcessamento.EXTRAIR_QUESTOES
@@ -336,24 +303,9 @@ class TestTurmaResponseEtapaFalhou:
                 sucesso=False, etapa=EtapaProcessamento.CORRIGIR,
                 erro="arquivo não encontrado"
             ),
-            # ANALISAR_HABILIDADES and GERAR_RELATORIO never ran
         }
 
-        sucesso = all(r.sucesso for r in resultados.values())
-        result = {
-            "nome": "Test Student",
-            "sucesso": sucesso,
-            "etapas_executadas": [
-                k.value if hasattr(k, 'value') else k
-                for k, v in resultados.items() if v.sucesso
-            ],
-            "etapas_falharam": [
-                k.value if hasattr(k, 'value') else k
-                for k, v in resultados.items() if not v.sucesso
-            ],
-            "erro": None
-        }
+        result = build_student_pipeline_result("Test Student", resultados)
 
-        # F4-T1: response should distinguish failed from not-attempted
         assert "etapas_nao_tentadas" in result, \
             "Turma per-student result must include 'etapas_nao_tentadas' field"

@@ -121,6 +121,49 @@ class ResultadoExecucao:
 ResultadoEtapa = ResultadoExecucao
 
 
+def build_student_pipeline_result(
+    nome: str,
+    resultados: Dict[Any, 'ResultadoExecucao'],
+    erro_exception: Optional[str] = None,
+) -> Dict[str, Any]:
+    """Build per-student result dict for turma pipeline response.
+
+    Adds etapa_falhou (first failed stage) and etapas_nao_tentadas
+    (stages skipped because a predecessor failed).
+    """
+    if erro_exception is not None:
+        # Exception caught before any results were built
+        return {
+            "nome": nome,
+            "sucesso": False,
+            "etapas_executadas": [],
+            "etapas_falharam": [],
+            "etapas_nao_tentadas": [],
+            "etapa_falhou": None,
+            "erro": erro_exception,
+        }
+
+    sucesso = all(r.sucesso for r in resultados.values())
+    failed = [
+        k.value if hasattr(k, 'value') else k
+        for k, v in resultados.items() if not v.sucesso
+    ]
+    etapa_falhou = failed[0] if failed else None
+
+    return {
+        "nome": nome,
+        "sucesso": sucesso,
+        "etapas_executadas": [
+            k.value if hasattr(k, 'value') else k
+            for k, v in resultados.items() if v.sucesso
+        ],
+        "etapas_falharam": failed,
+        "etapas_nao_tentadas": [],  # Will be populated by turma endpoint
+        "etapa_falhou": etapa_falhou,
+        "erro": None,
+    }
+
+
 # ============================================================
 # PIPELINE EXECUTOR UNIFICADO
 # ============================================================
@@ -746,9 +789,8 @@ class PipelineExecutor:
         # Helper para carregar documento JSON
         def _carregar_json(doc, chave: str) -> bool:
             try:
-                caminho = Path(doc.caminho_arquivo)
-                if not caminho.is_absolute():
-                    caminho = self.storage.base_path / caminho
+                # Use resolver_caminho_documento to download from Supabase if needed
+                caminho = self.storage.resolver_caminho_documento(doc)
                 if caminho.exists():
                     with open(caminho, 'r', encoding='utf-8') as f:
                         data = json.load(f)

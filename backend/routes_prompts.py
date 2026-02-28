@@ -1046,6 +1046,8 @@ async def executar_pipeline_turma(
         except json.JSONDecodeError:
             raise HTTPException(400, "Formato inválido para selected_steps. Use JSON array.")
 
+    from executor import build_student_pipeline_result
+
     resultados_por_aluno = {}
     for aluno in alunos_para_processar:
         try:
@@ -1061,22 +1063,13 @@ async def executar_pipeline_turma(
                 force_rerun=force_rerun
             )
 
-            sucesso = all(r.sucesso for r in resultados.values())
-            resultados_por_aluno[aluno.id] = {
-                "nome": aluno.nome,
-                "sucesso": sucesso,
-                "etapas_executadas": [k for k, v in resultados.items() if v.sucesso],
-                "etapas_falharam": [k for k, v in resultados.items() if not v.sucesso],
-                "erro": None
-            }
+            resultados_por_aluno[aluno.id] = build_student_pipeline_result(
+                aluno.nome, resultados
+            )
         except Exception as e:
-            resultados_por_aluno[aluno.id] = {
-                "nome": aluno.nome,
-                "sucesso": False,
-                "etapas_executadas": [],
-                "etapas_falharam": [],
-                "erro": str(e)
-            }
+            resultados_por_aluno[aluno.id] = build_student_pipeline_result(
+                aluno.nome, {}, erro_exception=str(e)
+            )
 
     total_sucesso = sum(1 for r in resultados_por_aluno.values() if r["sucesso"])
     total_falhas = sum(1 for r in resultados_por_aluno.values() if not r["sucesso"])
