@@ -57,7 +57,10 @@ class TipoDocumento(Enum):
     CORRECAO = "correcao"                      # Correção questão por questão
     ANALISE_HABILIDADES = "analise_habilidades"# Análise de competências
     RELATORIO_FINAL = "relatorio_final"        # Relatório para o professor
-    
+
+    # Catch-all for types created by newer code versions (shared DB resilience)
+    OUTRO = "outro"
+
     @classmethod
     def documentos_base(cls) -> List['TipoDocumento']:
         """Retorna tipos que são documentos base da atividade"""
@@ -85,6 +88,14 @@ class TipoDocumento(Enum):
             cls.EXTRACAO_QUESTOES, cls.EXTRACAO_GABARITO, cls.EXTRACAO_RESPOSTAS,
             cls.CORRECAO, cls.ANALISE_HABILIDADES, cls.RELATORIO_FINAL
         ]
+
+
+def _safe_tipo_documento(value: str) -> TipoDocumento:
+    """Parse TipoDocumento, falling back to OUTRO for unknown values."""
+    try:
+        return TipoDocumento(value)
+    except ValueError:
+        return TipoDocumento.OUTRO
 
 
 class StatusProcessamento(Enum):
@@ -386,7 +397,7 @@ class Documento:
     def from_dict(cls, data: Dict[str, Any]) -> 'Documento':
         return cls(
             id=data["id"],
-            tipo=TipoDocumento(data["tipo"]),
+            tipo=_safe_tipo_documento(data.get("tipo", "enunciado")),
             atividade_id=data["atividade_id"],
             aluno_id=data.get("aluno_id"),
             nome_arquivo=data.get("nome_arquivo", ""),
