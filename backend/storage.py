@@ -422,7 +422,59 @@ class StorageManager:
             shutil.rmtree(dir_path)
 
         return success
-    
+
+    def cleanup_duplicate_materias(self) -> Dict[str, int]:
+        """Remove duplicate matérias (same nome), merging turmas into the survivor.
+
+        For each group of matérias sharing the same nome:
+        - Keeps the first one (by ID sort order) as the survivor
+        - Reassigns turmas from duplicates to the survivor
+        - Deletes the duplicate matéria records
+
+        Returns a report dict: {"duplicates_removed": N, "turmas_reassigned": N}
+        """
+        materias = self.listar_materias()
+
+        # Group matérias by nome
+        by_nome: Dict[str, list] = {}
+        for m in materias:
+            by_nome.setdefault(m.nome, []).append(m)
+
+        duplicates_removed = 0
+        turmas_reassigned = 0
+
+        for nome, group in by_nome.items():
+            if len(group) <= 1:
+                continue
+
+            # Survivor is the first by ID (deterministic)
+            group.sort(key=lambda m: m.id)
+            survivor = group[0]
+            duplicates = group[1:]
+
+            for dup in duplicates:
+                # Reassign turmas from duplicate to survivor
+                dup_turmas = self.listar_turmas(materia_id=dup.id)
+                for turma in dup_turmas:
+                    if self.use_postgresql:
+                        supabase_db.update("turmas", turma.id, {"materia_id": survivor.id})
+                    else:
+                        conn = self._get_connection()
+                        c = conn.cursor()
+                        c.execute(
+                            'UPDATE turmas SET materia_id = ? WHERE id = ?',
+                            (survivor.id, turma.id),
+                        )
+                        conn.commit()
+                        conn.close()
+                    turmas_reassigned += 1
+
+                # Delete the duplicate matéria
+                self.deletar_materia(dup.id)
+                duplicates_removed += 1
+
+        return {"duplicates_removed": duplicates_removed, "turmas_reassigned": turmas_reassigned}
+
     # ============================================================
     # CRUD: TURMAS
     # ============================================================
@@ -1456,10 +1508,15 @@ class StorageManager:
         """
         Retorna árvore completa para navegação.
         Estrutura: Matérias → Turmas → Atividades
+        Deduplicates matérias by nome, merging turmas from duplicates.
         """
         arvore = []
-        
+        seen_nomes: set = set()
+
         for materia in self.listar_materias():
+            if materia.nome in seen_nomes:
+                continue
+            seen_nomes.add(materia.nome)
             turmas_data = []
             
             for turma in self.listar_turmas(materia.id):
