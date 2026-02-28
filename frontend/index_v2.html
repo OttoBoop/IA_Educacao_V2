@@ -7753,6 +7753,10 @@
         }
 
         function openModalUploadProvas(atividadeId) {
+            if (!hasStudentsInTurma()) {
+                showToast('Nenhum aluno na turma. Adicione alunos antes de enviar provas.', 'warning');
+                return;
+            }
             document.getElementById('input-upload-provas-atividade-id').value = atividadeId;
             openModal('modal-upload-provas');
         }
