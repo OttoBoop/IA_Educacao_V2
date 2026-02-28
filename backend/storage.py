@@ -287,6 +287,11 @@ class StorageManager:
 
     def criar_materia(self, nome: str, descricao: str = None, nivel: NivelEnsino = NivelEnsino.OUTRO) -> Materia:
         """Cria uma nova matéria"""
+        existing = self.listar_materias()
+        for m in existing:
+            if m.nome == nome:
+                raise ValueError(f"Já existe uma matéria com o nome '{nome}'")
+
         materia = Materia(
             id=self._generate_id("materia", nome),
             nome=nome,

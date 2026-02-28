@@ -318,7 +318,23 @@
             border-color: var(--primary);
             transform: translateY(-2px);
         }
-        
+        .card-grid-item.card-loading {
+            opacity: 0.6;
+            pointer-events: none;
+            position: relative;
+        }
+        .card-grid-item.card-loading::after {
+            content: '';
+            position: absolute;
+            inset: 0;
+            border-radius: 12px;
+            animation: card-pulse 1s ease-in-out infinite;
+        }
+        @keyframes card-pulse {
+            0%, 100% { background: transparent; }
+            50% { background: rgba(var(--primary-rgb, 99, 102, 241), 0.08); }
+        }
+
         .card-icon {
             width: 48px;
             height: 48px;
@@ -4623,7 +4639,7 @@
         // SPA HISTORY NAVIGATION
         // ============================================================
         let _isRestoringFromHistory = false;
-        let _popstateDebounceTimer = null;
+        let _popstateThrottled = false;
 
         function pushNavState() {
             if (_isRestoringFromHistory) return;
@@ -4637,60 +4653,34 @@
             history.pushState(state, '');
         }
 
-        function _handlePopstate(event) {
-            clearTimeout(_popstateDebounceTimer);
-            _popstateDebounceTimer = setTimeout(async () => {
-                const state = event.state;
-                if (!state || !state.view) {
-                    // At root — prevent leaving SPA
-                    history.pushState({ view: 'dashboard' }, '');
-                    return;
+        async function _handlePopstate(event) {
+            if (_popstateThrottled) return;
+            _popstateThrottled = true;
+            setTimeout(() => { _popstateThrottled = false; }, 200);
+
+            const state = event.state;
+            if (!state || !state.view) {
+                history.pushState({ view: 'dashboard' }, '');
+                return;
+            }
+            _isRestoringFromHistory = true;
+            try {
+                switch (state.view) {
+                    case 'dashboard': await showDashboard(); break;
+                    case 'materia': state.materiaId ? await showMateria(state.materiaId) : await showDashboard(); break;
+                    case 'turma': state.turmaId ? await showTurma(state.turmaId) : await showDashboard(); break;
+                    case 'atividade': state.atividadeId ? await showAtividade(state.atividadeId) : await showDashboard(); break;
+                    case 'alunos': await showAlunos(); break;
+                    case 'prompts': await showPrompts(); break;
+                    case 'providers': await showProviders(); break;
+                    case 'chat_geral': await showChatGeral(state.atividadeId, state.alunoId); break;
+                    case 'aluno': state.alunoId ? await showAluno(state.alunoId) : await showDashboard(); break;
+                    case 'resultado_aluno': (state.atividadeId && state.alunoId) ? await showResultadoAluno(state.atividadeId, state.alunoId) : await showDashboard(); break;
+                    default: await showDashboard();
                 }
-                _isRestoringFromHistory = true;
-                try {
-                    switch (state.view) {
-                        case 'dashboard':
-                            await showDashboard();
-                            break;
-                        case 'materia':
-                            if (state.materiaId) await showMateria(state.materiaId);
-                            else await showDashboard();
-                            break;
-                        case 'turma':
-                            if (state.turmaId) await showTurma(state.turmaId);
-                            else await showDashboard();
-                            break;
-                        case 'atividade':
-                            if (state.atividadeId) await showAtividade(state.atividadeId);
-                            else await showDashboard();
-                            break;
-                        case 'alunos':
-                            await showAlunos();
-                            break;
-                        case 'prompts':
-                            await showPrompts();
-                            break;
-                        case 'providers':
-                            await showProviders();
-                            break;
-                        case 'chat_geral':
-                            await showChatGeral(state.atividadeId, state.alunoId);
-                            break;
-                        case 'aluno':
-                            if (state.alunoId) await showAluno(state.alunoId);
-                            else await showDashboard();
-                            break;
-                        case 'resultado_aluno':
-                            if (state.atividadeId && state.alunoId) await showResultadoAluno(state.atividadeId, state.alunoId);
-                            else await showDashboard();
-                            break;
-                        default:
-                            await showDashboard();
-                    }
-                } finally {
-                    _isRestoringFromHistory = false;
-                }
-            }, 200);
+            } finally {
+                _isRestoringFromHistory = false;
+            }
         }
 
          // Chat Geral
@@ -6064,7 +6054,8 @@
             window.addEventListener('popstate', _handlePopstate);
 
             loadNavTree();
-            showDashboard();
+            _isRestoringFromHistory = true;
+            showDashboard().finally(() => { _isRestoringFromHistory = false; });
             setupUploadZone();
             setupBusca();
             loadTiposDocumentos();
@@ -6521,7 +6512,14 @@
             currentAluno = null;
             pushNavState();
             clearHelpPanels();
-            
+
+            // Loading state: show spinner + block double-click before fetch
+            const _cardEl = document.querySelector(`.card-grid-item[onclick*="showAtividade('${atividadeId}')"]`);
+            if (_cardEl) {
+                _cardEl.classList.add('card-loading');
+                _cardEl.style.pointerEvents = 'none';
+            }
+
             try {
                 const data = await api(`/atividades/${atividadeId}`);
                 const turma = await api(`/turmas/${data.atividade.turma_id}`);
@@ -6571,7 +6569,13 @@
                 `;
                 window._atividadeData = data;
                 window._turmaData = turma;
-            } catch (e) { showToast('Erro ao carregar atividade', 'error'); }
+            } catch (e) {
+                if (_cardEl) {
+                    _cardEl.classList.remove('card-loading');
+                    _cardEl.style.pointerEvents = '';
+                }
+                showToast('Erro ao carregar atividade', 'error');
+            }
         }
 
         async function showAtividadeTab(tab, atividadeId) {
@@ -8813,6 +8817,7 @@
                 currentView = 'resultado_aluno';
                 currentAtividade = atividadeId;
                 currentAluno = alunoId;
+                pushNavState();
                 const [resultadoResp, documentosResp, atividadeResp, alunoResp] = await Promise.allSettled([
                     api(`/resultados/${atividadeId}/${alunoId}`),
                     api(`/documentos?atividade_id=${atividadeId}&aluno_id=${alunoId}`),
