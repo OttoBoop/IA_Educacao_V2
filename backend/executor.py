@@ -26,6 +26,17 @@ from prompts import PromptManager, PromptTemplate, EtapaProcessamento, prompt_ma
 from storage import StorageManager, storage
 from ai_providers import ai_registry, AIResponse
 
+# Maps prerequisite document types to the pipeline step that produces them.
+# Used by dependency validation to generate clear error messages like
+# "execute primeiro extrair_questoes" instead of "extracao_questoes missing".
+TIPO_TO_ETAPA: Dict[TipoDocumento, EtapaProcessamento] = {
+    TipoDocumento.EXTRACAO_QUESTOES: EtapaProcessamento.EXTRAIR_QUESTOES,
+    TipoDocumento.EXTRACAO_RESPOSTAS: EtapaProcessamento.EXTRAIR_RESPOSTAS,
+    TipoDocumento.CORRECAO: EtapaProcessamento.CORRIGIR,
+    TipoDocumento.ANALISE_HABILIDADES: EtapaProcessamento.ANALISAR_HABILIDADES,
+    TipoDocumento.RELATORIO_FINAL: EtapaProcessamento.GERAR_RELATORIO,
+}
+
 # Import do sistema multimodal
 try:
     from anexos import ClienteAPIMultimodal, PreparadorArquivos, ResultadoEnvio
@@ -1924,17 +1935,14 @@ Crie UM documento separado para cada aluno, nomeando como "relatorio_[nome_aluno
             "corrigir": {
                 "required_base": [TipoDocumento.EXTRACAO_QUESTOES],
                 "required_aluno": [TipoDocumento.EXTRACAO_RESPOSTAS],
-                "step_names": {"extracao_questoes": "extrair_questoes", "extracao_respostas": "extrair_respostas"},
             },
             "analisar_habilidades": {
                 "required_base": [],
                 "required_aluno": [TipoDocumento.CORRECAO],
-                "step_names": {"correcao": "corrigir"},
             },
             "gerar_relatorio": {
                 "required_base": [],
                 "required_aluno": [TipoDocumento.CORRECAO],
-                "step_names": {"correcao": "corrigir"},
             },
         }
 
@@ -1947,11 +1955,13 @@ Crie UM documento separado para cada aluno, nomeando como "relatorio_[nome_aluno
             missing = []
             for doc_type in deps["required_base"]:
                 if not any(d.tipo == doc_type for d in docs):
-                    step = deps["step_names"].get(doc_type.value, doc_type.value)
+                    etapa = TIPO_TO_ETAPA.get(doc_type)
+                    step = etapa.value if etapa else doc_type.value
                     missing.append(step)
             for doc_type in deps["required_aluno"]:
                 if not any(d.tipo == doc_type for d in docs_aluno):
-                    step = deps["step_names"].get(doc_type.value, doc_type.value)
+                    etapa = TIPO_TO_ETAPA.get(doc_type)
+                    step = etapa.value if etapa else doc_type.value
                     missing.append(step)
 
             if missing:
