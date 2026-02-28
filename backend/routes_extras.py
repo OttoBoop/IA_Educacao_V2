@@ -597,6 +597,23 @@ def _doc_to_dict(doc):
     }
 
 
+def _check_has_atividades(level: str, entity_id: str) -> bool:
+    """Check if graded work (RELATORIO_NARRATIVO docs) exists for the entity."""
+    narrativo_tipo = TipoDocumento.RELATORIO_NARRATIVO
+    if level == "tarefa":
+        return len(storage.listar_documentos(entity_id, tipo=narrativo_tipo)) > 0
+    elif level == "turma":
+        for ativ in storage.listar_atividades(entity_id):
+            if len(storage.listar_documentos(ativ.id, tipo=narrativo_tipo)) > 0:
+                return True
+    elif level == "materia":
+        for turma in storage.listar_turmas(entity_id):
+            for ativ in storage.listar_atividades(turma.id):
+                if len(storage.listar_documentos(ativ.id, tipo=narrativo_tipo)) > 0:
+                    return True
+    return False
+
+
 @router.get("/api/desempenho/{level}/{entity_id}", tags=["Desempenho"])
 async def get_desempenho(level: str, entity_id: str):
     """Returns desempenho data for a given entity, grouped by pipeline run.
@@ -608,59 +625,8 @@ async def get_desempenho(level: str, entity_id: str):
         raise HTTPException(status_code=400, detail=f"Invalid level: {level}. Must be tarefa, turma, or materia.")
 
     tipo = DESEMPENHO_TIPO_MAP[level]
-    desempenho_docs = []
-    has_atividades = False
-
-    if level == "tarefa":
-        # Query directly for this atividade
-        all_docs = storage.listar_documentos(entity_id, tipo=tipo)
-        desempenho_docs = all_docs
-        # Check if graded work exists (RELATORIO_NARRATIVO docs)
-        narrativos = storage.listar_documentos(entity_id, tipo=TipoDocumento.RELATORIO_NARRATIVO)
-        has_atividades = len(narrativos) > 0
-
-    elif level == "turma":
-        # Scan all atividades of the turma
-        atividades = storage.listar_atividades(entity_id)
-        for ativ in atividades:
-            docs = storage.listar_documentos(ativ.id, tipo=tipo)
-            desempenho_docs.extend(docs)
-            # Check for graded work
-            if not has_atividades:
-                narrativos = storage.listar_documentos(ativ.id, tipo=TipoDocumento.RELATORIO_NARRATIVO)
-                if len(narrativos) > 0:
-                    has_atividades = True
-        # Also check with turma_id as atividade_id (fallback from executor)
-        docs_fallback = storage.listar_documentos(entity_id, tipo=tipo)
-        desempenho_docs.extend(docs_fallback)
-
-    elif level == "materia":
-        # Scan all turmas → atividades
-        turmas = storage.listar_turmas(entity_id)
-        for turma in turmas:
-            atividades = storage.listar_atividades(turma.id)
-            for ativ in atividades:
-                docs = storage.listar_documentos(ativ.id, tipo=tipo)
-                desempenho_docs.extend(docs)
-                if not has_atividades:
-                    narrativos = storage.listar_documentos(ativ.id, tipo=TipoDocumento.RELATORIO_NARRATIVO)
-                    if len(narrativos) > 0:
-                        has_atividades = True
-        # Also check with materia_id as atividade_id (fallback from executor)
-        docs_fallback = storage.listar_documentos(entity_id, tipo=tipo)
-        desempenho_docs.extend(docs_fallback)
-
-    # Defense-in-depth: filter to exact tipo (storage may return extras)
-    desempenho_docs = [d for d in desempenho_docs if d.tipo == tipo]
-
-    # Deduplicate by doc id (in case fallback returned duplicates)
-    seen_ids = set()
-    unique_docs = []
-    for doc in desempenho_docs:
-        if doc.id not in seen_ids:
-            seen_ids.add(doc.id)
-            unique_docs.append(doc)
-
+    unique_docs = _collect_desempenho_docs(level, entity_id, tipo)
+    has_atividades = _check_has_atividades(level, entity_id)
     runs = _group_docs_into_runs(unique_docs)
 
     return {
