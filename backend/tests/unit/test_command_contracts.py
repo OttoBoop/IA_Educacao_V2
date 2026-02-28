@@ -277,3 +277,133 @@ class TestMultiStepOperations:
         content = read_file(CLAUDE_MD)
         assert "failure" in content.lower() or "interruption" in content.lower(), \
             "Multi-step section must mention failure/interruption handling"
+
+
+# ---------------------------------------------------------------------------
+# 8. Navigation sections (F1-T1, F1-T2, F1-T3)
+# ---------------------------------------------------------------------------
+
+class TestNavigationSections:
+    """CLAUDE.md must have navigation sections that guide bots to the right docs."""
+
+    # --- F1-T1: Project Identification Step ---
+
+    def test_has_project_identification_step(self):
+        """CLAUDE.md must instruct bots to ask which project the user is working on."""
+        content = read_file(CLAUDE_MD)
+        has_project_id = (
+            "which project" in content.lower()
+            or "project identification" in content.lower()
+        )
+        assert has_project_id, \
+            "CLAUDE.md must contain project identification instruction ('Which project' or 'Project Identification')"
+
+    # --- F1-T2: Core Documentation Reference table ---
+
+    def test_has_core_docs_reference_section(self):
+        """CLAUDE.md must have a Core Documentation Reference section."""
+        content = read_file(CLAUDE_MD)
+        assert "Core Documentation Reference" in content, \
+            "CLAUDE.md must have a 'Core Documentation Reference' section"
+
+    def test_core_docs_references_testing_guide(self):
+        """Core docs table must reference TESTING_GUIDE.md."""
+        content = read_file(CLAUDE_MD)
+        assert "TESTING_GUIDE.md" in content, \
+            "CLAUDE.md must reference TESTING_GUIDE.md in core docs"
+
+    def test_core_docs_references_tests_readme(self):
+        """Core docs table must reference tests/README.md."""
+        content = read_file(CLAUDE_MD)
+        assert "tests/README.md" in content or "tests\\README.md" in content, \
+            "CLAUDE.md must reference tests/README.md in core docs"
+
+    def test_core_docs_references_models_reference(self):
+        """Core docs table must reference MODELS_REFERENCE.md."""
+        content = read_file(CLAUDE_MD)
+        assert "MODELS_REFERENCE.md" in content, \
+            "CLAUDE.md must reference MODELS_REFERENCE.md"
+
+    def test_core_docs_references_style_guide(self):
+        """Core docs table must reference STYLE_GUIDE.md."""
+        content = read_file(CLAUDE_MD)
+        assert "STYLE_GUIDE.md" in content, \
+            "CLAUDE.md must reference STYLE_GUIDE.md"
+
+    def test_core_docs_references_ui_element_catalog(self):
+        """Core docs table must reference UI_ELEMENT_CATALOG.md."""
+        content = read_file(CLAUDE_MD)
+        assert "UI_ELEMENT_CATALOG.md" in content, \
+            "CLAUDE.md must reference UI_ELEMENT_CATALOG.md"
+
+    def test_core_docs_references_investor_journey_concept(self):
+        """Core docs table must reference INVESTOR_JOURNEY_CONCEPT.md."""
+        content = read_file(CLAUDE_MD)
+        assert "INVESTOR_JOURNEY_CONCEPT.md" in content, \
+            "CLAUDE.md must reference INVESTOR_JOURNEY_CONCEPT.md"
+
+    def test_core_docs_references_technical_brief(self):
+        """Core docs table must reference TECHNICAL_BRIEF.md."""
+        content = read_file(CLAUDE_MD)
+        assert "TECHNICAL_BRIEF.md" in content, \
+            "CLAUDE.md must reference TECHNICAL_BRIEF.md"
+
+    def test_core_docs_references_participe_source_of_truth(self):
+        """Core docs table must reference PARTICIPE_V4_SOURCE_OF_TRUTH.md."""
+        content = read_file(CLAUDE_MD)
+        assert "PARTICIPE_V4_SOURCE_OF_TRUTH.md" in content, \
+            "CLAUDE.md must reference PARTICIPE_V4_SOURCE_OF_TRUTH.md"
+
+    def test_core_docs_references_wix_injection_guide(self):
+        """Core docs table must reference WIX_INJECTION_GUIDE.md."""
+        content = read_file(CLAUDE_MD)
+        assert "WIX_INJECTION_GUIDE.md" in content, \
+            "CLAUDE.md must reference WIX_INJECTION_GUIDE.md"
+
+    def test_core_docs_has_open_when_guidance(self):
+        """Core docs table must include 'open when' guidance for each doc."""
+        content = read_file(CLAUDE_MD)
+        # The table should have an 'Open When' or 'When to Read' column
+        has_guidance = (
+            "Open When" in content
+            or "When to Read" in content
+            or "open when" in content.lower()
+        )
+        assert has_guidance, \
+            "Core docs reference must include 'Open When' guidance column"
+
+    # --- F1-T3: Shared Tools & Cross-Project Resources ---
+
+    def test_has_shared_tools_section(self):
+        """CLAUDE.md must have a Shared Tools section."""
+        content = read_file(CLAUDE_MD)
+        assert "Shared Tools" in content, \
+            "CLAUDE.md must have a 'Shared Tools' section"
+
+    def test_shared_tools_mentions_journey_agent(self):
+        """Shared Tools must mention the journey agent."""
+        content = read_file(CLAUDE_MD)
+        has_journey = (
+            "journey agent" in content.lower()
+            or "investor journey" in content.lower()
+            or "investor-journey" in content.lower()
+        )
+        assert has_journey, \
+            "Shared Tools section must mention the journey agent"
+
+    def test_shared_tools_mentions_copilot_browser(self):
+        """Shared Tools must mention COPILOT BROWSER."""
+        content = read_file(CLAUDE_MD)
+        assert "COPILOT BROWSER" in content or "copilot browser" in content.lower(), \
+            "Shared Tools section must mention COPILOT BROWSER"
+
+    def test_shared_tools_mentions_browser_scripts(self):
+        """Shared Tools must mention browser automation scripts."""
+        content = read_file(CLAUDE_MD)
+        has_scripts = (
+            "browser automation" in content.lower()
+            or "browser scripts" in content.lower()
+            or "root-level" in content.lower() and ".py" in content
+        )
+        assert has_scripts, \
+            "Shared Tools section must mention browser automation scripts"
