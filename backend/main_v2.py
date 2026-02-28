@@ -210,6 +210,14 @@ async def lifespan(app: FastAPI):
     # Initialize fantasy data if database is empty (handles Render's ephemeral filesystem)
     initialize_fantasy_data_if_empty()
 
+    # Clean up any duplicate matérias left from before uniqueness checks were added
+    try:
+        report = storage.cleanup_duplicate_materias()
+        if report["duplicates_removed"] > 0:
+            print(f"[CLEANUP] Removed {report['duplicates_removed']} duplicate matérias, reassigned {report['turmas_reassigned']} turmas")
+    except Exception as e:
+        print(f"[CLEANUP] Warning: matéria dedup failed: {e}")
+
     yield
 
 app = FastAPI(
