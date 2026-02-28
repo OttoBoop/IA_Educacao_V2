@@ -1153,13 +1153,17 @@ class PipelineExecutor:
     def _ler_documento_texto(self, documento: Documento, usar_multimodal: bool = False) -> str:
         """
         Lê conteúdo de um documento como TEXTO.
-        
+
         NOTA: Para PDFs e imagens, retorna placeholder indicando que
         o documento deve ser processado via multimodal.
+
+        Uses resolver_caminho_documento() to download from Supabase
+        if the file doesn't exist locally (ephemeral filesystem).
         """
         try:
-            arquivo = Path(documento.caminho_arquivo)
-            if not arquivo.exists():
+            # Use resolver to download from Supabase if needed
+            arquivo = self.storage.resolver_caminho_documento(documento)
+            if arquivo is None or not arquivo.exists():
                 return f"[Arquivo não encontrado: {documento.nome_arquivo}]"
             
             ext = documento.extensao.lower()
