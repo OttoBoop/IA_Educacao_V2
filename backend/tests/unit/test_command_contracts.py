@@ -407,3 +407,70 @@ class TestNavigationSections:
         )
         assert has_scripts, \
             "Shared Tools section must mention browser automation scripts"
+
+    # --- F1-T4: Workspace Assets Reference ---
+
+    def test_has_workspace_assets_section(self):
+        """CLAUDE.md must have a Workspace Assets section."""
+        content = read_file(CLAUDE_MD)
+        has_section = (
+            "Workspace Assets" in content
+            or "Root Assets" in content
+        )
+        assert has_section, \
+            "CLAUDE.md must have a 'Workspace Assets' or 'Root Assets' section"
+
+    def test_workspace_assets_mentions_crash_logs(self):
+        """Workspace Assets must reference crash_logs/ directory."""
+        content = read_file(CLAUDE_MD)
+        assert "crash_logs" in content, \
+            "CLAUDE.md must reference crash_logs/ in workspace assets"
+
+    def test_workspace_assets_mentions_data_dir(self):
+        """Workspace Assets must reference data/ directory."""
+        content = read_file(CLAUDE_MD)
+        # Must mention 'data/' as a workspace asset (not just any 'data' word)
+        assert "data/" in content or "`data`" in content or "data |" in content, \
+            "CLAUDE.md must reference data/ directory in workspace assets"
+
+    def test_workspace_assets_mentions_temp_ipc(self):
+        """Workspace Assets must reference temp_ipc/ directory."""
+        content = read_file(CLAUDE_MD)
+        assert "temp_ipc" in content, \
+            "CLAUDE.md must reference temp_ipc/ in workspace assets"
+
+    # --- F1-T5: FlavioValle Ecosystem ---
+
+    def test_has_flaviovalle_ecosystem_section(self):
+        """CLAUDE.md must document the FlavioValle ecosystem."""
+        content = read_file(CLAUDE_MD)
+        has_ecosystem = (
+            "FlavioValle Ecosystem" in content
+            or "FlavioValle ecosystem" in content
+        )
+        assert has_ecosystem, \
+            "CLAUDE.md must have a 'FlavioValle Ecosystem' section or entry"
+
+    def test_flaviovalle_mentions_live_repo(self):
+        """CLAUDE.md must mention flavio-valle/ as the live site repo."""
+        content = read_file(CLAUDE_MD)
+        assert "flavio-valle" in content.lower(), \
+            "CLAUDE.md must reference flavio-valle/ (live Wix site repo)"
+
+    def test_flaviovalle_mentions_updating_repo(self):
+        """CLAUDE.md must mention Updating-FlavioValle/ as the dev/planning repo."""
+        content = read_file(CLAUDE_MD)
+        assert "Updating-FlavioValle" in content, \
+            "CLAUDE.md must reference Updating-FlavioValle/ (dev/planning repo)"
+
+    def test_flaviovalle_mentions_snapshot_repo(self):
+        """CLAUDE.md must mention flavio-vale/ as the snapshot."""
+        content = read_file(CLAUDE_MD)
+        # flavio-vale (without double-l) is the snapshot
+        has_snapshot = (
+            "flavio-vale/" in content
+            or "flavio-vale`" in content
+            or "`flavio-vale" in content
+        )
+        assert has_snapshot, \
+            "CLAUDE.md must reference flavio-vale/ (partial snapshot)"
