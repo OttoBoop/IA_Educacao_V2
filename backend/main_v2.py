@@ -914,7 +914,8 @@ async def listar_providers():
     """Lista todos os providers de IA disponíveis"""
     return {
         "providers": ai_registry.get_provider_info(),
-        "default": ai_registry.default_provider
+        "default": ai_registry.default_provider,
+        "health": ai_registry.provider_health,
     }
 
 

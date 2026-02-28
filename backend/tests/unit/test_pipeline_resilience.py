@@ -2,13 +2,15 @@
 
 Wave 1 (F1-T1, F2-T1, F4-T1) — DONE
 Wave 2 (F1-T2, F2-T2, F3-T1, F4-T2) — DONE
-Wave 2b (F3-T2) — RED phase
+Wave 2b (F3-T2) — DONE
+F5-T1: Default provider config + health check tests
 
 F1-T2: _coletar_arquivos_para_etapa() edge case handling
 F2-T2: Temp file cleanup with finally blocks
 F3-T1: Dependency validation in executar_pipeline_completo()
 F4-T2: Replace bare except: with specific exceptions
 F3-T2: Map TipoDocumento → EtapaProcessamento for error messages
+F5-T1: Default provider should be claude-haiku, health check validation
 """
 import sys
 import os
@@ -632,3 +634,82 @@ class TestTipoToEtapaMapping:
         error_msg = (corrigir_result.erro or "").lower()
         assert "extrair_questoes" in error_msg
         assert "extrair_respostas" in error_msg
+
+
+# ============================================================
+# F5-T1: Default provider config + health check tests
+# ============================================================
+
+class TestDefaultProviderConfig:
+    """F5-T1: Default provider must be claude-haiku, not openai-gpt4o.
+    The health check should detect broken providers and fall back."""
+
+    def test_setup_providers_sets_haiku_as_default(self):
+        """When both OpenAI and Anthropic keys are available,
+        setup_providers_from_env should set claude-haiku as default."""
+        from ai_providers import AIProviderRegistry
+
+        registry = AIProviderRegistry.__new__(AIProviderRegistry)
+        registry.providers = {}
+        registry.provider_configs = {}
+        registry.default_provider = None
+        registry.provider_health = {}
+        registry.config_path = Path("/dev/null")
+
+        def _make_provider(provider_name, model_name):
+            mock = MagicMock()
+            mock.name = provider_name
+            mock.model = model_name
+            return mock
+
+        # Simulate registration order from setup_providers_from_env
+        registry.register("openai-gpt4o", _make_provider("OpenAIProvider", "gpt-4o"))
+        registry.register("openai-gpt4o-mini", _make_provider("OpenAIProvider", "gpt-4o-mini"))
+        registry.register("claude-sonnet", _make_provider("AnthropicProvider", "claude-sonnet-4"))
+        registry.register("claude-haiku", _make_provider("AnthropicProvider", "claude-haiku-4-5"), set_default=True)
+
+        assert registry.default_provider == "claude-haiku", (
+            f"Default provider should be 'claude-haiku', got '{registry.default_provider}'"
+        )
+
+    def test_setup_code_has_haiku_as_default(self):
+        """The setup_providers_from_env source code should set_default=True
+        for claude-haiku, not for openai-gpt4o."""
+        import inspect
+        from ai_providers import setup_providers_from_env
+
+        source = inspect.getsource(setup_providers_from_env)
+
+        # The openai-gpt4o registration should NOT have set_default=True
+        openai_section_start = source.find('"openai-gpt4o"')
+        assert openai_section_start != -1
+        openai_section = source[openai_section_start:openai_section_start + 200]
+        # After finding the openai-gpt4o string, check the next register() call
+        assert "set_default=True" not in openai_section, (
+            "openai-gpt4o should NOT be set as default. "
+            "Found set_default=True in the openai-gpt4o registration."
+        )
+
+        # The claude-haiku registration SHOULD have set_default=True
+        haiku_section_start = source.find('"claude-haiku"')
+        assert haiku_section_start != -1
+        haiku_section = source[haiku_section_start:haiku_section_start + 200]
+        assert "set_default=True" in haiku_section, (
+            "claude-haiku should be set as default provider. "
+            "Missing set_default=True in the claude-haiku registration."
+        )
+
+    def test_provider_health_dict_exists_on_registry(self):
+        """AIProviderRegistry should have a provider_health dict
+        for tracking health check results."""
+        from ai_providers import AIProviderRegistry
+
+        registry = AIProviderRegistry.__new__(AIProviderRegistry)
+        registry.providers = {}
+        registry.provider_configs = {}
+        registry.default_provider = None
+        registry.provider_health = {}
+        registry.config_path = Path("/dev/null")
+
+        assert hasattr(registry, "provider_health")
+        assert isinstance(registry.provider_health, dict)

@@ -804,6 +804,7 @@ class AIProviderRegistry:
         self.providers: Dict[str, AIProvider] = {}
         self.provider_configs: Dict[str, Dict[str, Any]] = {}  # Configs para persistência
         self.default_provider: Optional[str] = None
+        self.provider_health: Dict[str, str] = {}  # name -> "ok" | "error: ..."
         self.config_path = Path(config_path)
         self.config_path.parent.mkdir(parents=True, exist_ok=True)
         self._load_from_file()
@@ -1033,14 +1034,13 @@ def setup_providers_from_env():
             ai_registry.register(
                 "openai-gpt4o",
                 OpenAIProvider(openai_key, "gpt-4o"),
-                set_default=True
             )
             ai_registry.register(
                 "openai-gpt4o-mini",
                 OpenAIProvider(openai_key, "gpt-4o-mini")
             )
 
-        # Anthropic
+        # Anthropic — haiku is the preferred default for the pipeline
         anthropic_config = key_manager.get_por_empresa(ProviderType.ANTHROPIC)
         anthropic_key = anthropic_config.api_key if anthropic_config else os.getenv("ANTHROPIC_API_KEY", "")
 
@@ -1051,7 +1051,8 @@ def setup_providers_from_env():
             )
             ai_registry.register(
                 "claude-haiku",
-                AnthropicProvider(anthropic_key, "claude-haiku-4-5-20251001")
+                AnthropicProvider(anthropic_key, "claude-haiku-4-5-20251001"),
+                set_default=True
             )
 
     except Exception as e:
@@ -1064,3 +1065,84 @@ def setup_providers_from_env():
             LocalLLMProvider(model="llama3"),
             base_url="http://localhost:11434"
         )
+
+    # Health check: validate default provider can make API calls
+    _validate_default_provider()
+
+
+def _validate_default_provider():
+    """Validate that the default provider can accept API calls.
+
+    If the default provider fails, try to fall back to another provider
+    and log a clear warning so the issue is visible in deployment logs.
+    Health results are stored in ai_registry.provider_health.
+    """
+    import asyncio
+
+    if os.getenv("PROVA_AI_TESTING") == "1":
+        return  # Skip health check during tests
+
+    default_name = ai_registry.default_provider
+    if not default_name or default_name not in ai_registry.providers:
+        print("[CRITICAL] No default AI provider configured!")
+        ai_registry.provider_health["_status"] = "no_default"
+        return
+
+    async def _ping(prov):
+        try:
+            resp = await prov.complete(
+                "Reply with exactly: OK",
+                max_tokens=5,
+                temperature=0.0,
+            )
+            return resp.content.strip() if resp else None
+        except Exception as e:
+            return f"error: {e}"
+
+    def _run_ping(prov):
+        try:
+            loop = asyncio.get_event_loop()
+            if loop.is_running():
+                return None  # Can't run sync from async context
+            return loop.run_until_complete(_ping(prov))
+        except RuntimeError:
+            loop = asyncio.new_event_loop()
+            result = loop.run_until_complete(_ping(prov))
+            loop.close()
+            return result
+
+    # Check all non-ollama providers
+    for name, prov in ai_registry.providers.items():
+        if name.startswith("ollama"):
+            continue
+        result = _run_ping(prov)
+        if result is None:
+            ai_registry.provider_health[name] = "deferred"
+            print(f"[INFO] Provider '{name}' health check deferred (async context)")
+        elif result and "OK" in str(result).upper()[:10]:
+            ai_registry.provider_health[name] = "ok"
+            print(f"[OK] Provider '{name}' ({prov.model}) is healthy")
+        else:
+            ai_registry.provider_health[name] = f"error: {result}"
+            print(f"[WARN] Provider '{name}' ({prov.model}) FAILED: {result}")
+
+    # Check if default is healthy
+    default_health = ai_registry.provider_health.get(default_name, "unknown")
+    if default_health == "ok":
+        return
+
+    # Default provider failed — try to fall back
+    print(f"[WARN] Default provider '{default_name}' is unhealthy: {default_health}")
+    print(f"[WARN] Attempting to find a working fallback provider...")
+
+    for name in ai_registry.providers:
+        if name == default_name or name.startswith("ollama"):
+            continue
+        if ai_registry.provider_health.get(name) == "ok":
+            original_default = default_name
+            ai_registry.set_default(name)
+            print(f"[WARN] Fell back to '{name}' as default (was '{original_default}')")
+            print(f"[WARN] FIX: Update the API key for '{original_default}' to restore it as default")
+            return
+
+    print(f"[CRITICAL] No working AI providers found! All providers failed health check.")
