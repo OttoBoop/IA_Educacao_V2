@@ -268,3 +268,158 @@ class TestCriarMateriaRejectsDuplicate:
 
         with pytest.raises(ValueError):
             mgr.criar_materia("História")
+
+
+# ---------------------------------------------------------------------------
+# F3-T3: cleanup_duplicate_materias() must remove pre-existing duplicates
+# ---------------------------------------------------------------------------
+
+
+@pytest.fixture
+def storage_with_duplicates_and_unique(tmp_path):
+    """
+    Provide a StorageManager whose SQLite DB contains:
+      - 'Matemática' (mat-001) with turma '9º Ano A' (turma-001)
+      - 'Matemática' (mat-002) — duplicate — with turma '9º Ano B' (turma-002)
+      - 'Física'     (mat-003) — unique   — with no turmas
+
+    Returns a tuple: (storage_manager, db_path)
+    """
+    with patch("storage.SUPABASE_DB_AVAILABLE", False):
+        from storage import StorageManager
+        mgr = StorageManager(base_path=str(tmp_path))
+
+    db_path = tmp_path / "database.db"
+
+    _insert_raw_materia(db_path, "mat-001", "Matemática")
+    _insert_raw_materia(db_path, "mat-002", "Matemática")   # intentional duplicate
+    _insert_raw_materia(db_path, "mat-003", "Física")        # unique — must survive untouched
+
+    _insert_raw_turma(db_path, "turma-001", "mat-001", "9º Ano A")
+    _insert_raw_turma(db_path, "turma-002", "mat-002", "9º Ano B")  # turma on the duplicate
+
+    return mgr, db_path
+
+
+class TestCleanupDuplicateMaterias:
+    """F3-T3: cleanup_duplicate_materias() must remove duplicate matérias and merge turmas."""
+
+    def test_method_exists_on_storage_manager(self, storage_with_duplicates_and_unique):
+        """
+        GIVEN a StorageManager instance
+        WHEN  we check for the cleanup_duplicate_materias attribute
+        THEN  it exists and is callable
+
+        This test fails in the RED phase because the method does not exist yet.
+        """
+        mgr, _ = storage_with_duplicates_and_unique
+
+        assert hasattr(mgr, "cleanup_duplicate_materias"), (
+            "StorageManager must have a cleanup_duplicate_materias() method — "
+            "it does not exist yet (RED phase)."
+        )
+        assert callable(mgr.cleanup_duplicate_materias), (
+            "cleanup_duplicate_materias must be callable."
+        )
+
+    def test_cleanup_leaves_exactly_one_materia_per_unique_nome(
+        self, storage_with_duplicates_and_unique
+    ):
+        """
+        GIVEN a DB with two 'Matemática' rows and one 'Física' row
+        WHEN  cleanup_duplicate_materias() is called
+        THEN  listar_materias() returns exactly 2 matérias (one per unique nome)
+        """
+        mgr, _ = storage_with_duplicates_and_unique
+
+        mgr.cleanup_duplicate_materias()
+
+        materias = mgr.listar_materias()
+        nomes = [m.nome for m in materias]
+
+        assert len(materias) == 2, (
+            f"Expected 2 unique matérias after cleanup (Matemática + Física), "
+            f"got {len(materias)}: {nomes}"
+        )
+
+    def test_cleanup_surviving_materia_has_both_turmas_merged(
+        self, storage_with_duplicates_and_unique
+    ):
+        """
+        GIVEN 'Matemática' mat-001 has '9º Ano A' and mat-002 (duplicate) has '9º Ano B'
+        WHEN  cleanup_duplicate_materias() is called
+        THEN  the surviving 'Matemática' matéria has BOTH turmas (2 total, none discarded)
+        """
+        mgr, _ = storage_with_duplicates_and_unique
+
+        mgr.cleanup_duplicate_materias()
+
+        materias = mgr.listar_materias()
+        matematica = next((m for m in materias if m.nome == "Matemática"), None)
+
+        assert matematica is not None, (
+            "After cleanup 'Matemática' must still exist as a surviving matéria."
+        )
+
+        turmas = mgr.listar_turmas(materia_id=matematica.id)
+        turma_nomes = [t.nome for t in turmas]
+
+        assert len(turmas) == 2, (
+            f"Expected 2 turmas on the surviving 'Matemática' (merged from both duplicates), "
+            f"got {len(turmas)}: {turma_nomes}"
+        )
+        assert "9º Ano A" in turma_nomes, (
+            f"Turma '9º Ano A' (from mat-001) must be preserved. Got: {turma_nomes}"
+        )
+        assert "9º Ano B" in turma_nomes, (
+            f"Turma '9º Ano B' (from mat-002, the duplicate) must be reassigned. Got: {turma_nomes}"
+        )
+
+    def test_cleanup_does_not_delete_unique_materia(
+        self, storage_with_duplicates_and_unique
+    ):
+        """
+        GIVEN 'Física' (mat-003) is a unique matéria with no duplicates
+        WHEN  cleanup_duplicate_materias() is called
+        THEN  'Física' still exists with 0 turmas (untouched)
+        """
+        mgr, _ = storage_with_duplicates_and_unique
+
+        mgr.cleanup_duplicate_materias()
+
+        materias = mgr.listar_materias()
+        fisica = next((m for m in materias if m.nome == "Física"), None)
+
+        assert fisica is not None, (
+            "After cleanup 'Física' must still exist — unique matérias must NOT be deleted."
+        )
+
+        turmas = mgr.listar_turmas(materia_id=fisica.id)
+        assert len(turmas) == 0, (
+            f"'Física' had no turmas originally and must still have 0 after cleanup, "
+            f"got {len(turmas)}."
+        )
+
+    def test_cleanup_returns_report_dict_with_counts(
+        self, storage_with_duplicates_and_unique
+    ):
+        """
+        GIVEN a DB with 1 duplicate 'Matemática' row (mat-002) and 1 reassignable turma (turma-002)
+        WHEN  cleanup_duplicate_materias() is called
+        THEN  it returns {'duplicates_removed': 1, 'turmas_reassigned': 1}
+        """
+        mgr, _ = storage_with_duplicates_and_unique
+
+        report = mgr.cleanup_duplicate_materias()
+
+        assert isinstance(report, dict), (
+            f"cleanup_duplicate_materias() must return a dict, got {type(report)}."
+        )
+        assert report.get("duplicates_removed") == 1, (
+            f"Expected duplicates_removed=1 (mat-002 removed), got {report.get('duplicates_removed')}. "
+            f"Full report: {report}"
+        )
+        assert report.get("turmas_reassigned") == 1, (
+            f"Expected turmas_reassigned=1 (turma-002 moved to surviving matéria), "
+            f"got {report.get('turmas_reassigned')}. Full report: {report}"
+        )
