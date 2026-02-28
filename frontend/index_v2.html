@@ -4618,6 +4618,81 @@
         let currentTurma = null;
         let currentAtividade = null;
         let currentAluno = null;
+
+        // ============================================================
+        // SPA HISTORY NAVIGATION
+        // ============================================================
+        let _isRestoringFromHistory = false;
+        let _popstateDebounceTimer = null;
+
+        function pushNavState() {
+            if (_isRestoringFromHistory) return;
+            const state = {
+                view: currentView,
+                materiaId: currentMateria,
+                turmaId: currentTurma,
+                atividadeId: currentAtividade,
+                alunoId: currentAluno
+            };
+            history.pushState(state, '');
+        }
+
+        function _handlePopstate(event) {
+            clearTimeout(_popstateDebounceTimer);
+            _popstateDebounceTimer = setTimeout(async () => {
+                const state = event.state;
+                if (!state || !state.view) {
+                    // At root — prevent leaving SPA
+                    history.pushState({ view: 'dashboard' }, '');
+                    return;
+                }
+                _isRestoringFromHistory = true;
+                try {
+                    switch (state.view) {
+                        case 'dashboard':
+                            await showDashboard();
+                            break;
+                        case 'materia':
+                            if (state.materiaId) await showMateria(state.materiaId);
+                            else await showDashboard();
+                            break;
+                        case 'turma':
+                            if (state.turmaId) await showTurma(state.turmaId);
+                            else await showDashboard();
+                            break;
+                        case 'atividade':
+                            if (state.atividadeId) await showAtividade(state.atividadeId);
+                            else await showDashboard();
+                            break;
+                        case 'alunos':
+                            await showAlunos();
+                            break;
+                        case 'prompts':
+                            await showPrompts();
+                            break;
+                        case 'providers':
+                            await showProviders();
+                            break;
+                        case 'chat_geral':
+                            await showChatGeral(state.atividadeId, state.alunoId);
+                            break;
+                        case 'aluno':
+                            if (state.alunoId) await showAluno(state.alunoId);
+                            else await showDashboard();
+                            break;
+                        case 'resultado_aluno':
+                            if (state.atividadeId && state.alunoId) await showResultadoAluno(state.atividadeId, state.alunoId);
+                            else await showDashboard();
+                            break;
+                        default:
+                            await showDashboard();
+                    }
+                } finally {
+                    _isRestoringFromHistory = false;
+                }
+            }, 200);
+        }
+
          // Chat Geral
         let chatGeralConversationId = 'chat_' + Date.now();
         let chatGeralProviders = [];
@@ -5984,6 +6059,10 @@
         // ============================================================
 
         document.addEventListener('DOMContentLoaded', () => {
+            // Set initial history state so back at root stays in SPA
+            history.replaceState({ view: 'dashboard' }, '');
+            window.addEventListener('popstate', _handlePopstate);
+
             loadNavTree();
             showDashboard();
             setupUploadZone();
@@ -6225,6 +6304,7 @@
         async function showDashboard() {
             currentView = 'dashboard';
             currentMateria = currentTurma = currentAtividade = null;
+            pushNavState();
             setBreadcrumb([{nome: 'Início', onclick: 'showDashboard()'}]);
             clearHelpPanels();
             
@@ -6278,7 +6358,8 @@
             currentView = 'materia';
             currentMateria = materiaId;
             currentTurma = currentAtividade = null;
-            
+            pushNavState();
+
             try {
                 const data = await api(`/materias/${materiaId}`);
                 setBreadcrumb([{nome: 'Início', onclick: 'showDashboard()'}, {nome: data.materia.nome, onclick: `showMateria('${materiaId}')`}]);
@@ -6344,6 +6425,7 @@
             currentView = 'turma';
             currentTurma = turmaId;
             currentAtividade = null;
+            pushNavState();
 
             // Loading state: show spinner + debounce before fetch
             const card = document.querySelector(`.card-grid-item[onclick*="${turmaId}"]`);
@@ -6437,6 +6519,7 @@
             currentView = 'atividade';
             currentAtividade = atividadeId;
             currentAluno = null;
+            pushNavState();
             clearHelpPanels();
             
             try {
@@ -6646,6 +6729,7 @@
         
         async function showAlunos() {
             currentView = 'alunos';
+            pushNavState();
             setBreadcrumb([{nome: 'Início', onclick: 'showDashboard()'}, {nome: 'Todos os Alunos', onclick: 'showAlunos()'}]);
             
             try {
@@ -6666,6 +6750,7 @@
 
         async function showPrompts() {
             currentView = 'prompts';
+            pushNavState();
             setBreadcrumb([{nome: 'Início', onclick: 'showDashboard()'}, {nome: 'Prompts', onclick: 'showPrompts()'}]);
             clearHelpPanels();
             try {
@@ -6767,6 +6852,7 @@
 
         async function showProviders() {
             currentView = 'providers';
+            pushNavState();
             setBreadcrumb([{nome: 'Início', onclick: 'showDashboard()'}, {nome: 'Modelos de LLM', onclick: 'showProviders()'}]);
             clearHelpPanels();
             try {
@@ -6854,6 +6940,7 @@
         // ============================================================
         async function showChatGeral(preselectedAtividadeId = null, preselectedAlunoId = null) {
             currentView = 'chat_geral';
+            pushNavState();
             clearHelpPanels();
 
             // Guardar referência ao aluno pré-selecionado para uso no chat
@@ -7324,6 +7411,9 @@
         }
         
         async function showAluno(alunoId) {
+            currentView = 'aluno';
+            currentAluno = alunoId;
+            pushNavState();
             try {
                 const data = await api(`/alunos/${alunoId}`);
                 setBreadcrumb([{nome: 'Início', onclick: 'showDashboard()'}, {nome: 'Alunos', onclick: 'showAlunos()'}, {nome: data.aluno.nome, onclick: `showAluno('${alunoId}')`}]);
@@ -7749,6 +7839,10 @@
         }
         
         async function openModalUpload(atividadeId, modo) {
+            if (modo === 'aluno' && !hasStudentsInTurma()) {
+                showToast('Nenhum aluno na turma. Adicione alunos antes de enviar provas.', 'warning');
+                return;
+            }
             document.getElementById('input-upload-atividade-id').value = atividadeId;
             resetUploadReplace();
             const grupoAluno = document.getElementById('grupo-aluno-upload');
