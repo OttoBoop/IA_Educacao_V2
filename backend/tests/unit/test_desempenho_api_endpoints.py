@@ -364,13 +364,13 @@ class TestDesempenhoDeleteRunEndpoint:
             "doc-2", TipoDocumento.RELATORIO_DESEMPENHO_TAREFA, "ativ-001",
             datetime(2026, 2, 27, 12, 8, 26),  # 1 second later — same run
         )
-
+        # Run id uses the newest doc's timestamp (sorted descending): 120826
         with patch("routes_extras.storage") as mock_storage:
             mock_storage.listar_documentos.return_value = [doc1, doc2]
             mock_storage.deletar_documento.return_value = True
             mock_storage.get_atividade.return_value = MagicMock(id="ativ-001", nome="Prova 1", turma_id="t1")
             response = client.delete(
-                "/api/desempenho/run/run-20260227-120825",
+                "/api/desempenho/run/run-20260227-120826",
                 params={"level": "tarefa", "entity_id": "ativ-001"},
             )
 

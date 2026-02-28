@@ -675,6 +675,68 @@ async def get_desempenho(level: str, entity_id: str):
     }
 
 
+def _collect_desempenho_docs(level: str, entity_id: str, tipo: TipoDocumento):
+    """Collect all desempenho docs for a given entity (shared by GET and DELETE)."""
+    docs = []
+    if level == "tarefa":
+        docs = list(storage.listar_documentos(entity_id, tipo=tipo))
+    elif level == "turma":
+        for ativ in storage.listar_atividades(entity_id):
+            docs.extend(storage.listar_documentos(ativ.id, tipo=tipo))
+        docs.extend(storage.listar_documentos(entity_id, tipo=tipo))
+    elif level == "materia":
+        for turma in storage.listar_turmas(entity_id):
+            for ativ in storage.listar_atividades(turma.id):
+                docs.extend(storage.listar_documentos(ativ.id, tipo=tipo))
+        docs.extend(storage.listar_documentos(entity_id, tipo=tipo))
+
+    # Defense-in-depth + deduplicate
+    seen = set()
+    result = []
+    for d in docs:
+        if d.tipo == tipo and d.id not in seen:
+            seen.add(d.id)
+            result.append(d)
+    return result
+
+
+@router.delete("/api/desempenho/run/{run_id}", tags=["Desempenho"])
+async def delete_desempenho_run(
+    run_id: str,
+    level: str = Query(..., description="Level: tarefa, turma, or materia"),
+    entity_id: str = Query(..., description="ID of the entity"),
+):
+    """Delete all documents belonging to a specific pipeline run.
+
+    Finds the run by matching run_id against grouped runs for the entity,
+    then deletes every document in that run.
+    """
+    if level not in DESEMPENHO_TIPO_MAP:
+        raise HTTPException(status_code=400, detail=f"Invalid level: {level}. Must be tarefa, turma, or materia.")
+
+    tipo = DESEMPENHO_TIPO_MAP[level]
+    all_docs = _collect_desempenho_docs(level, entity_id, tipo)
+    runs = _group_docs_into_runs(all_docs)
+
+    # Find the run matching run_id
+    target_run = None
+    for run in runs:
+        if run["id"] == run_id:
+            target_run = run
+            break
+
+    if target_run is None:
+        raise HTTPException(status_code=404, detail=f"Run '{run_id}' not found for {level}/{entity_id}.")
+
+    # Delete all docs in the run
+    deleted = 0
+    for doc_dict in target_run["docs"]:
+        if storage.deletar_documento(doc_dict["id"]):
+            deleted += 1
+
+    return {"deleted_count": deleted, "run_id": run_id}
+
+
 # ============================================================
 # ENDPOINT: DOCUMENTOS PARA CHAT
 # ============================================================
