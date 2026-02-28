@@ -293,6 +293,7 @@ class StorageManager:
             descricao=descricao,
             nivel=nivel
         )
+        materia.metadata = {"criado_por": "user"}
 
         if self.use_postgresql:
             data = {
@@ -304,7 +305,9 @@ class StorageManager:
                 "atualizado_em": materia.atualizado_em.isoformat(),
                 "metadata": materia.metadata
             }
-            supabase_db.insert("materias", data)
+            result = supabase_db.insert("materias", data)
+            if not result:
+                raise ValueError(f"Falha ao inserir matéria '{nome}' no banco de dados")
         else:
             conn = self._get_connection()
             c = conn.cursor()
@@ -436,6 +439,7 @@ class StorageManager:
             periodo=periodo,
             descricao=descricao
         )
+        turma.metadata = {"criado_por": "user"}
 
         if self.use_postgresql:
             data = {
@@ -449,7 +453,9 @@ class StorageManager:
                 "atualizado_em": turma.atualizado_em.isoformat(),
                 "metadata": turma.metadata
             }
-            supabase_db.insert("turmas", data)
+            result = supabase_db.insert("turmas", data)
+            if not result:
+                raise ValueError(f"Falha ao inserir turma '{nome}' no banco de dados")
         else:
             conn = self._get_connection()
             c = conn.cursor()
@@ -542,6 +548,7 @@ class StorageManager:
             email=email,
             matricula=matricula
         )
+        aluno.metadata = {"criado_por": "user"}
 
         if self.use_postgresql:
             data = {
@@ -553,7 +560,9 @@ class StorageManager:
                 "atualizado_em": aluno.atualizado_em.isoformat(),
                 "metadata": aluno.metadata
             }
-            supabase_db.insert("alunos", data)
+            result = supabase_db.insert("alunos", data)
+            if not result:
+                raise ValueError(f"Falha ao inserir aluno '{nome}' no banco de dados")
         else:
             conn = self._get_connection()
             c = conn.cursor()
@@ -837,6 +846,7 @@ class StorageManager:
             nota_maxima=nota_maxima,
             descricao=descricao
         )
+        atividade.metadata = {"criado_por": "user"}
 
         if self.use_postgresql:
             data = {
@@ -853,7 +863,9 @@ class StorageManager:
                 "atualizado_em": atividade.atualizado_em.isoformat(),
                 "metadata": atividade.metadata
             }
-            supabase_db.insert("atividades", data)
+            result = supabase_db.insert("atividades", data)
+            if not result:
+                raise ValueError(f"Falha ao inserir atividade '{nome}' no banco de dados")
         else:
             conn = self._get_connection()
             c = conn.cursor()

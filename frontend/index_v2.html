@@ -6040,9 +6040,12 @@
                         ${data.turmas.length === 0 ? `<div class="empty-state"><div class="empty-icon">👥</div><div class="empty-title">Nenhuma turma</div><div class="empty-text">Crie uma turma para começar</div></div>` : `<div class="card-grid">${data.turmas.map(t => `<div class="card-grid-item" onclick="showTurma('${t.id}')"><div class="card-icon">👥</div><div class="card-name">${t.nome}</div><div class="card-meta">${t.ano_letivo || ''} ${t.periodo || ''}</div></div>`).join('')}</div>`}
                     </div>
                 `;
-            } catch (e) { showToast('Erro ao carregar matéria', 'error'); }
+            } catch (e) {
+                showToast('Matéria não encontrada. Voltando ao início...', 'error');
+                showDashboard();
+            }
         }
-        
+
         async function showTurma(turmaId) {
             currentView = 'turma';
             currentTurma = turmaId;
@@ -6082,9 +6085,12 @@
                     </div>
                 `;
                 window._turmaData = data;
-            } catch (e) { showToast('Erro ao carregar turma', 'error'); }
+            } catch (e) {
+                showToast('Turma não encontrada. Voltando ao início...', 'error');
+                showDashboard();
+            }
         }
-        
+
         async function showTurmaTab(tab, turmaId) {
             document.querySelectorAll('.tabs .tab').forEach((t, i) => t.classList.toggle('active', (tab === 'atividades' && i === 0) || (tab === 'alunos' && i === 1)));
             const data = window._turmaData;
@@ -6155,7 +6161,10 @@
                 `;
                 window._atividadeData = data;
                 window._turmaData = turma;
-            } catch (e) { showToast('Erro ao carregar atividade', 'error'); }
+            } catch (e) {
+                showToast('Atividade não encontrada. Voltando ao início...', 'error');
+                showDashboard();
+            }
         }
         
         function formatDateTime(value) {

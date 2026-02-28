@@ -133,28 +133,27 @@ def _check_document_completeness() -> bool:
 
 def _wipe_old_untagged_data():
     """
-    Delete old fantasy data that lacks criado_por tags (pre-overhaul data).
-    Preserves any data with non-empty metadata (user-created or tagged).
+    Delete ONLY fantasy/test-generated data.
+    NEVER deletes user-created data (empty metadata or criado_por: 'user').
     """
+    GENERATOR_TAGS = {"test_generator", "fantasy_generator"}
     materias = storage.listar_materias()
     deleted = 0
     for materia in materias:
         meta = materia.metadata if isinstance(materia.metadata, dict) else {}
-        # Delete if no metadata or empty metadata (old generator data)
-        # Also delete if tagged as test_generator (cleanup from failed runs)
-        if not meta or meta.get("criado_por") == "test_generator":
-            print(f"  [wipe] Deleting materia '{materia.nome}' (id={materia.id})")
+        if meta.get("criado_por") in GENERATOR_TAGS:
+            print(f"  [wipe] Deleting materia '{materia.nome}' (id={materia.id}, tag={meta.get('criado_por')})")
             storage.deletar_materia(materia.id)
             deleted += 1
-    # Also delete untagged alunos
+    # Also delete generator-tagged alunos
     alunos = storage.listar_alunos()
     alunos_deleted = 0
     for aluno in alunos:
         meta = aluno.metadata if isinstance(aluno.metadata, dict) else {}
-        if not meta or meta.get("criado_por") == "test_generator":
+        if meta.get("criado_por") in GENERATOR_TAGS:
             storage.deletar_aluno(aluno.id)
             alunos_deleted += 1
-    print(f"[!] Wiped {deleted} materias, {alunos_deleted} alunos (old untagged data)")
+    print(f"[!] Wiped {deleted} materias, {alunos_deleted} alunos (generator data only)")
 
 
 def initialize_fantasy_data_if_empty():
@@ -564,9 +563,13 @@ async def deletar_aluno(aluno_id: str):
 @app.post("/api/alunos/vincular", tags=["Alunos"])
 async def vincular_aluno_turma(data: VinculoAlunoTurma):
     """Vincula um aluno a uma turma"""
+    if not storage.get_aluno(data.aluno_id):
+        raise HTTPException(404, f"Aluno não encontrado (id={data.aluno_id})")
+    if not storage.get_turma(data.turma_id):
+        raise HTTPException(404, f"Turma não encontrada (id={data.turma_id})")
     vinculo = storage.vincular_aluno_turma(data.aluno_id, data.turma_id, data.observacoes)
     if not vinculo:
-        raise HTTPException(400, "Aluno ou turma não encontrados, ou vínculo já existe")
+        raise HTTPException(409, "Vínculo já existe entre este aluno e turma")
     return {"success": True, "vinculo": vinculo.to_dict()}
 
 
