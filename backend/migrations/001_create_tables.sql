@@ -96,6 +96,7 @@ CREATE TABLE IF NOT EXISTS documentos (
     tipo TEXT NOT NULL,
     atividade_id TEXT NOT NULL REFERENCES atividades(id) ON DELETE CASCADE,
     aluno_id TEXT REFERENCES alunos(id) ON DELETE SET NULL,
+    display_name TEXT DEFAULT '',
     nome_arquivo TEXT,
     caminho_arquivo TEXT,
     extensao TEXT,
@@ -172,6 +173,13 @@ CREATE TABLE IF NOT EXISTS prompts_historico (
     modificado_em TIMESTAMPTZ DEFAULT NOW(),
     modificado_por TEXT
 );
+
+-- =================================================================
+-- MIGRATIONS: Add columns to existing tables
+-- =================================================================
+-- Safe to re-run: IF NOT EXISTS prevents errors on already-migrated DBs.
+
+ALTER TABLE documentos ADD COLUMN IF NOT EXISTS display_name TEXT DEFAULT '';
 
 -- =================================================================
 -- Row Level Security (RLS) - Disable for now (service key bypasses)
