@@ -17,6 +17,7 @@ O antigo storage.py (legado) foi removido em 2026-01-30.
 """
 
 import os
+import re
 import sqlite3
 import hashlib
 import shutil
@@ -53,6 +54,80 @@ SUPABASE_AVAILABLE = SUPABASE_STORAGE_AVAILABLE
 
 # Diretório base para paths absolutos (compatível com Render)
 BASE_DIR = Path(__file__).parent
+
+
+# ============================================================
+# DISPLAY NAME & FILENAME UTILITIES
+# ============================================================
+
+# Human-readable labels for TipoDocumento values
+_TIPO_LABELS: Dict[str, str] = {
+    "enunciado": "Enunciado",
+    "gabarito": "Gabarito",
+    "criterios_correcao": "Critérios de Correção",
+    "material_apoio": "Material de Apoio",
+    "prova_respondida": "Prova Respondida",
+    "correcao_professor": "Correção do Professor",
+    "extracao_questoes": "Extração de Questões",
+    "extracao_gabarito": "Extração de Gabarito",
+    "extracao_respostas": "Extração de Respostas",
+    "correcao": "Correção",
+    "analise_habilidades": "Análise de Habilidades",
+    "relatorio_final": "Relatório Final",
+    "correcao_narrativa": "Correção Narrativa",
+    "analise_habilidades_narrativa": "Análise de Habilidades Narrativa",
+    "relatorio_narrativo": "Relatório Narrativo",
+    "relatorio_desempenho_tarefa": "Relatório de Desempenho (Tarefa)",
+    "relatorio_desempenho_turma": "Relatório de Desempenho (Turma)",
+    "relatorio_desempenho_materia": "Relatório de Desempenho (Matéria)",
+}
+
+# Characters unsafe for filesystems (/, \, :, *, ?, <, >, |)
+_UNSAFE_FILENAME_CHARS = re.compile(r'[/\\:*?<>|]')
+
+
+def build_display_name(
+    tipo: TipoDocumento,
+    aluno_nome: Optional[str],
+    materia_nome: Optional[str],
+    turma_nome: Optional[str],
+) -> str:
+    """
+    Build a structured display name from document metadata.
+
+    Format: "{Tipo Label} - {Aluno} - {Matéria} - {Turma}"
+    Parts with None or empty values are omitted.
+    """
+    label = _TIPO_LABELS.get(tipo.value, tipo.value)
+    parts = [label]
+    for part in [aluno_nome, materia_nome, turma_nome]:
+        if part:
+            parts.append(part)
+    return " - ".join(parts)
+
+
+def sanitize_filename(name: str) -> str:
+    """
+    Strip filesystem-unsafe characters from a filename while keeping Portuguese accents.
+
+    Removes: / \\ : * ? < > |
+    Keeps: accented chars (é, ã, ô, ç), spaces, hyphens, underscores
+    """
+    return _UNSAFE_FILENAME_CHARS.sub("", name)
+
+
+def build_storage_filename(display_name: str, extension: str) -> str:
+    """
+    Build a unique storage filename from a display name.
+
+    Returns: '{sanitized_name}_{hash4}.{ext}'
+    The 4-char hash suffix guarantees uniqueness for different display names.
+    """
+    if not extension.startswith("."):
+        extension = f".{extension}"
+    sanitized = sanitize_filename(display_name)
+    hash_suffix = hashlib.md5(display_name.encode("utf-8")).hexdigest()[:4]
+    return f"{sanitized}_{hash_suffix}{extension}"
 
 
 class StorageManager:
