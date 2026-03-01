@@ -8702,7 +8702,7 @@
         async function deleteDesempenhoRun(runId, level, entityId) {
             if (!confirm('Excluir todos os documentos desta execução?')) return;
             try {
-                const resp = await fetch(API_BASE + `/api/desempenho/run/${runId}?level=${level}&entity_id=${entityId}`, {
+                const resp = await fetch(`${API}/desempenho/run/${runId}?level=${level}&entity_id=${entityId}`, {
                     method: 'DELETE'
                 });
                 if (!resp.ok) throw new Error('Falha ao excluir');
@@ -8720,7 +8720,7 @@
             if (!container) return;
 
             try {
-                const data = await api(`/api/desempenho/${level}/${entityId}`);
+                const data = await api(`/desempenho/${level}/${entityId}`);
                 const hasAtividades = data.has_atividades;
                 const runs = data.runs || [];
 

@@ -41,10 +41,10 @@ class TestBT1TabHtmlCardLayout:
         )
 
     def test_bt1_uses_new_desempenho_api_endpoint(self, html_content):
-        """The new function must call /api/desempenho/ (not /documentos/todos)."""
-        assert "/api/desempenho/" in html_content, (
-            "index_v2.html must reference '/api/desempenho/' endpoint "
-            "for loading desempenho data server-side."
+        """The new function must call /desempenho/ endpoint (via api() helper which prepends /api)."""
+        assert "/desempenho/" in html_content, (
+            "index_v2.html must reference '/desempenho/' endpoint "
+            "for loading desempenho data server-side (api() helper prepends /api)."
         )
 
     def test_bt1_materia_tab_calls_load_desempenho_data(self, html_content):
