@@ -1144,6 +1144,7 @@ class StorageManager:
             raise ValueError(f"Tipo {tipo.value} requer aluno_id")
 
         # Validar se aluno existe e está na turma
+        aluno = None
         if aluno_id:
             aluno = self.get_aluno(aluno_id)
             if not aluno:
@@ -1159,10 +1160,9 @@ class StorageManager:
         if display_name is None:
             turma = self.get_turma(atividade.turma_id) if atividade.turma_id else None
             materia = self.get_materia(turma.materia_id) if turma and turma.materia_id else None
-            aluno_obj = self.get_aluno(aluno_id) if aluno_id else None
             display_name = build_display_name(
                 tipo=tipo,
-                aluno_nome=aluno_obj.nome if aluno_obj else None,
+                aluno_nome=aluno.nome if aluno else None,
                 materia_nome=materia.nome if materia else None,
                 turma_nome=turma.nome if turma else None,
             )
