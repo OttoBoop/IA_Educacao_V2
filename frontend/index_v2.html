@@ -8793,13 +8793,17 @@
                     visualizarDocumento(result.documento_id);
                 }
             } catch (e) {
-                // B-T4: Cleanup timer + restore button on error
+                // B-T5: Cleanup timer + show inline error + retry button
                 clearInterval(_desempenhoTimer);
                 _desempenhoTimer = null;
                 _desempenhoGenerating = false;
                 if (generateArea) {
                     generateArea.innerHTML = `
-                        <button class="btn btn-primary" onclick="executarDesempenho('${level}', '${entityId}')">▶️ Gerar Relatório</button>
+                        <div id="desempenho-error" style="background: rgba(239,68,68,0.1); border: 1px solid var(--danger); border-radius: 8px; padding: 12px; display: flex; flex-direction: column; gap: 8px;">
+                            <span style="color: var(--danger); font-weight: 500;">❌ Erro ao gerar relatório</span>
+                            <span style="color: var(--text-muted); font-size: 0.85rem;">${e.message || 'Erro desconhecido'}</span>
+                            <button class="btn btn-primary" onclick="executarDesempenho('${level}', '${entityId}')" style="align-self: flex-start; margin-top: 4px;">🔄 Tentar Novamente</button>
+                        </div>
                     `;
                 }
                 showToast('❌ Erro ao gerar relatório: ' + (e.message || 'Erro desconhecido'), 'error');
