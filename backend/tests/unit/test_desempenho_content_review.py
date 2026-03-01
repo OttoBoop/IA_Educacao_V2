@@ -172,3 +172,26 @@ class TestCT1cExecutorResolvesFilePaths:
                 f"{name} must call self.storage.resolver_caminho_documento(doc) to resolve "
                 f"file paths through Supabase storage before reading."
             )
+
+
+# ============================================================
+# C-T1d: Desempenho doc types must be in documentos_sem_aluno
+# ============================================================
+
+class TestCT1dDesempenhoDocsNoAluno:
+    """Desempenho reports are aggregate (not per-student) — must not require aluno_id."""
+
+    def test_desempenho_types_in_documentos_sem_aluno(self):
+        """RELATORIO_DESEMPENHO_* types must be in documentos_sem_aluno()."""
+        import sys
+        sys.path.insert(0, str(Path(__file__).parent.parent.parent))
+        from models import TipoDocumento
+
+        sem_aluno = TipoDocumento.documentos_sem_aluno()
+        for tipo in (TipoDocumento.RELATORIO_DESEMPENHO_TAREFA,
+                      TipoDocumento.RELATORIO_DESEMPENHO_TURMA,
+                      TipoDocumento.RELATORIO_DESEMPENHO_MATERIA):
+            assert tipo in sem_aluno, (
+                f"{tipo.value} is an aggregate report (no aluno_id) but is not "
+                f"in documentos_sem_aluno(). Storage.criar_documento() will reject it."
+            )
