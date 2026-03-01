@@ -286,6 +286,24 @@ class ApiKeyManager:
 
             except Exception as e:
                 print(f"Erro ao carregar API keys: {e}")
+        else:
+            self._init_from_env()
+
+    def _init_from_env(self):
+        """Auto-create API key configs from env vars (for fresh Render deploys)."""
+        env_map = {
+            ProviderType.OPENAI: "OPENAI_API_KEY",
+            ProviderType.ANTHROPIC: "ANTHROPIC_API_KEY",
+            ProviderType.GOOGLE: "GOOGLE_API_KEY",
+        }
+        created = []
+        for provider_type, env_var in env_map.items():
+            key_value = os.environ.get(env_var)
+            if key_value:
+                self.adicionar(provider_type, key_value, f"{provider_type.value.title()} (env)")
+                created.append(provider_type.value)
+        if created:
+            print(f"[ApiKeyManager] Auto-initialized from env: {', '.join(created)}")
 
     def _save(self):
         keys_data = []
@@ -492,6 +510,54 @@ class ModelManager:
                 self._ensure_single_default()
             except Exception as e:
                 print(f"Erro ao carregar modelos: {e}")
+        else:
+            self._init_from_env()
+
+    def _init_from_env(self):
+        """Auto-create default model configs from env vars (for fresh Render deploys)."""
+        first = True
+        if os.environ.get("OPENAI_API_KEY"):
+            openai_key = api_key_manager.get_por_empresa(ProviderType.OPENAI)
+            key_id = openai_key.id if openai_key else None
+            self.models["openai-gpt4o-mini"] = ModelConfig(
+                id="openai-gpt4o-mini",
+                nome="GPT-4o Mini",
+                tipo=ProviderType.OPENAI,
+                modelo="gpt-4o-mini",
+                api_key_id=key_id,
+                is_default=first,
+                ativo=True,
+            )
+            first = False
+        if os.environ.get("ANTHROPIC_API_KEY"):
+            anthropic_key = api_key_manager.get_por_empresa(ProviderType.ANTHROPIC)
+            key_id = anthropic_key.id if anthropic_key else None
+            self.models["claude-haiku"] = ModelConfig(
+                id="claude-haiku",
+                nome="Claude Haiku",
+                tipo=ProviderType.ANTHROPIC,
+                modelo="claude-haiku-4-5-20251001",
+                api_key_id=key_id,
+                is_default=first,
+                ativo=True,
+            )
+            first = False
+        if os.environ.get("GOOGLE_API_KEY"):
+            google_key = api_key_manager.get_por_empresa(ProviderType.GOOGLE)
+            key_id = google_key.id if google_key else None
+            self.models["gemini-flash"] = ModelConfig(
+                id="gemini-flash",
+                nome="Gemini Flash",
+                tipo=ProviderType.GOOGLE,
+                modelo="gemini-2.0-flash",
+                api_key_id=key_id,
+                is_default=first,
+                ativo=True,
+            )
+        if self.models:
+            self._save()
+            names = [m.nome for m in self.models.values()]
+            print(f"[ModelManager] Auto-initialized from env: {', '.join(names)}")
 
     def _ensure_single_default(self):
         """Garante que apenas um modelo seja marcado como padrao.
