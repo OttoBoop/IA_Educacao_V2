@@ -5939,10 +5939,8 @@
         }
         
         function closeWelcome() {
-            const dontShow = document.getElementById('welcome-dont-show').checked;
-            if (dontShow) {
-                localStorage.setItem('prova-ai-welcomed', 'true');
-            }
+            // Always persist dismissal so reloads don't re-show the overlay
+            localStorage.setItem('prova-ai-welcomed', 'true');
             document.getElementById('modal-welcome').classList.remove('active');
             // Also stop pulsing when user closes welcome
             const helpBtn = document.getElementById('help-btn');
@@ -6177,7 +6175,13 @@
                 return;
             }
             
-            container.innerHTML = materias.map(materia => `
+            const seen = new Set();
+            const uniqueMaterias = materias.filter(m => {
+                if (seen.has(m.nome)) return false;
+                seen.add(m.nome);
+                return true;
+            });
+            container.innerHTML = uniqueMaterias.map(materia => `
                 <div class="tree-item" onclick="showMateria('${materia.id}')" title="${materia.nome}">
                     <span class="tree-toggle ${materia.turmas.length > 0 ? '' : 'hidden'}" onclick="event.stopPropagation(); toggleTree(this)">▶</span>
                     <span class="tree-item-icon">📚</span>
@@ -6393,7 +6397,7 @@
                     <div id="materia-tab-content">
                     <div class="card">
                         <div class="card-header"><h3 class="card-title">Turmas (${data.total_turmas})</h3><button class="btn btn-primary btn-sm" onclick="openModalTurma('${materiaId}')">+ Nova Turma</button></div>
-                        ${data.turmas.length === 0 ? `<div class="empty-state"><div class="empty-icon">👥</div><div class="empty-title">Nenhuma turma</div><div class="empty-text">Crie uma turma para começar</div></div>` : `<div class="card-grid">${data.turmas.map(t => `<div class="card-grid-item" onclick="showTurma('${t.id}')"><div class="card-icon">👥</div><div class="card-name">${t.nome}</div><div class="card-meta">${t.ano_letivo || ''} ${t.periodo || ''}</div></div>`).join('')}</div>`}
+                        ${data.turmas.length === 0 ? `<div class="empty-state"><div class="empty-icon">👥</div><div class="empty-title">Nenhuma turma</div><div class="empty-text">Crie uma turma para começar</div></div>` : `<div class="card-grid">${data.turmas.map(t => `<div class="card-grid-item" data-turma-id="${t.id}" onclick="showTurma('${t.id}')"><div class="card-icon">👥</div><div class="card-name">${t.nome}</div><div class="card-meta">${t.ano_letivo || ''} ${t.periodo || ''}</div></div>`).join('')}</div>`}
                     </div>
                     </div>
                 `;
@@ -6440,7 +6444,7 @@
             pushNavState();
 
             // Loading state: show spinner + debounce before fetch
-            const card = document.querySelector(`.card-grid-item[onclick*="${turmaId}"]`);
+            const card = document.querySelector(`[data-turma-id="${turmaId}"]`);
             if (card) {
                 card.classList.add('card-loading');
                 card.style.pointerEvents = 'none';
@@ -8726,7 +8730,14 @@
             }
         }
 
+        // B-T4: Progress indicator state
+        let _desempenhoGenerating = false;
+        let _desempenhoTimer = null;
+
         async function executarDesempenho(level, entityId) {
+            // B-T4: Prevent concurrent generation
+            if (_desempenhoGenerating) return;
+
             const endpoints = {
                 'tarefa': '/executar/pipeline-desempenho-tarefa',
                 'turma': '/executar/pipeline-desempenho-turma',
@@ -8740,13 +8751,40 @@
 
             const endpoint = endpoints[level];
             const paramName = paramNames[level];
+            const generateArea = document.getElementById(`desempenho-generate-area-${level}`);
+
+            // B-T4: Show inline progress indicator
+            _desempenhoGenerating = true;
+            let elapsed = 0;
+            if (generateArea) {
+                generateArea.innerHTML = `
+                    <div style="display: flex; align-items: center; gap: 8px;">
+                        <span class="spinner"></span>
+                        <span>Gerando relatório... <span id="desempenho-elapsed">${elapsed}s</span></span>
+                    </div>
+                `;
+            }
+            _desempenhoTimer = setInterval(() => {
+                elapsed++;
+                const el = document.getElementById('desempenho-elapsed');
+                if (el) el.textContent = `${elapsed}s`;
+            }, 1000);
 
             try {
                 const formData = new FormData();
                 formData.append(paramName, entityId);
 
-                showToast('📊 Gerando relatório de desempenho...', 'success');
                 const result = await apiForm(endpoint, formData);
+
+                // B-T4: Cleanup timer + restore button
+                clearInterval(_desempenhoTimer);
+                _desempenhoTimer = null;
+                _desempenhoGenerating = false;
+                if (generateArea) {
+                    generateArea.innerHTML = `
+                        <button class="btn btn-primary" onclick="executarDesempenho('${level}', '${entityId}')">▶️ Gerar Relatório</button>
+                    `;
+                }
 
                 showToast('📊 Relatório de desempenho gerado com sucesso!', 'success');
                 loadDesempenhoData(level, entityId);
@@ -8755,6 +8793,15 @@
                     visualizarDocumento(result.documento_id);
                 }
             } catch (e) {
+                // B-T4: Cleanup timer + restore button on error
+                clearInterval(_desempenhoTimer);
+                _desempenhoTimer = null;
+                _desempenhoGenerating = false;
+                if (generateArea) {
+                    generateArea.innerHTML = `
+                        <button class="btn btn-primary" onclick="executarDesempenho('${level}', '${entityId}')">▶️ Gerar Relatório</button>
+                    `;
+                }
                 showToast('❌ Erro ao gerar relatório: ' + (e.message || 'Erro desconhecido'), 'error');
             }
         }
