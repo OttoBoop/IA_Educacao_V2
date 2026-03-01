@@ -5231,6 +5231,35 @@
             'correcao_professor': '🧑‍🏫 Sua correção manual para comparar com a IA'
         };
         
+        // Human-readable labels for TipoDocumento values (mirrors Python _TIPO_LABELS in storage.py)
+        const TIPO_LABELS = {
+            'enunciado': 'Enunciado',
+            'gabarito': 'Gabarito',
+            'criterios_correcao': 'Critérios de Correção',
+            'material_apoio': 'Material de Apoio',
+            'prova_respondida': 'Prova Respondida',
+            'correcao_professor': 'Correção do Professor',
+            'extracao_questoes': 'Extração de Questões',
+            'extracao_gabarito': 'Extração de Gabarito',
+            'extracao_respostas': 'Extração de Respostas',
+            'correcao': 'Correção',
+            'analise_habilidades': 'Análise de Habilidades',
+            'relatorio_final': 'Relatório Final',
+            'correcao_narrativa': 'Correção Narrativa',
+            'analise_habilidades_narrativa': 'Análise de Habilidades Narrativa',
+            'relatorio_narrativo': 'Relatório Narrativo',
+            'relatorio_desempenho_tarefa': 'Relatório de Desempenho (Tarefa)',
+            'relatorio_desempenho_turma': 'Relatório de Desempenho (Turma)',
+            'relatorio_desempenho_materia': 'Relatório de Desempenho (Matéria)',
+        };
+
+        // Build a structured display name from document metadata (mirrors Python build_display_name)
+        function buildDisplayName(tipo, alunoNome, materiaNome, turmaNome) {
+            const label = TIPO_LABELS[tipo] || tipo;
+            const parts = [label, alunoNome, materiaNome, turmaNome].filter(p => p != null && p !== '');
+            return parts.join(' - ');
+        }
+
         // Atualiza hint quando muda tipo de documento
         function onUploadTipoChange() {
             const tipo = document.getElementById('input-upload-tipo').value;
@@ -9310,6 +9339,7 @@
 
 
         function showToast(message, type = 'success') {
+            console.log(`[Toast][${type}] ${message}`);
             const toast = document.getElementById('toast');
             toast.textContent = message;
             toast.className = `toast ${type} show`;
