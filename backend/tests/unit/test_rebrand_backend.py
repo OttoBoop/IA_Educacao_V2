@@ -3,16 +3,19 @@ Structural tests for NOVO CR backend branding.
 
 C-T1: FastAPI title and root response must say "NOVO CR".
 C-T2: OpenRouter headers must reference "NOVO CR".
+C-T3: openapi_dump.json must reflect new title.
 
 Run: cd IA_Educacao_V2/backend && pytest tests/unit/test_rebrand_backend.py -v
 """
 
+import json
 from pathlib import Path
 
 import pytest
 
 MAIN_V2 = Path(__file__).parent.parent.parent / "main_v2.py"
 CHAT_SERVICE = Path(__file__).parent.parent.parent / "chat_service.py"
+OPENAPI_DUMP = Path(__file__).parent.parent.parent / "openapi_dump.json"
 
 
 @pytest.fixture
@@ -69,3 +72,22 @@ class TestOpenRouterHeaders:
         """HTTP-Referer should reference novo-cr, not prova-ai."""
         assert "novo-cr" in chat_service_content or "novocr" in chat_service_content
         assert '"HTTP-Referer"] = "https://prova-ai' not in chat_service_content
+
+
+class TestOpenAPIDump:
+    """C-T3: openapi_dump.json must reflect 'NOVO CR' title."""
+
+    @pytest.fixture
+    def openapi_data(self):
+        """Read and parse openapi_dump.json."""
+        assert OPENAPI_DUMP.exists(), f"File not found: {OPENAPI_DUMP}"
+        content = OPENAPI_DUMP.read_text(encoding="utf-16")
+        return json.loads(content)
+
+    def test_openapi_title_contains_novo_cr(self, openapi_data):
+        """OpenAPI info.title should say 'NOVO CR'."""
+        assert "NOVO CR" in openapi_data["info"]["title"]
+
+    def test_openapi_title_no_old_brand(self, openapi_data):
+        """OpenAPI info.title must not say 'Prova AI'."""
+        assert "Prova AI" not in openapi_data["info"]["title"]
