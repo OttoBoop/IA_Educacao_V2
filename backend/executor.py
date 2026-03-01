@@ -1965,12 +1965,13 @@ Crie UM documento separado para cada aluno, nomeando como "relatorio_[nome_aluno
                 ),
             }
 
-        # Read narrative file contents
+        # Read narrative file contents (resolve via Supabase on Render)
         conteudos = []
         avisos = []
         for doc in narrativos:
             try:
-                with open(doc.caminho_arquivo, 'r', encoding='utf-8') as f:
+                resolved = self.storage.resolver_caminho_documento(doc)
+                with open(resolved, 'r', encoding='utf-8') as f:
                     conteudos.append({
                         "aluno_id": doc.aluno_id,
                         "conteudo": f.read(),
@@ -2094,7 +2095,8 @@ Crie UM documento separado para cada aluno, nomeando como "relatorio_[nome_aluno
             alunos_com_narrativa = set()
             for doc in docs:
                 try:
-                    with open(doc.caminho_arquivo, 'r', encoding='utf-8') as f:
+                    resolved = self.storage.resolver_caminho_documento(doc)
+                    with open(resolved, 'r', encoding='utf-8') as f:
                         conteudos.append({
                             "aluno_id": doc.aluno_id,
                             "atividade": atividade.nome,
@@ -2230,7 +2232,8 @@ Crie UM documento separado para cada aluno, nomeando como "relatorio_[nome_aluno
                 )
                 for doc in docs:
                     try:
-                        with open(doc.caminho_arquivo, 'r', encoding='utf-8') as f:
+                        resolved = self.storage.resolver_caminho_documento(doc)
+                        with open(resolved, 'r', encoding='utf-8') as f:
                             conteudos.append({
                                 "turma": turma.nome,
                                 "aluno_id": doc.aluno_id,
