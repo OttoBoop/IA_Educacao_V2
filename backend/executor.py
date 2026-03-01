@@ -1756,7 +1756,7 @@ class PipelineExecutor:
             if not model:
                 return self._erro("tools", "Nenhum modelo configurado")
             
-            # Obter API key
+            # Obter API key (DB → api_key_manager → env var fallback)
             api_key = None
             if model.api_key_id:
                 key_config = api_key_manager.get(model.api_key_id)
@@ -1766,7 +1766,18 @@ class PipelineExecutor:
                 key_config = api_key_manager.get_por_empresa(model.tipo)
                 if key_config:
                     api_key = key_config.api_key
-            
+            if not api_key:
+                # Fallback to environment variables (Render deploys wipe local key store)
+                import os
+                env_map = {
+                    ProviderType.OPENAI: "OPENAI_API_KEY",
+                    ProviderType.ANTHROPIC: "ANTHROPIC_API_KEY",
+                    ProviderType.GOOGLE: "GOOGLE_API_KEY",
+                }
+                env_var = env_map.get(model.tipo)
+                if env_var:
+                    api_key = os.getenv(env_var, "")
+
             if not api_key and model.tipo != ProviderType.OLLAMA:
                 return self._erro("tools", f"API key não encontrada para {model.tipo.value}")
             
