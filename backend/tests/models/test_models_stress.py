@@ -445,7 +445,7 @@ async def main():
         sys.exit(1)
 
     print("\n" + "=" * 70)
-    print("PROVA AI - TESTE DE MODELOS")
+    print("NOVO CR - TESTE DE MODELOS")
     print(f"API Key: {OPENAI_API_KEY[:8]}...{OPENAI_API_KEY[-4:]}")
     print("=" * 70)
 

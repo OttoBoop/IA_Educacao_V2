@@ -1,5 +1,5 @@
 """
-Supabase PostgreSQL Database Client for Prova AI
+Supabase PostgreSQL Database Client for NOVO CR
 
 Uses the Supabase Python client for database operations.
 Replaces SQLite with persistent PostgreSQL storage.

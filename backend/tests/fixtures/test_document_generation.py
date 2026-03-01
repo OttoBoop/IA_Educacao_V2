@@ -267,7 +267,7 @@ async def test_forbidden_extensions(client: httpx.AsyncClient, model_id: str, te
 
 async def main():
     print("\n" + "=" * 70)
-    print("PROVA AI - TESTE DE GERACAO DE DOCUMENTOS")
+    print("NOVO CR - TESTE DE GERACAO DE DOCUMENTOS")
     print(f"Data: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
     print("=" * 70)
 

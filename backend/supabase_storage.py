@@ -1,5 +1,5 @@
 """
-Supabase Storage Client para Prova AI
+Supabase Storage Client para NOVO CR
 
 Gerencia upload/download de arquivos no Supabase Storage.
 Usa variáveis de ambiente para credenciais (seguro para produção).

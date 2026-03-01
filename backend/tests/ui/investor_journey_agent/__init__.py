@@ -2,7 +2,7 @@
 Investor Journey Agent - UI Testing with LLM Roleplay
 
 This module provides an AI-powered UI testing agent that simulates
-realistic user behavior while navigating the Prova AI application.
+realistic user behavior while navigating the NOVO CR application.
 
 Key Features:
 - LLM roleplays as different personas (investor, student, teacher)

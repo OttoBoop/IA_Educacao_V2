@@ -369,13 +369,13 @@ Nome,Nota
 # ============================================================
 
 async def main():
-    parser = argparse.ArgumentParser(description="Teste de tipos de arquivo - Prova AI")
+    parser = argparse.ArgumentParser(description="Teste de tipos de arquivo - NOVO CR")
     parser.add_argument("--with-ai", action="store_true", help="Incluir testes com modelos de IA")
     parser.add_argument("--base-url", default="http://localhost:8000", help="URL base da API")
     args = parser.parse_args()
 
     print("\n" + "=" * 60)
-    print("PROVA AI - TESTE DE TIPOS DE ARQUIVO")
+    print("NOVO CR - TESTE DE TIPOS DE ARQUIVO")
     print(f"Data: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
     print("=" * 60)
 

@@ -397,7 +397,7 @@ async def run_test(client: httpx.AsyncClient, model_id: str, test_case: dict, is
 
 async def main():
     print("\n" + "=" * 70)
-    print("PROVA AI - TESTE END-TO-END DE DOWNLOAD")
+    print("NOVO CR - TESTE END-TO-END DE DOWNLOAD")
     print(f"Data: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
     print("=" * 70)
 

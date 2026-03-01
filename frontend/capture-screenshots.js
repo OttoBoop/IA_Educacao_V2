@@ -1,5 +1,5 @@
 /**
- * Script para capturar screenshots do Prova AI para o tutorial
+ * Script para capturar screenshots do NOVO CR para o tutorial
  * Execute com: npx playwright install chromium && node capture-screenshots.js
  */
 

@@ -1,1 +1,1 @@
-# Tests package for Prova AI system
+# Tests package for NOVO CR system

@@ -1,5 +1,5 @@
 """
-Prova AI Backend
+NOVO CR Backend
 Sistema de correção automatizada de provas com múltiplos providers de IA
 """
 
