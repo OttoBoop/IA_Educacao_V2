@@ -474,3 +474,46 @@ class TestNavigationSections:
         )
         assert has_snapshot, \
             "CLAUDE.md must reference flavio-vale/ (partial snapshot)"
+
+    # --- F1-T6: Projects Table Update ---
+
+    def test_projects_table_has_six_or_more_entries(self):
+        """Projects table must have at least 6 project entries."""
+        content = read_file(CLAUDE_MD)
+        # Count data rows in the Projects table (between ## Projects and next ##)
+        lines = content.split('\n')
+        in_projects = False
+        data_rows = 0
+        for line in lines:
+            if line.strip() == '## Projects':
+                in_projects = True
+                continue
+            if in_projects and line.strip().startswith('## '):
+                break
+            if in_projects and line.startswith('|') and '---' not in line:
+                # Skip the header row
+                if 'Project' in line and 'Description' in line:
+                    continue
+                if '`' in line:  # Data rows have backtick-wrapped names
+                    data_rows += 1
+        assert data_rows >= 6, \
+            f"Projects table must have ≥6 entries, found {data_rows}"
+
+    def test_projects_table_lists_flavio_valle_repo(self):
+        """Projects table must include flavio-valle/ as a separate project entry."""
+        content = read_file(CLAUDE_MD)
+        # Look specifically in the Projects table section (not FlavioValle Ecosystem)
+        lines = content.split('\n')
+        in_projects = False
+        found = False
+        for line in lines:
+            if line.strip() == '## Projects':
+                in_projects = True
+                continue
+            if in_projects and line.strip().startswith('## '):
+                break
+            if in_projects and '|' in line and 'flavio-valle' in line and '---' not in line:
+                found = True
+                break
+        assert found, \
+            "Projects table must include flavio-valle/ as a project entry"
