@@ -38,6 +38,26 @@ def collect_md_files(directory: Path):
     return list(directory.glob("*.md"))
 
 
+def extract_section(content: str, heading: str) -> str:
+    """Extract text between a heading and the next same-level heading.
+
+    Looks for a line starting with '#' that contains *heading*,
+    then collects all lines until the next '## ' heading.
+    """
+    lines = content.split('\n')
+    in_section = False
+    section_lines = []
+    for line in lines:
+        if heading in line and line.strip().startswith('#'):
+            in_section = True
+            continue
+        if in_section and line.strip().startswith('## '):
+            break
+        if in_section:
+            section_lines.append(line)
+    return '\n'.join(section_lines)
+
+
 # ---------------------------------------------------------------------------
 # 1. Command files exist
 # ---------------------------------------------------------------------------
@@ -228,12 +248,13 @@ class TestCommandHandoff:
 # ---------------------------------------------------------------------------
 
 class TestTestingGuideReferences:
-    """CLAUDE.md must prominently reference testing guides."""
+    """CLAUDE.md must prominently reference testing guides in navigation sections."""
 
     def test_has_check_testing_guides_instruction(self):
         content = read_file(CLAUDE_MD)
         has_instruction = (
-            "Check Testing Guide" in content
+            "Check Per-Project Testing Guides" in content
+            or "Check Testing Guide" in content
             or "check testing guide" in content.lower()
             or "ALWAYS read" in content
         )
@@ -241,11 +262,13 @@ class TestTestingGuideReferences:
             "CLAUDE.md must have a prominent 'check testing guides first' instruction"
 
     def test_references_tests_readme(self):
+        """tests/README.md must appear in Core Documentation Reference or Decision Tree."""
         content = read_file(CLAUDE_MD)
         assert "tests/README.md" in content or "tests\\README.md" in content, \
             "CLAUDE.md must reference tests/README.md"
 
     def test_references_testing_guide(self):
+        """TESTING_GUIDE.md must appear in Core Documentation Reference or Decision Tree."""
         content = read_file(CLAUDE_MD)
         assert "TESTING_GUIDE.md" in content, \
             "CLAUDE.md must reference TESTING_GUIDE.md"
@@ -529,73 +552,28 @@ class TestNavigationSections:
     def test_decision_tree_mentions_ia_educacao(self):
         """Decision tree must have an entry for IA_Educacao_V2."""
         content = read_file(CLAUDE_MD)
-        # Extract the Decision Tree Navigation section
-        lines = content.split('\n')
-        in_tree = False
-        tree_content = []
-        for line in lines:
-            if 'Decision Tree Navigation' in line and line.strip().startswith('#'):
-                in_tree = True
-                continue
-            if in_tree and line.strip().startswith('## '):
-                break
-            if in_tree:
-                tree_content.append(line)
-        tree_text = '\n'.join(tree_content)
+        tree_text = extract_section(content, 'Decision Tree Navigation')
         assert 'IA_Educacao_V2' in tree_text, \
             "Decision tree must mention IA_Educacao_V2"
 
     def test_decision_tree_mentions_general_scraper(self):
         """Decision tree must have an entry for general_scraper."""
         content = read_file(CLAUDE_MD)
-        lines = content.split('\n')
-        in_tree = False
-        tree_content = []
-        for line in lines:
-            if 'Decision Tree Navigation' in line and line.strip().startswith('#'):
-                in_tree = True
-                continue
-            if in_tree and line.strip().startswith('## '):
-                break
-            if in_tree:
-                tree_content.append(line)
-        tree_text = '\n'.join(tree_content)
+        tree_text = extract_section(content, 'Decision Tree Navigation')
         assert 'general_scraper' in tree_text, \
             "Decision tree must mention general_scraper"
 
     def test_decision_tree_mentions_flaviovalle(self):
         """Decision tree must have an entry for FlavioValle."""
         content = read_file(CLAUDE_MD)
-        lines = content.split('\n')
-        in_tree = False
-        tree_content = []
-        for line in lines:
-            if 'Decision Tree Navigation' in line and line.strip().startswith('#'):
-                in_tree = True
-                continue
-            if in_tree and line.strip().startswith('## '):
-                break
-            if in_tree:
-                tree_content.append(line)
-        tree_text = '\n'.join(tree_content)
+        tree_text = extract_section(content, 'Decision Tree Navigation')
         assert 'FlavioValle' in tree_text, \
             "Decision tree must mention FlavioValle"
 
     def test_decision_tree_mentions_cross_project(self):
         """Decision tree must have a Cross-project / Multiple option."""
         content = read_file(CLAUDE_MD)
-        lines = content.split('\n')
-        in_tree = False
-        tree_content = []
-        for line in lines:
-            if 'Decision Tree Navigation' in line and line.strip().startswith('#'):
-                in_tree = True
-                continue
-            if in_tree and line.strip().startswith('## '):
-                break
-            if in_tree:
-                tree_content.append(line)
-        tree_text = '\n'.join(tree_content)
+        tree_text = extract_section(content, 'Decision Tree Navigation')
         has_cross = (
             'cross-project' in tree_text.lower()
             or 'cross project' in tree_text.lower()
