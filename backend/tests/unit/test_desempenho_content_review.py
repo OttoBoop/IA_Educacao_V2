@@ -133,3 +133,42 @@ class TestCT1bExecutorUsesRelatorioFinal:
             "gerar_relatorio_desempenho_tarefa still references deprecated RELATORIO_NARRATIVO. "
             "Must use RELATORIO_FINAL instead."
         )
+
+
+# ============================================================
+# C-T1c: Executor must resolve file paths through storage
+# (not open raw caminho_arquivo — fails on Render)
+# ============================================================
+
+class TestCT1cExecutorResolvesFilePaths:
+    """Executor desempenho functions must use storage.resolver_caminho_documento() to read files."""
+
+    @pytest.fixture
+    def executor_desempenho_funcs(self, executor_content):
+        """Extract the 3 desempenho function bodies."""
+        funcs = {}
+        for name in ("gerar_relatorio_desempenho_tarefa",
+                      "gerar_relatorio_desempenho_turma",
+                      "gerar_relatorio_desempenho_materia"):
+            start = executor_content.find(f"def {name}")
+            assert start != -1, f"{name} must exist in executor.py"
+            end = executor_content.find("\n    async def ", start + 1)
+            funcs[name] = executor_content[start:end] if end != -1 else executor_content[start:]
+        return funcs
+
+    def test_no_raw_open_caminho_arquivo(self, executor_desempenho_funcs):
+        """None of the 3 desempenho funcs must use open(doc.caminho_arquivo) directly."""
+        for name, body in executor_desempenho_funcs.items():
+            assert "open(doc.caminho_arquivo" not in body, (
+                f"{name} uses open(doc.caminho_arquivo, ...) which reads a raw DB path "
+                f"that doesn't exist on Render's ephemeral filesystem. Must use "
+                f"self.storage.resolver_caminho_documento(doc) first."
+            )
+
+    def test_uses_resolver_caminho_documento(self, executor_desempenho_funcs):
+        """All 3 desempenho funcs must call resolver_caminho_documento."""
+        for name, body in executor_desempenho_funcs.items():
+            assert "resolver_caminho_documento" in body, (
+                f"{name} must call self.storage.resolver_caminho_documento(doc) to resolve "
+                f"file paths through Supabase storage before reading."
+            )
