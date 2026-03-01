@@ -384,6 +384,9 @@ class Documento:
     atividade_id: str            # FK para Atividade (sempre obrigatório)
     aluno_id: Optional[str] = None  # FK para Aluno (só para docs de aluno/gerados)
     
+    # Nome legível para humanos
+    display_name: str = ""       # Ex: "Prova Respondida - Maria Silva - Cálculo I"
+
     # Arquivo
     nome_arquivo: str = ""       # Nome original do arquivo
     caminho_arquivo: str = ""    # Caminho no sistema de arquivos
@@ -415,6 +418,7 @@ class Documento:
             "tipo": self.tipo.value,
             "atividade_id": self.atividade_id,
             "aluno_id": self.aluno_id,
+            "display_name": self.display_name,
             "nome_arquivo": self.nome_arquivo,
             "caminho_arquivo": self.caminho_arquivo,
             "extensao": self.extensao,
@@ -441,6 +445,7 @@ class Documento:
             tipo=TipoDocumento(data["tipo"]),
             atividade_id=data["atividade_id"],
             aluno_id=data.get("aluno_id"),
+            display_name=data.get("display_name", ""),
             nome_arquivo=data.get("nome_arquivo", ""),
             caminho_arquivo=data.get("caminho_arquivo", ""),
             extensao=data.get("extensao", ""),

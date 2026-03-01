@@ -60,7 +60,7 @@ class TestDocumentoDisplayNameField:
         )
         assert "ç" in doc.display_name
         assert "ã" in doc.display_name
-        assert "á" in doc.display_name
+        assert "Á" in doc.display_name
 
 
 class TestDocumentoToDict:

@@ -276,6 +276,7 @@ class StorageManager:
                 tipo TEXT NOT NULL,
                 atividade_id TEXT NOT NULL,
                 aluno_id TEXT,
+                display_name TEXT DEFAULT '',
                 nome_arquivo TEXT,
                 caminho_arquivo TEXT,
                 extensao TEXT,
@@ -331,9 +332,22 @@ class StorageManager:
         c.execute('CREATE INDEX IF NOT EXISTS idx_alunos_turmas_aluno ON alunos_turmas(aluno_id)')
         c.execute('CREATE INDEX IF NOT EXISTS idx_alunos_turmas_turma ON alunos_turmas(turma_id)')
         
+        # Migrations for existing databases
+        self._run_migrations(c)
+
         conn.commit()
         conn.close()
-    
+
+    def _run_migrations(self, cursor):
+        """Run ALTER TABLE migrations for existing databases."""
+        # Check existing columns in documentos table
+        cursor.execute("PRAGMA table_info(documentos)")
+        existing_columns = {row[1] for row in cursor.fetchall()}
+
+        # Migration: add display_name column if missing
+        if "display_name" not in existing_columns:
+            cursor.execute("ALTER TABLE documentos ADD COLUMN display_name TEXT DEFAULT ''")
+
     # ============================================================
     # UTILITÁRIOS
     # ============================================================
