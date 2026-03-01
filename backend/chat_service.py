@@ -1176,8 +1176,8 @@ class ChatClient:
         
         # Headers específicos para OpenRouter
         if self.config.tipo == ProviderType.OPENROUTER:
-            headers["HTTP-Referer"] = "https://prova-ai.local"
-            headers["X-Title"] = "Prova AI"
+            headers["HTTP-Referer"] = "https://novocr.local"
+            headers["X-Title"] = "NOVO CR"
         
         async with httpx.AsyncClient(timeout=120.0) as client:
             response = await client.post(

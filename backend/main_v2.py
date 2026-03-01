@@ -221,7 +221,7 @@ async def lifespan(app: FastAPI):
     yield
 
 app = FastAPI(
-    title="Prova AI - Sistema de Correção v2.0",
+    title="NOVO CR - Sistema de Correção v2.0",
     description="Sistema de correção automatizada de provas com IA",
     version="2.0.0",
     lifespan=lifespan
@@ -1121,7 +1121,7 @@ async def serve_frontend():
             return FileResponse(frontend_file)
     
     return JSONResponse({
-        "message": "API Prova AI v2.0",
+        "message": "API NOVO CR v2.0",
         "docs": "/docs",
         "endpoints": {
             "materias": "/api/materias",
