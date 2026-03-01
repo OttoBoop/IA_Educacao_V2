@@ -4935,11 +4935,11 @@
         const tutorialContent = {
             quick: [
                 {
-                    title: '🎯 O que é o Prova AI?',
+                    title: '🎯 O que é o NOVO CR?',
                     subtitle: 'Relatórios de performance que vão além da nota',
                     image: '/static/tutorial-images-v2/01-dashboard-anotado.png',
                     content: `
-                        <p>O Prova AI <strong>não é só um corretor automático</strong>. Seu objetivo principal é:</p>
+                        <p>O NOVO CR <strong>não é só um corretor automático</strong>. Seu objetivo principal é:</p>
                         <ul>
                             <li><strong>📊 Relatórios de performance</strong> - Entender onde o aluno precisa melhorar, não só a nota</li>
                             <li><strong>🤖 Auxiliar a correção</strong> - Não substituir você! Tem aba para sua correção manual</li>
@@ -5012,11 +5012,11 @@
             ],
             full: [
                 {
-                    title: '🎯 A Filosofia do Prova AI',
+                    title: '🎯 A Filosofia do NOVO CR',
                     subtitle: 'Muito além de um corretor automático',
                     image: '/static/tutorial-images-v2/01-dashboard-anotado.png',
                     content: `
-                        <p>O Prova AI foi criado com um objetivo claro:</p>
+                        <p>O NOVO CR foi criado com um objetivo claro:</p>
                         <ul>
                             <li><strong>📊 Relatórios que vão além da nota</strong> - Entender <em>por que</em> o aluno errou, não só <em>quanto</em> ele errou</li>
                             <li><strong>🧑‍🏫 Auxiliar, não substituir</strong> - A IA cria documentos de apoio. Sua correção manual tem aba própria!</li>
@@ -5259,7 +5259,7 @@
             'dashboard': {
                 titulo: '🏠 Como Começar',
                 conteudo: `
-                    <p><strong>O Prova AI gera relatórios de performance</strong>, não só notas. Aqui está o fluxo:</p>
+                    <p><strong>O NOVO CR gera relatórios de performance</strong>, não só notas. Aqui está o fluxo:</p>
                     <div class="help-step">
                         <div class="help-step-number">1</div>
                         <div class="help-step-text">Crie uma <strong>Matéria</strong> (Matemática, História...)</div>
@@ -5633,7 +5633,7 @@
         // ============================================================
         
         // Preferência de visualização (localStorage)
-        let viewPreference = localStorage.getItem('prova-ai-view-mode') || 'visual';
+        let viewPreference = localStorage.getItem('novocr-view-mode') || 'visual';
         
         // Renderiza toggle de visualização
         function renderViewToggle(containerId) {
@@ -5654,7 +5654,7 @@
         // Alterna modo de visualização
         function setViewMode(mode, containerId) {
             viewPreference = mode;
-            localStorage.setItem('prova-ai-view-mode', mode);
+            localStorage.setItem('novocr-view-mode', mode);
             
             // Atualiza botões
             const toggle = document.getElementById(`view-toggle-${containerId}`);
@@ -5940,7 +5940,7 @@
         
         function closeWelcome() {
             // Always persist dismissal so reloads don't re-show the overlay
-            localStorage.setItem('prova-ai-welcomed', 'true');
+            localStorage.setItem('novocr-welcomed', 'true');
             document.getElementById('modal-welcome').classList.remove('active');
             // Also stop pulsing when user closes welcome
             const helpBtn = document.getElementById('help-btn');
@@ -6033,7 +6033,7 @@
         }
         
         function checkFirstVisit() {
-            const welcomed = localStorage.getItem('prova-ai-welcomed');
+            const welcomed = localStorage.getItem('novocr-welcomed');
             if (!welcomed) {
                 setTimeout(() => openWelcome(), 500);
             }
@@ -7350,7 +7350,7 @@
 <html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
-    <title>${docData.titulo.replace(/</g, '&lt;')} - Prova AI</title>
+    <title>${docData.titulo.replace(/</g, '&lt;')} - NOVO CR</title>
     <style>
         body { font-family: 'Segoe UI', sans-serif; line-height: 1.6; color: #1f2937; background: #f9fafb; padding: 20px; }
         .container { max-width: 800px; margin: 0 auto; background: white; padding: 40px 50px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); border-radius: 8px; }
@@ -7387,7 +7387,7 @@
             <div style="color:#6b7280;font-size:0.9rem;">Gerado em ${new Date().toLocaleDateString('pt-BR')}</div>
         </div>
         <div class="content">${htmlContent}</div>
-        <div class="footer">Documento gerado por Prova AI</div>
+        <div class="footer">Documento gerado por NOVO CR</div>
     </div>
 </body>
 </html>`;

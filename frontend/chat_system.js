@@ -1,5 +1,5 @@
 // ============================================================
-// CHAT SYSTEM - Prova AI
+// CHAT SYSTEM - NOVO CR
 // Sistema de Chat com seleção de provider e contexto modular
 // ============================================================
 
@@ -835,7 +835,7 @@ function abrirDocumentoGerado(docId) {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>${escapeHtml(docData.titulo)} - Prova AI</title>
+    <title>${escapeHtml(docData.titulo)} - NOVO CR</title>
     <style>
         * {
             margin: 0;
@@ -1065,7 +1065,7 @@ function abrirDocumentoGerado(docId) {
         </div>
 
         <div class="footer">
-            Documento gerado por Prova AI
+            Documento gerado por NOVO CR
         </div>
     </div>
 </body>
