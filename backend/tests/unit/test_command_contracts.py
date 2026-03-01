@@ -517,3 +517,122 @@ class TestNavigationSections:
                 break
         assert found, \
             "Projects table must include flavio-valle/ as a project entry"
+
+    # --- F2-T1: Decision Tree Navigation ---
+
+    def test_has_decision_tree_navigation_section(self):
+        """CLAUDE.md must have a Decision Tree Navigation section."""
+        content = read_file(CLAUDE_MD)
+        assert "Decision Tree Navigation" in content, \
+            "CLAUDE.md must have a 'Decision Tree Navigation' section"
+
+    def test_decision_tree_mentions_ia_educacao(self):
+        """Decision tree must have an entry for IA_Educacao_V2."""
+        content = read_file(CLAUDE_MD)
+        # Extract the Decision Tree Navigation section
+        lines = content.split('\n')
+        in_tree = False
+        tree_content = []
+        for line in lines:
+            if 'Decision Tree Navigation' in line and line.strip().startswith('#'):
+                in_tree = True
+                continue
+            if in_tree and line.strip().startswith('## '):
+                break
+            if in_tree:
+                tree_content.append(line)
+        tree_text = '\n'.join(tree_content)
+        assert 'IA_Educacao_V2' in tree_text, \
+            "Decision tree must mention IA_Educacao_V2"
+
+    def test_decision_tree_mentions_general_scraper(self):
+        """Decision tree must have an entry for general_scraper."""
+        content = read_file(CLAUDE_MD)
+        lines = content.split('\n')
+        in_tree = False
+        tree_content = []
+        for line in lines:
+            if 'Decision Tree Navigation' in line and line.strip().startswith('#'):
+                in_tree = True
+                continue
+            if in_tree and line.strip().startswith('## '):
+                break
+            if in_tree:
+                tree_content.append(line)
+        tree_text = '\n'.join(tree_content)
+        assert 'general_scraper' in tree_text, \
+            "Decision tree must mention general_scraper"
+
+    def test_decision_tree_mentions_flaviovalle(self):
+        """Decision tree must have an entry for FlavioValle."""
+        content = read_file(CLAUDE_MD)
+        lines = content.split('\n')
+        in_tree = False
+        tree_content = []
+        for line in lines:
+            if 'Decision Tree Navigation' in line and line.strip().startswith('#'):
+                in_tree = True
+                continue
+            if in_tree and line.strip().startswith('## '):
+                break
+            if in_tree:
+                tree_content.append(line)
+        tree_text = '\n'.join(tree_content)
+        assert 'FlavioValle' in tree_text, \
+            "Decision tree must mention FlavioValle"
+
+    def test_decision_tree_mentions_cross_project(self):
+        """Decision tree must have a Cross-project / Multiple option."""
+        content = read_file(CLAUDE_MD)
+        lines = content.split('\n')
+        in_tree = False
+        tree_content = []
+        for line in lines:
+            if 'Decision Tree Navigation' in line and line.strip().startswith('#'):
+                in_tree = True
+                continue
+            if in_tree and line.strip().startswith('## '):
+                break
+            if in_tree:
+                tree_content.append(line)
+        tree_text = '\n'.join(tree_content)
+        has_cross = (
+            'cross-project' in tree_text.lower()
+            or 'cross project' in tree_text.lower()
+            or 'multiple' in tree_text.lower()
+        )
+        assert has_cross, \
+            "Decision tree must have a Cross-project or Multiple option"
+
+    # --- F2-T2: Notes & Warnings ---
+
+    def test_notes_mentions_legacy_agent_dirs(self):
+        """CLAUDE.md must warn about legacy agent directories."""
+        content = read_file(CLAUDE_MD)
+        has_legacy = (
+            ".agent/" in content
+            or ".agents/" in content
+            or "legacy agent" in content.lower()
+        )
+        assert has_legacy, \
+            "CLAUDE.md must mention legacy agent directories (.agent/, .agents/, etc.)"
+
+    def test_notes_mentions_codex_branches(self):
+        """CLAUDE.md must note the codex/* experiment branches."""
+        content = read_file(CLAUDE_MD)
+        assert "codex" in content.lower(), \
+            "CLAUDE.md must mention codex/* experiment branches"
+
+    def test_notes_mentions_git_remote_quirk(self):
+        """CLAUDE.md must note the general_scraper nested git quirk."""
+        content = read_file(CLAUDE_MD)
+        content_lower = content.lower()
+        # The quirk: general_scraper remote actually points to general-ai-workflows
+        # Must be explicitly warned about, not just mentioned in passing
+        has_note = (
+            "nested git" in content_lower
+            or ("general_scraper" in content and "not independent" in content_lower)
+            or ("general_scraper" in content and "points to general-ai-workflows" in content_lower)
+        )
+        assert has_note, \
+            "CLAUDE.md must warn about general_scraper nested git relationship"
