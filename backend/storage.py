@@ -1112,6 +1112,7 @@ class StorageManager:
                          tipo: TipoDocumento,
                          atividade_id: str,
                          aluno_id: str = None,
+                         display_name: str = None,
                          ia_provider: str = None,
                          ia_modelo: str = None,
                          prompt_usado: str = None,
@@ -1126,6 +1127,7 @@ class StorageManager:
             tipo: Tipo do documento
             atividade_id: ID da atividade
             aluno_id: ID do aluno (obrigatório para docs de aluno/gerados)
+            display_name: Nome de exibição (auto-gerado se não fornecido)
             ia_provider: Provider da IA (para docs gerados)
             ia_modelo: Modelo da IA (para docs gerados)
             prompt_usado: Prompt utilizado (para docs gerados)
@@ -1153,9 +1155,20 @@ class StorageManager:
         extensao = arquivo_path.suffix
         tamanho = arquivo_path.stat().st_size if arquivo_path.exists() else 0
 
-        # Gerar nome único para o arquivo
-        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        nome_arquivo = f"{tipo.value}_{timestamp}{extensao}"
+        # Auto-generate display_name from metadata when not provided
+        if display_name is None:
+            turma = self.get_turma(atividade.turma_id) if atividade.turma_id else None
+            materia = self.get_materia(turma.materia_id) if turma and turma.materia_id else None
+            aluno_obj = self.get_aluno(aluno_id) if aluno_id else None
+            display_name = build_display_name(
+                tipo=tipo,
+                aluno_nome=aluno_obj.nome if aluno_obj else None,
+                materia_nome=materia.nome if materia else None,
+                turma_nome=turma.nome if turma else None,
+            )
+
+        # Gerar nome único para o arquivo usando display_name
+        nome_arquivo = build_storage_filename(display_name, extensao)
 
         # Calcular destino
         destino = self._get_caminho_documento(atividade, tipo, aluno_id, nome_arquivo)
@@ -1173,6 +1186,7 @@ class StorageManager:
             tipo=tipo,
             atividade_id=atividade_id,
             aluno_id=aluno_id,
+            display_name=display_name,
             nome_arquivo=nome_arquivo,
             caminho_arquivo=str(caminho_relativo),
             extensao=extensao,
@@ -1191,6 +1205,7 @@ class StorageManager:
                 "tipo": documento.tipo.value,
                 "atividade_id": documento.atividade_id,
                 "aluno_id": documento.aluno_id,
+                "display_name": documento.display_name,
                 "nome_arquivo": documento.nome_arquivo,
                 "caminho_arquivo": documento.caminho_arquivo,
                 "extensao": documento.extensao,
@@ -1215,13 +1230,15 @@ class StorageManager:
             c = conn.cursor()
             c.execute('''
                 INSERT INTO documentos (
-                    id, tipo, atividade_id, aluno_id, nome_arquivo, caminho_arquivo, extensao,
+                    id, tipo, atividade_id, aluno_id, display_name,
+                    nome_arquivo, caminho_arquivo, extensao,
                     tamanho_bytes, ia_provider, ia_modelo, prompt_usado, prompt_versao,
                     tokens_usados, tempo_processamento_ms, status, criado_em, atualizado_em,
                     criado_por, versao, documento_origem_id, metadata
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             ''', (
                 documento.id, documento.tipo.value, documento.atividade_id, documento.aluno_id,
+                documento.display_name,
                 documento.nome_arquivo, documento.caminho_arquivo, documento.extensao,
                 documento.tamanho_bytes, documento.ia_provider, documento.ia_modelo,
                 documento.prompt_usado, documento.prompt_versao, documento.tokens_usados,
