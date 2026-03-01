@@ -1,5 +1,5 @@
 """
-PROVA AI - Rotas de Chat e Configuração de IAs v2.1
+NOVO CR - Rotas de Chat e Configuração de IAs v2.1
 
 Endpoints para:
 - Gerenciar API Keys por empresa

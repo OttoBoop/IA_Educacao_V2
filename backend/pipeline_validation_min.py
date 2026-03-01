@@ -1,5 +1,5 @@
 """
-PROVA AI - Validation Models for Pipeline JSON Outputs v2.0
+NOVO CR - Validation Models for Pipeline JSON Outputs v2.0
 """
 
 from pydantic import BaseModel, Field

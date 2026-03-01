@@ -1,5 +1,5 @@
 """
-PROVA AI - Endpoints Adicionais v2.0
+NOVO CR - Endpoints Adicionais v2.0
 
 Este arquivo contém endpoints extras que são importados pelo main_v2.py:
 - Operações em lote (importar alunos, upload múltiplo)

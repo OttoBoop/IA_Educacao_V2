@@ -1,5 +1,5 @@
 """
-PROVA AI - Sistema de Chat v2.1
+NOVO CR - Sistema de Chat v2.1
 
 Melhorias:
 - API Keys por empresa (não por provider)

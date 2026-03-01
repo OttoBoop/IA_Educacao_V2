@@ -1,5 +1,5 @@
 """
-PROVA AI - Sistema de Anexos v2.2
+NOVO CR - Sistema de Anexos v2.2
 
 Envia arquivos NATIVAMENTE para APIs multimodais.
 NÃO converte nada - envia o arquivo original!

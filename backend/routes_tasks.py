@@ -1,5 +1,5 @@
 """
-PROVA AI - Task Progress Tracking API
+NOVO CR - Task Progress Tracking API
 
 Provides endpoints to track background task progress.
 - GET /api/task-progress/{task_id}

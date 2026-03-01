@@ -1,5 +1,5 @@
 """
-PROVA AI - Sistema de Armazenamento Unificado
+NOVO CR - Sistema de Armazenamento Unificado
 
 Gerencia:
 1. Banco de dados (PostgreSQL em produção, SQLite em desenvolvimento)

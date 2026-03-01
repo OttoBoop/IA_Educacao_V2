@@ -1,5 +1,5 @@
 """
-PROVA AI - Catálogo de Modelos de IA v1.0
+NOVO CR - Catálogo de Modelos de IA v1.0
 
 Gerencia metadados completos de modelos de IA incluindo:
 - Custos (input/output/cache por 1M tokens)

@@ -1,5 +1,5 @@
 """
-PROVA AI - Rotas de Visualização de Resultados
+NOVO CR - Rotas de Visualização de Resultados
 
 Endpoints para:
 - Ver resultado detalhado de um aluno

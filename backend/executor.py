@@ -1,5 +1,5 @@
 """
-PROVA AI - Executor de Pipeline v2.5 (Unificado)
+NOVO CR - Executor de Pipeline v2.5 (Unificado)
 
 Executa etapas individuais do pipeline de correção.
 Suporta envio MULTIMODAL (PDFs e imagens nativos) para APIs de IA.

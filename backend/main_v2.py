@@ -1,5 +1,5 @@
 """
-PROVA AI - API v2.0
+NOVO CR - API v2.0
 
 Endpoints organizados por recurso:
 - /api/materias

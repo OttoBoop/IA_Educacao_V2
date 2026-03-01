@@ -3,7 +3,7 @@
 MÓDULO DE TESTES - Gerador de Dados Fictícios
 =================================================================
 
-Este módulo cria dados de teste para o sistema Prova AI, incluindo:
+Este módulo cria dados de teste para o sistema NOVO CR, incluindo:
 - Matérias variadas
 - Turmas com diferentes configurações
 - Alunos com nomes brasileiros realistas
@@ -311,7 +311,7 @@ PROBLEMAS_DOCUMENTO = {
 # =================================================================
 
 class TestDataGenerator:
-    """Gerador de dados de teste para o sistema Prova AI"""
+    """Gerador de dados de teste para o sistema NOVO CR"""
     
     def __init__(self, storage: StorageManager, verbose: bool = True):
         self.storage = storage
@@ -853,7 +853,7 @@ Questão 4: {respostas[3] if random.random() > 0.3 else 'Não deu tempo'}
         """Gera todos os dados de teste"""
 
         print("\n" + "=" * 60)
-        print("[*] GERADOR DE DADOS DE TESTE - PROVA AI")
+        print("[*] GERADOR DE DADOS DE TESTE - NOVO CR")
         print("=" * 60 + "\n")
 
         self.criar_materias(materias_config)
@@ -954,7 +954,7 @@ def limpar_dados_fantasy(storage: StorageManager) -> dict:
 # =================================================================
 
 def main():
-    parser = argparse.ArgumentParser(description="Gerador de dados de teste para Prova AI")
+    parser = argparse.ArgumentParser(description="Gerador de dados de teste para NOVO CR")
     parser.add_argument("--limpar", action="store_true", help="Limpa todos os dados antes de gerar")
     parser.add_argument("--mini", action="store_true", help="Gera apenas dados mínimos")
     parser.add_argument("--completo", action="store_true", help="Gera dataset completo")

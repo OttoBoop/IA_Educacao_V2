@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-PROVA AI - Executor de Testes Unificado
+NOVO CR - Executor de Testes Unificado
 
 CLI para execução de testes do pipeline de correção.
 
@@ -394,7 +394,7 @@ def print_summary(args):
 
 def main():
     parser = argparse.ArgumentParser(
-        description="Prova AI - Executor de Testes",
+        description="NOVO CR - Executor de Testes",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Exemplos:

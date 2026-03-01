@@ -1,5 +1,5 @@
 """
-PROVA AI - Rotas de Prompts e Processamento
+NOVO CR - Rotas de Prompts e Processamento
 
 Endpoints para:
 - Gerenciar prompts (CRUD)

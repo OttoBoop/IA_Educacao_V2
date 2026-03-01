@@ -1,5 +1,5 @@
 """
-PROVA AI - Modelos de Dados v2.0
+NOVO CR - Modelos de Dados v2.0
 
 Estrutura hierárquica:
     Matéria → Turma → Atividade → Aluno/Documentos

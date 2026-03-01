@@ -1,11 +1,11 @@
 #!/bin/bash
 
-# Prova AI - Script de Inicialização
+# NOVO CR - Script de Inicialização
 # ==================================
 
 set -e
 
-echo "🎓 Prova AI - Inicializando..."
+echo "🎓 NOVO CR - Inicializando..."
 echo ""
 
 # Verificar Python

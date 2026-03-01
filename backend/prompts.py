@@ -1,5 +1,5 @@
 """
-PROVA AI - Sistema de Prompts v2.0
+NOVO CR - Sistema de Prompts v2.0
 
 Gerencia prompts reutilizáveis para cada etapa do pipeline.
 Permite criar, editar e versionar prompts.

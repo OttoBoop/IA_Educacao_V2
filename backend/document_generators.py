@@ -1,5 +1,5 @@
 """
-PROVA AI - Document Generators v1.0
+NOVO CR - Document Generators v1.0
 
 Módulo para geração de documentos em múltiplos formatos:
 - PDF (via reportlab)

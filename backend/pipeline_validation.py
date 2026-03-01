@@ -1,5 +1,5 @@
 """
-PROVA AI - Validation Models for Pipeline JSON Outputs v2.0
+NOVO CR - Validation Models for Pipeline JSON Outputs v2.0
 
 Pydantic models for validating JSON outputs from each pipeline stage.
 These models ensure AI models produce correctly structured responses.

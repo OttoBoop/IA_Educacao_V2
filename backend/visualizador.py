@@ -1,5 +1,5 @@
 """
-PROVA AI - Visualização de Resultados v2.0
+NOVO CR - Visualização de Resultados v2.0
 
 Sistema para:
 - Visualizar resultados de correções

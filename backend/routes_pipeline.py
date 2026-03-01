@@ -1,5 +1,5 @@
 """
-PROVA AI - Rotas Pipeline v2.2
+NOVO CR - Rotas Pipeline v2.2
 
 Endpoints para:
 - Executar pipeline com envio NATIVO de arquivos

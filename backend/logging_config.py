@@ -1,5 +1,5 @@
 """
-PROVA AI - Sistema de Logging Estruturado
+NOVO CR - Sistema de Logging Estruturado
 
 Fornece logging JSON estruturado para rastreamento de pipeline.
 Cada log inclui contexto completo: stage, provider, model, IDs, etc.
