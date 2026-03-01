@@ -1,13 +1,12 @@
 """
-B-T1 / B-T2 / B-T3: Structural tests for the Desempenho Tab UI Overhaul.
+B-T1 / B-T2 / B-T3 / B-T4: Structural tests for the Desempenho Tab UI Overhaul.
 
 B-T1: Tab HTML rewrite — card layout + loadDesempenhoData() replacing loadDesempenhoDocs()
 B-T2: renderDesempenhoRuns() — grouped-by-run doc display with per-doc and per-run actions
 B-T3: Empty state + no-data disable logic based on has_atividades flag
+B-T4: Inline progress indicator + concurrent click prevention during report generation
 
 These are pure file-content checks (no browser needed).
-
-RED Phase: These tests FAIL because the UI overhaul is not yet implemented.
 
 Run: cd IA_Educacao_V2/backend && pytest tests/unit/test_desempenho_ui_overhaul.py -v
 """
@@ -169,4 +168,49 @@ class TestBT3EmptyStateNoData:
         assert "disabled" in html_content and "has_atividades" in html_content, (
             "The 'Gerar Relatório' button must be disabled when "
             "has_atividades is false."
+        )
+
+
+# ============================================================
+# B-T4: Inline progress indicator + concurrent click prevention
+# ============================================================
+
+class TestBT4InlineProgressIndicator:
+    """B-T4: executarDesempenho must show inline progress with elapsed time and prevent concurrent clicks."""
+
+    def test_bt4_concurrent_prevention_flag(self, html_content):
+        """executarDesempenho must track generating state to prevent double clicks."""
+        assert "_desempenhoGenerating" in html_content, (
+            "index_v2.html must define a '_desempenhoGenerating' flag "
+            "that prevents concurrent report generation requests."
+        )
+
+    def test_bt4_elapsed_timer_variable(self, html_content):
+        """Must track elapsed generation time with a timer variable."""
+        assert "_desempenhoTimer" in html_content, (
+            "index_v2.html must define a '_desempenhoTimer' variable "
+            "for the setInterval-based elapsed time counter during generation."
+        )
+
+    def test_bt4_timer_cleanup_on_completion(self, html_content):
+        """Timer must be cleaned up when generation completes or fails."""
+        assert "clearInterval" in html_content and "_desempenhoTimer" in html_content, (
+            "executarDesempenho must call clearInterval on '_desempenhoTimer' "
+            "when generation completes or fails to stop the elapsed counter."
+        )
+
+    def test_bt4_elapsed_counter_element(self, html_content):
+        """Progress indicator must show elapsed time in a dedicated element."""
+        assert "desempenho-elapsed" in html_content, (
+            "index_v2.html must have a 'desempenho-elapsed' element "
+            "showing elapsed time during report generation."
+        )
+
+    def test_bt4_progress_text_shown(self, html_content):
+        """Progress indicator must show 'Gerando relatório...' text inline (not just toast)."""
+        # This checks for the inline progress text, distinct from the existing showToast call
+        # The progress area innerHTML must contain this text + spinner
+        assert "Gerando relatório..." in html_content and "_desempenhoGenerating" in html_content, (
+            "executarDesempenho must display 'Gerando relatório...' inline "
+            "in the generate area during report generation."
         )
