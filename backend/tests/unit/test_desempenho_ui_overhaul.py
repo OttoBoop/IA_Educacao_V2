@@ -1,10 +1,11 @@
 """
-B-T1 / B-T2 / B-T3 / B-T4: Structural tests for the Desempenho Tab UI Overhaul.
+B-T1 / B-T2 / B-T3 / B-T4 / B-T5: Structural tests for the Desempenho Tab UI Overhaul.
 
 B-T1: Tab HTML rewrite — card layout + loadDesempenhoData() replacing loadDesempenhoDocs()
 B-T2: renderDesempenhoRuns() — grouped-by-run doc display with per-doc and per-run actions
 B-T3: Empty state + no-data disable logic based on has_atividades flag
 B-T4: Inline progress indicator + concurrent click prevention during report generation
+B-T5: Error handling — inline error message + "Tentar Novamente" retry button
 
 These are pure file-content checks (no browser needed).
 
@@ -213,4 +214,47 @@ class TestBT4InlineProgressIndicator:
         assert "Gerando relatório..." in html_content and "_desempenhoGenerating" in html_content, (
             "executarDesempenho must display 'Gerando relatório...' inline "
             "in the generate area during report generation."
+        )
+
+
+# ============================================================
+# B-T5: Error handling — inline error + retry button
+# ============================================================
+
+class TestBT5ErrorHandlingRetry:
+    """B-T5: On generation failure, show inline error message + 'Tentar Novamente' retry button in the progress area."""
+
+    def test_bt5_inline_error_area(self, html_content):
+        """Catch block must render a dedicated inline error area (not just restore the button)."""
+        assert "desempenho-error" in html_content, (
+            "executarDesempenho catch block must render a 'desempenho-error' element "
+            "in the generate area to display inline error details + retry button."
+        )
+
+    def test_bt5_retry_button_text(self, html_content):
+        """Catch block must render a 'Tentar Novamente' retry button."""
+        assert "Tentar Novamente" in html_content, (
+            "executarDesempenho catch block must render a 'Tentar Novamente' button "
+            "that allows the user to retry report generation after a failure."
+        )
+
+    def test_bt5_retry_calls_executar_desempenho(self, html_content):
+        """The retry button must call executarDesempenho to restart the progress flow."""
+        # The retry button must have an onclick that calls executarDesempenho
+        # We check that "Tentar Novamente" appears near an executarDesempenho call
+        import re
+        # Find a button with "Tentar Novamente" that has onclick="executarDesempenho..."
+        pattern = r'Tentar Novamente.*?executarDesempenho|executarDesempenho.*?Tentar Novamente'
+        match = re.search(pattern, html_content, re.DOTALL)
+        assert match is not None, (
+            "The 'Tentar Novamente' button must have an onclick handler "
+            "that calls executarDesempenho() to restart the generation flow."
+        )
+
+    def test_bt5_error_displays_error_detail(self, html_content):
+        """The inline error area must show the specific error message (not just generic text)."""
+        # The catch block should reference e.message or similar to show the actual error
+        assert "e.message" in html_content and "Tentar Novamente" in html_content, (
+            "executarDesempenho catch block must display the specific error message "
+            "(e.message) inline so users know what went wrong before retrying."
         )
