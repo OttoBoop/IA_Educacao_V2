@@ -1,5 +1,5 @@
 """
-PROVA AI - Classe Base para Testes de Modelos
+NOVO CR - Classe Base para Testes de Modelos
 
 Fornece uma classe abstrata com testes comuns que cada
 implementação de modelo deve passar.

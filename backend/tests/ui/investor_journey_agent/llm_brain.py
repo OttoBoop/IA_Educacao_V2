@@ -397,7 +397,7 @@ Respond ONLY with valid JSON (no markdown, no explanation outside JSON):
 - Result: {"Success" if step.success else f"Failed: {step.error_message}"}
 """
 
-        system_prompt = f"""You are a UX analyst evaluating a user journey through the Prova AI application.
+        system_prompt = f"""You are a UX analyst evaluating a user journey through the NOVO CR application.
 
 The user was roleplaying as: {persona.name} - {persona.description}
 

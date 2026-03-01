@@ -1,5 +1,5 @@
 """
-PROVA AI - Testes para TestDataGenerator (Fantasy Data Generator)
+NOVO CR - Testes para TestDataGenerator (Fantasy Data Generator)
 
 Este arquivo testa o comportamento do gerador de dados de teste,
 especialmente casos de erro que devem propagar excecoes ao inves de

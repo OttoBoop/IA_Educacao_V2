@@ -1,5 +1,5 @@
 """
-Shared fixtures for Prova AI tests.
+Shared fixtures for NOVO CR tests.
 """
 
 import os

@@ -1,5 +1,5 @@
 """
-Fixtures de teste para Prova AI.
+Fixtures de teste para NOVO CR.
 
 Contém:
 - DocumentFactory: Geração de documentos de teste

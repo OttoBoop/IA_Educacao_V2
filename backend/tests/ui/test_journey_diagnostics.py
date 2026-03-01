@@ -284,7 +284,7 @@ class TestF2ModalPersistence:
 
         # Check localStorage BEFORE clicking
         ls_before = await mobile_page.evaluate(
-            "() => localStorage.getItem('prova-ai-welcomed')"
+            "() => localStorage.getItem('novocr-welcomed')"
         )
 
         # Click "Começar a Usar" WITHOUT checking the checkbox
@@ -295,7 +295,7 @@ class TestF2ModalPersistence:
 
         # Check localStorage AFTER clicking
         ls_after = await mobile_page.evaluate(
-            "() => localStorage.getItem('prova-ai-welcomed')"
+            "() => localStorage.getItem('novocr-welcomed')"
         )
 
         # Check if modal closed
@@ -391,7 +391,7 @@ class TestF2ModalPersistence:
 
         # Check localStorage
         ls_value = await mobile_page.evaluate(
-            "() => localStorage.getItem('prova-ai-welcomed')"
+            "() => localStorage.getItem('novocr-welcomed')"
         )
 
         # Reload

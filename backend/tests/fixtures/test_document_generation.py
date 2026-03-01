@@ -1,5 +1,5 @@
 """
-PROVA AI - Teste de Geracao de Documentos
+NOVO CR - Teste de Geracao de Documentos
 
 Testa a geracao de documentos pela IA em diferentes formatos.
 Verifica:

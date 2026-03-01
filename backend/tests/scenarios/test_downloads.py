@@ -1,5 +1,5 @@
 """
-PROVA AI - Teste End-to-End de Download de Documentos
+NOVO CR - Teste End-to-End de Download de Documentos
 
 Testa o fluxo COMPLETO:
 1. Gera documento via chat

@@ -1,5 +1,5 @@
 """
-PROVA AI - Fábrica de Documentos de Teste
+NOVO CR - Fábrica de Documentos de Teste
 
 Gera documentos de teste em diferentes formatos e qualidades
 para testar robustez do pipeline.

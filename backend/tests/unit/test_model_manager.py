@@ -1,5 +1,5 @@
 """
-PROVA AI - Testes de Unicidade de Modelo Padrao
+NOVO CR - Testes de Unicidade de Modelo Padrao
 
 Este arquivo testa que apenas UM modelo pode ser marcado como padrao (is_default).
 

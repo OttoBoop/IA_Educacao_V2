@@ -1,5 +1,5 @@
 """
-PROVA AI - Teste de Estresse de Modelos v1.0
+NOVO CR - Teste de Estresse de Modelos v1.0
 
 Testa diferentes modelos da OpenAI com varios parametros
 e registra o que funcionou e o que nao funcionou.

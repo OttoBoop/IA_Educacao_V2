@@ -1,5 +1,5 @@
 """
-PROVA AI - Teste de Tipos de Arquivo
+NOVO CR - Teste de Tipos de Arquivo
 
 Testa:
 1. Detecção de MIME types

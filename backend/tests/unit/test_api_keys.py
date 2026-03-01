@@ -1,5 +1,5 @@
 """
-PROVA AI - Testes de Configuracao de API Keys
+NOVO CR - Testes de Configuracao de API Keys
 
 Este arquivo testa ambos os cenarios:
 1. LOCAL: API keys criptografadas em api_keys.json
