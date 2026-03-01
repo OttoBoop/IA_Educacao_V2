@@ -598,8 +598,8 @@ def _doc_to_dict(doc):
 
 
 def _check_has_atividades(level: str, entity_id: str) -> bool:
-    """Check if graded work (RELATORIO_NARRATIVO docs) exists for the entity."""
-    narrativo_tipo = TipoDocumento.RELATORIO_NARRATIVO
+    """Check if graded work (RELATORIO_FINAL docs) exists for the entity."""
+    narrativo_tipo = TipoDocumento.RELATORIO_FINAL
     if level == "tarefa":
         return len(storage.listar_documentos(entity_id, tipo=narrativo_tipo)) > 0
     elif level == "turma":

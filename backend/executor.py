@@ -1949,18 +1949,18 @@ Crie UM documento separado para cada aluno, nomeando como "relatorio_[nome_aluno
         """
         Síntese narrativa agregada para uma atividade.
 
-        Busca todos os RELATORIO_NARRATIVO da atividade e gera um relatório
+        Busca todos os RELATORIO_FINAL da atividade e gera um relatório
         coletivo usando o prompt RELATORIO_DESEMPENHO_TAREFA.
-        Requer pelo menos 2 alunos com narrativas — falha caso contrário.
+        Requer pelo menos 2 alunos com relatórios — falha caso contrário.
         """
         narrativos = self.storage.listar_documentos(
-            atividade_id, tipo=TipoDocumento.RELATORIO_NARRATIVO
+            atividade_id, tipo=TipoDocumento.RELATORIO_FINAL
         )
         if len(narrativos) < 2:
             return {
                 "sucesso": False,
                 "erro": (
-                    f"São necessários pelo menos 2 alunos com RELATORIO_NARRATIVO para gerar o "
+                    f"São necessários pelo menos 2 alunos com RELATORIO_FINAL para gerar o "
                     f"relatório de desempenho da tarefa. Encontrados: {len(narrativos)}."
                 ),
             }
@@ -2062,7 +2062,7 @@ Crie UM documento separado para cada aluno, nomeando como "relatorio_[nome_aluno
         """
         Narrativa holística de uma turma ao longo de todas as atividades.
 
-        Busca todos os alunos da turma e seus RELATORIO_NARRATIVO em todas as
+        Busca todos os alunos da turma e seus RELATORIO_FINAL em todas as
         atividades. Requer pelo menos 2 alunos com resultados.
         """
         alunos = self.storage.listar_alunos(turma_id)
@@ -2089,7 +2089,7 @@ Crie UM documento separado para cada aluno, nomeando como "relatorio_[nome_aluno
         alunos_por_atividade = {}  # atividade_nome → set of aluno_ids with narratives
         for atividade in atividades:
             docs = self.storage.listar_documentos(
-                atividade.id, tipo=TipoDocumento.RELATORIO_NARRATIVO,
+                atividade.id, tipo=TipoDocumento.RELATORIO_FINAL,
             )
             alunos_com_narrativa = set()
             for doc in docs:
@@ -2226,7 +2226,7 @@ Crie UM documento separado para cada aluno, nomeando como "relatorio_[nome_aluno
                 if atividade_ref is None:
                     atividade_ref = atividade.id
                 docs = self.storage.listar_documentos(
-                    atividade.id, tipo=TipoDocumento.RELATORIO_NARRATIVO,
+                    atividade.id, tipo=TipoDocumento.RELATORIO_FINAL,
                 )
                 for doc in docs:
                     try:

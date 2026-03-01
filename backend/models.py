@@ -605,21 +605,21 @@ DEPENDENCIAS_DOCUMENTOS = {
     },
 
     # === RELATÓRIOS DE DESEMPENHO AGREGADOS ===
-    # Para relatório de desempenho por tarefa: precisa dos relatórios narrativos de cada aluno
+    # Para relatório de desempenho por tarefa: precisa dos relatórios finais de cada aluno
     TipoDocumento.RELATORIO_DESEMPENHO_TAREFA: {
-        "obrigatorios": [TipoDocumento.RELATORIO_NARRATIVO],
+        "obrigatorios": [TipoDocumento.RELATORIO_FINAL],
         "opcionais": []
     },
 
-    # Para relatório de desempenho por turma: precisa dos relatórios narrativos de cada aluno
+    # Para relatório de desempenho por turma: precisa dos relatórios finais de cada aluno
     TipoDocumento.RELATORIO_DESEMPENHO_TURMA: {
-        "obrigatorios": [TipoDocumento.RELATORIO_NARRATIVO],
+        "obrigatorios": [TipoDocumento.RELATORIO_FINAL],
         "opcionais": []
     },
 
-    # Para relatório de desempenho por matéria: precisa dos relatórios narrativos de todas as turmas
+    # Para relatório de desempenho por matéria: precisa dos relatórios finais de todas as turmas
     TipoDocumento.RELATORIO_DESEMPENHO_MATERIA: {
-        "obrigatorios": [TipoDocumento.RELATORIO_NARRATIVO],
+        "obrigatorios": [TipoDocumento.RELATORIO_FINAL],
         "opcionais": []
     },
 }
