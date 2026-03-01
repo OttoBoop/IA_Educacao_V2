@@ -1,4 +1,4 @@
-# Guia de Testes - Prova AI
+# Guia de Testes - NOVO CR
 
 Este documento explica todos os testes disponíveis, como executá-los e como interpretar os resultados.
 
@@ -6,7 +6,7 @@ Este documento explica todos os testes disponíveis, como executá-los e como in
 
 ## Visão Geral
 
-O sistema de testes do Prova AI é dividido em:
+O sistema de testes do NOVO CR é dividido em:
 
 1. **Testes Legado** - Arquivos `test_*.py` na raiz do backend
 2. **Testes Novos** - Estruturados em `tests/` usando pytest

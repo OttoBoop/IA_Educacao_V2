@@ -1,13 +1,13 @@
-# IA_Educacao_V2 (Prova AI) — Claude Code Configuration
+# IA_Educacao_V2 (NOVO CR) — Claude Code Configuration
 
 > For general workspace rules (TDD, git workflow, discovery chain, subagents), see the root [CLAUDE.md](../CLAUDE.md).
-> This file contains Prova AI-specific configuration only.
+> This file contains NOVO CR-specific configuration only.
 
 ---
 
 ## Project Overview
 
-**Prova AI** is an educational platform for automated test/exam grading using multiple AI models (OpenAI, Anthropic, Google). It processes student submissions, analyzes responses, and generates detailed feedback reports.
+**NOVO CR** is an educational platform for automated test/exam grading using multiple AI models (OpenAI, Anthropic, Google). It processes student submissions, analyzes responses, and generates detailed feedback reports.
 
 **Live Deployment:** https://ia-educacao-v2.onrender.com
 
@@ -325,7 +325,7 @@ python -m tests.ui.investor_journey_agent \
 
 ```
 IA_Educacao_V2/
-├── CLAUDE.md                    # This file (Prova AI-specific config)
+├── CLAUDE.md                    # This file (NOVO CR-specific config)
 ├── backend/
 │   ├── main_v2.py               # FastAPI app entry
 │   ├── chat_service.py          # AI chat integration

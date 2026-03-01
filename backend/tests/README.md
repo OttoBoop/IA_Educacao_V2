@@ -1,4 +1,4 @@
-# Prova AI - Test Suite
+# NOVO CR - Test Suite
 
 > **Last Updated**: January 2026
 > **Total Test Files**: 35+ organized test files

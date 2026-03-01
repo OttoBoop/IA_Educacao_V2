@@ -1,4 +1,4 @@
-# Referência de Modelos e Parâmetros - Prova AI
+# Referência de Modelos e Parâmetros - NOVO CR
 
 Este documento lista todos os modelos de IA suportados e seus parâmetros.
 

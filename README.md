@@ -1,4 +1,4 @@
-# 🎓 Prova AI - Sistema de Correção Automatizada
+# 🎓 NOVO CR - Sistema de Correção Automatizada
 
 Framework para experimentação com diferentes IAs na correção automatizada de provas.
 
