@@ -110,8 +110,12 @@ def update_stage_progress(task_id, aluno_id, stage, status):
         task["students"][aluno_id]["stages"][stage] = status
 
 
-def complete_pipeline_task(task_id, status="completed"):
+def complete_pipeline_task(task_id, status="completed", error=None, result=None):
     """Mark a pipeline task as completed or failed."""
     task = task_registry.get(task_id)
     if task:
         task["status"] = status
+        if error:
+            task["error"] = error
+        if result:
+            task["result"] = result

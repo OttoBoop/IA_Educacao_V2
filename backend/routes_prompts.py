@@ -1165,13 +1165,16 @@ async def _executar_desempenho_tarefa_background(
 ):
     from executor import executor
     try:
-        await executor.gerar_relatorio_desempenho_tarefa(
+        resultado = await executor.gerar_relatorio_desempenho_tarefa(
             atividade_id=atividade_id,
             provider_id=provider_id,
         )
-        complete_pipeline_task(task_id, "completed")
-    except Exception:
-        complete_pipeline_task(task_id, "failed")
+        if resultado.get("sucesso"):
+            complete_pipeline_task(task_id, "completed", result=resultado)
+        else:
+            complete_pipeline_task(task_id, "failed", error=resultado.get("erro"))
+    except Exception as e:
+        complete_pipeline_task(task_id, "failed", error=str(e))
 
 
 @router.post("/api/executar/pipeline-desempenho-turma", tags=["Execução"])
@@ -1219,13 +1222,16 @@ async def _executar_desempenho_turma_background(
 ):
     from executor import executor
     try:
-        await executor.gerar_relatorio_desempenho_turma(
+        resultado = await executor.gerar_relatorio_desempenho_turma(
             turma_id=turma_id,
             provider_id=provider_id,
         )
-        complete_pipeline_task(task_id, "completed")
-    except Exception:
-        complete_pipeline_task(task_id, "failed")
+        if resultado.get("sucesso"):
+            complete_pipeline_task(task_id, "completed", result=resultado)
+        else:
+            complete_pipeline_task(task_id, "failed", error=resultado.get("erro"))
+    except Exception as e:
+        complete_pipeline_task(task_id, "failed", error=str(e))
 
 
 @router.post("/api/executar/pipeline-desempenho-materia", tags=["Execução"])
@@ -1269,11 +1275,14 @@ async def _executar_desempenho_materia_background(
 ):
     from executor import executor
     try:
-        await executor.gerar_relatorio_desempenho_materia(
+        resultado = await executor.gerar_relatorio_desempenho_materia(
             materia_id=materia_id,
             provider_id=provider_id,
         )
-        complete_pipeline_task(task_id, "completed")
-    except Exception:
-        complete_pipeline_task(task_id, "failed")
+        if resultado.get("sucesso"):
+            complete_pipeline_task(task_id, "completed", result=resultado)
+        else:
+            complete_pipeline_task(task_id, "failed", error=resultado.get("erro"))
+    except Exception as e:
+        complete_pipeline_task(task_id, "failed", error=str(e))
 
