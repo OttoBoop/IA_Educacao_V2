@@ -4605,6 +4605,7 @@
 ╚══════════════════════════════════════════════════════════════════╝
 -->
 
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
     <script>
         // ============================================================
         // MOBILE SIDEBAR TOGGLE
@@ -7753,10 +7754,14 @@
 
                 const output = document.getElementById('output-documento-conteudo');
                 if (data.pode_visualizar) {
-                    const content = data.tipo_conteudo === 'json'
-                        ? JSON.stringify(data.conteudo, null, 2)
-                        : (data.conteudo || '');
-                    output.textContent = content;
+                    if (data.tipo_conteudo === 'json') {
+                        output.textContent = JSON.stringify(data.conteudo, null, 2);
+                    } else {
+                        const raw = data.conteudo || '';
+                        const html = marked.parse(raw);
+                        const sanitized = html.replace(/<script[\s\S]*?<\/script>/gi, '');
+                        output.innerHTML = sanitized;
+                    }
                     openModal('modal-documento-conteudo');
                 } else {
                     showToast('Documento não possui visualização. Faça o download para ver.', 'warning');
