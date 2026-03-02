@@ -3716,6 +3716,11 @@
                     <select class="form-select" id="input-upload-aluno"></select>
                 </div>
                 <div class="form-group">
+                    <label class="form-label">Nome do Documento</label>
+                    <input type="text" class="form-input" id="input-upload-display-name" placeholder="Ex: Prova Respondida - João Silva - Cálculo I">
+                    <div class="inline-hint">Deixe em branco para gerar automaticamente</div>
+                </div>
+                <div class="form-group">
                     <label class="form-label">Arquivo *</label>
                     <div class="upload-zone" id="upload-zone-modal">
                         <div class="upload-icon">📁</div>
@@ -6706,7 +6711,7 @@
                 <div class="doc-item doc-item-static">
                     <div class="doc-icon">${options.icon || '📄'}</div>
                     <div class="doc-info">
-                        <div class="doc-name">${escapeHtml(doc.nome_arquivo || doc.id)}</div>
+                        <div class="doc-name">${escapeHtml(doc.display_name || doc.nome_arquivo || doc.id)}</div>
                         ${metaHtml}
                     </div>
                     <div class="doc-actions">${actions.join('')}</div>
