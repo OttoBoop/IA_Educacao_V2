@@ -305,7 +305,7 @@ class TestBackfillDisplayNames:
 
         doc = sm.salvar_documento(
             arquivo_origem=str(source_file),
-            tipo=TipoDocumento.PROVA_RESPONDIDA,
+            tipo=TipoDocumento.ENUNCIADO,
             atividade_id=atividade.id,
             aluno_id=None,
             criado_por="usuario",
