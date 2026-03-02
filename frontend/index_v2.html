@@ -5276,6 +5276,20 @@
             if (typeof atualizarCampoAluno === 'function') {
                 atualizarCampoAluno();
             }
+            updateUploadDisplayName();
+        }
+
+        // Auto-populates the display name field based on current tipo/aluno/materia/turma
+        function updateUploadDisplayName() {
+            const tipo = document.getElementById('input-upload-tipo').value;
+            const alunoSelect = document.getElementById('input-upload-aluno');
+            const alunoNome = alunoSelect && alunoSelect.value
+                ? alunoSelect.options[alunoSelect.selectedIndex]?.text || null
+                : null;
+            const materiaNome = window._turmaData?.materia?.nome || null;
+            const turmaNome = window._turmaData?.turma?.nome || null;
+            const displayName = buildDisplayName(tipo, alunoNome, materiaNome, turmaNome);
+            document.getElementById('input-upload-display-name').value = displayName;
         }
         
         // Descrições das etapas do pipeline
@@ -8002,6 +8016,7 @@
             } else if (select) {
                 select.innerHTML = '<option value="">Nenhum aluno encontrado</option>';
             }
+            if (select) select.onchange = updateUploadDisplayName;
         }
 
         function carregarAlunosExecucao() {
@@ -8453,6 +8468,7 @@
             const fileInput = document.getElementById('input-upload-file');
             const alunoId = document.getElementById('input-upload-aluno').value;
             const replaceId = document.getElementById('input-upload-documento-id').value;
+            const displayName = document.getElementById('input-upload-display-name').value.trim();
             if (!fileInput.files.length) { showToast('Selecione ao menos um arquivo', 'error'); return; }
             const isBase = (window._documentosBase || []).includes(tipo);
             if (!isBase && !alunoId) { showToast('Selecione o aluno', 'error'); return; }
@@ -8468,6 +8484,7 @@
                     formData.append('tipo', tipo);
                     formData.append('atividade_id', atividadeId);
                     if (!isBase && alunoId) formData.append('aluno_id', alunoId);
+                    if (displayName) formData.append('display_name', displayName);
                     await apiForm('/documentos/upload', formData);
                 }
                 if (replaceId) {
@@ -8476,6 +8493,7 @@
                 showToast('Documento(s) enviado(s)!', 'success');
                 closeModal('modal-upload');
                 fileInput.value = '';
+                document.getElementById('input-upload-display-name').value = '';
                 document.getElementById('upload-file-name').textContent = '';
                 resetUploadReplace();
                 refreshCurrentView();
