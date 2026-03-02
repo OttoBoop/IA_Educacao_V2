@@ -291,3 +291,79 @@ class TestBT5ErrorHandlingRetry:
             "executarDesempenho catch block must display the specific error message "
             "(e.message) inline so users know what went wrong before retrying."
         )
+
+
+# ============================================================
+# Gap-2: Regression guard — renderDesempenhoRuns calls visualizarDocumento
+# ============================================================
+
+class TestGap2DocViewerIntegration:
+    """Gap-2: renderDesempenhoRuns output must contain visualizarDocumento() calls for each doc."""
+
+    def test_gap2_render_contains_visualizar_documento_call(self, html_content):
+        """renderDesempenhoRuns must emit onclick="visualizarDocumento('...')" for each doc's Ver button.
+
+        Regression guard: C-T2 journey verified visually, but no unit test existed.
+        """
+        assert "renderDesempenhoRuns" in html_content, "renderDesempenhoRuns must exist"
+        render_section = html_content.split("function renderDesempenhoRuns(")[1][:3000]
+        assert "visualizarDocumento(" in render_section, (
+            "renderDesempenhoRuns must contain a visualizarDocumento() call "
+            "in its output HTML. The 'Ver' button must open the document viewer."
+        )
+
+
+# ============================================================
+# Gap-3: Auto-expand latest run — show first doc content inline
+# ============================================================
+
+class TestGap3AutoExpandLatestRun:
+    """Gap-3: The newest run's first doc content should be auto-fetched and rendered inline."""
+
+    def test_gap3_auto_expand_function_exists(self, html_content):
+        """An autoExpandLatestRun function must be defined."""
+        assert "function autoExpandLatestRun(" in html_content or \
+               "async function autoExpandLatestRun(" in html_content, (
+            "index_v2.html must define an 'autoExpandLatestRun' function "
+            "that fetches and displays the first doc's content inline."
+        )
+
+    def test_gap3_expand_container_in_first_run(self, html_content):
+        """renderDesempenhoRuns must include an expand container for the first run (idx === 0)."""
+        render_section = html_content.split("function renderDesempenhoRuns(")[1][:4000]
+        assert "desempenho-expanded" in render_section, (
+            "renderDesempenhoRuns must emit a 'desempenho-expanded-{level}' container "
+            "in the first run (idx === 0) for inline content display."
+        )
+
+    def test_gap3_load_data_triggers_auto_expand(self, html_content):
+        """loadDesempenhoData must call autoExpandLatestRun after rendering runs."""
+        load_start = html_content.find("async function loadDesempenhoData(")
+        if load_start == -1:
+            load_start = html_content.find("function loadDesempenhoData(")
+        assert load_start != -1, "loadDesempenhoData must exist"
+        load_section = html_content[load_start:load_start + 3000]
+        assert "autoExpandLatestRun" in load_section, (
+            "loadDesempenhoData must call autoExpandLatestRun() after rendering runs "
+            "to auto-fetch and display the first doc's content."
+        )
+
+    def test_gap3_fetches_documento_conteudo_endpoint(self, html_content):
+        """autoExpandLatestRun must fetch from /documentos/{id}/conteudo."""
+        func_start = html_content.find("autoExpandLatestRun")
+        assert func_start != -1, "autoExpandLatestRun must exist"
+        func_section = html_content[func_start:func_start + 2000]
+        assert "/conteudo" in func_section, (
+            "autoExpandLatestRun must fetch from '/documentos/{id}/conteudo' "
+            "to get the document content for inline display."
+        )
+
+    def test_gap3_uses_textcontent_for_safe_render(self, html_content):
+        """autoExpandLatestRun must use textContent (not innerHTML) for content — XSS safety."""
+        func_start = html_content.find("autoExpandLatestRun")
+        assert func_start != -1, "autoExpandLatestRun must exist"
+        func_section = html_content[func_start:func_start + 2000]
+        assert "textContent" in func_section, (
+            "autoExpandLatestRun must render content using textContent "
+            "(not innerHTML) for safe plain-text display, matching the modal viewer pattern."
+        )
