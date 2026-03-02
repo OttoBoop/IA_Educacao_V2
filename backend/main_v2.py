@@ -657,14 +657,16 @@ async def upload_documento(
     tipo: str = Form(...),
     atividade_id: str = Form(...),
     aluno_id: Optional[str] = Form(None),
+    display_name: Optional[str] = Form(None),
     ia_provider: Optional[str] = Form(None)
 ):
     """
     Faz upload de um documento.
-    
+
     - tipo: enunciado, gabarito, criterios_correcao, prova_respondida, correcao_professor
     - atividade_id: ID da atividade
     - aluno_id: ID do aluno (obrigatório para prova_respondida)
+    - display_name: Nome amigável do documento (opcional, auto-gerado se omitido)
     - ia_provider: Provider para indexação (opcional)
     """
     # Validar tipo
@@ -690,6 +692,7 @@ async def upload_documento(
             tipo=tipo_doc,
             atividade_id=atividade_id,
             aluno_id=aluno_id,
+            display_name=display_name,
             ia_provider=ia_provider,
             criado_por="usuario"
         )

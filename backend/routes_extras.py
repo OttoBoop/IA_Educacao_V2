@@ -15,6 +15,7 @@ import tempfile
 import os
 import csv
 import io
+import json
 from pathlib import Path
 
 from models import TipoDocumento
@@ -175,21 +176,35 @@ async def upload_documentos_lote(
     files: List[UploadFile] = File(...),
     tipo: str = Form(...),
     atividade_id: str = Form(...),
-    aluno_id: Optional[str] = Form(None)
+    aluno_id: Optional[str] = Form(None),
+    display_names: Optional[str] = Form(None)
 ):
     """
     Upload de múltiplos documentos de uma vez.
     Útil para subir várias provas de alunos.
+
+    - display_names: JSON array of display names, one per file (optional).
+      If fewer names than files, remaining files auto-generate names.
     """
     try:
         tipo_doc = TipoDocumento(tipo)
     except ValueError:
         raise HTTPException(400, f"Tipo inválido: {tipo}")
-    
+
+    # Parse display_names JSON array (if provided)
+    names_list = []
+    if display_names:
+        try:
+            names_list = json.loads(display_names)
+            if not isinstance(names_list, list):
+                names_list = []
+        except (json.JSONDecodeError, TypeError):
+            names_list = []
+
     salvos = []
     erros = []
-    
-    for file in files:
+
+    for i, file in enumerate(files):
         try:
             # Salvar temporário
             with tempfile.NamedTemporaryFile(delete=False, suffix=Path(file.filename).suffix) as tmp:
@@ -197,12 +212,16 @@ async def upload_documentos_lote(
                 tmp.write(content)
                 tmp_path = tmp.name
             
+            # Use per-file display_name if provided, else None (auto-generate)
+            file_display_name = names_list[i] if i < len(names_list) else None
+
             # Salvar documento
             documento = storage.salvar_documento(
                 arquivo_origem=tmp_path,
                 tipo=tipo_doc,
                 atividade_id=atividade_id,
                 aluno_id=aluno_id,
+                display_name=file_display_name,
                 criado_por="usuario"
             )
 
