@@ -244,7 +244,8 @@ async def upload_documentos_lote(
 async def upload_provas_alunos(
     files: List[UploadFile] = File(...),
     atividade_id: str = Form(...),
-    modo_nome: str = Form("matricula")  # "matricula" ou "nome"
+    modo_nome: str = Form("matricula"),  # "matricula" ou "nome"
+    display_names: Optional[str] = Form(None)  # JSON array of per-file display names
 ):
     """
     Upload inteligente de provas de alunos.
@@ -259,14 +260,24 @@ async def upload_provas_alunos(
     atividade = storage.get_atividade(atividade_id)
     if not atividade:
         raise HTTPException(404, "Atividade não encontrada")
-    
+
     turma = storage.get_turma(atividade.turma_id)
     alunos_turma = storage.listar_alunos(turma.id)
-    
+
+    # Parse display_names JSON array (if provided)
+    names_list = []
+    if display_names:
+        try:
+            names_list = json.loads(display_names)
+            if not isinstance(names_list, list):
+                names_list = []
+        except (json.JSONDecodeError, TypeError):
+            names_list = []
+
     salvos = []
     erros = []
-    
-    for file in files:
+
+    for i, file in enumerate(files):
         try:
             # Extrair identificador do nome do arquivo
             nome_arquivo = Path(file.filename).stem.lower()
@@ -301,12 +312,16 @@ async def upload_provas_alunos(
                 tmp.write(content)
                 tmp_path = tmp.name
             
+            # Use custom display_name from preview if provided
+            file_display_name = names_list[i] if i < len(names_list) and names_list[i] else None
+
             # Salvar documento
             documento = storage.salvar_documento(
                 arquivo_origem=tmp_path,
                 tipo=TipoDocumento.PROVA_RESPONDIDA,
                 atividade_id=atividade_id,
                 aluno_id=aluno_encontrado.id,
+                display_name=file_display_name,
                 criado_por="usuario"
             )
 

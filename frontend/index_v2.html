@@ -8687,9 +8687,13 @@
             Array.from(filesInput.files).forEach(file => formData.append('files', file));
             formData.append('atividade_id', atividadeId);
             formData.append('modo_nome', modo);
+            const nameInputs = document.querySelectorAll('.batch-name-input');
+            const displayNames = Array.from(nameInputs).map(input => input.value);
+            formData.append('display_names', JSON.stringify(displayNames));
             try {
                 const result = await apiForm('/documentos/upload-provas-alunos', formData);
                 showToast(`Enviados: ${result.salvos || 0}`, 'success');
+                document.getElementById('batch-preview-container').style.display = 'none';
                 closeModal('modal-upload-provas');
                 showAtividade(atividadeId);
             } catch (e) {}
