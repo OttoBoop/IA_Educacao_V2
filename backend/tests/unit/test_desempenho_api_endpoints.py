@@ -415,3 +415,166 @@ class TestDesempenhoDeleteRunEndpoint:
         assert response.status_code == 400, (
             f"Expected 400 for invalid level, got {response.status_code}"
         )
+
+
+# ============================================================
+# Inline Preview: each run must include a preview of the report
+# ============================================================
+
+class TestDesempenhoRunPreview:
+    """Inline preview: each run in the API response must include a 'preview'
+    field — a short excerpt from the report content so users can see what's
+    in it without clicking.
+
+    Discovery requirement: 'Inline summaries — key metrics visible without clicking.'
+    """
+
+    def test_run_includes_preview_field(self, client):
+        """Each run in the response must include a 'preview' string field."""
+        import tempfile, os
+        # Create a temp file with markdown content
+        f = tempfile.NamedTemporaryFile(
+            mode="w", suffix=".md", delete=False, encoding="utf-8",
+        )
+        f.write("# Relatório de Desempenho\n\nA turma apresentou resultados variados.\n")
+        f.close()
+
+        doc = _make_desempenho_doc(
+            "doc-preview-1",
+            TipoDocumento.RELATORIO_DESEMPENHO_TAREFA,
+            "ativ-001",
+            nome_arquivo=os.path.basename(f.name),
+        )
+        doc.caminho_arquivo = f.name
+
+        try:
+            with patch("routes_extras.storage") as mock_storage:
+                mock_storage.listar_documentos.return_value = [doc]
+                mock_storage.get_atividade.return_value = MagicMock(
+                    id="ativ-001", nome="Prova 1", turma_id="t1",
+                )
+                mock_storage.resolver_caminho_documento.side_effect = lambda d: d.caminho_arquivo
+                response = client.get("/api/desempenho/tarefa/ativ-001")
+        finally:
+            os.unlink(f.name)
+
+        data = response.json()
+        assert len(data["runs"]) == 1, "Expected 1 run"
+        run = data["runs"][0]
+        assert "preview" in run, (
+            "Each run must include a 'preview' field with a short excerpt "
+            "from the report content. Discovery requires inline summaries."
+        )
+
+    def test_preview_contains_report_excerpt(self, client):
+        """The preview must contain text from the report, not be empty."""
+        import tempfile, os
+        f = tempfile.NamedTemporaryFile(
+            mode="w", suffix=".md", delete=False, encoding="utf-8",
+        )
+        report_text = (
+            "# Relatório de Desempenho da Turma\n\n"
+            "## Visão Geral\n\n"
+            "A turma 8º Ano A apresentou desempenho heterogêneo nesta avaliação. "
+            "Maria Silva se destacou com domínio completo dos conceitos."
+        )
+        f.write(report_text)
+        f.close()
+
+        doc = _make_desempenho_doc(
+            "doc-preview-2",
+            TipoDocumento.RELATORIO_DESEMPENHO_TAREFA,
+            "ativ-001",
+            nome_arquivo=os.path.basename(f.name),
+        )
+        doc.caminho_arquivo = f.name
+
+        try:
+            with patch("routes_extras.storage") as mock_storage:
+                mock_storage.listar_documentos.return_value = [doc]
+                mock_storage.get_atividade.return_value = MagicMock(
+                    id="ativ-001", nome="Prova 1", turma_id="t1",
+                )
+                mock_storage.resolver_caminho_documento.side_effect = lambda d: d.caminho_arquivo
+                response = client.get("/api/desempenho/tarefa/ativ-001")
+        finally:
+            os.unlink(f.name)
+
+        data = response.json()
+        preview = data["runs"][0]["preview"]
+        assert len(preview) > 0, "Preview must not be empty"
+        assert "turma" in preview.lower() or "desempenho" in preview.lower(), (
+            f"Preview must contain text from the report. Got: {preview!r}"
+        )
+
+    def test_preview_strips_markdown_headers(self, client):
+        """The preview must strip markdown headers (# lines) to show only prose."""
+        import tempfile, os
+        f = tempfile.NamedTemporaryFile(
+            mode="w", suffix=".md", delete=False, encoding="utf-8",
+        )
+        f.write("# Relatório\n\n## Visão Geral\n\nConteúdo real do relatório aqui.")
+        f.close()
+
+        doc = _make_desempenho_doc(
+            "doc-preview-3",
+            TipoDocumento.RELATORIO_DESEMPENHO_TAREFA,
+            "ativ-001",
+            nome_arquivo=os.path.basename(f.name),
+        )
+        doc.caminho_arquivo = f.name
+
+        try:
+            with patch("routes_extras.storage") as mock_storage:
+                mock_storage.listar_documentos.return_value = [doc]
+                mock_storage.get_atividade.return_value = MagicMock(
+                    id="ativ-001", nome="Prova 1", turma_id="t1",
+                )
+                mock_storage.resolver_caminho_documento.side_effect = lambda d: d.caminho_arquivo
+                response = client.get("/api/desempenho/tarefa/ativ-001")
+        finally:
+            os.unlink(f.name)
+
+        data = response.json()
+        preview = data["runs"][0]["preview"]
+        assert not preview.startswith("#"), (
+            f"Preview must strip markdown headers. Got: {preview!r}"
+        )
+        assert "Conteúdo real" in preview, (
+            f"Preview should contain prose text, not headers. Got: {preview!r}"
+        )
+
+    def test_preview_truncated_to_max_length(self, client):
+        """The preview must be truncated to a reasonable max length (≤200 chars)."""
+        import tempfile, os
+        f = tempfile.NamedTemporaryFile(
+            mode="w", suffix=".md", delete=False, encoding="utf-8",
+        )
+        long_text = "A " * 500  # 1000 chars
+        f.write(f"# Título\n\n{long_text}")
+        f.close()
+
+        doc = _make_desempenho_doc(
+            "doc-preview-4",
+            TipoDocumento.RELATORIO_DESEMPENHO_TAREFA,
+            "ativ-001",
+            nome_arquivo=os.path.basename(f.name),
+        )
+        doc.caminho_arquivo = f.name
+
+        try:
+            with patch("routes_extras.storage") as mock_storage:
+                mock_storage.listar_documentos.return_value = [doc]
+                mock_storage.get_atividade.return_value = MagicMock(
+                    id="ativ-001", nome="Prova 1", turma_id="t1",
+                )
+                mock_storage.resolver_caminho_documento.side_effect = lambda d: d.caminho_arquivo
+                response = client.get("/api/desempenho/tarefa/ativ-001")
+        finally:
+            os.unlink(f.name)
+
+        data = response.json()
+        preview = data["runs"][0]["preview"]
+        assert len(preview) <= 203, (
+            f"Preview must be ≤200 chars (+ '...' suffix). Got {len(preview)} chars."
+        )

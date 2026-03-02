@@ -144,6 +144,29 @@ class TestBT2RenderDesempenhoRuns:
             "/api/desempenho/run/{run_id} via a deleteDesempenhoRun function."
         )
 
+    def test_bt2_run_preview_display(self, html_content):
+        """renderDesempenhoRuns must display a preview excerpt for each run.
+
+        Discovery requirement: 'Inline summaries — key metrics visible without clicking.'
+        """
+        assert "run.preview" in html_content or "preview" in html_content.split("renderDesempenhoRuns")[1][:2000], (
+            "renderDesempenhoRuns must display a 'preview' field from each run — "
+            "a short excerpt so users see what's in the report without clicking."
+        )
+
+    def test_bt2_preview_styled_muted(self, html_content):
+        """The preview text must be styled in a subdued/muted way (not as prominent as the title)."""
+        # Check for muted/small styling near preview rendering
+        render_section = html_content.split("renderDesempenhoRuns")[1][:3000] if "renderDesempenhoRuns" in html_content else ""
+        has_muted_style = any(
+            marker in render_section
+            for marker in ["text-muted", "color: #", "font-size: 0.9", "opacity:", "preview"]
+        )
+        assert has_muted_style, (
+            "The preview text in renderDesempenhoRuns must use muted/subdued styling "
+            "(e.g., text-muted class, smaller font, reduced opacity)."
+        )
+
 
 # ============================================================
 # B-T3: Empty state + no-data disable logic
