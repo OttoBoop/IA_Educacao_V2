@@ -562,28 +562,24 @@ class TestAnalisarHabilidadesRemovedFromNarrativaPromptMap:
             "The two-pass narrative PDF for ANALISAR_HABILIDADES is replaced by execute_python_code tool-use."
         )
 
-    def test_gerar_relatorio_not_in_narrativa_prompt_map(self):
-        """GERAR_RELATORIO must also NOT be in NARRATIVA_PROMPT_MAP.
+    def test_gerar_relatorio_still_in_narrativa_prompt_map(self):
+        """GERAR_RELATORIO must remain in NARRATIVA_PROMPT_MAP until F-T3 migrates it.
 
-        In the current codebase, GERAR_RELATORIO was removed together with ANALISAR_HABILIDADES
-        when the map was cleaned to {}. This test confirms the map does not contain
-        GERAR_RELATORIO either (consistent with full migration being done).
+        F-T2 only removes ANALISAR_HABILIDADES. GERAR_RELATORIO stays until F-T3.
         """
-        assert EtapaProcessamento.GERAR_RELATORIO not in PipelineExecutor.NARRATIVA_PROMPT_MAP, (
-            "EtapaProcessamento.GERAR_RELATORIO must not be in NARRATIVA_PROMPT_MAP — "
-            "all stages have been migrated to tool-use dual output."
+        assert EtapaProcessamento.GERAR_RELATORIO in PipelineExecutor.NARRATIVA_PROMPT_MAP, (
+            "GERAR_RELATORIO must remain in NARRATIVA_PROMPT_MAP — it is removed by F-T3, not F-T2."
         )
 
-    def test_narrativa_prompt_map_is_empty(self):
-        """After all migrations, NARRATIVA_PROMPT_MAP must be empty.
+    def test_narrativa_prompt_map_has_one_entry(self):
+        """After F-T1+F-T2, only GERAR_RELATORIO remains in NARRATIVA_PROMPT_MAP.
 
-        CORRIGIR was removed in F-T1. ANALISAR_HABILIDADES is removed in F-T2.
-        GERAR_RELATORIO was removed along with ANALISAR_HABILIDADES.
-        The map must now be completely empty {}.
+        CORRIGIR was removed in F-T1. ANALISAR_HABILIDADES removed in F-T2.
+        GERAR_RELATORIO remains until F-T3.
         """
         current_map = PipelineExecutor.NARRATIVA_PROMPT_MAP
-        assert len(current_map) == 0, (
-            f"After all migrations, NARRATIVA_PROMPT_MAP must be empty. "
+        assert len(current_map) == 1, (
+            f"After F-T1+F-T2, NARRATIVA_PROMPT_MAP must have 1 entry. "
             f"Currently has {len(current_map)}: {list(current_map.keys())}"
         )
 

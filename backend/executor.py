@@ -1121,6 +1121,66 @@ class PipelineExecutor:
             tools_to_use=["create_document", "execute_python_code"],
         )
     
+    async def analisar_habilidades(
+        self,
+        atividade_id: str,
+        aluno_id: str = None,
+        provider_id: str = None
+    ) -> ResultadoExecucao:
+        """Analisa habilidades do aluno using tool-use for dual output (JSON + PDF).
+
+        Migrated from two-pass narrative (F-T2): single executar_com_tools() call
+        with create_document (JSON) + execute_python_code (PDF via E2B).
+        """
+        # Get context
+        atividade = self.storage.get_atividade(atividade_id)
+        if not atividade:
+            return self._erro(EtapaProcessamento.ANALISAR_HABILIDADES, "Atividade não encontrada")
+
+        turma = self.storage.get_turma(atividade.turma_id)
+        materia = self.storage.get_materia(turma.materia_id) if turma else None
+
+        # Get prompt
+        prompt = self.prompt_manager.get_prompt_padrao(
+            EtapaProcessamento.ANALISAR_HABILIDADES,
+            materia.id if materia else None,
+        )
+        if not prompt:
+            return self._erro(EtapaProcessamento.ANALISAR_HABILIDADES, "Prompt ANALISAR_HABILIDADES não encontrado")
+
+        # Prepare variables
+        variaveis = self._preparar_variaveis_texto(
+            EtapaProcessamento.ANALISAR_HABILIDADES, atividade_id, aluno_id,
+            materia, atividade, usar_multimodal=True
+        )
+
+        # Prepare JSON context
+        contexto_json = self._preparar_contexto_json(
+            atividade_id, aluno_id, EtapaProcessamento.ANALISAR_HABILIDADES
+        )
+        contexto_json.pop("_documentos_faltantes", [])
+        contexto_json.pop("_documentos_carregados", [])
+        variaveis.update(contexto_json)
+
+        # Render prompt
+        prompt_renderizado = prompt.render(**variaveis)
+        prompt_sistema_raw = prompt.render_sistema(**variaveis)
+        prompt_sistema = prompt_sistema_raw if isinstance(prompt_sistema_raw, str) else ""
+
+        # Add tool-use instructions for dual output
+        tool_instructions = STAGE_TOOL_INSTRUCTIONS.get(EtapaProcessamento.ANALISAR_HABILIDADES, "")
+        full_system = prompt_sistema + tool_instructions
+
+        # Call with tools — single pass replaces two-pass narrative
+        return await self.executar_com_tools(
+            mensagem=prompt_renderizado,
+            atividade_id=atividade_id,
+            aluno_id=aluno_id,
+            provider_id=provider_id,
+            system_prompt=full_system,
+            tools_to_use=["create_document", "execute_python_code"],
+        )
+
     async def chat_com_documentos(
         self,
         mensagem: str,
@@ -1687,8 +1747,10 @@ class PipelineExecutor:
     # ============================================================
 
     # Maps analytical etapas to their internal narrative prompt IDs
-    # All 3 analytical stages migrated to tool-use dual output (F-T1, F-T2, F-T3)
-    NARRATIVA_PROMPT_MAP = {}
+    # CORRIGIR removed (F-T1), ANALISAR_HABILIDADES removed (F-T2)
+    NARRATIVA_PROMPT_MAP = {
+        EtapaProcessamento.GERAR_RELATORIO: "internal_narrativa_gerar_relatorio",
+    }
 
     async def _gerar_narrativa_pdf(
         self,
