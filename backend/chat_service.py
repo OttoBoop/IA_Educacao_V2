@@ -779,9 +779,18 @@ class ChatClient:
             docs_text = self._formatar_documentos(documentos_contexto)
             system = f"{system}\n\n## DOCUMENTOS DISPONÍVEIS:\n{docs_text}"
 
-        # Currently only Anthropic supports tool use in this implementation
         if self.config.tipo == ProviderType.ANTHROPIC:
             return await self._chat_anthropic_with_tools(
+                mensagem=mensagem,
+                historico=historico or [],
+                system=system,
+                tools=tools,
+                tool_registry=tool_registry,
+                context=context,
+                max_iterations=max_iterations
+            )
+        elif self.config.tipo == ProviderType.OPENAI:
+            return await self._chat_openai_with_tools(
                 mensagem=mensagem,
                 historico=historico or [],
                 system=system,
@@ -1112,6 +1121,148 @@ class ChatClient:
             if block.get("type") == "text":
                 texts.append(block.get("text", ""))
         return "\n".join(texts)
+
+    def _convert_tools_to_openai_format(self, anthropic_tools: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+        """Convert Anthropic tool format to OpenAI tool format"""
+        openai_tools = []
+        for tool in anthropic_tools:
+            openai_tools.append({
+                "type": "function",
+                "function": {
+                    "name": tool["name"],
+                    "description": tool.get("description", ""),
+                    "parameters": tool.get("input_schema", {})
+                }
+            })
+        return openai_tools
+
+    async def _chat_openai_with_tools(
+        self,
+        mensagem: str,
+        historico: List,
+        system: str,
+        tools: List[Dict[str, Any]],
+        tool_registry: ToolRegistry,
+        context: Optional[ToolExecutionContext] = None,
+        max_iterations: int = 10
+    ) -> Dict:
+        """Chat com API OpenAI with tool use support"""
+        is_reasoning = self._is_reasoning_model()
+        system_role = "developer" if is_reasoning else "system"
+        messages = [{"role": system_role, "content": system}]
+
+        if historico:
+            for msg in historico:
+                role = msg.get("role", "user")
+                if role == "system" and is_reasoning:
+                    role = "developer"
+                messages.append({"role": role, "content": msg.get("content", "")})
+
+        messages.append({"role": "user", "content": mensagem})
+
+        openai_tools = self._convert_tools_to_openai_format(tools)
+        total_tokens = 0
+        all_tool_calls = []
+
+        for iteration in range(max_iterations):
+            params = self._build_params()
+            params["messages"] = messages
+            params["tools"] = openai_tools
+
+            async with httpx.AsyncClient(timeout=120.0) as client:
+                response = await client.post(
+                    f"{self.base_url}/chat/completions",
+                    headers={
+                        "Authorization": f"Bearer {self.api_key}",
+                        "Content-Type": "application/json"
+                    },
+                    json=params
+                )
+
+                if response.status_code != 200:
+                    raise Exception(f"Erro API OpenAI: {response.status_code} - {response.text}")
+
+                data = response.json()
+
+            # Track tokens
+            usage = data.get("usage", {})
+            total_tokens += usage.get("total_tokens", 0) or (
+                usage.get("prompt_tokens", 0) + usage.get("completion_tokens", 0)
+            )
+
+            choice = data["choices"][0]
+            finish_reason = choice.get("finish_reason")
+            message = choice.get("message", {})
+
+            if finish_reason == "stop":
+                return {
+                    "content": message.get("content", ""),
+                    "tokens": total_tokens,
+                    "modelo": self.config.modelo,
+                    "provider": self.config.tipo.value,
+                    "tool_calls": all_tool_calls
+                }
+
+            elif finish_reason == "tool_calls":
+                # Extract and execute tool calls
+                tool_calls_data = message.get("tool_calls", [])
+                tool_results_messages = []
+
+                for tc in tool_calls_data:
+                    tc_id = tc["id"]
+                    func = tc["function"]
+                    tool_name = func["name"]
+                    tool_input = json.loads(func["arguments"])
+
+                    all_tool_calls.append({
+                        "id": tc_id,
+                        "name": tool_name,
+                        "input": tool_input
+                    })
+
+                    result = await tool_registry.execute(
+                        tool_name=tool_name,
+                        tool_input=tool_input,
+                        tool_use_id=tc_id,
+                        context=context
+                    )
+
+                    tool_results_messages.append({
+                        "role": "tool",
+                        "tool_call_id": tc_id,
+                        "content": result.content if isinstance(result.content, str) else json.dumps(result.content)
+                    })
+
+                # Add assistant message with tool calls
+                messages.append({
+                    "role": "assistant",
+                    "content": message.get("content"),
+                    "tool_calls": tool_calls_data
+                })
+
+                # Add tool results
+                messages.extend(tool_results_messages)
+
+            else:
+                # Unexpected finish reason (length, content_filter, etc.)
+                return {
+                    "content": message.get("content", ""),
+                    "tokens": total_tokens,
+                    "modelo": self.config.modelo,
+                    "provider": self.config.tipo.value,
+                    "tool_calls": all_tool_calls,
+                    "stop_reason": finish_reason
+                }
+
+        # Max iterations reached
+        return {
+            "content": "[Maximum tool iterations reached]",
+            "tokens": total_tokens,
+            "modelo": self.config.modelo,
+            "provider": self.config.tipo.value,
+            "tool_calls": all_tool_calls,
+            "error": "max_iterations_exceeded"
+        }
 
     async def _chat_google(self, mensagem: str, historico: List, system: str) -> Dict:
         """Chat com API Google/Gemini"""
