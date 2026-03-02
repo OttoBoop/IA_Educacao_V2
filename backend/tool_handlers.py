@@ -11,9 +11,12 @@ Each handler returns:
 
 from typing import Dict, Any, Optional, List
 import json
+import logging
 import re
 
 from tools import ToolResult, ToolExecutionContext
+
+logger = logging.getLogger(__name__)
 
 
 # =============================================================================
@@ -101,32 +104,36 @@ async def handle_execute_python_code(
             )
 
         elif result.status == ExecutionStatus.SECURITY_VIOLATION:
+            logger.error("[E2B_SECURITY] Code blocked due to security violation: %s", result.error_message)
             return ToolResult(
                 tool_use_id="",
-                content=f"**Security Error:** The code was blocked due to security violations.\n\nDetails: {result.error_message}",
+                content=f"[E2B_SECURITY] **Security Error:** The code was blocked due to security violations.\n\nDetails: {result.error_message}",
                 is_error=True
             )
 
         elif result.status == ExecutionStatus.TIMEOUT:
+            logger.error("[E2B_TIMEOUT] Code execution exceeded time limit. Partial output: %s", result.stdout[:200])
             return ToolResult(
                 tool_use_id="",
-                content=f"**Timeout Error:** Code execution exceeded the time limit.\n\nPartial output:\n```\n{result.stdout[:1000]}\n```",
+                content=f"[E2B_TIMEOUT] **Timeout Error:** Code execution exceeded the time limit.\n\nPartial output:\n```\n{result.stdout[:1000]}\n```",
                 is_error=True
             )
 
         else:
             # General error
             error_msg = result.stderr or result.error_message or "Unknown error"
+            logger.error("[E2B_ERROR] Code execution failed: %s", error_msg[:500])
             return ToolResult(
                 tool_use_id="",
-                content=f"**Execution Error:**\n```\n{error_msg[:3000]}\n```",
+                content=f"[E2B_ERROR] **Execution Error:**\n```\n{error_msg[:3000]}\n```",
                 is_error=True
             )
 
     except Exception as e:
+        logger.error("[E2B_INTERNAL] Failed to execute code: %s", str(e), exc_info=True)
         return ToolResult(
             tool_use_id="",
-            content=f"**Internal Error:** Failed to execute code: {str(e)}",
+            content=f"[E2B_INTERNAL] **Internal Error:** Failed to execute code: {str(e)}",
             is_error=True
         )
 
