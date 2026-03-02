@@ -567,6 +567,42 @@ DESEMPENHO_TIPO_MAP = {
 # Threshold in seconds for grouping docs into the same pipeline run
 _RUN_GROUP_THRESHOLD_SECONDS = 60
 
+# Max chars for inline report preview
+_PREVIEW_MAX_CHARS = 200
+
+
+def _extract_preview(doc_list) -> str:
+    """Extract a short prose preview from the first readable markdown doc in the run.
+
+    Strips markdown headers (# lines) and returns the first _PREVIEW_MAX_CHARS
+    characters of prose content, with '...' appended if truncated.
+    """
+    import re
+    for doc in doc_list:
+        if not getattr(doc, 'caminho_arquivo', None):
+            continue
+        try:
+            resolved = storage.resolver_caminho_documento(doc)
+            with open(resolved, 'r', encoding='utf-8') as f:
+                content = f.read(2000)  # Read enough to find prose
+            # Strip markdown headers and blank lines
+            lines = content.split('\n')
+            prose_lines = [
+                line for line in lines
+                if line.strip() and not re.match(r'^#{1,6}\s', line.strip())
+                and not line.strip().startswith('**Turma:**')
+                and not line.strip().startswith('**Matéria:**')
+            ]
+            prose = ' '.join(prose_lines).strip()
+            if not prose:
+                continue
+            if len(prose) > _PREVIEW_MAX_CHARS:
+                return prose[:_PREVIEW_MAX_CHARS] + '...'
+            return prose
+        except Exception:
+            continue
+    return ""
+
 
 def _make_run(doc_list):
     """Create a run dict from a list of Documento objects."""
@@ -575,6 +611,7 @@ def _make_run(doc_list):
         "id": f"run-{run_date.strftime('%Y%m%d-%H%M%S')}",
         "date": run_date.isoformat(),
         "docs": [_doc_to_dict(d) for d in doc_list],
+        "preview": _extract_preview(doc_list),
     }
 
 
