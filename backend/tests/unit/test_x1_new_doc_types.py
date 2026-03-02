@@ -109,32 +109,32 @@ def test_tipo_map_includes_relatorio_desempenho_materia():
 # ============================================================
 
 def test_dependencias_documentos_has_relatorio_desempenho_tarefa():
-    """DEPENDENCIAS_DOCUMENTOS must have entry for RELATORIO_DESEMPENHO_TAREFA requiring RELATORIO_NARRATIVO."""
+    """DEPENDENCIAS_DOCUMENTOS must have entry for RELATORIO_DESEMPENHO_TAREFA requiring RELATORIO_FINAL."""
     from models import TipoDocumento, DEPENDENCIAS_DOCUMENTOS
     assert TipoDocumento.RELATORIO_DESEMPENHO_TAREFA in DEPENDENCIAS_DOCUMENTOS, (
         "DEPENDENCIAS_DOCUMENTOS must have an entry for TipoDocumento.RELATORIO_DESEMPENHO_TAREFA. "
-        "It should require TipoDocumento.RELATORIO_NARRATIVO as an obligatory dependency."
+        "It should require TipoDocumento.RELATORIO_FINAL as an obligatory dependency."
     )
     deps = DEPENDENCIAS_DOCUMENTOS[TipoDocumento.RELATORIO_DESEMPENHO_TAREFA]
-    assert TipoDocumento.RELATORIO_NARRATIVO in deps["obrigatorios"], (
-        "RELATORIO_DESEMPENHO_TAREFA must have RELATORIO_NARRATIVO as a required input."
+    assert TipoDocumento.RELATORIO_FINAL in deps["obrigatorios"], (
+        "RELATORIO_DESEMPENHO_TAREFA must have RELATORIO_FINAL as a required input."
     )
 
 
 def test_dependencias_documentos_has_relatorio_desempenho_turma():
-    """DEPENDENCIAS_DOCUMENTOS must have entry for RELATORIO_DESEMPENHO_TURMA requiring RELATORIO_NARRATIVO."""
+    """DEPENDENCIAS_DOCUMENTOS must have entry for RELATORIO_DESEMPENHO_TURMA requiring RELATORIO_FINAL."""
     from models import TipoDocumento, DEPENDENCIAS_DOCUMENTOS
     assert TipoDocumento.RELATORIO_DESEMPENHO_TURMA in DEPENDENCIAS_DOCUMENTOS
     deps = DEPENDENCIAS_DOCUMENTOS[TipoDocumento.RELATORIO_DESEMPENHO_TURMA]
-    assert TipoDocumento.RELATORIO_NARRATIVO in deps["obrigatorios"]
+    assert TipoDocumento.RELATORIO_FINAL in deps["obrigatorios"]
 
 
 def test_dependencias_documentos_has_relatorio_desempenho_materia():
-    """DEPENDENCIAS_DOCUMENTOS must have entry for RELATORIO_DESEMPENHO_MATERIA requiring RELATORIO_NARRATIVO."""
+    """DEPENDENCIAS_DOCUMENTOS must have entry for RELATORIO_DESEMPENHO_MATERIA requiring RELATORIO_FINAL."""
     from models import TipoDocumento, DEPENDENCIAS_DOCUMENTOS
     assert TipoDocumento.RELATORIO_DESEMPENHO_MATERIA in DEPENDENCIAS_DOCUMENTOS
     deps = DEPENDENCIAS_DOCUMENTOS[TipoDocumento.RELATORIO_DESEMPENHO_MATERIA]
-    assert TipoDocumento.RELATORIO_NARRATIVO in deps["obrigatorios"]
+    assert TipoDocumento.RELATORIO_FINAL in deps["obrigatorios"]
 
 
 # ============================================================

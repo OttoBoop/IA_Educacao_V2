@@ -58,10 +58,10 @@ def narrative_files():
 
 
 def _make_doc(aluno_id: str, path: str):
-    """Create a mock RELATORIO_NARRATIVO document with a real file path."""
+    """Create a mock RELATORIO_FINAL document with a real file path."""
     from models import TipoDocumento
     doc = MagicMock()
-    doc.tipo = TipoDocumento.RELATORIO_NARRATIVO
+    doc.tipo = TipoDocumento.RELATORIO_FINAL
     doc.aluno_id = aluno_id
     doc.caminho_arquivo = path
     return doc
@@ -103,6 +103,9 @@ def executor_integration():
 
     # Mock _gerar_formatos_extras (skip PDF generation)
     executor._gerar_formatos_extras = AsyncMock()
+
+    # Mock resolver_caminho_documento to return the doc's file path
+    executor.storage.resolver_caminho_documento.side_effect = lambda doc: doc.caminho_arquivo
 
     # Mock storage.salvar_documento to return a valid doc
     mock_saved_doc = MagicMock()

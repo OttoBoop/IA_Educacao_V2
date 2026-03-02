@@ -154,11 +154,14 @@ def executor_b6(narrative_temp_files):
     mock_docs = []
     for f in narrative_temp_files:
         doc = MagicMock()
-        doc.tipo = TipoDocumento.RELATORIO_NARRATIVO
+        doc.tipo = TipoDocumento.RELATORIO_FINAL
         doc.aluno_id = f["aluno_id"]
         doc.caminho_arquivo = f["path"]
         mock_docs.append(doc)
     executor.storage.listar_documentos.return_value = mock_docs
+
+    # Mock resolver_caminho_documento to return the doc's file path
+    executor.storage.resolver_caminho_documento.side_effect = lambda doc: doc.caminho_arquivo
 
     # --- Prompt manager mock ---
     mock_prompt = MagicMock()

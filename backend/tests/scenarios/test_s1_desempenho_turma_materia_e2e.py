@@ -90,10 +90,10 @@ def multi_turma_scenario():
 
 
 def _make_mock_doc(aluno_id: str, path: str):
-    """Create a mock RELATORIO_NARRATIVO document."""
+    """Create a mock RELATORIO_FINAL document."""
     from models import TipoDocumento
     doc = MagicMock()
-    doc.tipo = TipoDocumento.RELATORIO_NARRATIVO
+    doc.tipo = TipoDocumento.RELATORIO_FINAL
     doc.aluno_id = aluno_id
     doc.caminho_arquivo = path
     return doc
@@ -188,6 +188,9 @@ def executor_turma(multi_turma_scenario):
             for a in turma_data["alunos"]
         ]
     storage.listar_documentos.side_effect = docs_for_atividade
+
+    # Mock resolver_caminho_documento to return the doc's file path
+    storage.resolver_caminho_documento.side_effect = lambda doc: doc.caminho_arquivo
 
     executor.storage = storage
 
@@ -316,6 +319,9 @@ def executor_materia(multi_turma_scenario):
             for a in cenario["turmas"][0]["alunos"]
         ]
     storage.listar_documentos.side_effect = docs_for_atividade
+
+    # Mock resolver_caminho_documento to return the doc's file path
+    storage.resolver_caminho_documento.side_effect = lambda doc: doc.caminho_arquivo
 
     executor.storage = storage
 
