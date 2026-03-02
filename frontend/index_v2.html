@@ -3819,6 +3819,19 @@
                     <input type="file" class="form-input" id="input-upload-provas-files" multiple accept=".pdf,.docx,.doc,.png,.jpg,.jpeg">
                 </div>
                 <input type="hidden" id="input-upload-provas-atividade-id">
+                <!-- Batch preview table (F5-T1): populated by JS on file selection -->
+                <div id="batch-preview-container" style="display: none; margin-top: 12px;">
+                    <table class="batch-preview-table" style="width: 100%; border-collapse: collapse;">
+                        <thead>
+                            <tr>
+                                <th style="text-align: left; padding: 6px 8px; border-bottom: 1px solid var(--border-color);">Arquivo</th>
+                                <th style="text-align: left; padding: 6px 8px; border-bottom: 1px solid var(--border-color);">Aluno</th>
+                                <th style="text-align: left; padding: 6px 8px; border-bottom: 1px solid var(--border-color);">Nome do Documento</th>
+                            </tr>
+                        </thead>
+                        <tbody id="batch-preview-body"></tbody>
+                    </table>
+                </div>
             </div>
             <div class="modal-footer">
                 <button class="btn" onclick="closeModal('modal-upload-provas')">Cancelar</button>
@@ -3959,6 +3972,43 @@
             <div class="modal-footer">
                 <button class="btn" onclick="closeModal('modal-pipeline-completo')">Cancelar</button>
                 <button class="btn btn-primary" id="btn-executar-pipeline" onclick="executarPipelineCompleto()">Executar Pipeline</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal: Desempenho Settings (G-T1) -->
+    <div class="modal-overlay" id="modal-desempenho-settings">
+        <div class="modal">
+            <div class="modal-header">
+                <h3 class="modal-title">Configurar Relatório de Desempenho</h3>
+                <button class="modal-close" onclick="closeModal('modal-desempenho-settings')">×</button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label class="form-label">Modelo de IA</label>
+                    <select class="form-select" id="input-desempenho-provider"></select>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Prompt</label>
+                    <select class="form-select" id="input-desempenho-prompt">
+                        <option value="">Usar prompt padrão</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+                        <input type="checkbox" id="input-desempenho-force-rerun">
+                        Forçar re-execução (criar nova versão)
+                    </label>
+                    <small style="color: var(--text-muted); display: block; margin-top: 4px;">
+                        Se marcado, gera um novo relatório mesmo se já existir um.
+                    </small>
+                </div>
+                <input type="hidden" id="input-desempenho-level">
+                <input type="hidden" id="input-desempenho-entity-id">
+            </div>
+            <div class="modal-footer">
+                <button class="btn" onclick="closeModal('modal-desempenho-settings')">Cancelar</button>
+                <button class="btn btn-primary" onclick="executarDesempenhoFromModal()">Gerar Relatório</button>
             </div>
         </div>
     </div>
@@ -6631,6 +6681,15 @@
                         <div class="stat-card"><div class="stat-value">${data.alunos.com_prova}</div><div class="stat-label">Provas entregues</div></div>
                         <div class="stat-card"><div class="stat-value">${data.alunos.corrigidos}</div><div class="stat-label">Corrigidos</div></div>
                     </div>
+                    <div id="doc-filter-bar" style="display: flex; gap: 8px; align-items: center; margin-bottom: 12px; flex-wrap: wrap;">
+                        <input type="text" id="filter-doc-search" class="form-input" placeholder="Buscar por nome..." style="flex: 1; min-width: 180px; max-width: 300px;">
+                        <select id="filter-doc-tipo" class="form-select" style="min-width: 140px; max-width: 200px;">
+                            <option value="">Todos os tipos</option>
+                        </select>
+                        <select id="filter-doc-aluno" class="form-select" style="min-width: 140px; max-width: 200px;">
+                            <option value="">Todos os alunos</option>
+                        </select>
+                    </div>
                     <div class="card">
                         <div class="card-header"><h3 class="card-title">📄 Documentos da Atividade</h3><button class="btn btn-primary btn-sm" onclick="openModalUpload('${atividadeId}', 'base')">+ Upload</button></div>
                         <div id="docs-base">${renderDocsBase(data.documentos_base.existentes, atividadeId, data.documentos_base.detalhes || {})}</div>
@@ -8834,6 +8893,56 @@
                 container.innerHTML = `<div style="color: var(--text-muted); font-size: 0.85rem; padding: 4px 0;">
                     Não foi possível carregar o conteúdo.</div>`;
             }
+        }
+
+        // G-T1: Desempenho settings modal — populate dropdowns
+        async function carregarDesempenhoProviders() {
+            try {
+                const [modelsData, promptsData] = await Promise.all([
+                    api('/settings/models').catch(() => ({ models: [] })),
+                    api('/prompts').catch(() => ({ prompts: [] }))
+                ]);
+
+                const models = modelsData.models || [];
+                const prompts = promptsData.prompts || [];
+
+                // Model dropdown
+                const modelSelect = document.getElementById('input-desempenho-provider');
+                if (modelSelect) {
+                    modelSelect.innerHTML = models.map(m =>
+                        `<option value="${m.id}" ${m.is_default ? 'selected' : ''}>${escapeHtml(m.nome)} (${m.modelo})${m.is_default ? ' ⭐ Padrão' : ''}</option>`
+                    ).join('') || '<option value="">Nenhum modelo configurado</option>';
+                }
+
+                // Prompt dropdown — filter for desempenho etapas
+                const desempenhoEtapas = ['desempenho_tarefa', 'desempenho_turma', 'desempenho_materia'];
+                const desempenhoPrompts = prompts.filter(p => desempenhoEtapas.includes(p.etapa));
+                const promptSelect = document.getElementById('input-desempenho-prompt');
+                if (promptSelect) {
+                    const promptOptions = desempenhoPrompts.map(p =>
+                        `<option value="${p.id}">${escapeHtml(p.nome)} (${p.etapa})${p.is_padrao ? ' ⭐' : ''}</option>`
+                    ).join('');
+                    promptSelect.innerHTML = '<option value="">Usar prompt padrão</option>' + promptOptions;
+                }
+            } catch (e) {
+                console.error('Erro ao carregar modelos/prompts para desempenho:', e);
+            }
+        }
+
+        // G-T1: Open desempenho settings modal
+        async function openDesempenhoSettings(level, entityId) {
+            document.getElementById('input-desempenho-level').value = level;
+            document.getElementById('input-desempenho-entity-id').value = entityId;
+            await carregarDesempenhoProviders();
+            openModal('modal-desempenho-settings');
+        }
+
+        // G-T1: Execute from modal — reads settings and calls executarDesempenho
+        function executarDesempenhoFromModal() {
+            const level = document.getElementById('input-desempenho-level').value;
+            const entityId = document.getElementById('input-desempenho-entity-id').value;
+            closeModal('modal-desempenho-settings');
+            executarDesempenho(level, entityId);
         }
 
         // B-T4: Progress indicator state
