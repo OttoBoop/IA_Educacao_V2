@@ -122,6 +122,128 @@ ResultadoEtapa = ResultadoExecucao
 
 
 # ============================================================
+# STAGE TOOL-USE CONFIGURATION (F-T1+)
+# Maps analytical stages to their tool-use config for dual output
+# ============================================================
+
+STAGE_TOOLS: Dict[str, List[str]] = {
+    EtapaProcessamento.CORRIGIR: ["create_document", "execute_python_code"],
+}
+
+STAGE_TOOL_INSTRUCTIONS: Dict[str, str] = {
+    EtapaProcessamento.CORRIGIR: (
+        "\n\n## Instruções de Saída (Tool-Use)\n\n"
+        "Você DEVE produzir DUAS saídas usando as ferramentas disponíveis:\n\n"
+        "### 1. Documento JSON (use a ferramenta `create_document`)\n"
+        "Crie um documento JSON com o resultado estruturado da correção:\n"
+        "- `nota_final`: número (nota total do aluno)\n"
+        "- `nota_maxima`: número (nota máxima possível)\n"
+        "- `questoes`: lista de objetos com: numero, nota, nota_maxima, acertou, comentario\n"
+        "- `observacoes`: texto com observações gerais\n"
+        "- `aluno`: nome do aluno\n"
+        "- `materia`: nome da matéria\n"
+        "- `atividade`: nome da atividade\n\n"
+        "### 2. Relatório PDF (use a ferramenta `execute_python_code`)\n"
+        "Gere um PDF formatado com o relatório narrativo da correção usando reportlab.\n"
+        "O PDF deve conter: cabeçalho com dados do aluno, tabela de notas por questão, "
+        "e análise narrativa.\n"
+    ),
+}
+
+
+# ============================================================
+# STAGE TOOL CONFIGURATION (F-T1, F-T2, F-T3)
+# ============================================================
+
+STAGE_TOOLS: Dict[EtapaProcessamento, List[str]] = {
+    EtapaProcessamento.CORRIGIR: ["create_document", "execute_python_code"],
+    EtapaProcessamento.ANALISAR_HABILIDADES: ["create_document", "execute_python_code"],
+    EtapaProcessamento.GERAR_RELATORIO: ["create_document", "execute_python_code"],
+}
+
+STAGE_TOOL_INSTRUCTIONS: Dict[EtapaProcessamento, str] = {
+    EtapaProcessamento.CORRIGIR: """
+INSTRUÇÕES DE TOOL-USE PARA CORREÇÃO:
+=====================================
+Você DEVE usar as ferramentas disponíveis para produzir dois outputs:
+
+1. **create_document** — Salve o resultado da correção como JSON com o schema:
+   {
+     "nota_final": <float>,
+     "questoes": [
+       {"numero": <int>, "nota": <float>, "nota_maxima": <float>, "acerto": <bool>, "feedback": "<str>"}
+     ],
+     "total_acertos": <int>,
+     "total_erros": <int>,
+     "feedback_geral": "<str>"
+   }
+   Use extensão .json e nome descritivo (ex: "correcao_aluno.json").
+
+2. **execute_python_code** — Gere um PDF estilizado com reportlab contendo:
+   - Cabeçalho com nome do aluno, matéria e data
+   - Nota final em destaque
+   - Tabela de questões com status (acerto/erro) e feedback
+   - Resumo geral
+   Use extensão .pdf e nome descritivo.
+""",
+    EtapaProcessamento.ANALISAR_HABILIDADES: """
+INSTRUÇÕES DE TOOL-USE PARA ANÁLISE DE HABILIDADES:
+====================================================
+Você DEVE usar as ferramentas disponíveis para produzir dois outputs:
+
+1. **create_document** — Salve a análise como JSON com o schema:
+   {
+     "habilidades": [
+       {"nome": "<str>", "nivel": "<str>", "evidencias": ["<str>"], "nota": <float>}
+     ],
+     "indicadores": {
+       "proficiencia_geral": <float>,
+       "areas_destaque": ["<str>"],
+       "areas_atencao": ["<str>"]
+     },
+     "recomendacoes": [
+       {"tipo": "<str>", "descricao": "<str>", "prioridade": "<str>"}
+     ]
+   }
+   Use extensão .json e nome descritivo.
+
+2. **execute_python_code** — Gere um PDF estilizado com reportlab contendo:
+   - Cabeçalho com identificação do aluno
+   - Lista de habilidades com níveis e indicadores visuais
+   - Indicadores de proficiência
+   - Recomendações pedagógicas priorizadas
+   Use extensão .pdf.
+""",
+    EtapaProcessamento.GERAR_RELATORIO: """
+INSTRUÇÕES DE TOOL-USE PARA RELATÓRIO FINAL:
+=============================================
+Você DEVE usar as ferramentas disponíveis para produzir dois outputs:
+
+1. **create_document** — Salve o relatório como JSON com o schema:
+   {
+     "resumo_geral": "<str>",
+     "pontos_fortes": ["<str>"],
+     "areas_melhoria": ["<str>"],
+     "recomendacoes": [
+       {"tipo": "<str>", "descricao": "<str>", "prioridade": "<str>"}
+     ],
+     "nota_final": <float>,
+     "detalhamento": "<str>"
+   }
+   Use extensão .json e nome descritivo.
+
+2. **execute_python_code** — Gere um PDF estilizado com reportlab contendo:
+   - Cabeçalho com dados do aluno e atividade
+   - Resumo geral narrativo
+   - Pontos fortes destacados
+   - Áreas de melhoria
+   - Recomendações pedagógicas
+   Use extensão .pdf.
+""",
+}
+
+
+# ============================================================
 # PIPELINE EXECUTOR UNIFICADO
 # ============================================================
 
@@ -959,13 +1081,74 @@ class PipelineExecutor:
         aluno_id: str,
         provider_id: str = None
     ) -> ResultadoExecucao:
-        """Corrige a prova do aluno"""
-        return await self.executar_etapa(
-            etapa=EtapaProcessamento.CORRIGIR,
+        """Corrige a prova do aluno using tool-use for dual output (JSON + PDF).
+
+        Migrated from two-pass narrative (F-T1): single executar_com_tools() call
+        with create_document (JSON) + execute_python_code (PDF via E2B).
+        """
+        # Get context
+        atividade = self.storage.get_atividade(atividade_id)
+        if not atividade:
+            return self._erro(EtapaProcessamento.CORRIGIR, "Atividade não encontrada")
+
+        turma = self.storage.get_turma(atividade.turma_id)
+        materia = self.storage.get_materia(turma.materia_id) if turma else None
+
+        # Get prompt
+        prompt = self.prompt_manager.get_prompt_padrao(
+            EtapaProcessamento.CORRIGIR,
+            materia.id if materia else None,
+        )
+        if not prompt:
+            return self._erro(EtapaProcessamento.CORRIGIR, "Prompt CORRIGIR não encontrado")
+
+        # Prepare variables
+        variaveis = self._preparar_variaveis_texto(
+            EtapaProcessamento.CORRIGIR, atividade_id, aluno_id,
+            materia, atividade, usar_multimodal=True
+        )
+
+        # Prepare JSON context (extracted questions, answers, rubric)
+        contexto_json = self._preparar_contexto_json(
+            atividade_id, aluno_id, EtapaProcessamento.CORRIGIR
+        )
+        contexto_json.pop("_documentos_faltantes", [])
+        contexto_json.pop("_documentos_carregados", [])
+        variaveis.update(contexto_json)
+
+        # Render prompt
+        prompt_renderizado = prompt.render(**variaveis)
+        prompt_sistema_raw = prompt.render_sistema(**variaveis)
+        prompt_sistema = prompt_sistema_raw if isinstance(prompt_sistema_raw, str) else ""
+
+        # Add tool-use instructions for dual output
+        tool_instructions = (
+            "\n\n## Instruções de Saída (Tool-Use)\n\n"
+            "Você DEVE produzir DUAS saídas usando as ferramentas disponíveis:\n\n"
+            "### 1. Documento JSON (use a ferramenta `create_document`)\n"
+            "Crie um documento JSON com o resultado estruturado da correção:\n"
+            "- `nota_final`: número (nota total do aluno)\n"
+            "- `nota_maxima`: número (nota máxima possível)\n"
+            "- `questoes`: lista de objetos com: numero, nota, nota_maxima, acertou, comentario\n"
+            "- `observacoes`: texto com observações gerais\n"
+            "- `aluno`: nome do aluno\n"
+            "- `materia`: nome da matéria\n"
+            "- `atividade`: nome da atividade\n\n"
+            "### 2. Relatório PDF (use a ferramenta `execute_python_code`)\n"
+            "Gere um PDF formatado com o relatório narrativo da correção usando reportlab.\n"
+            "O PDF deve conter: cabeçalho com dados do aluno, tabela de notas por questão, "
+            "e análise narrativa.\n"
+        )
+        full_system = prompt_sistema + tool_instructions
+
+        # Call with tools — single pass replaces two-pass narrative
+        return await self.executar_com_tools(
+            mensagem=prompt_renderizado,
             atividade_id=atividade_id,
             aluno_id=aluno_id,
-            provider_name=provider_id,
-            usar_multimodal=True
+            provider_id=provider_id,
+            system_prompt=full_system,
+            tools_to_use=["create_document", "execute_python_code"],
         )
     
     async def chat_com_documentos(
@@ -1534,11 +1717,8 @@ class PipelineExecutor:
     # ============================================================
 
     # Maps analytical etapas to their internal narrative prompt IDs
-    NARRATIVA_PROMPT_MAP = {
-        EtapaProcessamento.CORRIGIR: "internal_narrativa_corrigir",
-        EtapaProcessamento.ANALISAR_HABILIDADES: "internal_narrativa_analisar_habilidades",
-        EtapaProcessamento.GERAR_RELATORIO: "internal_narrativa_gerar_relatorio",
-    }
+    # All 3 stages migrated to tool-use dual output (F-T1, F-T2, F-T3)
+    NARRATIVA_PROMPT_MAP = {}
 
     async def _gerar_narrativa_pdf(
         self,
