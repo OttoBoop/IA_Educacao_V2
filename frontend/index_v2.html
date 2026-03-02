@@ -6704,6 +6704,7 @@
                 `;
                 window._atividadeData = data;
                 window._turmaData = turma;
+                setupDocFilters();
             } catch (e) {
                 if (_cardEl) {
                     _cardEl.classList.remove('card-loading');
@@ -6711,6 +6712,47 @@
                 }
                 showToast('Erro ao carregar atividade', 'error');
             }
+        }
+
+        function applyDocFilters() {
+            const searchText = document.getElementById('filter-doc-search').value.toLowerCase();
+            const tipoFilter = document.getElementById('filter-doc-tipo').value;
+            const alunoFilter = document.getElementById('filter-doc-aluno').value;
+
+            document.querySelectorAll('.doc-item').forEach(item => {
+                const name = (item.querySelector('.doc-name')?.textContent || '').toLowerCase();
+                const tipo = item.dataset.tipo || '';
+                const alunoId = item.dataset.alunoId || '';
+
+                const matchSearch = !searchText || name.includes(searchText);
+                const matchTipo = !tipoFilter || tipo === tipoFilter;
+                const matchAluno = !alunoFilter || alunoId === alunoFilter;
+
+                item.style.display = (matchSearch && matchTipo && matchAluno) ? '' : 'none';
+            });
+        }
+
+        function populateDocFilterDropdowns() {
+            const data = window._atividadeData;
+            if (!data) return;
+
+            document.getElementById('filter-doc-tipo').innerHTML = '<option value="">Todos os tipos</option>' +
+                Object.entries(TIPO_LABELS).map(([key, label]) =>
+                    `<option value="${key}">${escapeHtml(label)}</option>`
+                ).join('');
+
+            const alunos = data.alunos?.detalhes || [];
+            document.getElementById('filter-doc-aluno').innerHTML = '<option value="">Todos os alunos</option>' +
+                alunos.map(a =>
+                    `<option value="${a.aluno_id}">${escapeHtml(a.aluno_nome)}</option>`
+                ).join('');
+        }
+
+        function setupDocFilters() {
+            document.getElementById('filter-doc-search').oninput = applyDocFilters;
+            document.getElementById('filter-doc-tipo').onchange = applyDocFilters;
+            document.getElementById('filter-doc-aluno').onchange = applyDocFilters;
+            populateDocFilterDropdowns();
         }
 
         async function showAtividadeTab(tab, atividadeId) {
@@ -6782,7 +6824,7 @@
             }
 
             return `
-                <div class="doc-item doc-item-static">
+                <div class="doc-item doc-item-static" data-tipo="${doc.tipo || ''}" data-aluno-id="${doc.aluno_id || ''}">
                     <div class="doc-icon">${options.icon || '📄'}</div>
                     <div class="doc-info">
                         <div class="doc-name">${escapeHtml(doc.display_name || doc.nome_arquivo || doc.id)}</div>
@@ -7892,7 +7934,51 @@
                 return;
             }
             document.getElementById('input-upload-provas-atividade-id').value = atividadeId;
+            document.getElementById('input-upload-provas-files').onchange = populateBatchPreview;
             openModal('modal-upload-provas');
+        }
+
+        function populateBatchPreview() {
+            const filesInput = document.getElementById('input-upload-provas-files');
+            const container = document.getElementById('batch-preview-container');
+            const tbody = document.getElementById('batch-preview-body');
+
+            if (!filesInput.files.length) {
+                container.style.display = 'none';
+                tbody.innerHTML = '';
+                return;
+            }
+
+            const data = window._atividadeData;
+            const alunos = data?.alunos?.detalhes || [];
+            const materiaNome = window._turmaData?.materia?.nome || '';
+            const turmaNome = window._turmaData?.turma?.nome || '';
+
+            let rows = '';
+            Array.from(filesInput.files).forEach((file, idx) => {
+                const baseName = file.name.replace(/\.[^.]+$/, '');
+                const normalizedFile = baseName.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+
+                const matchedAluno = alunos.find(a => {
+                    const normalizedName = a.aluno_nome.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+                    return normalizedFile.includes(normalizedName) || normalizedName.includes(normalizedFile);
+                });
+
+                const alunoNome = matchedAluno?.aluno_nome || '';
+                const displayName = buildDisplayName('prova_respondida', alunoNome, materiaNome, turmaNome);
+                const alunoDisplay = matchedAluno
+                    ? escapeHtml(matchedAluno.aluno_nome)
+                    : '<span style="color: var(--danger-color);">Não identificado</span>';
+
+                rows += `<tr>
+                    <td style="padding: 6px 8px;">${escapeHtml(file.name)}</td>
+                    <td style="padding: 6px 8px;">${alunoDisplay}</td>
+                    <td style="padding: 6px 8px;"><input type="text" class="form-input batch-name-input" value="${escapeHtml(displayName)}" data-file-idx="${idx}" style="width: 100%;"></td>
+                </tr>`;
+            });
+
+            tbody.innerHTML = rows;
+            document.getElementById('batch-preview-container').style.display = 'block';
         }
 
         async function openModalExecucao(atividadeId) {

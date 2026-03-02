@@ -101,7 +101,7 @@ class TestRenderDocumentoItemDisplayName:
         assert func_start != -1, "renderDocumentoItem function not found"
 
         # Get the function body (until the next function or closing brace at same level)
-        func_body = html_content[func_start:func_start + 2000]
+        func_body = html_content[func_start:func_start + 2500]
 
         assert "doc.display_name" in func_body or "display_name" in func_body, (
             "renderDocumentoItem() must reference 'doc.display_name' to show "
@@ -115,7 +115,7 @@ class TestRenderDocumentoItemDisplayName:
         """
         func_start = html_content.find("function renderDocumentoItem(")
         assert func_start != -1
-        func_body = html_content[func_start:func_start + 2000]
+        func_body = html_content[func_start:func_start + 2500]
 
         # The doc-name div should use display_name with fallback
         doc_name_pattern = r'doc\.display_name\s*\|\|\s*doc\.nome_arquivo\s*\|\|\s*doc\.id'
