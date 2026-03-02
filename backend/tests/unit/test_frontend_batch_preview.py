@@ -1,14 +1,16 @@
 """
-Frontend structure tests for F5-T1: verify that index_v2.html contains
-the required HTML elements for the batch upload preview table.
+Frontend structure tests for F5-T1 + F5-T2: verify that index_v2.html contains
+the required HTML elements and JS functions for the batch upload preview.
 
 F5-T1: Batch upload modal must show a preview table after file selection,
        with columns for filename, matched student, and editable display_name.
+F5-T2: JS: on file selection, generate preview rows with auto-names using
+       buildDisplayName(). Each row has editable display_name input.
 
 These are structural RED/GREEN tests. Runtime UI verification is done via
 journey agent in Phase 5 (UX Validation).
 
-Plan: docs/PLAN_File_Naming_Document_Tracking.md  (F5-T1)
+Plan: docs/PLAN_File_Naming_Document_Tracking.md  (F5-T1, F5-T2)
 """
 import sys
 import os
@@ -99,4 +101,145 @@ class TestBatchUploadPreviewTable:
         assert "Nome do Documento" in container_area, (
             "Preview table must have a 'Nome do Documento' column header "
             "for the editable display_name field per file."
+        )
+
+
+# ============================================================
+# F5-T2: JS batch preview row generation
+# ============================================================
+
+class TestBatchPreviewRowGeneration:
+    """
+    F5-T2: On file selection in the batch upload modal, JS must populate
+    the preview table with rows showing filename, matched student, and
+    editable auto-generated display_name via buildDisplayName().
+    """
+
+    def test_batch_files_change_handler_exists(self, html_content):
+        """
+        There must be a JS function that handles file selection for batch
+        preview. It should be wired to the input-upload-provas-files change
+        event (either via addEventListener, onchange attribute, or .onchange).
+        """
+        # Option 1: addEventListener on the file input
+        has_add_listener = re.search(
+            r'input-upload-provas-files[^;]*\.addEventListener\s*\(\s*[\'"]change[\'"]',
+            html_content
+        )
+        # Option 2: onchange attribute on input element
+        has_onchange_attr = re.search(
+            r'id="input-upload-provas-files"[^>]*onchange=',
+            html_content
+        )
+        # Option 3: .onchange assignment in JS
+        has_onchange_assign = re.search(
+            r'input-upload-provas-files[^;]*\.onchange\s*=',
+            html_content
+        )
+
+        assert has_add_listener or has_onchange_attr or has_onchange_assign, (
+            "The batch file input (input-upload-provas-files) must have a change "
+            "event handler wired. This triggers the preview table population. "
+            "Wire via addEventListener('change', ...), onchange attribute, or "
+            ".onchange assignment."
+        )
+
+    def test_batch_preview_function_exists(self, html_content):
+        """
+        There must be a function that populates the batch preview table.
+        It should reference 'batch-preview-body' to insert rows.
+        """
+        # Look for a function that references batch-preview-body
+        # Could be named populateBatchPreview, onBatchFilesChange, etc.
+        has_func = re.search(
+            r'function\s+\w*[Bb]atch\w*\s*\(',
+            html_content
+        )
+        # Alternative: any function body that references batch-preview-body
+        has_body_ref = 'batch-preview-body' in html_content and re.search(
+            r'getElementById\s*\(\s*[\'"]batch-preview-body[\'"]',
+            html_content
+        )
+
+        assert has_func or has_body_ref, (
+            "There must be a JS function that populates the batch preview table. "
+            "It should reference 'batch-preview-body' via getElementById to insert "
+            "preview rows after file selection."
+        )
+
+    def test_batch_preview_calls_build_display_name(self, html_content):
+        """
+        The batch preview function must call buildDisplayName() to auto-generate
+        display names for each file in the batch.
+        """
+        # Find all code that references both batch-preview and buildDisplayName
+        # The function that populates the preview must call buildDisplayName
+        batch_funcs = re.finditer(
+            r'function\s+(\w*[Bb]atch\w*)\s*\([^)]*\)\s*\{',
+            html_content
+        )
+        found_build_call = False
+        for match in batch_funcs:
+            func_start = match.start()
+            func_body = html_content[func_start:func_start + 3000]
+            if 'buildDisplayName' in func_body:
+                found_build_call = True
+                break
+
+        assert found_build_call, (
+            "The batch preview function must call buildDisplayName() to generate "
+            "auto-suggested display names for each file. Each preview row needs "
+            "a name like 'Prova Respondida - Maria Silva - Cálculo I - Turma A'."
+        )
+
+    def test_batch_preview_shows_container(self, html_content):
+        """
+        The batch preview function must make the preview container visible
+        by setting display style via JS (not the static HTML attribute).
+        """
+        # Look for JS code that dynamically shows batch-preview-container
+        # Must be getElementById(...).style.display = ... (JS), not HTML attribute
+        has_display_set = re.search(
+            r'getElementById\s*\(\s*[\'"]batch-preview-container[\'"]\s*\)'
+            r'[^;]*\.style\.display\s*=',
+            html_content
+        )
+        has_remove_hidden = re.search(
+            r'getElementById\s*\(\s*[\'"]batch-preview-container[\'"]\s*\)'
+            r'[^;]*\.classList\.remove\s*\([\'"]hidden',
+            html_content
+        )
+
+        assert has_display_set or has_remove_hidden, (
+            "The batch preview function must dynamically show 'batch-preview-container' "
+            "via getElementById('batch-preview-container').style.display = 'block' "
+            "or classList.remove('hidden') after populating preview rows."
+        )
+
+    def test_batch_preview_rows_have_editable_name_input(self, html_content):
+        """
+        Each preview row must contain an editable input for the display_name
+        so users can customize names before upload.
+        """
+        # Find the batch preview function and check for input elements in rows
+        batch_funcs = re.finditer(
+            r'function\s+(\w*[Bb]atch\w*)\s*\([^)]*\)\s*\{',
+            html_content
+        )
+        found_input = False
+        for match in batch_funcs:
+            func_start = match.start()
+            func_body = html_content[func_start:func_start + 3000]
+            # Look for <input in the row template with type="text" or class for editing
+            if re.search(r'<input[^>]*type=[\'"]text[\'"]', func_body):
+                found_input = True
+                break
+            if re.search(r'<input[^>]*class=[\'"][^"]*batch-name', func_body):
+                found_input = True
+                break
+
+        assert found_input, (
+            "Each batch preview row must contain an editable <input type='text'> "
+            "for the display_name. Users must be able to customize the auto-generated "
+            "name before confirming the upload."
         )

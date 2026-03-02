@@ -1,14 +1,16 @@
 """
-Frontend structure tests for F8-T1: verify that index_v2.html contains
-the required HTML elements for the search/filter bar in the atividade view.
+Frontend structure tests for F8-T1 + F8-T2: verify that index_v2.html contains
+the required HTML elements and JS functions for the search/filter bar.
 
 F8-T1: The atividade document view must have a search/filter bar above
        the document list with text search, type filter, and student filter.
+F8-T2: JS: implement client-side filtering logic that filters the document
+       list by display_name substring, TipoDocumento, and student.
 
 These are structural RED/GREEN tests. Runtime UI verification is done via
 journey agent in Phase 5 (UX Validation).
 
-Plan: docs/PLAN_File_Naming_Document_Tracking.md  (F8-T1)
+Plan: docs/PLAN_File_Naming_Document_Tracking.md  (F8-T1, F8-T2)
 """
 import sys
 import os
@@ -99,4 +101,182 @@ class TestSearchFilterBar:
 
         assert 'placeholder=' in input_tag, (
             f"Search input must have a placeholder attribute. Got: {input_tag}"
+        )
+
+
+# ============================================================
+# F8-T2: Client-side filtering logic
+# ============================================================
+
+class TestDocumentFilteringLogic:
+    """
+    F8-T2: JS must implement client-side filtering that filters the
+    document list by display_name substring, TipoDocumento dropdown,
+    and student dropdown. Filters are client-side (no API call).
+    """
+
+    def test_filter_function_exists(self, html_content):
+        """
+        There must be a JS function that applies document filters.
+        Named something like applyDocFilters(), filterDocuments(), etc.
+        """
+        has_filter_func = re.search(
+            r'function\s+\w*[Ff]ilter\w*[Dd]oc\w*\s*\(',
+            html_content
+        ) or re.search(
+            r'function\s+applyDocFilters\s*\(',
+            html_content
+        ) or re.search(
+            r'function\s+\w*[Dd]oc\w*[Ff]ilter\w*\s*\(',
+            html_content
+        )
+
+        assert has_filter_func, (
+            "There must be a JS function for document filtering (e.g., "
+            "applyDocFilters(), filterDocuments(), filterDocList()). "
+            "This function reads the 3 filter inputs and shows/hides docs."
+        )
+
+    def test_filter_function_reads_search_input(self, html_content):
+        """
+        The filter function must read the text search value from
+        filter-doc-search to filter by display_name substring.
+        """
+        # Find any filter-related function that references filter-doc-search
+        filter_funcs = re.finditer(
+            r'function\s+(\w*[Ff]ilter\w*[Dd]oc\w*|\w*[Dd]oc\w*[Ff]ilter\w*|applyDocFilters)\s*\([^)]*\)\s*\{',
+            html_content
+        )
+        found_search_ref = False
+        for match in filter_funcs:
+            func_start = match.start()
+            func_body = html_content[func_start:func_start + 3000]
+            if 'filter-doc-search' in func_body:
+                found_search_ref = True
+                break
+
+        assert found_search_ref, (
+            "The filter function must read from 'filter-doc-search' input "
+            "to filter documents by display_name substring match."
+        )
+
+    def test_filter_function_reads_tipo_dropdown(self, html_content):
+        """
+        The filter function must read the tipo dropdown value from
+        filter-doc-tipo to filter by document type.
+        """
+        filter_funcs = re.finditer(
+            r'function\s+(\w*[Ff]ilter\w*[Dd]oc\w*|\w*[Dd]oc\w*[Ff]ilter\w*|applyDocFilters)\s*\([^)]*\)\s*\{',
+            html_content
+        )
+        found_tipo_ref = False
+        for match in filter_funcs:
+            func_start = match.start()
+            func_body = html_content[func_start:func_start + 3000]
+            if 'filter-doc-tipo' in func_body:
+                found_tipo_ref = True
+                break
+
+        assert found_tipo_ref, (
+            "The filter function must read from 'filter-doc-tipo' dropdown "
+            "to filter documents by TipoDocumento."
+        )
+
+    def test_filter_function_reads_aluno_dropdown(self, html_content):
+        """
+        The filter function must read the aluno dropdown value from
+        filter-doc-aluno to filter by student.
+        """
+        filter_funcs = re.finditer(
+            r'function\s+(\w*[Ff]ilter\w*[Dd]oc\w*|\w*[Dd]oc\w*[Ff]ilter\w*|applyDocFilters)\s*\([^)]*\)\s*\{',
+            html_content
+        )
+        found_aluno_ref = False
+        for match in filter_funcs:
+            func_start = match.start()
+            func_body = html_content[func_start:func_start + 3000]
+            if 'filter-doc-aluno' in func_body:
+                found_aluno_ref = True
+                break
+
+        assert found_aluno_ref, (
+            "The filter function must read from 'filter-doc-aluno' dropdown "
+            "to filter documents by student."
+        )
+
+    def test_filter_inputs_have_event_listeners(self, html_content):
+        """
+        All 3 filter inputs must have event listeners wired so the filter
+        function is called when the user types or selects.
+        """
+        # Check for addEventListener or onchange/oninput wiring for the filter inputs
+        has_search_listener = (
+            re.search(r'filter-doc-search[^;]*\.addEventListener\s*\(', html_content) or
+            re.search(r'filter-doc-search[^;]*\.oninput\s*=', html_content) or
+            re.search(r'filter-doc-search[^;]*\.onkeyup\s*=', html_content) or
+            re.search(r'id="filter-doc-search"[^>]*oninput=', html_content)
+        )
+        has_tipo_listener = (
+            re.search(r'filter-doc-tipo[^;]*\.addEventListener\s*\(', html_content) or
+            re.search(r'filter-doc-tipo[^;]*\.onchange\s*=', html_content) or
+            re.search(r'id="filter-doc-tipo"[^>]*onchange=', html_content)
+        )
+        has_aluno_listener = (
+            re.search(r'filter-doc-aluno[^;]*\.addEventListener\s*\(', html_content) or
+            re.search(r'filter-doc-aluno[^;]*\.onchange\s*=', html_content) or
+            re.search(r'id="filter-doc-aluno"[^>]*onchange=', html_content)
+        )
+
+        assert has_search_listener, (
+            "filter-doc-search must have an input/keyup event listener "
+            "to trigger filtering as the user types."
+        )
+        assert has_tipo_listener, (
+            "filter-doc-tipo must have a change event listener "
+            "to trigger filtering when the type is selected."
+        )
+        assert has_aluno_listener, (
+            "filter-doc-aluno must have a change event listener "
+            "to trigger filtering when a student is selected."
+        )
+
+    def test_tipo_dropdown_populated_from_data(self, html_content):
+        """
+        After showAtividade() loads data, the tipo dropdown must be
+        populated with document type options from TIPO_LABELS or the
+        loaded data. Look for code that populates filter-doc-tipo options.
+        """
+        # Look for code that adds options to filter-doc-tipo
+        has_populate = (
+            re.search(r'filter-doc-tipo[^;]*\.innerHTML\s*[+=]', html_content) or
+            re.search(r'filter-doc-tipo[^;]*\.appendChild', html_content) or
+            re.search(r'filter-doc-tipo[^;]*\.add\s*\(', html_content) or
+            re.search(r'filter-doc-tipo[^;]*\.insertAdjacentHTML', html_content) or
+            re.search(r'TIPO_LABELS[^;]*filter-doc-tipo', html_content) or
+            re.search(r'filter-doc-tipo[^;]*TIPO_LABELS', html_content)
+        )
+
+        assert has_populate, (
+            "The tipo dropdown (filter-doc-tipo) must be dynamically populated "
+            "with document type options after data loads. Use TIPO_LABELS to "
+            "generate option elements."
+        )
+
+    def test_aluno_dropdown_populated_from_data(self, html_content):
+        """
+        After showAtividade() loads data, the aluno dropdown must be
+        populated with student options from the loaded atividade data.
+        """
+        has_populate = (
+            re.search(r'filter-doc-aluno[^;]*\.innerHTML\s*[+=]', html_content) or
+            re.search(r'filter-doc-aluno[^;]*\.appendChild', html_content) or
+            re.search(r'filter-doc-aluno[^;]*\.add\s*\(', html_content) or
+            re.search(r'filter-doc-aluno[^;]*\.insertAdjacentHTML', html_content) or
+            re.search(r'alunos[^;]*filter-doc-aluno', html_content) or
+            re.search(r'filter-doc-aluno[^;]*aluno', html_content)
+        )
+
+        assert has_populate, (
+            "The aluno dropdown (filter-doc-aluno) must be dynamically populated "
+            "with student options from the loaded atividade data."
         )
