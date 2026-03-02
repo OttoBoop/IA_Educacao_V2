@@ -1825,21 +1825,15 @@ IMPORTANTE:
 
 Seja preciso, educativo e construtivo em suas análises."""
             
-            # Verificar se o modelo suporta tools
-            if not model.suporta_function_calling:
-                # Fallback: executar sem tools
-                client = ChatClient(model, api_key or "")
-                resposta = await client.chat(mensagem, system_prompt=system_prompt)
-                
+            # E-T1: Tool capability gate — block non-tool models
+            if tools_to_use and not model.suporta_function_calling:
                 return ResultadoExecucao(
-                    sucesso=True,
+                    sucesso=False,
                     etapa="tools",
-                    resposta_raw=resposta.get("content", ""),
+                    erro="Este modelo não suporta geração de documentos. Selecione um modelo compatível com function calling.",
                     provider=model.tipo.value,
                     modelo=model.modelo,
-                    tokens_entrada=resposta.get("tokens", 0),
                     tempo_ms=(time.time() - inicio) * 1000,
-                    alertas=[{"tipo": "aviso", "mensagem": "Modelo não suporta tools - executado sem geração de documentos"}]
                 )
             
             # Executar com tools (apenas para Anthropic por enquanto)
