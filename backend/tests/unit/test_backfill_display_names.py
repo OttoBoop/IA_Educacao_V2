@@ -1,12 +1,16 @@
 """
-Unit tests for F7-T1: backfill migration script that generates display_names
-for all existing documents that have empty/missing display_names.
+Unit tests for F7-T1 + F7-T2: backfill migration script that generates
+display_names for all existing documents that have empty/missing display_names.
 
 The script reads all documents from the database, resolves the metadata chain
 (atividade → turma → matéria, aluno), and generates structured display_names
 using build_display_name().
 
-Plan: docs/PLAN_File_Naming_Document_Tracking.md  (F7-T1)
+F7-T1: Core backfill script
+F7-T2: Additional edge-case tests — deleted aluno placeholder, broken metadata
+        placeholders, and integration DB verification.
+
+Plan: docs/PLAN_File_Naming_Document_Tracking.md  (F7-T1, F7-T2)
 """
 import sys
 import os
@@ -338,4 +342,154 @@ class TestBackfillDisplayNames:
         assert display, (
             "Even with broken metadata, backfill must generate a display_name "
             "using placeholder values rather than leaving it empty."
+        )
+
+
+# ============================================================
+# F7-T2 Tests: edge cases + integration DB verification
+# ============================================================
+
+class TestBackfillEdgeCases:
+    """
+    F7-T2: Additional tests for placeholder behavior and DB verification.
+
+    1. Deleted aluno → display_name must contain "[Aluno desconhecido]"
+    2. Broken atividade → display_name must contain "[Matéria desconhecida]"
+    3. Integration: direct DB query verifies records actually updated
+    """
+
+    def test_backfill_deleted_aluno_uses_placeholder(self, monkeypatch, temp_data_dir):
+        """
+        When a document has an aluno_id that points to a DELETED aluno record,
+        the backfill must use "[Aluno desconhecido]" as a placeholder —
+        NOT silently omit the aluno name.
+        """
+        monkeypatch.setattr("storage.SUPABASE_DB_AVAILABLE", False)
+        monkeypatch.setattr("storage.SUPABASE_STORAGE_AVAILABLE", False)
+
+        from storage import StorageManager
+        sm = StorageManager(base_path=str(temp_data_dir))
+
+        materia = sm.criar_materia(nome="Química")
+        turma = sm.criar_turma(materia_id=materia.id, nome="Turma D")
+        atividade = sm.criar_atividade(turma_id=turma.id, nome="Prova 4")
+        aluno = sm.criar_aluno(nome="Pedro Costa", matricula="2024003")
+        sm.vincular_aluno_turma(aluno_id=aluno.id, turma_id=turma.id)
+
+        source_file = temp_data_dir / "deleted_aluno_doc.pdf"
+        source_file.write_bytes(b"%PDF-1.4 test content")
+
+        doc = sm.salvar_documento(
+            arquivo_origem=str(source_file),
+            tipo=TipoDocumento.PROVA_RESPONDIDA,
+            atividade_id=atividade.id,
+            aluno_id=aluno.id,
+            criado_por="usuario",
+        )
+
+        # Force empty display_name AND delete the aluno record to simulate deletion
+        conn = sm._get_connection()
+        conn.execute(
+            "UPDATE documentos SET display_name = '' WHERE id = ?",
+            (doc.id,)
+        )
+        conn.execute("DELETE FROM alunos WHERE id = ?", (aluno.id,))
+        conn.commit()
+        conn.close()
+
+        from scripts.backfill_display_names import backfill_display_names
+        result = backfill_display_names(sm)
+
+        assert result["updated"] >= 1, "Must update the doc with deleted aluno"
+
+        # Verify the display_name contains the placeholder
+        docs = sm.listar_documentos(atividade.id)
+        doc_updated = next((d for d in docs if d.id == doc.id), None)
+        assert doc_updated is not None, f"Document {doc.id} not found after backfill"
+
+        assert "[Aluno desconhecido]" in doc_updated.display_name, (
+            f"display_name '{doc_updated.display_name}' must contain '[Aluno desconhecido]' "
+            "when the aluno_id points to a deleted aluno record. "
+            "The backfill must NOT silently omit the aluno — it should use a placeholder."
+        )
+
+    def test_backfill_broken_atividade_has_materia_placeholder(self, monkeypatch, temp_data_dir):
+        """
+        When a document's atividade_id points to a non-existent atividade,
+        the backfill must use "[Matéria desconhecida]" in the display_name.
+        """
+        monkeypatch.setattr("storage.SUPABASE_DB_AVAILABLE", False)
+        monkeypatch.setattr("storage.SUPABASE_STORAGE_AVAILABLE", False)
+
+        from storage import StorageManager
+        sm = StorageManager(base_path=str(temp_data_dir))
+
+        materia = sm.criar_materia(nome="História")
+        turma = sm.criar_turma(materia_id=materia.id, nome="Turma E")
+        atividade = sm.criar_atividade(turma_id=turma.id, nome="Prova 5")
+
+        source_file = temp_data_dir / "broken_materia.pdf"
+        source_file.write_bytes(b"%PDF-1.4 broken materia content")
+
+        doc = sm.salvar_documento(
+            arquivo_origem=str(source_file),
+            tipo=TipoDocumento.ENUNCIADO,
+            atividade_id=atividade.id,
+            aluno_id=None,
+            criado_por="usuario",
+        )
+
+        # Force empty display_name AND set atividade_id to a non-existent ID
+        conn = sm._get_connection()
+        conn.execute(
+            "UPDATE documentos SET display_name = '', atividade_id = ? WHERE id = ?",
+            ("broken_atividade_xyz", doc.id)
+        )
+        conn.commit()
+        conn.close()
+
+        from scripts.backfill_display_names import backfill_display_names
+        result = backfill_display_names(sm)
+
+        # Verify the display_name contains specific matéria placeholder
+        conn = sm._get_connection()
+        row = conn.execute(
+            "SELECT display_name FROM documentos WHERE id = ?",
+            (doc.id,)
+        ).fetchone()
+        conn.close()
+
+        display = row["display_name"] if row else ""
+        assert display, "Must generate a display_name even with broken atividade"
+        assert "[Matéria desconhecida]" in display or "Matéria desconhecida" in display, (
+            f"display_name '{display}' must contain '[Matéria desconhecida]' "
+            "when the atividade_id is invalid and matéria cannot be resolved."
+        )
+
+    def test_backfill_integration_db_records_updated(self, backfill_env):
+        """
+        Integration test: after running backfill, a direct SQL SELECT on the
+        documentos table must show the updated display_name (not empty).
+        """
+        from scripts.backfill_display_names import backfill_display_names
+
+        backfill_display_names(backfill_env["storage"])
+
+        # Direct DB query — the integration check
+        conn = backfill_env["storage"]._get_connection()
+        row = conn.execute(
+            "SELECT display_name, atualizado_em FROM documentos WHERE id = ?",
+            (backfill_env["doc"].id,)
+        ).fetchone()
+        conn.close()
+
+        assert row is not None, "Document row must exist in DB"
+        assert row["display_name"], (
+            f"DB display_name must not be empty after backfill, got '{row['display_name']}'"
+        )
+        assert "Prova Respondida" in row["display_name"], (
+            f"DB display_name '{row['display_name']}' must contain 'Prova Respondida'"
+        )
+        assert row["atualizado_em"], (
+            "atualizado_em timestamp must be set after backfill update"
         )
