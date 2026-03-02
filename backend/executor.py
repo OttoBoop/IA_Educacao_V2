@@ -1091,24 +1091,8 @@ class PipelineExecutor:
         prompt_sistema_raw = prompt.render_sistema(**variaveis)
         prompt_sistema = prompt_sistema_raw if isinstance(prompt_sistema_raw, str) else ""
 
-        # Add tool-use instructions for dual output
-        tool_instructions = (
-            "\n\n## Instruções de Saída (Tool-Use)\n\n"
-            "Você DEVE produzir DUAS saídas usando as ferramentas disponíveis:\n\n"
-            "### 1. Documento JSON (use a ferramenta `create_document`)\n"
-            "Crie um documento JSON com o resultado estruturado da correção:\n"
-            "- `nota_final`: número (nota total do aluno)\n"
-            "- `nota_maxima`: número (nota máxima possível)\n"
-            "- `questoes`: lista de objetos com: numero, nota, nota_maxima, acertou, comentario\n"
-            "- `observacoes`: texto com observações gerais\n"
-            "- `aluno`: nome do aluno\n"
-            "- `materia`: nome da matéria\n"
-            "- `atividade`: nome da atividade\n\n"
-            "### 2. Relatório PDF (use a ferramenta `execute_python_code`)\n"
-            "Gere um PDF formatado com o relatório narrativo da correção usando reportlab.\n"
-            "O PDF deve conter: cabeçalho com dados do aluno, tabela de notas por questão, "
-            "e análise narrativa.\n"
-        )
+        # Add tool-use instructions for dual output (from module-level STAGE_TOOL_INSTRUCTIONS)
+        tool_instructions = STAGE_TOOL_INSTRUCTIONS.get(EtapaProcessamento.CORRIGIR, "")
         full_system = prompt_sistema + tool_instructions
 
         # Call with tools — single pass replaces two-pass narrative
