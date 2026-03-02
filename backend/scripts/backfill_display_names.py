@@ -72,7 +72,7 @@ def backfill_display_names(storage: StorageManager, dry_run: bool = False) -> Di
                         if doc.aluno_id not in aluno_cache:
                             aluno_cache[doc.aluno_id] = storage.get_aluno(doc.aluno_id)
                         aluno = aluno_cache[doc.aluno_id]
-                        aluno_nome = aluno.nome if aluno else None
+                        aluno_nome = aluno.nome if aluno else "[Aluno desconhecido]"
 
                     # Build display_name
                     new_display_name = build_display_name(
