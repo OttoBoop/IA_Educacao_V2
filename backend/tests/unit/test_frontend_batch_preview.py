@@ -1,16 +1,18 @@
 """
-Frontend structure tests for F5-T1 + F5-T2: verify that index_v2.html contains
-the required HTML elements and JS functions for the batch upload preview.
+Frontend structure tests for F5-T1 + F5-T2 + F5-T3: verify that index_v2.html
+contains the required HTML elements and JS functions for the batch upload preview.
 
 F5-T1: Batch upload modal must show a preview table after file selection,
        with columns for filename, matched student, and editable display_name.
 F5-T2: JS: on file selection, generate preview rows with auto-names using
        buildDisplayName(). Each row has editable display_name input.
+F5-T3: uploadProvasEmLote() must read the edited display_names from the
+       preview table and send them as a JSON array in FormData.
 
 These are structural RED/GREEN tests. Runtime UI verification is done via
 journey agent in Phase 5 (UX Validation).
 
-Plan: docs/PLAN_File_Naming_Document_Tracking.md  (F5-T1, F5-T2)
+Plan: docs/PLAN_File_Naming_Document_Tracking.md  (F5-T1, F5-T2, F5-T3)
 """
 import sys
 import os
@@ -242,4 +244,76 @@ class TestBatchPreviewRowGeneration:
             "Each batch preview row must contain an editable <input type='text'> "
             "for the display_name. Users must be able to customize the auto-generated "
             "name before confirming the upload."
+        )
+
+
+# ============================================================
+# F5-T3: uploadProvasEmLote() sends per-file display_names
+# ============================================================
+
+class TestUploadProvasEmLoteSendsDisplayNames:
+    """
+    F5-T3: uploadProvasEmLote() must collect the edited display_names
+    from the batch preview table's editable inputs and send them as
+    a JSON-serialized array in the FormData to the backend.
+    """
+
+    def test_upload_reads_batch_name_inputs(self, html_content):
+        """
+        uploadProvasEmLote() must read the values from the batch preview
+        table's editable name inputs (class='batch-name-input').
+        """
+        func_start = html_content.find("async function uploadProvasEmLote(")
+        assert func_start != -1, "uploadProvasEmLote function not found"
+        func_body = html_content[func_start:func_start + 3000]
+
+        assert "batch-name-input" in func_body, (
+            "uploadProvasEmLote() must reference 'batch-name-input' to read "
+            "the edited display names from the preview table inputs."
+        )
+
+    def test_upload_sends_display_names_in_formdata(self, html_content):
+        """
+        uploadProvasEmLote() must append 'display_names' to the FormData
+        sent to the backend.
+        """
+        func_start = html_content.find("async function uploadProvasEmLote(")
+        assert func_start != -1, "uploadProvasEmLote function not found"
+        func_body = html_content[func_start:func_start + 3000]
+
+        assert re.search(
+            r"formData\.append\(\s*['\"]display_names['\"]",
+            func_body
+        ), (
+            "uploadProvasEmLote() must call formData.append('display_names', ...) "
+            "to send the per-file display names to the backend."
+        )
+
+    def test_upload_serializes_display_names_as_json(self, html_content):
+        """
+        uploadProvasEmLote() must JSON.stringify the display_names array
+        before appending to FormData (the backend expects a JSON string).
+        """
+        func_start = html_content.find("async function uploadProvasEmLote(")
+        assert func_start != -1, "uploadProvasEmLote function not found"
+        func_body = html_content[func_start:func_start + 3000]
+
+        assert "JSON.stringify" in func_body, (
+            "uploadProvasEmLote() must use JSON.stringify() to serialize the "
+            "display_names array before appending to FormData. The backend "
+            "expects a JSON string, not individual values."
+        )
+
+    def test_upload_clears_preview_after_success(self, html_content):
+        """
+        After successful batch upload, uploadProvasEmLote() must hide the
+        preview container and clear the preview table body.
+        """
+        func_start = html_content.find("async function uploadProvasEmLote(")
+        assert func_start != -1, "uploadProvasEmLote function not found"
+        func_body = html_content[func_start:func_start + 3000]
+
+        assert "batch-preview-container" in func_body, (
+            "uploadProvasEmLote() must reference 'batch-preview-container' "
+            "to hide the preview after successful upload."
         )

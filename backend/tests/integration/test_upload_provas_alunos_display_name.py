@@ -1,19 +1,18 @@
 """
-Integration tests for F3-T4: /api/documentos/upload-provas-alunos auto-generates
-structured display_names that include document type, student name, materia,
-and turma — forwarded through storage.salvar_documento().
+Integration tests for F3-T4 + F5-T3:
+
+F3-T4: /api/documentos/upload-provas-alunos auto-generates structured display_names
+       that include document type, student name, materia, and turma.
+F5-T3: /api/documentos/upload-provas-alunos accepts optional display_names JSON array
+       to override auto-generated names with user-edited ones from the batch preview.
 
 These tests verify that the display_name visible on saved documents:
   1. Contains a human-readable label for the document type (e.g. "Prova Respondida").
   2. Contains the student name.
   3. Contains the materia and turma names.
+  4. (F5-T3) Custom display_names override auto-generation when provided.
 
-F3-T1 already added display_name auto-generation to salvar_documento(), so these
-tests MAY pass depending on whether build_display_name() is wired up correctly for
-the prova_alunos endpoint.  Writing them now pins the expected contract so any
-regression is immediately caught.
-
-Plan: docs/PLAN_File_Naming_Document_Tracking.md  (F3-T4)
+Plan: docs/PLAN_File_Naming_Document_Tracking.md  (F3-T4, F5-T3)
 """
 import sys
 import os
@@ -174,4 +173,125 @@ class TestUploadProvasAlunosDisplayName:
             f"display_name '{display}' must contain the turma name 'Turma C'. "
             "salvar_documento() must resolve the turma and pass turma_nome to "
             "build_display_name()."
+        )
+
+
+# ============================================================
+# F5-T3 Tests: custom display_names override
+# ============================================================
+
+class TestUploadProvasAlunosCustomDisplayNames:
+    """
+    F5-T3: /api/documentos/upload-provas-alunos must accept an optional
+    'display_names' parameter (JSON array) to override auto-generated
+    names with user-edited ones from the batch preview table.
+    """
+
+    @pytest.fixture(autouse=True)
+    def setup(self, monkeypatch, temp_data_dir):
+        """Set up isolated environment with two students for multi-file tests."""
+        monkeypatch.setattr("storage.SUPABASE_DB_AVAILABLE", False)
+        monkeypatch.setattr("storage.SUPABASE_STORAGE_AVAILABLE", False)
+
+        from storage import StorageManager
+        self.storage = StorageManager(base_path=str(temp_data_dir))
+
+        self.materia = self.storage.criar_materia(nome="Física")
+        self.turma = self.storage.criar_turma(
+            materia_id=self.materia.id, nome="Turma D"
+        )
+        self.atividade = self.storage.criar_atividade(
+            turma_id=self.turma.id, nome="Prova 3"
+        )
+        self.aluno1 = self.storage.criar_aluno(
+            nome="Ana Lima", matricula="2024010"
+        )
+        self.aluno2 = self.storage.criar_aluno(
+            nome="Bruno Reis", matricula="2024020"
+        )
+        self.storage.vincular_aluno_turma(
+            aluno_id=self.aluno1.id, turma_id=self.turma.id
+        )
+        self.storage.vincular_aluno_turma(
+            aluno_id=self.aluno2.id, turma_id=self.turma.id
+        )
+
+        monkeypatch.setattr("main_v2.storage", self.storage)
+        monkeypatch.setattr("routes_extras.storage", self.storage)
+
+        from main_v2 import app
+        self.client = TestClient(app)
+
+    def test_custom_display_names_override_auto_generated(self):
+        """
+        When display_names JSON array is sent, the saved documents must
+        use the custom names instead of auto-generated ones.
+        """
+        import json
+        custom_names = ["Minha Prova Especial - Ana", "Documento Bruno Editado"]
+
+        response = self.client.post(
+            "/api/documentos/upload-provas-alunos",
+            data={
+                "atividade_id": self.atividade.id,
+                "modo_nome": "matricula",
+                "display_names": json.dumps(custom_names),
+            },
+            files=[
+                ("files", ("2024010_prova.pdf", b"%PDF-1.4 ana", "application/pdf")),
+                ("files", ("2024020_prova.pdf", b"%PDF-1.4 bruno", "application/pdf")),
+            ],
+        )
+
+        assert response.status_code == 200, (
+            f"Expected 200, got {response.status_code}: {response.text}"
+        )
+        data = response.json()
+        assert data["salvos"] == 2, (
+            f"Expected 2 saved docs, got {data['salvos']}. "
+            f"Errors: {data.get('detalhes_erros', [])}"
+        )
+
+        docs = data["documentos"]
+        names = [d["documento"]["display_name"] for d in docs]
+
+        assert "Minha Prova Especial - Ana" in names, (
+            f"Custom display_name 'Minha Prova Especial - Ana' not found "
+            f"in saved document names: {names}. The endpoint must use the "
+            "display_names array to override auto-generation."
+        )
+        assert "Documento Bruno Editado" in names, (
+            f"Custom display_name 'Documento Bruno Editado' not found "
+            f"in saved document names: {names}."
+        )
+
+    def test_without_display_names_still_auto_generates(self):
+        """
+        When display_names is NOT sent, existing auto-generation must
+        still work (backward compatibility).
+        """
+        response = self.client.post(
+            "/api/documentos/upload-provas-alunos",
+            data={
+                "atividade_id": self.atividade.id,
+                "modo_nome": "matricula",
+            },
+            files=[
+                ("files", ("2024010_prova.pdf", b"%PDF-1.4 ana", "application/pdf")),
+            ],
+        )
+
+        assert response.status_code == 200
+        data = response.json()
+        assert data["salvos"] == 1
+
+        doc = data["documentos"][0]["documento"]
+        display = doc.get("display_name", "")
+
+        assert display, "display_name must be auto-generated when display_names is not sent."
+        assert "Prova Respondida" in display, (
+            f"Auto-generated display_name '{display}' must contain 'Prova Respondida'."
+        )
+        assert "Ana Lima" in display, (
+            f"Auto-generated display_name '{display}' must contain 'Ana Lima'."
         )
