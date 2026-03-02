@@ -8658,11 +8658,12 @@
 
         function desempenhoDocLabel(tipo) {
             const labels = {
-                'RELATORIO_DESEMPENHO_TAREFA': 'Relatório de Desempenho (Atividade)',
-                'RELATORIO_DESEMPENHO_TURMA': 'Relatório de Desempenho (Turma)',
-                'RELATORIO_DESEMPENHO_MATERIA': 'Relatório de Desempenho (Matéria)',
+                'relatorio_desempenho_tarefa': 'Relatório de Desempenho (Atividade)',
+                'relatorio_desempenho_turma': 'Relatório de Desempenho (Turma)',
+                'relatorio_desempenho_materia': 'Relatório de Desempenho (Matéria)',
             };
-            return labels[tipo] || tipo;
+            // API returns lowercase tipo values; also handle uppercase for safety
+            return labels[tipo] || labels[tipo?.toLowerCase()] || tipo;
         }
 
         function renderDesempenhoRuns(runs, level, entityId) {
