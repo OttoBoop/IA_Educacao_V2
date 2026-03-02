@@ -1836,7 +1836,7 @@ Seja preciso, educativo e construtivo em suas análises."""
                     tempo_ms=(time.time() - inicio) * 1000,
                 )
             
-            # Executar com tools (apenas para Anthropic por enquanto)
+            # Executar com tools
             client = ChatClient(model, api_key or "")
             resposta = await client.chat_with_tools(
                 mensagem=mensagem,
@@ -1845,9 +1845,49 @@ Seja preciso, educativo e construtivo em suas análises."""
                 system_prompt=system_prompt,
                 context=context
             )
-            
+
+            tentativas = 1
+            alertas = []
+
+            # E-T2: Check for partial dual-output and retry once
+            dual_output_expected = (
+                "create_document" in tools_to_use
+                and "execute_python_code" in tools_to_use
+            )
+
+            if dual_output_expected:
+                tool_names_used = {tc.get("name") for tc in resposta.get("tool_calls", [])}
+                has_json = "create_document" in tool_names_used
+                has_pdf = "execute_python_code" in tool_names_used
+
+                if (has_json or has_pdf) and not (has_json and has_pdf):
+                    # Partial output — one retry
+                    if has_json and not has_pdf:
+                        retry_msg = "Você criou o documento JSON mas não gerou o PDF. Por favor, use execute_python_code para criar o PDF agora."
+                    else:
+                        retry_msg = "Você executou código Python mas não criou o documento JSON. Por favor, use create_document para salvar o documento agora."
+
+                    resposta = await client.chat_with_tools(
+                        mensagem=retry_msg,
+                        tools=tools_definitions,
+                        tool_registry=registry,
+                        system_prompt=system_prompt,
+                        context=context
+                    )
+                    tentativas = 2
+
+                    # Check again after retry
+                    retry_tool_names = {tc.get("name") for tc in resposta.get("tool_calls", [])}
+                    all_tool_names = tool_names_used | retry_tool_names
+                    if not ("create_document" in all_tool_names and "execute_python_code" in all_tool_names):
+                        missing = "PDF (execute_python_code)" if "execute_python_code" not in all_tool_names else "JSON (create_document)"
+                        alertas.append({
+                            "tipo": "aviso",
+                            "mensagem": f"Saída parcial: {missing} ausente após retry. Resultado incompleto salvo."
+                        })
+
             tempo_ms = (time.time() - inicio) * 1000
-            
+
             # Coletar documentos gerados pelas tools
             documentos_gerados = []
             tool_calls = resposta.get("tool_calls", [])
@@ -1856,7 +1896,10 @@ Seja preciso, educativo e construtivo em suas análises."""
                     docs = tc.get("input", {}).get("documents", [])
                     for doc in docs:
                         documentos_gerados.append(doc.get("filename", "documento"))
-            
+
+            if documentos_gerados:
+                alertas.append({"tipo": "info", "mensagem": f"Documentos gerados: {documentos_gerados}"})
+
             return ResultadoExecucao(
                 sucesso=True,
                 etapa="tools",
@@ -1865,7 +1908,8 @@ Seja preciso, educativo e construtivo em suas análises."""
                 modelo=model.modelo,
                 tokens_entrada=resposta.get("tokens", 0),
                 tempo_ms=tempo_ms,
-                alertas=[{"tipo": "info", "mensagem": f"Documentos gerados: {documentos_gerados}"}] if documentos_gerados else []
+                alertas=alertas,
+                tentativas=tentativas,
             )
             
         except Exception as e:
