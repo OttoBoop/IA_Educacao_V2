@@ -799,6 +799,16 @@ class ChatClient:
                 context=context,
                 max_iterations=max_iterations
             )
+        elif self.config.tipo == ProviderType.GOOGLE:
+            return await self._chat_google_with_tools(
+                mensagem=mensagem,
+                historico=historico or [],
+                system=system,
+                tools=tools,
+                tool_registry=tool_registry,
+                context=context,
+                max_iterations=max_iterations
+            )
         else:
             # Fallback: regular chat without tools for unsupported providers
             return await self.chat(
@@ -1253,6 +1263,137 @@ class ChatClient:
                     "tool_calls": all_tool_calls,
                     "stop_reason": finish_reason
                 }
+
+        # Max iterations reached
+        return {
+            "content": "[Maximum tool iterations reached]",
+            "tokens": total_tokens,
+            "modelo": self.config.modelo,
+            "provider": self.config.tipo.value,
+            "tool_calls": all_tool_calls,
+            "error": "max_iterations_exceeded"
+        }
+
+    def _convert_tools_to_google_format(self, anthropic_tools: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+        """Convert Anthropic tool format to Google function_declarations format"""
+        function_declarations = []
+        for tool in anthropic_tools:
+            function_declarations.append({
+                "name": tool["name"],
+                "description": tool.get("description", ""),
+                "parameters": tool.get("input_schema", {})
+            })
+        return [{"function_declarations": function_declarations}]
+
+    async def _chat_google_with_tools(
+        self,
+        mensagem: str,
+        historico: List,
+        system: str,
+        tools: List[Dict[str, Any]],
+        tool_registry: ToolRegistry,
+        context: Optional[ToolExecutionContext] = None,
+        max_iterations: int = 10
+    ) -> Dict:
+        """Chat com API Google/Gemini with tool use support"""
+        contents = []
+
+        if historico:
+            for msg in historico:
+                role = "user" if msg["role"] == "user" else "model"
+                contents.append({"role": role, "parts": [{"text": msg["content"]}]})
+
+        contents.append({"role": "user", "parts": [{"text": mensagem}]})
+
+        google_tools = self._convert_tools_to_google_format(tools)
+
+        generation_config = {"maxOutputTokens": self.config.max_tokens}
+        if self.config.suporta_temperature and self.config.temperature is not None:
+            generation_config["temperature"] = self.config.temperature
+
+        total_tokens = 0
+        all_tool_calls = []
+
+        for iteration in range(max_iterations):
+            request_body = {
+                "contents": contents,
+                "generationConfig": generation_config,
+                "tools": google_tools
+            }
+
+            if system:
+                request_body["system_instruction"] = {"parts": [{"text": system}]}
+
+            async with httpx.AsyncClient(timeout=120.0) as client:
+                response = await client.post(
+                    f"{self.base_url}/models/{self.config.modelo}:generateContent",
+                    params={"key": self.api_key},
+                    headers={"Content-Type": "application/json"},
+                    json=request_body
+                )
+
+                if response.status_code != 200:
+                    raise Exception(f"Erro API Google: {response.status_code} - {response.text}")
+
+                data = response.json()
+
+            # Track tokens
+            usage = data.get("usageMetadata", {})
+            total_tokens += usage.get("totalTokenCount", 0) or (
+                usage.get("promptTokenCount", 0) + usage.get("candidatesTokenCount", 0)
+            )
+
+            candidate = data.get("candidates", [{}])[0]
+            parts = candidate.get("content", {}).get("parts", [])
+
+            # Check for functionCall parts
+            function_calls = [p for p in parts if "functionCall" in p]
+            text_parts = [p.get("text", "") for p in parts if "text" in p]
+
+            if not function_calls:
+                # No function calls — return final text
+                return {
+                    "content": "\n".join(text_parts),
+                    "tokens": total_tokens,
+                    "modelo": self.config.modelo,
+                    "provider": self.config.tipo.value,
+                    "tool_calls": all_tool_calls
+                }
+
+            # Execute function calls
+            function_response_parts = []
+            for i, fc_part in enumerate(function_calls):
+                fc = fc_part["functionCall"]
+                tool_name = fc["name"]
+                tool_input = fc.get("args", {})
+                tool_use_id = f"google_call_{iteration}_{i}"
+
+                all_tool_calls.append({
+                    "id": tool_use_id,
+                    "name": tool_name,
+                    "input": tool_input
+                })
+
+                result = await tool_registry.execute(
+                    tool_name=tool_name,
+                    tool_input=tool_input,
+                    tool_use_id=tool_use_id,
+                    context=context
+                )
+
+                result_content = result.content if isinstance(result.content, str) else json.dumps(result.content)
+                function_response_parts.append({
+                    "functionResponse": {
+                        "name": tool_name,
+                        "response": {"result": result_content}
+                    }
+                })
+
+            # Add model response (with functionCall parts) to history
+            contents.append({"role": "model", "parts": parts})
+
+            # Add function responses as user message
+            contents.append({"role": "user", "parts": function_response_parts})
 
         # Max iterations reached
         return {
