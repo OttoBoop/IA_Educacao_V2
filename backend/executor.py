@@ -1687,11 +1687,8 @@ class PipelineExecutor:
     # ============================================================
 
     # Maps analytical etapas to their internal narrative prompt IDs
-    # CORRIGIR removed — migrated to tool-use dual output (F-T1)
-    NARRATIVA_PROMPT_MAP = {
-        EtapaProcessamento.ANALISAR_HABILIDADES: "internal_narrativa_analisar_habilidades",
-        EtapaProcessamento.GERAR_RELATORIO: "internal_narrativa_gerar_relatorio",
-    }
+    # All 3 analytical stages migrated to tool-use dual output (F-T1, F-T2, F-T3)
+    NARRATIVA_PROMPT_MAP = {}
 
     async def _gerar_narrativa_pdf(
         self,

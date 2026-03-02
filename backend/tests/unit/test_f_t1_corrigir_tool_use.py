@@ -497,29 +497,21 @@ class TestCorrigirRemovedFromNarrativaPromptMap:
             "The two-pass narrative PDF for CORRIGIR is replaced by execute_python_code tool-use."
         )
 
-    def test_other_stages_still_in_narrativa_prompt_map(self):
-        """ANALISAR_HABILIDADES and GERAR_RELATORIO must remain in NARRATIVA_PROMPT_MAP.
-
-        Only CORRIGIR is migrated in F-T1. Other analytical stages keep the two-pass approach
-        until their own migration tasks are planned.
-        """
-        assert EtapaProcessamento.ANALISAR_HABILIDADES in PipelineExecutor.NARRATIVA_PROMPT_MAP, (
-            "EtapaProcessamento.ANALISAR_HABILIDADES must remain in NARRATIVA_PROMPT_MAP — "
-            "only CORRIGIR is migrated in F-T1."
+    def test_all_analytical_stages_removed_from_narrativa_prompt_map(self):
+        """All 3 analytical stages migrated to tool-use (F-T1, F-T2, F-T3).
+        NARRATIVA_PROMPT_MAP must be empty — two-pass narrative is fully replaced."""
+        assert EtapaProcessamento.ANALISAR_HABILIDADES not in PipelineExecutor.NARRATIVA_PROMPT_MAP, (
+            "ANALISAR_HABILIDADES must be removed from NARRATIVA_PROMPT_MAP (F-T2)."
         )
-        assert EtapaProcessamento.GERAR_RELATORIO in PipelineExecutor.NARRATIVA_PROMPT_MAP, (
-            "EtapaProcessamento.GERAR_RELATORIO must remain in NARRATIVA_PROMPT_MAP — "
-            "only CORRIGIR is migrated in F-T1."
+        assert EtapaProcessamento.GERAR_RELATORIO not in PipelineExecutor.NARRATIVA_PROMPT_MAP, (
+            "GERAR_RELATORIO must be removed from NARRATIVA_PROMPT_MAP (F-T3)."
         )
 
-    def test_narrativa_prompt_map_size_reduced_by_one(self):
-        """After removing CORRIGIR, NARRATIVA_PROMPT_MAP must have exactly 2 entries.
-
-        Before F-T1: 3 entries (CORRIGIR, ANALISAR_HABILIDADES, GERAR_RELATORIO).
-        After F-T1: 2 entries (ANALISAR_HABILIDADES, GERAR_RELATORIO).
-        """
+    def test_narrativa_prompt_map_is_empty(self):
+        """After F-T1+F-T2+F-T3 migration, NARRATIVA_PROMPT_MAP must be empty.
+        All 3 analytical stages now use tool-use dual output."""
         current_map = PipelineExecutor.NARRATIVA_PROMPT_MAP
-        assert len(current_map) == 2, (
-            f"After removing CORRIGIR, NARRATIVA_PROMPT_MAP must have 2 entries. "
+        assert len(current_map) == 0, (
+            f"After migrating all 3 stages, NARRATIVA_PROMPT_MAP must be empty. "
             f"Currently has {len(current_map)}: {list(current_map.keys())}"
         )
