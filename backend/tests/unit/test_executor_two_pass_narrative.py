@@ -203,7 +203,10 @@ class TestGerarNarrativaPdfMethod:
         )
 
     async def test_calls_provider_with_narrative_prompt(self, executor_com_mocks):
-        """_gerar_narrativa_pdf must call the AI provider with the internal narrative prompt."""
+        """_gerar_narrativa_pdf must call the AI provider with the internal narrative prompt.
+
+        Uses GERAR_RELATORIO (not CORRIGIR) because CORRIGIR was migrated to tool-use (F-T1).
+        """
         from prompts import EtapaProcessamento
         from models import TipoDocumento
 
@@ -216,9 +219,9 @@ class TestGerarNarrativaPdfMethod:
 
         with patch.object(executor_com_mocks, '_get_provider_legacy', return_value=mock_provider):
             result = await executor_com_mocks._gerar_narrativa_pdf(
-                etapa=EtapaProcessamento.CORRIGIR,
+                etapa=EtapaProcessamento.GERAR_RELATORIO,
                 conteudo={"nota": 7.5, "questoes": []},
-                tipo=TipoDocumento.CORRECAO,
+                tipo=TipoDocumento.RELATORIO_FINAL,
                 atividade_id="ativ-001",
                 aluno_id="aluno-001",
             )
@@ -227,7 +230,10 @@ class TestGerarNarrativaPdfMethod:
         mock_provider.complete.assert_called_once()
 
     async def test_saves_pdf_not_md(self, executor_com_mocks):
-        """_gerar_narrativa_pdf must save a .pdf file, not .md."""
+        """_gerar_narrativa_pdf must save a .pdf file, not .md.
+
+        Uses GERAR_RELATORIO (not CORRIGIR) because CORRIGIR was migrated to tool-use (F-T1).
+        """
         from prompts import EtapaProcessamento
         from models import TipoDocumento
 
@@ -239,9 +245,9 @@ class TestGerarNarrativaPdfMethod:
 
         with patch.object(executor_com_mocks, '_get_provider_legacy', return_value=mock_provider):
             await executor_com_mocks._gerar_narrativa_pdf(
-                etapa=EtapaProcessamento.CORRIGIR,
+                etapa=EtapaProcessamento.GERAR_RELATORIO,
                 conteudo={"nota": 7.5},
-                tipo=TipoDocumento.CORRECAO,
+                tipo=TipoDocumento.RELATORIO_FINAL,
                 atividade_id="ativ-001",
                 aluno_id="aluno-001",
             )

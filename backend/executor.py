@@ -122,36 +122,6 @@ ResultadoEtapa = ResultadoExecucao
 
 
 # ============================================================
-# STAGE TOOL-USE CONFIGURATION (F-T1+)
-# Maps analytical stages to their tool-use config for dual output
-# ============================================================
-
-STAGE_TOOLS: Dict[str, List[str]] = {
-    EtapaProcessamento.CORRIGIR: ["create_document", "execute_python_code"],
-}
-
-STAGE_TOOL_INSTRUCTIONS: Dict[str, str] = {
-    EtapaProcessamento.CORRIGIR: (
-        "\n\n## Instruções de Saída (Tool-Use)\n\n"
-        "Você DEVE produzir DUAS saídas usando as ferramentas disponíveis:\n\n"
-        "### 1. Documento JSON (use a ferramenta `create_document`)\n"
-        "Crie um documento JSON com o resultado estruturado da correção:\n"
-        "- `nota_final`: número (nota total do aluno)\n"
-        "- `nota_maxima`: número (nota máxima possível)\n"
-        "- `questoes`: lista de objetos com: numero, nota, nota_maxima, acertou, comentario\n"
-        "- `observacoes`: texto com observações gerais\n"
-        "- `aluno`: nome do aluno\n"
-        "- `materia`: nome da matéria\n"
-        "- `atividade`: nome da atividade\n\n"
-        "### 2. Relatório PDF (use a ferramenta `execute_python_code`)\n"
-        "Gere um PDF formatado com o relatório narrativo da correção usando reportlab.\n"
-        "O PDF deve conter: cabeçalho com dados do aluno, tabela de notas por questão, "
-        "e análise narrativa.\n"
-    ),
-}
-
-
-# ============================================================
 # STAGE TOOL CONFIGURATION (F-T1, F-T2, F-T3)
 # ============================================================
 
@@ -1717,8 +1687,11 @@ class PipelineExecutor:
     # ============================================================
 
     # Maps analytical etapas to their internal narrative prompt IDs
-    # All 3 stages migrated to tool-use dual output (F-T1, F-T2, F-T3)
-    NARRATIVA_PROMPT_MAP = {}
+    # CORRIGIR removed — migrated to tool-use dual output (F-T1)
+    NARRATIVA_PROMPT_MAP = {
+        EtapaProcessamento.ANALISAR_HABILIDADES: "internal_narrativa_analisar_habilidades",
+        EtapaProcessamento.GERAR_RELATORIO: "internal_narrativa_gerar_relatorio",
+    }
 
     async def _gerar_narrativa_pdf(
         self,
