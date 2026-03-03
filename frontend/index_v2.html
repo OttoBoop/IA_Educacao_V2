@@ -11,6 +11,7 @@
 -->
 <!DOCTYPE html>
 <html lang="pt-BR">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -44,8 +45,12 @@
             --safe-area-right: env(safe-area-inset-right, 0px);
             --mobile-bottom-safe: max(var(--safe-area-bottom), 16px);
         }
-        
-        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
 
         /* Esconder itens técnicos por padrão (Prompts, Modelos LLM) */
         .technical-item {
@@ -63,9 +68,12 @@
             color: var(--text);
             min-height: 100vh;
         }
-        
-        .app { display: flex; min-height: 100vh; }
-        
+
+        .app {
+            display: flex;
+            min-height: 100vh;
+        }
+
         /* SIDEBAR */
         .sidebar {
             width: 280px;
@@ -77,12 +85,12 @@
             height: 100vh;
             overflow: hidden;
         }
-        
+
         .sidebar-header {
             padding: 20px;
             border-bottom: 1px solid var(--border);
         }
-        
+
         .logo {
             font-size: 1.25rem;
             font-weight: 700;
@@ -90,7 +98,7 @@
             align-items: center;
             gap: 10px;
         }
-        
+
         .logo-icon {
             width: 32px;
             height: 32px;
@@ -117,9 +125,11 @@
             overflow-y: auto;
             padding: 12px;
         }
-        
-        .tree-section { margin-bottom: 8px; }
-        
+
+        .tree-section {
+            margin-bottom: 8px;
+        }
+
         .tree-section-header {
             display: flex;
             align-items: center;
@@ -130,7 +140,7 @@
             letter-spacing: 0.05em;
             color: var(--text-muted);
         }
-        
+
         .tree-item {
             display: flex;
             align-items: center;
@@ -141,12 +151,28 @@
             font-size: 0.9rem;
             transition: all 0.15s;
         }
-        
-        .tree-item:hover { background: var(--bg-hover); }
-        .tree-item.active { background: var(--primary); color: white; }
-        
-        .tree-item-icon { opacity: 0.7; font-size: 1rem; }
-        .tree-item-name { flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+        .tree-item:hover {
+            background: var(--bg-hover);
+        }
+
+        .tree-item.active {
+            background: var(--primary);
+            color: white;
+        }
+
+        .tree-item-icon {
+            opacity: 0.7;
+            font-size: 1rem;
+        }
+
+        .tree-item-name {
+            flex: 1;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
         .tree-item-count {
             font-size: 0.75rem;
             background: var(--bg-hover);
@@ -154,16 +180,18 @@
             border-radius: 10px;
             color: var(--text-muted);
         }
-        
+
         .tree-children {
             margin-left: 20px;
             border-left: 1px solid var(--border);
             padding-left: 8px;
             display: none;
         }
-        
-        .tree-children.expanded { display: block; }
-        
+
+        .tree-children.expanded {
+            display: block;
+        }
+
         .tree-toggle {
             width: 20px;
             height: 20px;
@@ -174,17 +202,24 @@
             opacity: 0.5;
             transition: transform 0.2s;
         }
-        
-        .tree-toggle.expanded { transform: rotate(90deg); }
-        .tree-toggle.hidden { visibility: hidden; }
+
+        .tree-toggle.expanded {
+            transform: rotate(90deg);
+        }
+
+        .tree-toggle.hidden {
+            visibility: hidden;
+        }
 
         /* TAREFAS tree styles */
         .tarefa-aluno {
             border-bottom: 1px solid var(--border);
         }
+
         .tarefa-aluno.cancelled {
             opacity: 0.5;
         }
+
         .tarefa-toggle {
             display: flex;
             align-items: center;
@@ -194,13 +229,18 @@
             font-size: 0.85rem;
             transition: background 0.15s;
         }
-        .tarefa-toggle:hover { background: var(--bg-hover); }
+
+        .tarefa-toggle:hover {
+            background: var(--bg-hover);
+        }
+
         .tarefa-toggle span:nth-child(2) {
             flex: 1;
             white-space: nowrap;
             overflow: hidden;
             text-overflow: ellipsis;
         }
+
         .tarefa-cancel {
             background: none;
             border: none;
@@ -218,15 +258,29 @@
             transition: background 0.15s;
             flex-shrink: 0;
         }
-        .tarefa-cancel:hover { background: rgba(231, 76, 60, 0.15); }
+
+        .tarefa-cancel:hover {
+            background: rgba(231, 76, 60, 0.15);
+        }
+
         .tarefa-stage {
             padding: 3px 12px 3px 20px;
             font-size: 0.8rem;
             color: var(--text-muted);
         }
-        .tarefa-stage.completed { color: var(--success, #27ae60); }
-        .tarefa-stage.running { color: var(--primary); }
-        .tarefa-stage.failed { color: var(--danger, #e74c3c); }
+
+        .tarefa-stage.completed {
+            color: var(--success, #27ae60);
+        }
+
+        .tarefa-stage.running {
+            color: var(--primary);
+        }
+
+        .tarefa-stage.failed {
+            color: var(--danger, #e74c3c);
+        }
+
         .tarefa-cancelled-label {
             font-size: 0.75rem;
             color: var(--danger, #e74c3c);
@@ -240,7 +294,7 @@
             padding: 12px;
             border-top: 1px solid var(--border);
         }
-        
+
         /* MAIN CONTENT */
         .main {
             flex: 1;
@@ -249,7 +303,7 @@
             flex-direction: column;
             min-height: 100vh;
         }
-        
+
         .header {
             background: var(--bg-card);
             border-bottom: 1px solid var(--border);
@@ -261,37 +315,61 @@
             top: 0;
             z-index: 10;
         }
-        
+
         .breadcrumb {
             display: flex;
             align-items: center;
             gap: 8px;
             font-size: 0.9rem;
         }
-        
+
         .breadcrumb-item {
             color: var(--text-muted);
             cursor: pointer;
             transition: color 0.15s;
         }
-        
-        .breadcrumb-item:hover { color: var(--text); }
-        .breadcrumb-item.current { color: var(--text); font-weight: 500; }
-        .breadcrumb-sep { color: var(--text-muted); opacity: 0.5; }
-        
-        .header-actions { display: flex; gap: 12px; }
-        
+
+        .breadcrumb-item:hover {
+            color: var(--text);
+        }
+
+        .breadcrumb-item.current {
+            color: var(--text);
+            font-weight: 500;
+        }
+
+        .breadcrumb-sep {
+            color: var(--text-muted);
+            opacity: 0.5;
+        }
+
+        .header-actions {
+            display: flex;
+            gap: 12px;
+        }
+
         .content {
             flex: 1;
             padding: 24px;
             overflow-y: auto;
         }
-        
+
         /* PAGE HEADER */
-        .page-header { margin-bottom: 24px; }
-        .page-title { font-size: 1.5rem; font-weight: 600; margin-bottom: 4px; }
-        .page-subtitle { color: var(--text-muted); font-size: 0.9rem; }
-        
+        .page-header {
+            margin-bottom: 24px;
+        }
+
+        .page-title {
+            font-size: 1.5rem;
+            font-weight: 600;
+            margin-bottom: 4px;
+        }
+
+        .page-subtitle {
+            color: var(--text-muted);
+            font-size: 0.9rem;
+        }
+
         /* CARDS */
         .card {
             background: var(--bg-card);
@@ -300,22 +378,25 @@
             padding: 20px;
             margin-bottom: 16px;
         }
-        
+
         .card-header {
             display: flex;
             justify-content: space-between;
             align-items: center;
             margin-bottom: 16px;
         }
-        
-        .card-title { font-size: 1rem; font-weight: 600; }
-        
+
+        .card-title {
+            font-size: 1rem;
+            font-weight: 600;
+        }
+
         .card-grid {
             display: grid;
             grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
             gap: 16px;
         }
-        
+
         .card-grid-item {
             background: var(--bg-card);
             border: 1px solid var(--border);
@@ -324,16 +405,18 @@
             cursor: pointer;
             transition: all 0.15s;
         }
-        
+
         .card-grid-item:hover {
             border-color: var(--primary);
             transform: translateY(-2px);
         }
+
         .card-grid-item.card-loading {
             opacity: 0.6;
             pointer-events: none;
             position: relative;
         }
+
         .card-grid-item.card-loading::after {
             content: '';
             position: absolute;
@@ -341,9 +424,17 @@
             border-radius: 12px;
             animation: card-pulse 1s ease-in-out infinite;
         }
+
         @keyframes card-pulse {
-            0%, 100% { background: transparent; }
-            50% { background: rgba(var(--primary-rgb, 99, 102, 241), 0.08); }
+
+            0%,
+            100% {
+                background: transparent;
+            }
+
+            50% {
+                background: rgba(var(--primary-rgb, 99, 102, 241), 0.08);
+            }
         }
 
         .card-icon {
@@ -357,10 +448,17 @@
             font-size: 1.5rem;
             margin-bottom: 12px;
         }
-        
-        .card-name { font-weight: 600; margin-bottom: 4px; }
-        .card-meta { font-size: 0.85rem; color: var(--text-muted); }
-        
+
+        .card-name {
+            font-weight: 600;
+            margin-bottom: 4px;
+        }
+
+        .card-meta {
+            font-size: 0.85rem;
+            color: var(--text-muted);
+        }
+
         /* BUTTONS */
         .btn {
             padding: 10px 16px;
@@ -377,16 +475,43 @@
             gap: 8px;
             transition: all 0.15s;
         }
-        
-        .btn:hover { background: var(--bg-hover); }
-        .btn-primary { background: var(--primary); border-color: var(--primary); color: white; }
-        .btn-primary:hover { background: var(--primary-hover); }
-        .btn-success { background: var(--success); border-color: var(--success); color: white; }
-        .btn-danger { background: var(--danger); border-color: var(--danger); color: white; }
-        .btn-sm { padding: 6px 12px; font-size: 0.8rem; }
-        
+
+        .btn:hover {
+            background: var(--bg-hover);
+        }
+
+        .btn-primary {
+            background: var(--primary);
+            border-color: var(--primary);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: var(--primary-hover);
+        }
+
+        .btn-success {
+            background: var(--success);
+            border-color: var(--success);
+            color: white;
+        }
+
+        .btn-danger {
+            background: var(--danger);
+            border-color: var(--danger);
+            color: white;
+        }
+
+        .btn-sm {
+            padding: 6px 12px;
+            font-size: 0.8rem;
+        }
+
         /* FORMS */
-        .form-group { margin-bottom: 16px; }
+        .form-group {
+            margin-bottom: 16px;
+        }
+
         .form-label {
             display: block;
             font-size: 0.85rem;
@@ -394,8 +519,10 @@
             margin-bottom: 6px;
             color: var(--text-muted);
         }
-        
-        .form-input, .form-select, .form-textarea {
+
+        .form-input,
+        .form-select,
+        .form-textarea {
             width: 100%;
             padding: 10px 14px;
             background: var(--bg-input);
@@ -403,21 +530,40 @@
             border-radius: 8px;
             color: var(--text);
             font-family: inherit;
-            font-size: 16px; /* Previne auto-zoom em iOS */
+            font-size: 16px;
+            /* Previne auto-zoom em iOS */
             transition: border-color 0.15s;
         }
-        
-        .form-input:focus, .form-select:focus, .form-textarea:focus {
+
+        .form-input:focus,
+        .form-select:focus,
+        .form-textarea:focus {
             outline: none;
             border-color: var(--primary);
         }
-        
-        .form-textarea { min-height: 100px; resize: vertical; }
-        
+
+        .form-textarea {
+            min-height: 100px;
+            resize: vertical;
+        }
+
         /* TABLES */
-        .table-container { overflow-x: auto; }
-        table { width: 100%; border-collapse: collapse; }
-        th, td { padding: 12px 16px; text-align: left; border-bottom: 1px solid var(--border); }
+        .table-container {
+            overflow-x: auto;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        th,
+        td {
+            padding: 12px 16px;
+            text-align: left;
+            border-bottom: 1px solid var(--border);
+        }
+
         th {
             font-size: 0.8rem;
             font-weight: 600;
@@ -425,8 +571,11 @@
             letter-spacing: 0.05em;
             color: var(--text-muted);
         }
-        tr:hover { background: var(--bg-hover); }
-        
+
+        tr:hover {
+            background: var(--bg-hover);
+        }
+
         /* BADGES */
         .badge {
             display: inline-flex;
@@ -437,13 +586,32 @@
             font-size: 0.75rem;
             font-weight: 500;
         }
-        
-        .badge-primary { background: rgba(59, 130, 246, 0.2); color: var(--primary); }
-        .badge-success { background: rgba(34, 197, 94, 0.2); color: var(--success); }
-        .badge-warning { background: rgba(234, 179, 8, 0.2); color: var(--warning); }
-        .badge-danger { background: rgba(239, 68, 68, 0.2); color: var(--danger); }
-        .badge-purple { background: rgba(168, 85, 247, 0.2); color: var(--purple); }
-        
+
+        .badge-primary {
+            background: rgba(59, 130, 246, 0.2);
+            color: var(--primary);
+        }
+
+        .badge-success {
+            background: rgba(34, 197, 94, 0.2);
+            color: var(--success);
+        }
+
+        .badge-warning {
+            background: rgba(234, 179, 8, 0.2);
+            color: var(--warning);
+        }
+
+        .badge-danger {
+            background: rgba(239, 68, 68, 0.2);
+            color: var(--danger);
+        }
+
+        .badge-purple {
+            background: rgba(168, 85, 247, 0.2);
+            color: var(--purple);
+        }
+
         /* ALERTS */
         .alert {
             padding: 14px 18px;
@@ -453,24 +621,37 @@
             align-items: flex-start;
             gap: 12px;
         }
-        
+
         .alert-warning {
             background: rgba(234, 179, 8, 0.1);
             border: 1px solid rgba(234, 179, 8, 0.3);
             color: var(--warning);
         }
-        
+
         .alert-danger {
             background: rgba(239, 68, 68, 0.1);
             border: 1px solid rgba(239, 68, 68, 0.3);
             color: var(--danger);
         }
-        
-        .alert-icon { font-size: 1.2rem; }
-        .alert-content { flex: 1; }
-        .alert-title { font-weight: 600; margin-bottom: 4px; }
-        .alert-text { font-size: 0.85rem; opacity: 0.9; }
-        
+
+        .alert-icon {
+            font-size: 1.2rem;
+        }
+
+        .alert-content {
+            flex: 1;
+        }
+
+        .alert-title {
+            font-weight: 600;
+            margin-bottom: 4px;
+        }
+
+        .alert-text {
+            font-size: 0.85rem;
+            opacity: 0.9;
+        }
+
         /* MODAL */
         .modal-overlay {
             display: none;
@@ -482,9 +663,11 @@
             z-index: 100;
             padding: 20px;
         }
-        
-        .modal-overlay.active { display: flex; }
-        
+
+        .modal-overlay.active {
+            display: flex;
+        }
+
         .modal {
             background: var(--bg-card);
             border: 1px solid var(--border);
@@ -494,7 +677,7 @@
             max-height: 90vh;
             overflow-y: auto;
         }
-        
+
         .modal-header {
             padding: 20px;
             border-bottom: 1px solid var(--border);
@@ -502,9 +685,12 @@
             justify-content: space-between;
             align-items: center;
         }
-        
-        .modal-title { font-size: 1.1rem; font-weight: 600; }
-        
+
+        .modal-title {
+            font-size: 1.1rem;
+            font-weight: 600;
+        }
+
         .modal-close {
             background: none;
             border: none;
@@ -513,10 +699,15 @@
             cursor: pointer;
             padding: 4px;
         }
-        
-        .modal-close:hover { color: var(--text); }
-        .modal-body { padding: 20px; }
-        
+
+        .modal-close:hover {
+            color: var(--text);
+        }
+
+        .modal-body {
+            padding: 20px;
+        }
+
         .modal-footer {
             padding: 16px 20px;
             border-top: 1px solid var(--border);
@@ -524,7 +715,7 @@
             justify-content: flex-end;
             gap: 12px;
         }
-        
+
         /* UPLOAD ZONE */
         .upload-zone {
             border: 2px dashed var(--border);
@@ -534,21 +725,31 @@
             cursor: pointer;
             transition: all 0.2s;
         }
-        
+
         .upload-zone:hover {
             border-color: var(--primary);
             background: rgba(59, 130, 246, 0.05);
         }
-        
+
         .upload-zone.dragover {
             border-color: var(--success);
             background: rgba(34, 197, 94, 0.1);
         }
-        
-        .upload-icon { font-size: 3rem; opacity: 0.5; margin-bottom: 16px; }
-        .upload-text { color: var(--text-muted); }
-        .upload-text strong { color: var(--primary); }
-        
+
+        .upload-icon {
+            font-size: 3rem;
+            opacity: 0.5;
+            margin-bottom: 16px;
+        }
+
+        .upload-text {
+            color: var(--text-muted);
+        }
+
+        .upload-text strong {
+            color: var(--primary);
+        }
+
         /* DOC ITEM */
         .doc-item {
             display: flex;
@@ -560,9 +761,11 @@
             margin-bottom: 8px;
             cursor: pointer;
         }
-        
-        .doc-item:hover { background: var(--bg-hover); }
-        
+
+        .doc-item:hover {
+            background: var(--bg-hover);
+        }
+
         .doc-icon {
             width: 40px;
             height: 40px;
@@ -573,11 +776,25 @@
             justify-content: center;
             font-size: 1.2rem;
         }
-        
-        .doc-info { flex: 1; }
-        .doc-actions { display: flex; gap: 8px; }
-        .doc-name { font-weight: 500; font-size: 0.9rem; }
-        .doc-meta { font-size: 0.8rem; color: var(--text-muted); }
+
+        .doc-info {
+            flex: 1;
+        }
+
+        .doc-actions {
+            display: flex;
+            gap: 8px;
+        }
+
+        .doc-name {
+            font-weight: 500;
+            font-size: 0.9rem;
+        }
+
+        .doc-meta {
+            font-size: 0.8rem;
+            color: var(--text-muted);
+        }
 
         .doc-group {
             border: 1px solid var(--border);
@@ -599,8 +816,13 @@
             font-weight: 600;
         }
 
-        .doc-item-static { cursor: default; }
-        .doc-item-static:hover { background: var(--bg-input); }
+        .doc-item-static {
+            cursor: default;
+        }
+
+        .doc-item-static:hover {
+            background: var(--bg-input);
+        }
 
         /* === FASE 3: Destaque para Documentos Gerados === */
         .doc-group-highlight {
@@ -608,6 +830,7 @@
             background: linear-gradient(135deg, rgba(16, 185, 129, 0.08) 0%, var(--bg-card) 100%);
             position: relative;
         }
+
         .doc-group-highlight::before {
             content: '✨ Pronto!';
             position: absolute;
@@ -620,6 +843,7 @@
             padding: 2px 8px;
             border-radius: 10px;
         }
+
         .doc-group-highlight .doc-group-title {
             color: var(--success);
         }
@@ -630,14 +854,17 @@
             background: linear-gradient(135deg, rgba(59, 130, 246, 0.12) 0%, var(--bg-card) 100%);
             box-shadow: 0 4px 12px rgba(59, 130, 246, 0.15);
         }
+
         .doc-group-final::before {
             content: '📋 Relatório Completo';
             background: linear-gradient(135deg, var(--primary) 0%, #8b5cf6 100%);
         }
+
         .doc-group-final .doc-group-title {
             color: var(--primary);
             font-size: 1.05rem;
         }
+
         .doc-group-final .doc-item {
             background: rgba(59, 130, 246, 0.08);
             border: 1px solid rgba(59, 130, 246, 0.2);
@@ -656,6 +883,7 @@
             text-decoration: none;
             transition: all 0.2s;
         }
+
         .btn-download-pdf:hover {
             transform: translateY(-2px);
             box-shadow: 0 4px 12px rgba(239, 68, 68, 0.3);
@@ -669,12 +897,14 @@
             padding: 16px;
             margin-bottom: 16px;
         }
+
         .docs-ready-header {
             display: flex;
             align-items: center;
             justify-content: space-between;
             margin-bottom: 12px;
         }
+
         .docs-ready-title {
             font-size: 1.1rem;
             font-weight: 600;
@@ -683,6 +913,7 @@
             align-items: center;
             gap: 8px;
         }
+
         .docs-ready-actions {
             display: flex;
             gap: 8px;
@@ -702,18 +933,31 @@
             border-radius: 999px;
             padding: 2px 8px;
         }
-        
+
         /* EMPTY STATE */
         .empty-state {
             text-align: center;
             padding: 60px 20px;
             color: var(--text-muted);
         }
-        
-        .empty-icon { font-size: 4rem; opacity: 0.3; margin-bottom: 16px; }
-        .empty-title { font-size: 1.1rem; font-weight: 600; color: var(--text); margin-bottom: 8px; }
-        .empty-text { margin-bottom: 20px; }
-        
+
+        .empty-icon {
+            font-size: 4rem;
+            opacity: 0.3;
+            margin-bottom: 16px;
+        }
+
+        .empty-title {
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: var(--text);
+            margin-bottom: 8px;
+        }
+
+        .empty-text {
+            margin-bottom: 20px;
+        }
+
         /* STATS GRID */
         .stats-grid {
             display: grid;
@@ -721,17 +965,25 @@
             gap: 16px;
             margin-bottom: 24px;
         }
-        
+
         .stat-card {
             background: var(--bg-card);
             border: 1px solid var(--border);
             border-radius: 12px;
             padding: 20px;
         }
-        
-        .stat-value { font-size: 2rem; font-weight: 700; margin-bottom: 4px; }
-        .stat-label { font-size: 0.85rem; color: var(--text-muted); }
-        
+
+        .stat-value {
+            font-size: 2rem;
+            font-weight: 700;
+            margin-bottom: 4px;
+        }
+
+        .stat-label {
+            font-size: 0.85rem;
+            color: var(--text-muted);
+        }
+
         /* TABS */
         .tabs {
             display: flex;
@@ -739,7 +991,7 @@
             border-bottom: 1px solid var(--border);
             margin-bottom: 20px;
         }
-        
+
         .tab {
             padding: 12px 20px;
             cursor: pointer;
@@ -749,10 +1001,16 @@
             margin-bottom: -1px;
             transition: all 0.15s;
         }
-        
-        .tab:hover { color: var(--text); }
-        .tab.active { color: var(--primary); border-bottom-color: var(--primary); }
-        
+
+        .tab:hover {
+            color: var(--text);
+        }
+
+        .tab.active {
+            color: var(--primary);
+            border-bottom-color: var(--primary);
+        }
+
         /* TOAST */
         .toast {
             position: fixed;
@@ -771,11 +1029,20 @@
             z-index: 200;
             max-width: 400px;
         }
-        
-        .toast.show { transform: translateY(0); opacity: 1; }
-        .toast.success { border-left: 4px solid var(--success); }
-        .toast.error { border-left: 4px solid var(--danger); }
-        
+
+        .toast.show {
+            transform: translateY(0);
+            opacity: 1;
+        }
+
+        .toast.success {
+            border-left: 4px solid var(--success);
+        }
+
+        .toast.error {
+            border-left: 4px solid var(--danger);
+        }
+
         /* SPINNER */
         .spinner {
             width: 16px;
@@ -786,7 +1053,12 @@
             animation: spin 0.8s linear infinite;
             display: inline-block;
         }
-        @keyframes spin { to { transform: rotate(360deg); } }
+
+        @keyframes spin {
+            to {
+                transform: rotate(360deg);
+            }
+        }
 
         /* TASK PANEL */
         .task-panel {
@@ -798,13 +1070,17 @@
             background: var(--bg-card);
             border: 1px solid var(--border);
             border-radius: 12px;
-            box-shadow: 0 8px 32px rgba(0,0,0,0.3);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
             z-index: 150;
             display: none;
             flex-direction: column;
             overflow: hidden;
         }
-        .task-panel.show { display: flex; }
+
+        .task-panel.show {
+            display: flex;
+        }
+
         .task-panel-header {
             padding: 12px 16px;
             border-bottom: 1px solid var(--border);
@@ -813,12 +1089,18 @@
             align-items: center;
             background: var(--bg-hover);
         }
-        .task-panel-header h4 { margin: 0; font-size: 0.9rem; }
+
+        .task-panel-header h4 {
+            margin: 0;
+            font-size: 0.9rem;
+        }
+
         .task-panel-body {
             flex: 1;
             overflow-y: auto;
             padding: 8px;
         }
+
         .task-item {
             padding: 12px;
             border-radius: 8px;
@@ -826,22 +1108,42 @@
             margin-bottom: 8px;
             border-left: 3px solid var(--border);
         }
-        .task-item.running { border-left-color: var(--primary); }
-        .task-item.success { border-left-color: var(--success); }
-        .task-item.error { border-left-color: var(--danger); }
+
+        .task-item.running {
+            border-left-color: var(--primary);
+        }
+
+        .task-item.success {
+            border-left-color: var(--success);
+        }
+
+        .task-item.error {
+            border-left-color: var(--danger);
+        }
+
         .task-item-header {
             display: flex;
             justify-content: space-between;
             align-items: center;
             margin-bottom: 4px;
         }
-        .task-item-title { font-weight: 500; font-size: 0.85rem; }
-        .task-item-status { font-size: 0.75rem; color: var(--text-muted); }
+
+        .task-item-title {
+            font-weight: 500;
+            font-size: 0.85rem;
+        }
+
+        .task-item-status {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+        }
+
         .task-item-actions {
             display: flex;
             gap: 8px;
             margin-top: 8px;
         }
+
         .task-fab {
             position: fixed;
             bottom: 24px;
@@ -860,7 +1162,11 @@
             box-shadow: 0 4px 16px rgba(139, 92, 246, 0.4);
             z-index: 151;
         }
-        .task-fab.show { display: flex; }
+
+        .task-fab.show {
+            display: flex;
+        }
+
         .task-fab .badge {
             position: absolute;
             top: -4px;
@@ -883,6 +1189,7 @@
             margin-bottom: 16px;
             flex-wrap: wrap;
         }
+
         .results-nav-item {
             padding: 8px 16px;
             background: var(--bg-card);
@@ -894,14 +1201,34 @@
             align-items: center;
             gap: 8px;
         }
-        .results-nav-item:hover { background: var(--bg-hover); }
-        .results-nav-item.active { border-color: var(--primary); background: rgba(139, 92, 246, 0.1); }
+
+        .results-nav-item:hover {
+            background: var(--bg-hover);
+        }
+
+        .results-nav-item.active {
+            border-color: var(--primary);
+            background: rgba(139, 92, 246, 0.1);
+        }
 
         /* SCROLLBAR */
-        ::-webkit-scrollbar { width: 8px; height: 8px; }
-        ::-webkit-scrollbar-track { background: transparent; }
-        ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
-        ::-webkit-scrollbar-thumb:hover { background: var(--text-muted); }
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: var(--border);
+            border-radius: 4px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: var(--text-muted);
+        }
 
 
 
@@ -917,7 +1244,7 @@
             border: 1px solid var(--border);
             overflow: hidden;
         }
-        
+
         .chat-panel-header {
             display: flex;
             justify-content: space-between;
@@ -926,26 +1253,26 @@
             border-bottom: 1px solid var(--border);
             background: var(--bg-dark);
         }
-        
+
         .chat-provider-info {
             display: flex;
             align-items: center;
             gap: 10px;
         }
-        
+
         .chat-provider-icon {
             font-size: 1.5rem;
         }
-        
+
         .chat-provider-name {
             font-weight: 600;
         }
-        
+
         .chat-provider-model {
             color: var(--text-muted);
             font-size: 0.85rem;
         }
-        
+
         .chat-context-bar {
             padding: 10px 20px;
             background: var(--bg-input);
@@ -955,12 +1282,12 @@
             gap: 12px;
             font-size: 0.9rem;
         }
-        
+
         .chat-context-bar select {
             flex: 1;
             max-width: 300px;
         }
-        
+
         .chat-messages-container {
             flex: 1;
             overflow-y: auto;
@@ -969,7 +1296,7 @@
             flex-direction: column;
             gap: 16px;
         }
-        
+
         .chat-message {
             max-width: 85%;
             padding: 14px 18px;
@@ -977,21 +1304,21 @@
             font-size: 0.95rem;
             line-height: 1.6;
         }
-        
+
         .chat-message.user {
             background: var(--primary);
             color: white;
             align-self: flex-end;
             border-bottom-right-radius: 4px;
         }
-        
+
         .chat-message.assistant {
             background: var(--bg-input);
             border: 1px solid var(--border);
             align-self: flex-start;
             border-bottom-left-radius: 4px;
         }
-        
+
         .chat-message pre {
             background: var(--bg-dark);
             padding: 12px;
@@ -1001,7 +1328,7 @@
             font-family: 'Consolas', 'Monaco', monospace;
             font-size: 0.85rem;
         }
-        
+
         .chat-message-meta {
             margin-top: 8px;
             padding-top: 8px;
@@ -1011,14 +1338,14 @@
             display: flex;
             gap: 16px;
         }
-        
+
         .chat-message-files {
             margin-top: 10px;
             display: flex;
             flex-wrap: wrap;
             gap: 8px;
         }
-        
+
         .chat-message-file {
             display: inline-flex;
             align-items: center;
@@ -1029,23 +1356,23 @@
             font-size: 0.8rem;
             cursor: pointer;
         }
-        
+
         .chat-message-file:hover {
             background: var(--border);
         }
-        
+
         .chat-input-area {
             padding: 16px 20px;
             border-top: 1px solid var(--border);
             background: var(--bg-dark);
         }
-        
+
         .chat-input-wrapper {
             display: flex;
             gap: 12px;
             align-items: flex-end;
         }
-        
+
         .chat-input-wrapper textarea {
             flex: 1;
             min-height: 44px;
@@ -1059,18 +1386,18 @@
             font-family: inherit;
             font-size: 0.95rem;
         }
-        
+
         .chat-input-wrapper textarea:focus {
             outline: none;
             border-color: var(--primary);
         }
-        
+
         .typing-indicator {
             display: flex;
             gap: 4px;
             padding: 8px 0;
         }
-        
+
         .typing-indicator span {
             width: 8px;
             height: 8px;
@@ -1078,15 +1405,30 @@
             border-radius: 50%;
             animation: typing-bounce 1.4s infinite;
         }
-        
-        .typing-indicator span:nth-child(2) { animation-delay: 0.2s; }
-        .typing-indicator span:nth-child(3) { animation-delay: 0.4s; }
-        
-        @keyframes typing-bounce {
-            0%, 60%, 100% { opacity: 0.3; transform: translateY(0); }
-            30% { opacity: 1; transform: translateY(-4px); }
+
+        .typing-indicator span:nth-child(2) {
+            animation-delay: 0.2s;
         }
-        
+
+        .typing-indicator span:nth-child(3) {
+            animation-delay: 0.4s;
+        }
+
+        @keyframes typing-bounce {
+
+            0%,
+            60%,
+            100% {
+                opacity: 0.3;
+                transform: translateY(0);
+            }
+
+            30% {
+                opacity: 1;
+                transform: translateY(-4px);
+            }
+        }
+
         .alert-pipeline {
             padding: 12px 16px;
             border-radius: 8px;
@@ -1095,22 +1437,22 @@
             align-items: flex-start;
             gap: 10px;
         }
-        
+
         .alert-pipeline.info {
             background: rgba(59, 130, 246, 0.1);
             border: 1px solid rgba(59, 130, 246, 0.3);
         }
-        
+
         .alert-pipeline.warning {
             background: rgba(234, 179, 8, 0.1);
             border: 1px solid rgba(234, 179, 8, 0.3);
         }
-        
+
         .alert-pipeline.error {
             background: rgba(239, 68, 68, 0.1);
             border: 1px solid rgba(239, 68, 68, 0.3);
         }
-        
+
         .alert-pipeline.success {
             background: rgba(34, 197, 94, 0.1);
             border: 1px solid rgba(34, 197, 94, 0.3);
@@ -1135,14 +1477,17 @@
             border-radius: 8px;
             margin-bottom: 16px;
         }
+
         .model-warning .warning-icon {
             font-size: 1.5rem;
         }
+
         .model-warning .warning-text strong {
             display: block;
             color: var(--warning);
             margin-bottom: 4px;
         }
+
         .model-warning .warning-text p {
             margin: 0;
             font-size: 0.85rem;
@@ -1156,6 +1501,7 @@
             cursor: pointer;
             font-size: 0.9rem;
         }
+
         .checkbox-label input[type="checkbox"] {
             width: 16px;
             height: 16px;
@@ -1172,6 +1518,7 @@
             gap: 8px;
             margin-bottom: 12px;
         }
+
         .view-mode-btn {
             padding: 6px 12px;
             border: 1px solid var(--border);
@@ -1182,7 +1529,11 @@
             font-size: 0.85rem;
             transition: all 0.15s;
         }
-        .view-mode-btn:hover { background: var(--bg-hover); }
+
+        .view-mode-btn:hover {
+            background: var(--bg-hover);
+        }
+
         .view-mode-btn.active {
             background: var(--primary);
             border-color: var(--primary);
@@ -1214,6 +1565,7 @@
             padding: 16px;
             transition: border-color 0.15s, transform 0.15s;
         }
+
         .model-card:hover {
             border-color: var(--primary);
             transform: translateY(-2px);
@@ -1244,6 +1596,7 @@
             gap: 8px;
             margin-bottom: 12px;
         }
+
         .stat {
             flex: 1;
             text-align: center;
@@ -1251,6 +1604,7 @@
             background: var(--bg-dark);
             border-radius: 6px;
         }
+
         .stat-label {
             display: block;
             font-size: 0.65rem;
@@ -1258,6 +1612,7 @@
             text-transform: uppercase;
             margin-bottom: 2px;
         }
+
         .stat-value {
             font-size: 0.85rem;
             font-weight: 600;
@@ -1270,18 +1625,43 @@
             flex-wrap: wrap;
             margin-bottom: 12px;
         }
+
         .capability-badges span {
             padding: 3px 8px;
             border-radius: 10px;
             font-size: 0.7rem;
             font-weight: 500;
         }
-        .badge-vision { background: rgba(59,130,246,0.2); color: #60a5fa; }
-        .badge-tools { background: rgba(168,85,247,0.2); color: #c084fc; }
-        .badge-reasoning { background: rgba(234,179,8,0.2); color: #fbbf24; }
-        .badge-search { background: rgba(34,197,94,0.2); color: #4ade80; }
-        .badge-json { background: rgba(156,163,175,0.2); color: #9ca3af; }
-        .badge-code { background: rgba(236,72,153,0.2); color: #f472b6; }
+
+        .badge-vision {
+            background: rgba(59, 130, 246, 0.2);
+            color: #60a5fa;
+        }
+
+        .badge-tools {
+            background: rgba(168, 85, 247, 0.2);
+            color: #c084fc;
+        }
+
+        .badge-reasoning {
+            background: rgba(234, 179, 8, 0.2);
+            color: #fbbf24;
+        }
+
+        .badge-search {
+            background: rgba(34, 197, 94, 0.2);
+            color: #4ade80;
+        }
+
+        .badge-json {
+            background: rgba(156, 163, 175, 0.2);
+            color: #9ca3af;
+        }
+
+        .badge-code {
+            background: rgba(236, 72, 153, 0.2);
+            color: #f472b6;
+        }
 
         /* Provider Badges */
         .provider-badge {
@@ -1291,19 +1671,59 @@
             font-weight: 600;
             color: white;
         }
-        .provider-openai { background: #10a37f; }
-        .provider-anthropic { background: #d4a574; }
-        .provider-google { background: #4285f4; }
-        .provider-deepseek { background: #1890ff; }
-        .provider-xai { background: #333; }
-        .provider-perplexity { background: #20b2aa; }
-        .provider-cohere { background: #ff6b6b; }
-        .provider-mistral { background: #ff7000; }
-        .provider-groq { background: #f55036; }
-        .provider-openrouter { background: #6366f1; }
-        .provider-ollama { background: #fff; color: #333; }
-        .provider-vllm { background: #7c3aed; }
-        .provider-lmstudio { background: #059669; }
+
+        .provider-openai {
+            background: #10a37f;
+        }
+
+        .provider-anthropic {
+            background: #d4a574;
+        }
+
+        .provider-google {
+            background: #4285f4;
+        }
+
+        .provider-deepseek {
+            background: #1890ff;
+        }
+
+        .provider-xai {
+            background: #333;
+        }
+
+        .provider-perplexity {
+            background: #20b2aa;
+        }
+
+        .provider-cohere {
+            background: #ff6b6b;
+        }
+
+        .provider-mistral {
+            background: #ff7000;
+        }
+
+        .provider-groq {
+            background: #f55036;
+        }
+
+        .provider-openrouter {
+            background: #6366f1;
+        }
+
+        .provider-ollama {
+            background: #fff;
+            color: #333;
+        }
+
+        .provider-vllm {
+            background: #7c3aed;
+        }
+
+        .provider-lmstudio {
+            background: #059669;
+        }
 
         /* Model Card Footer */
         .model-card-footer {
@@ -1320,11 +1740,14 @@
             border-collapse: collapse;
             font-size: 0.85rem;
         }
-        .catalog-table th, .catalog-table td {
+
+        .catalog-table th,
+        .catalog-table td {
             padding: 10px 12px;
             text-align: left;
             border-bottom: 1px solid var(--border);
         }
+
         .catalog-table th {
             background: var(--bg-input);
             font-weight: 600;
@@ -1332,17 +1755,30 @@
             text-transform: uppercase;
             color: var(--text-muted);
         }
-        .catalog-table tr:hover { background: var(--bg-hover); }
-        .catalog-table .check { color: var(--success); }
-        .catalog-table .cross { color: var(--text-muted); }
+
+        .catalog-table tr:hover {
+            background: var(--bg-hover);
+        }
+
+        .catalog-table .check {
+            color: var(--success);
+        }
+
+        .catalog-table .cross {
+            color: var(--text-muted);
+        }
 
         /* Compare Grid */
-        .compare-selector { margin-bottom: 16px; }
+        .compare-selector {
+            margin-bottom: 16px;
+        }
+
         .compare-chips {
             display: flex;
             gap: 8px;
             flex-wrap: wrap;
         }
+
         .compare-chip {
             padding: 6px 12px;
             background: var(--bg-input);
@@ -1352,12 +1788,17 @@
             cursor: pointer;
             transition: all 0.15s;
         }
-        .compare-chip:hover { border-color: var(--primary); }
+
+        .compare-chip:hover {
+            border-color: var(--primary);
+        }
+
         .compare-chip.selected {
             background: var(--primary);
             border-color: var(--primary);
             color: white;
         }
+
         .compare-grid {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
@@ -1371,22 +1812,26 @@
             grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
             gap: 12px;
         }
+
         .cost-card {
             background: var(--bg-input);
             border: 1px solid var(--border);
             border-radius: 8px;
             padding: 12px;
         }
+
         .cost-card-title {
             font-weight: 600;
             font-size: 0.9rem;
             margin-bottom: 8px;
         }
+
         .cost-card-value {
             font-size: 1.2rem;
             font-weight: 700;
             color: var(--success);
         }
+
         .cost-card-sub {
             font-size: 0.75rem;
             color: var(--text-muted);
@@ -1400,6 +1845,7 @@
             max-height: 400px;
             overflow-y: auto;
         }
+
         .minimal-item {
             display: flex;
             align-items: center;
@@ -1410,12 +1856,17 @@
             cursor: pointer;
             transition: background 0.15s;
         }
-        .minimal-item:hover { background: var(--bg-hover); }
+
+        .minimal-item:hover {
+            background: var(--bg-hover);
+        }
+
         .provider-dot {
             width: 8px;
             height: 8px;
             border-radius: 50%;
         }
+
         .context-badge {
             font-size: 0.75rem;
             padding: 2px 6px;
@@ -1430,34 +1881,46 @@
             grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
             gap: 16px;
         }
+
         .local-provider-card {
             background: var(--bg-input);
             border: 1px solid var(--border);
             border-radius: 12px;
             padding: 16px;
         }
+
         .local-provider-header {
             display: flex;
             align-items: center;
             gap: 8px;
             margin-bottom: 4px;
         }
-        .local-provider-icon { font-size: 1.2rem; }
+
+        .local-provider-icon {
+            font-size: 1.2rem;
+        }
+
         .local-provider-name {
             font-weight: 600;
             flex: 1;
         }
-        .status-indicator { font-size: 0.9rem; }
+
+        .status-indicator {
+            font-size: 0.9rem;
+        }
+
         .local-provider-url {
             font-size: 0.8rem;
             color: var(--text-muted);
             margin-bottom: 12px;
         }
+
         .local-models-list {
             display: flex;
             flex-direction: column;
             gap: 6px;
         }
+
         .local-model-item {
             display: flex;
             align-items: center;
@@ -1467,12 +1930,17 @@
             border-radius: 6px;
             font-size: 0.85rem;
         }
-        .local-model-item .model-name { flex: 1; }
+
+        .local-model-item .model-name {
+            flex: 1;
+        }
+
         .local-model-item .model-size {
             font-size: 0.75rem;
             color: var(--text-muted);
             margin-right: 8px;
         }
+
         .empty-hint {
             font-size: 0.85rem;
             color: var(--text-muted);
@@ -1487,6 +1955,7 @@
             margin-bottom: 16px;
             padding: 0 20px;
         }
+
         .tab-btn {
             flex: 1;
             padding: 12px 16px;
@@ -1498,9 +1967,11 @@
             font-size: 0.9rem;
             transition: all 0.2s;
         }
+
         .tab-btn:hover {
             color: var(--text-primary);
         }
+
         .tab-btn.active {
             color: var(--primary);
             border-bottom-color: var(--primary);
@@ -1514,6 +1985,7 @@
             border-radius: 6px;
             margin-top: 12px;
         }
+
         .aluno-item {
             display: flex;
             align-items: center;
@@ -1522,28 +1994,35 @@
             cursor: pointer;
             transition: background 0.2s;
         }
+
         .aluno-item:last-child {
             border-bottom: none;
         }
+
         .aluno-item:hover {
             background: var(--bg-hover);
         }
+
         .aluno-item.selected {
             background: var(--primary-alpha, rgba(74, 144, 226, 0.15));
             border-left: 3px solid var(--primary);
         }
+
         .aluno-item-info {
             flex: 1;
         }
+
         .aluno-item-nome {
             font-weight: 500;
             color: var(--text-primary);
         }
+
         .aluno-item-detalhes {
             font-size: 0.8rem;
             color: var(--text-muted);
             margin-top: 2px;
         }
+
         .aluno-list-empty {
             padding: 24px;
             text-align: center;
@@ -1557,12 +2036,19 @@
             max-width: 680px;
             animation: modalBounceIn 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
         }
-        
+
         @keyframes modalBounceIn {
-            0% { opacity: 0; transform: translateY(-40px) scale(0.9); }
-            100% { opacity: 1; transform: translateY(0) scale(1); }
+            0% {
+                opacity: 0;
+                transform: translateY(-40px) scale(0.9);
+            }
+
+            100% {
+                opacity: 1;
+                transform: translateY(0) scale(1);
+            }
         }
-        
+
         .welcome-badge {
             display: inline-flex;
             align-items: center;
@@ -1575,7 +2061,7 @@
             border-radius: 20px;
             margin-bottom: 16px;
         }
-        
+
         .welcome-title {
             font-size: 1.5rem;
             font-weight: 700;
@@ -1584,19 +2070,19 @@
             align-items: center;
             gap: 12px;
         }
-        
+
         .welcome-subtitle {
             color: var(--text-muted);
             margin-bottom: 24px;
         }
-        
+
         .welcome-section {
             background: var(--bg-hover);
             border-radius: 12px;
             padding: 16px;
             margin-bottom: 16px;
         }
-        
+
         .welcome-section h4 {
             font-size: 0.9rem;
             font-weight: 600;
@@ -1605,13 +2091,13 @@
             align-items: center;
             gap: 8px;
         }
-        
+
         .model-chips {
             display: flex;
             flex-wrap: wrap;
             gap: 8px;
         }
-        
+
         .model-chip {
             display: inline-flex;
             align-items: center;
@@ -1622,19 +2108,19 @@
             border-radius: 20px;
             font-size: 0.85rem;
         }
-        
+
         .model-chip img {
             width: 16px;
             height: 16px;
             border-radius: 4px;
         }
-        
+
         .flow-cards {
             display: grid;
             grid-template-columns: 1fr 1fr;
             gap: 12px;
         }
-        
+
         .flow-card {
             background: var(--bg-card);
             border: 1px solid var(--border);
@@ -1643,58 +2129,58 @@
             transition: all 0.2s;
             cursor: pointer;
         }
-        
+
         .flow-card:hover {
             border-color: var(--primary);
             transform: translateY(-2px);
         }
-        
+
         .flow-card-icon {
             font-size: 2rem;
             margin-bottom: 8px;
         }
-        
+
         .flow-card h5 {
             font-size: 0.95rem;
             font-weight: 600;
             margin-bottom: 6px;
         }
-        
+
         .flow-card p {
             font-size: 0.8rem;
             color: var(--text-muted);
             line-height: 1.4;
         }
-        
+
         .filter-examples {
             display: flex;
             flex-direction: column;
             gap: 8px;
         }
-        
+
         .filter-example {
             display: flex;
             align-items: center;
             gap: 10px;
             font-size: 0.85rem;
         }
-        
+
         .filter-example-arrow {
             color: var(--primary);
             font-weight: 600;
         }
-        
+
         .filter-example-result {
             color: var(--text-muted);
         }
-        
+
         /* Chat examples - more visual */
         .chat-examples {
             display: flex;
             flex-direction: column;
             gap: 8px;
         }
-        
+
         .chat-example {
             display: flex;
             align-items: center;
@@ -1706,16 +2192,16 @@
             font-size: 0.85rem;
             transition: all 0.2s;
         }
-        
+
         .chat-example:hover {
             border-color: var(--primary);
             background: rgba(59, 130, 246, 0.05);
         }
-        
+
         .chat-example-icon {
             font-size: 1.2rem;
         }
-        
+
         /* Tips section - compact */
         .welcome-tips {
             display: flex;
@@ -1723,7 +2209,7 @@
             gap: 8px;
             margin-top: 16px;
         }
-        
+
         .tip-item {
             display: flex;
             align-items: center;
@@ -1733,15 +2219,15 @@
             background: rgba(59, 130, 246, 0.08);
             border-radius: 8px;
         }
-        
+
         .tip-item.tip-warning {
             background: rgba(234, 179, 8, 0.1);
         }
-        
+
         .tip-icon {
             font-size: 1.1rem;
         }
-        
+
         .welcome-warning {
             background: rgba(234, 179, 8, 0.1);
             border: 1px solid rgba(234, 179, 8, 0.3);
@@ -1749,7 +2235,7 @@
             padding: 16px;
             margin-top: 16px;
         }
-        
+
         .welcome-warning h4 {
             color: var(--warning);
             font-size: 0.9rem;
@@ -1758,13 +2244,13 @@
             align-items: center;
             gap: 8px;
         }
-        
+
         .welcome-warning p {
             font-size: 0.85rem;
             color: var(--text-muted);
             line-height: 1.5;
         }
-        
+
         .welcome-footer {
             display: flex;
             justify-content: space-between;
@@ -1773,7 +2259,7 @@
             padding-top: 16px;
             border-top: 1px solid var(--border);
         }
-        
+
         .welcome-footer label {
             display: flex;
             align-items: center;
@@ -1782,7 +2268,7 @@
             color: var(--text-muted);
             cursor: pointer;
         }
-        
+
         /* Chat Modal */
         .modal-chat .modal {
             height: 80vh;
@@ -1810,14 +2296,14 @@
             flex-direction: column;
             padding: 0;
         }
-        
+
         .tutorial-tabs {
             display: flex;
             border-bottom: 1px solid var(--border);
             padding: 0 20px;
             gap: 4px;
         }
-        
+
         .tutorial-tab {
             padding: 12px 20px;
             font-size: 0.9rem;
@@ -1827,36 +2313,43 @@
             border-bottom: 2px solid transparent;
             transition: all 0.2s;
         }
-        
+
         .tutorial-tab:hover {
             color: var(--text);
         }
-        
+
         .tutorial-tab.active {
             color: var(--primary);
             border-bottom-color: var(--primary);
         }
-        
+
         .tutorial-content {
             flex: 1;
             overflow-y: auto;
             padding: 24px;
         }
-        
+
         .tutorial-step {
             display: none;
         }
-        
+
         .tutorial-step.active {
             display: block;
             animation: fadeIn 0.3s ease;
         }
-        
+
         @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(10px); }
-            to { opacity: 1; transform: translateY(0); }
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
         }
-        
+
         .tutorial-step-title {
             font-size: 1.25rem;
             font-weight: 600;
@@ -1865,12 +2358,12 @@
             align-items: center;
             gap: 12px;
         }
-        
+
         .tutorial-step-subtitle {
             color: var(--text-muted);
             margin-bottom: 20px;
         }
-        
+
         .tutorial-image-container {
             width: 100%;
             min-height: 200px;
@@ -1882,15 +2375,15 @@
             justify-content: center;
             overflow: hidden;
         }
-        
+
         .tutorial-image {
             width: 100%;
             border-radius: 12px;
             border: 1px solid var(--border);
-            box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
             transition: opacity 0.3s;
         }
-        
+
         .tutorial-image-placeholder {
             display: flex;
             flex-direction: column;
@@ -1900,27 +2393,27 @@
             padding: 40px;
             text-align: center;
         }
-        
+
         .tutorial-image-placeholder-icon {
             font-size: 3rem;
             opacity: 0.5;
         }
-        
+
         .tutorial-text {
             font-size: 0.95rem;
             line-height: 1.7;
             color: var(--text);
         }
-        
+
         .tutorial-text ul {
             margin: 12px 0;
             padding-left: 24px;
         }
-        
+
         .tutorial-text li {
             margin-bottom: 8px;
         }
-        
+
         .tutorial-highlight {
             background: rgba(59, 130, 246, 0.1);
             border-left: 3px solid var(--primary);
@@ -1928,7 +2421,7 @@
             border-radius: 0 8px 8px 0;
             margin: 16px 0;
         }
-        
+
         .tutorial-nav {
             display: flex;
             justify-content: space-between;
@@ -1937,18 +2430,18 @@
             border-top: 1px solid var(--border);
             background: var(--bg-card);
         }
-        
+
         .tutorial-progress {
             display: flex;
             align-items: center;
             gap: 8px;
         }
-        
+
         .tutorial-progress-dots {
             display: flex;
             gap: 6px;
         }
-        
+
         .tutorial-dot {
             width: 8px;
             height: 8px;
@@ -1956,21 +2449,21 @@
             background: var(--border);
             transition: all 0.2s;
         }
-        
+
         .tutorial-dot.active {
             background: var(--primary);
             transform: scale(1.2);
         }
-        
+
         .tutorial-dot.completed {
             background: var(--success);
         }
-        
+
         .tutorial-progress-text {
             font-size: 0.85rem;
             color: var(--text-muted);
         }
-        
+
         /* Help button in sidebar */
         .help-btn {
             display: flex;
@@ -1988,47 +2481,54 @@
             transition: all 0.3s;
             box-shadow: 0 2px 8px rgba(59, 130, 246, 0.3);
         }
-        
+
         .help-btn:hover {
             transform: translateY(-2px);
             box-shadow: 0 4px 12px rgba(59, 130, 246, 0.5);
         }
-        
+
         .help-btn-icon {
             font-size: 1.1rem;
         }
-        
+
         /* Pulsação para chamar atenção */
         @keyframes pulse-glow {
-            0%, 100% { box-shadow: 0 2px 8px rgba(59, 130, 246, 0.3); }
-            50% { box-shadow: 0 2px 20px rgba(59, 130, 246, 0.6); }
+
+            0%,
+            100% {
+                box-shadow: 0 2px 8px rgba(59, 130, 246, 0.3);
+            }
+
+            50% {
+                box-shadow: 0 2px 20px rgba(59, 130, 246, 0.6);
+            }
         }
-        
+
         .help-btn.pulse {
             animation: pulse-glow 2s ease-in-out infinite;
         }
-        
+
         /* Tutorial text enhancements */
         .tutorial-text ol {
             margin: 12px 0;
             padding-left: 24px;
         }
-        
+
         .tutorial-text ol li {
             margin-bottom: 8px;
         }
-        
+
         /* Tutorial highlight variations */
         .tutorial-highlight.warning {
             background: rgba(234, 179, 8, 0.1);
             border-left-color: #eab308;
         }
-        
+
         .tutorial-highlight.success {
             background: rgba(34, 197, 94, 0.1);
             border-left-color: #22c55e;
         }
-        
+
         /* Botão de tutorial destacado */
         .btn-tutorial {
             background: linear-gradient(135deg, #10b981, #059669) !important;
@@ -2039,7 +2539,7 @@
             gap: 8px;
             font-weight: 500;
         }
-        
+
         .btn-tutorial:hover {
             background: linear-gradient(135deg, #059669, #047857) !important;
             transform: translateY(-1px);
@@ -2048,12 +2548,12 @@
         /* ========================================
            SISTEMA DE TOOLTIPS E AJUDA CONTEXTUAL
            ======================================== */
-        
+
         /* Tooltip básico via atributo data-tooltip */
         [data-tooltip] {
             position: relative;
         }
-        
+
         [data-tooltip]::before,
         [data-tooltip]::after {
             position: absolute;
@@ -2063,7 +2563,7 @@
             transition: all 0.25s ease;
             z-index: 1000;
         }
-        
+
         [data-tooltip]::before {
             content: attr(data-tooltip);
             bottom: calc(100% + 8px);
@@ -2081,9 +2581,9 @@
             max-width: 300px;
             min-width: 180px;
             text-align: left;
-            box-shadow: 0 6px 20px rgba(0,0,0,0.35);
+            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.35);
         }
-        
+
         [data-tooltip]::after {
             content: '';
             bottom: calc(100% + 2px);
@@ -2092,17 +2592,17 @@
             border: 6px solid transparent;
             border-top-color: var(--border);
         }
-        
+
         [data-tooltip]:hover::before,
         [data-tooltip]:hover::after {
             opacity: 1;
             visibility: visible;
         }
-        
+
         [data-tooltip]:hover::before {
             transform: translateX(-50%) translateY(0);
         }
-        
+
         /* Tooltip posicionado à direita */
         [data-tooltip-pos="right"]::before {
             bottom: auto;
@@ -2110,7 +2610,7 @@
             top: 50%;
             transform: translateY(-50%) translateX(-4px);
         }
-        
+
         [data-tooltip-pos="right"]::after {
             bottom: auto;
             left: calc(100% + 4px);
@@ -2119,29 +2619,29 @@
             border: 6px solid transparent;
             border-right-color: var(--border);
         }
-        
+
         [data-tooltip-pos="right"]:hover::before {
             transform: translateY(-50%) translateX(0);
         }
-        
+
         /* Tooltip posicionado embaixo */
         [data-tooltip-pos="bottom"]::before {
             bottom: auto;
             top: calc(100% + 8px);
             transform: translateX(-50%) translateY(-4px);
         }
-        
+
         [data-tooltip-pos="bottom"]::after {
             bottom: auto;
             top: calc(100% + 2px);
             border: 6px solid transparent;
             border-bottom-color: var(--border);
         }
-        
+
         [data-tooltip-pos="bottom"]:hover::before {
             transform: translateX(-50%) translateY(0);
         }
-        
+
         /* Ícone de ajuda inline (?) */
         .tooltip-icon {
             display: inline-flex;
@@ -2160,13 +2660,13 @@
             transition: all 0.2s;
             vertical-align: middle;
         }
-        
+
         .tooltip-icon:hover {
             background: var(--primary);
             border-color: var(--primary);
             color: white;
         }
-        
+
         /* Botão de ajuda por seção (maior, para headers) */
         .section-help {
             display: inline-flex;
@@ -2183,14 +2683,14 @@
             margin-left: 12px;
             transition: all 0.2s;
         }
-        
+
         .section-help:hover {
             background: var(--primary);
             border-color: var(--primary);
             color: white;
             transform: scale(1.1);
         }
-        
+
         /* Painel de ajuda inline (abre em cada seção) */
         .help-panel {
             background: linear-gradient(135deg, rgba(59, 130, 246, 0.08), rgba(139, 92, 246, 0.04));
@@ -2200,24 +2700,31 @@
             margin-bottom: 20px;
             display: none;
         }
-        
+
         .help-panel.show {
             display: block;
             animation: helpSlideDown 0.3s ease;
         }
-        
+
         @keyframes helpSlideDown {
-            from { opacity: 0; transform: translateY(-10px); }
-            to { opacity: 1; transform: translateY(0); }
+            from {
+                opacity: 0;
+                transform: translateY(-10px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
         }
-        
+
         .help-panel-header {
             display: flex;
             justify-content: space-between;
             align-items: center;
             margin-bottom: 12px;
         }
-        
+
         .help-panel-title {
             font-weight: 600;
             font-size: 0.95rem;
@@ -2226,7 +2733,7 @@
             align-items: center;
             gap: 8px;
         }
-        
+
         .help-panel-close {
             background: none;
             border: none;
@@ -2236,11 +2743,11 @@
             padding: 4px 8px;
             line-height: 1;
         }
-        
+
         .help-panel-close:hover {
             color: var(--text);
         }
-        
+
         .help-panel-content {
             font-size: 0.88rem;
             line-height: 1.65;
@@ -2302,7 +2809,7 @@
             margin-bottom: 14px;
             align-items: flex-start;
         }
-        
+
         .help-step-number {
             flex-shrink: 0;
             width: 26px;
@@ -2316,12 +2823,12 @@
             font-size: 0.8rem;
             font-weight: 600;
         }
-        
+
         .help-step-text {
             flex: 1;
             padding-top: 2px;
         }
-        
+
         .help-link {
             display: inline-flex;
             align-items: center;
@@ -2333,11 +2840,11 @@
             cursor: pointer;
             font-weight: 500;
         }
-        
+
         .help-link:hover {
             text-decoration: underline;
         }
-        
+
         /* Tag de explicação inline */
         .inline-hint {
             font-size: 0.78rem;
@@ -2347,12 +2854,12 @@
             align-items: center;
             gap: 4px;
         }
-        
+
         .inline-hint::before {
             content: '💡';
             font-size: 0.85rem;
         }
-        
+
         /* ============================================================
            TOGGLE VISUAL/JSON
            ============================================================ */
@@ -2363,7 +2870,7 @@
             padding: 3px;
             gap: 2px;
         }
-        
+
         .view-toggle-btn {
             padding: 6px 14px;
             border: none;
@@ -2377,30 +2884,30 @@
             align-items: center;
             gap: 6px;
         }
-        
+
         .view-toggle-btn:hover {
             background: var(--bg-hover);
         }
-        
+
         .view-toggle-btn.active {
             background: var(--primary);
             color: white;
             font-weight: 500;
         }
-        
+
         /* Visual Data Cards */
         .visual-data {
             display: grid;
             gap: 16px;
         }
-        
+
         .data-section {
             background: var(--bg-card);
             border-radius: 12px;
             padding: 16px;
             border: 1px solid var(--border);
         }
-        
+
         .data-section-title {
             font-size: 0.9rem;
             font-weight: 600;
@@ -2410,19 +2917,19 @@
             align-items: center;
             gap: 8px;
         }
-        
+
         .data-grid {
             display: grid;
             grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
             gap: 12px;
         }
-        
+
         .data-item {
             background: var(--bg);
             padding: 12px;
             border-radius: 8px;
         }
-        
+
         .data-label {
             font-size: 0.75rem;
             color: var(--text-muted);
@@ -2430,23 +2937,34 @@
             text-transform: uppercase;
             letter-spacing: 0.5px;
         }
-        
+
         .data-value {
             font-size: 1rem;
             font-weight: 500;
             color: var(--text);
         }
-        
+
         .data-value.large {
             font-size: 1.5rem;
             font-weight: 700;
         }
-        
-        .data-value.success { color: var(--success); }
-        .data-value.warning { color: var(--warning); }
-        .data-value.danger { color: var(--danger); }
-        .data-value.primary { color: var(--primary); }
-        
+
+        .data-value.success {
+            color: var(--success);
+        }
+
+        .data-value.warning {
+            color: var(--warning);
+        }
+
+        .data-value.danger {
+            color: var(--danger);
+        }
+
+        .data-value.primary {
+            color: var(--primary);
+        }
+
         /* Questões visuais */
         .questao-card {
             background: var(--bg);
@@ -2455,62 +2973,62 @@
             margin-bottom: 12px;
             border-left: 4px solid var(--border);
         }
-        
+
         .questao-card.correta {
             border-left-color: var(--success);
             background: rgba(16, 185, 129, 0.05);
         }
-        
+
         .questao-card.incorreta {
             border-left-color: var(--danger);
             background: rgba(239, 68, 68, 0.05);
         }
-        
+
         .questao-card.parcial {
             border-left-color: var(--warning);
             background: rgba(245, 158, 11, 0.05);
         }
-        
+
         .questao-header {
             display: flex;
             justify-content: space-between;
             align-items: center;
             margin-bottom: 8px;
         }
-        
+
         .questao-numero {
             font-weight: 600;
             font-size: 0.95rem;
         }
-        
+
         .questao-pontuacao {
             font-size: 0.85rem;
             padding: 4px 10px;
             border-radius: 20px;
             font-weight: 500;
         }
-        
+
         .questao-pontuacao.success {
             background: rgba(16, 185, 129, 0.15);
             color: var(--success);
         }
-        
+
         .questao-pontuacao.danger {
             background: rgba(239, 68, 68, 0.15);
             color: var(--danger);
         }
-        
+
         .questao-pontuacao.warning {
             background: rgba(245, 158, 11, 0.15);
             color: var(--warning);
         }
-        
+
         .questao-resposta {
             font-size: 0.85rem;
             color: var(--text-secondary);
             margin-top: 6px;
         }
-        
+
         .questao-feedback {
             font-size: 0.82rem;
             color: var(--text-muted);
@@ -2519,7 +3037,7 @@
             border-top: 1px solid var(--border);
             font-style: italic;
         }
-        
+
         /* Habilidades visual */
         .habilidade-item {
             display: flex;
@@ -2528,16 +3046,16 @@
             padding: 10px 0;
             border-bottom: 1px solid var(--border);
         }
-        
+
         .habilidade-item:last-child {
             border-bottom: none;
         }
-        
+
         .habilidade-nome {
             flex: 1;
             font-size: 0.9rem;
         }
-        
+
         .habilidade-barra {
             width: 120px;
             height: 8px;
@@ -2545,13 +3063,13 @@
             border-radius: 4px;
             overflow: hidden;
         }
-        
+
         .habilidade-barra-fill {
             height: 100%;
             border-radius: 4px;
             transition: width 0.3s;
         }
-        
+
         .habilidade-valor {
             font-size: 0.85rem;
             font-weight: 600;
@@ -2599,9 +3117,11 @@
         .hamburger-btn.active .hamburger-line:nth-child(1) {
             transform: rotate(45deg) translate(5px, 5px);
         }
+
         .hamburger-btn.active .hamburger-line:nth-child(2) {
             opacity: 0;
         }
+
         .hamburger-btn.active .hamburger-line:nth-child(3) {
             transform: rotate(-45deg) translate(5px, -5px);
         }
@@ -2616,6 +3136,7 @@
             transition: background 0.3s ease;
             -webkit-tap-highlight-color: transparent;
         }
+
         .sidebar-overlay.active {
             display: block;
             background: rgba(0, 0, 0, 0.6);
@@ -2625,6 +3146,7 @@
            TABLET BREAKPOINT (max-width: 768px)
            ============================================================ */
         @media screen and (max-width: 768px) {
+
             /* Sidebar - slide out by default */
             .sidebar {
                 position: fixed;
@@ -2640,6 +3162,7 @@
                 padding-top: var(--safe-area-top);
                 will-change: transform;
             }
+
             .sidebar.mobile-open {
                 transform: translateX(0);
                 box-shadow: 4px 0 24px rgba(0, 0, 0, 0.3);
@@ -2679,6 +3202,7 @@
             .hamburger-btn {
                 display: flex;
             }
+
             .header {
                 padding: 12px 16px;
                 padding-top: calc(12px + var(--safe-area-top));
@@ -2696,6 +3220,7 @@
                 grid-template-columns: repeat(2, 1fr);
                 gap: 12px;
             }
+
             .card-grid {
                 grid-template-columns: 1fr;
             }
@@ -2705,13 +3230,16 @@
                 min-height: var(--touch-target-min);
                 padding: 12px 16px;
             }
+
             .btn-sm {
                 min-height: 36px;
                 padding: 8px 12px;
             }
 
             /* Forms - prevent iOS zoom */
-            .form-input, .form-select, .form-textarea {
+            .form-input,
+            .form-select,
+            .form-textarea {
                 min-height: var(--touch-target-min);
                 font-size: 16px;
             }
@@ -2737,6 +3265,7 @@
                     transform: translateY(100%);
                     opacity: 0;
                 }
+
                 to {
                     transform: translateY(0);
                     opacity: 1;
@@ -2854,6 +3383,7 @@
                 flex-wrap: nowrap;
                 -webkit-overflow-scrolling: touch;
             }
+
             .tab {
                 flex-shrink: 0;
             }
@@ -2876,6 +3406,7 @@
                 flex-wrap: wrap;
                 padding: 14px;
             }
+
             .doc-actions {
                 width: 100%;
                 justify-content: flex-end;
@@ -2883,6 +3414,7 @@
                 padding-top: 12px;
                 border-top: 1px solid var(--border);
             }
+
             .doc-actions .btn {
                 flex: 1;
             }
@@ -3076,6 +3608,7 @@
            SMALL TABLET / LARGE PHONE BREAKPOINT (max-width: 600px)
            ============================================================ */
         @media screen and (max-width: 600px) {
+
             /* Stats grid: maintain 2 columns but tighter */
             .stats-grid {
                 gap: 10px;
@@ -3104,6 +3637,7 @@
                 gap: 4px;
                 flex-wrap: wrap;
             }
+
             .tab {
                 padding: 10px 12px;
                 font-size: 0.85rem;
@@ -3117,6 +3651,7 @@
                 flex-wrap: wrap;
                 gap: 4px;
             }
+
             .modal-lg .tab {
                 flex: 1 1 auto;
                 min-width: 70px;
@@ -3139,6 +3674,7 @@
            PHONE BREAKPOINT (max-width: 480px)
            ============================================================ */
         @media screen and (max-width: 480px) {
+
             /* Sidebar full width */
             .sidebar {
                 width: 100vw;
@@ -3154,6 +3690,7 @@
                 padding: 10px 12px;
                 padding-top: calc(10px + var(--safe-area-top));
             }
+
             .header-actions .btn span:not(:first-child) {
                 display: none;
             }
@@ -3189,6 +3726,7 @@
             .card {
                 padding: 16px;
             }
+
             .card-icon {
                 width: 40px;
                 height: 40px;
@@ -3371,6 +3909,7 @@
            TOUCH DEVICE OPTIMIZATIONS
            ============================================================ */
         @media (hover: none) and (pointer: coarse) {
+
             /* Disable hover tooltips on touch devices */
             [data-tooltip]::before,
             [data-tooltip]::after {
@@ -3432,17 +3971,20 @@
             font-size: 0.9rem;
             font-weight: 600;
         }
+
         .health-banner.active {
             display: block;
         }
+
         body.health-degraded .app {
             margin-top: 42px;
         }
-
     </style>
 </head>
+
 <body>
-    <div id="health-banner" class="health-banner">&#9888;&#65039; Sistema com problemas. Dados podem não ser salvos corretamente.</div>
+    <div id="health-banner" class="health-banner">&#9888;&#65039; Sistema com problemas. Dados podem não ser salvos
+        corretamente.</div>
     <div class="app">
         <!-- Sidebar -->
         <aside class="sidebar">
@@ -3453,34 +3995,41 @@
                 </div>
                 <div class="logo-tagline">Mais que um Número</div>
             </div>
-            
-<nav class="nav-tree" id="nav-tree">
-<div class="tree-section">
+
+            <nav class="nav-tree" id="nav-tree">
+                <div class="tree-section">
                     <div class="tree-section-header">
                         <span>Navegação</span>
                     </div>
-                    <div class="tree-item active" onclick="showDashboard()" data-tooltip="Página inicial com visão geral do sistema" data-tooltip-pos="right">
+                    <div class="tree-item active" onclick="showDashboard()"
+                        data-tooltip="Página inicial com visão geral do sistema" data-tooltip-pos="right">
                         <span class="tree-item-icon">🏠</span>
                         <span class="tree-item-name">Início</span>
                     </div>
-                    <div class="tree-item" onclick="showChat()" data-tooltip="Converse com a IA sobre seus documentos e provas" data-tooltip-pos="right">
+                    <div class="tree-item" onclick="showChat()"
+                        data-tooltip="Converse com a IA sobre seus documentos e provas" data-tooltip-pos="right">
                         <span class="tree-item-icon">💬</span>
                         <span class="tree-item-name">Chat com IA</span>
                     </div>
-                    <div class="tree-item" onclick="showAlunos()" data-tooltip="Lista de todos os alunos cadastrados no sistema" data-tooltip-pos="right">
+                    <div class="tree-item" onclick="showAlunos()"
+                        data-tooltip="Lista de todos os alunos cadastrados no sistema" data-tooltip-pos="right">
                         <span class="tree-item-icon">👥</span>
                         <span class="tree-item-name">Todos os Alunos</span>
                     </div>
-                    <div class="tree-item technical-item" onclick="showPrompts()" data-tooltip="⚠️ Área técnica: instruções que controlam o comportamento da IA" data-tooltip-pos="right">
+                    <div class="tree-item technical-item" onclick="showPrompts()"
+                        data-tooltip="⚠️ Área técnica: instruções que controlam o comportamento da IA"
+                        data-tooltip-pos="right">
                         <span class="tree-item-icon">🧠</span>
                         <span class="tree-item-name">Prompts</span>
                     </div>
-                    <div class="tree-item technical-item" onclick="showProviders()" data-tooltip="⚠️ Área técnica: modelos de IA configurados (GPT, Claude, Gemini)" data-tooltip-pos="right">
+                    <div class="tree-item technical-item" onclick="showProviders()"
+                        data-tooltip="⚠️ Área técnica: modelos de IA configurados (GPT, Claude, Gemini)"
+                        data-tooltip-pos="right">
                         <span class="tree-item-icon">🤖</span>
                         <span class="tree-item-name">Modelos de LLM</span>
                     </div>
                 </div>
-                
+
                 <div class="tree-section">
                     <div class="tree-section-header">
                         <span>Matérias</span>
@@ -3492,19 +4041,25 @@
                 <div class="tree-section">
                     <div class="tree-section-header">
                         <span>Tarefas</span>
-                        <button class="btn btn-sm" id="btn-cancelar-tudo" onclick="cancelAllTasks()" title="Cancelar Tudo" style="font-size: 0.75rem; padding: 4px 10px; color: var(--danger); border: 1px solid var(--danger);">✕ Cancelar Tudo</button>
+                        <button class="btn btn-sm" id="btn-cancelar-tudo" onclick="cancelAllTasks()"
+                            title="Cancelar Tudo"
+                            style="font-size: 0.75rem; padding: 4px 10px; color: var(--danger); border: 1px solid var(--danger);">✕
+                            Cancelar Tudo</button>
                     </div>
                     <div id="tree-tarefas">
-                        <div class="tarefas-empty-state" style="padding: 12px; color: var(--text-muted); font-size: 0.85rem; text-align: center;">
+                        <div class="tarefas-empty-state"
+                            style="padding: 12px; color: var(--text-muted); font-size: 0.85rem; text-align: center;">
                             Nenhuma tarefa em execução
                         </div>
                     </div>
                 </div>
             </nav>
-            
+
             <div class="sidebar-footer">
                 <div style="display: flex; gap: 8px; margin-bottom: 8px;">
-                    <button class="btn" style="flex: 1;" onclick="openModal('modal-settings')" data-tooltip="Configure API Keys e modelos de IA. ⚠️ Área técnica - as chaves já estão configuradas!" data-tooltip-pos="right">
+                    <button class="btn" style="flex: 1;" onclick="openModal('modal-settings')"
+                        data-tooltip="Configure API Keys e modelos de IA. ⚠️ Área técnica - as chaves já estão configuradas!"
+                        data-tooltip-pos="right">
                         ⚙️ Configurações IA
                     </button>
                 </div>
@@ -3539,11 +4094,11 @@
                     <button class="btn" onclick="openModal('modal-busca')">🔍 Buscar</button>
                 </div>
             </header>
-            
+
             <div class="content" id="content"></div>
         </main>
     </div>
-    
+
     <!-- Modal: Nova Matéria -->
     <div class="modal-overlay" id="modal-materia">
         <div class="modal">
@@ -3577,7 +4132,7 @@
             </div>
         </div>
     </div>
-    
+
     <!-- Modal: Nova Turma -->
     <div class="modal-overlay" id="modal-turma">
         <div class="modal">
@@ -3606,7 +4161,7 @@
             </div>
         </div>
     </div>
-    
+
     <!-- Modal: Nova Atividade -->
     <div class="modal-overlay" id="modal-atividade">
         <div class="modal">
@@ -3640,7 +4195,7 @@
             </div>
         </div>
     </div>
-    
+
     <!-- Modal: Adicionar Aluno -->
     <div class="modal-overlay" id="modal-aluno">
         <div class="modal" style="max-width: 500px;">
@@ -3651,15 +4206,16 @@
 
             <!-- Tab buttons -->
             <div class="modal-tabs">
-                <button class="tab-btn active" id="tab-btn-selecionar" onclick="switchAlunoTab('selecionar')">Selecionar Existente</button>
+                <button class="tab-btn active" id="tab-btn-selecionar" onclick="switchAlunoTab('selecionar')">Selecionar
+                    Existente</button>
                 <button class="tab-btn" id="tab-btn-criar" onclick="switchAlunoTab('criar')">Criar Novo</button>
             </div>
 
             <div class="modal-body">
                 <!-- Tab: Select Existing -->
                 <div id="tab-selecionar-aluno">
-                    <input type="text" class="form-input" id="input-busca-aluno"
-                           placeholder="Buscar por nome..." oninput="filtrarAlunos()">
+                    <input type="text" class="form-input" id="input-busca-aluno" placeholder="Buscar por nome..."
+                        oninput="filtrarAlunos()">
                     <div id="lista-alunos" class="aluno-list"></div>
                 </div>
 
@@ -3688,7 +4244,7 @@
             </div>
         </div>
     </div>
-    
+
     <!-- Modal: Upload Documento -->
     <div class="modal-overlay" id="modal-upload">
         <div class="modal">
@@ -3700,7 +4256,9 @@
                 <div class="form-group">
                     <label class="form-label">
                         Tipo de Documento *
-                        <span class="tooltip-icon" data-tooltip="Cada tipo tem um propósito no pipeline de correção. Passe o mouse sobre as opções para saber mais!" data-tooltip-pos="right">?</span>
+                        <span class="tooltip-icon"
+                            data-tooltip="Cada tipo tem um propósito no pipeline de correção. Passe o mouse sobre as opções para saber mais!"
+                            data-tooltip-pos="right">?</span>
                     </label>
                     <select class="form-select" id="input-upload-tipo" onchange="onUploadTipoChange()">
                         <option value="enunciado">📄 Enunciado da Prova</option>
@@ -3717,7 +4275,8 @@
                 </div>
                 <div class="form-group">
                     <label class="form-label">Nome do Documento</label>
-                    <input type="text" class="form-input" id="input-upload-display-name" placeholder="Ex: Prova Respondida - João Silva - Cálculo I">
+                    <input type="text" class="form-input" id="input-upload-display-name"
+                        placeholder="Ex: Prova Respondida - João Silva - Cálculo I">
                     <div class="inline-hint">Deixe em branco para gerar automaticamente</div>
                 </div>
                 <div class="form-group">
@@ -3727,13 +4286,16 @@
                         <div class="upload-text">
                             Arraste o(s) arquivo(s) aqui ou <strong>clique para selecionar</strong>
                         </div>
-                        <input type="file" id="input-upload-file" hidden multiple accept=".pdf,.docx,.doc,.png,.jpg,.jpeg">
+                        <input type="file" id="input-upload-file" hidden multiple
+                            accept=".pdf,.docx,.doc,.png,.jpg,.jpeg">
                     </div>
-                    <div id="upload-file-name" style="margin-top: 8px; font-size: 0.85rem; color: var(--text-muted);"></div>
+                    <div id="upload-file-name" style="margin-top: 8px; font-size: 0.85rem; color: var(--text-muted);">
+                    </div>
                 </div>
                 <input type="hidden" id="input-upload-atividade-id">
                 <input type="hidden" id="input-upload-documento-id">
-                <div id="upload-replace-info" style="display: none; margin-top: 8px; font-size: 0.85rem; color: var(--text-muted);"></div>
+                <div id="upload-replace-info"
+                    style="display: none; margin-top: 8px; font-size: 0.85rem; color: var(--text-muted);"></div>
             </div>
             <div class="modal-footer">
                 <button class="btn" onclick="closeModal('modal-upload')">Cancelar</button>
@@ -3750,15 +4312,17 @@
                 <button class="modal-close" onclick="closeModal('modal-documento-conteudo')">×</button>
             </div>
             <div class="modal-body">
-                <div id="documento-conteudo-meta" style="color: var(--text-muted); font-size: 0.85rem; margin-bottom: 12px;"></div>
-                <pre id="output-documento-conteudo" style="background: var(--bg-card); padding: 16px; border-radius: 8px; overflow:auto; max-height: 60vh;"></pre>
+                <div id="documento-conteudo-meta"
+                    style="color: var(--text-muted); font-size: 0.85rem; margin-bottom: 12px;"></div>
+                <pre id="output-documento-conteudo"
+                    style="background: var(--bg-card); padding: 16px; border-radius: 8px; overflow:auto; max-height: 60vh;"></pre>
             </div>
             <div class="modal-footer">
                 <button class="btn" onclick="closeModal('modal-documento-conteudo')">Fechar</button>
             </div>
         </div>
     </div>
-    
+
     <!-- Modal: Busca -->
     <div class="modal-overlay" id="modal-busca">
         <div class="modal">
@@ -3816,7 +4380,8 @@
                 </div>
                 <div class="form-group">
                     <label class="form-label">Arquivos *</label>
-                    <input type="file" class="form-input" id="input-upload-provas-files" multiple accept=".pdf,.docx,.doc,.png,.jpg,.jpeg">
+                    <input type="file" class="form-input" id="input-upload-provas-files" multiple
+                        accept=".pdf,.docx,.doc,.png,.jpg,.jpeg">
                 </div>
                 <input type="hidden" id="input-upload-provas-atividade-id">
                 <!-- Batch preview table (F5-T1): populated by JS on file selection -->
@@ -3824,9 +4389,15 @@
                     <table class="batch-preview-table" style="width: 100%; border-collapse: collapse;">
                         <thead>
                             <tr>
-                                <th style="text-align: left; padding: 6px 8px; border-bottom: 1px solid var(--border-color);">Arquivo</th>
-                                <th style="text-align: left; padding: 6px 8px; border-bottom: 1px solid var(--border-color);">Aluno</th>
-                                <th style="text-align: left; padding: 6px 8px; border-bottom: 1px solid var(--border-color);">Nome do Documento</th>
+                                <th
+                                    style="text-align: left; padding: 6px 8px; border-bottom: 1px solid var(--border-color);">
+                                    Arquivo</th>
+                                <th
+                                    style="text-align: left; padding: 6px 8px; border-bottom: 1px solid var(--border-color);">
+                                    Aluno</th>
+                                <th
+                                    style="text-align: left; padding: 6px 8px; border-bottom: 1px solid var(--border-color);">
+                                    Nome do Documento</th>
                             </tr>
                         </thead>
                         <tbody id="batch-preview-body"></tbody>
@@ -3846,7 +4417,9 @@
             <div class="modal-header">
                 <h3 class="modal-title">
                     Executar Etapa
-                    <span class="tooltip-icon" data-tooltip="Execute uma etapa específica do pipeline de correção. Cada etapa processa documentos e gera resultados intermediários." data-tooltip-pos="right">?</span>
+                    <span class="tooltip-icon"
+                        data-tooltip="Execute uma etapa específica do pipeline de correção. Cada etapa processa documentos e gera resultados intermediários."
+                        data-tooltip-pos="right">?</span>
                 </h3>
                 <button class="modal-close" onclick="closeModal('modal-execucao')">×</button>
             </div>
@@ -3854,7 +4427,9 @@
                 <div class="form-group">
                     <label class="form-label">
                         Etapa *
-                        <span class="tooltip-icon" data-tooltip="Escolha qual etapa do pipeline executar. Cada uma tem um propósito específico no processo de correção." data-tooltip-pos="right">?</span>
+                        <span class="tooltip-icon"
+                            data-tooltip="Escolha qual etapa do pipeline executar. Cada uma tem um propósito específico no processo de correção."
+                            data-tooltip-pos="right">?</span>
                     </label>
                     <select class="form-select" id="input-execucao-etapa" onchange="onEtapaChange()"></select>
                     <div class="inline-hint" id="execucao-etapa-hint">Selecione uma etapa para ver sua descrição</div>
@@ -3867,7 +4442,9 @@
                 <div class="form-group">
                     <label class="form-label">
                         Prompt
-                        <span class="tooltip-icon" data-tooltip="Prompts são instruções que dizem à IA como executar a tarefa. O padrão já foi otimizado, mas você pode personalizar." data-tooltip-pos="right">?</span>
+                        <span class="tooltip-icon"
+                            data-tooltip="Prompts são instruções que dizem à IA como executar a tarefa. O padrão já foi otimizado, mas você pode personalizar."
+                            data-tooltip-pos="right">?</span>
                     </label>
                     <select class="form-select" id="input-execucao-prompt" onchange="onPromptChange()">
                         <option value="">Usar prompt padrão</option>
@@ -3881,8 +4458,11 @@
                 </div>
                 <div class="form-group" id="grupo-prompt-texto" style="display: none;">
                     <label class="form-label">Texto do Prompt</label>
-                    <textarea class="form-textarea" id="input-execucao-prompt-texto" rows="6" placeholder="Carregue um prompt ou escreva aqui..."></textarea>
-                    <small style="color: var(--text-muted); font-size: 0.8rem;">Variáveis disponíveis: {conteudo_documento}, {questoes_extraidas}, {gabarito_extraido}, {respostas_extraidas}, {materia}, {atividade}, {nome_aluno}</small>
+                    <textarea class="form-textarea" id="input-execucao-prompt-texto" rows="6"
+                        placeholder="Carregue um prompt ou escreva aqui..."></textarea>
+                    <small style="color: var(--text-muted); font-size: 0.8rem;">Variáveis disponíveis:
+                        {conteudo_documento}, {questoes_extraidas}, {gabarito_extraido}, {respostas_extraidas},
+                        {materia}, {atividade}, {nome_aluno}</small>
                 </div>
                 <div class="form-group">
                     <label class="form-label">Modelo de IA</label>
@@ -3897,14 +4477,16 @@
             </div>
         </div>
     </div>
-    
+
     <!-- Modal: Pipeline Completo -->
     <div class="modal-overlay" id="modal-pipeline-completo">
         <div class="modal">
             <div class="modal-header">
                 <h3 class="modal-title">
                     🚀 Pipeline Completo
-                    <span class="tooltip-icon" data-tooltip="O pipeline executa automaticamente todas as etapas de correção, desde a extração de questões até o relatório final." data-tooltip-pos="right">?</span>
+                    <span class="tooltip-icon"
+                        data-tooltip="O pipeline executa automaticamente todas as etapas de correção, desde a extração de questões até o relatório final."
+                        data-tooltip-pos="right">?</span>
                 </h3>
                 <button class="modal-close" onclick="closeModal('modal-pipeline-completo')">×</button>
             </div>
@@ -3913,10 +4495,12 @@
                     <label class="form-label">Executar para:</label>
                     <div style="display: flex; gap: 16px; margin-bottom: 12px;">
                         <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
-                            <input type="radio" name="pipeline-modo" value="aluno" checked onchange="onPipelineModoChange()"> Um aluno específico
+                            <input type="radio" name="pipeline-modo" value="aluno" checked
+                                onchange="onPipelineModoChange()"> Um aluno específico
                         </label>
                         <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
-                            <input type="radio" name="pipeline-modo" value="turma" onchange="onPipelineModoChange()"> Turma toda
+                            <input type="radio" name="pipeline-modo" value="turma" onchange="onPipelineModoChange()">
+                            Turma toda
                         </label>
                     </div>
                 </div>
@@ -3925,8 +4509,11 @@
                     <select class="form-select" id="input-pipeline-aluno"></select>
                 </div>
                 <div id="pipeline-todos-os-alunos-info" style="display: none;">
-                    <div class="alert alert-info" style="margin-bottom: 12px;">⚠️ Será executado para todos os alunos que têm prova enviada</div>
-                    <div id="pipeline-todos-os-alunos-resumo" style="padding: 10px; background: var(--bg-hover); border-radius: 8px; margin-bottom: 12px;"></div>
+                    <div class="alert alert-info" style="margin-bottom: 12px;">⚠️ Será executado para todos os alunos
+                        que têm prova enviada</div>
+                    <div id="pipeline-todos-os-alunos-resumo"
+                        style="padding: 10px; background: var(--bg-hover); border-radius: 8px; margin-bottom: 12px;">
+                    </div>
                 </div>
                 <div class="form-group">
                     <label class="form-label">Modelo de IA (padrão para todas as etapas)</label>
@@ -3935,7 +4522,9 @@
                 <div class="form-group">
                     <label class="form-label">
                         Prompt (padrão para todas as etapas)
-                        <span class="tooltip-icon" data-tooltip="Prompts são instruções que dizem à IA como executar a tarefa. O padrão já foi otimizado, mas você pode personalizar por etapa." data-tooltip-pos="right">?</span>
+                        <span class="tooltip-icon"
+                            data-tooltip="Prompts são instruções que dizem à IA como executar a tarefa. O padrão já foi otimizado, mas você pode personalizar por etapa."
+                            data-tooltip-pos="right">?</span>
                     </label>
                     <select class="form-select" id="input-pipeline-prompt-default">
                         <option value="">Usar prompts padrão</option>
@@ -3949,12 +4538,14 @@
                         </summary>
                         <div style="padding: 12px; background: var(--bg-hover); border-radius: 8px; margin-top: 8px;">
                             <!-- Header -->
-                            <div style="display: grid; grid-template-columns: 1.2fr 1fr 1fr; gap: 8px; padding: 6px 8px; font-size: 0.7rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px;">
+                            <div
+                                style="display: grid; grid-template-columns: 1.2fr 1fr 1fr; gap: 8px; padding: 6px 8px; font-size: 0.7rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px;">
                                 <span>Etapa</span>
                                 <span>Prompt</span>
                                 <span>Modelo</span>
                             </div>
-                            <div id="pipeline-steps-unified" style="display: flex; flex-direction: column; gap: 6px;"></div>
+                            <div id="pipeline-steps-unified" style="display: flex; flex-direction: column; gap: 6px;">
+                            </div>
                         </div>
                     </details>
                 </div>
@@ -3964,14 +4555,16 @@
                         Forçar re-execução (criar nova versão)
                     </label>
                     <small style="color: var(--text-muted); display: block; margin-top: 4px;">
-                        Se marcado, cria novas versões dos documentos em vez de pular etapas já executadas. Útil para comparar resultados de diferentes modelos.
+                        Se marcado, cria novas versões dos documentos em vez de pular etapas já executadas. Útil para
+                        comparar resultados de diferentes modelos.
                     </small>
                 </div>
                 <input type="hidden" id="input-pipeline-atividade-id">
             </div>
             <div class="modal-footer">
                 <button class="btn" onclick="closeModal('modal-pipeline-completo')">Cancelar</button>
-                <button class="btn btn-primary" id="btn-executar-pipeline" onclick="executarPipelineCompleto()">Executar Pipeline</button>
+                <button class="btn btn-primary" id="btn-executar-pipeline" onclick="executarPipelineCompleto()">Executar
+                    Pipeline</button>
             </div>
         </div>
     </div>
@@ -4023,7 +4616,8 @@
             <div class="modal-body">
                 <div class="form-group">
                     <label class="form-label">Tipo de Documento</label>
-                    <select class="form-select" id="input-comparacao-tipo" onchange="carregarVersoesComparacao()"></select>
+                    <select class="form-select" id="input-comparacao-tipo"
+                        onchange="carregarVersoesComparacao()"></select>
                 </div>
                 <div id="comparacao-container" style="display: flex; gap: 16px; flex-wrap: wrap;"></div>
                 <input type="hidden" id="input-comparacao-atividade-id">
@@ -4045,7 +4639,8 @@
             <div class="modal-body">
                 <div class="form-group">
                     <label class="form-label">Variáveis (JSON)</label>
-                    <textarea class="form-textarea" id="input-prompt-variaveis" placeholder='{"materia":"Matemática","atividade":"Prova 1"}'></textarea>
+                    <textarea class="form-textarea" id="input-prompt-variaveis"
+                        placeholder='{"materia":"Matemática","atividade":"Prova 1"}'></textarea>
                 </div>
                 <div class="form-group">
                     <label class="form-label">Prompt de Sistema (preview)</label>
@@ -4079,12 +4674,13 @@
                     <div class="tab" onclick="showSettingsTab('custom')">⚙️ Customizado</div>
                     <div class="tab" onclick="showSettingsTab('local')">💻 Local</div>
                 </div>
-                
+
                 <!-- Tab: API Keys -->
                 <div id="settings-tab-api-keys">
                     <div class="card-header" style="margin-bottom: 16px;">
                         <span class="card-title">API Keys por Empresa</span>
-                        <button class="btn btn-primary btn-sm" onclick="openModal('modal-add-apikey')">+ Adicionar</button>
+                        <button class="btn btn-primary btn-sm" onclick="openModal('modal-add-apikey')">+
+                            Adicionar</button>
                     </div>
                     <div id="api-keys-list">
                         <div class="empty-state">
@@ -4094,7 +4690,7 @@
                         </div>
                     </div>
                 </div>
-                
+
                 <!-- Tab: Models -->
                 <div id="settings-tab-models" style="display: none;">
                     <div class="card-header" style="margin-bottom: 16px;">
@@ -4114,18 +4710,24 @@
                 <div id="settings-tab-catalog" style="display: none;">
                     <!-- View Mode Selector -->
                     <div class="catalog-view-modes">
-                        <button class="view-mode-btn active" data-mode="cards" onclick="setCatalogView('cards')">▦ Cards</button>
-                        <button class="view-mode-btn" data-mode="table" onclick="setCatalogView('table')">☰ Tabela</button>
-                        <button class="view-mode-btn" data-mode="compare" onclick="setCatalogView('compare')">⇆ Comparar</button>
-                        <button class="view-mode-btn" data-mode="minimal" onclick="setCatalogView('minimal')">• Minimal</button>
+                        <button class="view-mode-btn active" data-mode="cards" onclick="setCatalogView('cards')">▦
+                            Cards</button>
+                        <button class="view-mode-btn" data-mode="table" onclick="setCatalogView('table')">☰
+                            Tabela</button>
+                        <button class="view-mode-btn" data-mode="compare" onclick="setCatalogView('compare')">⇆
+                            Comparar</button>
+                        <button class="view-mode-btn" data-mode="minimal" onclick="setCatalogView('minimal')">•
+                            Minimal</button>
                     </div>
 
                     <!-- Filters -->
                     <div class="catalog-filters">
-                        <select id="filter-provider" class="form-select" onchange="filterCatalog()" style="max-width: 180px;">
+                        <select id="filter-provider" class="form-select" onchange="filterCatalog()"
+                            style="max-width: 180px;">
                             <option value="">Todos Provedores</option>
                         </select>
-                        <select id="filter-capability" class="form-select" onchange="filterCatalog()" style="max-width: 180px;">
+                        <select id="filter-capability" class="form-select" onchange="filterCatalog()"
+                            style="max-width: 180px;">
                             <option value="">Todas Capacidades</option>
                             <option value="vision">👁️ Vision</option>
                             <option value="tools">🔧 Tool Use</option>
@@ -4134,7 +4736,7 @@
                             <option value="json_mode">📋 JSON Mode</option>
                         </select>
                         <input type="text" class="form-input" id="filter-search" placeholder="Buscar modelo..."
-                               onkeyup="filterCatalog()" style="max-width: 180px;">
+                            onkeyup="filterCatalog()" style="max-width: 180px;">
                     </div>
 
                     <!-- Catalog Content -->
@@ -4145,7 +4747,8 @@
                     <!-- Compare Mode Content (hidden by default) -->
                     <div id="compare-content" style="display: none;">
                         <div class="compare-selector">
-                            <label style="margin-bottom: 8px; display: block;">Selecione modelos para comparar (até 4):</label>
+                            <label style="margin-bottom: 8px; display: block;">Selecione modelos para comparar (até
+                                4):</label>
                             <div id="compare-chips" class="compare-chips"></div>
                         </div>
                         <div id="compare-grid" class="compare-grid"></div>
@@ -4156,15 +4759,18 @@
                             <div class="form-row" style="display: flex; gap: 12px; flex-wrap: wrap;">
                                 <div class="form-group" style="flex: 1; min-width: 150px;">
                                     <label class="form-label">Tokens Input/req</label>
-                                    <input type="number" class="form-input" id="calc-input-tokens" value="1000" onchange="calculateCosts()">
+                                    <input type="number" class="form-input" id="calc-input-tokens" value="1000"
+                                        onchange="calculateCosts()">
                                 </div>
                                 <div class="form-group" style="flex: 1; min-width: 150px;">
                                     <label class="form-label">Tokens Output/req</label>
-                                    <input type="number" class="form-input" id="calc-output-tokens" value="500" onchange="calculateCosts()">
+                                    <input type="number" class="form-input" id="calc-output-tokens" value="500"
+                                        onchange="calculateCosts()">
                                 </div>
                                 <div class="form-group" style="flex: 1; min-width: 150px;">
                                     <label class="form-label">Requisições/dia</label>
-                                    <input type="number" class="form-input" id="calc-requests" value="100" onchange="calculateCosts()">
+                                    <input type="number" class="form-input" id="calc-requests" value="100"
+                                        onchange="calculateCosts()">
                                 </div>
                             </div>
                             <div id="cost-results" class="cost-results"></div>
@@ -4174,7 +4780,8 @@
 
                 <!-- Tab: Custom Endpoint -->
                 <div id="settings-tab-custom" style="display: none;">
-                    <div class="card" style="background: var(--bg-card); border: 1px solid var(--border); border-radius: 12px; padding: 20px;">
+                    <div class="card"
+                        style="background: var(--bg-card); border: 1px solid var(--border); border-radius: 12px; padding: 20px;">
                         <h4 style="margin-bottom: 16px;">🔧 Configuração de Endpoint Customizado</h4>
                         <p style="color: var(--text-muted); margin-bottom: 16px; font-size: 0.9rem;">
                             Configure endpoints específicos (Azure, versões antigas, proxies, etc.)
@@ -4190,12 +4797,14 @@
 
                         <div class="form-group">
                             <label class="form-label">Nome de Exibição *</label>
-                            <input type="text" class="form-input" id="custom-nome" placeholder="Ex: Azure GPT-4 Produção">
+                            <input type="text" class="form-input" id="custom-nome"
+                                placeholder="Ex: Azure GPT-4 Produção">
                         </div>
 
                         <div class="form-group">
                             <label class="form-label">Base URL *</label>
-                            <input type="text" class="form-input" id="custom-url" placeholder="https://my-resource.openai.azure.com/v1">
+                            <input type="text" class="form-input" id="custom-url"
+                                placeholder="https://my-resource.openai.azure.com/v1">
                         </div>
 
                         <div class="form-group">
@@ -4206,12 +4815,14 @@
 
                         <div class="form-group">
                             <label class="form-label">Versão da API (opcional)</label>
-                            <input type="text" class="form-input" id="custom-api-version" placeholder="2024-02-15-preview">
+                            <input type="text" class="form-input" id="custom-api-version"
+                                placeholder="2024-02-15-preview">
                         </div>
 
                         <div class="form-group">
                             <label class="form-label">Headers Extras (JSON, opcional)</label>
-                            <textarea class="form-input" id="custom-headers" rows="2" placeholder='{"x-custom-header": "value"}'></textarea>
+                            <textarea class="form-input" id="custom-headers" rows="2"
+                                placeholder='{"x-custom-header": "value"}'></textarea>
                         </div>
 
                         <div class="form-row" style="display: flex; gap: 12px;">
@@ -4221,7 +4832,8 @@
                             </div>
                             <div class="form-group" style="flex: 1;">
                                 <label class="form-label">Temperatura</label>
-                                <input type="number" class="form-input" id="custom-temp" value="0.7" step="0.1" min="0" max="2">
+                                <input type="number" class="form-input" id="custom-temp" value="0.7" step="0.1" min="0"
+                                    max="2">
                             </div>
                         </div>
 
@@ -4339,7 +4951,9 @@
             <div class="modal-header">
                 <h3 class="modal-title">
                     🤖 Adicionar Modelo
-                    <span class="tooltip-icon" data-tooltip="⚠️ Área técnica! Configure um modelo de IA para usar nas correções e no chat." data-tooltip-pos="right">?</span>
+                    <span class="tooltip-icon"
+                        data-tooltip="⚠️ Área técnica! Configure um modelo de IA para usar nas correções e no chat."
+                        data-tooltip-pos="right">?</span>
                 </h3>
                 <button class="modal-close" onclick="closeModal('modal-add-model')">×</button>
             </div>
@@ -4349,7 +4963,9 @@
                     <div class="form-group">
                         <label class="form-label">
                             Apelido (Identificador) *
-                            <span class="tooltip-icon" data-tooltip="Nome amigável para identificar este modelo na lista. Ex: 'GPT-4o Principal' ou 'Claude para Correções'" data-tooltip-pos="right">?</span>
+                            <span class="tooltip-icon"
+                                data-tooltip="Nome amigável para identificar este modelo na lista. Ex: 'GPT-4o Principal' ou 'Claude para Correções'"
+                                data-tooltip-pos="right">?</span>
                         </label>
                         <input type="text" class="form-input" id="input-model-nome" placeholder="Ex: GPT-4o Produção">
                         <div class="form-hint">Nome interno para identificar este modelo na lista</div>
@@ -4357,7 +4973,9 @@
                     <div class="form-group">
                         <label class="form-label">
                             Provedor *
-                            <span class="tooltip-icon" data-tooltip="Empresa que fornece o modelo. OpenAI (GPT), Anthropic (Claude), Google (Gemini), etc." data-tooltip-pos="right">?</span>
+                            <span class="tooltip-icon"
+                                data-tooltip="Empresa que fornece o modelo. OpenAI (GPT), Anthropic (Claude), Google (Gemini), etc."
+                                data-tooltip-pos="right">?</span>
                         </label>
                         <select class="form-select" id="input-model-tipo" onchange="onProviderChange()">
                             <option value="openai">OpenAI</option>
@@ -4386,9 +5004,11 @@
                             <option value="">-- Selecione ou digite abaixo --</option>
                         </select>
                         <span style="color: var(--text-muted);">ou</span>
-                        <input type="text" class="form-input" id="input-model-manual" placeholder="gpt-4o-2024-08-06" style="flex: 1;">
+                        <input type="text" class="form-input" id="input-model-manual" placeholder="gpt-4o-2024-08-06"
+                            style="flex: 1;">
                     </div>
-                    <div class="form-hint">O ID exato do modelo enviado para a API (ex: gpt-4o, claude-sonnet-4-5-20250514)</div>
+                    <div class="form-hint">O ID exato do modelo enviado para a API (ex: gpt-4o,
+                        claude-sonnet-4-5-20250514)</div>
                 </div>
 
                 <!-- Aviso de Modelo Reasoning -->
@@ -4396,7 +5016,8 @@
                     <div class="warning-icon">🧠</div>
                     <div class="warning-text">
                         <strong>Modelo de Raciocínio Detectado</strong>
-                        <p>Este modelo usa "reasoning_effort" ao invés de temperatura. Defina abaixo o nível de raciocínio.</p>
+                        <p>Este modelo usa "reasoning_effort" ao invés de temperatura. Defina abaixo o nível de
+                            raciocínio.</p>
                     </div>
                 </div>
 
@@ -4405,7 +5026,9 @@
                     <div class="form-group">
                         <label class="form-label">
                             Max Tokens
-                            <span class="tooltip-icon" data-tooltip="Limite máximo de caracteres/palavras na resposta da IA. Valores maiores = respostas mais longas (e mais caras)." data-tooltip-pos="right">?</span>
+                            <span class="tooltip-icon"
+                                data-tooltip="Limite máximo de caracteres/palavras na resposta da IA. Valores maiores = respostas mais longas (e mais caras)."
+                                data-tooltip-pos="right">?</span>
                         </label>
                         <input type="number" class="form-input" id="input-model-tokens" value="4096">
                         <div class="form-hint">Máximo de tokens na resposta</div>
@@ -4413,15 +5036,20 @@
                     <div class="form-group" id="temp-group">
                         <label class="form-label">
                             Temperatura
-                            <span class="tooltip-icon" data-tooltip="Controla a 'criatividade' da IA. 0 = sempre a mesma resposta, 0.7 = balanceado, 2 = muito criativo/aleatório." data-tooltip-pos="right">?</span>
+                            <span class="tooltip-icon"
+                                data-tooltip="Controla a 'criatividade' da IA. 0 = sempre a mesma resposta, 0.7 = balanceado, 2 = muito criativo/aleatório."
+                                data-tooltip-pos="right">?</span>
                         </label>
-                        <input type="number" class="form-input" id="input-model-temp" value="0.7" step="0.1" min="0" max="2">
+                        <input type="number" class="form-input" id="input-model-temp" value="0.7" step="0.1" min="0"
+                            max="2">
                         <div class="form-hint">0 = determinístico, 2 = criativo</div>
                     </div>
                     <div class="form-group" id="reasoning-group" style="display: none;">
                         <label class="form-label">
                             Reasoning Effort
-                            <span class="tooltip-icon" data-tooltip="Para modelos de raciocínio (o1, o3). Low = respostas rápidas, Medium = balanceado, High = raciocínio profundo." data-tooltip-pos="right">?</span>
+                            <span class="tooltip-icon"
+                                data-tooltip="Para modelos de raciocínio (o1, o3). Low = respostas rápidas, Medium = balanceado, High = raciocínio profundo."
+                                data-tooltip-pos="right">?</span>
                         </label>
                         <select class="form-select" id="input-model-reasoning">
                             <option value="low">Low (rápido)</option>
@@ -4435,7 +5063,8 @@
                 <!-- Linha 4: System Prompt com exemplo -->
                 <div class="form-group">
                     <label class="form-label">System Prompt Padrão</label>
-                    <textarea class="form-textarea" id="input-model-system" rows="4" placeholder="Instruções que definem o comportamento do modelo..."></textarea>
+                    <textarea class="form-textarea" id="input-model-system" rows="4"
+                        placeholder="Instruções que definem o comportamento do modelo..."></textarea>
                     <div style="display: flex; justify-content: space-between; margin-top: 4px;">
                         <div class="form-hint">Deixe vazio para usar o prompt padrão do sistema</div>
                         <button class="btn btn-xs" onclick="preencherSystemPromptPadrao()">Usar Padrão</button>
@@ -4446,18 +5075,24 @@
                 <div class="form-group">
                     <label class="form-label">
                         Capacidades do Modelo
-                        <span class="tooltip-icon" data-tooltip="Recursos especiais que o modelo suporta. Marque apenas os que o modelo realmente tem!" data-tooltip-pos="right">?</span>
+                        <span class="tooltip-icon"
+                            data-tooltip="Recursos especiais que o modelo suporta. Marque apenas os que o modelo realmente tem!"
+                            data-tooltip-pos="right">?</span>
                     </label>
                     <div style="display: flex; gap: 16px; flex-wrap: wrap;">
-                        <label class="checkbox-label" data-tooltip="Pode analisar imagens e PDFs escaneados" data-tooltip-pos="bottom">
+                        <label class="checkbox-label" data-tooltip="Pode analisar imagens e PDFs escaneados"
+                            data-tooltip-pos="bottom">
                             <input type="checkbox" id="input-model-vision">
                             <span>👁️ Vision (imagens)</span>
                         </label>
-                        <label class="checkbox-label" data-tooltip="Pode executar ferramentas/funções durante a resposta" data-tooltip-pos="bottom">
+                        <label class="checkbox-label"
+                            data-tooltip="Pode executar ferramentas/funções durante a resposta"
+                            data-tooltip-pos="bottom">
                             <input type="checkbox" id="input-model-tools">
                             <span>🔧 Tool Use / Functions</span>
                         </label>
-                        <label class="checkbox-label" data-tooltip="Mostra a resposta enquanto está sendo gerada" data-tooltip-pos="bottom">
+                        <label class="checkbox-label" data-tooltip="Mostra a resposta enquanto está sendo gerada"
+                            data-tooltip-pos="bottom">
                             <input type="checkbox" id="input-model-streaming" checked>
                             <span>📡 Streaming</span>
                         </label>
@@ -4485,10 +5120,15 @@
                     <button class="modal-close" onclick="closeModal('modal-chat')">×</button>
                 </div>
             </div>
-            <div class="modal-body" style="padding: 0; display: flex; flex-direction: column; height: calc(100% - 130px);">
-                <div id="chat-messages" style="flex: 1; overflow-y: auto; padding: 16px; display: flex; flex-direction: column; gap: 12px;"></div>
-                <div class="chat-input-wrapper" style="border-top: 1px solid var(--border); padding: 16px; display: flex; gap: 12px;">
-                    <textarea class="form-textarea" id="chat-input" placeholder="Digite sua mensagem..." style="flex: 1; min-height: 44px; max-height: 150px; resize: none;"></textarea>
+            <div class="modal-body"
+                style="padding: 0; display: flex; flex-direction: column; height: calc(100% - 130px);">
+                <div id="chat-messages"
+                    style="flex: 1; overflow-y: auto; padding: 16px; display: flex; flex-direction: column; gap: 12px;">
+                </div>
+                <div class="chat-input-wrapper"
+                    style="border-top: 1px solid var(--border); padding: 16px; display: flex; gap: 12px;">
+                    <textarea class="form-textarea" id="chat-input" placeholder="Digite sua mensagem..."
+                        style="flex: 1; min-height: 44px; max-height: 150px; resize: none;"></textarea>
                     <button class="btn btn-primary" onclick="enviarMensagemChat()">Enviar</button>
                 </div>
             </div>
@@ -4505,7 +5145,7 @@
                 <span class="welcome-badge">🧪 PROTÓTIPO</span>
                 <h2 class="welcome-title">🎓 Bem-vindo ao NOVO CR</h2>
                 <p class="welcome-subtitle">Sistema de correção automática de provas e análise educacional com IA</p>
-                
+
                 <div class="welcome-section">
                     <h4>🤖 Modelos Disponíveis</h4>
                     <div class="model-chips">
@@ -4523,23 +5163,25 @@
                         </span>
                     </div>
                 </div>
-                
+
                 <div class="welcome-section">
                     <h4>📋 Dois Fluxos Principais</h4>
                     <div class="flow-cards">
                         <div class="flow-card" onclick="closeWelcome(); showDashboard()">
                             <div class="flow-card-icon">⚙️</div>
                             <h5>Pipeline de Correção</h5>
-                            <p>Adicione provas, gabarito e critérios → Execute o pipeline → Receba correções e relatórios individuais automaticamente</p>
+                            <p>Adicione provas, gabarito e critérios → Execute o pipeline → Receba correções e
+                                relatórios individuais automaticamente</p>
                         </div>
                         <div class="flow-card" onclick="closeWelcome(); showChat()">
                             <div class="flow-card-icon">💬</div>
                             <h5>Chat com Documentos</h5>
-                            <p>Converse com a IA sobre todos os documentos. Use filtros para gerar relatórios específicos de turmas, matérias ou alunos</p>
+                            <p>Converse com a IA sobre todos os documentos. Use filtros para gerar relatórios
+                                específicos de turmas, matérias ou alunos</p>
                         </div>
                     </div>
                 </div>
-                
+
                 <div class="welcome-section">
                     <h4>🔍 Exemplos de Perguntas ao Chat</h4>
                     <div class="chat-examples">
@@ -4557,18 +5199,19 @@
                         </div>
                     </div>
                 </div>
-                
+
                 <div class="welcome-tips">
                     <div class="tip-item">
                         <span class="tip-icon">💡</span>
-                        <span><strong>Claude</strong> faz relatórios mais elaborados, <strong>Gemini</strong> é mais rápido!</span>
+                        <span><strong>Claude</strong> faz relatórios mais elaborados, <strong>Gemini</strong> é mais
+                            rápido!</span>
                     </div>
                     <div class="tip-item tip-warning">
                         <span class="tip-icon">💰</span>
                         <span>Protótipo custeado por <strong>Otávio Bopp</strong> — use com moderação 🙏</span>
                     </div>
                 </div>
-                
+
                 <div class="welcome-footer">
                     <label>
                         <input type="checkbox" id="welcome-dont-show">
@@ -4592,18 +5235,20 @@
                 <h3 class="modal-title">📖 Tutorial - NOVO CR</h3>
                 <button class="modal-close" onclick="closeTutorial()">×</button>
             </div>
-            
+
             <div class="tutorial-tabs">
-                <button class="tutorial-tab active" data-mode="quick" onclick="switchTutorialMode('quick')">⚡ 3 Passos Essenciais</button>
-                <button class="tutorial-tab" data-mode="full" onclick="switchTutorialMode('full')">📚 Completo (12 passos)</button>
+                <button class="tutorial-tab active" data-mode="quick" onclick="switchTutorialMode('quick')">⚡ 3 Passos
+                    Essenciais</button>
+                <button class="tutorial-tab" data-mode="full" onclick="switchTutorialMode('full')">📚 Completo (12
+                    passos)</button>
             </div>
-            
+
             <div class="modal-body">
                 <div class="tutorial-content" id="tutorial-content">
                     <!-- Conteúdo é injetado via JS -->
                 </div>
             </div>
-            
+
             <div class="tutorial-nav">
                 <button class="btn" id="tutorial-prev" onclick="prevTutorialStep()">← Anterior</button>
                 <div class="tutorial-progress">
@@ -4614,7 +5259,7 @@
             </div>
         </div>
     </div>
-    
+
     <!-- Toast -->
     <div class="toast" id="toast"></div>
 
@@ -4649,7 +5294,7 @@
     }
     END DEPRECATED -->
 
-<!--
+    <!--
 ╔══════════════════════════════════════════════════════════════════╗
 ║  FIM DA PARTE 1 - CONTINUE COM A PARTE 2 ABAIXO                 ║
 ╚══════════════════════════════════════════════════════════════════╝
@@ -4758,7 +5403,7 @@
             }
         }
 
-         // Chat Geral
+        // Chat Geral
         let chatGeralConversationId = 'chat_' + Date.now();
         let chatGeralProviders = [];
 
@@ -4986,7 +5631,7 @@
         // ============================================================
         // TUTORIAL & BOAS-VINDAS
         // ============================================================
-        
+
         // Conteúdo do Tutorial
         const tutorialContent = {
             quick: [
@@ -5270,14 +5915,14 @@
                 }
             ]
         };
-        
+
         let currentTutorialMode = 'quick';
         let currentTutorialStep = 0;
-        
+
         // ========================================
         // SISTEMA DE TOOLTIPS E AJUDA CONTEXTUAL
         // ========================================
-        
+
         // Descrições dos tipos de documento para hints dinâmicos
         const tipoDocumentoDescricoes = {
             'enunciado': '📄 PDF ou imagem da prova original com as questões',
@@ -5286,7 +5931,7 @@
             'prova_respondida': '👤 Prova preenchida por um aluno - selecione o aluno abaixo',
             'correcao_professor': '🧑‍🏫 Sua correção manual para comparar com a IA'
         };
-        
+
         // Human-readable labels for TipoDocumento values (mirrors Python _TIPO_LABELS in storage.py)
         const TIPO_LABELS = {
             'enunciado': 'Enunciado',
@@ -5342,7 +5987,7 @@
             const displayName = buildDisplayName(tipo, alunoNome, materiaNome, turmaNome);
             document.getElementById('input-upload-display-name').value = displayName;
         }
-        
+
         // Descrições das etapas do pipeline
         const etapaDescricoes = {
             'extracao_questoes': '🔎 A IA lê o enunciado e identifica cada questão, tipo (múltipla escolha, dissertativa) e pontuação',
@@ -5352,7 +5997,7 @@
             'analise_habilidades': '📊 A IA identifica pontos fortes e fracos do aluno por habilidade/competência',
             'relatorio_final': '📄 A IA gera um relatório completo com feedback personalizado para o aluno'
         };
-        
+
         // Textos de ajuda contextual por seção
         const ajudaContextual = {
             'dashboard': {
@@ -5645,7 +6290,7 @@
                 `
             }
         };
-        
+
         // Mostra/esconde painel de ajuda
         function toggleHelpPanel(secao) {
             const panelId = `help-panel-${secao}`;
@@ -5726,14 +6371,14 @@
         function clearHelpPanels() {
             document.querySelectorAll('.help-panel').forEach(p => p.remove());
         }
-        
+
         // ============================================================
         // TOGGLE VISUAL / JSON
         // ============================================================
-        
+
         // Preferência de visualização (localStorage)
         let viewPreference = localStorage.getItem('novocr-view-mode') || 'visual';
-        
+
         // Renderiza toggle de visualização
         function renderViewToggle(containerId) {
             return `
@@ -5749,12 +6394,12 @@
                 </div>
             `;
         }
-        
+
         // Alterna modo de visualização
         function setViewMode(mode, containerId) {
             viewPreference = mode;
             localStorage.setItem('novocr-view-mode', mode);
-            
+
             // Atualiza botões
             const toggle = document.getElementById(`view-toggle-${containerId}`);
             if (toggle) {
@@ -5762,15 +6407,15 @@
                     btn.classList.toggle('active', btn.textContent.includes(mode === 'visual' ? 'Visual' : 'JSON'));
                 });
             }
-            
+
             // Atualiza containers
             const visualContainer = document.getElementById(`${containerId}-visual`);
             const jsonContainer = document.getElementById(`${containerId}-json`);
-            
+
             if (visualContainer) visualContainer.style.display = mode === 'visual' ? 'block' : 'none';
             if (jsonContainer) jsonContainer.style.display = mode === 'json' ? 'block' : 'none';
         }
-        
+
         // Renderiza dados visuais do resultado do aluno
         function renderResultadoVisual(resultado) {
             if (!resultado || Object.keys(resultado).length === 0) {
@@ -5807,14 +6452,14 @@
             const nota = resultado.nota_final ?? resultado.nota ?? resultado.pontuacao ?? null;
             const acertos = resultado.acertos ?? resultado.questoes_corretas ?? null;
             const total = resultado.total_questoes ?? resultado.questoes?.length ?? null;
-            
+
             if (nota !== null || acertos !== null) {
                 html += `
                     <div class="data-section">
                         <div class="data-section-title">📊 Resumo</div>
                         <div class="data-grid">
                 `;
-                
+
                 if (nota !== null) {
                     const notaClass = nota >= 7 ? 'success' : nota >= 5 ? 'warning' : 'danger';
                     html += `
@@ -5824,7 +6469,7 @@
                         </div>
                     `;
                 }
-                
+
                 if (acertos !== null && total !== null) {
                     const pct = Math.round((acertos / total) * 100);
                     html += `
@@ -5838,10 +6483,10 @@
                         </div>
                     `;
                 }
-                
+
                 html += '</div></div>';
             }
-            
+
             // Questões detalhadas
             const questoes = resultado.questoes || resultado.correcoes || resultado.itens || [];
             if (questoes.length > 0) {
@@ -5849,25 +6494,25 @@
                     <div class="data-section">
                         <div class="data-section-title">📝 Questões (${questoes.length})</div>
                 `;
-                
+
                 questoes.forEach((q, i) => {
                     const num = q.numero ?? q.questao ?? (i + 1);
                     const pontosObtidos = q.pontos_obtidos ?? q.pontuacao ?? q.nota ?? null;
                     const pontosMax = q.pontos_maximos ?? q.valor ?? q.peso ?? null;
                     const correta = q.correta ?? q.correto ?? (pontosObtidos === pontosMax);
                     const parcial = pontosObtidos !== null && pontosMax !== null && pontosObtidos > 0 && pontosObtidos < pontosMax;
-                    
+
                     const statusClass = parcial ? 'parcial' : (correta ? 'correta' : 'incorreta');
                     const pontuacaoClass = parcial ? 'warning' : (correta ? 'success' : 'danger');
-                    
+
                     html += `
                         <div class="questao-card ${statusClass}">
                             <div class="questao-header">
                                 <span class="questao-numero">Questão ${num}</span>
-                                ${pontosObtidos !== null && pontosMax !== null ? 
-                                    `<span class="questao-pontuacao ${pontuacaoClass}">${pontosObtidos}/${pontosMax} pts</span>` : 
-                                    `<span class="questao-pontuacao ${pontuacaoClass}">${correta ? '✓ Correta' : '✗ Incorreta'}</span>`
-                                }
+                                ${pontosObtidos !== null && pontosMax !== null ?
+                            `<span class="questao-pontuacao ${pontuacaoClass}">${pontosObtidos}/${pontosMax} pts</span>` :
+                            `<span class="questao-pontuacao ${pontuacaoClass}">${correta ? '✓ Correta' : '✗ Incorreta'}</span>`
+                        }
                             </div>
                             ${q.resposta_aluno ? `<div class="questao-resposta"><strong>Resposta:</strong> ${escapeHtml(String(q.resposta_aluno))}</div>` : ''}
                             ${q.resposta_correta && !correta ? `<div class="questao-resposta" style="color: var(--success);"><strong>Esperado:</strong> ${escapeHtml(String(q.resposta_correta))}</div>` : ''}
@@ -5875,10 +6520,10 @@
                         </div>
                     `;
                 });
-                
+
                 html += '</div>';
             }
-            
+
             // Habilidades/competências
             const habilidades = resultado.habilidades || resultado.competencias || resultado.analise_habilidades || null;
             if (habilidades && (Array.isArray(habilidades) || typeof habilidades === 'object')) {
@@ -5886,16 +6531,16 @@
                     <div class="data-section">
                         <div class="data-section-title">🎯 Habilidades</div>
                 `;
-                
-                const habArray = Array.isArray(habilidades) ? habilidades : Object.entries(habilidades).map(([k,v]) => ({nome: k, valor: v}));
-                
+
+                const habArray = Array.isArray(habilidades) ? habilidades : Object.entries(habilidades).map(([k, v]) => ({ nome: k, valor: v }));
+
                 habArray.forEach(h => {
                     const nome = h.nome || h.habilidade || h.competencia || 'Habilidade';
                     const valor = h.valor ?? h.nivel ?? h.desempenho ?? h.pontuacao ?? 0;
                     const valorNum = typeof valor === 'number' ? valor : parseInt(valor) || 0;
                     const pct = valorNum > 1 ? valorNum : valorNum * 100;
                     const cor = pct >= 70 ? 'var(--success)' : pct >= 50 ? 'var(--warning)' : 'var(--danger)';
-                    
+
                     html += `
                         <div class="habilidade-item">
                             <span class="habilidade-nome">${escapeHtml(nome)}</span>
@@ -5906,10 +6551,10 @@
                         </div>
                     `;
                 });
-                
+
                 html += '</div>';
             }
-            
+
             // Feedback geral
             const feedback = resultado.feedback || resultado.comentario_geral || resultado.observacoes || null;
             if (feedback) {
@@ -5920,32 +6565,32 @@
                     </div>
                 `;
             }
-            
+
             html += '</div>';
             return html;
         }
-        
+
         // Renderiza dashboard visual genérico
         function renderDashboardVisual(data, tipo) {
             if (!data || Object.keys(data).length === 0) {
                 return '<div class="empty-state"><div class="empty-icon">📭</div><div class="empty-title">Sem dados</div></div>';
             }
-            
+
             let html = '<div class="visual-data">';
-            
+
             // Estatísticas principais
             const stats = [];
-            
+
             // Detecta campos comuns de dashboards
-            if (data.total_alunos !== undefined) stats.push({label: 'Total de Alunos', value: data.total_alunos, icon: '👥'});
-            if (data.total_atividades !== undefined) stats.push({label: 'Atividades', value: data.total_atividades, icon: '📝'});
-            if (data.media_geral !== undefined) stats.push({label: 'Média Geral', value: typeof data.media_geral === 'number' ? data.media_geral.toFixed(1) : data.media_geral, icon: '📊', class: data.media_geral >= 7 ? 'success' : data.media_geral >= 5 ? 'warning' : 'danger'});
-            if (data.media !== undefined) stats.push({label: 'Média', value: typeof data.media === 'number' ? data.media.toFixed(1) : data.media, icon: '📊', class: data.media >= 7 ? 'success' : data.media >= 5 ? 'warning' : 'danger'});
-            if (data.aprovados !== undefined) stats.push({label: 'Aprovados', value: data.aprovados, icon: '✅', class: 'success'});
-            if (data.reprovados !== undefined) stats.push({label: 'Reprovados', value: data.reprovados, icon: '❌', class: 'danger'});
-            if (data.pendentes !== undefined) stats.push({label: 'Pendentes', value: data.pendentes, icon: '⏳', class: 'warning'});
-            if (data.concluidas !== undefined) stats.push({label: 'Concluídas', value: data.concluidas, icon: '✅', class: 'success'});
-            
+            if (data.total_alunos !== undefined) stats.push({ label: 'Total de Alunos', value: data.total_alunos, icon: '👥' });
+            if (data.total_atividades !== undefined) stats.push({ label: 'Atividades', value: data.total_atividades, icon: '📝' });
+            if (data.media_geral !== undefined) stats.push({ label: 'Média Geral', value: typeof data.media_geral === 'number' ? data.media_geral.toFixed(1) : data.media_geral, icon: '📊', class: data.media_geral >= 7 ? 'success' : data.media_geral >= 5 ? 'warning' : 'danger' });
+            if (data.media !== undefined) stats.push({ label: 'Média', value: typeof data.media === 'number' ? data.media.toFixed(1) : data.media, icon: '📊', class: data.media >= 7 ? 'success' : data.media >= 5 ? 'warning' : 'danger' });
+            if (data.aprovados !== undefined) stats.push({ label: 'Aprovados', value: data.aprovados, icon: '✅', class: 'success' });
+            if (data.reprovados !== undefined) stats.push({ label: 'Reprovados', value: data.reprovados, icon: '❌', class: 'danger' });
+            if (data.pendentes !== undefined) stats.push({ label: 'Pendentes', value: data.pendentes, icon: '⏳', class: 'warning' });
+            if (data.concluidas !== undefined) stats.push({ label: 'Concluídas', value: data.concluidas, icon: '✅', class: 'success' });
+
             if (stats.length > 0) {
                 html += `
                     <div class="data-section">
@@ -5961,7 +6606,7 @@
                     </div>
                 `;
             }
-            
+
             // Lista de alunos se existir
             if (data.alunos && Array.isArray(data.alunos)) {
                 html += `
@@ -5989,7 +6634,7 @@
                     </div>
                 `;
             }
-            
+
             // Atividades se existir
             if (data.atividades && Array.isArray(data.atividades)) {
                 html += `
@@ -6004,16 +6649,16 @@
                     </div>
                 `;
             }
-            
+
             html += '</div>';
             return html;
         }
-        
+
         // Container com toggle visual/json
         function renderDataWithToggle(containerId, data, visualRenderer) {
             const visualHtml = visualRenderer(data);
             const jsonHtml = `<pre style="background: var(--bg); padding: 16px; border-radius: 8px; overflow:auto; max-height: 500px;">${escapeHtml(JSON.stringify(data, null, 2))}</pre>`;
-            
+
             return `
                 <div style="display: flex; justify-content: flex-end; margin-bottom: 12px;">
                     ${renderViewToggle(containerId)}
@@ -6036,7 +6681,7 @@
             const helpBtn = document.getElementById('help-btn');
             if (helpBtn) helpBtn.classList.remove('pulse');
         }
-        
+
         function closeWelcome() {
             // Always persist dismissal so reloads don't re-show the overlay
             localStorage.setItem('novocr-welcomed', 'true');
@@ -6045,7 +6690,7 @@
             const helpBtn = document.getElementById('help-btn');
             if (helpBtn) helpBtn.classList.remove('pulse');
         }
-        
+
         function openTutorial() {
             // Fechar task panel quando modal abre
             const taskPanel = document.getElementById('task-panel');
@@ -6055,27 +6700,27 @@
             currentTutorialStep = 0;
             renderTutorialStep();
         }
-        
+
         function closeTutorial() {
             document.getElementById('modal-tutorial').classList.remove('active');
         }
-        
+
         function switchTutorialMode(mode) {
             currentTutorialMode = mode;
             currentTutorialStep = 0;
-            
+
             // Update tabs
             document.querySelectorAll('.tutorial-tab').forEach(tab => {
                 tab.classList.toggle('active', tab.dataset.mode === mode);
             });
-            
+
             renderTutorialStep();
         }
-        
+
         function renderTutorialStep() {
             const steps = tutorialContent[currentTutorialMode];
             const step = steps[currentTutorialStep];
-            
+
             const content = document.getElementById('tutorial-content');
             content.innerHTML = `
                 <div class="tutorial-step active">
@@ -6089,14 +6734,14 @@
                     <div class="tutorial-text">${step.content}</div>
                 </div>
             `;
-            
+
             // Update navigation
             const prevBtn = document.getElementById('tutorial-prev');
             const nextBtn = document.getElementById('tutorial-next');
-            
+
             prevBtn.disabled = currentTutorialStep === 0;
             prevBtn.style.visibility = currentTutorialStep === 0 ? 'hidden' : 'visible';
-            
+
             if (currentTutorialStep === steps.length - 1) {
                 nextBtn.textContent = 'Concluir ✓';
                 nextBtn.onclick = closeTutorial;
@@ -6104,18 +6749,18 @@
                 nextBtn.textContent = 'Próximo →';
                 nextBtn.onclick = nextTutorialStep;
             }
-            
+
             // Update dots
             const dotsContainer = document.getElementById('tutorial-dots');
             dotsContainer.innerHTML = steps.map((_, i) => `
                 <span class="tutorial-dot ${i === currentTutorialStep ? 'active' : ''} ${i < currentTutorialStep ? 'completed' : ''}"></span>
             `).join('');
-            
+
             // Update progress text
-            document.getElementById('tutorial-progress-text').textContent = 
+            document.getElementById('tutorial-progress-text').textContent =
                 `${currentTutorialStep + 1} de ${steps.length}`;
         }
-        
+
         function nextTutorialStep() {
             const steps = tutorialContent[currentTutorialMode];
             if (currentTutorialStep < steps.length - 1) {
@@ -6123,14 +6768,14 @@
                 renderTutorialStep();
             }
         }
-        
+
         function prevTutorialStep() {
             if (currentTutorialStep > 0) {
                 currentTutorialStep--;
                 renderTutorialStep();
             }
         }
-        
+
         function checkFirstVisit() {
             const welcomed = localStorage.getItem('novocr-welcomed');
             if (!welcomed) {
@@ -6203,7 +6848,7 @@
                 }
             });
         });
-        
+
         // ============================================================
         // API HELPERS
         // ============================================================
@@ -6254,7 +6899,7 @@
                 throw error;
             }
         }
-        
+
         // ============================================================
         // NAVEGAÇÃO - ÁRVORE
         // ============================================================
@@ -6266,14 +6911,14 @@
                 console.error('Erro ao carregar árvore:', e);
             }
         }
-        
+
         function renderNavTree(materias) {
             const container = document.getElementById('tree-materias');
             if (materias.length === 0) {
                 container.innerHTML = '<div style="padding: 12px; color: var(--text-muted); font-size: 0.85rem;">Nenhuma matéria ainda</div>';
                 return;
             }
-            
+
             const seen = new Set();
             const uniqueMaterias = materias.filter(m => {
                 if (seen.has(m.nome)) return false;
@@ -6307,7 +6952,7 @@
                 </div>
             `).join('');
         }
-        
+
         function toggleTree(el) {
             el.classList.toggle('expanded');
             const children = el.closest('.tree-item').nextElementSibling;
@@ -6325,7 +6970,7 @@
             if (!container) return;
 
             // Status icon mapping: completed, running, pending, failed
-            const stageIcons = {completed: '\u2705', running: '\u23F3', pending: '\u2B1C', failed: '\u274C'};
+            const stageIcons = { completed: '\u2705', running: '\u23F3', pending: '\u2B1C', failed: '\u274C' };
             const stageNames = {
                 extrair_questoes: 'Extrair Quest\u00F5es',
                 extrair_gabarito: 'Extrair Gabarito',
@@ -6418,9 +7063,9 @@
             currentView = 'dashboard';
             currentMateria = currentTurma = currentAtividade = null;
             pushNavState();
-            setBreadcrumb([{nome: 'Início', onclick: 'showDashboard()'}]);
+            setBreadcrumb([{ nome: 'Início', onclick: 'showDashboard()' }]);
             clearHelpPanels();
-            
+
             try {
                 const stats = await api('/estatisticas');
                 document.getElementById('content').innerHTML = `
@@ -6454,7 +7099,7 @@
                         <div class="card-grid" id="grid-materias"><div style="color: var(--text-muted);">Carregando...</div></div>
                     </div>
                 `;
-                
+
                 const materiasData = await api('/materias');
                 const gridMaterias = document.getElementById('grid-materias');
                 if (materiasData.materias.length === 0) {
@@ -6466,7 +7111,7 @@
                 document.getElementById('content').innerHTML = `<div class="alert alert-danger"><span class="alert-icon">❌</span><div class="alert-content"><div class="alert-title">Erro ao carregar</div><div class="alert-text">Verifique se o servidor está rodando corretamente</div></div></div>`;
             }
         }
-        
+
         async function showMateria(materiaId) {
             currentView = 'materia';
             currentMateria = materiaId;
@@ -6475,8 +7120,8 @@
 
             try {
                 const data = await api(`/materias/${materiaId}`);
-                setBreadcrumb([{nome: 'Início', onclick: 'showDashboard()'}, {nome: data.materia.nome, onclick: `showMateria('${materiaId}')`}]);
-                
+                setBreadcrumb([{ nome: 'Início', onclick: 'showDashboard()' }, { nome: data.materia.nome, onclick: `showMateria('${materiaId}')` }]);
+
                 clearHelpPanels();
                 document.getElementById('content').innerHTML = `
                     <div class="page-header" style="display: flex; justify-content: space-between; align-items: flex-start;">
@@ -6521,7 +7166,7 @@
                         <div class="card-header">
                             <h3 class="card-title">📊 Relatório de Desempenho da Matéria</h3>
                             <div id="desempenho-generate-area-materia" class="desempenho-generate-area">
-                                <button class="btn btn-primary" onclick="executarDesempenho('materia', '${materiaId}')">▶️ Gerar Relatório</button>
+                                <button class="btn btn-primary" onclick="openDesempenhoSettings('materia', '${materiaId}')">⚙️ Gerar Relatório</button>
                             </div>
                         </div>
                         <div style="padding: 12px; color: var(--text-muted); font-size: 0.9rem;">
@@ -6535,7 +7180,7 @@
             `;
             loadDesempenhoData('materia', materiaId);
         }
-        
+
         async function showTurma(turmaId) {
             currentView = 'turma';
             currentTurma = turmaId;
@@ -6552,8 +7197,8 @@
             try {
                 const data = await api(`/turmas/${turmaId}`);
                 currentMateria = data.turma.materia_id;
-                setBreadcrumb([{nome: 'Início', onclick: 'showDashboard()'}, {nome: data.materia.nome, onclick: `showMateria('${data.materia.id}')`}, {nome: data.turma.nome, onclick: `showTurma('${turmaId}')`}]);
-                
+                setBreadcrumb([{ nome: 'Início', onclick: 'showDashboard()' }, { nome: data.materia.nome, onclick: `showMateria('${data.materia.id}')` }, { nome: data.turma.nome, onclick: `showTurma('${turmaId}')` }]);
+
                 clearHelpPanels();
                 document.getElementById('content').innerHTML = `
                     <div class="page-header" style="display: flex; justify-content: space-between; align-items: flex-start;">
@@ -6604,7 +7249,7 @@
                         <div class="card-header">
                             <h3 class="card-title">📊 Relatório de Desempenho da Turma</h3>
                             <div id="desempenho-generate-area-turma" class="desempenho-generate-area">
-                                <button class="btn btn-primary" onclick="executarDesempenho('turma', '${turmaId}')">▶️ Gerar Relatório</button>
+                                <button class="btn btn-primary" onclick="openDesempenhoSettings('turma', '${turmaId}')">⚙️ Gerar Relatório</button>
                             </div>
                         </div>
                         <div style="padding: 12px; color: var(--text-muted); font-size: 0.9rem;">
@@ -6631,7 +7276,7 @@
                 showTurma(turmaId);
             }
         }
-        
+
         async function showAtividade(atividadeId) {
             currentView = 'atividade';
             currentAtividade = atividadeId;
@@ -6651,9 +7296,9 @@
                 const turma = await api(`/turmas/${data.atividade.turma_id}`);
                 currentTurma = turma.turma.id;
                 currentMateria = turma.materia.id;
-                
-                setBreadcrumb([{nome: 'Início', onclick: 'showDashboard()'}, {nome: turma.materia.nome, onclick: `showMateria('${turma.materia.id}')`}, {nome: turma.turma.nome, onclick: `showTurma('${turma.turma.id}')`}, {nome: data.atividade.nome, onclick: `showAtividade('${atividadeId}')`}]);
-                
+
+                setBreadcrumb([{ nome: 'Início', onclick: 'showDashboard()' }, { nome: turma.materia.nome, onclick: `showMateria('${turma.materia.id}')` }, { nome: turma.turma.nome, onclick: `showTurma('${turma.turma.id}')` }, { nome: data.atividade.nome, onclick: `showAtividade('${atividadeId}')` }]);
+
                 let alertas = data.documentos_base.faltando.length > 0 ? `<div class="alert alert-warning"><span class="alert-icon">⚠️</span><div class="alert-content"><div class="alert-title">Documentos faltando</div><div class="alert-text">${data.documentos_base.faltando.map(d => `<span class="badge badge-warning">${d}</span>`).join(' ')}</div></div></div>` : '';
 
                 document.getElementById('content').innerHTML = `
@@ -6697,7 +7342,7 @@
                     <div class="card">
                         <div class="card-header"><h3 class="card-title">👥 Provas dos Alunos</h3><button class="btn btn-primary btn-sm" onclick="openModalUpload('${atividadeId}', 'aluno')">+ Upload Prova</button></div>
                         <div class="table-container"><table><thead><tr><th>Aluno</th><th>Prova</th><th>Correção</th><th>Relatório</th><th>Ações</th></tr></thead><tbody>
-                            ${data.alunos.detalhes.map(a => `<tr><td><strong>${a.aluno_nome}</strong></td><td>${a.tem_prova ? '<span class="badge badge-success">✓</span>' : '<span class="badge badge-danger">Falta</span>'}</td><td>${a.tem_correcao ? '<span class="badge badge-success">✓</span>' : '<span class="badge badge-warning">Pendente</span>'}</td><td>${a.tem_relatorio ? '<span class="badge badge-success">✓</span>' : '<span class="badge badge-warning">Pendente</span>'}</td><td><button class="btn btn-sm" onclick="showResultadoAluno('${atividadeId}', '${a.aluno_id}')">Ver Resultado</button></td></tr>`).join('')}
+                            ${data.alunos.detalhes.map(a => `<tr class="aluno-row" data-aluno-id="${a.aluno_id}" data-aluno-nome="${escapeHtml(a.aluno_nome || '')}"><td><strong>${a.aluno_nome}</strong></td><td>${a.tem_prova ? '<span class="badge badge-success">✓</span>' : '<span class="badge badge-danger">Falta</span>'}</td><td>${a.tem_correcao ? '<span class="badge badge-success">✓</span>' : '<span class="badge badge-warning">Pendente</span>'}</td><td>${a.tem_relatorio ? '<span class="badge badge-success">✓</span>' : '<span class="badge badge-warning">Pendente</span>'}</td><td><button class="btn btn-sm" onclick="showResultadoAluno('${atividadeId}', '${a.aluno_id}')">Ver Resultado</button></td></tr>`).join('')}
                         </tbody></table></div>
                     </div>
                     </div>
@@ -6719,6 +7364,7 @@
             const tipoFilter = document.getElementById('filter-doc-tipo').value;
             const alunoFilter = document.getElementById('filter-doc-aluno').value;
 
+            // Filter base document items (.doc-item divs)
             document.querySelectorAll('.doc-item').forEach(item => {
                 const name = (item.querySelector('.doc-name')?.textContent || '').toLowerCase();
                 const tipo = item.dataset.tipo || '';
@@ -6729,6 +7375,19 @@
                 const matchAluno = !alunoFilter || alunoId === alunoFilter;
 
                 item.style.display = (matchSearch && matchTipo && matchAluno) ? '' : 'none';
+            });
+
+            // Filter student rows in the "Provas dos Alunos" table (.aluno-row)
+            document.querySelectorAll('.aluno-row').forEach(row => {
+                const alunoNome = (row.dataset.alunoNome || '').toLowerCase();
+                const alunoId = row.dataset.alunoId || '';
+
+                const matchSearch = !searchText || alunoNome.includes(searchText);
+                const matchAluno = !alunoFilter || alunoId === alunoFilter;
+                // tipo filter doesn't apply to student rows — always show if other filters match
+                const matchTipo = !tipoFilter; // hide rows when type filter is active (they have no tipo)
+
+                row.style.display = (matchSearch && matchAluno && matchTipo) ? '' : 'none';
             });
         }
 
@@ -6772,7 +7431,7 @@
                         <div class="card-header">
                             <h3 class="card-title">📊 Relatório de Desempenho da Turma</h3>
                             <div id="desempenho-generate-area-tarefa" class="desempenho-generate-area">
-                                <button class="btn btn-primary" onclick="executarDesempenho('tarefa', '${atividadeId}')">▶️ Gerar Relatório</button>
+                                <button class="btn btn-primary" onclick="openDesempenhoSettings('tarefa', '${atividadeId}')">⚙️ Gerar Relatório</button>
                             </div>
                         </div>
                         <div style="padding: 12px; color: var(--text-muted); font-size: 0.9rem;">
@@ -6886,7 +7545,7 @@
 
         function renderDocsBase(existentes, atividadeId, detalhes = {}) {
             const tipos = ['enunciado', 'gabarito', 'criterios_correcao'];
-            const nomes = {'enunciado': '📄 Enunciado', 'gabarito': '✅ Gabarito', 'criterios_correcao': '📋 Critérios de Correção'};
+            const nomes = { 'enunciado': '📄 Enunciado', 'gabarito': '✅ Gabarito', 'criterios_correcao': '📋 Critérios de Correção' };
             return tipos.map(tipo => {
                 const detalhe = detalhes[tipo];
                 const docs = Array.isArray(detalhe) ? detalhe : (detalhe ? [detalhe] : []);
@@ -6909,12 +7568,12 @@
                 return acc;
             }, {});
         }
-        
+
         async function showAlunos() {
             currentView = 'alunos';
             pushNavState();
-            setBreadcrumb([{nome: 'Início', onclick: 'showDashboard()'}, {nome: 'Todos os Alunos', onclick: 'showAlunos()'}]);
-            
+            setBreadcrumb([{ nome: 'Início', onclick: 'showDashboard()' }, { nome: 'Todos os Alunos', onclick: 'showAlunos()' }]);
+
             try {
                 const data = await api('/alunos');
                 document.getElementById('content').innerHTML = `
@@ -6934,7 +7593,7 @@
         async function showPrompts() {
             currentView = 'prompts';
             pushNavState();
-            setBreadcrumb([{nome: 'Início', onclick: 'showDashboard()'}, {nome: 'Prompts', onclick: 'showPrompts()'}]);
+            setBreadcrumb([{ nome: 'Início', onclick: 'showDashboard()' }, { nome: 'Prompts', onclick: 'showPrompts()' }]);
             clearHelpPanels();
             try {
                 const [promptsData, etapasData, materiasData] = await Promise.all([
@@ -7036,7 +7695,7 @@
         async function showProviders() {
             currentView = 'providers';
             pushNavState();
-            setBreadcrumb([{nome: 'Início', onclick: 'showDashboard()'}, {nome: 'Modelos de LLM', onclick: 'showProviders()'}]);
+            setBreadcrumb([{ nome: 'Início', onclick: 'showDashboard()' }, { nome: 'Modelos de LLM', onclick: 'showProviders()' }]);
             clearHelpPanels();
             try {
                 const data = await api('/providers');
@@ -7131,12 +7790,12 @@
 
             // Breadcrumb dinâmico baseado no contexto
             let breadcrumbItems = [
-                {nome: 'Início', onclick: 'showDashboard()'}
+                { nome: 'Início', onclick: 'showDashboard()' }
             ];
             if (preselectedAtividadeId && window._atividadeData?.atividade) {
-                breadcrumbItems.push({nome: window._atividadeData.atividade.nome, onclick: `showAtividade('${preselectedAtividadeId}')`});
+                breadcrumbItems.push({ nome: window._atividadeData.atividade.nome, onclick: `showAtividade('${preselectedAtividadeId}')` });
             }
-            breadcrumbItems.push({nome: 'Chat', onclick: preselectedAtividadeId ? `showChatGeral('${preselectedAtividadeId}')` : 'showChatGeral()'});
+            breadcrumbItems.push({ nome: 'Chat', onclick: preselectedAtividadeId ? `showChatGeral('${preselectedAtividadeId}')` : 'showChatGeral()' });
             setBreadcrumb(breadcrumbItems);
 
             // Carregar atividades para contexto
@@ -7148,8 +7807,8 @@
                         `<option value="${a.id}" ${a.id === preselectedAtividadeId ? 'selected' : ''}>${escapeHtml(a.nome)}</option>`
                     ).join('');
                 }
-            } catch (e) {}
-            
+            } catch (e) { }
+
             // Carregar modelos
             let modelsOptions = '<option value="">Selecione um modelo...</option>';
             try {
@@ -7161,8 +7820,8 @@
                 if (chatGeralProviders.length === 0) {
                     modelsOptions = '<option value="">Nenhum modelo configurado</option>';
                 }
-            } catch (e) {}
-            
+            } catch (e) { }
+
             document.getElementById('content').innerHTML = `
                 <div class="page-header">
                     <h1 class="page-title">
@@ -7200,14 +7859,14 @@
                     <div class="chat-messages-container" id="chat-geral-messages">
                         <div class="chat-message assistant">
                             ${preselectedAtividadeId
-                                ? `Olá! Estou pronto para ajudar com esta atividade.<br><br>
+                    ? `Olá! Estou pronto para ajudar com esta atividade.<br><br>
                                    Os documentos da atividade já estão carregados como contexto. Você pode:<br><br>
                                    • 📄 Perguntar sobre os documentos<br>
                                    • ❓ Tirar dúvidas sobre as questões<br>
                                    • ✅ Discutir correções e respostas<br>
                                    • 📊 Solicitar análises e relatórios<br><br>
                                    Selecione um modelo acima e comece a conversar!`
-                                : `Olá! Sou seu assistente educacional. Posso ajudar você a:<br><br>
+                    : `Olá! Sou seu assistente educacional. Posso ajudar você a:<br><br>
                                    • 📄 Analisar documentos e provas<br>
                                    • ❓ Extrair e formatar questões<br>
                                    • ✅ Corrigir respostas de alunos<br>
@@ -7231,25 +7890,25 @@
                     </div>
                 </div>
             `;
-            
+
             // Setup do textarea
             const textarea = document.getElementById('chat-geral-input');
-            textarea.addEventListener('keydown', function(e) {
+            textarea.addEventListener('keydown', function (e) {
                 if (e.key === 'Enter' && !e.shiftKey) {
                     e.preventDefault();
                     enviarMensagemChatGeral();
                 }
             });
-            
+
             // Auto-resize do textarea
-            textarea.addEventListener('input', function() {
+            textarea.addEventListener('input', function () {
                 this.style.height = 'auto';
                 this.style.height = Math.min(this.scrollHeight, 150) + 'px';
             });
-            
+
             updateChatGeralHeader();
         }
-        
+
         function getProviderIcon(tipo) {
             const icons = {
                 'openai': '🟢',
@@ -7261,7 +7920,7 @@
             };
             return icons[tipo] || '🤖';
         }
-        
+
         function updateChatGeralHeader() {
             const select = document.getElementById('chat-geral-model-select');
             if (!select) return;
@@ -7292,7 +7951,7 @@
                 chatGeralProviders = [];
             }
         }
-        
+
         async function enviarMensagemChatGeral() {
             const input = document.getElementById('chat-geral-input');
             const mensagem = input.value.trim();
@@ -7303,11 +7962,11 @@
                 showToast('Selecione um modelo de IA', 'error');
                 return;
             }
-            
+
             const atividadeId = document.getElementById('chat-geral-context').value;
             const container = document.getElementById('chat-geral-messages');
             const sendBtn = document.getElementById('chat-geral-send-btn');
-            
+
             // Adicionar mensagem do usuário
             container.innerHTML += `
                 <div class="chat-message user">${escapeHtml(mensagem)}</div>
@@ -7315,7 +7974,7 @@
             input.value = '';
             input.style.height = 'auto';
             container.scrollTop = container.scrollHeight;
-            
+
             // Indicador de digitação
             const typingId = 'typing-' + Date.now();
             container.innerHTML += `
@@ -7327,7 +7986,7 @@
             `;
             container.scrollTop = container.scrollHeight;
             sendBtn.disabled = true;
-            
+
             try {
                 // Usar endpoint de chat com documentos
                 const result = await api('/chat/com-documentos', {
@@ -7338,13 +7997,13 @@
                         atividade_id: atividadeId || null
                     })
                 });
-                
+
                 // Remover indicador de digitação
                 document.getElementById(typingId)?.remove();
-                
+
                 if (result.sucesso) {
                     let html = formatChatMessage(result.resposta || 'Sem resposta');
-                    
+
                     // Metadados
                     html += `
                         <div class="chat-message-meta">
@@ -7352,18 +8011,18 @@
                             ${result.anexos_confirmados ? '<span>📎 Documentos processados</span>' : ''}
                         </div>
                     `;
-                    
+
                     // Arquivos anexados
                     if (result.anexos_enviados && result.anexos_enviados.length > 0) {
                         html += `
                             <div class="chat-message-files">
-                                ${result.anexos_enviados.map(a => 
-                                    `<span class="chat-message-file">📄 ${escapeHtml(a.nome || 'arquivo')}</span>`
-                                ).join('')}
+                                ${result.anexos_enviados.map(a =>
+                            `<span class="chat-message-file">📄 ${escapeHtml(a.nome || 'arquivo')}</span>`
+                        ).join('')}
                             </div>
                         `;
                     }
-                    
+
                     container.innerHTML += `<div class="chat-message assistant">${html}</div>`;
                 } else {
                     container.innerHTML += `
@@ -7372,7 +8031,7 @@
                         </div>
                     `;
                 }
-                
+
             } catch (e) {
                 document.getElementById(typingId)?.remove();
                 container.innerHTML += `
@@ -7381,11 +8040,11 @@
                     </div>
                 `;
             }
-            
+
             sendBtn.disabled = false;
             container.scrollTop = container.scrollHeight;
         }
-        
+
         function formatChatMessage(text) {
             if (!text) return '';
 
@@ -7579,7 +8238,7 @@
             html = html.replace(/\n/g, '<br>');
             return html;
         }
-        
+
         function limparChatGeral() {
             if (!confirm('Limpar toda a conversa?')) return;
             chatGeralConversationId = 'chat_' + Date.now();
@@ -7592,15 +8251,15 @@
                 `;
             }
         }
-        
+
         async function showAluno(alunoId) {
             currentView = 'aluno';
             currentAluno = alunoId;
             pushNavState();
             try {
                 const data = await api(`/alunos/${alunoId}`);
-                setBreadcrumb([{nome: 'Início', onclick: 'showDashboard()'}, {nome: 'Alunos', onclick: 'showAlunos()'}, {nome: data.aluno.nome, onclick: `showAluno('${alunoId}')`}]);
-                
+                setBreadcrumb([{ nome: 'Início', onclick: 'showDashboard()' }, { nome: 'Alunos', onclick: 'showAlunos()' }, { nome: data.aluno.nome, onclick: `showAluno('${alunoId}')` }]);
+
                 document.getElementById('content').innerHTML = `
                     <div class="page-header"><h1 class="page-title">${data.aluno.nome}</h1><p class="page-subtitle">Matrícula: ${data.aluno.matricula || 'Não informada'}</p></div>
                     <div style="display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 16px;">
@@ -7617,14 +8276,14 @@
                 `;
             } catch (e) { showToast('Erro ao carregar aluno', 'error'); }
         }
-        
+
         // ============================================================
         // BREADCRUMB
         // ============================================================
         function setBreadcrumb(items) {
             document.getElementById('breadcrumb').innerHTML = items.map((item, i) => `<span class="breadcrumb-item ${i === items.length - 1 ? 'current' : ''}" onclick="${item.onclick}">${item.nome}</span>${i < items.length - 1 ? '<span class="breadcrumb-sep">/</span>' : ''}`).join('');
         }
-        
+
         // ============================================================
         // MODAIS
         // ============================================================
@@ -7816,7 +8475,7 @@
             try {
                 const response = await fetch(`${API}/documentos/${documentoId}/download`);
                 if (!response.ok) throw new Error('Erro ao baixar');
-                
+
                 const blob = await response.blob();
                 const contentDisposition = response.headers.get('content-disposition');
                 let filename = 'documento';
@@ -7824,7 +8483,7 @@
                     const match = contentDisposition.match(/filename="?(.+)"?/);
                     if (match) filename = match[1];
                 }
-                
+
                 const url = window.URL.createObjectURL(blob);
                 const a = document.createElement('a');
                 a.href = url;
@@ -7868,7 +8527,7 @@
                     showToast('Documento não possui visualização. Faça o download para ver.', 'warning');
                     openDocumento(documentoId);
                 }
-            } catch (e) {}
+            } catch (e) { }
         }
 
         async function deleteDocumento(documentoId) {
@@ -7878,7 +8537,7 @@
                 await api(`/documentos/${documentoId}`, { method: 'DELETE' });
                 showToast('Documento excluído', 'success');
                 refreshCurrentView();
-            } catch (e) {}
+            } catch (e) { }
         }
 
         function refreshCurrentView() {
@@ -8017,39 +8676,39 @@
                 showToast('Erro ao carregar dados do pipeline', 'error');
             }
         }
-        
+
         async function openModalComparacao(atividadeId, alunoId) {
             try {
                 document.getElementById('input-comparacao-atividade-id').value = atividadeId;
                 document.getElementById('input-comparacao-aluno-id').value = alunoId;
-                
+
                 // Carregar tipos de documento disponíveis
                 const data = await api(`/documentos/${atividadeId}/${alunoId}/versoes`);
                 const tipos = Object.keys(data.documentos_por_tipo || {});
-                
+
                 const selectTipo = document.getElementById('input-comparacao-tipo');
                 selectTipo.innerHTML = tipos.map(tipo => `<option value="${tipo}">${tipo.replace(/_/g, ' ').toUpperCase()}</option>`).join('');
-                
+
                 if (tipos.length > 0) {
                     await carregarVersoesComparacao();
                 }
-                
+
                 openModal('modal-comparacao');
             } catch (e) {
                 console.error('Erro ao abrir modal comparação:', e);
                 showToast('Erro ao carregar versões', 'error');
             }
         }
-        
+
         async function carregarVersoesComparacao() {
             try {
                 const atividadeId = document.getElementById('input-comparacao-atividade-id').value;
                 const alunoId = document.getElementById('input-comparacao-aluno-id').value;
                 const tipo = document.getElementById('input-comparacao-tipo').value;
-                
+
                 const data = await api(`/documentos/${atividadeId}/${alunoId}/versoes`);
                 const documentos = data.documentos_por_tipo?.[tipo] || [];
-                
+
                 const container = document.getElementById('comparacao-container');
                 container.innerHTML = documentos.map((doc, index) => `
                     <div style="flex: 1; min-width: 300px; border: 1px solid var(--border); border-radius: 8px; padding: 16px; background: var(--bg);">
@@ -8076,7 +8735,7 @@
                 showToast('Erro ao carregar versões', 'error');
             }
         }
-        
+
         async function openModalUpload(atividadeId, modo) {
             if (modo === 'aluno' && !hasStudentsInTurma()) {
                 showToast('Nenhum aluno na turma. Adicione alunos antes de enviar provas.', 'warning');
@@ -8097,7 +8756,7 @@
             }
             openModal('modal-upload');
         }
-        
+
         async function openModalUploadTipo(atividadeId, tipo) {
             document.getElementById('input-upload-atividade-id').value = atividadeId;
             document.getElementById('input-upload-tipo').value = tipo;
@@ -8137,7 +8796,7 @@
                 if (!window._atividadeData || window._atividadeData?.atividade?.id !== atividadeId) {
                     try {
                         window._atividadeData = await api(`/atividades/${atividadeId}`);
-                    } catch (e) {}
+                    } catch (e) { }
                 }
                 carregarAlunosParaUpload();
                 if (selectAluno) {
@@ -8207,7 +8866,7 @@
             } else {
                 hint.textContent = 'Selecione o aluno para executar esta etapa.';
             }
-            
+
             // Atualizar hint da etapa com descrição contextual
             if (etapaHint && etapaDescricoes[etapa]) {
                 etapaHint.textContent = etapaDescricoes[etapa];
@@ -8270,7 +8929,7 @@
                 const models = data.models || [];
                 const options = models.map(m => `<option value="${m.id}" ${m.is_default ? 'selected' : ''}>${escapeHtml(m.nome)} (${m.modelo})</option>`).join('');
                 document.getElementById('input-execucao-model').innerHTML = options || '<option value="">Nenhum modelo configurado</option>';
-            } catch (e) {}
+            } catch (e) { }
         }
 
         async function carregarPipelineAlunos() {
@@ -8383,7 +9042,7 @@
             }
         }
 
-        
+
         // ============================================================
         // CRUD OPERATIONS
         // ============================================================
@@ -8400,9 +9059,9 @@
                 document.getElementById('input-materia-desc').value = '';
                 loadNavTree();
                 showDashboard();
-            } catch (e) {}
+            } catch (e) { }
         }
-        
+
         async function criarTurma() {
             const nome = document.getElementById('input-turma-nome').value.trim();
             const anoLetivo = document.getElementById('input-turma-ano').value;
@@ -8416,9 +9075,9 @@
                 document.getElementById('input-turma-nome').value = '';
                 loadNavTree();
                 showMateria(materiaId);
-            } catch (e) {}
+            } catch (e) { }
         }
-        
+
         async function criarAtividade() {
             const nome = document.getElementById('input-ativ-nome').value.trim();
             const tipo = document.getElementById('input-ativ-tipo').value;
@@ -8432,9 +9091,9 @@
                 document.getElementById('input-ativ-nome').value = '';
                 loadNavTree();
                 showTurma(turmaId);
-            } catch (e) {}
+            } catch (e) { }
         }
-        
+
         async function criarAluno() {
             const nome = document.getElementById('input-aluno-nome').value.trim();
             const matricula = document.getElementById('input-aluno-matricula').value.trim();
@@ -8452,7 +9111,7 @@
                 document.getElementById('input-aluno-matricula').value = '';
                 document.getElementById('input-aluno-email').value = '';
                 if (turmaId) showTurma(turmaId); else showAlunos();
-            } catch (e) {}
+            } catch (e) { }
         }
 
         async function excluirMateria(id) {
@@ -8560,7 +9219,7 @@
                 });
                 showToast('Prompt criado!', 'success');
                 showPrompts();
-            } catch (e) {}
+            } catch (e) { }
         }
 
         async function duplicarPrompt(promptId) {
@@ -8572,7 +9231,7 @@
                 await apiForm(`/prompts/${promptId}/duplicar`, formData);
                 showToast('Prompt duplicado!', 'success');
                 showPrompts();
-            } catch (e) {}
+            } catch (e) { }
         }
 
         async function definirPromptPadrao(promptId) {
@@ -8580,7 +9239,7 @@
                 const formData = new FormData();
                 await apiForm(`/prompts/${promptId}/definir-padrao`, formData);
                 showToast('Prompt definido como padrão', 'success');
-            } catch (e) {}
+            } catch (e) { }
         }
 
         function openPromptPreview(promptId) {
@@ -8609,9 +9268,9 @@
                 });
                 document.getElementById('output-prompt-preview-sistema').value = data.texto_sistema_renderizado || '';
                 document.getElementById('output-prompt-preview').value = data.texto_renderizado || '';
-            } catch (e) {}
+            } catch (e) { }
         }
-        
+
         async function uploadDocumento() {
             const tipo = document.getElementById('input-upload-tipo').value;
             const atividadeId = document.getElementById('input-upload-atividade-id').value;
@@ -8647,7 +9306,7 @@
                 document.getElementById('upload-file-name').textContent = '';
                 resetUploadReplace();
                 refreshCurrentView();
-            } catch (e) {}
+            } catch (e) { }
         }
 
         async function importarAlunosCsv() {
@@ -8662,7 +9321,7 @@
                 showToast(`Importados: ${result.criados || 0}`, 'success');
                 closeModal('modal-importar-csv');
                 if (turmaId) showTurma(turmaId); else showAlunos();
-            } catch (e) {}
+            } catch (e) { }
         }
 
         async function exportarAlunosCsv(turmaId) {
@@ -8675,7 +9334,7 @@
                 link.download = 'alunos.csv';
                 link.click();
                 URL.revokeObjectURL(url);
-            } catch (e) {}
+            } catch (e) { }
         }
 
         async function uploadProvasEmLote() {
@@ -8696,7 +9355,7 @@
                 document.getElementById('batch-preview-container').style.display = 'none';
                 closeModal('modal-upload-provas');
                 showAtividade(atividadeId);
-            } catch (e) {}
+            } catch (e) { }
         }
 
         function onPipelineModoChange() {
@@ -9027,19 +9686,21 @@
             openModal('modal-desempenho-settings');
         }
 
-        // G-T1: Execute from modal — reads settings and calls executarDesempenho
+        // G-T2: Execute from modal — reads settings (provider + prompt) and calls executarDesempenho
         function executarDesempenhoFromModal() {
             const level = document.getElementById('input-desempenho-level').value;
             const entityId = document.getElementById('input-desempenho-entity-id').value;
+            const providerId = document.getElementById('input-desempenho-provider')?.value || null;
+            const promptId = document.getElementById('input-desempenho-prompt')?.value || null;
             closeModal('modal-desempenho-settings');
-            executarDesempenho(level, entityId);
+            executarDesempenho(level, entityId, providerId, promptId);
         }
 
         // B-T4: Progress indicator state
         let _desempenhoGenerating = false;
         let _desempenhoTimer = null;
 
-        async function executarDesempenho(level, entityId) {
+        async function executarDesempenho(level, entityId, providerId = null, promptId = null) {
             // B-T4: Prevent concurrent generation
             if (_desempenhoGenerating) return;
 
@@ -9078,6 +9739,9 @@
             try {
                 const formData = new FormData();
                 formData.append(paramName, entityId);
+                // G-T2: Forward provider and prompt selection from settings modal
+                if (providerId) formData.append('provider_id', providerId);
+                if (promptId) formData.append('prompt_id', promptId);
 
                 const result = await apiForm(endpoint, formData);
 
@@ -9087,7 +9751,7 @@
                 _desempenhoGenerating = false;
                 if (generateArea) {
                     generateArea.innerHTML = `
-                        <button class="btn btn-primary" onclick="executarDesempenho('${level}', '${entityId}')">▶️ Gerar Relatório</button>
+                        <button class="btn btn-primary" onclick="openDesempenhoSettings('${level}', '${entityId}')">⚙️ Gerar Relatório</button>
                     `;
                 }
 
@@ -9220,7 +9884,7 @@
                         <pre style="background: var(--bg-card); padding: 16px; border-radius: 8px; overflow:auto;">${escapeHtml(JSON.stringify(data, null, 2))}</pre>
                     </div>
                 `;
-            } catch (e) {}
+            } catch (e) { }
         }
 
         async function showRanking(atividadeId) {
@@ -9248,7 +9912,7 @@
                         </div>
                     </div>
                 `;
-            } catch (e) {}
+            } catch (e) { }
         }
 
         async function showEstatisticasAtividade(atividadeId) {
@@ -9260,7 +9924,7 @@
                         <pre style="background: var(--bg-card); padding: 16px; border-radius: 8px; overflow:auto;">${escapeHtml(JSON.stringify(data, null, 2))}</pre>
                     </div>
                 `;
-            } catch (e) {}
+            } catch (e) { }
         }
 
         async function showResultadoAluno(atividadeId, alunoId) {
@@ -9290,14 +9954,14 @@
                     currentTurma = turmaData.turma.id;
                     currentMateria = turmaData.materia.id;
                     setBreadcrumb([
-                        {nome: 'Início', onclick: 'showDashboard()'},
-                        {nome: turmaData.materia.nome, onclick: `showMateria('${turmaData.materia.id}')`},
-                        {nome: turmaData.turma.nome, onclick: `showTurma('${turmaData.turma.id}')`},
-                        {nome: atividadeData.atividade.nome, onclick: `showAtividade('${atividadeId}')`},
-                        {nome: alunoData.aluno.nome, onclick: `showResultadoAluno('${atividadeId}', '${alunoId}')`}
+                        { nome: 'Início', onclick: 'showDashboard()' },
+                        { nome: turmaData.materia.nome, onclick: `showMateria('${turmaData.materia.id}')` },
+                        { nome: turmaData.turma.nome, onclick: `showTurma('${turmaData.turma.id}')` },
+                        { nome: atividadeData.atividade.nome, onclick: `showAtividade('${atividadeId}')` },
+                        { nome: alunoData.aluno.nome, onclick: `showResultadoAluno('${atividadeId}', '${alunoId}')` }
                     ]);
                 }
-                
+
                 // Renderizar banner de erro se resultado tem erro_pipeline
                 let erroBanner = '';
                 if (resultado && resultado.erro_pipeline) {
@@ -9324,7 +9988,7 @@
                     const progresso = resultadoData.progresso || 0;
                     const etapas = resultadoData.etapas || {};
                     const dadosParciais = resultadoData.dados_parciais || {};
-                    
+
                     pipelineStatus = `
                         <div class="card" style="border-left: 4px solid var(--warning);">
                             <div class="card-header">
@@ -9354,7 +10018,7 @@
                 } else if (!resultadoData) {
                     pipelineStatus = '<div class="alert alert-warning"><span class="alert-icon">⚠️</span><div class="alert-content"><div class="alert-title">Resultado indisponível</div><div class="alert-text">Ainda não há correção para este aluno. Inicie o pipeline.</div></div></div>';
                 }
-                
+
                 const docsPorTipo = groupDocumentosPorTipo(documentos);
                 const labels = {
                     enunciado: '📄 Enunciado',
@@ -9399,7 +10063,7 @@
                     showVisualizar: true,
                     isGenerated: true  // Fase 3: marcar como gerado pela IA
                 })).join('');
-                
+
                 // Só mostrar resultado final se completo
                 const hasErroPipeline = resultado && resultado.erro_pipeline;
                 const resultadoFinal = isComplete ? `
@@ -9435,7 +10099,7 @@
                         </div>
                     </div>
                 ` : '';
-                
+
                 document.getElementById('content').innerHTML = `
                     <div class="page-header"><h1 class="page-title">Resultado do Aluno</h1></div>
                     <div style="display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 16px;">
@@ -9480,7 +10144,7 @@
                         </div>
                     </div>
                 `;
-            } catch (e) {}
+            } catch (e) { }
         }
 
         async function showDashboardAluno(alunoId) {
@@ -9501,9 +10165,9 @@
                         </div>
                     </div>
                 `;
-            } catch (e) {}
+            } catch (e) { }
         }
-        
+
         // ============================================================
         // UPLOAD ZONE
         // ============================================================
@@ -9538,7 +10202,7 @@
                 resetUploadReplace();
             });
         }
-        
+
         // ============================================================
         // BUSCA
         // ============================================================
@@ -9547,7 +10211,7 @@
             let timeout;
             input.addEventListener('input', () => { clearTimeout(timeout); timeout = setTimeout(() => buscar(input.value), 300); });
         }
-        
+
         async function buscar(termo) {
             const container = document.getElementById('resultados-busca');
             if (termo.length < 2) { container.innerHTML = '<div style="color: var(--text-muted); padding: 20px; text-align: center;">Digite pelo menos 2 caracteres</div>'; return; }
@@ -9585,7 +10249,7 @@
                     relatorio_final: '📄 Relatório Final'
                 };
                 select.innerHTML = data.todos.map(tipo => `<option value="${tipo}">${labels[tipo] || tipo}</option>`).join('');
-            } catch (e) {}
+            } catch (e) { }
         }
 
         async function loadNiveisEnsino() {
@@ -9594,9 +10258,9 @@
                 const select = document.getElementById('input-materia-nivel');
                 if (!select) return;
                 select.innerHTML = data.niveis.map(n => `<option value="${n}">${n.replace('_', ' ').toUpperCase()}</option>`).join('');
-            } catch (e) {}
+            } catch (e) { }
         }
-        
+
         // ============================================================
         // TOAST
         // ============================================================
@@ -9695,7 +10359,7 @@
 
 
 
-        
+
         // ============================================================
         // SETTINGS - API KEYS E MODELOS
         // ============================================================
@@ -10330,7 +10994,7 @@
         }
 
         // Verificar reasoning quando digita manualmente
-        document.addEventListener('DOMContentLoaded', function() {
+        document.addEventListener('DOMContentLoaded', function () {
             const manualInput = document.getElementById('input-model-manual');
             if (manualInput) {
                 manualInput.addEventListener('input', checkIfReasoningModel);
@@ -10484,13 +11148,13 @@ Seja preciso e educativo nas correções.`;
             document.getElementById('chat-titulo').textContent = '💬 ' + titulo;
             document.getElementById('chat-messages').innerHTML = '';
             document.getElementById('chat-input').value = '';
-            
+
             // Carregar modelos disponíveis
             try {
                 const modelsData = await api('/settings/models');
                 const select = document.getElementById('chat-model-select');
                 if (modelsData.models && modelsData.models.length > 0) {
-                    select.innerHTML = modelsData.models.map(m => 
+                    select.innerHTML = modelsData.models.map(m =>
                         `<option value="${m.id}" ${m.is_default ? 'selected' : ''}>${escapeHtml(m.nome)}</option>`
                     ).join('');
                 } else {
@@ -10499,7 +11163,7 @@ Seja preciso e educativo nas correções.`;
             } catch (e) {
                 document.getElementById('chat-model-select').innerHTML = '<option value="">Erro ao carregar modelos</option>';
             }
-            
+
             // Criar sessão de chat
             try {
                 const sessaoData = await api('/chat/sessoes', {
@@ -10514,7 +11178,7 @@ Seja preciso e educativo nas correções.`;
             } catch (e) {
                 showToast('Erro ao criar sessão de chat', 'error');
             }
-            
+
             openModal('modal-chat');
         }
 
@@ -10522,21 +11186,21 @@ Seja preciso e educativo nas correções.`;
             const input = document.getElementById('chat-input');
             const mensagem = input.value.trim();
             if (!mensagem) return;
-            
+
             const sessionId = document.getElementById('chat-session-id').value;
             const modelId = document.getElementById('chat-model-select').value;
             const container = document.getElementById('chat-messages');
-            
+
             // Adicionar mensagem do usuário
             container.innerHTML += `<div style="max-width: 80%; padding: 12px 16px; border-radius: 12px; background: var(--primary); color: white; align-self: flex-end;">${escapeHtml(mensagem)}</div>`;
             input.value = '';
             container.scrollTop = container.scrollHeight;
-            
+
             // Adicionar indicador de carregamento
             const loadingId = 'loading-' + Date.now();
             container.innerHTML += `<div id="${loadingId}" style="max-width: 80%; padding: 12px 16px; border-radius: 12px; background: var(--bg-hover); align-self: flex-start;"><span class="spinner"></span> Pensando...</div>`;
             container.scrollTop = container.scrollHeight;
-            
+
             try {
                 const result = await api(`/chat/sessoes/${sessionId}/mensagem`, {
                     method: 'POST',
@@ -10545,7 +11209,7 @@ Seja preciso e educativo nas correções.`;
                         model_id: modelId || null
                     })
                 });
-                
+
                 // Remover loading e adicionar resposta
                 document.getElementById(loadingId)?.remove();
                 const resposta = result.resposta?.content || result.content || 'Sem resposta';
@@ -10558,10 +11222,10 @@ Seja preciso e educativo nas correções.`;
         }
 
         // Permitir enviar com Enter
-        document.addEventListener('DOMContentLoaded', function() {
+        document.addEventListener('DOMContentLoaded', function () {
             const chatInput = document.getElementById('chat-input');
             if (chatInput) {
-                chatInput.addEventListener('keydown', function(e) {
+                chatInput.addEventListener('keydown', function (e) {
                     if (e.key === 'Enter' && !e.shiftKey) {
                         e.preventDefault();
                         enviarMensagemChat();
@@ -10574,5 +11238,5 @@ Seja preciso e educativo nas correções.`;
     </script>
     <script src="/static/chat_system.js"></script>
 </body>
-</html>
 
+</html>
