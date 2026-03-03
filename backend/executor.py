@@ -129,6 +129,10 @@ STAGE_TOOLS: Dict[EtapaProcessamento, List[str]] = {
     EtapaProcessamento.CORRIGIR: ["create_document", "execute_python_code"],
     EtapaProcessamento.ANALISAR_HABILIDADES: ["create_document", "execute_python_code"],
     EtapaProcessamento.GERAR_RELATORIO: ["create_document", "execute_python_code"],
+    # F-T4 / F-T5 / F-T6 — aggregate desempenho reports
+    EtapaProcessamento.RELATORIO_DESEMPENHO_TAREFA: ["create_document", "execute_python_code"],
+    EtapaProcessamento.RELATORIO_DESEMPENHO_TURMA: ["create_document", "execute_python_code"],
+    EtapaProcessamento.RELATORIO_DESEMPENHO_MATERIA: ["create_document", "execute_python_code"],
 }
 
 STAGE_TOOL_INSTRUCTIONS: Dict[EtapaProcessamento, str] = {
@@ -209,6 +213,83 @@ Você DEVE usar as ferramentas disponíveis para produzir dois outputs:
    - Áreas de melhoria
    - Recomendações pedagógicas
    Use extensão .pdf.
+""",
+    # F-T4: DESEMPENHO_TAREFA
+    EtapaProcessamento.RELATORIO_DESEMPENHO_TAREFA: """
+INSTRUÇÕES DE TOOL-USE PARA RELATÓRIO DE DESEMPENHO DA TAREFA:
+==============================================================
+Você DEVE usar as ferramentas disponíveis para produzir dois outputs:
+
+1. **create_document** — Salve a análise como JSON com o schema:
+   {
+     "resumo_turma": "<str>",
+     "media_geral": <float>,
+     "distribuicao_notas": {"excelente": <int>, "bom": <int>, "regular": <int>, "insuficiente": <int>},
+     "questoes_dificeis": ["<str>"],
+     "padroes_erros": ["<str>"],
+     "recomendacoes": [{"tipo": "<str>", "descricao": "<str>", "prioridade": "<str>"}]
+   }
+   Use extensão .json e nome descritivo (ex: "desempenho_tarefa.json").
+
+2. **execute_python_code** — Gere um PDF estilizado com reportlab contendo:
+   - Cabeçalho com nome da atividade, turma e data
+   - Média geral e distribuição de notas (tabela ou gráfico de barras)
+   - Questões com maior dificuldade
+   - Padrões de erros identificados
+   - Recomendações pedagógicas
+   Use extensão .pdf e nome descritivo.
+""",
+    # F-T5: DESEMPENHO_TURMA
+    EtapaProcessamento.RELATORIO_DESEMPENHO_TURMA: """
+INSTRUÇÕES DE TOOL-USE PARA RELATÓRIO DE DESEMPENHO DA TURMA:
+=============================================================
+Você DEVE usar as ferramentas disponíveis para produzir dois outputs:
+
+1. **create_document** — Salve a análise como JSON com o schema:
+   {
+     "resumo_evolucao": "<str>",
+     "tendencia_geral": "<str>",
+     "atividades_analisadas": ["<str>"],
+     "alunos_destaque": [{"aluno_id": "<str>", "motivo": "<str>"}],
+     "alunos_atencao": [{"aluno_id": "<str>", "motivo": "<str>"}],
+     "padroes_turma": ["<str>"],
+     "recomendacoes": [{"tipo": "<str>", "descricao": "<str>", "prioridade": "<str>"}]
+   }
+   Use extensão .json e nome descritivo (ex: "desempenho_turma.json").
+
+2. **execute_python_code** — Gere um PDF estilizado com reportlab contendo:
+   - Cabeçalho com nome da turma, matéria e período analisado
+   - Resumo da evolução ao longo das atividades
+   - Distribuição de alunos por perfil (destaque / atenção)
+   - Padrões identificados na turma
+   - Recomendações para o professor
+   Use extensão .pdf e nome descritivo.
+""",
+    # F-T6: DESEMPENHO_MATERIA
+    EtapaProcessamento.RELATORIO_DESEMPENHO_MATERIA: """
+INSTRUÇÕES DE TOOL-USE PARA RELATÓRIO DE DESEMPENHO DA MATÉRIA:
+===============================================================
+Você DEVE usar as ferramentas disponíveis para produzir dois outputs:
+
+1. **create_document** — Salve a análise como JSON com o schema:
+   {
+     "resumo_materia": "<str>",
+     "comparativo_turmas": [{"turma": "<str>", "media": <float>, "observacao": "<str>"}],
+     "padroes_transversais": ["<str>"],
+     "turmas_destaque": ["<str>"],
+     "turmas_atencao": ["<str>"],
+     "efetividade_curriculo": "<str>",
+     "recomendacoes": [{"tipo": "<str>", "descricao": "<str>", "prioridade": "<str>"}]
+   }
+   Use extensão .json e nome descritivo (ex: "desempenho_materia.json").
+
+2. **execute_python_code** — Gere um PDF estilizado com reportlab contendo:
+   - Cabeçalho com nome da matéria e período
+   - Tabela comparativa de desempenho entre turmas
+   - Padrões transversais identificados
+   - Avaliação da efetividade curricular
+   - Recomendações para revisão do currículo
+   Use extensão .pdf e nome descritivo.
 """,
 }
 
@@ -1732,9 +1813,8 @@ class PipelineExecutor:
 
     # Maps analytical etapas to their internal narrative prompt IDs
     # CORRIGIR removed (F-T1), ANALISAR_HABILIDADES removed (F-T2)
-    NARRATIVA_PROMPT_MAP = {
-        EtapaProcessamento.GERAR_RELATORIO: "internal_narrativa_gerar_relatorio",
-    }
+    # F-T3: GERAR_RELATORIO removed — now uses tool-use single-pass (see STAGE_TOOLS)
+    NARRATIVA_PROMPT_MAP = {}
 
     async def _gerar_narrativa_pdf(
         self,
@@ -2266,13 +2346,15 @@ Crie UM documento separado para cada aluno, nomeando como "relatorio_[nome_aluno
         prompt_renderizado = prompt.render(**variaveis)
         prompt_sistema = prompt.render_sistema(**variaveis) or None
 
-        # Call LLM
+        # Call LLM — F-T4: tool-use dual output (JSON + PDF)
+        tool_instructions = STAGE_TOOL_INSTRUCTIONS.get(EtapaProcessamento.RELATORIO_DESEMPENHO_TAREFA, "")
+        full_system = (prompt_sistema or "") + tool_instructions
         resultado = await self.executar_com_tools(
             mensagem=prompt_renderizado,
             atividade_id=atividade_id,
             provider_id=provider_id,
-            system_prompt=prompt_sistema,
-            tools_to_use=[],
+            system_prompt=full_system or None,
+            tools_to_use=["create_document", "execute_python_code"],
         )
 
         # Save result
@@ -2399,14 +2481,17 @@ Crie UM documento separado para cada aluno, nomeando como "relatorio_[nome_aluno
         prompt_sistema = prompt.render_sistema(**variaveis) or None
 
         # Call LLM — use first atividade_id as reference (aggregate report)
+        # F-T5: tool-use dual output (JSON + PDF)
         atividade_ref = atividades[0].id if atividades else turma_id
+        tool_instructions = STAGE_TOOL_INSTRUCTIONS.get(EtapaProcessamento.RELATORIO_DESEMPENHO_TURMA, "")
+        full_system = (prompt_sistema or "") + tool_instructions
         resultado = await self.executar_com_tools(
             mensagem=prompt_renderizado,
             atividade_id=atividade_ref,
             turma_id=turma_id,
             provider_id=provider_id,
-            system_prompt=prompt_sistema,
-            tools_to_use=[],
+            system_prompt=full_system or None,
+            tools_to_use=["create_document", "execute_python_code"],
         )
 
         # Save result
@@ -2527,13 +2612,15 @@ Crie UM documento separado para cada aluno, nomeando como "relatorio_[nome_aluno
         prompt_renderizado = prompt.render(**variaveis)
         prompt_sistema = prompt.render_sistema(**variaveis) or None
 
-        # Call LLM
+        # Call LLM — F-T6: tool-use dual output (JSON + PDF)
+        tool_instructions = STAGE_TOOL_INSTRUCTIONS.get(EtapaProcessamento.RELATORIO_DESEMPENHO_MATERIA, "")
+        full_system = (prompt_sistema or "") + tool_instructions
         resultado = await self.executar_com_tools(
             mensagem=prompt_renderizado,
             atividade_id=atividade_ref or materia_id,
             provider_id=provider_id,
-            system_prompt=prompt_sistema,
-            tools_to_use=[],
+            system_prompt=full_system or None,
+            tools_to_use=["create_document", "execute_python_code"],
         )
 
         # Save result
