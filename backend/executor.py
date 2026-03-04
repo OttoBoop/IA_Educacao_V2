@@ -1246,6 +1246,66 @@ class PipelineExecutor:
             tools_to_use=["create_document", "execute_python_code"],
         )
 
+    async def gerar_relatorio(
+        self,
+        atividade_id: str,
+        aluno_id: str = None,
+        provider_id: str = None
+    ) -> ResultadoExecucao:
+        """Gera o relatório final do aluno using tool-use for dual output (JSON + PDF).
+
+        Migrated from two-pass narrative (F-T3): single executar_com_tools() call
+        with create_document (JSON) + execute_python_code (PDF via E2B).
+        """
+        # Get context
+        atividade = self.storage.get_atividade(atividade_id)
+        if not atividade:
+            return self._erro(EtapaProcessamento.GERAR_RELATORIO, "Atividade não encontrada")
+
+        turma = self.storage.get_turma(atividade.turma_id)
+        materia = self.storage.get_materia(turma.materia_id) if turma else None
+
+        # Get prompt
+        prompt = self.prompt_manager.get_prompt_padrao(
+            EtapaProcessamento.GERAR_RELATORIO,
+            materia.id if materia else None,
+        )
+        if not prompt:
+            return self._erro(EtapaProcessamento.GERAR_RELATORIO, "Prompt GERAR_RELATORIO não encontrado")
+
+        # Prepare variables
+        variaveis = self._preparar_variaveis_texto(
+            EtapaProcessamento.GERAR_RELATORIO, atividade_id, aluno_id,
+            materia, atividade, usar_multimodal=True
+        )
+
+        # Prepare JSON context
+        contexto_json = self._preparar_contexto_json(
+            atividade_id, aluno_id, EtapaProcessamento.GERAR_RELATORIO
+        )
+        contexto_json.pop("_documentos_faltantes", [])
+        contexto_json.pop("_documentos_carregados", [])
+        variaveis.update(contexto_json)
+
+        # Render prompt
+        prompt_renderizado = prompt.render(**variaveis)
+        prompt_sistema_raw = prompt.render_sistema(**variaveis)
+        prompt_sistema = prompt_sistema_raw if isinstance(prompt_sistema_raw, str) else ""
+
+        # Add tool-use instructions for dual output
+        tool_instructions = STAGE_TOOL_INSTRUCTIONS.get(EtapaProcessamento.GERAR_RELATORIO, "")
+        full_system = prompt_sistema + tool_instructions
+
+        # Call with tools
+        return await self.executar_com_tools(
+            mensagem=prompt_renderizado,
+            atividade_id=atividade_id,
+            aluno_id=aluno_id,
+            provider_id=provider_id,
+            system_prompt=full_system,
+            tools_to_use=["create_document", "execute_python_code"],
+        )
+
     async def chat_com_documentos(
         self,
         mensagem: str,
@@ -2737,15 +2797,28 @@ Crie UM documento separado para cada aluno, nomeando como "relatorio_[nome_aluno
             resultado = None
 
             while tentativas <= max_retries:
-                resultado = await self.executar_etapa(
-                    stage,
-                    atividade_id,
-                    aluno_id_param,
-                    provider_name=_resolve_provider(stage),
-                    prompt_id=_resolve_prompt(stage),
-                    usar_multimodal=usar_multimodal,
-                    criar_nova_versao=force_rerun
-                )
+                if stage == EtapaProcessamento.CORRIGIR:
+                    resultado = await self.corrigir(
+                        atividade_id, aluno_id_param, _resolve_provider(stage)
+                    )
+                elif stage == EtapaProcessamento.ANALISAR_HABILIDADES:
+                    resultado = await self.analisar_habilidades(
+                        atividade_id, aluno_id_param, _resolve_provider(stage)
+                    )
+                elif stage == EtapaProcessamento.GERAR_RELATORIO:
+                    resultado = await self.gerar_relatorio(
+                        atividade_id, aluno_id_param, _resolve_provider(stage)
+                    )
+                else:
+                    resultado = await self.executar_etapa(
+                        stage,
+                        atividade_id,
+                        aluno_id_param,
+                        provider_name=_resolve_provider(stage),
+                        prompt_id=_resolve_prompt(stage),
+                        usar_multimodal=usar_multimodal,
+                        criar_nova_versao=force_rerun
+                    )
 
                 if resultado.sucesso:
                     if tentativas > 0:

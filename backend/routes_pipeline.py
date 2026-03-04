@@ -155,6 +155,24 @@ async def executar_etapa(data: ExecutarEtapaRequest):
                 aluno_id=data.aluno_id,
                 provider_id=data.provider_id
             )
+            
+        elif etapa == "analisar_habilidades":
+            if not data.aluno_id:
+                raise HTTPException(400, "aluno_id é obrigatório")
+            resultado = await pipeline_executor.analisar_habilidades(
+                atividade_id=data.atividade_id,
+                aluno_id=data.aluno_id,
+                provider_id=data.provider_id
+            )
+            
+        elif etapa == "gerar_relatorio":
+            if not data.aluno_id:
+                raise HTTPException(400, "aluno_id é obrigatório")
+            resultado = await pipeline_executor.gerar_relatorio(
+                atividade_id=data.atividade_id,
+                aluno_id=data.aluno_id,
+                provider_id=data.provider_id
+            )
         
         else:
             raise HTTPException(400, f"Etapa desconhecida: {etapa}")
