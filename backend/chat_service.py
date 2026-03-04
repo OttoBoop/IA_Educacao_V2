@@ -527,6 +527,7 @@ class ModelManager:
                 api_key_id=key_id,
                 is_default=first,
                 ativo=True,
+                suporta_function_calling=True,
             )
             first = False
         if os.environ.get("ANTHROPIC_API_KEY"):
@@ -540,6 +541,7 @@ class ModelManager:
                 api_key_id=key_id,
                 is_default=first,
                 ativo=True,
+                suporta_function_calling=True,
             )
             first = False
         if os.environ.get("GOOGLE_API_KEY"):
@@ -553,6 +555,7 @@ class ModelManager:
                 api_key_id=key_id,
                 is_default=first,
                 ativo=True,
+                suporta_function_calling=True,
             )
         if self.models:
             self._save()
