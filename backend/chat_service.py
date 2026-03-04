@@ -502,12 +502,22 @@ class ModelManager:
             try:
                 with open(self.config_path, 'r', encoding='utf-8') as f:
                     data = json.load(f)
+                    needs_save = False
                     for m in data.get("models", []):
                         config = ModelConfig.from_dict(m)
+                        
+                        # Auto-patch existing models on persistent disk that missed function calling True
+                        if not config.suporta_function_calling:
+                            if any(x in config.modelo.lower() for x in ["gpt-4", "claude-3", "claude-haiku", "gemini"]):
+                                config.suporta_function_calling = True
+                                needs_save = True
+                                
                         self.models[config.id] = config
 
-                # Validar unicidade de is_default
+                # Validar unicidade de is_default e salvar patch se necessário
                 self._ensure_single_default()
+                if needs_save:
+                    self._save()
             except Exception as e:
                 print(f"Erro ao carregar modelos: {e}")
         else:
