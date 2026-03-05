@@ -1342,3 +1342,50 @@ async def backfill_display_names_v2(dry_run: bool = True):
             else f"Backfill concluido -- {updated} atualizados, {skipped} ja tinham nome, {errors} erros."
         )
     }
+
+
+@router.get("/api/manutencao/supabase-debug", tags=["Manutenção"])
+async def supabase_debug():
+    """Debug: test Supabase env vars and a direct PATCH call."""
+    import os, requests as _requests
+
+    SUPABASE_URL = os.getenv("SUPABASE_URL", "").rstrip("/")
+    SERVICE_KEY = os.getenv("SUPABASE_SERVICE_KEY", "")
+    ANON_KEY = os.getenv("SUPABASE_ANON_KEY", "")
+
+    # Try to get one doc from DB to get a real ID
+    doc_id = None
+    for materia in storage.listar_materias():
+        for turma in storage.listar_turmas(materia.id):
+            for atividade in storage.listar_atividades(turma.id):
+                docs = storage.listar_documentos(atividade.id)
+                if docs:
+                    doc_id = docs[0].id
+                    break
+            if doc_id: break
+        if doc_id: break
+
+    results = {
+        "SUPABASE_URL": SUPABASE_URL[:40] + "..." if SUPABASE_URL else "(not set)",
+        "SERVICE_KEY": SERVICE_KEY[:20] + "..." if SERVICE_KEY else "(not set)",
+        "ANON_KEY": ANON_KEY[:20] + "..." if ANON_KEY else "(not set)",
+        "use_postgresql": storage.use_postgresql,
+        "test_doc_id": doc_id,
+    }
+
+    if SUPABASE_URL and SERVICE_KEY and doc_id:
+        url = f"{SUPABASE_URL}/rest/v1/documentos?id=eq.{doc_id}"
+        headers = {
+            "apikey": SERVICE_KEY,
+            "Authorization": f"Bearer {SERVICE_KEY}",
+            "Content-Type": "application/json",
+            "Prefer": "return=minimal",
+        }
+        try:
+            resp = _requests.patch(url, headers=headers, json={"display_name": "TEST_BACKFILL"}, timeout=10)
+            results["patch_status"] = resp.status_code
+            results["patch_body"] = resp.text[:200]
+        except Exception as e:
+            results["patch_error"] = str(e)
+
+    return results
