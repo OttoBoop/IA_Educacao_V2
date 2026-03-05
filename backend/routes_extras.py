@@ -1214,3 +1214,42 @@ async def limpar_documentos_orfaos(dry_run: bool = True):
         "detalhes_erros": erros,
         "mensagem": "Simulação - use dry_run=false para deletar" if dry_run else f"Deletados {len(deletados)} documentos órfãos"
     }
+
+# ============================================================
+# BACKFILL: DISPLAY NAMES
+# ============================================================
+
+@router.post("/api/manutencao/backfill-display-names", tags=["Manutenção"])
+async def backfill_display_names_endpoint(dry_run: bool = True):
+    """
+    Gera display_names para todos os documentos que ainda nao tem um.
+
+    Percorre toda a hierarquia materia -> turma -> atividade -> documento,
+    resolve os metadados (tipo, aluno, materia, turma) e preenche o campo
+    display_name no banco de dados usando build_display_name().
+
+    Nao renomeia arquivos fisicos -- apenas atualiza o campo no banco.
+
+    Args:
+        dry_run: Se True (padrao), apenas reporta o que seria feito sem alterar o banco.
+                 Se False, executa o backfill de verdade.
+    """
+    try:
+        from scripts.backfill_display_names import backfill_display_names
+        result = backfill_display_names(storage, dry_run=dry_run)
+        return {
+            "dry_run": dry_run,
+            "total": result["total"],
+            "updated": result["updated"],
+            "skipped": result["skipped"],
+            "errors": result["errors"],
+            "mensagem": (
+                f"Simulacao concluida -- {result['updated']} documentos seriam atualizados. "
+                "Use dry_run=false para aplicar."
+                if dry_run
+                else f"Backfill concluido -- {result['updated']} documentos atualizados, "
+                     f"{result['skipped']} ja tinham nome, {result['errors']} erros."
+            )
+        }
+    except Exception as e:
+        raise HTTPException(500, f"Erro no backfill: {str(e)}")
