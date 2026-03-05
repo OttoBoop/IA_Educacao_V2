@@ -78,6 +78,64 @@ async def handle_execute_python_code(
             if result.stdout and result.stdout.strip():
                 response_parts.append(f"**Output:**\n```\n{result.stdout[:5000]}\n```")
 
+            # =========================================================
+            # PERSIST GENERATED FILES TO PROVA-AI STORAGE
+            # FIX: Previously, code_executor correctly extracted files
+            # from the E2B/Docker sandbox, but we never saved them to
+            # the database. This caused all generated PDFs to vanish.
+            # =========================================================
+            saved_docs = []
+            if result.files_generated and context and context.atividade_id:
+                import base64 as _b64
+                import tempfile
+                import os
+                from datetime import datetime
+                from pathlib import Path as _Path
+                from storage import storage
+                from models import TipoDocumento
+
+                _EXT_TO_TIPO = {
+                    ".pdf":  TipoDocumento.RELATORIO_FINAL,
+                    ".json": TipoDocumento.RELATORIO_FINAL,
+                    ".txt":  TipoDocumento.RELATORIO_FINAL,
+                    ".docx": TipoDocumento.RELATORIO_FINAL,
+                    ".xlsx": TipoDocumento.RELATORIO_FINAL,
+                }
+
+                for gen_file in result.files_generated:
+                    try:
+                        ext = _Path(gen_file.filename).suffix.lower()
+                        tipo = _EXT_TO_TIPO.get(ext, TipoDocumento.RELATORIO_FINAL)
+                        file_bytes = _b64.b64decode(gen_file.content_base64)
+                        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+                        stem = _Path(gen_file.filename).stem
+                        unique_name = f"{stem}_{timestamp}{ext}"
+                        temp_path = os.path.join(tempfile.gettempdir(), unique_name)
+                        with open(temp_path, "wb") as fh:
+                            fh.write(file_bytes)
+
+                        doc = storage.salvar_documento(
+                            arquivo_origem=temp_path,
+                            tipo=tipo,
+                            atividade_id=context.atividade_id,
+                            aluno_id=context.aluno_id,
+                            criado_por="ia_execute_python_code",
+                        )
+                        saved_docs.append({
+                            "filename": unique_name,
+                            "document_id": doc.id,
+                            "size_kb": round(len(file_bytes) / 1024, 2),
+                        })
+                        logger.info(
+                            "[execute_python_code] Saved '%s' to storage → doc_id=%s",
+                            unique_name, doc.id
+                        )
+                    except Exception as save_err:
+                        logger.warning(
+                            "[execute_python_code] Failed to save '%s': %s",
+                            gen_file.filename, save_err
+                        )
+
             if result.files_generated:
                 response_parts.append("**Files generated:**")
                 files_info = []
@@ -90,6 +148,15 @@ async def handle_execute_python_code(
                         "content_base64": f.content_base64[:200] + "..." if len(f.content_base64) > 200 else f.content_base64
                     })
                 response_parts.append(f"```json\n{json.dumps(files_info, indent=2)}\n```")
+
+                if saved_docs:
+                    response_parts.append(
+                        f"**Saved to Prova-AI storage:** {len(saved_docs)} file(s)"
+                    )
+                    for sd in saved_docs:
+                        response_parts.append(
+                            f"  - `{sd['filename']}` ({sd['size_kb']} KB) → doc_id: `{sd['document_id']}`"
+                        )
 
             if result.plots_generated:
                 response_parts.append(f"**Plots generated:** {len(result.plots_generated)} chart(s)")
