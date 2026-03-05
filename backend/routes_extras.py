@@ -1253,3 +1253,92 @@ async def backfill_display_names_endpoint(dry_run: bool = True):
         }
     except Exception as e:
         raise HTTPException(500, f"Erro no backfill: {str(e)}")
+
+
+# ============================================================
+# BACKFILL v2: DISPLAY NAMES via direct PostgREST HTTP
+# ============================================================
+
+@router.post("/api/manutencao/backfill-display-names-v2", tags=["Manutenção"])
+async def backfill_display_names_v2(dry_run: bool = True):
+    """
+    Backfill v2: usa chamadas HTTP diretas ao PostgREST do Supabase para garantir
+    que os display_names sejam gravados mesmo se supabase-py nao estiver instalado.
+
+    Args:
+        dry_run: Se True, apenas reporta o que seria feito. Se False, executa.
+    """
+    import os
+    import requests as _requests
+    from storage import build_display_name
+
+    SUPABASE_URL = os.getenv("SUPABASE_URL", "").rstrip("/")
+    SERVICE_KEY = os.getenv("SUPABASE_SERVICE_KEY", "")
+
+    if not SUPABASE_URL or not SERVICE_KEY:
+        raise HTTPException(503, "SUPABASE_URL ou SUPABASE_SERVICE_KEY nao configurados")
+
+    headers = {
+        "apikey": SERVICE_KEY,
+        "Authorization": f"Bearer {SERVICE_KEY}",
+        "Content-Type": "application/json",
+        "Prefer": "return=minimal",
+    }
+
+    updated = 0
+    skipped = 0
+    errors = 0
+    total = 0
+
+    for materia in storage.listar_materias():
+        for turma in storage.listar_turmas(materia.id):
+            for atividade in storage.listar_atividades(turma.id):
+                for doc in storage.listar_documentos(atividade.id):
+                    total += 1
+
+                    if doc.display_name:
+                        skipped += 1
+                        continue
+
+                    aluno_nome = None
+                    if doc.aluno_id:
+                        aluno = storage.get_aluno(doc.aluno_id)
+                        aluno_nome = aluno.nome if aluno else "[Aluno desconhecido]"
+
+                    new_name = build_display_name(
+                        tipo=doc.tipo,
+                        aluno_nome=aluno_nome,
+                        materia_nome=materia.nome,
+                        turma_nome=turma.nome,
+                    )
+
+                    if not dry_run:
+                        try:
+                            url = f"{SUPABASE_URL}/rest/v1/documentos?id=eq.{doc.id}"
+                            resp = _requests.patch(
+                                url,
+                                headers=headers,
+                                json={"display_name": new_name},
+                                timeout=10,
+                            )
+                            if resp.status_code not in (200, 204):
+                                errors += 1
+                                continue
+                        except Exception as e:
+                            errors += 1
+                            continue
+
+                    updated += 1
+
+    return {
+        "dry_run": dry_run,
+        "total": total,
+        "updated": updated,
+        "skipped": skipped,
+        "errors": errors,
+        "mensagem": (
+            f"Simulacao -- {updated} documentos seriam atualizados. Use dry_run=false para aplicar."
+            if dry_run
+            else f"Backfill concluido -- {updated} atualizados, {skipped} ja tinham nome, {errors} erros."
+        )
+    }
