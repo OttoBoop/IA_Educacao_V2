@@ -9568,6 +9568,26 @@
             const generateArea = document.getElementById(`desempenho-generate-area-${level}`);
             if (!container) return;
 
+            // D-T3: Check for active desempenho task in taskQueue.pipelineTasks (restore-on-return)
+            const activeTaskId = Object.keys(taskQueue.pipelineTasks).find(id => {
+                const t = taskQueue.pipelineTasks[id];
+                return t.status === 'running' && t.type && t.type.startsWith('pipeline_desempenho_');
+            });
+            if (activeTaskId && generateArea) {
+                _desempenhoGenerating = true;
+                generateArea.innerHTML = `
+                    <div style="display: flex; align-items: center; gap: 8px;">
+                        <span class="spinner"></span>
+                        <span>Gerando relatório...</span>
+                    </div>
+                `;
+                // Re-attach polling if lost (e.g., tab navigation)
+                if (!_desempenhoPollInterval) {
+                    _awaitDesempenhoCompletion(activeTaskId, level, entityId, generateArea);
+                }
+                return; // Don't load data yet — task still running
+            }
+
             try {
                 const data = await api(`/desempenho/${level}/${entityId}`);
                 const hasAtividades = data.has_atividades;

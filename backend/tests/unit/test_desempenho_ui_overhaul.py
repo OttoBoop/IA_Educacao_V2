@@ -342,7 +342,7 @@ class TestGap3AutoExpandLatestRun:
         if load_start == -1:
             load_start = html_content.find("function loadDesempenhoData(")
         assert load_start != -1, "loadDesempenhoData must exist"
-        load_section = html_content[load_start:load_start + 3000]
+        load_section = html_content[load_start:load_start + 4000]
         assert "autoExpandLatestRun" in load_section, (
             "loadDesempenhoData must call autoExpandLatestRun() after rendering runs "
             "to auto-fetch and display the first doc's content."
