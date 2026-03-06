@@ -1286,3 +1286,55 @@ async def _executar_desempenho_materia_background(
     except Exception as e:
         complete_pipeline_task(task_id, "failed", error=str(e))
 
+
+# ============================================================
+# SYNCHRONOUS DESEMPENHO ENDPOINTS (avoid background task loss on Render)
+# ============================================================
+
+@router.post("/api/executar/desempenho-tarefa-sync", tags=["Execução"])
+async def executar_desempenho_tarefa_sync(
+    atividade_id: str = Form(...),
+    provider_id: Optional[str] = Form(None),
+):
+    """Synchronous desempenho tarefa — awaits result instead of background task."""
+    from executor import executor
+    atividade = storage.get_atividade(atividade_id)
+    if not atividade:
+        raise HTTPException(404, "Atividade não encontrada")
+    resultado = await executor.gerar_relatorio_desempenho_tarefa(
+        atividade_id=atividade_id, provider_id=provider_id,
+    )
+    return resultado
+
+
+@router.post("/api/executar/desempenho-turma-sync", tags=["Execução"])
+async def executar_desempenho_turma_sync(
+    turma_id: str = Form(...),
+    provider_id: Optional[str] = Form(None),
+):
+    """Synchronous desempenho turma — awaits result instead of background task."""
+    from executor import executor
+    turma = storage.get_turma(turma_id)
+    if not turma:
+        raise HTTPException(404, "Turma não encontrada")
+    resultado = await executor.gerar_relatorio_desempenho_turma(
+        turma_id=turma_id, provider_id=provider_id,
+    )
+    return resultado
+
+
+@router.post("/api/executar/desempenho-materia-sync", tags=["Execução"])
+async def executar_desempenho_materia_sync(
+    materia_id: str = Form(...),
+    provider_id: Optional[str] = Form(None),
+):
+    """Synchronous desempenho materia — awaits result instead of background task."""
+    from executor import executor
+    materia = storage.get_materia(materia_id)
+    if not materia:
+        raise HTTPException(404, "Matéria não encontrada")
+    resultado = await executor.gerar_relatorio_desempenho_materia(
+        materia_id=materia_id, provider_id=provider_id,
+    )
+    return resultado
+
