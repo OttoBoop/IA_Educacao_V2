@@ -9699,6 +9699,9 @@
         // B-T4: Progress indicator state
         let _desempenhoGenerating = false;
         let _desempenhoTimer = null;
+        // D-T1: Track active desempenho task for polling
+        let _desempenhoActiveTask = null;
+        let _desempenhoPollInterval = null;
 
         async function executarDesempenho(level, entityId, providerId = null, promptId = null) {
             // B-T4: Prevent concurrent generation
@@ -9745,27 +9748,27 @@
 
                 const result = await apiForm(endpoint, formData);
 
-                // B-T4: Cleanup timer + restore button
-                clearInterval(_desempenhoTimer);
-                _desempenhoTimer = null;
-                _desempenhoGenerating = false;
-                if (generateArea) {
-                    generateArea.innerHTML = `
-                        <button class="btn btn-primary" onclick="openDesempenhoSettings('${level}', '${entityId}')">⚙️ Gerar Relatório</button>
-                    `;
-                }
+                // D-T1: Extract task_id and poll for completion instead of instant success
+                const taskId = result.task_id;
+                if (!taskId) throw new Error('No task_id returned from server');
 
-                showToast('📊 Relatório de desempenho gerado com sucesso!', 'success');
-                loadDesempenhoData(level, entityId);
+                // D-T1: Store context for completion handler
+                _desempenhoActiveTask = { taskId, level, entityId };
 
-                if (result.documento_id) {
-                    visualizarDocumento(result.documento_id);
-                }
+                // D-T1: Register in sidebar + start polling (reuses existing pipeline pattern)
+                taskQueue.addBackendTask(taskId, {
+                    task_id: taskId,
+                    type: 'pipeline_desempenho_' + level,
+                    status: 'running',
+                    started_at: new Date().toISOString()
+                });
+                startPolling(taskId);
+
+                // D-T1: Poll /api/task-progress/{taskId} for desempenho-specific completion
+                _awaitDesempenhoCompletion(taskId, level, entityId, generateArea);
             } catch (e) {
                 // B-T5: Cleanup timer + show inline error + retry button
-                clearInterval(_desempenhoTimer);
-                _desempenhoTimer = null;
-                _desempenhoGenerating = false;
+                _cleanupDesempenhoProgress(generateArea, level, entityId);
                 if (generateArea) {
                     generateArea.innerHTML = `
                         <div id="desempenho-error" style="background: rgba(239,68,68,0.1); border: 1px solid var(--danger); border-radius: 8px; padding: 12px; display: flex; flex-direction: column; gap: 8px;">
@@ -9777,6 +9780,58 @@
                 }
                 showToast('❌ Erro ao gerar relatório: ' + (e.message || 'Erro desconhecido'), 'error');
             }
+        }
+
+        // D-T1: Cleanup helper for desempenho progress state
+        function _cleanupDesempenhoProgress(generateArea, level, entityId) {
+            clearInterval(_desempenhoTimer);
+            _desempenhoTimer = null;
+            _desempenhoGenerating = false;
+            _desempenhoActiveTask = null;
+            if (_desempenhoPollInterval) {
+                clearInterval(_desempenhoPollInterval);
+                _desempenhoPollInterval = null;
+            }
+            if (generateArea) {
+                generateArea.innerHTML = `
+                    <button class="btn btn-primary" onclick="openDesempenhoSettings('${level}', '${entityId}')">⚙️ Gerar Relatório</button>
+                `;
+            }
+        }
+
+        // D-T1: Poll task-progress for desempenho-specific completion handling
+        function _awaitDesempenhoCompletion(taskId, level, entityId, generateArea) {
+            const poll = async () => {
+                try {
+                    const resp = await fetch(`/api/task-progress/${taskId}`);
+                    if (!resp.ok) return; // transient failure, keep polling
+                    const data = await resp.json();
+
+                    if (data.status === 'completed') {
+                        _cleanupDesempenhoProgress(generateArea, level, entityId);
+                        showToast('📊 Relatório de desempenho gerado com sucesso!', 'success');
+                        loadDesempenhoData(level, entityId);
+                    } else if (data.status === 'failed') {
+                        _cleanupDesempenhoProgress(generateArea, level, entityId);
+                        if (generateArea) {
+                            generateArea.innerHTML = `
+                                <div id="desempenho-error" style="background: rgba(239,68,68,0.1); border: 1px solid var(--danger); border-radius: 8px; padding: 12px; display: flex; flex-direction: column; gap: 8px;">
+                                    <span style="color: var(--danger); font-weight: 500;">❌ Erro ao gerar relatório</span>
+                                    <span style="color: var(--text-muted); font-size: 0.85rem;">${data.error || 'Falha na geração'}</span>
+                                    <button class="btn btn-primary" onclick="executarDesempenho('${level}', '${entityId}')" style="align-self: flex-start; margin-top: 4px;">🔄 Tentar Novamente</button>
+                                </div>
+                            `;
+                        }
+                        showToast('❌ Erro ao gerar relatório: ' + (data.error || 'Erro desconhecido'), 'error');
+                    }
+                    // else 'running' — keep polling
+                } catch (err) {
+                    // Network error — keep polling (resilience)
+                }
+            };
+
+            _desempenhoPollInterval = setInterval(poll, 3000);
+            poll(); // Also poll immediately
         }
 
         async function executarEtapa(preview = false) {
