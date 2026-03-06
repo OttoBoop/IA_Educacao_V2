@@ -401,12 +401,13 @@ async def preparar_etapa(etapa: str, atividade_id: str, aluno_id: Optional[str] 
 
 
 def _ler_conteudo_documento(doc) -> str:
-    """Lê conteúdo de um documento"""
+    """Lê conteúdo de um documento, downloading from Supabase Storage if needed"""
     try:
-        arquivo = Path(doc.caminho_arquivo)
+        # Use resolver to download from Supabase Storage if local file missing
+        arquivo = storage.resolver_caminho_documento(doc)
         if not arquivo.exists():
             return f"[Arquivo não encontrado: {doc.nome_arquivo}]"
-        
+
         if doc.extensao.lower() == '.json':
             with open(arquivo, 'r', encoding='utf-8') as f:
                 data = json.load(f)

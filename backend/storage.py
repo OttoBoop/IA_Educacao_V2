@@ -1263,7 +1263,9 @@ class StorageManager:
             if success:
                 print(f"[Supabase] Upload OK: {remote_path}")
             else:
-                print(f"[Supabase] Aviso: {msg}")
+                print(f"[Supabase] ERRO Upload: {msg}")
+                import logging
+                logging.getLogger("storage").error(f"[Supabase] Storage upload failed for {remote_path}: {msg}")
 
         return documento
 

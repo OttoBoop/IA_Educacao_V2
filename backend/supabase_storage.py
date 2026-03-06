@@ -12,6 +12,7 @@ Configuração:
 
 import os
 import httpx
+import unicodedata
 from pathlib import Path
 from typing import Optional, Tuple
 from dotenv import load_dotenv
@@ -44,6 +45,12 @@ class SupabaseStorage:
         """Retorna True se o Supabase está configurado"""
         return self._enabled
 
+    @staticmethod
+    def _sanitize_path(path: str) -> str:
+        """Remove accented characters from path to avoid Supabase InvalidKey errors."""
+        nfkd = unicodedata.normalize('NFKD', path)
+        return nfkd.encode('ascii', 'ignore').decode('ascii')
+
     def upload(self, local_path: str, remote_path: str) -> Tuple[bool, str]:
         """
         Faz upload de arquivo para Supabase Storage.
@@ -75,8 +82,9 @@ class SupabaseStorage:
         }
         content_type = content_types.get(ext, "application/octet-stream")
 
-        # Normalizar path (remover barras iniciais, usar /)
+        # Normalizar path (remover barras iniciais, usar /, strip accents)
         remote_path = remote_path.replace("\\", "/").lstrip("/")
+        remote_path = self._sanitize_path(remote_path)
 
         url = f"{self.storage_url}/object/{self.bucket}/{remote_path}"
 
@@ -115,8 +123,9 @@ class SupabaseStorage:
         if not self._enabled:
             return False, "Supabase não configurado"
 
-        # Normalizar path
+        # Normalizar path (strip accents for Supabase compatibility)
         remote_path = remote_path.replace("\\", "/").lstrip("/")
+        remote_path = self._sanitize_path(remote_path)
 
         url = f"{self.storage_url}/object/{self.bucket}/{remote_path}"
 
@@ -145,7 +154,7 @@ class SupabaseStorage:
         if not self._enabled:
             return False
 
-        remote_path = remote_path.replace("\\", "/").lstrip("/")
+        remote_path = self._sanitize_path(remote_path.replace("\\", "/").lstrip("/"))
         url = f"{self.storage_url}/object/{self.bucket}/{remote_path}"
 
         try:
@@ -160,7 +169,7 @@ class SupabaseStorage:
         if not self._enabled:
             return False, "Supabase não configurado"
 
-        remote_path = remote_path.replace("\\", "/").lstrip("/")
+        remote_path = self._sanitize_path(remote_path.replace("\\", "/").lstrip("/"))
         url = f"{self.storage_url}/object/{self.bucket}"
 
         try:
@@ -185,7 +194,7 @@ class SupabaseStorage:
         if not self._enabled:
             return None
 
-        remote_path = remote_path.replace("\\", "/").lstrip("/")
+        remote_path = self._sanitize_path(remote_path.replace("\\", "/").lstrip("/"))
         return f"{self.storage_url}/object/public/{self.bucket}/{remote_path}"
 
     def get_signed_url(self, remote_path: str, expires_in: int = 3600) -> Optional[str]:
@@ -202,7 +211,7 @@ class SupabaseStorage:
         if not self._enabled:
             return None
 
-        remote_path = remote_path.replace("\\", "/").lstrip("/")
+        remote_path = self._sanitize_path(remote_path.replace("\\", "/").lstrip("/"))
         url = f"{self.storage_url}/object/sign/{self.bucket}/{remote_path}"
 
         try:
