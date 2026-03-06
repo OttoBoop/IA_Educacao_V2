@@ -105,7 +105,13 @@ async def handle_execute_python_code(
                 for gen_file in result.files_generated:
                     try:
                         ext = _Path(gen_file.filename).suffix.lower()
-                        tipo = _EXT_TO_TIPO.get(ext, TipoDocumento.RELATORIO_FINAL)
+                        
+                        # Use explicitly injected PDF type if defined, fallback to mapping
+                        if context and getattr(context, 'expected_document_type', None):
+                            tipo = context.expected_document_type
+                        else:
+                            tipo = _EXT_TO_TIPO.get(ext, TipoDocumento.RELATORIO_FINAL)
+                            
                         file_bytes = _b64.b64decode(gen_file.content_base64)
                         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
                         stem = _Path(gen_file.filename).stem
