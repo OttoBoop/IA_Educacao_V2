@@ -2055,7 +2055,8 @@ class PipelineExecutor:
         turma_id: Optional[str] = None,
         provider_id: Optional[str] = None,
         system_prompt: Optional[str] = None,
-        tools_to_use: Optional[List[str]] = None
+        tools_to_use: Optional[List[str]] = None,
+        expected_document_type: Optional['TipoDocumento'] = None
     ) -> ResultadoExecucao:
         """
         Executa uma chamada de IA com suporte a tools.
@@ -2083,12 +2084,35 @@ class PipelineExecutor:
             from tools import ToolRegistry, CREATE_DOCUMENT, EXECUTE_PYTHON_CODE, PIPELINE_TOOLS
             from tool_handlers import TOOL_HANDLERS
             
-            # Obter modelo
+            # Obter modelo (check models.json first, then ai_registry fallback)
+            model = None
             if provider_id:
                 model = model_manager.get(provider_id)
-            else:
+                if not model:
+                    # Fallback: try resolve_provider_config (supports ai_registry IDs)
+                    try:
+                        from chat_service import resolve_provider_config
+                        config = resolve_provider_config(provider_id)
+                        if config:
+                            # Find the model by its modelo string
+                            model = model_manager.get_by_modelo(config.get("modelo")) if hasattr(model_manager, 'get_by_modelo') else None
+                            if not model:
+                                # Create a temporary model-like object from config
+                                from chat_service import ModelConfig
+                                model = ModelConfig(
+                                    id=provider_id,
+                                    nome=config.get("modelo", provider_id),
+                                    tipo=ProviderType(config.get("tipo", "openai")),
+                                    modelo=config.get("modelo", ""),
+                                    max_tokens=config.get("max_tokens", 4096),
+                                    temperature=config.get("temperature", 0.7),
+                                    suporta_temperature=config.get("suporta_temperature", True),
+                                )
+                    except Exception as e:
+                        print(f"[executar_com_tools] Fallback provider resolution failed: {e}")
+            if not model:
                 model = model_manager.get_default()
-            
+
             if not model:
                 return self._erro("tools", "Nenhum modelo configurado")
             
@@ -2139,7 +2163,8 @@ class PipelineExecutor:
             context = ToolExecutionContext(
                 atividade_id=atividade_id,
                 aluno_id=aluno_id,
-                session_id=f"pipeline_{atividade_id}_{aluno_id or 'base'}"
+                session_id=f"pipeline_{atividade_id}_{aluno_id or 'base'}",
+                expected_document_type=expected_document_type
             )
             
             # Default system prompt para pipeline
@@ -2415,6 +2440,7 @@ Crie UM documento separado para cada aluno, nomeando como "relatorio_[nome_aluno
             provider_id=provider_id,
             system_prompt=full_system or None,
             tools_to_use=["create_document", "execute_python_code"],
+            expected_document_type=TipoDocumento.RELATORIO_DESEMPENHO_TAREFA,
         )
 
         # Save result
@@ -2552,6 +2578,7 @@ Crie UM documento separado para cada aluno, nomeando como "relatorio_[nome_aluno
             provider_id=provider_id,
             system_prompt=full_system or None,
             tools_to_use=["create_document", "execute_python_code"],
+            expected_document_type=TipoDocumento.RELATORIO_DESEMPENHO_TURMA,
         )
 
         # Save result
@@ -2681,6 +2708,7 @@ Crie UM documento separado para cada aluno, nomeando como "relatorio_[nome_aluno
             provider_id=provider_id,
             system_prompt=full_system or None,
             tools_to_use=["create_document", "execute_python_code"],
+            expected_document_type=TipoDocumento.RELATORIO_DESEMPENHO_MATERIA,
         )
 
         # Save result
