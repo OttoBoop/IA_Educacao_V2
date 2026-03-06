@@ -115,6 +115,7 @@ class ToolExecutionContext:
     aluno_id: Optional[str] = None
     session_id: Optional[str] = None
     user_id: Optional[str] = None
+    expected_document_type: Optional[Any] = None
 
 
 class ToolRegistry:
