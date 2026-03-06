@@ -22,6 +22,7 @@ from typing import Optional, List, Dict, Any
 from datetime import datetime
 from pathlib import Path
 from contextlib import asynccontextmanager
+import logging
 import os
 import json
 import tempfile
@@ -861,7 +862,11 @@ async def get_arvore_navegacao():
     Retorna árvore completa para navegação.
     Estrutura: Matérias → Turmas → Atividades
     """
-    return storage.get_arvore_navegacao()
+    try:
+        return storage.get_arvore_navegacao()
+    except Exception as e:
+        logging.exception("Error in /api/navegacao/arvore")
+        return {"materias": [], "_error": str(e)}
 
 
 @app.get("/api/navegacao/tree", tags=["Navegação"], include_in_schema=False)

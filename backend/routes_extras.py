@@ -11,6 +11,7 @@ from fastapi import APIRouter, UploadFile, File, Form, HTTPException, Query
 from typing import Optional, List
 from pydantic import BaseModel
 from datetime import datetime
+import logging
 import tempfile
 import os
 import csv
@@ -426,37 +427,48 @@ async def busca_global(
 @router.get("/api/estatisticas", tags=["Estatísticas"])
 async def get_estatisticas_gerais():
     """Retorna estatísticas gerais do sistema"""
-    
-    materias = storage.listar_materias()
-    turmas = storage.listar_turmas()
-    alunos = storage.listar_alunos()
-    
-    total_atividades = 0
-    total_documentos = 0
-    atividades_sem_gabarito = 0
-    
-    for turma in turmas:
-        atividades = storage.listar_atividades(turma.id)
-        total_atividades += len(atividades)
-        
-        for ativ in atividades:
-            docs = storage.listar_documentos(ativ.id)
-            total_documentos += len(docs)
-            
-            tipos = [d.tipo for d in docs]
-            if TipoDocumento.GABARITO not in tipos:
-                atividades_sem_gabarito += 1
-    
-    return {
-        "total_materias": len(materias),
-        "total_turmas": len(turmas),
-        "total_alunos": len(alunos),
-        "total_atividades": total_atividades,
-        "total_documentos": total_documentos,
-        "alertas": {
-            "atividades_sem_gabarito": atividades_sem_gabarito
+    try:
+        materias = storage.listar_materias()
+        turmas = storage.listar_turmas()
+        alunos = storage.listar_alunos()
+
+        total_atividades = 0
+        total_documentos = 0
+        atividades_sem_gabarito = 0
+
+        for turma in turmas:
+            atividades = storage.listar_atividades(turma.id)
+            total_atividades += len(atividades)
+
+            for ativ in atividades:
+                docs = storage.listar_documentos(ativ.id)
+                total_documentos += len(docs)
+
+                tipos = [d.tipo for d in docs]
+                if TipoDocumento.GABARITO not in tipos:
+                    atividades_sem_gabarito += 1
+
+        return {
+            "total_materias": len(materias),
+            "total_turmas": len(turmas),
+            "total_alunos": len(alunos),
+            "total_atividades": total_atividades,
+            "total_documentos": total_documentos,
+            "alertas": {
+                "atividades_sem_gabarito": atividades_sem_gabarito
+            }
         }
-    }
+    except Exception as e:
+        logging.exception("Error in /api/estatisticas")
+        return {
+            "total_materias": 0,
+            "total_turmas": 0,
+            "total_alunos": 0,
+            "total_atividades": 0,
+            "total_documentos": 0,
+            "alertas": {"atividades_sem_gabarito": 0},
+            "_error": str(e)
+        }
 
 
 @router.get("/api/estatisticas/turma/{turma_id}", tags=["Estatísticas"])
@@ -787,59 +799,63 @@ async def listar_todos_documentos(
     tipos: Optional[str] = None
 ):
     """Lista todos os documentos do sistema com metadados completos."""
-    filters = {
-        'materia_ids': materia_ids.split(',') if materia_ids else None,
-        'turma_ids': turma_ids.split(',') if turma_ids else None,
-        'atividade_ids': atividade_ids.split(',') if atividade_ids else None,
-        'aluno_ids': aluno_ids.split(',') if aluno_ids else None,
-        'tipos': tipos.split(',') if tipos else None,
-    }
-    
-    documentos = []
-    materias = storage.listar_materias()
-    
-    for materia in materias:
-        if filters['materia_ids'] and materia.id not in filters['materia_ids']:
-            continue
-        
-        turmas = storage.listar_turmas(materia.id)
-        for turma in turmas:
-            if filters['turma_ids'] and turma.id not in filters['turma_ids']:
+    try:
+        filters = {
+            'materia_ids': materia_ids.split(',') if materia_ids else None,
+            'turma_ids': turma_ids.split(',') if turma_ids else None,
+            'atividade_ids': atividade_ids.split(',') if atividade_ids else None,
+            'aluno_ids': aluno_ids.split(',') if aluno_ids else None,
+            'tipos': tipos.split(',') if tipos else None,
+        }
+
+        documentos = []
+        materias = storage.listar_materias()
+
+        for materia in materias:
+            if filters['materia_ids'] and materia.id not in filters['materia_ids']:
                 continue
-            
-            atividades = storage.listar_atividades(turma.id)
-            for atividade in atividades:
-                if filters['atividade_ids'] and atividade.id not in filters['atividade_ids']:
+
+            turmas = storage.listar_turmas(materia.id)
+            for turma in turmas:
+                if filters['turma_ids'] and turma.id not in filters['turma_ids']:
                     continue
-                
-                docs = storage.listar_documentos(atividade.id)
-                for doc in docs:
-                    if filters['tipos'] and doc.tipo.value not in filters['tipos']:
+
+                atividades = storage.listar_atividades(turma.id)
+                for atividade in atividades:
+                    if filters['atividade_ids'] and atividade.id not in filters['atividade_ids']:
                         continue
-                    if filters['aluno_ids'] and doc.aluno_id and doc.aluno_id not in filters['aluno_ids']:
-                        continue
-                    
-                    aluno_nome = None
-                    if doc.aluno_id:
-                        aluno = storage.get_aluno(doc.aluno_id)
-                        aluno_nome = aluno.nome if aluno else None
-                    
-                    documentos.append({
-                        "id": doc.id,
-                        "nome_arquivo": doc.nome_arquivo,
-                        "tipo": doc.tipo.value,
-                        "materia_id": materia.id,
-                        "materia_nome": materia.nome,
-                        "turma_id": turma.id,
-                        "turma_nome": turma.nome,
-                        "atividade_id": atividade.id,
-                        "atividade_nome": atividade.nome,
-                        "aluno_id": doc.aluno_id,
-                        "aluno_nome": aluno_nome,
-                        "criado_em": doc.criado_em.isoformat() if doc.criado_em else None,
-                    })
-    
-    return {"documentos": documentos, "total": len(documentos)}
+
+                    docs = storage.listar_documentos(atividade.id)
+                    for doc in docs:
+                        if filters['tipos'] and doc.tipo.value not in filters['tipos']:
+                            continue
+                        if filters['aluno_ids'] and doc.aluno_id and doc.aluno_id not in filters['aluno_ids']:
+                            continue
+
+                        aluno_nome = None
+                        if doc.aluno_id:
+                            aluno = storage.get_aluno(doc.aluno_id)
+                            aluno_nome = aluno.nome if aluno else None
+
+                        documentos.append({
+                            "id": doc.id,
+                            "nome_arquivo": doc.nome_arquivo,
+                            "tipo": doc.tipo.value,
+                            "materia_id": materia.id,
+                            "materia_nome": materia.nome,
+                            "turma_id": turma.id,
+                            "turma_nome": turma.nome,
+                            "atividade_id": atividade.id,
+                            "atividade_nome": atividade.nome,
+                            "aluno_id": doc.aluno_id,
+                            "aluno_nome": aluno_nome,
+                            "criado_em": doc.criado_em.isoformat() if doc.criado_em else None,
+                        })
+
+        return {"documentos": documentos, "total": len(documentos)}
+    except Exception as e:
+        logging.exception("Error in /api/documentos/todos")
+        return {"documentos": [], "total": 0, "_error": str(e)}
 
 
 @router.get("/api/chat/providers", tags=["Chat"])
