@@ -65,6 +65,7 @@ class TipoDocumento(Enum):
     CORRECAO_NARRATIVA = "correcao_narrativa"                          # DEPRECATED — use CORRECAO PDF
     ANALISE_HABILIDADES_NARRATIVA = "analise_habilidades_narrativa"    # DEPRECATED — use ANALISE_HABILIDADES PDF
     RELATORIO_NARRATIVO = "relatorio_narrativo"                        # DEPRECATED — use RELATORIO_FINAL PDF
+    RELATORIO_FINAL_OLD = "relatorio_final_old"                          # DEPRECATED — legacy name for RELATORIO_FINAL
     # === RELATÓRIOS DE DESEMPENHO AGREGADOS (nível atividade/turma/matéria) ===
     RELATORIO_DESEMPENHO_TAREFA = "relatorio_desempenho_tarefa"        # Análise agregada de uma atividade
     RELATORIO_DESEMPENHO_TURMA = "relatorio_desempenho_turma"          # Análise holística de uma turma
