@@ -764,9 +764,11 @@ class ClienteAPIMultimodal:
                 # Erros retryable: 429 (rate limit) e 5xx (servidor)
                 is_retryable = status == 429 or status >= 500
 
+                error_body = response.text[:500]
+                print(f"[Anthropic 400] Model: {self.modelo} | Error: {error_body}")
                 return ResultadoEnvio(
                     sucesso=False,
-                    erro=f"Erro API Anthropic: {status}",
+                    erro=f"Erro API Anthropic: {status} - {error_body[:200]}",
                     erro_detalhes=response.text,
                     erro_codigo=status,
                     retryable=is_retryable,
