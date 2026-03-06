@@ -353,8 +353,9 @@ class StorageManager:
     # ============================================================
     
     def _generate_id(self, *args) -> str:
-        """Gera ID único baseado nos argumentos + timestamp"""
-        content = "_".join(str(a) for a in args) + str(datetime.now().timestamp())
+        """Gera ID único baseado nos argumentos + timestamp + uuid"""
+        import uuid
+        content = "_".join(str(a) for a in args) + str(datetime.now().timestamp()) + uuid.uuid4().hex
         return hashlib.sha256(content.encode()).hexdigest()[:16]
     
     def _get_connection(self) -> sqlite3.Connection:
@@ -1224,7 +1225,12 @@ class StorageManager:
                 "documento_origem_id": documento.documento_origem_id,
                 "metadata": documento.metadata
             }
-            supabase_db.insert("documentos", data)
+            result = supabase_db.insert("documentos", data)
+            if result is None:
+                import logging
+                logger = logging.getLogger("storage")
+                logger.error(f"[SupabaseDB] Failed to insert documento {documento.id} into Supabase. Data keys: {list(data.keys())}")
+                raise RuntimeError(f"Failed to insert documento {documento.id} into Supabase DB - insert returned None")
         else:
             conn = self._get_connection()
             c = conn.cursor()

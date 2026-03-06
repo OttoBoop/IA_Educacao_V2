@@ -78,15 +78,22 @@ class SupabaseDB:
         try:
             # Convert datetime objects to ISO strings
             data = self._serialize_data(data)
+            original_keys = set(data.keys())
+            data = self._filter_allowed_columns(table, data)
+            filtered_keys = set(data.keys())
+            removed = original_keys - filtered_keys
+            if removed:
+                print(f"[SupabaseDB] WARNING: Filtered out columns from {table}: {removed}")
 
             result = self._client.table(table).insert(data).execute()
 
             if result.data and len(result.data) > 0:
                 return result.data[0]
+            print(f"[SupabaseDB] Insert into {table} returned no data. Result: {result}")
             return None
         except Exception as e:
             print(f"[SupabaseDB] Insert error in {table}: {e}")
-            return None
+            raise  # Re-raise so callers can see the actual error
 
     def select(self, table: str, filters: Dict[str, Any] = None,
                order_by: str = None, order_desc: bool = False,
@@ -140,6 +147,7 @@ class SupabaseDB:
         try:
             data = self._serialize_data(data)
             data["atualizado_em"] = datetime.now().isoformat()
+            data = self._filter_allowed_columns(table, data)
 
             result = self._client.table(table).update(data).eq("id", id).execute()
 
@@ -248,6 +256,7 @@ class SupabaseDB:
 
         try:
             data = self._serialize_data(data)
+            data = self._filter_allowed_columns(table, data)
 
             result = self._client.table(table).upsert(data, on_conflict=on_conflict).execute()
 
@@ -261,6 +270,38 @@ class SupabaseDB:
     # ============================================================
     # HELPERS
     # ============================================================
+
+    def _get_table_columns(self, table: str) -> set:
+        """Fetch columns for a table and cache them"""
+        if not self._enabled:
+            return set()
+            
+        if not hasattr(self, "_columns_cache"):
+            self._columns_cache = {}
+            
+        if table in self._columns_cache:
+            return self._columns_cache[table]
+            
+        try:
+            # Query one row to infer columns (PostgREST doesn't expose metadata easily)
+            result = self._client.table(table).select("*").limit(1).execute()
+            if result.data and len(result.data) > 0:
+                cols = set(result.data[0].keys())
+                self._columns_cache[table] = cols
+                return cols
+            # If table is empty, we can't infer. Return empty set to be safe or 
+            # assume all are allowed? Better to return empty and not filter.
+            return set()
+        except:
+            return set()
+
+    def _filter_allowed_columns(self, table: str, data: Dict[str, Any]) -> Dict[str, Any]:
+        """Filter out keys that are not present in the database table"""
+        allowed = self._get_table_columns(table)
+        if not allowed:
+            return data # Can't filter if we don't know the columns
+            
+        return {k: v for k, v in data.items() if k in allowed}
 
     def _serialize_data(self, data: Dict[str, Any]) -> Dict[str, Any]:
         """Convert Python objects to JSON-serializable format"""
