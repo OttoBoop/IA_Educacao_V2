@@ -552,6 +552,22 @@ class InvestorJourneyAgent:
             f.write("---\n\n")
         return report_path
 
+    def _check_budget(self, current_step: int) -> dict:
+        remaining = self.config.max_steps - current_step
+        return {
+            "remaining": remaining,
+            "total": self.config.max_steps,
+            "is_low": remaining < self.config.max_steps * 0.1,
+        }
+
+    def _on_budget_exhaustion(self) -> Path:
+        return self._write_verification_entry(
+            model="unknown",
+            stage="budget_exhaustion",
+            status="PARTIAL",
+            details="Journey stopped: budget exhausted.",
+        )
+
 
 # Convenience function for CLI usage
 async def run_journey(
