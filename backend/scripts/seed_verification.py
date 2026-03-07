@@ -279,7 +279,9 @@ class SeedVerification:
                     r.raise_for_status()
                     self.log(f"Bound: {aluno['nome']} -> {turma['nome']}")
                 except httpx.HTTPStatusError as e:
-                    if e.response.status_code == 409 or "já vinculado" in e.response.text.lower():
+                    # Server may return 409 or 500 for duplicate bindings
+                    err_text = e.response.text.lower()
+                    if e.response.status_code in (409, 500) or "já vinculado" in err_text:
                         self.log(f"Already bound: {aluno['nome']} -> {turma['nome']}")
                     else:
                         raise
