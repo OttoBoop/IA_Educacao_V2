@@ -6969,7 +6969,6 @@
             const container = document.getElementById('tree-tarefas');
             if (!container) return;
 
-            // Status icon mapping: completed, running, pending, failed
             const stageIcons = { completed: '\u2705', running: '\u23F3', pending: '\u2B1C', failed: '\u274C' };
             const stageNames = {
                 extrair_questoes: 'Extrair Quest\u00F5es',
@@ -6985,43 +6984,121 @@
                 return;
             }
 
+            // ── Build 6-level hierarchy ──────────────────────────────
+            // Level 1: Materia  (materia_nome)
+            // Level 2: Turma    (turma_nome)
+            // Level 3: Atividade (atividade_nome)
+            // Level 4: Run N (pipeline tasks) | Desempenho label (desempenho tasks)
+            // Level 5: Student  (nome or aluno_id)
+            // Level 6: Stages
+
+            const materiaMap = new Map(); // materia_nome → Map(turma_nome → Map(atividade_nome → [tasks]))
+
+            const taskList = Object.values(tasks);
             let totalStages = 0;
             let completedStages = 0;
+
+            for (const task of taskList) {
+                const materia   = task.materia_nome   || 'Unknown Materia';
+                const turma     = task.turma_nome     || 'Unknown Turma';
+                const atividade = task.atividade_nome || task.atividade_id || 'Unknown Atividade';
+
+                if (!materiaMap.has(materia)) materiaMap.set(materia, new Map());
+                const turmaMap = materiaMap.get(materia);
+                if (!turmaMap.has(turma)) turmaMap.set(turma, new Map());
+                const ativMap = turmaMap.get(turma);
+                if (!ativMap.has(atividade)) ativMap.set(atividade, []);
+                ativMap.get(atividade).push(task);
+            }
+
             let html = '';
 
-            for (const [taskId, task] of Object.entries(tasks)) {
-                if (task.sem_conexao) {
-                    html += '<div class="tarefas-sem-conexao" style="padding: 8px 12px; color: var(--danger); font-size: 0.8rem; border-bottom: 1px solid var(--border);">&#x26A0; Sem conex\u00E3o — tentando reconectar...</div>';
-                }
-                const isCancelled = task.cancel_requested || task.status === 'cancelled';
-                const alunoCount = Object.keys(task.students || {}).length;
-                for (const [alunoId, aluno] of Object.entries(task.students || {})) {
-                    const stages = aluno.stages || {};
+            for (const [materiaNome, turmaMap] of materiaMap) {
+                html += '<div class="tree-materia">';
+                html += '<div class="tree-group-header tree-materia-header" onclick="toggleTarefaTree(this)">';
+                html += '<span class="tree-toggle">\u25B6</span> ';
+                html += '<span class="tree-group-label">\uD83D\uDCDA ' + escapeHtml(materiaNome) + '</span>';
+                html += '</div><div class="tree-children expanded">';
 
-                    html += '<div class="tarefa-aluno' + (isCancelled ? ' cancelled' : '') + '" data-task="' + taskId + '" data-aluno="' + alunoId + '">';
-                    html += '<div class="tarefa-toggle" onclick="toggleTarefaTree(this)">';
+                for (const [turmaNome, ativMap] of turmaMap) {
+                    html += '<div class="tree-turma">';
+                    html += '<div class="tree-group-header tree-turma-header" onclick="toggleTarefaTree(this)">';
                     html += '<span class="tree-toggle">\u25B6</span> ';
-                    html += '<span>' + escapeHtml(aluno.nome || alunoId) + '</span>';
-                    if (isCancelled) {
-                        html += '<span class="tarefa-cancelled-label">Cancelado</span>';
-                    } else {
-                        html += '<button class="tarefa-cancel" onclick="event.stopPropagation(); cancelTask(\'' + taskId + '\')" title="Cancelar">\u00D7</button>';
-                    }
-                    html += '</div>';
-                    html += '<div class="tree-children' + (alunoCount <= 2 ? ' expanded' : '') + '">';
+                    html += '<span class="tree-group-label">\uD83C\uDFEB ' + escapeHtml(turmaNome) + '</span>';
+                    html += '</div><div class="tree-children expanded">';
 
-                    for (const [stage, status] of Object.entries(stages)) {
-                        totalStages++;
-                        if (status === 'completed') completedStages++;
-                        const icon = stageIcons[status] || '\u2B1C';
-                        const name = stageNames[stage] || stage;
-                        html += '<div class="tarefa-stage ' + status + '">';
-                        html += icon + ' ' + name;
-                        html += '</div>';
-                    }
+                    for (const [ativNome, ativTasks] of ativMap) {
+                        html += '<div class="tree-atividade">';
+                        html += '<div class="tree-group-header tree-atividade-header" onclick="toggleTarefaTree(this)">';
+                        html += '<span class="tree-toggle">\u25B6</span> ';
+                        html += '<span class="tree-group-label">\uD83D\uDCDD ' + escapeHtml(ativNome) + '</span>';
+                        html += '</div><div class="tree-children expanded">';
 
-                    html += '</div></div>';
+                        const pipelineTasks   = ativTasks.filter(t => !t.type.startsWith('pipeline_desempenho'));
+                        const desempenhoTasks = ativTasks.filter(t => t.type.startsWith('pipeline_desempenho'));
+
+                        // Run N counter for pipeline tasks
+                        pipelineTasks.forEach((task, runIndex) => {
+                            const runLabel   = 'Run ' + (runIndex + 1);
+                            const isCancelled = task.cancel_requested || task.status === 'cancelled';
+                            const taskId     = task.task_id;
+
+                            html += '<div class="tree-run">';
+                            html += '<div class="tree-group-header tree-run-header' + (isCancelled ? ' cancelled' : '') + '" onclick="toggleTarefaTree(this)">';
+                            html += '<span class="tree-toggle">\u25B6</span> ';
+                            html += '<span class="tree-group-label">\u25B6\uFE0F ' + escapeHtml(runLabel) + '</span>';
+                            if (isCancelled) {
+                                html += '<span class="tarefa-cancelled-label">Cancelado</span>';
+                            } else {
+                                html += '<button class="tarefa-cancel" onclick="event.stopPropagation(); cancelTask(\'' + taskId + '\')" title="Cancelar">\u00D7</button>';
+                            }
+                            html += '</div><div class="tree-children expanded">';
+
+                            for (const [alunoId, aluno] of Object.entries(task.students || {})) {
+                                const stages   = aluno.stages || {};
+                                const alunoName = aluno.nome || alunoId;
+
+                                html += '<div class="tarefa-aluno' + (isCancelled ? ' cancelled' : '') + '" data-task="' + taskId + '" data-aluno="' + alunoId + '">';
+                                html += '<div class="tarefa-toggle" onclick="toggleTarefaTree(this)">';
+                                html += '<span class="tree-toggle">\u25B6</span> ';
+                                html += '<span>' + escapeHtml(alunoName) + '</span>';
+                                html += '</div><div class="tree-children">';
+
+                                for (const [stage, status] of Object.entries(stages)) {
+                                    totalStages++;
+                                    if (status === 'completed') completedStages++;
+                                    const icon = stageIcons[status] || '\u2B1C';
+                                    const name = stageNames[stage] || stage;
+                                    html += '<div class="tarefa-stage ' + status + '">' + icon + ' ' + name + '</div>';
+                                }
+
+                                html += '</div></div>';
+                            }
+                            html += '</div></div>'; // run children + run
+                        });
+
+                        // Desempenho tasks at atividade level
+                        for (const task of desempenhoTasks) {
+                            const isCancelled = task.cancel_requested || task.status === 'cancelled';
+                            const typeLabel = task.type === 'pipeline_desempenho_tarefa'  ? 'Desempenho da Atividade'
+                                           : task.type === 'pipeline_desempenho_turma'   ? 'Desempenho da Turma'
+                                           : task.type === 'pipeline_desempenho_materia' ? 'Desempenho da Mat\u00E9ria'
+                                           : 'Desempenho';
+                            const statusIcon = task.status === 'completed' ? '\u2705'
+                                             : task.status === 'failed'    ? '\u274C' : '\u23F3';
+
+                            html += '<div class="tree-desempenho' + (isCancelled ? ' cancelled' : '') + '" data-task="' + task.task_id + '">';
+                            html += '<div class="tarefa-toggle tarefa-toggle--desempenho">';
+                            html += statusIcon + ' <span>' + escapeHtml(typeLabel) + '</span>';
+                            if (isCancelled) html += '<span class="tarefa-cancelled-label">Cancelado</span>';
+                            html += '</div></div>';
+                        }
+
+                        html += '</div></div>'; // atividade children + atividade
+                    }
+                    html += '</div></div>'; // turma children + turma
                 }
+                html += '</div></div>'; // materia children + materia
             }
 
             const progress = '<div class="tarefas-progress" style="padding: 8px 12px; font-size: 0.8rem; color: var(--text-muted); border-bottom: 1px solid var(--border);">' + completedStages + '/' + totalStages + ' etapas</div>';
