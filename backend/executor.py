@@ -2261,10 +2261,35 @@ Seja preciso, educativo e construtivo em suas análises."""
             if documentos_gerados:
                 alertas.append({"tipo": "info", "mensagem": f"Documentos gerados: {documentos_gerados}"})
 
+            # F2-T2: Check for max_iterations error and add alert
+            if resposta.get("error") == "max_iterations_exceeded":
+                alertas.append({
+                    "tipo": "aviso",
+                    "mensagem": "Limite máximo de iterações de tools atingido. Resultado pode estar incompleto."
+                })
+
+            # F2-T1: Extract resposta_raw from create_document tool content
+            # when the API content field is empty (LLM was busy calling tools)
+            raw_content = resposta.get("content", "")
+            is_sentinel = raw_content == "[Maximum tool iterations reached]"
+
+            if not raw_content or is_sentinel:
+                # Look for create_document tool calls — their input contains the actual content
+                for tc in tool_calls:
+                    if tc.get("name") == "create_document":
+                        doc_content = tc.get("input", {}).get("content", "")
+                        if doc_content:
+                            raw_content = doc_content
+                            break
+
+            # If still sentinel after extraction attempt, clear it
+            if raw_content == "[Maximum tool iterations reached]":
+                raw_content = ""
+
             return ResultadoExecucao(
                 sucesso=True,
                 etapa="tools",
-                resposta_raw=resposta.get("content", ""),
+                resposta_raw=raw_content,
                 provider=model.tipo.value,
                 modelo=model.modelo,
                 tokens_entrada=resposta.get("tokens", 0),
@@ -2464,6 +2489,7 @@ Crie UM documento separado para cada aluno, nomeando como "relatorio_[nome_aluno
             "alunos_incluidos": len(conteudos),
             "alunos_excluidos": len(avisos),
             "avisos": avisos,
+            "alertas": resultado.alertas,
             "status": "PARCIAL" if avisos else "COMPLETO",
             "erro": resultado.erro if not resultado.sucesso else None,
         }
@@ -2603,6 +2629,7 @@ Crie UM documento separado para cada aluno, nomeando como "relatorio_[nome_aluno
             "narrativas_encontradas": len(conteudos),
             "atividades_cobertas": len(atividades_cobertas),
             "avisos": avisos,
+            "alertas": resultado.alertas,
             "atividades_com_lacunas": atividades_com_lacunas,
             "status": "PARCIAL" if avisos or atividades_com_lacunas else "COMPLETO",
             "erro": resultado.erro if not resultado.sucesso else None,
@@ -2733,6 +2760,7 @@ Crie UM documento separado para cada aluno, nomeando como "relatorio_[nome_aluno
             "narrativas_encontradas": len(conteudos),
             "cobertura": cobertura,
             "avisos": avisos,
+            "alertas": resultado.alertas,
             "status": "PARCIAL" if avisos else "COMPLETO",
             "erro": resultado.erro if not resultado.sucesso else None,
         }
