@@ -266,12 +266,15 @@ def run_controller(ipc_dir: Path):
                         elif no_progress_stuck:
                             instruction = (
                                 f"After {step_count} steps, no pipeline verification has started. "
-                                "Let's use a direct approach: use evaluate_js to call the API directly. "
-                                "Example: evaluate_js with script "
-                                "\"fetch('/api/atividades?turma_id=6b5dc44c08aaf375').then(r=>r.json()).then(d=>console.log(JSON.stringify(d)))\". "
-                                "Or navigate the UI step by step: click 'Cálculo 1' materia → "
-                                "then click 'EPGE 2021' turma card → then click 'A1' atividade. "
-                                "After each click, wait 2 seconds before assessing whether it worked."
+                                "CRITICAL: The server takes 5-10 seconds to load data after navigation. "
+                                "After clicking a card, WAIT 8 seconds (wait_duration_seconds=8) before "
+                                "checking if the view changed. DO NOT click again if still loading. "
+                                "Correct sequence: "
+                                "1) Click Cálculo 1 sidebar → wait 8s → check screenshot. "
+                                "2) Click EPGE 2021 turma card → wait 8s → check screenshot. "
+                                "3) Click A1 atividade → wait 8s → check screenshot. "
+                                "If you see the turma/atividade view after waiting, you succeeded! "
+                                "Only click again if you still see the SAME previous view after waiting."
                             )
                         else:
                             instruction = (

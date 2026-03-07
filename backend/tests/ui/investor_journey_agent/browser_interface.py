@@ -378,8 +378,12 @@ class BrowserInterface:
             if handle:
                 await handle.scroll_into_view_if_needed(timeout=timeout)
             await self.page.click(selector, timeout=timeout)
-            # Wait for SPA to update: 500ms for animations + extra for API-dependent renders
-            await self.page.wait_for_timeout(2000)
+            # Wait for SPA to update: base wait + network idle for API-driven renders (e.g. showTurma)
+            await self.page.wait_for_timeout(500)
+            try:
+                await self.page.wait_for_load_state("networkidle", timeout=8000)
+            except Exception:
+                pass  # Timeout acceptable — page may have ongoing background polling
             return True
         except Exception as e:
             self._console_errors.append(f"Click failed on {selector}: {e}")
