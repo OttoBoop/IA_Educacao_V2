@@ -539,6 +539,19 @@ class InvestorJourneyAgent:
         path.mkdir(parents=True, exist_ok=True)
         return path
 
+    def _write_verification_entry(self, model: str, stage: str, status: str, details: str) -> Path:
+        """Append a verification entry to the verification report markdown file."""
+        report_path = self.config.output_dir / "verification_report.md"
+        if not report_path.exists():
+            report_path.parent.mkdir(parents=True, exist_ok=True)
+            report_path.write_text("# Verification Report\n\n")
+        with open(report_path, "a", encoding="utf-8") as f:
+            f.write(f"## {model} — {stage}\n\n")
+            f.write(f"**Status:** {status}\n\n")
+            f.write(f"**Details:** {details}\n\n")
+            f.write("---\n\n")
+        return report_path
+
 
 # Convenience function for CLI usage
 async def run_journey(
