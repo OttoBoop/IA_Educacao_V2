@@ -246,3 +246,74 @@ class TestRegisterPipelineTaskStudentNames:
             assert isinstance(student["stages"], dict)
         finally:
             task_registry.pop(task_id, None)
+
+
+class TestGetAllTasksEndpoint:
+    """A3: GET /api/tasks must return all task_registry entries.
+
+    Plan: PLAN_Major_Fix_Tasks_And_Verification.md — Task A3
+    """
+
+    def test_endpoint_exists_and_returns_200(self, client):
+        """GET /api/tasks must return 200 (not generic 404)."""
+        response = client.get("/api/tasks")
+        assert response.status_code == 200, (
+            f"GET /api/tasks must return 200, got {response.status_code}"
+        )
+
+    def test_returns_list(self, client):
+        """Response body must be a list."""
+        response = client.get("/api/tasks")
+        assert response.status_code == 200
+        data = response.json()
+        assert isinstance(data, list), f"Expected list, got {type(data)}"
+
+    def test_returns_all_tasks_in_registry(self, client):
+        """All tasks currently in task_registry must appear in the response."""
+        from routes_tasks import task_registry, register_pipeline_task
+
+        task_id_a = register_pipeline_task(
+            task_type="pipeline",
+            atividade_id="ativ-list-001",
+            aluno_ids=[],
+        )
+        task_id_b = register_pipeline_task(
+            task_type="pipeline_desempenho_tarefa",
+            atividade_id="ativ-list-002",
+            aluno_ids=[],
+        )
+        try:
+            response = client.get("/api/tasks")
+            assert response.status_code == 200
+            data = response.json()
+            task_ids_returned = [t["task_id"] for t in data]
+            assert task_id_a in task_ids_returned, "task_id_a must appear in /api/tasks response"
+            assert task_id_b in task_ids_returned, "task_id_b must appear in /api/tasks response"
+        finally:
+            task_registry.pop(task_id_a, None)
+            task_registry.pop(task_id_b, None)
+
+    def test_each_entry_has_required_fields(self, client):
+        """Each task entry must include task_id, type, status, and students."""
+        from routes_tasks import task_registry, register_pipeline_task
+
+        task_id = register_pipeline_task(
+            task_type="pipeline",
+            atividade_id="ativ-fields-001",
+            aluno_ids=["aluno-001"],
+            student_names={"aluno-001": "Ana Teste"},
+        )
+        try:
+            response = client.get("/api/tasks")
+            assert response.status_code == 200
+            data = response.json()
+            task = next((t for t in data if t["task_id"] == task_id), None)
+            assert task is not None, "Registered task must appear in response"
+            assert "task_id" in task
+            assert "type" in task
+            assert "status" in task
+            assert "students" in task
+            assert task["type"] == "pipeline"
+            assert task["status"] == "running"
+        finally:
+            task_registry.pop(task_id, None)
