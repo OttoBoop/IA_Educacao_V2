@@ -491,6 +491,22 @@ class InvestorJourneyAgent:
                 success = await self._browser.go_back()
                 return success, None if success else "Could not go back"
 
+            elif action.action_type == ActionType.SELECT_OPTION:
+                if not action.select_value:
+                    return False, "No select_value provided for SELECT_OPTION action"
+                success = await self._browser.select_option(
+                    action.target, action.select_value
+                )
+                return success, None if success else f"Could not select '{action.select_value}' in {action.target}"
+
+            elif action.action_type == ActionType.DOWNLOAD_FILE:
+                result = await self._browser.download_file(
+                    action.target, self.config.downloads_dir
+                )
+                if result:
+                    return True, None
+                return False, f"Could not download file from {action.target}"
+
             else:
                 return True, None
 

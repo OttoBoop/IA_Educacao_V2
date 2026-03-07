@@ -26,6 +26,7 @@ class ClickableElement:
     is_visible: bool = True
     bounding_box: Optional[Dict[str, float]] = None
     occlusion_status: str = "visible"
+    options: Optional[List[str]] = None  # For <select> elements: available option values
 
     def to_description(self) -> str:
         """Human-readable description of the element."""
@@ -222,7 +223,7 @@ class BrowserInterface:
         script = """
         () => {
             const elements = [];
-            const selectors = 'button, a, [role="button"], [onclick], input[type="submit"], input[type="button"]';
+            const selectors = 'button, a, [role="button"], [onclick], input[type="submit"], input[type="button"], select';
 
             // Check if an element at (x, y) belongs to the target element
             function isOwnElement(target, x, y) {
@@ -293,7 +294,13 @@ class BrowserInterface:
                         : `${tag}:nth-child(${childIndex})`;
                 }
 
-                elements.push({
+                // For <select> elements, collect available options
+                let options = null;
+                if (el.tagName.toLowerCase() === 'select') {
+                    options = Array.from(el.options).map(o => o.value || o.text).filter(v => v);
+                }
+
+                const entry = {
                     selector: selector,
                     tag: el.tagName.toLowerCase(),
                     text: el.textContent?.trim().slice(0, 100) || '',
@@ -306,7 +313,11 @@ class BrowserInterface:
                         width: rect.width,
                         height: rect.height
                     }
-                });
+                };
+                if (options) {
+                    entry.options = options;
+                }
+                elements.push(entry);
             });
 
             return elements;
@@ -401,6 +412,30 @@ class BrowserInterface:
         except Exception as e:
             self._console_errors.append(f"Go back failed: {e}")
             return False
+
+    async def select_option(self, selector: str, value: str, timeout: int = 5000) -> bool:
+        """Select an option from a <select> dropdown."""
+        try:
+            await self.page.select_option(selector, value, timeout=timeout)
+            await self.page.wait_for_timeout(300)
+            return True
+        except Exception as e:
+            self._console_errors.append(f"Select option failed on {selector}: {e}")
+            return False
+
+    async def download_file(self, selector: str, save_dir: Path, timeout: int = 30000) -> Optional[Path]:
+        """Click an element that triggers a download and save the file."""
+        try:
+            async with self.page.expect_download(timeout=timeout) as download_info:
+                await self.page.click(selector, timeout=timeout)
+            download = await download_info.value
+            save_dir.mkdir(parents=True, exist_ok=True)
+            save_path = save_dir / download.suggested_filename
+            await download.save_as(save_path)
+            return save_path
+        except Exception as e:
+            self._console_errors.append(f"Download failed on {selector}: {e}")
+            return None
 
     def clear_errors(self):
         """Clear captured console errors."""

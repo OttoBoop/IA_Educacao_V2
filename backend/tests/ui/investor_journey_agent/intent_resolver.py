@@ -102,6 +102,15 @@ class IntentResolver:
             (success, error_message) tuple for click actions
             None for non-click actions (caller should use default execution)
         """
+        if action.action_type == ActionType.SELECT_OPTION:
+            selector = self.resolve(action, clickable_elements)
+            if selector and action.select_value:
+                success = await browser.select_option(selector, action.select_value)
+                if success:
+                    return True, None
+                return False, f"Could not select '{action.select_value}' in {selector}"
+            return False, "Could not resolve selector for select_option"
+
         if action.action_type != ActionType.CLICK:
             return None  # Not our job — caller uses default execution
 

@@ -28,6 +28,8 @@ class ActionType(str, Enum):
     WAIT = "wait"
     RELOAD = "reload"
     BACK = "back"
+    SELECT_OPTION = "select_option"
+    DOWNLOAD_FILE = "download_file"
 
 
 @dataclass
@@ -44,6 +46,7 @@ class Action:
     element_index: Optional[int] = None  # 1-based index into clickable elements list
     intent_description: Optional[str] = None  # Natural-language description of intent
     wait_duration_seconds: Optional[int] = None  # For WAIT action: how many seconds to wait
+    select_value: Optional[str] = None  # For SELECT_OPTION action: value to select
 
 
 @dataclass
@@ -172,6 +175,8 @@ Available actions:
 - wait: Wait for something to load (use wait_duration_seconds=45 for pipeline operations that take time)
 - reload: Reload the page (useful when something seems broken)
 - back: Go back to the previous page
+- select_option: Select a value from a dropdown (pick element_index and provide select_value)
+- download_file: Click a download link/button to save a file (pick element_index)
 - give_up: Stop trying because UX is too bad (this is valuable feedback!)
 - done: Goal achieved, stop journey
 
@@ -184,14 +189,15 @@ Respond ONLY with valid JSON (no markdown, no explanation outside JSON):
 {{
   "thought": "What I'm thinking as this user...",
   "frustration_level": 0.0 to 1.0,
-  "action_type": "click|type|scroll|wait|reload|back|give_up|done",
+  "action_type": "click|type|scroll|wait|reload|back|select_option|download_file|give_up|done",
   "target": "description of what you want to interact with",
   "element_index": 1,
   "intent_description": "what you want to do with this element",
   "confidence": 0.0 to 1.0,
   "text_to_type": "text if typing",
   "scroll_direction": "up or down if scrolling",
-  "wait_duration_seconds": null or integer seconds to wait (e.g. 45 for pipeline operations)
+  "wait_duration_seconds": null or integer seconds to wait (e.g. 45 for pipeline operations),
+  "select_value": "value to select from dropdown (for select_option action)"
 }}
 """
 
@@ -211,6 +217,8 @@ Respond ONLY with valid JSON (no markdown, no explanation outside JSON):
                     desc_parts.append(f"(aria: {el.aria_label})")
                 if el.role:
                     desc_parts.append(f"[role={el.role}]")
+                if hasattr(el, 'options') and el.options:
+                    desc_parts.append(f"options: {el.options}")
                 result += f"[{i}] {' '.join(desc_parts)}\n"
 
         if occluded:
@@ -236,6 +244,7 @@ Respond ONLY with valid JSON (no markdown, no explanation outside JSON):
             element_index=data.get("element_index"),
             intent_description=data.get("intent_description"),
             wait_duration_seconds=data.get("wait_duration_seconds"),
+            select_value=data.get("select_value"),
         )
 
     async def decide_next_action(
