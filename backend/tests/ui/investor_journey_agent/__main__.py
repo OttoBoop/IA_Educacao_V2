@@ -78,7 +78,7 @@ Examples:
     parser.add_argument(
         "--viewport",
         type=str,
-        default="iphone_14",
+        default="desktop",
         choices=list(VIEWPORT_CONFIGS.keys()),
         help=f"Device viewport. Available: {', '.join(VIEWPORT_CONFIGS.keys())}",
     )

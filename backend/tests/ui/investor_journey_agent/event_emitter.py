@@ -121,6 +121,18 @@ class EventEmitter:
         self._running = False
         self._write_status()
 
+    def emit_stuck(self, step_number: int, action_type: str, target: str, times_repeated: int) -> None:
+        """Emit a stuck event when the agent repeats the same action+target multiple times."""
+        event = {
+            "event_type": "stuck",
+            "timestamp": self._timestamp(),
+            "step": step_number,
+            "action_type": action_type,
+            "target": target,
+            "times_repeated": times_repeated,
+        }
+        self._append_event(event)
+
     def emit_paused(self, step_number: int) -> None:
         """Emit a paused event so Claude Code knows the agent is waiting."""
         event = {

@@ -6,6 +6,7 @@ to simulate realistic user journeys.
 """
 
 import asyncio
+from collections import deque
 from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
@@ -71,7 +72,7 @@ class InvestorJourneyAgent:
     def __init__(
         self,
         persona: str | Persona = "investor",
-        viewport: str = "iphone_14",
+        viewport: str = "desktop",
         mode: Literal["basic", "in_depth"] = "basic",
         config: Optional[AgentConfig] = None,
         on_step: Optional[Callable[[JourneyStep], None]] = None,
@@ -206,6 +207,7 @@ class InvestorJourneyAgent:
             step_number = 0
 
             user_guidance = None  # For mid-journey guidance from operator
+            recent_actions: deque = deque(maxlen=3)  # For stuck detection
 
             try:
                 while True:  # outer pause/resume loop
@@ -245,6 +247,27 @@ class InvestorJourneyAgent:
                             continue
 
                         steps.append(step)
+
+                        # Stuck detection: same (action_type, target) 3x in a row
+                        action_key = (step.action.action_type.value, step.action.target)
+                        recent_actions.append(action_key)
+                        if (
+                            len(recent_actions) == 3
+                            and len(set(recent_actions)) == 1
+                            and step.action.action_type not in (ActionType.DONE, ActionType.GIVE_UP)
+                        ):
+                            print(f"\n[STUCK] Same action repeated 3x: {action_key[0]} on '{action_key[1]}'")
+                            if self.event_emitter:
+                                self.event_emitter.emit_stuck(
+                                    step_number=step_number,
+                                    action_type=action_key[0],
+                                    target=action_key[1] or "",
+                                    times_repeated=3,
+                                )
+                            user_guidance = (
+                                f"You seem stuck repeating '{action_key[0]}' on '{action_key[1]}'. "
+                                "Try a completely different approach or element."
+                            )
 
                         if step.action.action_type == ActionType.DONE:
                             print("\n[DONE] Goal achieved!")
@@ -603,7 +626,7 @@ async def run_journey(
     url: str,
     goal: str,
     persona: str = "investor",
-    viewport: str = "iphone_14",
+    viewport: str = "desktop",
     mode: str = "basic",
     headless: bool = True,
     ask_before_action: bool = False,
