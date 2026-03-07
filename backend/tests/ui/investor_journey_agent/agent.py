@@ -248,6 +248,32 @@ class InvestorJourneyAgent:
 
                         steps.append(step)
 
+                        # Pause mode: emit "paused" event and wait for a "continue" command
+                        if self.pause_mode and self.command_receiver:
+                            if self.event_emitter:
+                                self.event_emitter.emit_paused(step_number=step_number)
+                            pause_done = False
+                            while not pause_done:
+                                await asyncio.sleep(0.5)
+                                for cmd in self.command_receiver.poll_all():
+                                    if cmd.command_type == "continue":
+                                        pause_done = True
+                                    elif cmd.command_type == "stop":
+                                        incomplete = True
+                                        incomplete_reason = cmd.data.get("reason", "Stopped during pause")
+                                        if self.event_emitter:
+                                            self.event_emitter.emit_stopped(
+                                                reason=incomplete_reason,
+                                                steps_completed=len(steps),
+                                            )
+                                        pause_done = True
+                                    elif cmd.command_type == "guidance":
+                                        user_guidance = cmd.data.get("instruction", "")
+                                        print(f"\n[GUIDANCE] {user_guidance}")
+                                        pause_done = True  # Apply guidance on next step
+                        if incomplete:
+                            break
+
                         # Stuck detection: same (action_type, target) 3x in a row
                         action_key = (step.action.action_type.value, step.action.target)
                         recent_actions.append(action_key)

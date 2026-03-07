@@ -228,7 +228,7 @@ async def main():
     # Interactive mode: set up IPC components
     event_emitter = None
     command_receiver = None
-    if args.interactive:
+    if args.interactive or args.pause_mode:
         # Output dir needs to be resolved early for IPC
         from datetime import datetime
         output_dir = config.output_dir / datetime.now().strftime("%Y%m%d_%H%M%S")
@@ -256,6 +256,7 @@ async def main():
         narrator=narrator,
         event_emitter=event_emitter,
         command_receiver=command_receiver,
+        pause_mode=args.pause_mode,
     )
 
     print(f"\n{'='*60}")
