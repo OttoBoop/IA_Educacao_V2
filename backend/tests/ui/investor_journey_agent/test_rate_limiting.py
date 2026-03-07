@@ -12,13 +12,13 @@ class TestRateLimitingConfig:
     """Tests for rate limiting configuration."""
 
     def test_config_has_max_llm_calls(self):
-        """Test that AgentConfig has max_llm_calls with default 50."""
+        """Test that AgentConfig has max_llm_calls synced with max_steps by default."""
         from tests.ui.investor_journey_agent.config import AgentConfig
 
         config = AgentConfig()
 
         assert hasattr(config, 'max_llm_calls')
-        assert config.max_llm_calls == 50
+        assert config.max_llm_calls == config.max_steps
 
     def test_config_max_llm_calls_is_configurable(self):
         """Test that max_llm_calls can be customized."""

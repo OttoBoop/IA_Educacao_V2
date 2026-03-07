@@ -121,6 +121,15 @@ class EventEmitter:
         self._running = False
         self._write_status()
 
+    def emit_paused(self, step_number: int) -> None:
+        """Emit a paused event so Claude Code knows the agent is waiting."""
+        event = {
+            "event_type": "paused",
+            "timestamp": self._timestamp(),
+            "step": step_number,
+        }
+        self._append_event(event)
+
     def emit_stopped(self, reason: str, steps_completed: int) -> None:
         """Emit a journey_stopped event."""
         event = {

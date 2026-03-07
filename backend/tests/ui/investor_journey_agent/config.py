@@ -97,7 +97,7 @@ class AgentConfig:
     verbose: bool = True
 
     # Rate limiting
-    max_llm_calls: int = 50  # Maximum LLM API calls per journey
+    max_llm_calls: Optional[int] = None  # None = auto-sync with max_steps
     max_tokens_per_request: int = 2000  # Maximum tokens per API request
     journey_timeout_seconds: int = 1200  # 20 minutes total journey timeout (supports 400 steps)
 
@@ -127,6 +127,10 @@ class AgentConfig:
 
         if self.downloads_dir is None:
             self.downloads_dir = self.output_dir / "downloads"
+
+        # Sync max_llm_calls with max_steps (one knob) unless explicitly set
+        if self.max_llm_calls is None:
+            self.max_llm_calls = self.max_steps
 
         # Load API key using key_loader with decryption if not explicitly provided
         if self.anthropic_api_key is None:

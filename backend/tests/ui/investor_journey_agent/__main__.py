@@ -172,6 +172,12 @@ Examples:
     )
 
     parser.add_argument(
+        "--pause-mode",
+        action="store_true",
+        help="Pause after each step and wait for a 'continue' command (implies --interactive)",
+    )
+
+    parser.add_argument(
         "--resume",
         type=str,
         default=None,

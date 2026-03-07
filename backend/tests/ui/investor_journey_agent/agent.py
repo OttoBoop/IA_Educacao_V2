@@ -79,6 +79,7 @@ class InvestorJourneyAgent:
         narrator: Optional["ProgressNarrator"] = None,
         event_emitter: Optional[EventEmitter] = None,
         command_receiver: Optional[CommandReceiver] = None,
+        pause_mode: bool = False,
     ):
         """
         Initialize the agent.
@@ -93,6 +94,7 @@ class InvestorJourneyAgent:
             narrator: Optional ProgressNarrator for periodic summaries
             event_emitter: Optional EventEmitter for structured IPC output
             command_receiver: Optional CommandReceiver for IPC commands
+            pause_mode: If True, pause after each step and wait for continue command
         """
         # Resolve persona
         if isinstance(persona, str):
@@ -114,6 +116,7 @@ class InvestorJourneyAgent:
         self.narrator = narrator
         self.event_emitter = event_emitter
         self.command_receiver = command_receiver
+        self.pause_mode = pause_mode
 
         # Will be initialized in run_journey
         self._browser: Optional[BrowserInterface] = None
