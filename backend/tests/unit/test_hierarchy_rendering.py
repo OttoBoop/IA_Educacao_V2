@@ -94,7 +94,8 @@ class TestHierarchyLevels:
         """Hierarchy rendering must use distinct CSS classes per level."""
         assert "renderTarefasTree" in html_content, "renderTarefasTree not found"
         func_pos = html_content.find("renderTarefasTree")
-        func_area = html_content[func_pos:func_pos + 5000]
+        # 15000 chars covers the full 6-level hierarchy function body (A4 rewrite)
+        func_area = html_content[func_pos:func_pos + 15000]
         # Must have classes for at least aluno and stage levels
         assert "tarefa-aluno" in func_area or "task-aluno" in func_area, (
             "Hierarchy must have CSS class for aluno level"
@@ -120,7 +121,8 @@ class TestProgressSummary:
         """A progress counter element must exist in or near the TAREFAS section."""
         assert "renderTarefasTree" in html_content, "renderTarefasTree not found"
         func_pos = html_content.find("renderTarefasTree")
-        func_area = html_content[func_pos:func_pos + 5000]
+        # 15000 chars covers the full 6-level hierarchy function body (A4 rewrite)
+        func_area = html_content[func_pos:func_pos + 15000]
         # Must compute and display progress like "8/18 etapas"
         assert "etapas" in func_area or "progress" in func_area.lower(), (
             "Must have a progress summary (e.g., '8/18 etapas')"
