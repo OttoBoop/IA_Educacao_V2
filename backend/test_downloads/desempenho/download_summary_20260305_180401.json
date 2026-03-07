@@ -1,0 +1,106 @@
+{
+  "timestamp": "2026-03-05T18:04:01.512403",
+  "live_url": "https://ia-educacao-v2.onrender.com",
+  "total_docs": 11,
+  "downloads": [
+    {
+      "id": "be2de68068999f18",
+      "tipo": "relatorio_desempenho_tarefa",
+      "nome": "relatorio_desempenho_tarefa_20260302_001418.json",
+      "downloads": [
+        "C:\\Users\\otavi\\Documents\\prova-ai\\IA_Educacao_V2\\backend\\test_downloads\\desempenho\\tarefa\\relatorio_desempenho_tarefa_20260302_001418.json",
+        "C:\\Users\\otavi\\Documents\\prova-ai\\IA_Educacao_V2\\backend\\test_downloads\\desempenho\\tarefa\\be2de68068999f18_conteudo.json"
+      ]
+    },
+    {
+      "id": "77a365fc1949b3da",
+      "tipo": "relatorio_desempenho_tarefa",
+      "nome": "relatorio_desempenho_tarefa_20260301_233319.json",
+      "downloads": [
+        "C:\\Users\\otavi\\Documents\\prova-ai\\IA_Educacao_V2\\backend\\test_downloads\\desempenho\\tarefa\\relatorio_desempenho_tarefa_20260301_233319.json",
+        "C:\\Users\\otavi\\Documents\\prova-ai\\IA_Educacao_V2\\backend\\test_downloads\\desempenho\\tarefa\\77a365fc1949b3da_conteudo.json"
+      ]
+    },
+    {
+      "id": "6945f8d048ae8bbe",
+      "tipo": "relatorio_desempenho_tarefa",
+      "nome": "relatorio_desempenho_tarefa_20260301_185131.json",
+      "downloads": [
+        "C:\\Users\\otavi\\Documents\\prova-ai\\IA_Educacao_V2\\backend\\test_downloads\\desempenho\\tarefa\\relatorio_desempenho_tarefa_20260301_185131.json",
+        "C:\\Users\\otavi\\Documents\\prova-ai\\IA_Educacao_V2\\backend\\test_downloads\\desempenho\\tarefa\\6945f8d048ae8bbe_conteudo.json"
+      ]
+    },
+    {
+      "id": "03e5ec150877c326",
+      "tipo": "relatorio_desempenho_tarefa",
+      "nome": "relatorio_desempenho_tarefa_20260301_145040.json",
+      "downloads": [
+        "C:\\Users\\otavi\\Documents\\prova-ai\\IA_Educacao_V2\\backend\\test_downloads\\desempenho\\tarefa\\relatorio_desempenho_tarefa_20260301_145040.json",
+        "C:\\Users\\otavi\\Documents\\prova-ai\\IA_Educacao_V2\\backend\\test_downloads\\desempenho\\tarefa\\03e5ec150877c326_conteudo.json"
+      ]
+    },
+    {
+      "id": "73cdfc29822c923f",
+      "tipo": "relatorio_desempenho_tarefa",
+      "nome": "relatorio_desempenho_tarefa_20260301_144836.json",
+      "downloads": [
+        "C:\\Users\\otavi\\Documents\\prova-ai\\IA_Educacao_V2\\backend\\test_downloads\\desempenho\\tarefa\\relatorio_desempenho_tarefa_20260301_144836.json",
+        "C:\\Users\\otavi\\Documents\\prova-ai\\IA_Educacao_V2\\backend\\test_downloads\\desempenho\\tarefa\\73cdfc29822c923f_conteudo.json"
+      ]
+    },
+    {
+      "id": "e19e81fa514d4fae",
+      "tipo": "relatorio_desempenho_tarefa",
+      "nome": "relatorio_desempenho_tarefa_20260301_144521.json",
+      "downloads": [
+        "C:\\Users\\otavi\\Documents\\prova-ai\\IA_Educacao_V2\\backend\\test_downloads\\desempenho\\tarefa\\relatorio_desempenho_tarefa_20260301_144521.json",
+        "C:\\Users\\otavi\\Documents\\prova-ai\\IA_Educacao_V2\\backend\\test_downloads\\desempenho\\tarefa\\e19e81fa514d4fae_conteudo.json"
+      ]
+    },
+    {
+      "id": "4ce6ee06ead46d7d",
+      "tipo": "relatorio_desempenho_turma",
+      "nome": "relatorio_desempenho_turma_20260302_001454.json",
+      "downloads": [
+        "C:\\Users\\otavi\\Documents\\prova-ai\\IA_Educacao_V2\\backend\\test_downloads\\desempenho\\turma\\relatorio_desempenho_turma_20260302_001454.json",
+        "C:\\Users\\otavi\\Documents\\prova-ai\\IA_Educacao_V2\\backend\\test_downloads\\desempenho\\turma\\4ce6ee06ead46d7d_conteudo.json"
+      ]
+    },
+    {
+      "id": "3a883ab52163d5cc",
+      "tipo": "relatorio_desempenho_turma",
+      "nome": "relatorio_desempenho_turma_20260301_233347.json",
+      "downloads": [
+        "C:\\Users\\otavi\\Documents\\prova-ai\\IA_Educacao_V2\\backend\\test_downloads\\desempenho\\turma\\relatorio_desempenho_turma_20260301_233347.json",
+        "C:\\Users\\otavi\\Documents\\prova-ai\\IA_Educacao_V2\\backend\\test_downloads\\desempenho\\turma\\3a883ab52163d5cc_conteudo.json"
+      ]
+    },
+    {
+      "id": "7d11c488002f083a",
+      "tipo": "relatorio_desempenho_turma",
+      "nome": "relatorio_desempenho_turma_20260301_145109.json",
+      "downloads": [
+        "C:\\Users\\otavi\\Documents\\prova-ai\\IA_Educacao_V2\\backend\\test_downloads\\desempenho\\turma\\relatorio_desempenho_turma_20260301_145109.json",
+        "C:\\Users\\otavi\\Documents\\prova-ai\\IA_Educacao_V2\\backend\\test_downloads\\desempenho\\turma\\7d11c488002f083a_conteudo.json"
+      ]
+    },
+    {
+      "id": "0ef23109a0b8b77a",
+      "tipo": "relatorio_desempenho_turma",
+      "nome": "relatorio_desempenho_turma_20260301_144815.json",
+      "downloads": [
+        "C:\\Users\\otavi\\Documents\\prova-ai\\IA_Educacao_V2\\backend\\test_downloads\\desempenho\\turma\\relatorio_desempenho_turma_20260301_144815.json",
+        "C:\\Users\\otavi\\Documents\\prova-ai\\IA_Educacao_V2\\backend\\test_downloads\\desempenho\\turma\\0ef23109a0b8b77a_conteudo.json"
+      ]
+    },
+    {
+      "id": "76e4c5c30023d78f",
+      "tipo": "relatorio_desempenho_materia",
+      "nome": "relatorio_desempenho_materia_20260301_144952.json",
+      "downloads": [
+        "C:\\Users\\otavi\\Documents\\prova-ai\\IA_Educacao_V2\\backend\\test_downloads\\desempenho\\materia\\relatorio_desempenho_materia_20260301_144952.json",
+        "C:\\Users\\otavi\\Documents\\prova-ai\\IA_Educacao_V2\\backend\\test_downloads\\desempenho\\materia\\76e4c5c30023d78f_conteudo.json"
+      ]
+    }
+  ]
+}

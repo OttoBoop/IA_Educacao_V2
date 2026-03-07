@@ -1,0 +1,165 @@
+{
+  "url": "https://ia-educacao-v2.onrender.com",
+  "created_at": "2026-03-06T18:18:17.908789",
+  "materia_id": "9f3e4e15362f3d9e",
+  "turmas": [
+    {
+      "id": "e7723b846a74d88c",
+      "nome": "Turma Alpha"
+    },
+    {
+      "id": "8ac9388ffc0a6bac",
+      "nome": "Turma Beta"
+    }
+  ],
+  "alunos": [
+    {
+      "id": "e2b050770435a53a",
+      "nome": "Ana Silva",
+      "turma_id": "e7723b846a74d88c",
+      "turma_nome": "Turma Alpha"
+    },
+    {
+      "id": "8aa3f48d727c5453",
+      "nome": "Carlos Oliveira",
+      "turma_id": "e7723b846a74d88c",
+      "turma_nome": "Turma Alpha"
+    },
+    {
+      "id": "a979e6fe03aa1a0b",
+      "nome": "Julia Santos",
+      "turma_id": "8ac9388ffc0a6bac",
+      "turma_nome": "Turma Beta"
+    },
+    {
+      "id": "45cc242fa25f36c7",
+      "nome": "Pedro Lima",
+      "turma_id": "8ac9388ffc0a6bac",
+      "turma_nome": "Turma Beta"
+    }
+  ],
+  "atividades": [
+    {
+      "id": "f87b6b7e1c3dc5d2",
+      "nome": "Prova 1 - Álgebra Básica",
+      "turma_id": "e7723b846a74d88c",
+      "turma_nome": "Turma Alpha"
+    },
+    {
+      "id": "512a66da87a54f8b",
+      "nome": "Prova 2 - Geometria Plana",
+      "turma_id": "e7723b846a74d88c",
+      "turma_nome": "Turma Alpha"
+    },
+    {
+      "id": "216476f9c65f96f6",
+      "nome": "Prova 1 - Álgebra Básica",
+      "turma_id": "8ac9388ffc0a6bac",
+      "turma_nome": "Turma Beta"
+    },
+    {
+      "id": "39ba312d1c3abf33",
+      "nome": "Prova 2 - Geometria Plana",
+      "turma_id": "8ac9388ffc0a6bac",
+      "turma_nome": "Turma Beta"
+    }
+  ],
+  "documents": [
+    {
+      "id": "4ff687592b29e20c",
+      "tipo": "enunciado",
+      "atividade_id": "f87b6b7e1c3dc5d2"
+    },
+    {
+      "id": "f3249256a50698c9",
+      "tipo": "gabarito",
+      "atividade_id": "f87b6b7e1c3dc5d2"
+    },
+    {
+      "id": "6a5212afa0a63ea1",
+      "tipo": "prova_respondida",
+      "atividade_id": "f87b6b7e1c3dc5d2",
+      "aluno_id": "e2b050770435a53a",
+      "quality": "excelente"
+    },
+    {
+      "id": "fa0f6e739c51d861",
+      "tipo": "prova_respondida",
+      "atividade_id": "f87b6b7e1c3dc5d2",
+      "aluno_id": "8aa3f48d727c5453",
+      "quality": "medio"
+    },
+    {
+      "id": "bf68909aab4392c6",
+      "tipo": "enunciado",
+      "atividade_id": "512a66da87a54f8b"
+    },
+    {
+      "id": "beac325b8ca0f840",
+      "tipo": "gabarito",
+      "atividade_id": "512a66da87a54f8b"
+    },
+    {
+      "id": "171b6cfaa1af9ec4",
+      "tipo": "prova_respondida",
+      "atividade_id": "512a66da87a54f8b",
+      "aluno_id": "e2b050770435a53a",
+      "quality": "excelente"
+    },
+    {
+      "id": "42784280bed5c26a",
+      "tipo": "prova_respondida",
+      "atividade_id": "512a66da87a54f8b",
+      "aluno_id": "8aa3f48d727c5453",
+      "quality": "medio"
+    },
+    {
+      "id": "8978f7fe6340fab2",
+      "tipo": "enunciado",
+      "atividade_id": "216476f9c65f96f6"
+    },
+    {
+      "id": "88b3587204248206",
+      "tipo": "gabarito",
+      "atividade_id": "216476f9c65f96f6"
+    },
+    {
+      "id": "95022ee9e771362f",
+      "tipo": "prova_respondida",
+      "atividade_id": "216476f9c65f96f6",
+      "aluno_id": "a979e6fe03aa1a0b",
+      "quality": "excelente"
+    },
+    {
+      "id": "ea727fd0978b47bb",
+      "tipo": "prova_respondida",
+      "atividade_id": "216476f9c65f96f6",
+      "aluno_id": "45cc242fa25f36c7",
+      "quality": "medio"
+    },
+    {
+      "id": "1ce0583cab397a5a",
+      "tipo": "enunciado",
+      "atividade_id": "39ba312d1c3abf33"
+    },
+    {
+      "id": "6deb902ab571a583",
+      "tipo": "gabarito",
+      "atividade_id": "39ba312d1c3abf33"
+    },
+    {
+      "id": "b663fde3b9ca32fd",
+      "tipo": "prova_respondida",
+      "atividade_id": "39ba312d1c3abf33",
+      "aluno_id": "a979e6fe03aa1a0b",
+      "quality": "excelente"
+    },
+    {
+      "id": "09b6a6cb7169e676",
+      "tipo": "prova_respondida",
+      "atividade_id": "39ba312d1c3abf33",
+      "aluno_id": "45cc242fa25f36c7",
+      "quality": "medio"
+    }
+  ]
+}

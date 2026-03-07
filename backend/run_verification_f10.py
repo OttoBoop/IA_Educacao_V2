@@ -41,27 +41,32 @@ VIEWPORT = "desktop"
 PERSONA = "tester"
 
 GOAL = (
-    "IMPORTANT - THIS IS A JAVASCRIPT SINGLE-PAGE APP (SPA):\n"
-    "- The URL always stays at '/' - this is NORMAL, not a bug.\n"
-    "- After clicking a card or button, WAIT 2-3 seconds before checking if navigation worked.\n"
-    "- 404 errors in the console are from background API data calls, NOT navigation failures. IGNORE them.\n"
-    "- NEVER reload the page to 'fix' navigation - reloading takes you back to the home view.\n"
-    "- If you click a card and the view looks the same, DO NOT click again immediately - "
-    "take a screenshot and look carefully; the content area may have updated.\n"
-    "- If you see 'Erro ao carregar' error, DO NOT reload. Wait 5 seconds and click "
-    "the same item again - the server will respond on the retry.\n\n"
-    "NAVIGATION PATH (use evaluate_js, not clicks):\n"
-    "1. evaluate_js: showMateria('f95445ace30e7dc5') — then wait 5 seconds\n"
-    "2. evaluate_js: showTurma('6b5dc44c08aaf375') — then wait 8 seconds\n"
-    "3. evaluate_js: showAtividade('effad48d128c7083') — then wait 5 seconds\n"
-    "You will now be on the A1 atividade page with pipeline controls.\n\n"
-    "YOUR TASK: Verify the full Prova AI grading pipeline end-to-end across 4 AI models "
-    "(gpt-4o, gpt-5-nano, claude-haiku-4-5-20251001, gemini-3-flash-preview). "
-    "For each model: select the model in the model dropdown, click the pipeline trigger "
-    "button (Executar or Iniciar Pipeline), monitor all 4 stages in the task panel until "
-    "complete, download the JSON and PDF outputs, validate that JSON contains student names "
-    "and scores (campos: questao_id, nota, habilidades), and trigger the desempenho cascade "
-    "to confirm auto-creation of performance reports (tarefa, turma, materia levels)."
+    "THIS IS A JAVASCRIPT SINGLE-PAGE APP (SPA). URL always stays at '/'. DO NOT reload.\n\n"
+    "=== COMPLETE STEP-BY-STEP INSTRUCTIONS ===\n\n"
+    "PHASE 1 — NAVIGATE (use evaluate_js for ALL steps, do NOT click):\n"
+    "  1a: evaluate_js → showMateria('f95445ace30e7dc5') — wait 5 seconds\n"
+    "  1b: evaluate_js → showTurma('6b5dc44c08aaf375') — wait 8 seconds\n"
+    "  1c: evaluate_js → showAtividade('effad48d128c7083') — wait 5 seconds\n"
+    "You are now on the A1 - Cálculo 1 atividade page.\n\n"
+    "PHASE 2 — TRIGGER PIPELINE FOR EACH OF 4 MODELS. "
+    "For each model (gpt-4o, gpt-5-nano, claude-haiku-4-5-20251001, gemini-3-flash-preview):\n"
+    "  2a: evaluate_js → openModalPipelineCompleto('effad48d128c7083', 'turma')\n"
+    "      (This opens a modal dialog)\n"
+    "  2b: wait 2 seconds for modal to load\n"
+    "  2c: select_option → select from the Modelo de IA dropdown "
+    "(element with text containing 'gpt-4o' or 'haiku' or 'gemini' etc.)\n"
+    "  2d: evaluate_js → executarPipelineCompleto()\n"
+    "      (This is the function that the Executar button calls — do NOT try to click the button)\n"
+    "  2e: wait 90 seconds (wait_duration_seconds=90) for pipeline to complete\n"
+    "  2f: if still running, wait another 60 seconds\n"
+    "  Repeat 2a-2f for all 4 models.\n\n"
+    "PHASE 3 — DOWNLOAD & VALIDATE:\n"
+    "  After pipelines complete, download_file for PDF and JSON from Documentos da Atividade.\n"
+    "  Verify JSON contains: questao_id, nota, habilidades.\n"
+    "  Check desempenho cascade reports exist (tarefa, turma, materia levels).\n\n"
+    "KEY RULE: NEVER click any button to trigger the pipeline — use evaluate_js → executarPipelineCompleto() instead. "
+    "NEVER scroll looking for a model dropdown on the main page — the dropdown is INSIDE the modal only. "
+    "NEVER reload. NEVER re-navigate if you are already on the A1 page."
 )
 
 # CHECKLIST item IDs → keywords that suggest completion in thought/action text
@@ -129,16 +134,20 @@ def mark_checklist_item(report_path: Path, item_id: str, status: str, observatio
     if not report_path.exists():
         return
     content = report_path.read_text(encoding="utf-8")
-    # Replace PENDING in the row that contains item_id
-    pattern = rf"(\| {re.escape(item_id)} \|[^|]*\|) PENDING ( \|[^|]*\|)"
+
+    # Format 1: table row with item_id in it — e.g. "| pipeline-trigger-gpt4o | desc | PENDING | |"
+    # After group1 ends at "|", the literal " PENDING " is consumed, leaving "| obs |" (no leading space).
+    pattern = rf"(\| {re.escape(item_id)} \|[^|]*\|) PENDING (\|[^|]*\|)"
     replacement = rf"\1 {status} \2"
     new_content = re.sub(pattern, replacement, content)
+
+    # Format 2: section-header item — "### Checklist: item_id" followed by "| PENDING | |"
+    if new_content == content:
+        # Find the section for this item_id and replace the next PENDING in its table
+        header_pattern = rf"(### Checklist: {re.escape(item_id)}.*?)\| PENDING \|"
+        new_content = re.sub(header_pattern, rf"\1| {status} |", content, count=1, flags=re.DOTALL)
+
     if new_content != content:
-        if observation:
-            # Append observation to the last column
-            new_content = new_content.replace(
-                f"| {item_id} |", f"| {item_id} |"
-            )
         report_path.write_text(new_content, encoding="utf-8")
         print(f"[CTRL] PASS: Marked {item_id} -> {status}")
 
@@ -202,7 +211,7 @@ def run_controller(ipc_dir: Path):
 
                     # Track recent actions for repetition detection
                     recent_actions.append((action, target[:40]))
-                    if len(recent_actions) > 6:
+                    if len(recent_actions) > 10:
                         recent_actions.pop(0)
                     if guidance_cooldown > 0:
                         guidance_cooldown -= 1
@@ -224,26 +233,28 @@ def run_controller(ipc_dir: Path):
                 elif etype == "paused":
                     step = event.get("step", "?")
 
-                    # Detect repetition-based stuck: same action_type 4+ times in last 6 steps
+                    # Detect repetition-based stuck: same action_type 5+ times in last 8 steps
+                    # Excludes "scroll" (normal page exploration) and single-shot actions
                     repetition_stuck = False
                     reload_stuck = False
                     no_progress_stuck = False
                     if guidance_cooldown == 0:
-                        action_types = [a for a, _ in recent_actions[-6:]]
-                        if len(action_types) >= 4:
-                            most_common = max(set(action_types), key=action_types.count)
-                            if action_types.count(most_common) >= 4:
+                        action_types = [a for a, _ in recent_actions[-8:]]
+                        non_scroll = [a for a in action_types if a not in ("scroll", "wait")]
+                        if len(non_scroll) >= 5:
+                            most_common = max(set(non_scroll), key=non_scroll.count)
+                            if non_scroll.count(most_common) >= 5:
                                 repetition_stuck = True
                                 stuck_action_type = most_common
-                                print(f"[CTRL] REPEAT-STUCK: '{stuck_action_type}' x{action_types.count(most_common)} in last 6 steps")
+                                print(f"[CTRL] REPEAT-STUCK: '{stuck_action_type}' x{non_scroll.count(most_common)} in last 8 steps")
 
                         # Detect reload in recent actions (harmful in SPA)
                         if action_types and action_types[-1] == "reload":
                             reload_stuck = True
                             print("[CTRL] RELOAD-STUCK: agent just reloaded (harmful in SPA)")
 
-                        # No-progress stuck: 25+ steps with no checklist items PASS
-                        if step_count >= 25 and not completed_ids:
+                        # No-progress stuck: 40+ steps with no checklist items PASS
+                        if step_count >= 40 and not completed_ids:
                             no_progress_stuck = True
                             print(f"[CTRL] NO-PROGRESS: {step_count} steps with 0 checklist items passed")
 
@@ -253,40 +264,47 @@ def run_controller(ipc_dir: Path):
                                 "STOP! Do NOT reload the page. Reloading in this SPA takes you back "
                                 "to the home screen, losing all navigation progress. "
                                 "If you just reloaded, the page is now back to home. "
-                                "Navigate again: click 'Cálculo 1' → 'EPGE 2021' → 'A1'. "
+                                "Navigate again using evaluate_js (NOT clicks):\n"
+                                "  evaluate_js: showMateria('f95445ace30e7dc5') → wait 5s\n"
+                                "  evaluate_js: showTurma('6b5dc44c08aaf375') → wait 8s\n"
+                                "  evaluate_js: showAtividade('effad48d128c7083') → wait 5s\n"
                                 "Console 404 errors are NORMAL background API calls — they are NOT "
                                 "a reason to reload. Ignore them and continue navigating."
                             )
                         elif repetition_stuck:
                             instruction = (
-                                f"STOP! You've been doing '{stuck_action_type}' repeatedly with no progress. "
-                                "This SPA uses React — clicking a card DOES navigate (view changes) "
-                                "even though the URL stays '/'. After a click, wait 2 seconds then "
-                                "look at the screenshot carefully — the content area may have already changed. "
-                                "If navigation succeeded, you'll see a different view (turma detail or atividade). "
-                                "Try a different element or use scroll to find the card. "
-                                "DO NOT reload. DO NOT repeat the same click again."
+                                f"STOP! You've been repeating '{stuck_action_type}' actions with no progress. "
+                                "IMPORTANT: Look at the current screenshot carefully.\n"
+                                "If you see pipeline buttons (Executar Etapa, Pipeline Aluno, Pipeline Todos os Alunos): "
+                                "you are ALREADY on the A1 atividade page! Stop re-navigating. "
+                                "Use evaluate_js → openModalPipelineCompleto('effad48d128c7083', 'turma'), "
+                                "wait 2s, select the model from the dropdown, "
+                                "then evaluate_js → executarPipelineCompleto(). "
+                                "NEVER click the Executar button directly — always call executarPipelineCompleto() via evaluate_js.\n"
+                                "If you do NOT see pipeline buttons: re-navigate using evaluate_js:\n"
+                                "  evaluate_js: showMateria('f95445ace30e7dc5') → wait 5s\n"
+                                "  evaluate_js: showTurma('6b5dc44c08aaf375') → wait 8s\n"
+                                "  evaluate_js: showAtividade('effad48d128c7083') → wait 5s"
                             )
                         elif no_progress_stuck:
                             instruction = (
                                 f"After {step_count} steps, no pipeline verification has started. "
-                                "CRITICAL: The server takes 5-10 seconds to load data after navigation. "
-                                "After clicking a card, WAIT 8 seconds (wait_duration_seconds=8) before "
-                                "checking if the view changed. DO NOT click again if still loading. "
-                                "Correct sequence: "
-                                "1) Click Cálculo 1 sidebar → wait 8s → check screenshot. "
-                                "2) Click EPGE 2021 turma card → wait 8s → check screenshot. "
-                                "3) Click A1 atividade → wait 8s → check screenshot. "
-                                "If you see the turma/atividade view after waiting, you succeeded! "
-                                "Only click again if you still see the SAME previous view after waiting."
+                                "Navigate directly using evaluate_js:\n"
+                                "  Step 1: evaluate_js: showMateria('f95445ace30e7dc5') → then wait 5 seconds\n"
+                                "  Step 2: evaluate_js: showTurma('6b5dc44c08aaf375') → then wait 8 seconds\n"
+                                "  Step 3: evaluate_js: showAtividade('effad48d128c7083') → then wait 5 seconds\n"
+                                "After step 3 you should see the A1 atividade page with pipeline controls. "
+                                "DO NOT use click for navigation. DO NOT reload."
                             )
                         else:
                             instruction = (
-                                "You seem stuck. Try a completely different approach. "
-                                "Remember: 404 errors in the console are from background API calls "
-                                "and do NOT mean navigation failed. Never reload — it resets to home. "
-                                "After clicking a card in this SPA, wait 2 seconds and check if the "
-                                "view changed before deciding the click failed."
+                                "You seem stuck. Are you on the A1 atividade page? "
+                                "If YES: run evaluate_js → openModalPipelineCompleto('effad48d128c7083', 'turma'), "
+                                "wait 2s, select gpt-4o from dropdown, "
+                                "then evaluate_js → executarPipelineCompleto(), then wait 90s. "
+                                "If NO: navigate → showMateria('f95445ace30e7dc5') → showTurma('6b5dc44c08aaf375') "
+                                "→ showAtividade('effad48d128c7083'). "
+                                "NEVER reload. NEVER click the Executar button — always use evaluate_js instead."
                             )
                         send_command(commands_path, "guidance", {"instruction": instruction})
                         stuck_pending = False
@@ -401,17 +419,20 @@ def main():
     commands_path = ipc_dir / "commands.jsonl"
     ipc_dir.mkdir(parents=True, exist_ok=True)
     startup_instruction = (
-        "STARTUP INSTRUCTIONS — read carefully before taking your first action:\n"
-        "1. If you see a welcome modal ('Bem-vindo ao NOVO CR'), use evaluate_js to close it: "
-        "call `closeWelcome()`. Wait 2 seconds.\n"
-        "2. Navigate to the test content using evaluate_js (NOT clicks):\n"
-        "   - evaluate_js: showMateria('f95445ace30e7dc5')  → then wait 5 seconds\n"
-        "   - evaluate_js: showTurma('6b5dc44c08aaf375')    → then wait 8 seconds\n"
-        "   - evaluate_js: showAtividade('effad48d128c7083') → then wait 5 seconds\n"
-        "3. You should now be on the A1 atividade page with pipeline controls visible.\n"
-        "4. Once there: trigger the pipeline for gpt-4o, gpt-5-nano, "
-        "claude-haiku-4-5-20251001, gemini-3-flash-preview (one at a time).\n"
-        "Use evaluate_js for ALL navigation steps. Do NOT use click for navigation."
+        "STARTUP INSTRUCTIONS — follow exactly:\n"
+        "Step 1: If you see 'Bem-vindo ao NOVO CR' modal → evaluate_js: closeWelcome()\n"
+        "Step 2: evaluate_js → showMateria('f95445ace30e7dc5') — wait 5s\n"
+        "Step 3: evaluate_js → showTurma('6b5dc44c08aaf375') — wait 8s\n"
+        "Step 4: evaluate_js → showAtividade('effad48d128c7083') — wait 5s\n"
+        "Step 5: evaluate_js → openModalPipelineCompleto('effad48d128c7083', 'turma') — wait 2s\n"
+        "Step 6: select_option → pick the gpt-4o option from the Modelo de IA dropdown\n"
+        "Step 7: evaluate_js → executarPipelineCompleto()\n"
+        "Step 8: wait 90 seconds (wait_duration_seconds=90)\n"
+        "Step 9: Repeat steps 5-8 for gpt-5-nano, claude-haiku-4-5-20251001, gemini-3-flash-preview\n"
+        "CRITICAL: Do NOT click any button to trigger the pipeline. "
+        "Use evaluate_js → executarPipelineCompleto() instead. "
+        "Do NOT scroll the main page looking for a model dropdown. "
+        "The model dropdown only exists INSIDE the modal (step 6)."
     )
     send_command(commands_path, "guidance", {"instruction": startup_instruction})
     print("[CTRL] Startup guidance pre-injected into commands.jsonl")

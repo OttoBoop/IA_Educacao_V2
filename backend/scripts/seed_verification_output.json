@@ -1,0 +1,139 @@
+{
+  "created_at": "2026-03-07T00:31:50.510389",
+  "entities": {
+    "materia": {
+      "id": "0f615b57854235ec",
+      "nome": "Matemática-V",
+      "descricao": "Matéria de verificação do pipeline",
+      "nivel": "fundamental_2",
+      "criado_em": "2026-03-07T03:31:29.211801+00:00",
+      "atualizado_em": "2026-03-07T03:31:29.211802+00:00",
+      "metadata": {}
+    },
+    "turmas": [
+      {
+        "id": "cc739cc55191d056",
+        "materia_id": "0f615b57854235ec",
+        "nome": "Alpha-V",
+        "ano_letivo": 2026,
+        "periodo": "2026.1",
+        "descricao": null,
+        "criado_em": "2026-03-07T03:31:30.067934+00:00",
+        "atualizado_em": "2026-03-07T03:31:30.067935+00:00",
+        "metadata": {}
+      },
+      {
+        "id": "a6c7cf72a73e7219",
+        "materia_id": "0f615b57854235ec",
+        "nome": "Beta-V",
+        "ano_letivo": 2026,
+        "periodo": "2026.1",
+        "descricao": null,
+        "criado_em": "2026-03-07T03:31:30.911216+00:00",
+        "atualizado_em": "2026-03-07T03:31:30.911217+00:00",
+        "metadata": {}
+      }
+    ],
+    "alunos": [
+      {
+        "id": "54e3e7758928f5b7",
+        "nome": "Ana Verifica",
+        "email": "ana.verifica@teste.com",
+        "matricula": "V001",
+        "criado_em": "2026-03-07T03:31:31.451577+00:00",
+        "atualizado_em": "2026-03-07T03:31:31.451579+00:00",
+        "metadata": {}
+      },
+      {
+        "id": "a4a4933fedbfc8fd",
+        "nome": "Bruno Verifica",
+        "email": "bruno.verifica@teste.com",
+        "matricula": "V002",
+        "criado_em": "2026-03-07T03:31:32.158891+00:00",
+        "atualizado_em": "2026-03-07T03:31:32.158891+00:00",
+        "metadata": {}
+      },
+      {
+        "id": "23e51d2cc84979fd",
+        "nome": "Carla Verifica",
+        "email": "carla.verifica@teste.com",
+        "matricula": "V003",
+        "criado_em": "2026-03-07T03:31:32.703995+00:00",
+        "atualizado_em": "2026-03-07T03:31:32.703996+00:00",
+        "metadata": {}
+      },
+      {
+        "id": "bf3d55436a5c21f9",
+        "nome": "Daniel Verifica",
+        "email": "daniel.verifica@teste.com",
+        "matricula": "V004",
+        "criado_em": "2026-03-07T03:31:33.263972+00:00",
+        "atualizado_em": "2026-03-07T03:31:33.263972+00:00",
+        "metadata": {}
+      }
+    ],
+    "atividades": [
+      [
+        {
+          "id": "810ef4c1a71c701b",
+          "turma_id": "cc739cc55191d056",
+          "nome": "Prova Álgebra-V",
+          "tipo": "prova",
+          "data_aplicacao": null,
+          "data_entrega": null,
+          "peso": 1,
+          "nota_maxima": 10,
+          "descricao": null,
+          "criado_em": "2026-03-07T03:31:36.337111+00:00",
+          "atualizado_em": "2026-03-07T03:31:36.337112+00:00",
+          "metadata": {}
+        },
+        {
+          "id": "497aa5f153906897",
+          "turma_id": "cc739cc55191d056",
+          "nome": "Prova Geometria-V",
+          "tipo": "prova",
+          "data_aplicacao": null,
+          "data_entrega": null,
+          "peso": 1,
+          "nota_maxima": 10,
+          "descricao": null,
+          "criado_em": "2026-03-07T03:31:37.178738+00:00",
+          "atualizado_em": "2026-03-07T03:31:37.178738+00:00",
+          "metadata": {}
+        }
+      ],
+      [
+        {
+          "id": "8468f70bbcbc74cd",
+          "turma_id": "a6c7cf72a73e7219",
+          "nome": "Prova Álgebra-V",
+          "tipo": "prova",
+          "data_aplicacao": null,
+          "data_entrega": null,
+          "peso": 1,
+          "nota_maxima": 10,
+          "descricao": null,
+          "criado_em": "2026-03-07T03:31:38.913353+00:00",
+          "atualizado_em": "2026-03-07T03:31:38.913354+00:00",
+          "metadata": {}
+        },
+        {
+          "id": "0318609497d8056f",
+          "turma_id": "a6c7cf72a73e7219",
+          "nome": "Prova Geometria-V",
+          "tipo": "prova",
+          "data_aplicacao": null,
+          "data_entrega": null,
+          "peso": 1,
+          "nota_maxima": 10,
+          "descricao": null,
+          "criado_em": "2026-03-07T03:31:39.591549+00:00",
+          "atualizado_em": "2026-03-07T03:31:39.591550+00:00",
+          "metadata": {}
+        }
+      ]
+    ],
+    "documents_created": 0
+  }
+}
