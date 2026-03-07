@@ -223,7 +223,7 @@ class BrowserInterface:
         script = """
         () => {
             const elements = [];
-            const selectors = 'button, a, [role="button"], [onclick], input[type="submit"], input[type="button"], select';
+            const selectors = 'button, a, [role="button"], [onclick], input[type="submit"], input[type="button"], input[type="checkbox"], select';
 
             // Check if an element at (x, y) belongs to the target element
             function isOwnElement(target, x, y) {
@@ -435,6 +435,28 @@ class BrowserInterface:
             return save_path
         except Exception as e:
             self._console_errors.append(f"Download failed on {selector}: {e}")
+            return None
+
+    async def checkbox_toggle(self, selector: str, timeout: int = 5000) -> bool:
+        """Toggle a checkbox input element."""
+        try:
+            await self.page.click(selector, timeout=timeout)
+            await self.page.wait_for_timeout(300)
+            return True
+        except Exception as e:
+            self._console_errors.append(f"Checkbox toggle failed on {selector}: {e}")
+            return False
+
+    async def read_page_text(self, selector: str, timeout: int = 5000) -> Optional[str]:
+        """Read the visible text content of an element."""
+        try:
+            element = await self.page.query_selector(selector)
+            if element:
+                text = await element.text_content()
+                return text.strip() if text else ""
+            return None
+        except Exception as e:
+            self._console_errors.append(f"Read text failed on {selector}: {e}")
             return None
 
     def clear_errors(self):

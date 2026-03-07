@@ -507,6 +507,16 @@ class InvestorJourneyAgent:
                     return True, None
                 return False, f"Could not download file from {action.target}"
 
+            elif action.action_type == ActionType.CHECKBOX_TOGGLE:
+                success = await self._browser.checkbox_toggle(action.target)
+                return success, None if success else f"Could not toggle checkbox {action.target}"
+
+            elif action.action_type == ActionType.READ_PAGE_TEXT:
+                text = await self._browser.read_page_text(action.target)
+                if text is not None:
+                    return True, None
+                return False, f"Could not read text from {action.target}"
+
             else:
                 return True, None
 

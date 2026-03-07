@@ -30,6 +30,8 @@ class ActionType(str, Enum):
     BACK = "back"
     SELECT_OPTION = "select_option"
     DOWNLOAD_FILE = "download_file"
+    CHECKBOX_TOGGLE = "checkbox_toggle"
+    READ_PAGE_TEXT = "read_page_text"
 
 
 @dataclass
@@ -177,6 +179,8 @@ Available actions:
 - back: Go back to the previous page
 - select_option: Select a value from a dropdown (pick element_index and provide select_value)
 - download_file: Click a download link/button to save a file (pick element_index)
+- checkbox_toggle: Toggle a checkbox on or off (pick element_index)
+- read_page_text: Read the visible text content of an element (pick element_index)
 - give_up: Stop trying because UX is too bad (this is valuable feedback!)
 - done: Goal achieved, stop journey
 
@@ -189,7 +193,7 @@ Respond ONLY with valid JSON (no markdown, no explanation outside JSON):
 {{
   "thought": "What I'm thinking as this user...",
   "frustration_level": 0.0 to 1.0,
-  "action_type": "click|type|scroll|wait|reload|back|select_option|download_file|give_up|done",
+  "action_type": "click|type|scroll|wait|reload|back|select_option|download_file|checkbox_toggle|read_page_text|give_up|done",
   "target": "description of what you want to interact with",
   "element_index": 1,
   "intent_description": "what you want to do with this element",
