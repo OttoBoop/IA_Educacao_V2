@@ -69,21 +69,8 @@ GOAL = (
     "NEVER reload. NEVER re-navigate if you are already on the A1 page."
 )
 
-# CHECKLIST item IDs → keywords that suggest completion in thought/action text
-MILESTONE_KEYWORDS = {
-    "pipeline-trigger-gpt4o": ["gpt-4o", "gpt4o", "pipeline", "trigger", "iniciou", "iniciando"],
-    "pipeline-trigger-gpt5-nano": ["gpt-5-nano", "gpt5", "nano", "pipeline"],
-    "pipeline-trigger-claude-haiku": ["claude-haiku", "haiku", "pipeline"],
-    "pipeline-trigger-gemini-flash": ["gemini", "flash", "pipeline"],
-    "download-json-outputs": ["json", "download", "baixar", "arquivo"],
-    "download-pdf-reports": ["pdf", "download", "baixar", "relatorio", "relatório"],
-    "validation-json-fields": ["validar", "campos", "questao_id", "nota", "habilidades"],
-    "validation-origem-id-chain": ["origem_id", "chain", "consistente"],
-    "validation-student-name": ["nome", "aluno", "student"],
-    "desempenho-cascade-trigger": ["desempenho", "cascade", "cascata"],
-    "desempenho-auto-creation": ["desempenho", "criado", "auto"],
-    "desempenho-report-content": ["desempenho", "habilidades", "breakdown"],
-}
+# B1: Keyword-based PASS marking removed — caused false positives.
+# Checklist items must be marked by human review after the run, not auto-detected.
 
 
 # ---------------------------------------------------------------------------
@@ -181,12 +168,14 @@ def run_controller(ipc_dir: Path):
 
     last_event_count = 0
     stuck_pending = False
-    completed_ids: set[str] = set()
     step_count = 0
     running = True
     # Track recent actions for repetition-based stuck detection
     recent_actions: list[tuple[str, str]] = []  # (action_type, target_prefix)
     guidance_cooldown = 0  # Steps to wait before sending another guidance
+    # B3: count executarPipelineCompleto triggers to detect when Phase 3 should start
+    pipeline_trigger_count = 0
+    phase3_injected = False
 
     while running:
         try:
@@ -216,13 +205,10 @@ def run_controller(ipc_dir: Path):
                     if guidance_cooldown > 0:
                         guidance_cooldown -= 1
 
-                    # Check CHECKLIST milestones
-                    for item_id, keywords in MILESTONE_KEYWORDS.items():
-                        if item_id not in completed_ids:
-                            if any(kw in text for kw in keywords) and success:
-                                mark_checklist_item(VERIFICATION_REPORT, item_id, "PASS")
-                                completed_ids.add(item_id)
-                                update_summary(VERIFICATION_REPORT)
+                    # B3: count executarPipelineCompleto triggers
+                    if "executarPipelineCompleto" in (action + " " + target + " " + thought) and success:
+                        pipeline_trigger_count += 1
+                        print(f"[CTRL] PIPELINE TRIGGER #{pipeline_trigger_count} detected")
 
                 elif etype == "stuck":
                     stuck_pending = True
@@ -241,7 +227,8 @@ def run_controller(ipc_dir: Path):
                     if guidance_cooldown == 0:
                         action_types = [a for a, _ in recent_actions[-8:]]
                         non_scroll = [a for a in action_types if a not in ("scroll", "wait")]
-                        if len(non_scroll) >= 5:
+                        # B2: Exempt first 10 steps — Phase 1 navigation uses 4+ evaluate_js calls
+                        if step_count > 10 and len(non_scroll) >= 5:
                             most_common = max(set(non_scroll), key=non_scroll.count)
                             if non_scroll.count(most_common) >= 5:
                                 repetition_stuck = True
@@ -253,10 +240,25 @@ def run_controller(ipc_dir: Path):
                             reload_stuck = True
                             print("[CTRL] RELOAD-STUCK: agent just reloaded (harmful in SPA)")
 
-                        # No-progress stuck: 40+ steps with no checklist items PASS
-                        if step_count >= 40 and not completed_ids:
+                        # No-progress stuck: 80+ steps with 0 pipeline triggers
+                        if step_count >= 80 and pipeline_trigger_count == 0:
                             no_progress_stuck = True
-                            print(f"[CTRL] NO-PROGRESS: {step_count} steps with 0 checklist items passed")
+                            print(f"[CTRL] NO-PROGRESS: {step_count} steps with 0 pipeline triggers")
+
+                    # B3: Inject Phase 3 guidance when all 4 pipelines have been triggered
+                    if pipeline_trigger_count >= 4 and not phase3_injected:
+                        phase3_injected = True
+                        phase3_instruction = (
+                            "PHASE 3 — All 4 pipeline triggers detected. Now download and validate:\n"
+                            "1. Locate the Documentos da Atividade section on the page.\n"
+                            "2. Use download_file for each PDF report and JSON output available.\n"
+                            "3. For each JSON file downloaded, verify it contains: questao_id, nota, habilidades.\n"
+                            "4. Check that desempenho cascade reports exist at tarefa, turma, and materia levels.\n"
+                            "5. If desempenho reports are missing, report what was found instead.\n"
+                            "IMPORTANT: Do NOT trigger any more pipelines. Download and inspect outputs only."
+                        )
+                        send_command(commands_path, "guidance", {"instruction": phase3_instruction})
+                        print("[CTRL] PHASE 3 guidance injected — all 4 pipelines triggered")
 
                     if stuck_pending or repetition_stuck or reload_stuck or no_progress_stuck:
                         if reload_stuck:
@@ -317,7 +319,8 @@ def run_controller(ipc_dir: Path):
                 elif etype in ("complete", "gave_up", "stopped", "error"):
                     print(f"\n[CTRL] Journey ended: {etype}")
                     print(f"[CTRL] Total steps completed: {step_count}")
-                    print(f"[CTRL] CHECKLIST items marked PASS: {len(completed_ids)}")
+                    print(f"[CTRL] Pipeline triggers detected: {pipeline_trigger_count}")
+                    print(f"[CTRL] Phase 3 injected: {phase3_injected}")
                     update_summary(VERIFICATION_REPORT)
                     running = False
                     break
