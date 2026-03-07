@@ -76,15 +76,21 @@ def register_pipeline_task(
     materia_nome=None,
     turma_nome=None,
     atividade_nome=None,
+    student_names=None,
 ):
     """Register a new pipeline task in the registry.
+
+    student_names: optional dict mapping {aluno_id: nome_string}.
+    When provided, each student entry gets a 'nome' field.
 
     Returns the generated task_id.
     """
     task_id = f"task_{uuid.uuid4().hex[:12]}"
+    names = student_names or {}
     students = {}
     for aluno_id in aluno_ids:
         students[aluno_id] = {
+            "nome": names.get(aluno_id, ""),
             "stages": {stage: "pending" for stage in PIPELINE_STAGES},
         }
     task_registry[task_id] = {

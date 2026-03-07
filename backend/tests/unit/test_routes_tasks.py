@@ -164,3 +164,85 @@ class TestTaskRegistryModule:
         # Clear any leftover from other tests
         task_registry.clear()
         assert len(task_registry) == 0
+
+
+class TestRegisterPipelineTaskStudentNames:
+    """A1: register_pipeline_task() must store student nome per student entry.
+
+    Plan: PLAN_Major_Fix_Tasks_And_Verification.md — Task A1
+    """
+
+    def test_register_stores_nome_when_student_names_provided(self):
+        """register_pipeline_task() stores nome in each student entry when student_names dict given."""
+        from routes_tasks import register_pipeline_task, task_registry
+
+        task_id = register_pipeline_task(
+            task_type="pipeline",
+            atividade_id="ativ-test-001",
+            aluno_ids=["aluno-aaa", "aluno-bbb"],
+            student_names={"aluno-aaa": "Maria Silva", "aluno-bbb": "João Santos"},
+        )
+        try:
+            task = task_registry[task_id]
+            assert task["students"]["aluno-aaa"]["nome"] == "Maria Silva", (
+                "Student nome must be stored in task_registry entry"
+            )
+            assert task["students"]["aluno-bbb"]["nome"] == "João Santos"
+        finally:
+            task_registry.pop(task_id, None)
+
+    def test_register_nome_empty_string_when_not_in_student_names(self):
+        """Student not in student_names dict gets empty string nome (not KeyError)."""
+        from routes_tasks import register_pipeline_task, task_registry
+
+        task_id = register_pipeline_task(
+            task_type="pipeline",
+            atividade_id="ativ-test-002",
+            aluno_ids=["aluno-ccc", "aluno-ddd"],
+            student_names={"aluno-ccc": "Ana Lima"},  # aluno-ddd not in dict
+        )
+        try:
+            task = task_registry[task_id]
+            assert task["students"]["aluno-ccc"]["nome"] == "Ana Lima"
+            # aluno-ddd missing from student_names → fallback to empty string, not KeyError
+            assert "nome" in task["students"]["aluno-ddd"]
+            assert task["students"]["aluno-ddd"]["nome"] == ""
+        finally:
+            task_registry.pop(task_id, None)
+
+    def test_register_nome_empty_when_student_names_not_provided(self):
+        """When student_names=None (default), all students get nome='' (backward compatible)."""
+        from routes_tasks import register_pipeline_task, task_registry
+
+        task_id = register_pipeline_task(
+            task_type="pipeline",
+            atividade_id="ativ-test-003",
+            aluno_ids=["aluno-eee"],
+        )
+        try:
+            task = task_registry[task_id]
+            assert "nome" in task["students"]["aluno-eee"], (
+                "nome field must always be present in student entry"
+            )
+            assert task["students"]["aluno-eee"]["nome"] == ""
+        finally:
+            task_registry.pop(task_id, None)
+
+    def test_register_stages_still_present_alongside_nome(self):
+        """Adding nome must not remove the stages dict from student entry."""
+        from routes_tasks import register_pipeline_task, task_registry
+
+        task_id = register_pipeline_task(
+            task_type="pipeline",
+            atividade_id="ativ-test-004",
+            aluno_ids=["aluno-fff"],
+            student_names={"aluno-fff": "Carlos Mendes"},
+        )
+        try:
+            student = task_registry[task_id]["students"]["aluno-fff"]
+            assert "stages" in student, "stages dict must still be present"
+            assert "nome" in student, "nome field must be present"
+            assert student["nome"] == "Carlos Mendes"
+            assert isinstance(student["stages"], dict)
+        finally:
+            task_registry.pop(task_id, None)

@@ -40,6 +40,19 @@ def _resolve_names_from_atividade(atividade_id):
                 names["materia_nome"] = materia.nome
     return names
 
+
+def _resolve_student_names(aluno_ids):
+    """Look up student names for task_registry.
+
+    Returns dict mapping {aluno_id: nome_string}.
+    Missing alunos produce empty-string nome (no KeyError).
+    """
+    result = {}
+    for aluno_id in aluno_ids:
+        aluno = storage.get_aluno(aluno_id)
+        result[aluno_id] = aluno.nome if aluno else ""
+    return result
+
 # Importar novo sistema de chat/models
 try:
     from chat_service import (
@@ -787,6 +800,7 @@ async def executar_pipeline_completo(
         task_type="pipeline",
         atividade_id=atividade_id,
         aluno_ids=[aluno_id],
+        student_names=_resolve_student_names([aluno_id]),
         **names,
     )
 
@@ -1077,11 +1091,13 @@ async def executar_pipeline_todos_os_alunos(
 
     # Register all students synchronously so task_id exists before response is returned.
     names = _resolve_names_from_atividade(atividade_id)
+    aluno_ids_para_processar = [aluno.id for aluno in alunos_para_processar]
     task_id = register_pipeline_task(
         task_type="pipeline_todos_os_alunos",
         atividade_id=atividade_id,
-        aluno_ids=[aluno.id for aluno in alunos_para_processar],
+        aluno_ids=aluno_ids_para_processar,
         turma_id=atividade.turma_id,
+        student_names=_resolve_student_names(aluno_ids_para_processar),
         **names,
     )
 
