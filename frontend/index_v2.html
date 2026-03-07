@@ -6900,6 +6900,7 @@
             loadChatGeralProviders();
             checkFirstVisit();
             checkHealth();
+            restoreTasksFromBackend(); // A6: restore running tasks after reload
             setInterval(checkHealth, 300000);
 
             // Close mobile sidebar when clicking nav items
@@ -7207,6 +7208,26 @@
             ids.forEach(taskId => {
                 cancelTask(taskId);
             });
+        }
+
+        // A6: Restore running tasks from backend after page reload
+        async function restoreTasksFromBackend() {
+            try {
+                const response = await fetch('/api/tasks');
+                if (!response.ok) return;
+                const tasks = await response.json();
+                for (const task of tasks) {
+                    if (task.task_id && !taskQueue.pipelineTasks[task.task_id]) {
+                        taskQueue.pipelineTasks[task.task_id] = task;
+                        if (task.status === 'running') {
+                            startPolling(task.task_id);
+                        }
+                    }
+                }
+                taskQueue.updateUI();
+            } catch (err) {
+                console.warn('[RestoreOnLoad] Failed to restore tasks:', err.message);
+            }
         }
 
         // ============================================================

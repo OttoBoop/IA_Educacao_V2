@@ -38,9 +38,9 @@ class TestRestoreOnLoad:
     def test_restore_function_fetches_api_tasks(self):
         """restoreTasksFromBackend must call /api/tasks endpoint."""
         html = get_html()
-        # Find the function and check nearby context for /api/tasks
-        start = html.find("restoreTasksFromBackend")
-        assert start != -1, "restoreTasksFromBackend not found"
+        # Find the function DEFINITION (not a call site) and check context
+        start = html.find("function restoreTasksFromBackend")
+        assert start != -1, "function restoreTasksFromBackend not found"
         context = html[start:start + 1000]
         assert "/api/tasks" in context, (
             "restoreTasksFromBackend() must fetch /api/tasks to get all running tasks"
@@ -49,8 +49,8 @@ class TestRestoreOnLoad:
     def test_restore_function_starts_polling(self):
         """restoreTasksFromBackend must call startPolling for each running task."""
         html = get_html()
-        start = html.find("restoreTasksFromBackend")
-        assert start != -1, "restoreTasksFromBackend not found"
+        start = html.find("function restoreTasksFromBackend")
+        assert start != -1, "function restoreTasksFromBackend not found"
         context = html[start:start + 1500]
         assert "startPolling" in context, (
             "restoreTasksFromBackend() must call startPolling() for each running "
