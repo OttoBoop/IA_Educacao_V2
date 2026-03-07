@@ -40,6 +40,12 @@ PIPELINE_STAGES = [
 # ── Endpoints ────────────────────────────────────────────────
 
 
+@router.get("/api/tasks")
+async def list_all_tasks():
+    """Returns all tasks currently in the registry (for sidebar restore-on-load)."""
+    return list(task_registry.values())
+
+
 @router.get("/api/task-progress/{task_id}")
 async def get_task_progress(task_id: str):
     """Returns progress for a task by task_id."""
