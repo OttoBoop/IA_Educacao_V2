@@ -223,7 +223,28 @@ class BrowserInterface:
         script = """
         () => {
             const elements = [];
-            const selectors = 'button, a, [role="button"], [onclick], input[type="submit"], input[type="button"], input[type="checkbox"], select';
+            const selectors = 'button, a, [role="button"], [onclick], input[type="submit"], input[type="button"], input[type="checkbox"], select, [data-testid], [data-id], [data-turma-id], [data-materia-id], [data-atividade-id]';
+
+            // Also scan for React-managed clickable elements (divs/sections with React handlers)
+            const reactClickables = [];
+            document.querySelectorAll('div, section, article, li').forEach(el => {
+                const reactKey = Object.keys(el).find(k =>
+                    k.startsWith('__reactEventHandlers') || k.startsWith('__reactFiber')
+                );
+                if (reactKey) {
+                    const fiber = el[reactKey];
+                    // Walk React fiber to find onClick prop
+                    let f = fiber;
+                    for (let i = 0; i < 10 && f; i++) {
+                        const props = f.memoizedProps || f.pendingProps;
+                        if (props && props.onClick) {
+                            reactClickables.push(el);
+                            break;
+                        }
+                        f = f.return;
+                    }
+                }
+            });
 
             // Check if an element at (x, y) belongs to the target element
             function isOwnElement(target, x, y) {
@@ -233,7 +254,11 @@ class BrowserInterface:
                 return target.contains(topEl) || topEl.contains(target);
             }
 
-            document.querySelectorAll(selectors).forEach((el) => {
+            // Combine standard selectors + React-managed elements (deduplicated)
+            const standardEls = Array.from(document.querySelectorAll(selectors));
+            const allEls = [...new Set([...standardEls, ...reactClickables])];
+
+            allEls.forEach((el) => {
                 const rect = el.getBoundingClientRect();
                 const hasSize = rect.width > 0 && rect.height > 0;
                 if (!hasSize) return;
@@ -353,7 +378,8 @@ class BrowserInterface:
             if handle:
                 await handle.scroll_into_view_if_needed(timeout=timeout)
             await self.page.click(selector, timeout=timeout)
-            await self.page.wait_for_timeout(500)  # Wait for animations
+            # Wait for SPA to update: 500ms for animations + extra for API-dependent renders
+            await self.page.wait_for_timeout(2000)
             return True
         except Exception as e:
             self._console_errors.append(f"Click failed on {selector}: {e}")

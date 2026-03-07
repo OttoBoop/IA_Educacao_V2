@@ -20,6 +20,11 @@ import time
 from datetime import datetime
 from pathlib import Path
 
+# Fix Windows console encoding
+if sys.platform == "win32":
+    sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+    sys.stderr.reconfigure(encoding="utf-8", errors="replace")
+
 # ---------------------------------------------------------------------------
 # Configuration
 # ---------------------------------------------------------------------------
@@ -34,11 +39,25 @@ VIEWPORT = "desktop"
 PERSONA = "tester"
 
 GOAL = (
-    "Verify the full Prova AI grading pipeline end-to-end across 4 AI models "
+    "IMPORTANT - THIS IS A JAVASCRIPT SINGLE-PAGE APP (SPA):\n"
+    "- The URL always stays at '/' - this is NORMAL, not a bug.\n"
+    "- After clicking a card or button, WAIT 2-3 seconds before checking if navigation worked.\n"
+    "- 404 errors in the console are from background API data calls, NOT navigation failures. IGNORE them.\n"
+    "- NEVER reload the page to 'fix' navigation - reloading takes you back to the home view.\n"
+    "- If you click a card and the view looks the same, DO NOT click again immediately - "
+    "take a screenshot and look carefully; the content area may have updated.\n\n"
+    "NAVIGATION PATH to reach the test content:\n"
+    "1. Click 'Cálculo 1' in the sidebar or as a card on the home screen\n"
+    "2. Click the 'EPGE 2021' turma card (it shows '2021 1' or similar)\n"
+    "3. Click the 'A1' atividade card\n"
+    "Then you will see students, documents, and pipeline controls.\n\n"
+    "YOUR TASK: Verify the full Prova AI grading pipeline end-to-end across 4 AI models "
     "(gpt-4o, gpt-5-nano, claude-haiku-4-5-20251001, gemini-3-flash-preview). "
-    "For each model: trigger the pipeline, monitor all 4 stages in the task panel, "
-    "download JSON and PDF outputs, validate content integrity, and trigger the "
-    "desempenho cascade to confirm auto-creation of performance reports."
+    "For each model: select the model in the model dropdown, click the pipeline trigger "
+    "button (Executar or Iniciar Pipeline), monitor all 4 stages in the task panel until "
+    "complete, download the JSON and PDF outputs, validate that JSON contains student names "
+    "and scores (campos: questao_id, nota, habilidades), and trigger the desempenho cascade "
+    "to confirm auto-creation of performance reports (tarefa, turma, materia levels)."
 )
 
 # CHECKLIST item IDs → keywords that suggest completion in thought/action text
@@ -117,7 +136,7 @@ def mark_checklist_item(report_path: Path, item_id: str, status: str, observatio
                 f"| {item_id} |", f"| {item_id} |"
             )
         report_path.write_text(new_content, encoding="utf-8")
-        print(f"[CTRL] ✓ Marked {item_id} → {status}")
+        print(f"[CTRL] PASS: Marked {item_id} -> {status}")
 
 
 def update_summary(report_path: Path):
@@ -152,6 +171,9 @@ def run_controller(ipc_dir: Path):
     completed_ids: set[str] = set()
     step_count = 0
     running = True
+    # Track recent actions for repetition-based stuck detection
+    recent_actions: list[tuple[str, str]] = []  # (action_type, target_prefix)
+    guidance_cooldown = 0  # Steps to wait before sending another guidance
 
     while running:
         try:
@@ -163,14 +185,23 @@ def run_controller(ipc_dir: Path):
                 if etype == "step_completed":
                     step_count += 1
                     action = event.get("action", "")
+                    target = event.get("target", "")
                     thought = event.get("thought", "")
                     success = event.get("success", False)
-                    text = (thought + " " + action).lower()
+                    text = (thought + " " + action + " " + target).lower()
 
+                    status_char = "OK" if success else "!!"
                     print(
                         f"[CTRL] Step {event.get('step'):>3}/{MAX_STEPS} "
-                        f"{'✓' if success else '✗'} {action[:55]}..."
+                        f"[{status_char}] {action[:40]} | {target[:40]}..."
                     )
+
+                    # Track recent actions for repetition detection
+                    recent_actions.append((action, target[:40]))
+                    if len(recent_actions) > 6:
+                        recent_actions.pop(0)
+                    if guidance_cooldown > 0:
+                        guidance_cooldown -= 1
 
                     # Check CHECKLIST milestones
                     for item_id, keywords in MILESTONE_KEYWORDS.items():
@@ -183,24 +214,78 @@ def run_controller(ipc_dir: Path):
                 elif etype == "stuck":
                     stuck_pending = True
                     print(
-                        f"[CTRL] ⚠ STUCK: {event.get('action_type')} on '{event.get('target')}'"
+                        f"[CTRL] STUCK: {event.get('action_type')} on '{event.get('target')}'"
                     )
 
                 elif etype == "paused":
                     step = event.get("step", "?")
-                    if stuck_pending:
-                        send_command(
-                            commands_path,
-                            "guidance",
-                            {
-                                "instruction": (
-                                    "You seem stuck. Try a completely different approach: "
-                                    "scroll the page, look for a different button or link, "
-                                    "or navigate to a different section entirely."
-                                )
-                            },
-                        )
+
+                    # Detect repetition-based stuck: same action_type 4+ times in last 6 steps
+                    repetition_stuck = False
+                    reload_stuck = False
+                    no_progress_stuck = False
+                    if guidance_cooldown == 0:
+                        action_types = [a for a, _ in recent_actions[-6:]]
+                        if len(action_types) >= 4:
+                            most_common = max(set(action_types), key=action_types.count)
+                            if action_types.count(most_common) >= 4:
+                                repetition_stuck = True
+                                stuck_action_type = most_common
+                                print(f"[CTRL] REPEAT-STUCK: '{stuck_action_type}' x{action_types.count(most_common)} in last 6 steps")
+
+                        # Detect reload in recent actions (harmful in SPA)
+                        if action_types and action_types[-1] == "reload":
+                            reload_stuck = True
+                            print("[CTRL] RELOAD-STUCK: agent just reloaded (harmful in SPA)")
+
+                        # No-progress stuck: 25+ steps with no checklist items PASS
+                        if step_count >= 25 and not completed_ids:
+                            no_progress_stuck = True
+                            print(f"[CTRL] NO-PROGRESS: {step_count} steps with 0 checklist items passed")
+
+                    if stuck_pending or repetition_stuck or reload_stuck or no_progress_stuck:
+                        if reload_stuck:
+                            instruction = (
+                                "STOP! Do NOT reload the page. Reloading in this SPA takes you back "
+                                "to the home screen, losing all navigation progress. "
+                                "If you just reloaded, the page is now back to home. "
+                                "Navigate again: click 'Cálculo 1' → 'EPGE 2021' → 'A1'. "
+                                "Console 404 errors are NORMAL background API calls — they are NOT "
+                                "a reason to reload. Ignore them and continue navigating."
+                            )
+                        elif repetition_stuck:
+                            instruction = (
+                                f"STOP! You've been doing '{stuck_action_type}' repeatedly with no progress. "
+                                "This SPA uses React — clicking a card DOES navigate (view changes) "
+                                "even though the URL stays '/'. After a click, wait 2 seconds then "
+                                "look at the screenshot carefully — the content area may have already changed. "
+                                "If navigation succeeded, you'll see a different view (turma detail or atividade). "
+                                "Try a different element or use scroll to find the card. "
+                                "DO NOT reload. DO NOT repeat the same click again."
+                            )
+                        elif no_progress_stuck:
+                            instruction = (
+                                f"After {step_count} steps, no pipeline verification has started. "
+                                "Let's use a direct approach: use evaluate_js to call the API directly. "
+                                "Example: evaluate_js with script "
+                                "\"fetch('/api/atividades?turma_id=6b5dc44c08aaf375').then(r=>r.json()).then(d=>console.log(JSON.stringify(d)))\". "
+                                "Or navigate the UI step by step: click 'Cálculo 1' materia → "
+                                "then click 'EPGE 2021' turma card → then click 'A1' atividade. "
+                                "After each click, wait 2 seconds before assessing whether it worked."
+                            )
+                        else:
+                            instruction = (
+                                "You seem stuck. Try a completely different approach. "
+                                "Remember: 404 errors in the console are from background API calls "
+                                "and do NOT mean navigation failed. Never reload — it resets to home. "
+                                "After clicking a card in this SPA, wait 2 seconds and check if the "
+                                "view changed before deciding the click failed."
+                            )
+                        send_command(commands_path, "guidance", {"instruction": instruction})
                         stuck_pending = False
+                        guidance_cooldown = 6  # Don't send guidance again for 6 steps
+                        recent_actions.clear()
+                        no_progress_stuck = False
                     else:
                         send_command(commands_path, "continue")
 

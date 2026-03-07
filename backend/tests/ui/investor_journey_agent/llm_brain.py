@@ -213,7 +213,7 @@ Respond ONLY with valid JSON (no markdown, no explanation outside JSON):
         result = ""
         if visible:
             result += "\n**Clickable elements (pick by number):**\n"
-            for i, el in enumerate(visible[:15], start=1):
+            for i, el in enumerate(visible[:30], start=1):
                 desc_parts = [f"<{el.tag}>"]
                 if el.text:
                     desc_parts.append(f'"{el.text[:60]}"')
