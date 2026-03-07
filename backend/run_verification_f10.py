@@ -17,6 +17,8 @@ import re
 import subprocess
 import sys
 import time
+import urllib.request
+import urllib.error
 from datetime import datetime
 from pathlib import Path
 
@@ -45,7 +47,9 @@ GOAL = (
     "- 404 errors in the console are from background API data calls, NOT navigation failures. IGNORE them.\n"
     "- NEVER reload the page to 'fix' navigation - reloading takes you back to the home view.\n"
     "- If you click a card and the view looks the same, DO NOT click again immediately - "
-    "take a screenshot and look carefully; the content area may have updated.\n\n"
+    "take a screenshot and look carefully; the content area may have updated.\n"
+    "- If you see 'Erro ao carregar' error, DO NOT reload. Wait 5 seconds and click "
+    "the same item again - the server will respond on the retry.\n\n"
     "NAVIGATION PATH to reach the test content:\n"
     "1. Click 'Cálculo 1' in the sidebar or as a card on the home screen\n"
     "2. Click the 'EPGE 2021' turma card (it shows '2021 1' or similar)\n"
@@ -314,8 +318,28 @@ def run_controller(ipc_dir: Path):
 # ---------------------------------------------------------------------------
 
 
+def warmup_server(url: str, max_attempts: int = 5) -> bool:
+    """Pre-warm the Render server to avoid cold-start errors during the run."""
+    print(f"[CTRL] Pre-warming server: {url}/api/materias ...")
+    for attempt in range(1, max_attempts + 1):
+        try:
+            req = urllib.request.urlopen(f"{url}/api/materias", timeout=30)
+            data = req.read()
+            if b"materias" in data:
+                print(f"[CTRL] Server warm! (attempt {attempt})")
+                return True
+        except Exception as e:
+            print(f"[CTRL] Warmup attempt {attempt}/{max_attempts} failed: {e}")
+            time.sleep(5)
+    print("[CTRL] WARNING: Server may still be cold — proceeding anyway")
+    return False
+
+
 def main():
     OUTPUT_BASE.mkdir(parents=True, exist_ok=True)
+
+    # Pre-warm the Render server to avoid cold-start errors in the agent
+    warmup_server(LIVE_URL)
 
     # Build agent command
     cmd = [
