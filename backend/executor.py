@@ -2198,6 +2198,8 @@ Seja preciso, educativo e construtivo em suas análises."""
             
             # Executar com tools
             client = ChatClient(model, api_key or "")
+            print(f"[TOOL-USE-DEBUG] Calling chat_with_tools with model={model.modelo}, tools={[t['name'] for t in tools_definitions]}")
+            print(f"[TOOL-USE-DEBUG] System prompt length={len(system_prompt)}, message length={len(mensagem)}")
             resposta = await client.chat_with_tools(
                 mensagem=mensagem,
                 tools=tools_definitions,
@@ -2205,6 +2207,14 @@ Seja preciso, educativo e construtivo em suas análises."""
                 system_prompt=system_prompt,
                 context=context
             )
+            print(f"[TOOL-USE-DEBUG] Response keys={list(resposta.keys())}")
+            print(f"[TOOL-USE-DEBUG] tool_calls count={len(resposta.get('tool_calls', []))}")
+            print(f"[TOOL-USE-DEBUG] tool_calls names={[tc.get('name') for tc in resposta.get('tool_calls', [])]}")
+            print(f"[TOOL-USE-DEBUG] content length={len(resposta.get('content', ''))}")
+            print(f"[TOOL-USE-DEBUG] content preview={resposta.get('content', '')[:200]}")
+            print(f"[TOOL-USE-DEBUG] stop_reason={resposta.get('stop_reason', 'N/A')}")
+            if resposta.get('error'):
+                print(f"[TOOL-USE-DEBUG] error={resposta['error']}")
 
             tentativas = 1
             alertas = []
