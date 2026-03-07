@@ -50,11 +50,11 @@ GOAL = (
     "take a screenshot and look carefully; the content area may have updated.\n"
     "- If you see 'Erro ao carregar' error, DO NOT reload. Wait 5 seconds and click "
     "the same item again - the server will respond on the retry.\n\n"
-    "NAVIGATION PATH to reach the test content:\n"
-    "1. Click 'Cálculo 1' in the sidebar or as a card on the home screen\n"
-    "2. Click the 'EPGE 2021' turma card (it shows '2021 1' or similar)\n"
-    "3. Click the 'A1' atividade card\n"
-    "Then you will see students, documents, and pipeline controls.\n\n"
+    "NAVIGATION PATH (use evaluate_js, not clicks):\n"
+    "1. evaluate_js: showMateria('f95445ace30e7dc5') — then wait 5 seconds\n"
+    "2. evaluate_js: showTurma('6b5dc44c08aaf375') — then wait 8 seconds\n"
+    "3. evaluate_js: showAtividade('effad48d128c7083') — then wait 5 seconds\n"
+    "You will now be on the A1 atividade page with pipeline controls.\n\n"
     "YOUR TASK: Verify the full Prova AI grading pipeline end-to-end across 4 AI models "
     "(gpt-4o, gpt-5-nano, claude-haiku-4-5-20251001, gemini-3-flash-preview). "
     "For each model: select the model in the model dropdown, click the pipeline trigger "
@@ -395,6 +395,26 @@ def main():
         sys.exit(1)
 
     print(f"\n[CTRL] IPC directory: {ipc_dir}")
+
+    # Pre-inject startup guidance into commands.jsonl before the agent's first pause.
+    # This tells the agent to use evaluate_js for navigation (avoids click resolution issues).
+    commands_path = ipc_dir / "commands.jsonl"
+    ipc_dir.mkdir(parents=True, exist_ok=True)
+    startup_instruction = (
+        "STARTUP INSTRUCTIONS — read carefully before taking your first action:\n"
+        "1. If you see a welcome modal ('Bem-vindo ao NOVO CR'), use evaluate_js to close it: "
+        "call `closeWelcome()`. Wait 2 seconds.\n"
+        "2. Navigate to the test content using evaluate_js (NOT clicks):\n"
+        "   - evaluate_js: showMateria('f95445ace30e7dc5')  → then wait 5 seconds\n"
+        "   - evaluate_js: showTurma('6b5dc44c08aaf375')    → then wait 8 seconds\n"
+        "   - evaluate_js: showAtividade('effad48d128c7083') → then wait 5 seconds\n"
+        "3. You should now be on the A1 atividade page with pipeline controls visible.\n"
+        "4. Once there: trigger the pipeline for gpt-4o, gpt-5-nano, "
+        "claude-haiku-4-5-20251001, gemini-3-flash-preview (one at a time).\n"
+        "Use evaluate_js for ALL navigation steps. Do NOT use click for navigation."
+    )
+    send_command(commands_path, "guidance", {"instruction": startup_instruction})
+    print("[CTRL] Startup guidance pre-injected into commands.jsonl")
 
     # Print remaining agent startup output in a background thread
     import threading
