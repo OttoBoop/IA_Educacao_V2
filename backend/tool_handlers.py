@@ -128,13 +128,13 @@ async def handle_execute_python_code(
                             criado_por="ia_execute_python_code",
                         )
                         saved_docs.append({
-                            "filename": unique_name,
+                            "filename": doc.display_name or doc.nome_arquivo,
                             "document_id": doc.id,
                             "size_kb": round(len(file_bytes) / 1024, 2),
                         })
                         logger.info(
                             "[execute_python_code] Saved '%s' to storage → doc_id=%s",
-                            unique_name, doc.id
+                            doc.display_name or doc.nome_arquivo, doc.id
                         )
                     except Exception as save_err:
                         logger.warning(
