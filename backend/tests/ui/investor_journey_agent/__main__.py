@@ -108,7 +108,7 @@ Examples:
     parser.add_argument(
         "--max-steps",
         type=int,
-        default=200,
+        default=400,
         help="Maximum number of steps before stopping",
     )
 

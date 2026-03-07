@@ -1,8 +1,8 @@
 """
 Tests for journey agent infrastructure improvements.
 
-- F2-T1: AgentConfig max_steps default = 200
-- F2-T2: CLI --max-steps default = 200
+- F2-T1: AgentConfig max_steps default = 400 (updated from 200 for F5-T1)
+- F2-T2: CLI --max-steps default = 400 (updated from 200 for F5-T1)
 - F3-T1: _do_step() helper method exists on InvestorJourneyAgent
 """
 
@@ -15,41 +15,41 @@ from tests.ui.investor_journey_agent.agent import InvestorJourneyAgent
 
 
 # ============================================================
-# F2-T1: AgentConfig default max_steps = 200
+# F5-T1: AgentConfig default max_steps = 400
 # ============================================================
 
 
 class TestAgentConfigDefaultSteps(unittest.TestCase):
-    """F2-T1: Default max_steps in AgentConfig should be 200."""
+    """F5-T1: Default max_steps in AgentConfig should be 400."""
 
-    def test_default_max_steps_is_200(self):
-        """AgentConfig().max_steps must default to 200, not 50."""
+    def test_default_max_steps_is_400(self):
+        """AgentConfig().max_steps must default to 400 for full pipeline verification."""
         config = AgentConfig()
         self.assertEqual(
             config.max_steps,
-            200,
-            f"Expected AgentConfig().max_steps == 200 but got {config.max_steps}. "
-            "Change `max_steps: int = 50` to `max_steps: int = 200` in config.py.",
+            400,
+            f"Expected AgentConfig().max_steps == 400 but got {config.max_steps}. "
+            "Change `max_steps: int = 200` to `max_steps: int = 400` in config.py.",
         )
 
 
 # ============================================================
-# F2-T2: CLI --max-steps default = 200
+# F5-T1: CLI --max-steps default = 400
 # ============================================================
 
 
 class TestCLIDefaultMaxSteps(unittest.TestCase):
-    """F2-T2: CLI --max-steps flag should default to 200."""
+    """F5-T1: CLI --max-steps flag should default to 400."""
 
-    def test_cli_max_steps_default_is_200(self):
-        """build_parser() --max-steps default must be 200, not 20."""
+    def test_cli_max_steps_default_is_400(self):
+        """build_parser() --max-steps default must be 400."""
         parser = build_parser()
         default = parser.get_default("max_steps")
         self.assertEqual(
             default,
-            200,
-            f"Expected --max-steps CLI default == 200 but got {default}. "
-            "Change `default=20` to `default=200` in __main__.py --max-steps argument.",
+            400,
+            f"Expected --max-steps CLI default == 400 but got {default}. "
+            "Change `default=200` to `default=400` in __main__.py --max-steps argument.",
         )
 
 

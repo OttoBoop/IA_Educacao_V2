@@ -90,7 +90,7 @@ class AgentConfig:
     analysis_model: str = "claude-sonnet-4-5-20250929"  # Quality for final analysis
 
     # Agent behavior
-    max_steps: int = 200
+    max_steps: int = 400
     timeout_per_step_ms: int = 10000
     wait_after_action_ms: int = 1000
     wait_for_network_idle: bool = True
@@ -98,7 +98,7 @@ class AgentConfig:
     # Rate limiting
     max_llm_calls: int = 50  # Maximum LLM API calls per journey
     max_tokens_per_request: int = 2000  # Maximum tokens per API request
-    journey_timeout_seconds: int = 600  # 10 minutes total journey timeout
+    journey_timeout_seconds: int = 1200  # 20 minutes total journey timeout (supports 400 steps)
 
     # Screenshot settings
     screenshot_quality: int = 80
