@@ -504,6 +504,11 @@ class InvestorJourneyAgent:
             if summary:
                 print(summary)
 
+    def _log_verbose(self, **kwargs) -> str:
+        """Return a formatted string containing all provided keyword argument values."""
+        parts = [f"{k}={v}" for k, v in kwargs.items()]
+        return " ".join(parts)
+
     def _print_step(self, step_number: int, action: Action):
         """Print step information to console."""
         frustration_bar = "=" * int(action.frustration_level * 10)
@@ -523,6 +528,16 @@ class InvestorJourneyAgent:
         # For now, auto-confirm in async context
         # In real CLI, this would use input()
         return True
+
+    async def _download_file(self, url: str, model: str, stage: str, student: str):
+        """Download a file from url into the model/stage/student directory."""
+        pass
+
+    def _ensure_download_dir(self, model: str, stage: str, student: str) -> Path:
+        """Create and return the downloads/model/stage/student directory."""
+        path = self.config.downloads_dir / model / stage / student
+        path.mkdir(parents=True, exist_ok=True)
+        return path
 
 
 # Convenience function for CLI usage

@@ -94,6 +94,7 @@ class AgentConfig:
     timeout_per_step_ms: int = 10000
     wait_after_action_ms: int = 1000
     wait_for_network_idle: bool = True
+    verbose: bool = True
 
     # Rate limiting
     max_llm_calls: int = 50  # Maximum LLM API calls per journey
@@ -116,12 +117,16 @@ class AgentConfig:
 
     # Output settings
     output_dir: Optional[Path] = None
+    downloads_dir: Optional[Path] = None
 
     def __post_init__(self):
         if self.output_dir is None:
             self.output_dir = Path("investor_journey_reports")
         elif isinstance(self.output_dir, str):
             self.output_dir = Path(self.output_dir)
+
+        if self.downloads_dir is None:
+            self.downloads_dir = self.output_dir / "downloads"
 
         # Load API key using key_loader with decryption if not explicitly provided
         if self.anthropic_api_key is None:
