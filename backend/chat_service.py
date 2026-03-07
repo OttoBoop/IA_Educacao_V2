@@ -1059,8 +1059,6 @@ class ChatClient:
 
             stop_reason = data.get("stop_reason")
             content_blocks = data.get("content", [])
-            print(f"[CHAT-TOOLS-DEBUG] iteration={iteration}, stop_reason={stop_reason}, content_blocks_count={len(content_blocks)}")
-            print(f"[CHAT-TOOLS-DEBUG] block_types={[b.get('type') for b in content_blocks]}")
 
             if stop_reason == "end_turn":
                 # Claude finished - extract final text

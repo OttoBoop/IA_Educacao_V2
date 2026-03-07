@@ -609,12 +609,12 @@ async def handle_create_document(
 
     # Map document types to TipoDocumento enum
     type_mapping = {
-        "report": TipoDocumento.ANALISE,
+        "report": TipoDocumento.RELATORIO_FINAL,
         "feedback": TipoDocumento.CORRECAO,
-        "analysis": TipoDocumento.ANALISE,
-        "summary": TipoDocumento.ANALISE,
-        "other": TipoDocumento.OUTROS,
-        "exam": TipoDocumento.PROVA,
+        "correction": TipoDocumento.CORRECAO,
+        "analysis": TipoDocumento.ANALISE_HABILIDADES,
+        "summary": TipoDocumento.RELATORIO_FINAL,
+        "exam": TipoDocumento.ENUNCIADO,
         "answer_key": TipoDocumento.GABARITO,
     }
 
@@ -628,8 +628,11 @@ async def handle_create_document(
             doc_type_str = doc_data.get("document_type", "other").lower()
             description = doc_data.get("description", "")
 
-            # Get TipoDocumento
-            tipo = type_mapping.get(doc_type_str, TipoDocumento.OUTROS)
+            # Get TipoDocumento — use expected_document_type from context if set
+            if context and context.expected_document_type:
+                tipo = context.expected_document_type
+            else:
+                tipo = type_mapping.get(doc_type_str, TipoDocumento.RELATORIO_FINAL)
 
             # Determine file extension
             ext = Path(filename).suffix.lower()
@@ -728,18 +731,24 @@ async def handle_create_document(
 
             if atividade_id:
                 try:
-                    saved_doc = storage.criar_documento(
-                        nome_arquivo=unique_filename,
+                    saved_doc = storage.salvar_documento(
+                        arquivo_origem=temp_path,
                         tipo=tipo,
                         atividade_id=atividade_id,
                         aluno_id=aluno_id,
-                        caminho_arquivo=temp_path
+                        display_name=filename,
+                        criado_por="pipeline_tool"
                     )
-                    doc_info["id"] = saved_doc.id
-                    doc_info["saved_to_storage"] = True
+                    if saved_doc:
+                        doc_info["id"] = saved_doc.id
+                        doc_info["saved_to_storage"] = True
+                    else:
+                        doc_info["saved_to_storage"] = False
+                        doc_info["storage_error"] = "salvar_documento returned None"
                 except Exception as e:
                     doc_info["saved_to_storage"] = False
                     doc_info["storage_error"] = str(e)
+                    print(f"[TOOL-HANDLER] Error saving document: {e}")
             else:
                 doc_info["saved_to_storage"] = False
                 doc_info["note"] = "No atividade_id provided - document created but not registered"

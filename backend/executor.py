@@ -1183,8 +1183,9 @@ class PipelineExecutor:
             provider_id=provider_id,
             system_prompt=full_system,
             tools_to_use=["create_document", "execute_python_code"],
+            expected_document_type=TipoDocumento.CORRECAO,
         )
-    
+
     async def analisar_habilidades(
         self,
         atividade_id: str,
@@ -1243,6 +1244,7 @@ class PipelineExecutor:
             provider_id=provider_id,
             system_prompt=full_system,
             tools_to_use=["create_document", "execute_python_code"],
+            expected_document_type=TipoDocumento.ANALISE_HABILIDADES,
         )
 
     async def gerar_relatorio(
@@ -1303,6 +1305,7 @@ class PipelineExecutor:
             provider_id=provider_id,
             system_prompt=full_system,
             tools_to_use=["create_document", "execute_python_code"],
+            expected_document_type=TipoDocumento.RELATORIO_FINAL,
         )
 
     async def chat_com_documentos(
@@ -1427,8 +1430,8 @@ class PipelineExecutor:
 
             elif doc.tipo == TipoDocumento.EXTRACAO_GABARITO:
                 variaveis["gabarito_extraido"] = conteudo
-                # Usar como resposta_esperada se não houver outra
-                if "resposta_esperada" not in variaveis:
+                # Usar como resposta_esperada se não houver outra (or if empty from multimodal)
+                if not variaveis.get("resposta_esperada"):
                     variaveis["resposta_esperada"] = conteudo
 
             elif doc.tipo == TipoDocumento.EXTRACAO_RESPOSTAS:
@@ -1459,11 +1462,18 @@ class PipelineExecutor:
             variaveis["conteudo_documento"] = variaveis["gabarito"]
 
         # Gabarito extraído como resposta_esperada
-        if "gabarito_extraido" in variaveis and "resposta_esperada" not in variaveis:
+        # Use gabarito_extraido when resposta_esperada is missing OR empty
+        # (empty happens in multimodal mode where raw GABARITO content is skipped)
+        if "gabarito_extraido" in variaveis and not variaveis.get("resposta_esperada"):
             variaveis["resposta_esperada"] = variaveis["gabarito_extraido"]
         # Fallback: usar gabarito original se não houver extraído
-        if "gabarito" in variaveis and "resposta_esperada" not in variaveis:
+        if "gabarito" in variaveis and not variaveis.get("resposta_esperada"):
             variaveis["resposta_esperada"] = variaveis["gabarito"]
+
+        # Respostas extraídas como resposta_aluno
+        # (in multimodal mode, raw PROVA_RESPONDIDA is skipped, use extraction)
+        if "respostas_aluno" in variaveis and not variaveis.get("resposta_aluno"):
+            variaveis["resposta_aluno"] = variaveis["respostas_aluno"]
 
         # Critérios podem não existir - usar string vazia
         if "criterios" not in variaveis:
@@ -2198,8 +2208,6 @@ Seja preciso, educativo e construtivo em suas análises."""
             
             # Executar com tools
             client = ChatClient(model, api_key or "")
-            print(f"[TOOL-USE-DEBUG] Calling chat_with_tools with model={model.modelo}, tools={[t['name'] for t in tools_definitions]}")
-            print(f"[TOOL-USE-DEBUG] System prompt length={len(system_prompt)}, message length={len(mensagem)}")
             resposta = await client.chat_with_tools(
                 mensagem=mensagem,
                 tools=tools_definitions,
@@ -2207,14 +2215,6 @@ Seja preciso, educativo e construtivo em suas análises."""
                 system_prompt=system_prompt,
                 context=context
             )
-            print(f"[TOOL-USE-DEBUG] Response keys={list(resposta.keys())}")
-            print(f"[TOOL-USE-DEBUG] tool_calls count={len(resposta.get('tool_calls', []))}")
-            print(f"[TOOL-USE-DEBUG] tool_calls names={[tc.get('name') for tc in resposta.get('tool_calls', [])]}")
-            print(f"[TOOL-USE-DEBUG] content length={len(resposta.get('content', ''))}")
-            print(f"[TOOL-USE-DEBUG] content preview={resposta.get('content', '')[:200]}")
-            print(f"[TOOL-USE-DEBUG] stop_reason={resposta.get('stop_reason', 'N/A')}")
-            if resposta.get('error'):
-                print(f"[TOOL-USE-DEBUG] error={resposta['error']}")
 
             tentativas = 1
             alertas = []
