@@ -1272,6 +1272,7 @@ async def executar_pipeline_desempenho_materia(
         task_type="pipeline_desempenho_materia",
         atividade_id=materia_id,
         aluno_ids=[],
+        materia_id=materia_id,
         materia_nome=materia.nome,
     )
 

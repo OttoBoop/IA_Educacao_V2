@@ -73,6 +73,7 @@ def register_pipeline_task(
     atividade_id,
     aluno_ids,
     turma_id=None,
+    materia_id=None,
     materia_nome=None,
     turma_nome=None,
     atividade_nome=None,
@@ -82,6 +83,9 @@ def register_pipeline_task(
 
     student_names: optional dict mapping {aluno_id: nome_string}.
     When provided, each student entry gets a 'nome' field.
+
+    materia_id: required for pipeline_desempenho_materia tasks so the
+    frontend hierarchy renderer can group them under the correct materia node.
 
     Returns the generated task_id.
     """
@@ -98,6 +102,7 @@ def register_pipeline_task(
         "type": task_type,
         "atividade_id": atividade_id,
         "turma_id": turma_id,
+        "materia_id": materia_id,
         "materia_nome": materia_nome,
         "turma_nome": turma_nome,
         "atividade_nome": atividade_nome,
