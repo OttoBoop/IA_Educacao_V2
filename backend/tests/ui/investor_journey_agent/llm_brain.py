@@ -32,6 +32,7 @@ class ActionType(str, Enum):
     DOWNLOAD_FILE = "download_file"
     CHECKBOX_TOGGLE = "checkbox_toggle"
     READ_PAGE_TEXT = "read_page_text"
+    EVALUATE_JS = "evaluate_js"
 
 
 @dataclass
@@ -49,6 +50,7 @@ class Action:
     intent_description: Optional[str] = None  # Natural-language description of intent
     wait_duration_seconds: Optional[int] = None  # For WAIT action: how many seconds to wait
     select_value: Optional[str] = None  # For SELECT_OPTION action: value to select
+    eval_script: Optional[str] = None  # For EVALUATE_JS action: JS to execute
 
 
 @dataclass
@@ -181,6 +183,7 @@ Available actions:
 - download_file: Click a download link/button to save a file (pick element_index)
 - checkbox_toggle: Toggle a checkbox on or off (pick element_index)
 - read_page_text: Read the visible text content of an element (pick element_index)
+- evaluate_js: Execute JavaScript directly on the page (set eval_script to the JS expression, e.g. "showTurma('abc123')")
 - give_up: Stop trying because UX is too bad (this is valuable feedback!)
 - done: Goal achieved, stop journey
 
@@ -193,7 +196,7 @@ Respond ONLY with valid JSON (no markdown, no explanation outside JSON):
 {{
   "thought": "What I'm thinking as this user...",
   "frustration_level": 0.0 to 1.0,
-  "action_type": "click|type|scroll|wait|reload|back|select_option|download_file|checkbox_toggle|read_page_text|give_up|done",
+  "action_type": "click|type|scroll|wait|reload|back|select_option|download_file|checkbox_toggle|read_page_text|evaluate_js|give_up|done",
   "target": "description of what you want to interact with",
   "element_index": 1,
   "intent_description": "what you want to do with this element",
@@ -201,7 +204,8 @@ Respond ONLY with valid JSON (no markdown, no explanation outside JSON):
   "text_to_type": "text if typing",
   "scroll_direction": "up or down if scrolling",
   "wait_duration_seconds": null or integer seconds to wait (e.g. 45 for pipeline operations),
-  "select_value": "value to select from dropdown (for select_option action)"
+  "select_value": "value to select from dropdown (for select_option action)",
+  "eval_script": "JS to execute for evaluate_js action (e.g. showTurma('abc123'))"
 }}
 """
 
@@ -249,6 +253,7 @@ Respond ONLY with valid JSON (no markdown, no explanation outside JSON):
             intent_description=data.get("intent_description"),
             wait_duration_seconds=data.get("wait_duration_seconds"),
             select_value=data.get("select_value"),
+            eval_script=data.get("eval_script"),
         )
 
     async def decide_next_action(

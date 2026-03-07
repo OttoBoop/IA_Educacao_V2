@@ -569,6 +569,12 @@ class InvestorJourneyAgent:
                     return True, None
                 return False, f"Could not read text from {action.target}"
 
+            elif action.action_type == ActionType.EVALUATE_JS:
+                if not action.eval_script:
+                    return False, "No eval_script provided for EVALUATE_JS action"
+                await self._browser.evaluate_js(action.eval_script)
+                return True, None
+
             else:
                 return True, None
 
