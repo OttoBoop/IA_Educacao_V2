@@ -977,10 +977,9 @@ class PipelineExecutor:
         # Helper para carregar documento JSON
         def _carregar_json(doc, chave: str) -> bool:
             try:
-                caminho = Path(doc.caminho_arquivo)
-                if not caminho.is_absolute():
-                    caminho = self.storage.base_path / caminho
-                if caminho.exists():
+                # Use resolver_caminho_documento to handle Supabase downloads on Render
+                caminho = self.storage.resolver_caminho_documento(doc)
+                if caminho and caminho.exists():
                     with open(caminho, 'r', encoding='utf-8') as f:
                         data = json.load(f)
                         # Verificar se o JSON tem erro de parsing
@@ -996,7 +995,7 @@ class PipelineExecutor:
                         documentos_carregados.append(chave)
                         return True
                 else:
-                    _logger.warning(f"Arquivo não encontrado: {caminho}")
+                    _logger.warning(f"Arquivo não encontrado após resolver: {doc.caminho_arquivo}")
             except Exception as e:
                 _logger.warning(f"Erro ao carregar {chave}: {e}")
             return False
