@@ -4674,6 +4674,22 @@
                 </div>
                 <input type="hidden" id="input-desempenho-level">
                 <input type="hidden" id="input-desempenho-entity-id">
+                <!-- F2-T1: Etapas a Executar — per-student per-stage tree -->
+                <div class="form-group" id="desempenho-etapas-section">
+                    <label class="form-label" style="display: flex; align-items: center; justify-content: space-between; cursor: pointer;" onclick="toggleDesempenhoEtapas()">
+                        <span>Etapas a Executar</span>
+                        <span id="desempenho-etapas-toggle" style="font-size: 12px; color: var(--text-muted);">▶ Expandir</span>
+                    </label>
+                    <small style="color: var(--text-muted); display: block; margin-bottom: 6px;">
+                        Selecione quais etapas do pipeline executar para cada aluno antes de gerar o relatório.
+                    </small>
+                    <div id="desempenho-etapas-tree" style="display:none; border: 1px solid var(--border); border-radius: 6px; padding: 8px; max-height: 320px; overflow-y: auto;">
+                        <!-- Populated by renderDesempenhoEtapasRow() on modal open -->
+                        <div style="color: var(--text-muted); font-size: 13px; padding: 8px;">
+                            Carregando alunos...
+                        </div>
+                    </div>
+                </div>
             </div>
             <div class="modal-footer">
                 <button class="btn" onclick="closeModal('modal-desempenho-settings')">Cancelar</button>
@@ -9870,6 +9886,43 @@
             } catch (e) {
                 console.error('Erro ao carregar modelos/prompts para desempenho:', e);
             }
+        }
+
+        // F2-T2: Toggle collapse/expand for the desempenho etapas tree
+        function toggleDesempenhoEtapas() {
+            const tree = document.getElementById('desempenho-etapas-tree');
+            const toggle = document.getElementById('desempenho-etapas-toggle');
+            if (!tree || !toggle) return;
+            if (tree.style.display === 'none') {
+                tree.style.display = 'block';
+                toggle.textContent = '▼ Recolher';
+            } else {
+                tree.style.display = 'none';
+                toggle.textContent = '▶ Expandir';
+            }
+        }
+
+        // F2-T2: Render a per-student row with per-stage checkboxes inside the etapas tree
+        function renderDesempenhoEtapasRow(alunoId, alunoNome, stagesExistentes) {
+            // stagesExistentes: { corrigir: bool, analisar: bool, relatorio: bool }
+            const stages = [
+                { key: 'corrigir', label: 'Corrigir' },
+                { key: 'analisar', label: 'Analisar Habilidades' },
+                { key: 'relatorio', label: 'Relatório Final' },
+            ];
+            const checkboxes = stages.map(s => {
+                const exists = stagesExistentes && stagesExistentes[s.key];
+                const checked = !exists ? 'checked' : '';
+                const title = exists ? 'Já existe — marque para re-criar' : 'Não existe — será criado';
+                return `<label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text-muted);cursor:pointer;" title="${title}">
+                    <input type="checkbox" class="desempenho-etapa-check" data-aluno="${alunoId}" data-stage="${s.key}" ${checked}>
+                    ${s.label}${exists ? ' ✓' : ''}
+                </label>`;
+            }).join('');
+            return `<div class="desempenho-etapas-aluno-row" style="padding:6px 0;border-bottom:1px solid var(--border);">
+                <div style="font-size:13px;font-weight:500;margin-bottom:4px;">${escapeHtml(alunoNome)}</div>
+                <div style="display:flex;gap:12px;flex-wrap:wrap;">${checkboxes}</div>
+            </div>`;
         }
 
         // G-T1: Open desempenho settings modal
