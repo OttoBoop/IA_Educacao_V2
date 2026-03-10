@@ -20,6 +20,7 @@ import time
 import re
 import tempfile
 import os
+import fitz  # PyMuPDF — extract text from binary PDFs (RELATORIO_FINAL)
 
 from models import TipoDocumento, Documento, criar_erro_pipeline, ERRO_DOCUMENTO_FALTANTE, ERRO_QUESTOES_FALTANTES, SeveridadeErro
 from prompts import PromptManager, PromptTemplate, EtapaProcessamento, prompt_manager
@@ -2415,10 +2416,18 @@ Crie UM documento separado para cada aluno, nomeando como "relatorio_[nome_aluno
         for doc in narrativos:
             try:
                 resolved = self.storage.resolver_caminho_documento(doc)
-                with open(resolved, 'r', encoding='utf-8') as f:
+                pdf_doc = fitz.open(str(resolved))
+                texto = "".join(page.get_text() for page in pdf_doc)
+                pdf_doc.close()
+                if texto.strip():
                     conteudos.append({
                         "aluno_id": doc.aluno_id,
-                        "conteudo": f.read(),
+                        "conteudo": texto.strip(),
+                    })
+                else:
+                    avisos.append({
+                        "aluno_id": doc.aluno_id,
+                        "motivo": "PDF sem texto extraível (página em branco ou imagem)",
                     })
             except Exception as e:
                 avisos.append({
@@ -2544,14 +2553,22 @@ Crie UM documento separado para cada aluno, nomeando como "relatorio_[nome_aluno
             for doc in docs:
                 try:
                     resolved = self.storage.resolver_caminho_documento(doc)
-                    with open(resolved, 'r', encoding='utf-8') as f:
+                    pdf_doc = fitz.open(str(resolved))
+                    texto = "".join(page.get_text() for page in pdf_doc)
+                    pdf_doc.close()
+                    if texto.strip():
                         conteudos.append({
                             "aluno_id": doc.aluno_id,
                             "atividade": atividade.nome,
-                            "conteudo": f.read(),
+                            "conteudo": texto.strip(),
                         })
                         atividades_cobertas.add(atividade.nome)
                         alunos_com_narrativa.add(doc.aluno_id)
+                    else:
+                        avisos.append({
+                            "aluno_id": doc.aluno_id,
+                            "motivo": "PDF sem texto extraível (página em branco ou imagem)",
+                        })
                 except Exception as e:
                     avisos.append({
                         "aluno_id": doc.aluno_id,
@@ -2686,14 +2703,22 @@ Crie UM documento separado para cada aluno, nomeando como "relatorio_[nome_aluno
                 for doc in docs:
                     try:
                         resolved = self.storage.resolver_caminho_documento(doc)
-                        with open(resolved, 'r', encoding='utf-8') as f:
+                        pdf_doc = fitz.open(str(resolved))
+                        texto = "".join(page.get_text() for page in pdf_doc)
+                        pdf_doc.close()
+                        if texto.strip():
                             conteudos.append({
                                 "turma": turma.nome,
                                 "aluno_id": doc.aluno_id,
                                 "atividade": atividade.nome,
-                                "conteudo": f.read(),
+                                "conteudo": texto.strip(),
                             })
                             narrativas_turma += 1
+                        else:
+                            avisos.append({
+                                "aluno_id": doc.aluno_id,
+                                "motivo": "PDF sem texto extraível (página em branco ou imagem)",
+                            })
                     except Exception as e:
                         avisos.append({
                             "aluno_id": doc.aluno_id,
