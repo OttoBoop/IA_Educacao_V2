@@ -9925,11 +9925,62 @@
             </div>`;
         }
 
+
+        // F2-T3: Prefetch student pipeline states to populate etapas tree on modal open
+        async function prefetchDesempenhoEtapasState(level, entityId) {
+            // Populates tree with renderDesempenhoEtapasRow() for each aluno + their stage states.
+            const treeEl = document.getElementById('desempenho-etapas-tree');
+            if (!treeEl) return;
+            treeEl.innerHTML = '<div style="color:var(--text-muted);font-size:13px;padding:8px;">Carregando alunos...</div>';
+            try {
+                let alunos = [];
+                let docs = [];
+                if (level === 'tarefa') {
+                    // entityId = atividade_id
+                    const atividadeData = await api(`/atividades/${entityId}`).catch(() => null);
+                    if (atividadeData && atividadeData.atividade) {
+                        const turmaId = atividadeData.atividade.turma_id;
+                        const [alunosData, docsData] = await Promise.all([
+                            api(`/alunos?turma_id=${turmaId}`).catch(() => ({ alunos: [] })),
+                            api(`/documentos?atividade_id=${entityId}`).catch(() => ({ documentos: [] }))
+                        ]);
+                        alunos = alunosData.alunos || [];
+                        docs = docsData.documentos || [];
+                    }
+                } else if (level === 'turma') {
+                    // entityId = turma_id; show all atividades for this turma
+                    const alunosData = await api(`/alunos?turma_id=${entityId}`).catch(() => ({ alunos: [] }));
+                    alunos = alunosData.alunos || [];
+                    docs = [];
+                }
+                if (alunos.length === 0) {
+                    treeEl.innerHTML = '<div style="color:var(--text-muted);font-size:13px;padding:8px;">Nenhum aluno encontrado.</div>';
+                    return;
+                }
+                // Build a set of (aluno_id, tipo) from existing docs
+                const existingDocs = new Set(docs.map(d => `${d.aluno_id}:${d.tipo}`));
+                const rows = alunos.map(aluno => {
+                    const stagesExistentes = {
+                        corrigir: existingDocs.has(`${aluno.id}:correcao`),
+                        analisar: existingDocs.has(`${aluno.id}:analise_habilidades`),
+                        relatorio: existingDocs.has(`${aluno.id}:relatorio_final`)
+                    };
+                    return renderDesempenhoEtapasRow(aluno.id, aluno.nome, stagesExistentes);
+                }).join('');
+                treeEl.innerHTML = rows || '<div style="color:var(--text-muted);font-size:13px;padding:8px;">Nenhum aluno encontrado.</div>';
+            } catch (e) {
+                treeEl.innerHTML = '<div style="color:var(--text-muted);font-size:13px;padding:8px;">Erro ao carregar alunos.</div>';
+            }
+        }
+
         // G-T1: Open desempenho settings modal
         async function openDesempenhoSettings(level, entityId) {
             document.getElementById('input-desempenho-level').value = level;
             document.getElementById('input-desempenho-entity-id').value = entityId;
-            await carregarDesempenhoProviders();
+            await Promise.all([
+                carregarDesempenhoProviders(),
+                prefetchDesempenhoEtapasState(level, entityId)
+            ]);
             openModal('modal-desempenho-settings');
         }
 
