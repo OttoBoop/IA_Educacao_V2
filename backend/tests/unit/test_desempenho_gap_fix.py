@@ -330,3 +330,94 @@ class TestFC_T1_CascadePrereqs:
             f"With force_reexec=True, expected 2 pipeline calls (one per student), "
             f"but got {executor.executar_pipeline_completo.call_count}."
         )
+
+
+# ============================================================
+# FC-T3: Force re-execute — route param not yet wired
+# ============================================================
+
+class TestFC_T3_ForceReexecRouteParam:
+    """
+    FC-T3: All 3 desempenho routes must accept force_reexec: bool = Form(False).
+
+    Currently the routes only accept atividade_id/turma_id/materia_id + provider_id.
+    The force_reexec flag must be added so the UI can trigger a full cascade re-run.
+
+    Fix required (FC-T3):
+        - Add force_reexec: bool = Form(False) to all 3 route signatures
+        - Pass it through to the background task functions
+        - Background functions call _cascade_prereqs() with force_reexec before
+          calling gerar_relatorio_desempenho_*()
+    """
+
+    def test_tarefa_route_accepts_force_reexec_param(self):
+        """RED: executar_pipeline_desempenho_tarefa must accept force_reexec."""
+        try:
+            from routes_prompts import executar_pipeline_desempenho_tarefa
+        except ImportError as e:
+            pytest.skip(f"Cannot import routes_prompts: {e}")
+        sig = inspect.signature(executar_pipeline_desempenho_tarefa)
+        assert "force_reexec" in sig.parameters, (
+            "FC-T3 BUG: executar_pipeline_desempenho_tarefa missing force_reexec param.\n"
+            "Fix: add force_reexec: bool = Form(False) to route signature."
+        )
+
+    def test_turma_route_accepts_force_reexec_param(self):
+        """RED: executar_pipeline_desempenho_turma must accept force_reexec."""
+        try:
+            from routes_prompts import executar_pipeline_desempenho_turma
+        except ImportError as e:
+            pytest.skip(f"Cannot import routes_prompts: {e}")
+        sig = inspect.signature(executar_pipeline_desempenho_turma)
+        assert "force_reexec" in sig.parameters, (
+            "FC-T3 BUG: executar_pipeline_desempenho_turma missing force_reexec param.\n"
+            "Fix: add force_reexec: bool = Form(False) to route signature."
+        )
+
+    def test_materia_route_accepts_force_reexec_param(self):
+        """RED: executar_pipeline_desempenho_materia must accept force_reexec."""
+        try:
+            from routes_prompts import executar_pipeline_desempenho_materia
+        except ImportError as e:
+            pytest.skip(f"Cannot import routes_prompts: {e}")
+        sig = inspect.signature(executar_pipeline_desempenho_materia)
+        assert "force_reexec" in sig.parameters, (
+            "FC-T3 BUG: executar_pipeline_desempenho_materia missing force_reexec param.\n"
+            "Fix: add force_reexec: bool = Form(False) to route signature."
+        )
+
+    def test_tarefa_background_fn_accepts_force_reexec(self):
+        """RED: _executar_desempenho_tarefa_background must accept force_reexec."""
+        try:
+            from routes_prompts import _executar_desempenho_tarefa_background
+        except ImportError as e:
+            pytest.skip(f"Cannot import routes_prompts: {e}")
+        sig = inspect.signature(_executar_desempenho_tarefa_background)
+        assert "force_reexec" in sig.parameters, (
+            "FC-T3 BUG: _executar_desempenho_tarefa_background missing force_reexec param.\n"
+            "Fix: add force_reexec param and pass to _cascade_prereqs()."
+        )
+
+    def test_turma_background_fn_accepts_force_reexec(self):
+        """RED: _executar_desempenho_turma_background must accept force_reexec."""
+        try:
+            from routes_prompts import _executar_desempenho_turma_background
+        except ImportError as e:
+            pytest.skip(f"Cannot import routes_prompts: {e}")
+        sig = inspect.signature(_executar_desempenho_turma_background)
+        assert "force_reexec" in sig.parameters, (
+            "FC-T3 BUG: _executar_desempenho_turma_background missing force_reexec param.\n"
+            "Fix: add force_reexec param and pass to _cascade_prereqs()."
+        )
+
+    def test_materia_background_fn_accepts_force_reexec(self):
+        """RED: _executar_desempenho_materia_background must accept force_reexec."""
+        try:
+            from routes_prompts import _executar_desempenho_materia_background
+        except ImportError as e:
+            pytest.skip(f"Cannot import routes_prompts: {e}")
+        sig = inspect.signature(_executar_desempenho_materia_background)
+        assert "force_reexec" in sig.parameters, (
+            "FC-T3 BUG: _executar_desempenho_materia_background missing force_reexec param.\n"
+            "Fix: add force_reexec param and pass to _cascade_prereqs()."
+        )
