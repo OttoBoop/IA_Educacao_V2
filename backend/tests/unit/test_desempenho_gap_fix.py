@@ -421,3 +421,104 @@ class TestFC_T3_ForceReexecRouteParam:
             "FC-T3 BUG: _executar_desempenho_materia_background missing force_reexec param.\n"
             "Fix: add force_reexec param and pass to _cascade_prereqs()."
         )
+
+
+# ============================================================
+# FC-T2: Wire etapas checkboxes + force_reexec from modal → backend
+# ============================================================
+
+class TestFC_T2_WireEtapasToBackend:
+    """
+    FC-T2: The modal submit must:
+      1. Read the force-rerun checkbox and send it as 'force_reexec' in FormData
+      2. Read etapas checkboxes and send as 'etapas_selecionadas' JSON in FormData
+      3. Backend routes accept etapas_selecionadas param
+
+    Fix required (FC-T2):
+        - executarDesempenhoFromModal() reads checkbox + etapas, passes to executarDesempenho()
+        - executarDesempenho() appends force_reexec + etapas_selecionadas to FormData
+        - Routes accept etapas_selecionadas: Optional[str] = Form(None)
+    """
+
+    @pytest.fixture
+    def html_content(self):
+        html_path = Path(__file__).resolve().parent.parent.parent.parent / "frontend" / "index_v2.html"
+        return html_path.read_text(encoding="utf-8")
+
+    def _extract_function_body(self, html_content, func_name):
+        """Extract JS function body between its opening { and matching closing }."""
+        idx = html_content.find(f"function {func_name}(")
+        if idx == -1:
+            idx = html_content.find(f"function {func_name} (")
+        if idx == -1:
+            return ""
+        brace_start = html_content.index("{", idx)
+        depth = 0
+        for i in range(brace_start, len(html_content)):
+            if html_content[i] == "{":
+                depth += 1
+            elif html_content[i] == "}":
+                depth -= 1
+                if depth == 0:
+                    return html_content[brace_start:i + 1]
+        return ""
+
+    def test_modal_submit_reads_force_checkbox(self, html_content):
+        """RED: executarDesempenhoFromModal must read the force-rerun checkbox."""
+        body = self._extract_function_body(html_content, "executarDesempenhoFromModal")
+        assert "input-desempenho-force-rerun" in body, (
+            "FC-T2 BUG: executarDesempenhoFromModal does not read the force-rerun checkbox.\n"
+            "Fix: read getElementById('input-desempenho-force-rerun').checked and pass to executarDesempenho()."
+        )
+
+    def test_executar_desempenho_sends_force_reexec(self, html_content):
+        """RED: executarDesempenho must append force_reexec to FormData."""
+        body = self._extract_function_body(html_content, "executarDesempenho")
+        assert "force_reexec" in body, (
+            "FC-T2 BUG: executarDesempenho does not send force_reexec in FormData.\n"
+            "Fix: append force_reexec param to formData."
+        )
+
+    def test_executar_desempenho_sends_etapas_selecionadas(self, html_content):
+        """RED: executarDesempenho must append etapas_selecionadas to FormData."""
+        body = self._extract_function_body(html_content, "executarDesempenho")
+        assert "etapas_selecionadas" in body, (
+            "FC-T2 BUG: executarDesempenho does not send etapas_selecionadas in FormData.\n"
+            "Fix: collect checked desempenho-etapa-check boxes, serialize, and append."
+        )
+
+    def test_tarefa_route_accepts_etapas_selecionadas(self):
+        """RED: executar_pipeline_desempenho_tarefa must accept etapas_selecionadas."""
+        try:
+            from routes_prompts import executar_pipeline_desempenho_tarefa
+        except ImportError as e:
+            pytest.skip(f"Cannot import routes_prompts: {e}")
+        sig = inspect.signature(executar_pipeline_desempenho_tarefa)
+        assert "etapas_selecionadas" in sig.parameters, (
+            "FC-T2 BUG: executar_pipeline_desempenho_tarefa missing etapas_selecionadas param.\n"
+            "Fix: add etapas_selecionadas: Optional[str] = Form(None) to route signature."
+        )
+
+    def test_turma_route_accepts_etapas_selecionadas(self):
+        """RED: executar_pipeline_desempenho_turma must accept etapas_selecionadas."""
+        try:
+            from routes_prompts import executar_pipeline_desempenho_turma
+        except ImportError as e:
+            pytest.skip(f"Cannot import routes_prompts: {e}")
+        sig = inspect.signature(executar_pipeline_desempenho_turma)
+        assert "etapas_selecionadas" in sig.parameters, (
+            "FC-T2 BUG: executar_pipeline_desempenho_turma missing etapas_selecionadas param.\n"
+            "Fix: add etapas_selecionadas: Optional[str] = Form(None) to route signature."
+        )
+
+    def test_materia_route_accepts_etapas_selecionadas(self):
+        """RED: executar_pipeline_desempenho_materia must accept etapas_selecionadas."""
+        try:
+            from routes_prompts import executar_pipeline_desempenho_materia
+        except ImportError as e:
+            pytest.skip(f"Cannot import routes_prompts: {e}")
+        sig = inspect.signature(executar_pipeline_desempenho_materia)
+        assert "etapas_selecionadas" in sig.parameters, (
+            "FC-T2 BUG: executar_pipeline_desempenho_materia missing etapas_selecionadas param.\n"
+            "Fix: add etapas_selecionadas: Optional[str] = Form(None) to route signature."
+        )
