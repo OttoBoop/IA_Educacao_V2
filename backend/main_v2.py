@@ -1126,7 +1126,10 @@ async def serve_frontend():
     for filename in ["index_v2.html", "index.html"]:
         frontend_file = FRONTEND_PATH / filename
         if frontend_file.exists():
-            return FileResponse(frontend_file)
+            return FileResponse(
+                frontend_file,
+                headers={"Cache-Control": "no-cache, must-revalidate"},
+            )
     
     return JSONResponse({
         "message": "API NOVO CR v2.0",

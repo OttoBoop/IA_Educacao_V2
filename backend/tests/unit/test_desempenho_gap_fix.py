@@ -33,8 +33,8 @@ def _apply_executar_com_tools_extraction_logic(raw_content: str, tool_calls: lis
     """
     is_sentinel = raw_content == "[Maximum tool iterations reached]"
 
-    # This is the CURRENT (potentially buggy) logic:
-    if not raw_content or is_sentinel:
+    # This is the FIXED logic (FA-T2):
+    if not raw_content.strip() or is_sentinel:
         for tc in tool_calls:
             if tc.get("name") == "create_document":
                 doc_content = tc.get("input", {}).get("content", "")

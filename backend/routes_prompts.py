@@ -1145,6 +1145,7 @@ async def executar_pipeline_desempenho_tarefa(
     background_tasks: BackgroundTasks,
     atividade_id: str = Form(...),
     provider_id: Optional[str] = Form(None),
+    force_reexec: bool = Form(False),
 ):
     """
     Gera relatório de desempenho agregado para uma atividade.
@@ -1170,6 +1171,7 @@ async def executar_pipeline_desempenho_tarefa(
         task_id=task_id,
         atividade_id=atividade_id,
         provider_id=provider_id,
+        force_reexec=force_reexec,
     )
 
     return {"task_id": task_id, "status": "started"}
@@ -1179,9 +1181,16 @@ async def _executar_desempenho_tarefa_background(
     task_id: str,
     atividade_id: str,
     provider_id: Optional[str],
+    force_reexec: bool = False,
 ):
     from executor import executor
     try:
+        await executor._cascade_prereqs(
+            level="tarefa",
+            entity_id=atividade_id,
+            provider_id=provider_id,
+            force_reexec=force_reexec,
+        )
         resultado = await executor.gerar_relatorio_desempenho_tarefa(
             atividade_id=atividade_id,
             provider_id=provider_id,
@@ -1199,6 +1208,7 @@ async def executar_pipeline_desempenho_turma(
     background_tasks: BackgroundTasks,
     turma_id: str = Form(...),
     provider_id: Optional[str] = Form(None),
+    force_reexec: bool = Form(False),
 ):
     """
     Gera relatório de desempenho holístico para uma turma.
@@ -1227,6 +1237,7 @@ async def executar_pipeline_desempenho_turma(
         task_id=task_id,
         turma_id=turma_id,
         provider_id=provider_id,
+        force_reexec=force_reexec,
     )
 
     return {"task_id": task_id, "status": "started"}
@@ -1236,9 +1247,16 @@ async def _executar_desempenho_turma_background(
     task_id: str,
     turma_id: str,
     provider_id: Optional[str],
+    force_reexec: bool = False,
 ):
     from executor import executor
     try:
+        await executor._cascade_prereqs(
+            level="turma",
+            entity_id=turma_id,
+            provider_id=provider_id,
+            force_reexec=force_reexec,
+        )
         resultado = await executor.gerar_relatorio_desempenho_turma(
             turma_id=turma_id,
             provider_id=provider_id,
@@ -1256,6 +1274,7 @@ async def executar_pipeline_desempenho_materia(
     background_tasks: BackgroundTasks,
     materia_id: str = Form(...),
     provider_id: Optional[str] = Form(None),
+    force_reexec: bool = Form(False),
 ):
     """
     Gera relatório de desempenho cross-turma para uma matéria.
@@ -1281,6 +1300,7 @@ async def executar_pipeline_desempenho_materia(
         task_id=task_id,
         materia_id=materia_id,
         provider_id=provider_id,
+        force_reexec=force_reexec,
     )
 
     return {"task_id": task_id, "status": "started"}
@@ -1290,9 +1310,16 @@ async def _executar_desempenho_materia_background(
     task_id: str,
     materia_id: str,
     provider_id: Optional[str],
+    force_reexec: bool = False,
 ):
     from executor import executor
     try:
+        await executor._cascade_prereqs(
+            level="materia",
+            entity_id=materia_id,
+            provider_id=provider_id,
+            force_reexec=force_reexec,
+        )
         resultado = await executor.gerar_relatorio_desempenho_materia(
             materia_id=materia_id,
             provider_id=provider_id,

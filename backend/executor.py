@@ -2283,7 +2283,7 @@ Seja preciso, educativo e construtivo em suas análises."""
             raw_content = resposta.get("content", "")
             is_sentinel = raw_content == "[Maximum tool iterations reached]"
 
-            if not raw_content or is_sentinel:
+            if not raw_content.strip() or is_sentinel:
                 # Look for create_document tool calls — their input contains the actual content
                 for tc in tool_calls:
                     if tc.get("name") == "create_document":
