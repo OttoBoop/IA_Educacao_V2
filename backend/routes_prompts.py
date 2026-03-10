@@ -1146,6 +1146,7 @@ async def executar_pipeline_desempenho_tarefa(
     atividade_id: str = Form(...),
     provider_id: Optional[str] = Form(None),
     force_reexec: bool = Form(False),
+    etapas_selecionadas: Optional[str] = Form(None),
 ):
     """
     Gera relatório de desempenho agregado para uma atividade.
@@ -1209,6 +1210,7 @@ async def executar_pipeline_desempenho_turma(
     turma_id: str = Form(...),
     provider_id: Optional[str] = Form(None),
     force_reexec: bool = Form(False),
+    etapas_selecionadas: Optional[str] = Form(None),
 ):
     """
     Gera relatório de desempenho holístico para uma turma.
@@ -1275,6 +1277,7 @@ async def executar_pipeline_desempenho_materia(
     materia_id: str = Form(...),
     provider_id: Optional[str] = Form(None),
     force_reexec: bool = Form(False),
+    etapas_selecionadas: Optional[str] = Form(None),
 ):
     """
     Gera relatório de desempenho cross-turma para uma matéria.

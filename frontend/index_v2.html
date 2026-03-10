@@ -9984,14 +9984,24 @@
             openModal('modal-desempenho-settings');
         }
 
-        // G-T2: Execute from modal — reads settings (provider + prompt) and calls executarDesempenho
+        // G-T2: Execute from modal — reads settings (provider + prompt + force + etapas) and calls executarDesempenho
         function executarDesempenhoFromModal() {
             const level = document.getElementById('input-desempenho-level').value;
             const entityId = document.getElementById('input-desempenho-entity-id').value;
             const providerId = document.getElementById('input-desempenho-provider')?.value || null;
             const promptId = document.getElementById('input-desempenho-prompt')?.value || null;
+            // FC-T2: Read force re-run checkbox
+            const forceReexec = document.getElementById('input-desempenho-force-rerun')?.checked || false;
+            // FC-T2: Collect etapas checkboxes — { aluno_id: [stage1, stage2, ...] }
+            const etapasMap = {};
+            document.querySelectorAll('.desempenho-etapa-check:checked').forEach(cb => {
+                const alunoId = cb.dataset.aluno;
+                const stage = cb.dataset.stage;
+                if (!etapasMap[alunoId]) etapasMap[alunoId] = [];
+                etapasMap[alunoId].push(stage);
+            });
             closeModal('modal-desempenho-settings');
-            executarDesempenho(level, entityId, providerId, promptId);
+            executarDesempenho(level, entityId, providerId, promptId, forceReexec, etapasMap);
         }
 
         // B-T4: Progress indicator state
@@ -10001,7 +10011,7 @@
         let _desempenhoActiveTask = null;
         let _desempenhoPollInterval = null;
 
-        async function executarDesempenho(level, entityId, providerId = null, promptId = null) {
+        async function executarDesempenho(level, entityId, providerId = null, promptId = null, forceReexec = false, etapasSelecionadas = null) {
             // B-T4: Prevent concurrent generation
             if (_desempenhoGenerating) return;
 
@@ -10043,6 +10053,11 @@
                 // G-T2: Forward provider and prompt selection from settings modal
                 if (providerId) formData.append('provider_id', providerId);
                 if (promptId) formData.append('prompt_id', promptId);
+                // FC-T2: Forward force_reexec and etapas_selecionadas
+                if (forceReexec) formData.append('force_reexec', 'true');
+                if (etapasSelecionadas && Object.keys(etapasSelecionadas).length > 0) {
+                    formData.append('etapas_selecionadas', JSON.stringify(etapasSelecionadas));
+                }
 
                 const result = await apiForm(endpoint, formData);
 
