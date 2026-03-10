@@ -2800,6 +2800,108 @@ Crie UM documento separado para cada aluno, nomeando como "relatorio_[nome_aluno
         }
 
     # ============================================================
+    # CASCADE PRE-PIPELINE (FC-T1 — F2-T4)
+    # ============================================================
+
+    async def _cascade_prereqs(
+        self,
+        level: str,
+        entity_id: str,
+        provider_id: Optional[str] = None,
+        force_reexec: bool = False,
+    ) -> Dict[str, Any]:
+        """
+        Ensure all upstream prerequisite docs exist before running desempenho.
+
+        For 'tarefa' level:
+          - For each aluno in the atividade's turma, if RELATORIO_FINAL is missing
+            (or force_reexec=True), run executar_pipeline_completo().
+
+        For 'turma' level:
+          - For each atividade in the turma, if RELATORIO_DESEMPENHO_TAREFA is
+            missing (or force_reexec), run _cascade_prereqs('tarefa', ...) then
+            gerar_relatorio_desempenho_tarefa().
+
+        For 'materia' level:
+          - For each turma in the materia, if RELATORIO_DESEMPENHO_TURMA is
+            missing (or force_reexec), run _cascade_prereqs('turma', ...) then
+            gerar_relatorio_desempenho_turma().
+
+        Returns a summary dict with lists of created/skipped/failed entries.
+        """
+        created = []
+        skipped = []
+        failed = []
+
+        if level == "tarefa":
+            atividade = self.storage.get_atividade(entity_id)
+            if not atividade:
+                return {"created": created, "skipped": skipped, "failed": [f"atividade {entity_id} not found"]}
+
+            alunos = self.storage.listar_alunos(atividade.turma_id)
+            docs = self.storage.listar_documentos(entity_id)
+            alunos_com_relatorio = {
+                d.aluno_id for d in docs
+                if d.tipo == TipoDocumento.RELATORIO_FINAL
+            }
+
+            for aluno in alunos:
+                if not force_reexec and aluno.id in alunos_com_relatorio:
+                    skipped.append(aluno.id)
+                    continue
+                resultado = await self.executar_pipeline_completo(
+                    entity_id,
+                    aluno.id,
+                    provider_name=provider_id,
+                    force_rerun=force_reexec,
+                )
+                last = list(resultado.values())[-1] if resultado else None
+                if last and last.sucesso:
+                    created.append(aluno.id)
+                else:
+                    failed.append(aluno.id)
+
+        elif level == "turma":
+            atividades = self.storage.listar_atividades(entity_id)
+            docs = self.storage.listar_documentos(entity_id)
+            atividades_com_desempenho = {
+                d.atividade_id for d in docs
+                if getattr(d, "tipo", None) == TipoDocumento.RELATORIO_DESEMPENHO_TAREFA
+            }
+
+            for atividade in atividades:
+                if not force_reexec and atividade.id in atividades_com_desempenho:
+                    skipped.append(atividade.id)
+                    continue
+                await self._cascade_prereqs("tarefa", atividade.id, provider_id, force_reexec)
+                resultado = await self.gerar_relatorio_desempenho_tarefa(atividade.id, provider_id)
+                if resultado.get("sucesso"):
+                    created.append(atividade.id)
+                else:
+                    failed.append(atividade.id)
+
+        elif level == "materia":
+            turmas = self.storage.listar_turmas(entity_id)
+            docs = self.storage.listar_documentos(entity_id)
+            turmas_com_desempenho = {
+                d.turma_id for d in docs
+                if getattr(d, "tipo", None) == TipoDocumento.RELATORIO_DESEMPENHO_TURMA
+            }
+
+            for turma in turmas:
+                if not force_reexec and turma.id in turmas_com_desempenho:
+                    skipped.append(turma.id)
+                    continue
+                await self._cascade_prereqs("turma", turma.id, provider_id, force_reexec)
+                resultado = await self.gerar_relatorio_desempenho_turma(turma.id, provider_id)
+                if resultado.get("sucesso"):
+                    created.append(turma.id)
+                else:
+                    failed.append(turma.id)
+
+        return {"created": created, "skipped": skipped, "failed": failed}
+
+    # ============================================================
     # PIPELINE COMPLETO (mantido do original)
     # ============================================================
 
