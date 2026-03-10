@@ -20,8 +20,8 @@ from .conftest import LIVE_URL, MATERIA_ID, TURMA_ID, ATIVIDADE_ID
 GENERATION_TIMEOUT = 300  # 5 minutes — desempenho LLM calls can be slow
 POLL_INTERVAL = 10        # seconds between task-progress polls
 
-# User requested: run all pipelines with Gemini Flash (fast, cheap)
-PROVIDER_ID = "gemini-3-flash-preview"
+# Use Gemini 3 Flash — fast, cheap. Live server ID verified via /api/providers/disponiveis
+PROVIDER_ID = "gem3flash001"
 
 pytestmark = [pytest.mark.live]
 
