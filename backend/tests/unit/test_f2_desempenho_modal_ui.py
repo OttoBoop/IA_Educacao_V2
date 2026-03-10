@@ -115,3 +115,55 @@ class TestF2T2DesempenhoModalCollapseJS:
             "The etapas tree JS must reference 'corrigir' and 'analisar' stages "
             "as selectable options for the per-student pipeline."
         )
+
+
+# ============================================================
+# F2-T3: Prefetch student pipeline states on modal open
+# ============================================================
+
+class TestF2T3PrefetchDesempenhoEtapasState:
+    """F2-T3: Modal must prefetch student pipeline states when opened, populating the etapas tree."""
+
+    def test_prefetch_function_exists(self, html_content):
+        assert "prefetchDesempenhoEtapasState" in html_content, (
+            "index_v2.html must define prefetchDesempenhoEtapasState -- "
+            "called on modal open to check which pipeline stages already have docs."
+        )
+
+    def test_prefetch_called_from_open_desempenho_settings(self, html_content):
+        fn_def_idx = html_content.find("function openDesempenhoSettings")
+        if fn_def_idx == -1:
+            fn_def_idx = html_content.find("openDesempenhoSettings")
+        assert fn_def_idx != -1, "openDesempenhoSettings must exist"
+        fn_body = html_content[fn_def_idx:fn_def_idx + 600]
+        assert "prefetchDesempenhoEtapasState" in fn_body, (
+            "openDesempenhoSettings must call prefetchDesempenhoEtapasState so the "
+            "etapas tree is populated when the modal opens."
+        )
+
+    def test_prefetch_fetches_documentos_or_alunos_api(self, html_content):
+        prefetch_idx = html_content.find("prefetchDesempenhoEtapasState")
+        assert prefetch_idx != -1, "prefetchDesempenhoEtapasState must exist"
+        fn_body = html_content[prefetch_idx:prefetch_idx + 1000]
+        assert "documentos" in fn_body or "alunos" in fn_body, (
+            "prefetchDesempenhoEtapasState must call /documentos (or /alunos) API "
+            "to determine which stages already have pipeline output docs."
+        )
+
+    def test_prefetch_renders_rows_via_render_function(self, html_content):
+        prefetch_idx = html_content.find("prefetchDesempenhoEtapasState")
+        assert prefetch_idx != -1, "prefetchDesempenhoEtapasState must exist"
+        fn_body = html_content[prefetch_idx:prefetch_idx + 1500]
+        assert "renderDesempenhoEtapasRow" in fn_body, (
+            "prefetchDesempenhoEtapasState must call renderDesempenhoEtapasRow "
+            "to populate the etapas tree with per-student rows."
+        )
+
+    def test_prefetch_populates_etapas_tree_element(self, html_content):
+        prefetch_idx = html_content.find("prefetchDesempenhoEtapasState")
+        assert prefetch_idx != -1, "prefetchDesempenhoEtapasState must exist"
+        fn_body = html_content[prefetch_idx:prefetch_idx + 1500]
+        assert "desempenho-etapas-tree" in fn_body, (
+            "prefetchDesempenhoEtapasState must reference desempenho-etapas-tree "
+            "to inject student rows into the correct container."
+        )
