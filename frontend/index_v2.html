@@ -4650,46 +4650,17 @@
         <div class="modal">
             <div class="modal-header">
                 <h3 class="modal-title">Configurar Relatório de Desempenho</h3>
+                <!-- F3-T1: Dynamic breadcrumb showing entity names -->
+                <div id="desempenho-breadcrumb" style="font-size:12px;color:var(--text-muted);margin-top:2px;"></div>
                 <button class="modal-close" onclick="closeModal('modal-desempenho-settings')">×</button>
             </div>
             <div class="modal-body">
-                <div class="form-group">
-                    <label class="form-label">Modelo de IA</label>
-                    <select class="form-select" id="input-desempenho-provider"></select>
-                </div>
-                <div class="form-group">
-                    <label class="form-label">Prompt</label>
-                    <select class="form-select" id="input-desempenho-prompt">
-                        <option value="">Usar prompt padrão</option>
-                    </select>
-                </div>
-                <div class="form-group">
-                    <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
-                        <input type="checkbox" id="input-desempenho-force-rerun">
-                        Forçar re-execução (criar nova versão)
-                    </label>
-                    <small style="color: var(--text-muted); display: block; margin-top: 4px;">
-                        Se marcado, gera um novo relatório mesmo se já existir um.
-                    </small>
-                </div>
-                <input type="hidden" id="input-desempenho-level">
-                <input type="hidden" id="input-desempenho-entity-id">
-                <!-- F2-T1: Etapas a Executar — per-student per-stage tree -->
-                <div class="form-group" id="desempenho-etapas-section">
-                    <label class="form-label" style="display: flex; align-items: center; justify-content: space-between; cursor: pointer;" onclick="toggleDesempenhoEtapas()">
-                        <span>Etapas a Executar</span>
-                        <span id="desempenho-etapas-toggle" style="font-size: 12px; color: var(--text-muted);">▶ Expandir</span>
-                    </label>
-                    <small style="color: var(--text-muted); display: block; margin-bottom: 6px;">
-                        Selecione quais etapas do pipeline executar para cada aluno antes de gerar o relatório.
-                    </small>
-                    <div id="desempenho-etapas-tree" style="display:none; border: 1px solid var(--border); border-radius: 6px; padding: 8px; max-height: 320px; overflow-y: auto;">
-                        <!-- Populated by renderDesempenhoEtapasRow() on modal open -->
-                        <div style="color: var(--text-muted); font-size: 13px; padding: 8px;">
-                            Carregando alunos...
-                        </div>
-                    </div>
-                </div>
+                <div class="form-group"><label class="form-label">Modelo de IA</label><select class="form-select" id="input-desempenho-provider"></select></div>
+                <div class="form-group"><label class="form-label">Prompt</label><select class="form-select" id="input-desempenho-prompt"><option value="">Usar prompt padrão</option></select></div>
+                <div class="form-group"><label style="display:flex;align-items:center;gap:8px;cursor:pointer;"><input type="checkbox" id="input-desempenho-force-rerun"> Forçar re-execução</label><small style="color:var(--text-muted);display:block;margin-top:4px;">Se marcado, gera novo relatório mesmo se já existir.</small></div>
+                <input type="hidden" id="input-desempenho-level"><input type="hidden" id="input-desempenho-entity-id">
+                <!-- F2-T4: Opções Avançadas --><div class="form-group"><label class="form-label" style="display:flex;align-items:center;justify-content:space-between;cursor:pointer;" onclick="toggleDesempenhoAdvanced()"><span>Opções Avançadas</span><span id="desempenho-advanced-toggle" style="font-size:12px;color:var(--text-muted);">▶ Expandir</span></label><div id="desempenho-advanced" style="display:none;padding:8px;"><select class="form-select" data-phase="extrair_questoes" id="desempenho-model-extrair_questoes" style="font-size:11px;"><option value="">Padrão</option></select><select class="form-select" data-phase="extrair_gabarito" id="desempenho-model-extrair_gabarito" style="font-size:11px;"><option value="">Padrão</option></select><select class="form-select" data-phase="extrair_respostas" id="desempenho-model-extrair_respostas" style="font-size:11px;"><option value="">Padrão</option></select><select class="form-select" data-phase="corrigir" id="desempenho-model-corrigir" style="font-size:11px;"><option value="">Padrão</option></select><select class="form-select" data-phase="analisar_habilidades" id="desempenho-model-analisar_habilidades" style="font-size:11px;"><option value="">Padrão</option></select><select class="form-select" data-phase="gerar_relatorio" id="desempenho-model-gerar_relatorio" style="font-size:11px;"><option value="">Padrão</option></select></div></div>
+                <!-- F2-T1: Etapas --><div class="form-group" id="desempenho-etapas-section"><label class="form-label" style="display:flex;align-items:center;justify-content:space-between;cursor:pointer;" onclick="toggleDesempenhoEtapas()"><span>Etapas a Executar</span><span id="desempenho-etapas-toggle" style="font-size:12px;color:var(--text-muted);">▶ Expandir</span></label><small style="color:var(--text-muted);display:block;margin-bottom:6px;">Selecione etapas do pipeline para cada aluno.</small><div id="desempenho-etapas-tree" style="display:none;border:1px solid var(--border);border-radius:6px;padding:8px;max-height:320px;overflow-y:auto;"><div style="color:var(--text-muted);font-size:13px;padding:8px;">Carregando alunos...</div></div></div>
             </div>
             <div class="modal-footer">
                 <button class="btn" onclick="closeModal('modal-desempenho-settings')">Cancelar</button>
@@ -9906,6 +9877,69 @@
             }
         }
 
+        // F2-T4: Toggle advanced options section (per-phase selectors are static HTML)
+        function toggleDesempenhoAdvanced() {
+            const section = document.getElementById('desempenho-advanced');
+            const toggle = document.getElementById('desempenho-advanced-toggle');
+            if (!section || !toggle) return;
+            if (section.style.display === 'none') { section.style.display = 'block'; toggle.textContent = '▼ Recolher'; }
+            else { section.style.display = 'none'; toggle.textContent = '▶ Expandir'; }
+        }
+
+        // F2-T3: Lazy-load expand function — loads children on demand when group header is clicked
+        async function expandDesempenhoGroup(headerEl, groupType, groupId, turmaId) {
+            const childrenContainer = headerEl.nextElementSibling;
+            if (!childrenContainer) return;
+            // Toggle visibility
+            if (childrenContainer.style.display !== 'none') {
+                childrenContainer.style.display = 'none';
+                headerEl.dataset.expanded = 'false';
+                return;
+            }
+            childrenContainer.style.display = 'block';
+            headerEl.dataset.expanded = 'true';
+            // If already loaded, just show
+            if (childrenContainer.dataset.loaded === 'true') return;
+            childrenContainer.innerHTML = '<div style="color:var(--text-muted);font-size:12px;padding:4px;">Carregando...</div>';
+            try {
+                if (groupType === 'atividade') {
+                    // Load alunos + docs for this atividade
+                    const [alunosData, docsData] = await Promise.all([
+                        api(`/alunos?turma_id=${turmaId}`).catch(() => ({ alunos: [] })),
+                        api(`/documentos?atividade_id=${groupId}`).catch(() => ({ documentos: [] }))
+                    ]);
+                    const alunos = alunosData.alunos || [];
+                    const docs = docsData.documentos || [];
+                    const existingDocs = new Set(docs.filter(d => d.aluno_id).map(d => `${d.aluno_id}:${d.tipo}`));
+                    docs.filter(d => !d.aluno_id).forEach(d => { alunos.forEach(a => existingDocs.add(`${a.id}:${d.tipo}`)); });
+                    let html = '';
+                    for (const aluno of alunos) {
+                        const s = { extrair_questoes: existingDocs.has(`${aluno.id}:extracao_questoes`), extrair_gabarito: existingDocs.has(`${aluno.id}:extracao_gabarito`), extrair_respostas: existingDocs.has(`${aluno.id}:extracao_respostas`), corrigir: existingDocs.has(`${aluno.id}:correcao`), analisar: existingDocs.has(`${aluno.id}:analise_habilidades`), relatorio: existingDocs.has(`${aluno.id}:relatorio_final`) };
+                        html += renderDesempenhoEtapasRow(aluno.id, aluno.nome, s);
+                    }
+                    childrenContainer.innerHTML = html || '<div style="color:var(--text-muted);font-size:12px;padding:4px;">Nenhum aluno encontrado.</div>';
+                } else if (groupType === 'turma') {
+                    // Load atividades for this turma, render as collapsed atividade groups
+                    const [ativData, alunosData] = await Promise.all([
+                        api(`/atividades?turma_id=${groupId}`).catch(() => ({ atividades: [] })),
+                        api(`/alunos?turma_id=${groupId}`).catch(() => ({ alunos: [] }))
+                    ]);
+                    const atividades = ativData.atividades || [];
+                    if (!atividades.length) { childrenContainer.innerHTML = '<div style="color:var(--text-muted);font-size:12px;padding:4px;">Nenhuma atividade encontrada.</div>'; childrenContainer.dataset.loaded = 'true'; return; }
+                    let html = '';
+                    for (const ativ of atividades) {
+                        html += `<div class="desempenho-atividade-group" style="margin-left:16px;margin-bottom:8px;">` +
+                            `<div class="desempenho-group-header" style="font-size:13px;font-weight:600;padding:4px 0;border-bottom:1px solid var(--border);cursor:pointer;" onclick="expandDesempenhoGroup(this, 'atividade', '${ativ.id}', '${groupId}')">${escapeHtml(ativ.nome || ativ.id)} ▶</div>` +
+                            `<div class="desempenho-lazy-children" style="display:none;" data-loaded="false"></div></div>`;
+                    }
+                    childrenContainer.innerHTML = html;
+                }
+                childrenContainer.dataset.loaded = 'true';
+            } catch (e) {
+                childrenContainer.innerHTML = '<div style="color:var(--text-muted);font-size:12px;padding:4px;">Erro ao carregar dados.</div>';
+            }
+        }
+
         // F2-T2: Render a per-student row with per-stage checkboxes inside the etapas tree
         function renderDesempenhoEtapasRow(alunoId, alunoNome, stagesExistentes) {
             // stagesExistentes: { extrair_questoes: bool, extrair_gabarito: bool, extrair_respostas: bool, corrigir: bool, analisar: bool, relatorio: bool }
@@ -9974,30 +10008,18 @@
                         docs = docsData.documentos || [];
                     }
                 } else if (level === 'turma') {
-                    // F2-T2: Turma level — group by atividade
-                    const [ativData, alunosData] = await Promise.all([
-                        api(`/atividades?turma_id=${entityId}`).catch(() => ({ atividades: [] })),
-                        api(`/alunos?turma_id=${entityId}`).catch(() => ({ alunos: [] }))
-                    ]);
-                    const atividades = ativData.atividades || [];
-                    alunos = alunosData.alunos || [];
-                    if (!atividades.length || !alunos.length) { treeEl.innerHTML = '<div style="color:var(--text-muted);font-size:13px;padding:8px;">Nenhum aluno encontrado.</div>'; return; }
-                    treeEl.innerHTML = await renderAtividadeGroups(atividades, alunos) || '<div style="color:var(--text-muted);font-size:13px;padding:8px;">Nenhum aluno encontrado.</div>';
+                    // F2-T3: lazy-load atividades
+                    const aD = await api(`/atividades?turma_id=${entityId}`).catch(() => ({atividades:[]}));
+                    const at = aD.atividades || [];
+                    if (!at.length) { treeEl.innerHTML = '<div style="color:var(--text-muted);font-size:13px;padding:8px;">Nenhum aluno encontrado.</div>'; return; }
+                    treeEl.innerHTML = at.map(a => `<div class="desempenho-atividade-group" style="margin-bottom:8px;"><div class="desempenho-group-header" style="font-size:14px;font-weight:600;padding:6px 0;border-bottom:2px solid var(--border);cursor:pointer;" onclick="expandDesempenhoGroup(this,'atividade','${a.id}','${entityId}')">${escapeHtml(a.nome||a.id)} ▶</div><div class="desempenho-lazy-children" style="display:none;" data-collapsed="true" data-loaded="false"></div></div>`).join('');
                     return;
                 } else if (level === 'materia') {
-                    // F2-T2: Materia level — group by turma > atividade > aluno
-                    const turmasData = await api(`/turmas?materia_id=${entityId}`).catch(() => ({ turmas: [] }));
-                    const turmas = turmasData.turmas || [];
+                    // F2-T3: lazy-load turmas
+                    const tD = await api(`/turmas?materia_id=${entityId}`).catch(() => ({turmas:[]}));
+                    const turmas = tD.turmas || [];
                     if (!turmas.length) { treeEl.innerHTML = '<div style="color:var(--text-muted);font-size:13px;padding:8px;">Nenhuma turma encontrada.</div>'; return; }
-                    let html = '';
-                    for (const turma of turmas) {
-                        const turmaNome = escapeHtml(turma.nome || turma.id);
-                        html += `<div class="desempenho-turma-group"><div class="desempenho-turma-header">${turmaNome}</div>`;
-                        const [ativData2, alunosData2] = await Promise.all([api(`/atividades?turma_id=${turma.id}`).catch(() => ({ atividades: [] })), api(`/alunos?turma_id=${turma.id}`).catch(() => ({ alunos: [] }))]);
-                        html += await renderAtividadeGroups(ativData2.atividades || [], alunosData2.alunos || [], 16);
-                        html += '</div>';
-                    }
-                    treeEl.innerHTML = html || '<div style="color:var(--text-muted);font-size:13px;padding:8px;">Nenhum dado encontrado.</div>';
+                    treeEl.innerHTML = turmas.map(t => { const turmaNome = escapeHtml(t.nome||t.id); return `<div class="desempenho-turma-group"><div class="desempenho-turma-header" style="cursor:pointer;" onclick="expandDesempenhoGroup(this,'turma','${t.id}')">${turmaNome} ▶</div><div class="desempenho-lazy-children" style="display:none;" data-collapsed="true" data-loaded="false"></div></div>`; }).join('');
                     return;
                 }
                 if (alunos.length === 0) {
@@ -10031,9 +10053,19 @@
         async function openDesempenhoSettings(level, entityId) {
             document.getElementById('input-desempenho-level').value = level;
             document.getElementById('input-desempenho-entity-id').value = entityId;
+            // F3-T1: Map level to breadcrumb API tipo
+            const breadcrumbTipo = level === 'tarefa' ? 'atividade' : level;
             await Promise.all([
                 carregarDesempenhoProviders(),
-                prefetchDesempenhoEtapasState(level, entityId)
+                prefetchDesempenhoEtapasState(level, entityId),
+                // F3-T1: Fetch entity names via breadcrumb API and populate desempenho-breadcrumb
+                api(`/navegacao/breadcrumb/${breadcrumbTipo}/${entityId}`).then(data => {
+                    const bcEl = document.getElementById('desempenho-breadcrumb');
+                    if (!bcEl || !data || !data.breadcrumb) return;
+                    const levelLabels = { tarefa: 'Desempenho da tarefa', turma: 'Desempenho da turma', materia: 'Desempenho da matéria' };
+                    const names = data.breadcrumb.map(b => b.nome).join(' > ');
+                    bcEl.innerHTML = names + (names ? ' > ' : '') + (levelLabels[level] || '');
+                }).catch(() => {})
             ]);
             openModal('modal-desempenho-settings');
         }
@@ -10054,8 +10086,15 @@
                 if (!etapasMap[alunoId]) etapasMap[alunoId] = [];
                 etapasMap[alunoId].push(stage);
             });
+            // F2-T4: Collect per-phase model selections from data-phase selectors
+            const phaseModels = {};
+            document.querySelectorAll('[data-phase]').forEach(sel => {
+                const phase = sel.dataset.phase;
+                const val = sel.value;
+                if (val) phaseModels[phase] = val;
+            });
             closeModal('modal-desempenho-settings');
-            executarDesempenho(level, entityId, providerId, promptId, forceReexec, etapasMap);
+            executarDesempenho(level, entityId, providerId, promptId, forceReexec, etapasMap, phaseModels);
         }
 
         // B-T4: Progress indicator state — F1-T1: per-level-entity object (not global boolean)
@@ -10065,7 +10104,7 @@
         let _desempenhoActiveTask = null;
         let _desempenhoPollInterval = null;
 
-        async function executarDesempenho(level, entityId, providerId = null, promptId = null, forceReexec = false, etapasSelecionadas = null) {
+        async function executarDesempenho(level, entityId, providerId = null, promptId = null, forceReexec = false, etapasSelecionadas = null, phaseModels = null) {
             // B-T4: Prevent concurrent generation — F1-T1: per-level-entity key
             const _desempenhoKey = level + '-' + entityId;
             if (_desempenhoGenerating[_desempenhoKey]) return;
