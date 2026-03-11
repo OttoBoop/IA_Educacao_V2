@@ -2875,14 +2875,14 @@ Crie UM documento separado para cada aluno, nomeando como "relatorio_[nome_aluno
 
         elif level == "turma":
             atividades = self.storage.listar_atividades(entity_id)
-            docs = self.storage.listar_documentos(entity_id)
-            atividades_com_desempenho = {
-                d.atividade_id for d in docs
-                if getattr(d, "tipo", None) == TipoDocumento.RELATORIO_DESEMPENHO_TAREFA
-            }
 
             for atividade in atividades:
-                if not force_reexec and atividade.id in atividades_com_desempenho:
+                # Query docs per-atividade (not turma_id) and check RELATORIO_FINAL
+                docs = self.storage.listar_documentos(atividade.id)
+                has_relatorio_final = any(
+                    d.tipo == TipoDocumento.RELATORIO_FINAL for d in docs
+                )
+                if not force_reexec and has_relatorio_final:
                     skipped.append(atividade.id)
                     continue
                 await self._cascade_prereqs("tarefa", atividade.id, provider_id, force_reexec)
@@ -2894,14 +2894,17 @@ Crie UM documento separado para cada aluno, nomeando como "relatorio_[nome_aluno
 
         elif level == "materia":
             turmas = self.storage.listar_turmas(entity_id)
-            docs = self.storage.listar_documentos(entity_id)
-            turmas_com_desempenho = {
-                d.turma_id for d in docs
-                if getattr(d, "tipo", None) == TipoDocumento.RELATORIO_DESEMPENHO_TURMA
-            }
 
             for turma in turmas:
-                if not force_reexec and turma.id in turmas_com_desempenho:
+                # Query docs per-atividade within each turma (not materia_id)
+                atividades = self.storage.listar_atividades(turma.id)
+                has_relatorio_final = False
+                for atividade in atividades:
+                    docs = self.storage.listar_documentos(atividade.id)
+                    if any(d.tipo == TipoDocumento.RELATORIO_FINAL for d in docs):
+                        has_relatorio_final = True
+                        break
+                if not force_reexec and has_relatorio_final:
                     skipped.append(turma.id)
                     continue
                 await self._cascade_prereqs("turma", turma.id, provider_id, force_reexec)
