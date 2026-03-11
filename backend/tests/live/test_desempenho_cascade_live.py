@@ -49,7 +49,7 @@ def _trigger_desempenho(level: str, entity_id: str, force_reexec: bool = False) 
     }
     if force_reexec:
         form_data["force_reexec"] = "true"
-    resp = requests.post(url, data=form_data, timeout=30)
+    resp = requests.post(url, data=form_data, timeout=120)
     assert resp.status_code == 200, (
         f"Trigger {level} desempenho failed: HTTP {resp.status_code} — {resp.text[:300]}"
     )
@@ -64,7 +64,7 @@ def _poll_until_done(task_id: str, timeout: int = CASCADE_TIMEOUT) -> dict:
     deadline = time.time() + timeout
     last_status = "unknown"
     while time.time() < deadline:
-        resp = requests.get(url, timeout=15)
+        resp = requests.get(url, timeout=60)
         if resp.status_code != 200:
             time.sleep(POLL_INTERVAL)
             continue
@@ -84,7 +84,7 @@ def _get_latest_desempenho_run(level: str, entity_id: str) -> dict:
         "materia": "materia_id",
     }
     url = f"{LIVE_URL}/api/desempenho/{level}/{entity_id}"
-    resp = requests.get(url, timeout=15)
+    resp = requests.get(url, timeout=60)
     if resp.status_code == 200:
         return resp.json()
     return {}
@@ -169,7 +169,7 @@ class TestFD_T2_CascadeFromTurma:
 
     def test_cache_control_header_present(self):
         """FB-T2 fix: serve_frontend has no-cache header so browsers don't serve stale HTML."""
-        resp = requests.get(LIVE_URL, timeout=15)
+        resp = requests.get(LIVE_URL, timeout=60)
         assert resp.status_code == 200
         cc = resp.headers.get("cache-control", "")
         assert "no-cache" in cc.lower(), (

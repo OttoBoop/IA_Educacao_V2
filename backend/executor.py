@@ -2856,7 +2856,10 @@ Crie UM documento separado para cada aluno, nomeando como "relatorio_[nome_aluno
                     force_rerun=force_reexec,
                 )
                 last = list(resultado.values())[-1] if resultado else None
-                if last and last.sucesso:
+                last_ok = getattr(last, "sucesso", None) if last else None
+                if last_ok is None and isinstance(last, dict):
+                    last_ok = last.get("sucesso")
+                if last_ok:
                     created.append(aluno.id)
                 else:
                     failed.append(aluno.id)
