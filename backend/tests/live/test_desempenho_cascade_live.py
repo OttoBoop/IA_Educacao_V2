@@ -20,8 +20,8 @@ from .conftest import LIVE_URL, MATERIA_ID, TURMA_ID, ATIVIDADE_ID
 CASCADE_TIMEOUT = 600  # 10 minutes — cascade triggers multiple LLM calls
 POLL_INTERVAL = 15     # seconds between task-progress polls
 
-# Use Gemini 3 Flash — fast, cheap
-PROVIDER_ID = "gem3flash001"
+# GPT-4.1 — supports function calling, reasonable cost
+PROVIDER_ID = "ffae9accf68e"
 
 pytestmark = [pytest.mark.live]
 
@@ -77,17 +77,38 @@ def _poll_until_done(task_id: str, timeout: int = CASCADE_TIMEOUT) -> dict:
 
 
 def _get_latest_desempenho_run(level: str, entity_id: str) -> dict:
-    """Fetch the latest desempenho run for a given level+entity."""
-    param_map = {
-        "tarefa":  "atividade_id",
-        "turma":   "turma_id",
-        "materia": "materia_id",
-    }
+    """Fetch the latest desempenho run for a given level+entity.
+
+    Returns a dict with 'resposta_raw' extracted from the document content,
+    plus the raw run metadata.
+    """
     url = f"{LIVE_URL}/api/desempenho/{level}/{entity_id}"
     resp = requests.get(url, timeout=60)
-    if resp.status_code == 200:
-        return resp.json()
-    return {}
+    if resp.status_code != 200:
+        return {}
+    data = resp.json()
+    runs = data.get("runs", [])
+    if not runs:
+        return {}
+    latest = runs[0]
+
+    # Fetch actual document content to get resposta_raw
+    docs = latest.get("docs", [])
+    if docs:
+        doc_id = docs[0].get("id")
+        if doc_id:
+            doc_resp = requests.get(
+                f"{LIVE_URL}/api/documentos/{doc_id}/conteudo", timeout=60
+            )
+            if doc_resp.status_code == 200:
+                doc_data = doc_resp.json()
+                conteudo = doc_data.get("conteudo", {})
+                if isinstance(conteudo, dict):
+                    latest["resposta_raw"] = conteudo.get("resposta_raw", "")
+                elif isinstance(conteudo, str):
+                    latest["resposta_raw"] = conteudo
+
+    return latest
 
 
 # ============================================================
