@@ -9735,9 +9735,10 @@
             if (!container) return;
 
             // D-T3: Check for active desempenho task in taskQueue.pipelineTasks (restore-on-return)
+            // F1-T1: filter by specific level — materia task must NOT block turma display
             const activeTaskId = Object.keys(taskQueue.pipelineTasks).find(id => {
                 const t = taskQueue.pipelineTasks[id];
-                return t.status === 'running' && t.type && t.type.startsWith('pipeline_desempenho_');
+                return t.status === 'running' && t.type === 'pipeline_desempenho_' + level;
             });
             if (activeTaskId && generateArea) {
                 // F1-T1: per-level-entity restore
@@ -9748,8 +9749,8 @@
                         <span>Gerando relatório...</span>
                     </div>
                 `;
-                // Re-attach polling if lost (e.g., tab navigation)
-                if (!_desempenhoPollInterval) {
+                // Re-attach polling if lost (e.g., tab navigation) — F1-T1: per-key check
+                if (!_desempenhoPollIntervals[level + '-' + entityId]) {
                     _awaitDesempenhoCompletion(activeTaskId, level, entityId, generateArea);
                 }
                 return; // Don't load data yet — task still running
@@ -10099,12 +10100,12 @@
             executarDesempenho(level, entityId, providerId, promptId, forceReexec, etapasMap, phaseModels);
         }
 
-        // B-T4: Progress indicator state — F1-T1: per-level-entity object (not global boolean)
+        // B-T4: Progress indicator state — F1-T1: ALL state per-level-entity (not global singletons)
         let _desempenhoGenerating = {};
-        let _desempenhoTimer = null;
-        // D-T1: Track active desempenho task for polling
-        let _desempenhoActiveTask = null;
-        let _desempenhoPollInterval = null;
+        let _desempenhoTimers = {};
+        // D-T1: Track active desempenho tasks for polling — F1-T1: per-key
+        let _desempenhoActiveTasks = {};
+        let _desempenhoPollIntervals = {};
 
         async function executarDesempenho(level, entityId, providerId = null, promptId = null, forceReexec = false, etapasSelecionadas = null, phaseModels = null) {
             // B-T4: Prevent concurrent generation — F1-T1: per-level-entity key
@@ -10133,13 +10134,13 @@
                 generateArea.innerHTML = `
                     <div style="display: flex; align-items: center; gap: 8px;">
                         <span class="spinner"></span>
-                        <span>Gerando relatório... <span id="desempenho-elapsed">${elapsed}s</span></span>
+                        <span>Gerando relatório... <span id="desempenho-elapsed-${_desempenhoKey}">${elapsed}s</span></span>
                     </div>
                 `;
             }
-            _desempenhoTimer = setInterval(() => {
+            _desempenhoTimers[_desempenhoKey] = setInterval(() => {
                 elapsed++;
-                const el = document.getElementById('desempenho-elapsed');
+                const el = document.getElementById(`desempenho-elapsed-${_desempenhoKey}`);
                 if (el) el.textContent = `${elapsed}s`;
             }, 1000);
 
@@ -10161,8 +10162,8 @@
                 const taskId = result.task_id;
                 if (!taskId) throw new Error('No task_id returned from server');
 
-                // D-T1: Store context for completion handler
-                _desempenhoActiveTask = { taskId, level, entityId };
+                // D-T1: Store context for completion handler — F1-T1: per-key
+                _desempenhoActiveTasks[_desempenhoKey] = { taskId, level, entityId };
 
                 // D-T1: Register in sidebar + start polling (reuses existing pipeline pattern)
                 taskQueue.addBackendTask(taskId, {
@@ -10193,14 +10194,15 @@
 
         // D-T1: Cleanup helper for desempenho progress state
         function _cleanupDesempenhoProgress(generateArea, level, entityId) {
-            clearInterval(_desempenhoTimer);
-            _desempenhoTimer = null;
-            // F1-T1: per-level-entity cleanup
-            delete _desempenhoGenerating[level + '-' + entityId];
-            _desempenhoActiveTask = null;
-            if (_desempenhoPollInterval) {
-                clearInterval(_desempenhoPollInterval);
-                _desempenhoPollInterval = null;
+            // F1-T1: per-key cleanup — only clear state for this specific level+entity
+            const key = level + '-' + entityId;
+            clearInterval(_desempenhoTimers[key]);
+            delete _desempenhoTimers[key];
+            delete _desempenhoGenerating[key];
+            delete _desempenhoActiveTasks[key];
+            if (_desempenhoPollIntervals[key]) {
+                clearInterval(_desempenhoPollIntervals[key]);
+                delete _desempenhoPollIntervals[key];
             }
             if (generateArea) {
                 generateArea.innerHTML = `
@@ -10245,7 +10247,9 @@
                 }
             };
 
-            _desempenhoPollInterval = setInterval(poll, 3000);
+            // F1-T1: per-key poll interval
+            const _pollKey = level + '-' + entityId;
+            _desempenhoPollIntervals[_pollKey] = setInterval(poll, 3000);
             poll(); // Also poll immediately
         }
 
