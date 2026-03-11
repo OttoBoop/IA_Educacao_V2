@@ -7209,12 +7209,15 @@
         taskQueue._sidebarRender = renderTarefasTree;
 
         function cancelTask(backendTaskId) {
+            // F1-T2: Confirmation dialog before cancel
+            if (!confirm('Tem certeza que deseja cancelar esta tarefa?')) return;
             // Signal backend to cancel (F6-T1)
             fetch('/api/task-cancel/' + backendTaskId, { method: 'POST' })
                 .catch(err => console.warn('[Cancel] Failed:', err.message));
             const task = taskQueue.pipelineTasks[backendTaskId];
             if (task) {
                 task.cancel_requested = true;
+                task.status = 'cancelled';
                 taskQueue.updateUI();
             }
         }
@@ -9930,6 +9933,25 @@
         }
 
 
+        // F2-T2: Helper — render atividade group headers with aluno rows inside
+        async function renderAtividadeGroups(atividades, alunos, marginLeft) {
+            const ml = marginLeft ? `margin-left:${marginLeft}px;` : '';
+            let html = '';
+            for (const ativ of atividades) {
+                const docsData = await api(`/documentos?atividade_id=${ativ.id}`).catch(() => ({ documentos: [] }));
+                const ativDocs = docsData.documentos || [];
+                const existingDocs = new Set(ativDocs.filter(d => d.aluno_id).map(d => `${d.aluno_id}:${d.tipo}`));
+                ativDocs.filter(d => !d.aluno_id).forEach(d => { alunos.forEach(a => existingDocs.add(`${a.id}:${d.tipo}`)); });
+                html += `<div class="desempenho-atividade-group" style="${ml}margin-bottom:12px;"><div class="desempenho-group-header" style="font-size:14px;font-weight:600;padding:6px 0;border-bottom:2px solid var(--border);margin-bottom:4px;">${escapeHtml(ativ.nome || ativ.id)}</div>`;
+                for (const aluno of alunos) {
+                    const s = { extrair_questoes: existingDocs.has(`${aluno.id}:extracao_questoes`), extrair_gabarito: existingDocs.has(`${aluno.id}:extracao_gabarito`), extrair_respostas: existingDocs.has(`${aluno.id}:extracao_respostas`), corrigir: existingDocs.has(`${aluno.id}:correcao`), analisar: existingDocs.has(`${aluno.id}:analise_habilidades`), relatorio: existingDocs.has(`${aluno.id}:relatorio_final`) };
+                    html += renderDesempenhoEtapasRow(aluno.id, aluno.nome, s);
+                }
+                html += '</div>';
+            }
+            return html;
+        }
+
         // F2-T3: Prefetch student pipeline states to populate etapas tree on modal open
         async function prefetchDesempenhoEtapasState(level, entityId) {
             // Populates tree with renderDesempenhoEtapasRow() for each aluno + their stage states.
@@ -9952,10 +9974,31 @@
                         docs = docsData.documentos || [];
                     }
                 } else if (level === 'turma') {
-                    // entityId = turma_id; show all atividades for this turma
-                    const alunosData = await api(`/alunos?turma_id=${entityId}`).catch(() => ({ alunos: [] }));
+                    // F2-T2: Turma level — group by atividade
+                    const [ativData, alunosData] = await Promise.all([
+                        api(`/atividades?turma_id=${entityId}`).catch(() => ({ atividades: [] })),
+                        api(`/alunos?turma_id=${entityId}`).catch(() => ({ alunos: [] }))
+                    ]);
+                    const atividades = ativData.atividades || [];
                     alunos = alunosData.alunos || [];
-                    docs = [];
+                    if (!atividades.length || !alunos.length) { treeEl.innerHTML = '<div style="color:var(--text-muted);font-size:13px;padding:8px;">Nenhum aluno encontrado.</div>'; return; }
+                    treeEl.innerHTML = await renderAtividadeGroups(atividades, alunos) || '<div style="color:var(--text-muted);font-size:13px;padding:8px;">Nenhum aluno encontrado.</div>';
+                    return;
+                } else if (level === 'materia') {
+                    // F2-T2: Materia level — group by turma > atividade > aluno
+                    const turmasData = await api(`/turmas?materia_id=${entityId}`).catch(() => ({ turmas: [] }));
+                    const turmas = turmasData.turmas || [];
+                    if (!turmas.length) { treeEl.innerHTML = '<div style="color:var(--text-muted);font-size:13px;padding:8px;">Nenhuma turma encontrada.</div>'; return; }
+                    let html = '';
+                    for (const turma of turmas) {
+                        const turmaNome = escapeHtml(turma.nome || turma.id);
+                        html += `<div class="desempenho-turma-group"><div class="desempenho-turma-header">${turmaNome}</div>`;
+                        const [ativData2, alunosData2] = await Promise.all([api(`/atividades?turma_id=${turma.id}`).catch(() => ({ atividades: [] })), api(`/alunos?turma_id=${turma.id}`).catch(() => ({ alunos: [] }))]);
+                        html += await renderAtividadeGroups(ativData2.atividades || [], alunosData2.alunos || [], 16);
+                        html += '</div>';
+                    }
+                    treeEl.innerHTML = html || '<div style="color:var(--text-muted);font-size:13px;padding:8px;">Nenhum dado encontrado.</div>';
+                    return;
                 }
                 if (alunos.length === 0) {
                     treeEl.innerHTML = '<div style="color:var(--text-muted);font-size:13px;padding:8px;">Nenhum aluno encontrado.</div>';
@@ -10149,6 +10192,9 @@
                             `;
                         }
                         showToast('❌ Erro ao gerar relatório: ' + (data.error || 'Erro desconhecido'), 'error');
+                    } else if (data.status === 'cancelled') {
+                        _cleanupDesempenhoProgress(generateArea, level, entityId);
+                        showToast('⛔ Geração cancelada pelo usuário', 'info');
                     }
                     // else 'running' — keep polling
                 } catch (err) {
