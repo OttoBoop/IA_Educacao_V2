@@ -38,6 +38,11 @@ def _apply_executar_com_tools_extraction_logic(raw_content: str, tool_calls: lis
         for tc in tool_calls:
             if tc.get("name") == "create_document":
                 doc_content = tc.get("input", {}).get("content", "")
+                if not doc_content:
+                    for doc in tc.get("input", {}).get("documents", []):
+                        if doc.get("content"):
+                            doc_content = doc["content"]
+                            break
                 if doc_content:
                     raw_content = doc_content
                     break
@@ -117,6 +122,28 @@ class TestFA_T1_TurmaBlankDocRootCause:
             "Full report text from LLM", []
         )
         assert result == "Full report text from LLM"
+
+    def test_content_extracted_from_documents_array(self):
+        """
+        FA-T2: When create_document uses the documents array format
+        (input.documents[0].content) instead of input.content, the
+        extraction logic must find it there.
+        """
+        tool_calls = [
+            {
+                "name": "create_document",
+                "input": {
+                    "documents": [
+                        {"filename": "report.json", "content": "Report from documents array"}
+                    ]
+                }
+            }
+        ]
+        result = _apply_executar_com_tools_extraction_logic("", tool_calls)
+        assert result == "Report from documents array", (
+            "FA-T2: extraction must check input.documents[].content when "
+            "input.content is absent."
+        )
 
 
 # ============================================================

@@ -2287,7 +2287,14 @@ Seja preciso, educativo e construtivo em suas análises."""
                 # Look for create_document tool calls — their input contains the actual content
                 for tc in tool_calls:
                     if tc.get("name") == "create_document":
+                        # Check top-level content first
                         doc_content = tc.get("input", {}).get("content", "")
+                        # If not there, check inside documents array
+                        if not doc_content:
+                            for doc in tc.get("input", {}).get("documents", []):
+                                if doc.get("content"):
+                                    doc_content = doc["content"]
+                                    break
                         if doc_content:
                             raw_content = doc_content
                             break
