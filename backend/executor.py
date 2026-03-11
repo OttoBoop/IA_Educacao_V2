@@ -2109,14 +2109,16 @@ class PipelineExecutor:
                             if not model:
                                 # Create a temporary model-like object from config
                                 from chat_service import ModelConfig
+                                provider_type = config.get("tipo", "openai")
                                 model = ModelConfig(
                                     id=provider_id,
                                     nome=config.get("modelo", provider_id),
-                                    tipo=ProviderType(config.get("tipo", "openai")),
+                                    tipo=ProviderType(provider_type),
                                     modelo=config.get("modelo", ""),
                                     max_tokens=config.get("max_tokens", 4096),
                                     temperature=config.get("temperature", 0.7),
                                     suporta_temperature=config.get("suporta_temperature", True),
+                                    suporta_function_calling=provider_type in ("openai", "anthropic", "google"),
                                 )
                     except Exception as e:
                         print(f"[executar_com_tools] Fallback provider resolution failed: {e}")
