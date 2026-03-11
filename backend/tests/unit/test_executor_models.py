@@ -81,7 +81,8 @@ class TestResultadoExecucao:
             'resposta_raw', 'resposta_parsed', 'tokens_entrada',
             'tokens_saida', 'tempo_ms', 'documento_id',
             'anexos_enviados', 'anexos_confirmados', 'alertas', 'erro',
-            'erro_codigo', 'retryable', 'retry_after', 'tentativas'
+            'erro_codigo', 'retryable', 'retry_after', 'tentativas',
+            'pdf_fallback_used'
         }
 
         assert set(result_dict.keys()) == expected_keys

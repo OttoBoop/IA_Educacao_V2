@@ -93,6 +93,10 @@ class ResultadoExecucao:
     retry_after: Optional[int] = None  # Segundos para aguardar
     tentativas: int = 1  # Número de tentativas realizadas
 
+    # PDF fallback (F7-T1): True when LLM skipped execute_python_code
+    # and backend auto-generated PDF from create_document JSON content
+    pdf_fallback_used: bool = False
+
     def to_dict(self) -> Dict[str, Any]:
         etapa_valor = self.etapa.value if isinstance(self.etapa, EtapaProcessamento) else self.etapa
         return {
@@ -114,7 +118,8 @@ class ResultadoExecucao:
             "erro_codigo": self.erro_codigo,
             "retryable": self.retryable,
             "retry_after": self.retry_after,
-            "tentativas": self.tentativas
+            "tentativas": self.tentativas,
+            "pdf_fallback_used": self.pdf_fallback_used
         }
 
 
@@ -2305,6 +2310,92 @@ Seja preciso, educativo e construtivo em suas análises."""
             if raw_content == "[Maximum tool iterations reached]":
                 raw_content = ""
 
+            # F7-T1: PDF auto-fallback — detect if create_document was called
+            # but execute_python_code was NOT called (LLM skipped PDF generation)
+            pdf_fallback_used = False
+            all_tool_names_final = {tc.get("name") for tc in tool_calls}
+            # Also include first-pass tool names if E-T2 retry happened
+            if dual_output_expected and tentativas == 2:
+                all_tool_names_final |= tool_names_used
+
+            has_create_doc = "create_document" in all_tool_names_final
+            has_exec_code = "execute_python_code" in all_tool_names_final
+
+            if has_create_doc and not has_exec_code:
+                # LLM produced JSON but no PDF — auto-generate PDF from content
+                try:
+                    from document_generators import narrative_markdown_to_pdf, generate_pdf
+                    import logging
+                    logger = logging.getLogger(__name__)
+
+                    # Extract content from create_document tool calls
+                    fallback_content = raw_content
+                    if not fallback_content.strip():
+                        for tc in tool_calls:
+                            if tc.get("name") == "create_document":
+                                for doc in tc.get("input", {}).get("documents", []):
+                                    if doc.get("content"):
+                                        fallback_content = doc["content"]
+                                        break
+                                if fallback_content.strip():
+                                    break
+
+                    if fallback_content.strip():
+                        # Generate PDF from the content
+                        try:
+                            pdf_bytes = narrative_markdown_to_pdf(
+                                fallback_content,
+                                title="Relatório (PDF gerado automaticamente)"
+                            )
+                        except Exception:
+                            # Fallback to structured PDF generator
+                            pdf_bytes = generate_pdf(
+                                {"conteudo": fallback_content},
+                                title="Relatório (PDF gerado automaticamente)",
+                                doc_type="report"
+                            )
+
+                        # Save PDF to storage if we have context
+                        if pdf_bytes and hasattr(self, 'storage') and self.storage:
+                            import tempfile
+                            import os
+                            with tempfile.NamedTemporaryFile(suffix=".pdf", delete=False) as tmp:
+                                tmp.write(pdf_bytes)
+                                tmp_path = tmp.name
+                            try:
+                                from models import TipoDocumento
+                                self.storage.salvar_documento(
+                                    arquivo_origem=tmp_path,
+                                    tipo=TipoDocumento.RELATORIO_FINAL,
+                                    atividade_id=atividade_id,
+                                    aluno_id=aluno_id,
+                                    display_name="Relatório PDF (fallback automático)"
+                                )
+                            except Exception as save_err:
+                                logger.warning(f"PDF fallback: falha ao salvar PDF: {save_err}")
+                            finally:
+                                try:
+                                    os.unlink(tmp_path)
+                                except OSError:
+                                    pass
+
+                        pdf_fallback_used = True
+                        alertas.append({
+                            "tipo": "pdf_fallback",
+                            "mensagem": "Relatório PDF gerado automaticamente — modelo não produziu PDF via execute_python_code."
+                        })
+                        logger.warning(
+                            "PDF fallback triggered: LLM called create_document but not "
+                            "execute_python_code. Auto-generated PDF from JSON content."
+                        )
+                except Exception as fallback_err:
+                    import logging
+                    logging.getLogger(__name__).error(f"PDF fallback failed: {fallback_err}")
+                    alertas.append({
+                        "tipo": "pdf_fallback",
+                        "mensagem": f"Tentativa de gerar PDF automaticamente falhou: {fallback_err}"
+                    })
+
             return ResultadoExecucao(
                 sucesso=True,
                 etapa="tools",
@@ -2315,6 +2406,7 @@ Seja preciso, educativo e construtivo em suas análises."""
                 tempo_ms=tempo_ms,
                 alertas=alertas,
                 tentativas=tentativas,
+                pdf_fallback_used=pdf_fallback_used,
             )
             
         except Exception as e:
