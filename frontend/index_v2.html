@@ -9905,8 +9905,11 @@
 
         // F2-T2: Render a per-student row with per-stage checkboxes inside the etapas tree
         function renderDesempenhoEtapasRow(alunoId, alunoNome, stagesExistentes) {
-            // stagesExistentes: { corrigir: bool, analisar: bool, relatorio: bool }
+            // stagesExistentes: { extrair_questoes: bool, extrair_gabarito: bool, extrair_respostas: bool, corrigir: bool, analisar: bool, relatorio: bool }
             const stages = [
+                { key: 'extrair_questoes', label: 'Extrair Questões' },
+                { key: 'extrair_gabarito', label: 'Extrair Gabarito' },
+                { key: 'extrair_respostas', label: 'Extrair Respostas' },
                 { key: 'corrigir', label: 'Corrigir' },
                 { key: 'analisar', label: 'Analisar Habilidades' },
                 { key: 'relatorio', label: 'Relatório Final' },
@@ -9959,9 +9962,16 @@
                     return;
                 }
                 // Build a set of (aluno_id, tipo) from existing docs
-                const existingDocs = new Set(docs.map(d => `${d.aluno_id}:${d.tipo}`));
+                // For atividade-level docs (no aluno_id), replicate for each student
+                const existingDocs = new Set(docs.filter(d => d.aluno_id).map(d => `${d.aluno_id}:${d.tipo}`));
+                docs.filter(d => !d.aluno_id).forEach(d => {
+                    alunos.forEach(a => existingDocs.add(`${a.id}:${d.tipo}`));
+                });
                 const rows = alunos.map(aluno => {
                     const stagesExistentes = {
+                        extrair_questoes: existingDocs.has(`${aluno.id}:extracao_questoes`),
+                        extrair_gabarito: existingDocs.has(`${aluno.id}:extracao_gabarito`),
+                        extrair_respostas: existingDocs.has(`${aluno.id}:extracao_respostas`),
                         corrigir: existingDocs.has(`${aluno.id}:correcao`),
                         analisar: existingDocs.has(`${aluno.id}:analise_habilidades`),
                         relatorio: existingDocs.has(`${aluno.id}:relatorio_final`)
