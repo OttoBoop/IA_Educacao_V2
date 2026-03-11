@@ -9764,7 +9764,8 @@
                 return t.status === 'running' && t.type && t.type.startsWith('pipeline_desempenho_');
             });
             if (activeTaskId && generateArea) {
-                _desempenhoGenerating = true;
+                // F1-T1: per-level-entity restore
+                _desempenhoGenerating[level + '-' + entityId] = true;
                 generateArea.innerHTML = `
                     <div style="display: flex; align-items: center; gap: 8px;">
                         <span class="spinner"></span>
@@ -10004,16 +10005,17 @@
             executarDesempenho(level, entityId, providerId, promptId, forceReexec, etapasMap);
         }
 
-        // B-T4: Progress indicator state
-        let _desempenhoGenerating = false;
+        // B-T4: Progress indicator state — F1-T1: per-level-entity object (not global boolean)
+        let _desempenhoGenerating = {};
         let _desempenhoTimer = null;
         // D-T1: Track active desempenho task for polling
         let _desempenhoActiveTask = null;
         let _desempenhoPollInterval = null;
 
         async function executarDesempenho(level, entityId, providerId = null, promptId = null, forceReexec = false, etapasSelecionadas = null) {
-            // B-T4: Prevent concurrent generation
-            if (_desempenhoGenerating) return;
+            // B-T4: Prevent concurrent generation — F1-T1: per-level-entity key
+            const _desempenhoKey = level + '-' + entityId;
+            if (_desempenhoGenerating[_desempenhoKey]) return;
 
             const endpoints = {
                 'tarefa': '/executar/pipeline-desempenho-tarefa',
@@ -10030,8 +10032,8 @@
             const paramName = paramNames[level];
             const generateArea = document.getElementById(`desempenho-generate-area-${level}`);
 
-            // B-T4: Show inline progress indicator
-            _desempenhoGenerating = true;
+            // B-T4: Show inline progress indicator — F1-T1: per-level-entity
+            _desempenhoGenerating[_desempenhoKey] = true;
             let elapsed = 0;
             if (generateArea) {
                 generateArea.innerHTML = `
@@ -10099,7 +10101,8 @@
         function _cleanupDesempenhoProgress(generateArea, level, entityId) {
             clearInterval(_desempenhoTimer);
             _desempenhoTimer = null;
-            _desempenhoGenerating = false;
+            // F1-T1: per-level-entity cleanup
+            delete _desempenhoGenerating[level + '-' + entityId];
             _desempenhoActiveTask = null;
             if (_desempenhoPollInterval) {
                 clearInterval(_desempenhoPollInterval);

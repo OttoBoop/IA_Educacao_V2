@@ -111,7 +111,7 @@
       "suporta_temperature": false,
       "suporta_vision": false,
       "suporta_streaming": true,
-      "suporta_function_calling": false,
+      "suporta_function_calling": true,
       "base_url": null,
       "custom_model_id": null,
       "api_version": null,
