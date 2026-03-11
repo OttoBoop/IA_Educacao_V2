@@ -5614,6 +5614,8 @@
                     // F5-T2: Notify professor via toast + sound
                     if (data.status === 'completed') {
                         showPipelineToast('Pipeline concluído com sucesso!', 'success');
+                        // F7-T2: PDF fallback loud notification
+                        _checkPdfFallbackAlert(data);
                     } else if (data.status === 'failed') {
                         showPipelineToast('Pipeline falhou. Verifique os detalhes.', 'error');
                     }
@@ -10218,6 +10220,8 @@
                     if (data.status === 'completed') {
                         _cleanupDesempenhoProgress(generateArea, level, entityId);
                         showToast('📊 Relatório de desempenho gerado com sucesso!', 'success');
+                        // F7-T2: PDF fallback loud notification
+                        _checkPdfFallbackAlert(data);
                         loadDesempenhoData(level, entityId);
                     } else if (data.status === 'failed') {
                         _cleanupDesempenhoProgress(generateArea, level, entityId);
@@ -10821,7 +10825,15 @@
             playNotificationSound(type);
         }
 
-
+        // F7-T2: PDF fallback loud notification
+        function _checkPdfFallbackAlert(data) {
+            const alertas = data?.result?.alertas || [];
+            const pdfFallback = alertas.find(a => a.tipo === 'pdf_fallback');
+            if (pdfFallback) {
+                console.warn('[PDF Fallback]', pdfFallback.mensagem || 'PDF gerado automaticamente');
+                showPipelineToast('⚠️ Relatório PDF gerado automaticamente — modelo não produziu PDF', 'warning');
+            }
+        }
 
 
 
