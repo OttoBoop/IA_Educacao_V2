@@ -7064,8 +7064,36 @@
             let totalStages = 0;
             let completedStages = 0;
 
+            // F3-T1: Separate higher-level desempenho tasks — they belong at their
+            // hierarchy level, not forced into the 3-level materia>turma>atividade tree.
+            const materiaDesempenhoTasks = new Map(); // materia_nome → [tasks]
+            const turmaDesempenhoTasks = new Map();   // materia_nome → Map(turma_nome → [tasks])
+
             for (const task of taskList) {
-                const materia   = task.materia_nome   || 'Unknown Materia';
+                const materia = task.materia_nome || 'Unknown Materia';
+
+                // F3-T1: materia-level desempenho → render under materia node directly
+                if (task.type === 'pipeline_desempenho_materia') {
+                    if (!materiaDesempenhoTasks.has(materia)) materiaDesempenhoTasks.set(materia, []);
+                    materiaDesempenhoTasks.get(materia).push(task);
+                    if (!materiaMap.has(materia)) materiaMap.set(materia, new Map());
+                    continue;
+                }
+
+                // F3-T1: turma-level desempenho → render under turma node directly
+                if (task.type === 'pipeline_desempenho_turma') {
+                    const turma = task.turma_nome || 'Unknown Turma';
+                    if (!turmaDesempenhoTasks.has(materia)) turmaDesempenhoTasks.set(materia, new Map());
+                    const tMap = turmaDesempenhoTasks.get(materia);
+                    if (!tMap.has(turma)) tMap.set(turma, []);
+                    tMap.get(turma).push(task);
+                    // Ensure materia+turma nodes exist in the tree
+                    if (!materiaMap.has(materia)) materiaMap.set(materia, new Map());
+                    const turmaMap2 = materiaMap.get(materia);
+                    if (!turmaMap2.has(turma)) turmaMap2.set(turma, new Map());
+                    continue;
+                }
+
                 const turma     = task.turma_nome     || 'Unknown Turma';
                 const atividade = task.atividade_nome || task.atividade_id || 'Unknown Atividade';
 
@@ -7086,12 +7114,39 @@
                 html += '<span class="tree-group-label">\uD83D\uDCDA ' + escapeHtml(materiaNome) + '</span>';
                 html += '</div><div class="tree-children expanded">';
 
+                // F3-T1: Render materia-level desempenho tasks directly under materia node
+                const materiaDesempenho = materiaDesempenhoTasks.get(materiaNome) || [];
+                for (const task of materiaDesempenho) {
+                    const isCancelled = task.cancel_requested || task.status === 'cancelled';
+                    const statusIcon = task.status === 'completed' ? '\u2705'
+                                     : task.status === 'failed'    ? '\u274C' : '\u23F3';
+                    html += '<div class="tree-desempenho' + (isCancelled ? ' cancelled' : '') + '" data-task="' + task.task_id + '">';
+                    html += '<div class="tarefa-toggle tarefa-toggle--desempenho">';
+                    html += statusIcon + ' <span>Desempenho da Mat\u00E9ria</span>';
+                    if (isCancelled) html += '<span class="tarefa-cancelled-label">Cancelado</span>';
+                    html += '</div></div>';
+                }
+
                 for (const [turmaNome, ativMap] of turmaMap) {
                     html += '<div class="tree-turma">';
                     html += '<div class="tree-group-header tree-turma-header" onclick="toggleTarefaTree(this)">';
                     html += '<span class="tree-toggle">\u25B6</span> ';
                     html += '<span class="tree-group-label">\uD83C\uDFEB ' + escapeHtml(turmaNome) + '</span>';
                     html += '</div><div class="tree-children expanded">';
+
+                    // F3-T1: Render turma-level desempenho tasks directly under turma node
+                    const turmaDesempenhoMap = turmaDesempenhoTasks.get(materiaNome);
+                    const turmaDesempenho = turmaDesempenhoMap ? (turmaDesempenhoMap.get(turmaNome) || []) : [];
+                    for (const task of turmaDesempenho) {
+                        const isCancelled = task.cancel_requested || task.status === 'cancelled';
+                        const statusIcon = task.status === 'completed' ? '\u2705'
+                                         : task.status === 'failed'    ? '\u274C' : '\u23F3';
+                        html += '<div class="tree-desempenho' + (isCancelled ? ' cancelled' : '') + '" data-task="' + task.task_id + '">';
+                        html += '<div class="tarefa-toggle tarefa-toggle--desempenho">';
+                        html += statusIcon + ' <span>Desempenho da Turma</span>';
+                        if (isCancelled) html += '<span class="tarefa-cancelled-label">Cancelado</span>';
+                        html += '</div></div>';
+                    }
 
                     for (const [ativNome, ativTasks] of ativMap) {
                         html += '<div class="tree-atividade">';

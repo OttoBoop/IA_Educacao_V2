@@ -46,13 +46,13 @@ class TestRateLimitingConfig:
         assert config.max_tokens_per_request == 1000
 
     def test_config_has_journey_timeout_seconds(self):
-        """Test that AgentConfig has journey_timeout_seconds with default 600 (10 min)."""
+        """Test that AgentConfig has journey_timeout_seconds with default 1200 (20 min)."""
         from tests.ui.investor_journey_agent.config import AgentConfig
 
         config = AgentConfig()
 
         assert hasattr(config, 'journey_timeout_seconds')
-        assert config.journey_timeout_seconds == 600  # 10 minutes
+        assert config.journey_timeout_seconds == 1200  # 20 minutes
 
 
 class TestLLMCallCounter:
@@ -63,7 +63,7 @@ class TestLLMCallCounter:
         from tests.ui.investor_journey_agent.llm_brain import LLMBrain
         from tests.ui.investor_journey_agent.config import AgentConfig
 
-        config = AgentConfig()
+        config = AgentConfig(anthropic_api_key="test-key")
         brain = LLMBrain(config)
 
         assert hasattr(brain, 'call_count')
@@ -76,7 +76,7 @@ class TestLLMCallCounter:
         from tests.ui.investor_journey_agent.config import AgentConfig
         from tests.ui.investor_journey_agent.personas import get_persona
 
-        config = AgentConfig()
+        config = AgentConfig(anthropic_api_key="test-key")
         brain = LLMBrain(config)
 
         # Mock the API call
@@ -94,13 +94,13 @@ class TestLLMCallCounter:
             assert brain.call_count == 1
 
     @pytest.mark.asyncio
-    async def test_llm_brain_respects_max_calls(self):
-        """Test that LLMBrain raises error when max_llm_calls is exceeded."""
-        from tests.ui.investor_journey_agent.llm_brain import LLMBrain, MaxLLMCallsExceededError
+    async def test_llm_brain_blocks_when_max_calls_is_exceeded(self):
+        """Test that max_llm_calls exhaustion returns a blocking decision failure action."""
+        from tests.ui.investor_journey_agent.llm_brain import LLMBrain
         from tests.ui.investor_journey_agent.config import AgentConfig
         from tests.ui.investor_journey_agent.personas import get_persona
 
-        config = AgentConfig(max_llm_calls=2)
+        config = AgentConfig(max_llm_calls=2, anthropic_api_key="test-key")
         brain = LLMBrain(config)
 
         # Mock the API call
@@ -125,11 +125,15 @@ class TestLLMCallCounter:
 
             assert brain.call_count == 2
 
-            # Third call should raise error
-            with pytest.raises(MaxLLMCallsExceededError):
-                await brain.decide_next_action(
-                    screenshot_base64="test",
-                    dom_snapshot="<html></html>",
-                    persona=persona,
-                    goal="test",
-                )
+            # Third call should return a blocking failure action instead of pretending success
+            action = await brain.decide_next_action(
+                screenshot_base64="test",
+                dom_snapshot="<html></html>",
+                persona=persona,
+                goal="test",
+            )
+
+            assert action.action_type.value == "wait"
+            assert action.decision_error_is_blocking is True
+            assert action.decision_error is not None
+            assert "Maximum LLM calls" in action.decision_error

@@ -10,6 +10,7 @@ Covers:
 import pytest
 from datetime import datetime
 from pathlib import Path
+from uuid import uuid4
 from unittest.mock import MagicMock, AsyncMock, patch
 
 from tests.ui.investor_journey_agent.agent import JourneyReport, InvestorJourneyAgent
@@ -17,9 +18,25 @@ from tests.ui.investor_journey_agent.html_template import HTMLReportRenderer
 from tests.ui.investor_journey_agent.config import AgentConfig
 from tests.ui.investor_journey_agent.personas import get_persona
 from tests.ui.investor_journey_agent.llm_brain import Action, ActionType, JourneyStep
+from tests.ui.investor_journey_agent.report_generator import ReportGenerator
 
 
-def _make_report(incomplete=False, incomplete_reason=None, steps=None):
+@pytest.fixture
+def tmp_path():
+    """Use a repo-local writable temp directory instead of the system temp root."""
+    base = Path(__file__).resolve().parents[3] / ".pytest_tmp" / "partial_report"
+    path = base / f"case_{uuid4().hex}"
+    path.mkdir(parents=True, exist_ok=True)
+    return path
+
+
+def _make_report(
+    incomplete=False,
+    incomplete_reason=None,
+    steps=None,
+    blocked=False,
+    blocked_reason=None,
+):
     """Helper to create a JourneyReport for testing."""
     persona = get_persona("investor")
     if steps is None:
@@ -51,6 +68,8 @@ def _make_report(incomplete=False, incomplete_reason=None, steps=None):
         output_dir=Path("/tmp/test"),
         incomplete=incomplete,
         incomplete_reason=incomplete_reason,
+        blocked=blocked,
+        blocked_reason=blocked_reason,
     )
 
 
@@ -169,11 +188,13 @@ class TestKeyboardInterruptHandling:
         assert "interrupt" in report.incomplete_reason.lower() or "keyboard" in report.incomplete_reason.lower()
 
     @pytest.mark.asyncio
-    async def test_keyboard_interrupt_emits_stopped_event(self):
+    async def test_keyboard_interrupt_emits_stopped_event(self, tmp_path):
         """KeyboardInterrupt triggers event_emitter.emit_stopped()."""
         mock_emitter = MagicMock()
+        mock_emitter.output_dir = tmp_path / "interrupt_run"
         mock_emitter.emit_step = MagicMock()
         mock_emitter.emit_stopped = MagicMock()
+        mock_emitter.emit_complete = MagicMock()
         mock_emitter.emit_error = MagicMock()
 
         agent = InvestorJourneyAgent(
@@ -234,3 +255,86 @@ class TestKeyboardInterruptHandling:
 
         assert report.incomplete is True
         assert len(report.steps) == 2  # 2 steps completed before interrupt
+
+
+class TestBlockedDecisionFailures:
+    """Blocking decision failures should stop the run truthfully."""
+
+    @pytest.mark.asyncio
+    async def test_blocking_decision_failure_marks_report_blocked_and_incomplete(self, tmp_path):
+        """A decision failure should produce a blocked, incomplete report with a failed step."""
+        run_dir = tmp_path / "run_01"
+        run_dir.mkdir()
+
+        mock_emitter = MagicMock()
+        mock_emitter.output_dir = run_dir
+        mock_emitter.emit_step = MagicMock()
+        mock_emitter.emit_stopped = MagicMock()
+        mock_emitter.emit_complete = MagicMock()
+        mock_emitter.emit_error = MagicMock()
+
+        agent = InvestorJourneyAgent(
+            persona="investor",
+            viewport="iphone_14",
+            config=AgentConfig(
+                ask_before_action=False,
+                output_dir=tmp_path / "shared_parent",
+                anthropic_api_key="test-key",
+            ),
+            event_emitter=mock_emitter,
+        )
+
+        mock_browser = _make_mock_browser()
+        mock_brain = MagicMock()
+        mock_brain.decide_next_action = AsyncMock(
+            return_value=Action(
+                action_type=ActionType.WAIT,
+                target="decision_error",
+                thought="Blocking decision failure: Anthropic billing exhausted",
+                frustration_level=0.9,
+                confidence=0.0,
+                decision_error="Anthropic billing exhausted",
+                decision_error_is_blocking=True,
+            )
+        )
+
+        with patch("tests.ui.investor_journey_agent.agent.BrowserInterface", return_value=mock_browser), \
+             patch("tests.ui.investor_journey_agent.agent.LLMBrain", return_value=mock_brain):
+            report = await agent.run_journey(
+                url="https://example.com",
+                goal="Test blocked run",
+                max_steps=5,
+            )
+
+        assert report.status == "blocked"
+        assert report.blocked is True
+        assert report.incomplete is True
+        assert report.blocked_reason == "Anthropic billing exhausted"
+        assert report.incomplete_reason == "Anthropic billing exhausted"
+        assert report.output_dir == run_dir
+        assert len(report.steps) == 1
+        assert report.steps[0].success is False
+        assert report.steps[0].error_message == "Anthropic billing exhausted"
+        mock_emitter.emit_stopped.assert_called_once()
+        mock_emitter.emit_complete.assert_not_called()
+
+
+class TestSummaryJsonTruthfulStatus:
+    """summary.json should distinguish blocked and incomplete runs."""
+
+    def test_summary_json_includes_blocked_status_fields(self):
+        """Blocked runs should be serialized with status and reason fields."""
+        report = _make_report(
+            incomplete=True,
+            incomplete_reason="Anthropic billing exhausted",
+            blocked=True,
+            blocked_reason="Anthropic billing exhausted",
+        )
+
+        data = ReportGenerator()._generate_json(report)
+
+        assert data["summary"]["status"] == "blocked"
+        assert data["summary"]["blocked"] is True
+        assert data["summary"]["blocked_reason"] == "Anthropic billing exhausted"
+        assert data["summary"]["incomplete"] is True
+        assert data["summary"]["incomplete_reason"] == "Anthropic billing exhausted"

@@ -6,6 +6,7 @@ to simulate realistic user journeys.
 """
 
 import asyncio
+import json
 from collections import deque
 from dataclasses import dataclass, field
 from datetime import datetime
@@ -19,6 +20,7 @@ from .personas import Persona, PERSONAS, get_persona
 from .browser_interface import BrowserInterface
 from .intent_resolver import IntentResolver
 from .llm_brain import LLMBrain, Action, ActionType, JourneyStep, JourneyEvaluation
+from .scenario import MODELS
 from .url_utils import resolve_start_url
 
 
@@ -37,6 +39,8 @@ class JourneyReport:
     output_dir: Path
     incomplete: bool = False
     incomplete_reason: Optional[str] = None
+    blocked: bool = False
+    blocked_reason: Optional[str] = None
 
     @property
     def success_rate(self) -> float:
@@ -45,6 +49,17 @@ class JourneyReport:
             return 0.0
         successful = sum(1 for s in self.steps if s.success)
         return successful / len(self.steps)
+
+    @property
+    def status(self) -> str:
+        """High-level run status for reports and summaries."""
+        if self.blocked:
+            return "blocked"
+        if self.incomplete:
+            return "incomplete"
+        if self.gave_up:
+            return "gave_up"
+        return "completed"
 
     @property
     def gave_up(self) -> bool:
@@ -122,6 +137,10 @@ class InvestorJourneyAgent:
         # Will be initialized in run_journey
         self._browser: Optional[BrowserInterface] = None
         self._brain: Optional[LLMBrain] = None
+        self._artifact_manifest_path: Optional[Path] = None
+        self._last_action_result: dict = {}
+        self._selected_model: Optional[str] = None
+        self._triggered_models: list[str] = []
 
     async def run_journey(
         self,
@@ -151,10 +170,23 @@ class InvestorJourneyAgent:
         steps: List[JourneyStep] = []
 
         # Create output directory
-        output_dir = self.config.output_dir / start_time.strftime("%Y%m%d_%H%M%S")
+        if self.event_emitter is not None:
+            output_dir = self.event_emitter.output_dir
+        else:
+            output_dir = self.config.output_dir / start_time.strftime("%Y%m%d_%H%M%S")
         output_dir.mkdir(parents=True, exist_ok=True)
         screenshots_dir = output_dir / "screenshots"
         screenshots_dir.mkdir(exist_ok=True)
+        self.config.output_dir = output_dir
+        downloads_root = output_dir / "downloads"
+        self.config.downloads_dir = (
+            downloads_root / "_incoming" if self.pause_mode else downloads_root
+        )
+        self.config.downloads_dir.mkdir(parents=True, exist_ok=True)
+        self._artifact_manifest_path = output_dir / "artifact_manifest.jsonl"
+        self._last_action_result = {}
+        self._selected_model = None
+        self._triggered_models = []
 
         # Initialize components
         self._brain = LLMBrain(self.config)
@@ -204,6 +236,8 @@ class InvestorJourneyAgent:
             # Main journey loop
             incomplete = False
             incomplete_reason = None
+            blocked = False
+            blocked_reason = None
             step_number = 0
 
             user_guidance = None  # For mid-journey guidance from operator
@@ -247,6 +281,19 @@ class InvestorJourneyAgent:
                             continue
 
                         steps.append(step)
+
+                        if step.action.decision_error and step.action.decision_error_is_blocking:
+                            blocked = True
+                            blocked_reason = step.error_message or step.action.decision_error
+                            incomplete = True
+                            incomplete_reason = blocked_reason
+                            print(f"\n[BLOCKED] {blocked_reason}")
+                            if self.event_emitter:
+                                self.event_emitter.emit_stopped(
+                                    reason=blocked_reason,
+                                    steps_completed=len(steps),
+                                )
+                            break
 
                         # Pause mode: emit "paused" event and wait for a "continue" command
                         if self.pause_mode and self.command_receiver:
@@ -375,6 +422,8 @@ class InvestorJourneyAgent:
             output_dir=output_dir,
             incomplete=incomplete,
             incomplete_reason=incomplete_reason,
+            blocked=blocked,
+            blocked_reason=blocked_reason,
         )
 
     async def _do_step(
@@ -412,6 +461,24 @@ class InvestorJourneyAgent:
         # Print step info
         self._print_step(step_number, action)
 
+        if action.decision_error:
+            screenshot_path = screenshots_dir / f"step_{step_number:02d}.png"
+            await self._browser.save_screenshot(screenshot_path)
+            step = JourneyStep(
+                step_number=step_number,
+                url=state.url,
+                screenshot_path=str(screenshot_path),
+                action=action,
+                success=False,
+                error_message=action.decision_error,
+            )
+            if self.event_emitter:
+                self.event_emitter.emit_step(step)
+            if self.on_step:
+                self.on_step(step)
+            self._narrate_step(step)
+            return step
+
         # Handle terminal actions (DONE / GIVE_UP) — save screenshot and return
         if action.action_type in (ActionType.DONE, ActionType.GIVE_UP):
             screenshot_path = screenshots_dir / f"step_{step_number:02d}.png"
@@ -443,6 +510,7 @@ class InvestorJourneyAgent:
             clickable_elements=state.clickable_elements,
             browser=self._browser,
         )
+        self._last_action_result = {}
 
         if retry_result is not None:
             success, error = retry_result
@@ -461,6 +529,7 @@ class InvestorJourneyAgent:
             success=success,
             error_message=error,
         )
+        self._record_step_artifact_event(step)
 
         if self.event_emitter:
             self.event_emitter.emit_step(step)
@@ -473,6 +542,95 @@ class InvestorJourneyAgent:
         await asyncio.sleep(self.config.wait_after_action_ms / 1000)
 
         return step
+
+    def _normalize_model_token(self, value: str) -> str:
+        """Normalize free-form text for model-name matching."""
+        return "".join(ch for ch in value.lower() if ch.isalnum())
+
+    def _infer_explicit_model_context(self, *values: str) -> tuple[Optional[str], str]:
+        """Infer a model only when it is explicitly named in text or filenames."""
+        normalized_values = [self._normalize_model_token(value) for value in values if value]
+        for model in MODELS:
+            model_token = self._normalize_model_token(model)
+            if any(model_token and model_token in value for value in normalized_values):
+                return model, "explicit_text"
+        return None, "unknown"
+
+    def _append_artifact_manifest(self, entry: dict) -> None:
+        """Append a machine-readable artifact event for the current run."""
+        if self._artifact_manifest_path is None:
+            return
+        with open(self._artifact_manifest_path, "a", encoding="utf-8") as f:
+            f.write(json.dumps(entry, ensure_ascii=False) + "\n")
+
+    def _record_step_artifact_event(self, step: JourneyStep) -> None:
+        """Record model-selection, trigger, and download evidence for Phase 3 validation."""
+        if not step.success:
+            return
+
+        timestamp = datetime.now().isoformat()
+
+        if step.action.action_type == ActionType.SELECT_OPTION:
+            selected_value = self._last_action_result.get("selected_value")
+            if selected_value in MODELS:
+                self._selected_model = selected_value
+                self._append_artifact_manifest({
+                    "event_type": "model_selected",
+                    "timestamp": timestamp,
+                    "step": step.step_number,
+                    "selected_value": selected_value,
+                    "target": step.action.target,
+                })
+            return
+
+        if (
+            step.action.action_type == ActionType.EVALUATE_JS
+            and "executarpipelinecompleto" in (step.action.eval_script or "").lower()
+        ):
+            model, source = self._infer_explicit_model_context(
+                step.action.target,
+                step.action.thought,
+                step.action.eval_script or "",
+            )
+            if model is None and self._selected_model in MODELS:
+                model = self._selected_model
+                source = "selected_value"
+            if model and model not in self._triggered_models:
+                self._triggered_models.append(model)
+            self._append_artifact_manifest({
+                "event_type": "pipeline_trigger",
+                "timestamp": timestamp,
+                "step": step.step_number,
+                "model_context": model,
+                "model_context_source": source,
+                "selected_model_context": self._selected_model,
+                "triggered_models_so_far": list(self._triggered_models),
+                "eval_script": step.action.eval_script,
+            })
+            return
+
+        if step.action.action_type == ActionType.DOWNLOAD_FILE:
+            download_path = self._last_action_result.get("download_path")
+            download_filename = self._last_action_result.get("download_filename", "")
+            model, source = self._infer_explicit_model_context(
+                step.action.target,
+                step.action.thought,
+                download_filename,
+                str(download_path or ""),
+            )
+            self._append_artifact_manifest({
+                "event_type": "download_saved",
+                "timestamp": timestamp,
+                "step": step.step_number,
+                "target": step.action.target,
+                "thought": step.action.thought,
+                "saved_path": download_path,
+                "saved_filename": download_filename,
+                "model_context": model,
+                "model_context_source": source,
+                "selected_model_context": self._selected_model,
+                "triggered_models_so_far": list(self._triggered_models),
+            })
 
     async def _pause_and_extend(self, step_number: int) -> int:
         """
@@ -514,6 +672,7 @@ class InvestorJourneyAgent:
     async def _execute_action(self, action: Action) -> tuple[bool, Optional[str]]:
         """Execute an action and return (success, error_message)."""
         try:
+            self._last_action_result = {}
             if action.action_type == ActionType.CLICK:
                 success = await self._browser.click(action.target)
                 return success, None if success else f"Could not click {action.target}"
@@ -549,6 +708,8 @@ class InvestorJourneyAgent:
                 success = await self._browser.select_option(
                     action.target, action.select_value
                 )
+                if success:
+                    self._last_action_result = {"selected_value": action.select_value}
                 return success, None if success else f"Could not select '{action.select_value}' in {action.target}"
 
             elif action.action_type == ActionType.DOWNLOAD_FILE:
@@ -556,6 +717,10 @@ class InvestorJourneyAgent:
                     action.target, self.config.downloads_dir
                 )
                 if result:
+                    self._last_action_result = {
+                        "download_path": str(result),
+                        "download_filename": result.name,
+                    }
                     return True, None
                 return False, f"Could not download file from {action.target}"
 
@@ -573,6 +738,7 @@ class InvestorJourneyAgent:
                 if not action.eval_script:
                     return False, "No eval_script provided for EVALUATE_JS action"
                 await self._browser.evaluate_js(action.eval_script)
+                self._last_action_result = {"eval_script": action.eval_script}
                 return True, None
 
             else:
@@ -624,7 +790,7 @@ class InvestorJourneyAgent:
         return path
 
     def _write_verification_entry(self, model: str, stage: str, status: str, details: str) -> Path:
-        """Append a verification entry to the verification report markdown file."""
+        """Legacy standalone writer kept only for non-controller journey compatibility."""
         report_path = self.config.output_dir / "verification_report.md"
         if not report_path.exists():
             report_path.parent.mkdir(parents=True, exist_ok=True)

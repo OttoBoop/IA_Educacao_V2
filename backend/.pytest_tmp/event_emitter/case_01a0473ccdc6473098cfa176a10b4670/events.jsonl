@@ -1,0 +1,2 @@
+{"event_type": "step_completed", "timestamp": "2026-03-09T22:04:11.164914+00:00", "step": 1, "max_steps": 50, "action": "click", "target": "#some-button", "thought": "I see a button, let me click it", "frustration": 0.9, "confidence": 0.8, "success": true, "url": "https://example.com/page", "error": null}
+{"event_type": "frustration_spike", "timestamp": "2026-03-09T22:04:11.165361+00:00", "step": 1, "frustration": 0.9, "thought": "I see a button, let me click it"}

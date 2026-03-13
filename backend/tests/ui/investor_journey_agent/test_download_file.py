@@ -11,6 +11,7 @@ Verifies that:
 import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
 from pathlib import Path
+from uuid import uuid4
 
 
 class TestDownloadFileActionType:
@@ -105,3 +106,19 @@ class TestDownloadFileParsing:
         }
         action = brain._parse_action_response(data)
         assert action.action_type == ActionType.DOWNLOAD_FILE
+
+
+class TestDownloadPathDeduplication:
+    """Repeated downloads should not overwrite previous files in the same run."""
+
+    def test_next_available_download_path_adds_numeric_suffix(self):
+        from tests.ui.investor_journey_agent.browser_interface import _next_available_download_path
+
+        base = Path(__file__).resolve().parents[3] / ".pytest_tmp" / "download_paths" / uuid4().hex
+        base.mkdir(parents=True, exist_ok=True)
+        (base / "report.pdf").write_bytes(b"first")
+        (base / "report_2.pdf").write_bytes(b"second")
+
+        candidate = _next_available_download_path(base, "report.pdf")
+
+        assert candidate == base / "report_3.pdf"

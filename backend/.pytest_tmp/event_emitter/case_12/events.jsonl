@@ -1,0 +1,2 @@
+{"event_type": "journey_complete", "timestamp": "2026-03-09T21:45:24.804590+00:00", "success_rate": 0.85, "total_steps": 20, "gave_up": false}
+{"event_type": "journey_complete", "timestamp": "2026-03-09T22:03:22.116263+00:00", "success_rate": 0.85, "total_steps": 20, "gave_up": false}

@@ -32,6 +32,11 @@ class EventEmitter:
     def _timestamp(self) -> str:
         return datetime.now(timezone.utc).isoformat()
 
+    @property
+    def output_dir(self) -> Path:
+        """Expose the IPC/run output directory to the agent."""
+        return self._output_dir
+
     def _append_event(self, event: dict) -> None:
         """Append a single JSON line to events.jsonl."""
         with open(self._events_path, "a", encoding="utf-8") as f:

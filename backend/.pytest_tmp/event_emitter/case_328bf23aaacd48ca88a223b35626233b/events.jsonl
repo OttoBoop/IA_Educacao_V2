@@ -1,0 +1,2 @@
+{"event_type": "step_completed", "timestamp": "2026-03-09T22:04:11.264788+00:00", "step": 1, "max_steps": 50, "action": "click", "target": "#some-button", "thought": "I see a button, let me click it", "frustration": 0.3, "confidence": 0.8, "success": true, "url": "https://example.com/page", "error": null}
+{"event_type": "journey_stopped", "timestamp": "2026-03-09T22:04:11.266166+00:00", "reason": "User stop", "steps_completed": 5}

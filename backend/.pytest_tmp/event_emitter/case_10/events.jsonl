@@ -1,0 +1,4 @@
+{"event_type": "step_completed", "timestamp": "2026-03-09T21:45:24.782137+00:00", "step": 7, "max_steps": 50, "action": "click", "target": "#some-button", "thought": "I see a button, let me click it", "frustration": 0.85, "confidence": 0.8, "success": true, "url": "https://example.com/page", "error": null}
+{"event_type": "frustration_spike", "timestamp": "2026-03-09T21:45:24.782608+00:00", "step": 7, "frustration": 0.85, "thought": "I see a button, let me click it"}
+{"event_type": "step_completed", "timestamp": "2026-03-09T22:03:22.076228+00:00", "step": 7, "max_steps": 50, "action": "click", "target": "#some-button", "thought": "I see a button, let me click it", "frustration": 0.85, "confidence": 0.8, "success": true, "url": "https://example.com/page", "error": null}
+{"event_type": "frustration_spike", "timestamp": "2026-03-09T22:03:22.076873+00:00", "step": 7, "frustration": 0.85, "thought": "I see a button, let me click it"}

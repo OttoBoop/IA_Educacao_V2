@@ -1,0 +1,46 @@
+# Pipeline Verification Report
+
+## Automated Run Observation: Phase 3 Artifact Validation
+
+- Overall artifact status: unverified_model_scope
+- Downloads directory: C:\Users\otavi\Documents\prova-ai\IA_Educacao_V2\backend\.pytest_tmp\controller_phase3_artifacts\downloads
+- Requested models: gpt-4o, gpt-5-nano, claude-haiku-4-5-20251001, gemini-3-flash-preview
+- Expected blocked models: none
+- B5 eligible: yes
+- Files found: json=76, pdf=76, other=0
+- Model scope confirmed: no
+- Recognized models in artifacts: none
+- Triggered models from manifest: none
+- Missing triggered models: gpt-4o, gpt-5-nano, claude-haiku-4-5-20251001, gemini-3-flash-preview
+- Download manifest entries: 0
+- Downloads with explicit model context: 0
+- Normalized download entries: 152
+- Missing JSON stages: none
+- Missing PDF stages: none
+- origem_id chain: unverified - One or more stage JSON artifacts do not expose origem_id values.
+- Student name consistency: unverified - Fewer than two stage JSON artifacts expose a top-level student name field.
+- Desempenho report content: unverified - No downloaded desempenho JSON file exposed habilidades content.
+- desempenho tarefa: json=no, pdf=no, content=no
+- desempenho turma: json=no, pdf=no, content=no
+- desempenho materia: json=no, pdf=no, content=no
+- extrair_questoes: pass | json=yes | pdf=yes | models=none
+- corrigir: pass | json=yes | pdf=yes | models=none
+- analisar_habilidades: pass | json=yes | pdf=yes | models=none
+- gerar_relatorio: pass | json=yes | pdf=yes | models=none
+- normalized: C:\Users\otavi\Documents\prova-ai\IA_Educacao_V2\backend\.pytest_tmp\controller_phase3_artifacts\downloads\analise_habilidades.json -> C:\Users\otavi\Documents\prova-ai\IA_Educacao_V2\backend\.pytest_tmp\controller_phase3_artifacts\downloads\_unverified_model\analisar_habilidades\_shared\analise_habilidades_19.json
+- normalized: C:\Users\otavi\Documents\prova-ai\IA_Educacao_V2\backend\.pytest_tmp\controller_phase3_artifacts\downloads\analise_habilidades.pdf -> C:\Users\otavi\Documents\prova-ai\IA_Educacao_V2\backend\.pytest_tmp\controller_phase3_artifacts\downloads\_unverified_model\analisar_habilidades\_shared\analise_habilidades_19.pdf
+- normalized: C:\Users\otavi\Documents\prova-ai\IA_Educacao_V2\backend\.pytest_tmp\controller_phase3_artifacts\downloads\correcao.json -> C:\Users\otavi\Documents\prova-ai\IA_Educacao_V2\backend\.pytest_tmp\controller_phase3_artifacts\downloads\_unverified_model\corrigir\_shared\correcao_19.json
+- normalized: C:\Users\otavi\Documents\prova-ai\IA_Educacao_V2\backend\.pytest_tmp\controller_phase3_artifacts\downloads\correcao.pdf -> C:\Users\otavi\Documents\prova-ai\IA_Educacao_V2\backend\.pytest_tmp\controller_phase3_artifacts\downloads\_unverified_model\corrigir\_shared\correcao_19.pdf
+- normalized: C:\Users\otavi\Documents\prova-ai\IA_Educacao_V2\backend\.pytest_tmp\controller_phase3_artifacts\downloads\extracao_questoes.json -> C:\Users\otavi\Documents\prova-ai\IA_Educacao_V2\backend\.pytest_tmp\controller_phase3_artifacts\downloads\_unverified_model\extrair_questoes\_shared\extracao_questoes_19.json
+- normalized: C:\Users\otavi\Documents\prova-ai\IA_Educacao_V2\backend\.pytest_tmp\controller_phase3_artifacts\downloads\extracao_questoes.pdf -> C:\Users\otavi\Documents\prova-ai\IA_Educacao_V2\backend\.pytest_tmp\controller_phase3_artifacts\downloads\_unverified_model\extrair_questoes\_shared\extracao_questoes_19.pdf
+- normalized: C:\Users\otavi\Documents\prova-ai\IA_Educacao_V2\backend\.pytest_tmp\controller_phase3_artifacts\downloads\relatorio_final.json -> C:\Users\otavi\Documents\prova-ai\IA_Educacao_V2\backend\.pytest_tmp\controller_phase3_artifacts\downloads\_unverified_model\gerar_relatorio\_shared\relatorio_final_19.json
+- normalized: C:\Users\otavi\Documents\prova-ai\IA_Educacao_V2\backend\.pytest_tmp\controller_phase3_artifacts\downloads\relatorio_final.pdf -> C:\Users\otavi\Documents\prova-ai\IA_Educacao_V2\backend\.pytest_tmp\controller_phase3_artifacts\downloads\_unverified_model\gerar_relatorio\_shared\relatorio_final_19.pdf
+- gpt-4o: status=missing | complete_stages=0/4
+- gpt-5-nano: status=missing | complete_stages=0/4
+- claude-haiku-4-5-20251001: status=missing | complete_stages=0/4
+- gemini-3-flash-preview: status=missing | complete_stages=0/4
+- gpt-4o: json_stages=0/4, pdf_stages=0/4
+- gpt-5-nano: json_stages=0/4, pdf_stages=0/4
+- claude-haiku-4-5-20251001: json_stages=0/4, pdf_stages=0/4
+- gemini-3-flash-preview: json_stages=0/4, pdf_stages=0/4
+- Machine-readable artifact: phase3_validation.json

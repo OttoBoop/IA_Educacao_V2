@@ -290,8 +290,11 @@ class ReportGenerator:
         lines.append(f"| **Viewport** | {report.viewport_name} |")
         lines.append(f"| **Duration** | {(report.end_time - report.start_time).total_seconds():.1f}s |")
         lines.append(f"| **Total Steps** | {len(report.steps)} |")
+        lines.append(f"| **Status** | {report.status} |")
         lines.append(f"| **Success Rate** | {report.success_rate:.0%} |")
         lines.append(f"| **Gave Up** | {'Yes' if report.gave_up else 'No'} |")
+        if report.incomplete_reason:
+            lines.append(f"| **Reason** | {report.incomplete_reason} |")
         lines.append("")
 
         # Persona details
@@ -388,9 +391,14 @@ class ReportGenerator:
                 "viewport": report.viewport_name,
             },
             "summary": {
+                "status": report.status,
                 "total_steps": len(report.steps),
                 "success_rate": report.success_rate,
                 "gave_up": report.gave_up,
+                "incomplete": report.incomplete,
+                "incomplete_reason": report.incomplete_reason,
+                "blocked": report.blocked,
+                "blocked_reason": report.blocked_reason,
                 "duration_seconds": (report.end_time - report.start_time).total_seconds(),
             },
             "evaluation": {

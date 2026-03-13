@@ -51,6 +51,8 @@ class Action:
     wait_duration_seconds: Optional[int] = None  # For WAIT action: how many seconds to wait
     select_value: Optional[str] = None  # For SELECT_OPTION action: value to select
     eval_script: Optional[str] = None  # For EVALUATE_JS action: JS to execute
+    decision_error: Optional[str] = None  # For decision failures before any real action
+    decision_error_is_blocking: bool = False  # Whether the journey should stop on this failure
 
 
 @dataclass
@@ -254,6 +256,22 @@ Respond ONLY with valid JSON (no markdown, no explanation outside JSON):
             wait_duration_seconds=data.get("wait_duration_seconds"),
             select_value=data.get("select_value"),
             eval_script=data.get("eval_script"),
+            decision_error=data.get("decision_error"),
+            decision_error_is_blocking=bool(data.get("decision_error_is_blocking", False)),
+        )
+
+    def _build_decision_failure_action(self, error: Exception | str, *, blocking: bool = True) -> Action:
+        """Return a structured action for a decision failure before execution."""
+        message = str(error)
+        thought_prefix = "Blocking decision failure" if blocking else "Decision failure"
+        return Action(
+            action_type=ActionType.WAIT,
+            target="decision_error",
+            thought=f"{thought_prefix}: {message}",
+            frustration_level=0.8 if blocking else 0.5,
+            confidence=0.0,
+            decision_error=message,
+            decision_error_is_blocking=blocking,
         )
 
     async def decide_next_action(
@@ -275,8 +293,11 @@ Respond ONLY with valid JSON (no markdown, no explanation outside JSON):
         """
         # Check if max LLM calls exceeded
         if self.call_count >= self.config.max_llm_calls:
-            raise MaxLLMCallsExceededError(
-                f"Maximum LLM calls ({self.config.max_llm_calls}) exceeded"
+            return self._build_decision_failure_action(
+                MaxLLMCallsExceededError(
+                    f"Maximum LLM calls ({self.config.max_llm_calls}) exceeded"
+                ),
+                blocking=True,
             )
 
         history = history or []
@@ -368,21 +389,14 @@ Respond ONLY with valid JSON (no markdown, no explanation outside JSON):
             return self._parse_action_response(data)
 
         except json.JSONDecodeError as e:
-            # If parsing fails, return a safe wait action
-            return Action(
-                action_type=ActionType.WAIT,
-                target="",
-                thought=f"I couldn't understand the response: {e}",
-                frustration_level=0.3,
-                confidence=0.0,
+            return self._build_decision_failure_action(
+                f"Could not parse Claude decision JSON: {e}",
+                blocking=True,
             )
         except Exception as e:
-            return Action(
-                action_type=ActionType.WAIT,
-                target="",
-                thought=f"Error during decision: {e}",
-                frustration_level=0.5,
-                confidence=0.0,
+            return self._build_decision_failure_action(
+                f"Error during decision: {e}",
+                blocking=True,
             )
 
     async def evaluate_journey(

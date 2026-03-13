@@ -141,8 +141,10 @@ def generate_verification_template(output_path: Path) -> Path:
         "## Summary",
         "",
         f"- Total checks: {total}",
-        "- PASS: 0",
-        "- FAIL: 0",
+        "- OBSERVED: 0",
+        "- FAILED: 0",
+        "- BLOCKED: 0",
+        "- UNVERIFIED: 0",
         f"- PENDING: {total}",
         "",
     ]

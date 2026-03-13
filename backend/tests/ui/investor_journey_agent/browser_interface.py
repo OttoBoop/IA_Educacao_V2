@@ -460,7 +460,7 @@ class BrowserInterface:
                 await self.page.click(selector, timeout=timeout)
             download = await download_info.value
             save_dir.mkdir(parents=True, exist_ok=True)
-            save_path = save_dir / download.suggested_filename
+            save_path = _next_available_download_path(save_dir, download.suggested_filename)
             await download.save_as(save_path)
             return save_path
         except Exception as e:
@@ -492,3 +492,19 @@ class BrowserInterface:
     def clear_errors(self):
         """Clear captured console errors."""
         self._console_errors.clear()
+
+
+def _next_available_download_path(save_dir: Path, filename: str) -> Path:
+    """Return a non-colliding save path for repeated downloads of the same file."""
+    candidate = save_dir / filename
+    if not candidate.exists():
+        return candidate
+
+    stem = candidate.stem
+    suffix = candidate.suffix
+    counter = 2
+    while True:
+        deduped = save_dir / f"{stem}_{counter}{suffix}"
+        if not deduped.exists():
+            return deduped
+        counter += 1

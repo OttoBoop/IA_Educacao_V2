@@ -284,12 +284,23 @@ async def main():
         generator = ReportGenerator()
         result = generator.generate(report)
 
+        title = "JOURNEY COMPLETE"
+        if report.blocked:
+            title = "JOURNEY BLOCKED"
+        elif report.incomplete:
+            title = "JOURNEY INCOMPLETE"
+        elif report.gave_up:
+            title = "JOURNEY GAVE UP"
+
         print(f"\n{'='*60}")
-        print("JOURNEY COMPLETE")
+        print(title)
         print(f"{'='*60}")
+        print(f"Status:       {report.status}")
         print(f"Total Steps:  {len(report.steps)}")
         print(f"Success Rate: {report.success_rate:.0%}")
         print(f"Gave Up:      {'Yes' if report.gave_up else 'No'}")
+        if report.incomplete_reason:
+            print(f"Reason:       {report.incomplete_reason}")
 
         if report.evaluation:
             print(f"\nOverall Rating: {'*' * int(report.evaluation.overall_rating)}/5")
@@ -308,7 +319,9 @@ async def main():
             else:
                 webbrowser.open(result.html_report_path.resolve().as_uri())
 
-        # Return exit code based on success
+        # Return exit code based on truthful run status.
+        if report.blocked or report.incomplete:
+            return 2
         if report.gave_up:
             return 1
         return 0

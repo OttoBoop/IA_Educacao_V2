@@ -1,0 +1,284 @@
+{
+  "downloads_dir": "C:\\Users\\otavi\\Documents\\prova-ai\\IA_Educacao_V2\\backend\\.pytest_tmp\\controller_phase3_artifacts\\downloads",
+  "manifest_path": "C:\\Users\\otavi\\Documents\\prova-ai\\IA_Educacao_V2\\backend\\.pytest_tmp\\controller_phase3_artifacts\\artifact_manifest.jsonl",
+  "requested_models": [
+    "gpt-4o",
+    "gpt-5-nano",
+    "claude-haiku-4-5-20251001",
+    "gemini-3-flash-preview"
+  ],
+  "expected_blocked_models": [],
+  "counts": {
+    "json": 76,
+    "pdf": 76,
+    "other": 0
+  },
+  "overall_status": "unverified_model_scope",
+  "recognized_models": [],
+  "model_scope_confirmed": false,
+  "triggered_models": [],
+  "missing_trigger_models": [
+    "gpt-4o",
+    "gpt-5-nano",
+    "claude-haiku-4-5-20251001",
+    "gemini-3-flash-preview"
+  ],
+  "download_manifest_entries": 0,
+  "downloads_with_explicit_model": 0,
+  "normalized_download_entries": 152,
+  "normalization": {
+    "normalized_file_count": 8,
+    "normalized_files": [
+      {
+        "original_path": "C:\\Users\\otavi\\Documents\\prova-ai\\IA_Educacao_V2\\backend\\.pytest_tmp\\controller_phase3_artifacts\\downloads\\analise_habilidades.json",
+        "normalized_path": "C:\\Users\\otavi\\Documents\\prova-ai\\IA_Educacao_V2\\backend\\.pytest_tmp\\controller_phase3_artifacts\\downloads\\_unverified_model\\analisar_habilidades\\_shared\\analise_habilidades_19.json",
+        "model_context": null,
+        "stage": "analisar_habilidades",
+        "student_context": "_shared",
+        "desempenho_level": null
+      },
+      {
+        "original_path": "C:\\Users\\otavi\\Documents\\prova-ai\\IA_Educacao_V2\\backend\\.pytest_tmp\\controller_phase3_artifacts\\downloads\\analise_habilidades.pdf",
+        "normalized_path": "C:\\Users\\otavi\\Documents\\prova-ai\\IA_Educacao_V2\\backend\\.pytest_tmp\\controller_phase3_artifacts\\downloads\\_unverified_model\\analisar_habilidades\\_shared\\analise_habilidades_19.pdf",
+        "model_context": null,
+        "stage": "analisar_habilidades",
+        "student_context": "_shared",
+        "desempenho_level": null
+      },
+      {
+        "original_path": "C:\\Users\\otavi\\Documents\\prova-ai\\IA_Educacao_V2\\backend\\.pytest_tmp\\controller_phase3_artifacts\\downloads\\correcao.json",
+        "normalized_path": "C:\\Users\\otavi\\Documents\\prova-ai\\IA_Educacao_V2\\backend\\.pytest_tmp\\controller_phase3_artifacts\\downloads\\_unverified_model\\corrigir\\_shared\\correcao_19.json",
+        "model_context": null,
+        "stage": "corrigir",
+        "student_context": "_shared",
+        "desempenho_level": null
+      },
+      {
+        "original_path": "C:\\Users\\otavi\\Documents\\prova-ai\\IA_Educacao_V2\\backend\\.pytest_tmp\\controller_phase3_artifacts\\downloads\\correcao.pdf",
+        "normalized_path": "C:\\Users\\otavi\\Documents\\prova-ai\\IA_Educacao_V2\\backend\\.pytest_tmp\\controller_phase3_artifacts\\downloads\\_unverified_model\\corrigir\\_shared\\correcao_19.pdf",
+        "model_context": null,
+        "stage": "corrigir",
+        "student_context": "_shared",
+        "desempenho_level": null
+      },
+      {
+        "original_path": "C:\\Users\\otavi\\Documents\\prova-ai\\IA_Educacao_V2\\backend\\.pytest_tmp\\controller_phase3_artifacts\\downloads\\extracao_questoes.json",
+        "normalized_path": "C:\\Users\\otavi\\Documents\\prova-ai\\IA_Educacao_V2\\backend\\.pytest_tmp\\controller_phase3_artifacts\\downloads\\_unverified_model\\extrair_questoes\\_shared\\extracao_questoes_19.json",
+        "model_context": null,
+        "stage": "extrair_questoes",
+        "student_context": "_shared",
+        "desempenho_level": null
+      },
+      {
+        "original_path": "C:\\Users\\otavi\\Documents\\prova-ai\\IA_Educacao_V2\\backend\\.pytest_tmp\\controller_phase3_artifacts\\downloads\\extracao_questoes.pdf",
+        "normalized_path": "C:\\Users\\otavi\\Documents\\prova-ai\\IA_Educacao_V2\\backend\\.pytest_tmp\\controller_phase3_artifacts\\downloads\\_unverified_model\\extrair_questoes\\_shared\\extracao_questoes_19.pdf",
+        "model_context": null,
+        "stage": "extrair_questoes",
+        "student_context": "_shared",
+        "desempenho_level": null
+      },
+      {
+        "original_path": "C:\\Users\\otavi\\Documents\\prova-ai\\IA_Educacao_V2\\backend\\.pytest_tmp\\controller_phase3_artifacts\\downloads\\relatorio_final.json",
+        "normalized_path": "C:\\Users\\otavi\\Documents\\prova-ai\\IA_Educacao_V2\\backend\\.pytest_tmp\\controller_phase3_artifacts\\downloads\\_unverified_model\\gerar_relatorio\\_shared\\relatorio_final_19.json",
+        "model_context": null,
+        "stage": "gerar_relatorio",
+        "student_context": "_shared",
+        "desempenho_level": null
+      },
+      {
+        "original_path": "C:\\Users\\otavi\\Documents\\prova-ai\\IA_Educacao_V2\\backend\\.pytest_tmp\\controller_phase3_artifacts\\downloads\\relatorio_final.pdf",
+        "normalized_path": "C:\\Users\\otavi\\Documents\\prova-ai\\IA_Educacao_V2\\backend\\.pytest_tmp\\controller_phase3_artifacts\\downloads\\_unverified_model\\gerar_relatorio\\_shared\\relatorio_final_19.pdf",
+        "model_context": null,
+        "stage": "gerar_relatorio",
+        "student_context": "_shared",
+        "desempenho_level": null
+      }
+    ]
+  },
+  "b5_eligible": true,
+  "coverage": {
+    "stages_with_json": [
+      "extrair_questoes",
+      "corrigir",
+      "analisar_habilidades",
+      "gerar_relatorio"
+    ],
+    "stages_with_pdf": [
+      "extrair_questoes",
+      "corrigir",
+      "analisar_habilidades",
+      "gerar_relatorio"
+    ],
+    "missing_json_stages": [],
+    "missing_pdf_stages": [],
+    "missing_stages": [],
+    "complete_stage_count": 4
+  },
+  "model_coverage": {
+    "gpt-4o": {
+      "stages_with_json": [],
+      "stages_with_pdf": [],
+      "complete_stage_count": 0
+    },
+    "gpt-5-nano": {
+      "stages_with_json": [],
+      "stages_with_pdf": [],
+      "complete_stage_count": 0
+    },
+    "claude-haiku-4-5-20251001": {
+      "stages_with_json": [],
+      "stages_with_pdf": [],
+      "complete_stage_count": 0
+    },
+    "gemini-3-flash-preview": {
+      "stages_with_json": [],
+      "stages_with_pdf": [],
+      "complete_stage_count": 0
+    }
+  },
+  "model_status": {
+    "gpt-4o": {
+      "status": "missing",
+      "stages_with_json": [],
+      "stages_with_pdf": [],
+      "complete_stage_count": 0
+    },
+    "gpt-5-nano": {
+      "status": "missing",
+      "stages_with_json": [],
+      "stages_with_pdf": [],
+      "complete_stage_count": 0
+    },
+    "claude-haiku-4-5-20251001": {
+      "status": "missing",
+      "stages_with_json": [],
+      "stages_with_pdf": [],
+      "complete_stage_count": 0
+    },
+    "gemini-3-flash-preview": {
+      "status": "missing",
+      "stages_with_json": [],
+      "stages_with_pdf": [],
+      "complete_stage_count": 0
+    }
+  },
+  "stage_artifacts": {
+    "extrair_questoes": {
+      "status": "pass",
+      "json_path": "C:\\Users\\otavi\\Documents\\prova-ai\\IA_Educacao_V2\\backend\\.pytest_tmp\\controller_phase3_artifacts\\downloads\\_unverified_model\\extrair_questoes\\_shared\\extracao_questoes_9.json",
+      "json_stage_source": "filename",
+      "json_top_level_keys": [
+        "pontuacao_total",
+        "questoes",
+        "total_questoes"
+      ],
+      "json_parse_error": null,
+      "pdf_path": "C:\\Users\\otavi\\Documents\\prova-ai\\IA_Educacao_V2\\backend\\.pytest_tmp\\controller_phase3_artifacts\\downloads\\_unverified_model\\extrair_questoes\\_shared\\extracao_questoes_9.pdf",
+      "pdf_stage_source": "filename",
+      "pdf_size": 1504,
+      "recognized_models": [],
+      "valid": true,
+      "errors": []
+    },
+    "corrigir": {
+      "status": "pass",
+      "json_path": "C:\\Users\\otavi\\Documents\\prova-ai\\IA_Educacao_V2\\backend\\.pytest_tmp\\controller_phase3_artifacts\\downloads\\_unverified_model\\corrigir\\_shared\\correcao_9.json",
+      "json_stage_source": "filename",
+      "json_top_level_keys": [
+        "alunos",
+        "gabarito",
+        "notas"
+      ],
+      "json_parse_error": null,
+      "pdf_path": "C:\\Users\\otavi\\Documents\\prova-ai\\IA_Educacao_V2\\backend\\.pytest_tmp\\controller_phase3_artifacts\\downloads\\_unverified_model\\corrigir\\_shared\\correcao_9.pdf",
+      "pdf_stage_source": "filename",
+      "pdf_size": 2504,
+      "recognized_models": [],
+      "valid": true,
+      "errors": []
+    },
+    "analisar_habilidades": {
+      "status": "pass",
+      "json_path": "C:\\Users\\otavi\\Documents\\prova-ai\\IA_Educacao_V2\\backend\\.pytest_tmp\\controller_phase3_artifacts\\downloads\\_unverified_model\\analisar_habilidades\\_shared\\analise_habilidades_9.json",
+      "json_stage_source": "filename",
+      "json_top_level_keys": [
+        "analise",
+        "habilidades"
+      ],
+      "json_parse_error": null,
+      "pdf_path": "C:\\Users\\otavi\\Documents\\prova-ai\\IA_Educacao_V2\\backend\\.pytest_tmp\\controller_phase3_artifacts\\downloads\\_unverified_model\\analisar_habilidades\\_shared\\analise_habilidades_9.pdf",
+      "pdf_stage_source": "filename",
+      "pdf_size": 2504,
+      "recognized_models": [],
+      "valid": true,
+      "errors": []
+    },
+    "gerar_relatorio": {
+      "status": "pass",
+      "json_path": "C:\\Users\\otavi\\Documents\\prova-ai\\IA_Educacao_V2\\backend\\.pytest_tmp\\controller_phase3_artifacts\\downloads\\_unverified_model\\gerar_relatorio\\_shared\\relatorio_final_9.json",
+      "json_stage_source": "filename",
+      "json_top_level_keys": [
+        "relatorio",
+        "resumo"
+      ],
+      "json_parse_error": null,
+      "pdf_path": "C:\\Users\\otavi\\Documents\\prova-ai\\IA_Educacao_V2\\backend\\.pytest_tmp\\controller_phase3_artifacts\\downloads\\_unverified_model\\gerar_relatorio\\_shared\\relatorio_final_9.pdf",
+      "pdf_stage_source": "filename",
+      "pdf_size": 6004,
+      "recognized_models": [],
+      "valid": true,
+      "errors": []
+    }
+  },
+  "validation": {
+    "valid": true,
+    "results": {
+      "extrair_questoes": {
+        "valid": true,
+        "errors": []
+      },
+      "corrigir": {
+        "valid": true,
+        "errors": []
+      },
+      "analisar_habilidades": {
+        "valid": true,
+        "errors": []
+      },
+      "gerar_relatorio": {
+        "valid": true,
+        "errors": []
+      }
+    }
+  },
+  "origem_id_chain": {
+    "status": "unverified",
+    "reason": "One or more stage JSON artifacts do not expose origem_id values."
+  },
+  "student_name_consistency": {
+    "status": "unverified",
+    "reason": "Fewer than two stage JSON artifacts expose a top-level student name field."
+  },
+  "desempenho": {
+    "tarefa": {
+      "json": false,
+      "pdf": false,
+      "content_populated": false
+    },
+    "turma": {
+      "json": false,
+      "pdf": false,
+      "content_populated": false
+    },
+    "materia": {
+      "json": false,
+      "pdf": false,
+      "content_populated": false
+    }
+  },
+  "desempenho_report_content": {
+    "status": "unverified",
+    "reason": "No downloaded desempenho JSON file exposed habilidades content."
+  },
+  "unknown_files": []
+}

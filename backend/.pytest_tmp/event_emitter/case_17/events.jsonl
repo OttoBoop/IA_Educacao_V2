@@ -1,0 +1,4 @@
+{"event_type": "step_completed", "timestamp": "2026-03-09T21:45:24.883666+00:00", "step": 1, "max_steps": 50, "action": "click", "target": "#some-button", "thought": "I see a button, let me click it", "frustration": 0.3, "confidence": 0.8, "success": true, "url": "https://example.com/page", "error": null}
+{"event_type": "journey_complete", "timestamp": "2026-03-09T21:45:24.885208+00:00", "success_rate": 0.9, "total_steps": 10, "gave_up": false}
+{"event_type": "step_completed", "timestamp": "2026-03-09T22:03:22.207626+00:00", "step": 1, "max_steps": 50, "action": "click", "target": "#some-button", "thought": "I see a button, let me click it", "frustration": 0.3, "confidence": 0.8, "success": true, "url": "https://example.com/page", "error": null}
+{"event_type": "journey_complete", "timestamp": "2026-03-09T22:03:22.212579+00:00", "success_rate": 0.9, "total_steps": 10, "gave_up": false}

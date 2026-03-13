@@ -1,0 +1,26 @@
+{
+  "summary": {
+    "status": "completed",
+    "success_rate": 1.0
+  },
+  "verification_scope": {
+    "requested_models": [
+      "gpt-4o",
+      "gpt-5-nano",
+      "gemini-3-flash-preview"
+    ],
+    "expected_blocked_models": [
+      "claude-haiku-4-5-20251001"
+    ],
+    "model_status": {
+      "gpt-4o": {
+        "status": "validated"
+      },
+      "claude-haiku-4-5-20251001": {
+        "status": "expected_blocked"
+      }
+    },
+    "phase3_overall_status": "validated_with_expected_blockers",
+    "b5_eligible": false
+  }
+}

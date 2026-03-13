@@ -9,10 +9,20 @@ to monitor journey progress in real time.
 import json
 import pytest
 from pathlib import Path
+from uuid import uuid4
 
 from tests.ui.investor_journey_agent.config import AgentConfig
 from tests.ui.investor_journey_agent.llm_brain import Action, ActionType, JourneyStep
 from tests.ui.investor_journey_agent.event_emitter import EventEmitter
+
+
+@pytest.fixture
+def tmp_path():
+    """Use a repo-local writable temp directory instead of the system temp root."""
+    base = Path(__file__).resolve().parents[3] / ".pytest_tmp" / "event_emitter"
+    path = base / f"case_{uuid4().hex}"
+    path.mkdir(parents=True, exist_ok=True)
+    return path
 
 
 def _make_step(step_number=1, frustration=0.3, success=True, error=None):
@@ -36,6 +46,12 @@ def _make_step(step_number=1, frustration=0.3, success=True, error=None):
 
 class TestEventEmitterCreation:
     """Tests for EventEmitter initialization."""
+
+    def test_emitter_exposes_output_dir(self, tmp_path):
+        """output_dir property should expose the exact run directory used for IPC."""
+        emitter = EventEmitter(output_dir=tmp_path, max_steps=50, persona="investor")
+
+        assert emitter.output_dir == tmp_path
 
     def test_emitter_creates_events_file_on_first_emit(self, tmp_path):
         """events.jsonl is created in output_dir after first emit_step()."""
