@@ -5469,6 +5469,10 @@
         // Chat Geral
         let chatGeralConversationId = 'chat_' + Date.now();
         let chatGeralProviders = [];
+        let contentRequestSequence = 0;
+        let activeContentRequest = { id: 0, view: 'dashboard' };
+        let navTreeRequestSequence = 0;
+        let activeNavTreeRequest = 0;
 
         // ============================================================
         // SISTEMA DE TAREFAS (TASK QUEUE)
@@ -5640,6 +5644,7 @@
         }
 
         function showResultado(type, atividadeId, alunoId, result, taskId) {
+            cancelPendingContentRequests('resultado');
             const backButton = atividadeId ?
                 `<button class="btn" onclick="showAtividade('${atividadeId}')">← Voltar para Atividade</button>` :
                 `<button class="btn" onclick="showDashboard()">← Voltar</button>`;
@@ -6966,15 +6971,196 @@
             }
         }
 
+        function beginContentRequest(view) {
+            contentRequestSequence += 1;
+            activeContentRequest = { id: contentRequestSequence, view };
+            return activeContentRequest.id;
+        }
+
+        function isContentRequestActive(requestId, view = null) {
+            return activeContentRequest.id === requestId && (!view || activeContentRequest.view === view);
+        }
+
+        function cancelPendingContentRequests(view = currentView || 'dashboard') {
+            return beginContentRequest(view);
+        }
+
+        function beginNavTreeRequest() {
+            navTreeRequestSequence += 1;
+            activeNavTreeRequest = navTreeRequestSequence;
+            return activeNavTreeRequest;
+        }
+
+        function isNavTreeRequestActive(requestId) {
+            return activeNavTreeRequest === requestId;
+        }
+
+        function renderLoadingNotice(message = 'Carregando...') {
+            return `
+                <div style="display: flex; align-items: center; gap: 8px; color: var(--text-muted); padding: 12px 0;">
+                    <span class="spinner"></span>
+                    <span>${message}</span>
+                </div>
+            `;
+        }
+
+        function renderInlineAlert(type, title, message) {
+            const icon = type === 'danger' ? '❌' : '⚠️';
+            return `
+                <div class="alert alert-${type}">
+                    <span class="alert-icon">${icon}</span>
+                    <div class="alert-content">
+                        <div class="alert-title">${title}</div>
+                        <div class="alert-text">${message}</div>
+                    </div>
+                </div>
+            `;
+        }
+
+        function renderDashboardShell() {
+            document.getElementById('content').innerHTML = `
+                <div class="page-header">
+                    <h1 class="page-title">
+                        Dashboard
+                        <button class="section-help" onclick="toggleHelpPanel('dashboard')" title="Como usar esta página?">?</button>
+                    </h1>
+                    <p class="page-subtitle">Visão geral do sistema</p>
+                </div>
+                <div class="stats-grid" id="dashboard-stats-grid">
+                    <div class="stat-card"><div class="stat-value" style="color: var(--text-muted);">...</div><div class="stat-label">Matérias</div></div>
+                    <div class="stat-card"><div class="stat-value" style="color: var(--text-muted);">...</div><div class="stat-label">Turmas</div></div>
+                    <div class="stat-card"><div class="stat-value" style="color: var(--text-muted);">...</div><div class="stat-label">Alunos</div></div>
+                    <div class="stat-card"><div class="stat-value" style="color: var(--text-muted);">...</div><div class="stat-label">Atividades</div></div>
+                </div>
+                <div id="dashboard-alerts">${renderLoadingNotice('Carregando indicadores...')}</div>
+                <div class="card">
+                    <div class="card-header">
+                        <h3 class="card-title">Matérias</h3>
+                        <button class="btn btn-primary btn-sm" onclick="openModal('modal-materia')">+ Nova</button>
+                    </div>
+                    <div class="card-grid" id="grid-materias">
+                        <div style="grid-column: 1/-1;">${renderLoadingNotice('Carregando matérias...')}</div>
+                    </div>
+                </div>
+            `;
+        }
+
+        function renderDashboardStats(stats) {
+            const container = document.getElementById('dashboard-stats-grid');
+            if (!container) return;
+            container.innerHTML = `
+                <div class="stat-card"><div class="stat-value">${stats.total_materias}</div><div class="stat-label">Matérias</div></div>
+                <div class="stat-card"><div class="stat-value">${stats.total_turmas}</div><div class="stat-label">Turmas</div></div>
+                <div class="stat-card"><div class="stat-value">${stats.total_alunos}</div><div class="stat-label">Alunos</div></div>
+                <div class="stat-card"><div class="stat-value">${stats.total_atividades}</div><div class="stat-label">Atividades</div></div>
+            `;
+        }
+
+        function renderDashboardAlerts(stats) {
+            const container = document.getElementById('dashboard-alerts');
+            if (!container) return;
+            container.innerHTML = stats.alertas.atividades_sem_gabarito > 0 ? `
+                <div class="alert alert-warning">
+                    <span class="alert-icon">⚠️</span>
+                    <div class="alert-content">
+                        <div class="alert-title">Atenção</div>
+                        <div class="alert-text">${stats.alertas.atividades_sem_gabarito} atividade(s) sem gabarito</div>
+                    </div>
+                </div>
+            ` : '';
+        }
+
+        function renderDashboardStatsError() {
+            const container = document.getElementById('dashboard-stats-grid');
+            if (container) {
+                container.innerHTML = `
+                    <div class="stat-card"><div class="stat-value" style="color: var(--text-muted);">--</div><div class="stat-label">Matérias</div></div>
+                    <div class="stat-card"><div class="stat-value" style="color: var(--text-muted);">--</div><div class="stat-label">Turmas</div></div>
+                    <div class="stat-card"><div class="stat-value" style="color: var(--text-muted);">--</div><div class="stat-label">Alunos</div></div>
+                    <div class="stat-card"><div class="stat-value" style="color: var(--text-muted);">--</div><div class="stat-label">Atividades</div></div>
+                `;
+            }
+
+            const alerts = document.getElementById('dashboard-alerts');
+            if (alerts) {
+                alerts.innerHTML = renderInlineAlert('warning', 'Indicadores indisponíveis', 'Não foi possível carregar os números do dashboard agora.');
+            }
+        }
+
+        function renderDashboardMaterias(materias) {
+            const gridMaterias = document.getElementById('grid-materias');
+            if (!gridMaterias) return;
+
+            if (materias.length === 0) {
+                gridMaterias.innerHTML = `<div class="empty-state" style="grid-column: 1/-1;"><div class="empty-icon">📚</div><div class="empty-title">Nenhuma matéria</div><div class="empty-text">Comece criando sua primeira matéria</div><button class="btn btn-primary" onclick="openModal('modal-materia')">+ Criar Matéria</button></div>`;
+                return;
+            }
+
+            gridMaterias.innerHTML = materias.map(m => `<div class="card-grid-item" onclick="showMateria('${m.id}')"><div class="card-icon">📚</div><div class="card-name">${m.nome}</div><div class="card-meta">${m.descricao || 'Sem descrição'}</div></div>`).join('');
+        }
+
+        function renderDashboardMateriasError() {
+            const gridMaterias = document.getElementById('grid-materias');
+            if (!gridMaterias) return;
+            gridMaterias.innerHTML = `<div style="grid-column: 1/-1;">${renderInlineAlert('warning', 'Matérias indisponíveis', 'Não foi possível carregar a lista de matérias agora.')}</div>`;
+        }
+
+        function renderDetailLoadingShell(title, subtitle, message) {
+            document.getElementById('content').innerHTML = `
+                <div class="page-header">
+                    <h1 class="page-title">${title}</h1>
+                    <p class="page-subtitle">${subtitle}</p>
+                </div>
+                <div class="card">
+                    <div class="card-header">
+                        <h3 class="card-title">Carregando...</h3>
+                    </div>
+                    ${renderLoadingNotice(message)}
+                </div>
+            `;
+        }
+
+        function renderDetailErrorShell(title, subtitle, message, retryAction) {
+            document.getElementById('content').innerHTML = `
+                <div class="page-header">
+                    <h1 class="page-title">${title}</h1>
+                    <p class="page-subtitle">${subtitle}</p>
+                </div>
+                <div class="card">
+                    ${renderInlineAlert('warning', 'Não foi possível carregar', message)}
+                    ${retryAction ? `<div style="margin-top: 16px;"><button class="btn" onclick="${retryAction}">Tentar novamente</button></div>` : ''}
+                </div>
+            `;
+        }
+
+        function renderNavTreeLoadingState() {
+            const container = document.getElementById('tree-materias');
+            if (container) {
+                container.innerHTML = renderLoadingNotice('Carregando matérias...');
+            }
+        }
+
+        function renderNavTreeErrorState() {
+            const container = document.getElementById('tree-materias');
+            if (container) {
+                container.innerHTML = '<div style="padding: 12px; color: var(--text-muted); font-size: 0.85rem;">Não foi possível carregar a árvore agora</div>';
+            }
+        }
+
         // ============================================================
         // NAVEGAÇÃO - ÁRVORE
         // ============================================================
         async function loadNavTree() {
+            const requestId = beginNavTreeRequest();
+            renderNavTreeLoadingState();
             try {
                 const data = await api('/navegacao/arvore');
+                if (!isNavTreeRequestActive(requestId)) return;
                 renderNavTree(data.materias);
             } catch (e) {
+                if (!isNavTreeRequestActive(requestId)) return;
                 console.error('Erro ao carregar árvore:', e);
+                renderNavTreeErrorState();
             }
         }
 
@@ -7283,67 +7469,51 @@
         async function showDashboard() {
             currentView = 'dashboard';
             currentMateria = currentTurma = currentAtividade = null;
+            const requestId = beginContentRequest('dashboard');
             pushNavState();
             setBreadcrumb([{ nome: 'Início', onclick: 'showDashboard()' }]);
             clearHelpPanels();
+            renderDashboardShell();
 
-            try {
-                const stats = await api('/estatisticas');
-                document.getElementById('content').innerHTML = `
-                    <div class="page-header">
-                        <h1 class="page-title">
-                            Dashboard
-                            <button class="section-help" onclick="toggleHelpPanel('dashboard')" title="Como usar esta página?">?</button>
-                        </h1>
-                        <p class="page-subtitle">Visão geral do sistema</p>
-                    </div>
-                    <div class="stats-grid">
-                        <div class="stat-card"><div class="stat-value">${stats.total_materias}</div><div class="stat-label">Matérias</div></div>
-                        <div class="stat-card"><div class="stat-value">${stats.total_turmas}</div><div class="stat-label">Turmas</div></div>
-                        <div class="stat-card"><div class="stat-value">${stats.total_alunos}</div><div class="stat-label">Alunos</div></div>
-                        <div class="stat-card"><div class="stat-value">${stats.total_atividades}</div><div class="stat-label">Atividades</div></div>
-                    </div>
-                    ${stats.alertas.atividades_sem_gabarito > 0 ? `
-                        <div class="alert alert-warning">
-                            <span class="alert-icon">⚠️</span>
-                            <div class="alert-content">
-                                <div class="alert-title">Atenção</div>
-                                <div class="alert-text">${stats.alertas.atividades_sem_gabarito} atividade(s) sem gabarito</div>
-                            </div>
-                        </div>
-                    ` : ''}
-                    <div class="card">
-                        <div class="card-header">
-                            <h3 class="card-title">Matérias</h3>
-                            <button class="btn btn-primary btn-sm" onclick="openModal('modal-materia')">+ Nova</button>
-                        </div>
-                        <div class="card-grid" id="grid-materias"><div style="color: var(--text-muted);">Carregando...</div></div>
-                    </div>
-                `;
+            const statsPromise = api('/estatisticas')
+                .then(stats => {
+                    if (!isContentRequestActive(requestId, 'dashboard')) return;
+                    renderDashboardStats(stats);
+                    renderDashboardAlerts(stats);
+                })
+                .catch(() => {
+                    if (!isContentRequestActive(requestId, 'dashboard')) return;
+                    renderDashboardStatsError();
+                });
 
-                const materiasData = await api('/materias');
-                const gridMaterias = document.getElementById('grid-materias');
-                if (materiasData.materias.length === 0) {
-                    gridMaterias.innerHTML = `<div class="empty-state" style="grid-column: 1/-1;"><div class="empty-icon">📚</div><div class="empty-title">Nenhuma matéria</div><div class="empty-text">Comece criando sua primeira matéria</div><button class="btn btn-primary" onclick="openModal('modal-materia')">+ Criar Matéria</button></div>`;
-                } else {
-                    gridMaterias.innerHTML = materiasData.materias.map(m => `<div class="card-grid-item" onclick="showMateria('${m.id}')"><div class="card-icon">📚</div><div class="card-name">${m.nome}</div><div class="card-meta">${m.descricao || 'Sem descrição'}</div></div>`).join('');
-                }
-            } catch (e) {
-                document.getElementById('content').innerHTML = `<div class="alert alert-danger"><span class="alert-icon">❌</span><div class="alert-content"><div class="alert-title">Erro ao carregar</div><div class="alert-text">Verifique se o servidor está rodando corretamente</div></div></div>`;
-            }
+            const materiasPromise = api('/materias')
+                .then(materiasData => {
+                    if (!isContentRequestActive(requestId, 'dashboard')) return;
+                    renderDashboardMaterias(materiasData.materias || []);
+                })
+                .catch(() => {
+                    if (!isContentRequestActive(requestId, 'dashboard')) return;
+                    renderDashboardMateriasError();
+                });
+
+            await Promise.allSettled([statsPromise, materiasPromise]);
         }
 
         async function showMateria(materiaId) {
             currentView = 'materia';
             currentMateria = materiaId;
             currentTurma = currentAtividade = null;
+            const requestId = beginContentRequest('materia');
             pushNavState();
+            setBreadcrumb([{ nome: 'Início', onclick: 'showDashboard()' }, { nome: 'Carregando matéria...' }]);
+            clearHelpPanels();
+            renderDetailLoadingShell('Carregando matéria...', 'Buscando turmas e detalhes da matéria.', 'Carregando matéria...');
 
             try {
                 const data = await api(`/materias/${materiaId}`);
+                if (!isContentRequestActive(requestId, 'materia')) return;
                 setBreadcrumb([{ nome: 'Início', onclick: 'showDashboard()' }, { nome: data.materia.nome, onclick: `showMateria('${materiaId}')` }]);
 
-                clearHelpPanels();
                 document.getElementById('content').innerHTML = `
                     <div class="page-header" style="display: flex; justify-content: space-between; align-items: flex-start;">
                         <div>
@@ -7367,7 +7537,11 @@
                     </div>
                 `;
                 window._materiaData = data;
-            } catch (e) { showToast('Erro ao carregar matéria', 'error'); }
+            } catch (e) {
+                if (!isContentRequestActive(requestId, 'materia')) return;
+                renderDetailErrorShell('Matéria', 'Detalhes da matéria', 'Não foi possível carregar esta matéria agora.', `showMateria('${materiaId}')`);
+                showToast('Erro ao carregar matéria', 'error');
+            }
         }
 
         async function showMateriaTab(tab, materiaId) {
@@ -7406,7 +7580,11 @@
             currentView = 'turma';
             currentTurma = turmaId;
             currentAtividade = null;
+            const requestId = beginContentRequest('turma');
             pushNavState();
+            setBreadcrumb([{ nome: 'Início', onclick: 'showDashboard()' }, { nome: 'Carregando turma...' }]);
+            clearHelpPanels();
+            renderDetailLoadingShell('Carregando turma...', 'Buscando atividades e alunos da turma.', 'Carregando turma...');
 
             // Loading state: show spinner + debounce before fetch
             const card = document.querySelector(`[data-turma-id="${turmaId}"]`);
@@ -7417,10 +7595,10 @@
 
             try {
                 const data = await api(`/turmas/${turmaId}`);
+                if (!isContentRequestActive(requestId, 'turma')) return;
                 currentMateria = data.turma.materia_id;
                 setBreadcrumb([{ nome: 'Início', onclick: 'showDashboard()' }, { nome: data.materia.nome, onclick: `showMateria('${data.materia.id}')` }, { nome: data.turma.nome, onclick: `showTurma('${turmaId}')` }]);
 
-                clearHelpPanels();
                 document.getElementById('content').innerHTML = `
                     <div class="page-header" style="display: flex; justify-content: space-between; align-items: flex-start;">
                         <div>
@@ -7449,12 +7627,15 @@
                         </div>
                     </div>
                 `;
+                if (!isContentRequestActive(requestId, 'turma')) return;
                 window._turmaData = data;
             } catch (e) {
+                if (!isContentRequestActive(requestId, 'turma')) return;
                 if (card) {
                     card.classList.remove('card-loading');
                     card.style.pointerEvents = '';
                 }
+                renderDetailErrorShell('Turma', 'Detalhes da turma', 'Não foi possível carregar esta turma agora.', `showTurma('${turmaId}')`);
                 showToast('Erro ao carregar turma', 'error');
             }
         }
@@ -7502,8 +7683,11 @@
             currentView = 'atividade';
             currentAtividade = atividadeId;
             currentAluno = null;
+            const requestId = beginContentRequest('atividade');
             pushNavState();
             clearHelpPanels();
+            setBreadcrumb([{ nome: 'Início', onclick: 'showDashboard()' }, { nome: 'Carregando atividade...' }]);
+            renderDetailLoadingShell('Carregando atividade...', 'Buscando documentos e progresso da atividade.', 'Carregando atividade...');
 
             // Loading state: show spinner + block double-click before fetch
             const _cardEl = document.querySelector(`.card-grid-item[onclick*="showAtividade('${atividadeId}')"]`);
@@ -7514,7 +7698,9 @@
 
             try {
                 const data = await api(`/atividades/${atividadeId}`);
+                if (!isContentRequestActive(requestId, 'atividade')) return;
                 const turma = await api(`/turmas/${data.atividade.turma_id}`);
+                if (!isContentRequestActive(requestId, 'atividade')) return;
                 currentTurma = turma.turma.id;
                 currentMateria = turma.materia.id;
 
@@ -7568,14 +7754,17 @@
                     </div>
                     </div>
                 `;
+                if (!isContentRequestActive(requestId, 'atividade')) return;
                 window._atividadeData = data;
                 window._turmaData = turma;
                 setupDocFilters();
             } catch (e) {
+                if (!isContentRequestActive(requestId, 'atividade')) return;
                 if (_cardEl) {
                     _cardEl.classList.remove('card-loading');
                     _cardEl.style.pointerEvents = '';
                 }
+                renderDetailErrorShell('Atividade', 'Detalhes da atividade', 'Não foi possível carregar esta atividade agora.', `showAtividade('${atividadeId}')`);
                 showToast('Erro ao carregar atividade', 'error');
             }
         }
@@ -7792,11 +7981,13 @@
 
         async function showAlunos() {
             currentView = 'alunos';
+            const requestId = beginContentRequest('alunos');
             pushNavState();
             setBreadcrumb([{ nome: 'Início', onclick: 'showDashboard()' }, { nome: 'Todos os Alunos', onclick: 'showAlunos()' }]);
 
             try {
                 const data = await api('/alunos');
+                if (!isContentRequestActive(requestId, 'alunos')) return;
                 document.getElementById('content').innerHTML = `
                     <div class="page-header"><h1 class="page-title">Todos os Alunos</h1><p class="page-subtitle">${data.alunos.length} aluno(s)</p></div>
                     <div class="card">
@@ -7813,6 +8004,7 @@
 
         async function showPrompts() {
             currentView = 'prompts';
+            const requestId = beginContentRequest('prompts');
             pushNavState();
             setBreadcrumb([{ nome: 'Início', onclick: 'showDashboard()' }, { nome: 'Prompts', onclick: 'showPrompts()' }]);
             clearHelpPanels();
@@ -7822,6 +8014,7 @@
                     api('/prompts/etapas'),
                     api('/materias')
                 ]);
+                if (!isContentRequestActive(requestId, 'prompts')) return;
                 const materiaMap = materiasData.materias.reduce((acc, m) => {
                     acc[m.id] = m.nome;
                     return acc;
@@ -7915,11 +8108,13 @@
 
         async function showProviders() {
             currentView = 'providers';
+            const requestId = beginContentRequest('providers');
             pushNavState();
             setBreadcrumb([{ nome: 'Início', onclick: 'showDashboard()' }, { nome: 'Modelos de LLM', onclick: 'showProviders()' }]);
             clearHelpPanels();
             try {
                 const data = await api('/providers');
+                if (!isContentRequestActive(requestId, 'providers')) return;
                 window._providersCache = data.providers || [];
                 document.getElementById('content').innerHTML = `
                     <div class="page-header">
@@ -8003,6 +8198,7 @@
         // ============================================================
         async function showChatGeral(preselectedAtividadeId = null, preselectedAlunoId = null) {
             currentView = 'chat_geral';
+            const requestId = beginContentRequest('chat_geral');
             pushNavState();
             clearHelpPanels();
 
@@ -8023,6 +8219,7 @@
             let atividadesOptions = '<option value="">Sem contexto específico</option>';
             try {
                 const data = await api('/atividades');
+                if (!isContentRequestActive(requestId, 'chat_geral')) return;
                 if (data.atividades) {
                     atividadesOptions += data.atividades.map(a =>
                         `<option value="${a.id}" ${a.id === preselectedAtividadeId ? 'selected' : ''}>${escapeHtml(a.nome)}</option>`
@@ -8034,6 +8231,7 @@
             let modelsOptions = '<option value="">Selecione um modelo...</option>';
             try {
                 const data = await api('/settings/models');
+                if (!isContentRequestActive(requestId, 'chat_geral')) return;
                 chatGeralProviders = data.models || [];  // Mantém nome da variável para compatibilidade
                 modelsOptions = chatGeralProviders.map(m =>
                     `<option value="${m.id}" ${m.is_default ? 'selected' : ''}>${getProviderIcon(m.tipo)} ${escapeHtml(m.nome)} (${m.modelo})</option>`
@@ -8042,6 +8240,7 @@
                     modelsOptions = '<option value="">Nenhum modelo configurado</option>';
                 }
             } catch (e) { }
+            if (!isContentRequestActive(requestId, 'chat_geral')) return;
 
             document.getElementById('content').innerHTML = `
                 <div class="page-header">
@@ -8127,6 +8326,7 @@
                 this.style.height = Math.min(this.scrollHeight, 150) + 'px';
             });
 
+            if (!isContentRequestActive(requestId, 'chat_geral')) return;
             updateChatGeralHeader();
         }
 
@@ -8476,9 +8676,11 @@
         async function showAluno(alunoId) {
             currentView = 'aluno';
             currentAluno = alunoId;
+            const requestId = beginContentRequest('aluno');
             pushNavState();
             try {
                 const data = await api(`/alunos/${alunoId}`);
+                if (!isContentRequestActive(requestId, 'aluno')) return;
                 setBreadcrumb([{ nome: 'Início', onclick: 'showDashboard()' }, { nome: 'Alunos', onclick: 'showAlunos()' }, { nome: data.aluno.nome, onclick: `showAluno('${alunoId}')` }]);
 
                 document.getElementById('content').innerHTML = `
@@ -8502,7 +8704,10 @@
         // BREADCRUMB
         // ============================================================
         function setBreadcrumb(items) {
-            document.getElementById('breadcrumb').innerHTML = items.map((item, i) => `<span class="breadcrumb-item ${i === items.length - 1 ? 'current' : ''}" onclick="${item.onclick}">${item.nome}</span>${i < items.length - 1 ? '<span class="breadcrumb-sep">/</span>' : ''}`).join('');
+            document.getElementById('breadcrumb').innerHTML = items.map((item, i) => {
+                const onclickAttr = item.onclick ? ` onclick="${item.onclick}"` : '';
+                return `<span class="breadcrumb-item ${i === items.length - 1 ? 'current' : ''}"${onclickAttr}>${item.nome}</span>${i < items.length - 1 ? '<span class="breadcrumb-sep">/</span>' : ''}`;
+            }).join('');
         }
 
         // ============================================================
@@ -10416,10 +10621,12 @@
         }
 
         async function showStatusProcessamento(atividadeId) {
+            const requestId = beginContentRequest('status_processamento');
             const alunoId = prompt('ID do aluno (opcional)', '');
             const query = alunoId ? `?aluno_id=${alunoId}` : '';
             try {
                 const data = await api(`/processamento/status/${atividadeId}${query}`);
+                if (!isContentRequestActive(requestId, 'status_processamento')) return;
                 document.getElementById('content').innerHTML = `
                     <div class="page-header"><h1 class="page-title">Status de Processamento</h1></div>
                     <div class="card">
@@ -10430,8 +10637,10 @@
         }
 
         async function showRanking(atividadeId) {
+            const requestId = beginContentRequest('ranking');
             try {
                 const data = await api(`/resultados/${atividadeId}/ranking`);
+                if (!isContentRequestActive(requestId, 'ranking')) return;
                 document.getElementById('content').innerHTML = `
                     <div class="page-header"><h1 class="page-title">Ranking</h1></div>
                     <div class="card">
@@ -10458,8 +10667,10 @@
         }
 
         async function showEstatisticasAtividade(atividadeId) {
+            const requestId = beginContentRequest('estatisticas_atividade');
             try {
                 const data = await api(`/resultados/${atividadeId}/estatisticas`);
+                if (!isContentRequestActive(requestId, 'estatisticas_atividade')) return;
                 document.getElementById('content').innerHTML = `
                     <div class="page-header"><h1 class="page-title">Estatísticas da Atividade</h1></div>
                     <div class="card">
@@ -10470,6 +10681,7 @@
         }
 
         async function showResultadoAluno(atividadeId, alunoId) {
+            const requestId = beginContentRequest('resultado_aluno');
             try {
                 currentView = 'resultado_aluno';
                 currentAtividade = atividadeId;
@@ -10481,6 +10693,7 @@
                     api(`/atividades/${atividadeId}`),
                     api(`/alunos/${alunoId}`)
                 ]);
+                if (!isContentRequestActive(requestId, 'resultado_aluno')) return;
 
                 // Nova lógica: endpoint agora retorna resultados parciais em vez de 404
                 const resultadoData = resultadoResp.status === 'fulfilled' ? resultadoResp.value : null;
@@ -10493,6 +10706,7 @@
                 const alunoData = alunoResp.status === 'fulfilled' ? alunoResp.value : null;
                 if (atividadeData && alunoData) {
                     const turmaData = await api(`/turmas/${atividadeData.atividade.turma_id}`);
+                    if (!isContentRequestActive(requestId, 'resultado_aluno')) return;
                     currentTurma = turmaData.turma.id;
                     currentMateria = turmaData.materia.id;
                     setBreadcrumb([
@@ -10641,6 +10855,7 @@
                         </div>
                     </div>
                 ` : '';
+                if (!isContentRequestActive(requestId, 'resultado_aluno')) return;
 
                 document.getElementById('content').innerHTML = `
                     <div class="page-header"><h1 class="page-title">Resultado do Aluno</h1></div>
@@ -10669,8 +10884,10 @@
         }
 
         async function showDashboardTurma(turmaId) {
+            const requestId = beginContentRequest('dashboard_turma');
             try {
                 const data = await api(`/dashboard/turma/${turmaId}`);
+                if (!isContentRequestActive(requestId, 'dashboard_turma')) return;
                 document.getElementById('content').innerHTML = `
                     <div class="page-header"><h1 class="page-title">Dashboard da Turma</h1></div>
                     <div class="card">
@@ -10690,8 +10907,10 @@
         }
 
         async function showDashboardAluno(alunoId) {
+            const requestId = beginContentRequest('dashboard_aluno');
             try {
                 const data = await api(`/dashboard/aluno/${alunoId}`);
+                if (!isContentRequestActive(requestId, 'dashboard_aluno')) return;
                 document.getElementById('content').innerHTML = `
                     <div class="page-header"><h1 class="page-title">Dashboard do Aluno</h1></div>
                     <div class="card">

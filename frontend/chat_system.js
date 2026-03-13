@@ -65,6 +65,8 @@ const TIPO_DOC_LABELS = {
 // ============================================================
 async function showChat() {
     currentView = 'chat';
+    const requestId = beginContentRequest('chat');
+    document.getElementById('content').innerHTML = renderChatLoadingView();
     setBreadcrumb([
         {nome: 'Início', onclick: 'showDashboard()'},
         {nome: 'Chat com IA', onclick: 'showChat()'}
@@ -76,6 +78,7 @@ async function showChat() {
         api('/materias').catch(() => ({ materias: [] })),
         api('/alunos').catch(() => ({ alunos: [] }))
     ]);
+    if (!isContentRequestActive(requestId, 'chat')) return;
 
     const models = modelsData.status === 'fulfilled' ? modelsData.value : { models: [] };
     const materias = materiasData.status === 'fulfilled' ? materiasData.value.materias : [];
@@ -89,17 +92,104 @@ async function showChat() {
 
     // Renderizar a view do chat
     document.getElementById('content').innerHTML = renderChatView(models, materias, alunos);
+    if (!isContentRequestActive(requestId, 'chat')) return;
 
     // Setup event listeners
     setupChatEventListeners();
 
     // Carregar documentos disponíveis
-    await loadAvailableDocuments();
+    loadAvailableDocuments(requestId);
 }
 
 // ============================================================
 // RENDERIZAÇÃO DA VIEW
 // ============================================================
+function renderChatLoadingView() {
+    return `
+        <div class="chat-layout">
+            <div class="chat-context-panel" id="context-panel">
+                <div class="context-header">
+                    <h3>Contexto</h3>
+                    <button class="btn btn-sm" disabled title="Minimizar">
+                        <span id="context-toggle-icon">◀</span>
+                    </button>
+                </div>
+
+                <div class="context-body" id="context-body">
+                    <div class="context-section">
+                        <label class="form-label">Modo de Selecao</label>
+                        <div class="context-mode-buttons">
+                            <button class="mode-btn active" disabled>Filtrar</button>
+                            <button class="mode-btn" disabled>Todos</button>
+                            <button class="mode-btn" disabled>Manual</button>
+                        </div>
+                    </div>
+
+                    <div class="context-section">
+                        <label class="form-label">Filtros</label>
+                        <div class="empty-state-mini">
+                            <span>Preparando filtros...</span>
+                        </div>
+                    </div>
+
+                    <div class="context-section">
+                        <div class="docs-header">
+                            <label class="form-label">Selecionados: <strong id="docs-count">0</strong> / <span id="docs-total">0</span></label>
+                            <button class="btn btn-sm" disabled title="Inverter selecao">↔</button>
+                        </div>
+                        <div class="docs-list" id="context-docs-list">
+                            <div class="empty-state-mini">
+                                <span>Carregando...</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="chat-main">
+                <div class="chat-header">
+                    <div class="chat-header-left">
+                        <h2>Chat com IA</h2>
+                    </div>
+                    <div class="chat-header-right">
+                        <label class="form-label-inline">Modelo:</label>
+                        <select class="form-select" id="chat-model-select" style="min-width: 200px;" disabled>
+                            <option>Carregando modelos...</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="chat-messages" id="chat-messages">
+                    <div class="message assistant">
+                        <div class="message-content">
+                            Preparando chat...
+                        </div>
+                    </div>
+                </div>
+
+                <div class="chat-input-area">
+                    <div class="chat-input-row">
+                        <textarea
+                            class="chat-input"
+                            id="chat-input"
+                            placeholder="Preparando chat..."
+                            rows="1"
+                            disabled
+                        ></textarea>
+                        <button class="btn btn-primary" id="chat-send-btn" disabled>
+                            Enviar
+                        </button>
+                    </div>
+                    <div class="chat-input-info">
+                        <span id="context-status">Contexto: carregando documentos</span>
+                        <span id="provider-status">Modelos e filtros serao carregados em seguida</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    `;
+}
+
 function renderChatView(models, materias, alunos) {
     const modelOptions = renderModelOptions(models);
     const hasModels = models.models && models.models.length > 0;
@@ -1363,10 +1453,11 @@ function setContextMode(mode) {
     updateContextStatus();
 }
 
-async function loadAvailableDocuments() {
+async function loadAvailableDocuments(requestId = null) {
     try {
         // Buscar todos os documentos disponiveis
         const data = await api('/documentos/todos');
+        if (requestId && !isContentRequestActive(requestId, 'chat')) return;
         window.chatState.context.availableDocs = data.documentos || [];
 
         // Calcular intersecoes se houver alunos selecionados
@@ -1378,6 +1469,7 @@ async function loadAvailableDocuments() {
 
         updateDocumentsList();
     } catch (e) {
+        if (requestId && !isContentRequestActive(requestId, 'chat')) return;
         console.error('Erro ao carregar documentos:', e);
         window.chatState.context.availableDocs = [];
         updateDocumentsList();
@@ -1386,6 +1478,9 @@ async function loadAvailableDocuments() {
 
 function updateDocumentsList() {
     const listDiv = document.getElementById('context-docs-list');
+    const docsCount = document.getElementById('docs-count');
+    const docsTotal = document.getElementById('docs-total');
+    if (!listDiv || !docsCount || !docsTotal) return;
     const ctx = window.chatState.context;
     const docs = getFilteredDocuments();
     const allDocs = ctx.availableDocs;
@@ -1394,8 +1489,8 @@ function updateDocumentsList() {
 
     // Mostrar documentos selecionados / total filtrado
     const selectedIds = getSelectedDocumentIds();
-    document.getElementById('docs-count').textContent = selectedIds.length;
-    document.getElementById('docs-total').textContent = docs.length;
+    docsCount.textContent = selectedIds.length;
+    docsTotal.textContent = docs.length;
 
     if (docs.length === 0) {
         listDiv.innerHTML = `
