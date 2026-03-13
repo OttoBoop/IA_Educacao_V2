@@ -1117,6 +1117,7 @@ async def debug_documento(documento_id: str):
 # FRONTEND (servir arquivos estáticos)
 # ============================================================
 
+# Frontend assets live at the repo root and are served from this backend app.
 FRONTEND_PATH = Path(__file__).parent.parent / "frontend"
 
 @app.get("/", tags=["Frontend"])
