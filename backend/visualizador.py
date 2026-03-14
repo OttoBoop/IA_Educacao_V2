@@ -224,7 +224,16 @@ class VisualizadorResultados:
             arquivo = storage.resolver_caminho_documento(documento)
             if arquivo.exists():
                 with open(arquivo, 'r', encoding='utf-8') as f:
-                    return json.load(f)
+                    content = f.read()
+                try:
+                    return json.loads(content)
+                except json.JSONDecodeError:
+                    # Handle files with extra data after the JSON object
+                    # (e.g., two concatenated JSON objects from pipeline)
+                    decoder = json.JSONDecoder()
+                    obj, _ = decoder.raw_decode(content.lstrip())
+                    if isinstance(obj, dict):
+                        return obj
         except:
             pass
         return {}
