@@ -155,8 +155,12 @@ Você DEVE usar as ferramentas disponíveis para produzir dois outputs:
      ],
      "total_acertos": <int>,
      "total_erros": <int>,
-     "feedback_geral": "<str>"
+     "feedback_geral": "<str>",
+     "_documento_ilegivel": <bool>,
+     "_campos_faltantes": ["<str>"]
    }
+   Defina _documento_ilegivel como true se o documento do aluno não pôde ser lido adequadamente.
+   Liste em _campos_faltantes quaisquer campos que não puderam ser preenchidos.
    Use extensão .json e nome descritivo (ex: "correcao_aluno.json").
 
 2. **execute_python_code** — Gere um PDF estilizado com reportlab contendo:
@@ -183,8 +187,12 @@ Você DEVE usar as ferramentas disponíveis para produzir dois outputs:
      },
      "recomendacoes": [
        {"tipo": "<str>", "descricao": "<str>", "prioridade": "<str>"}
-     ]
+     ],
+     "_documento_ilegivel": <bool>,
+     "_campos_faltantes": ["<str>"]
    }
+   Defina _documento_ilegivel como true se o documento do aluno não pôde ser lido adequadamente.
+   Liste em _campos_faltantes quaisquer campos que não puderam ser preenchidos.
    Use extensão .json e nome descritivo.
 
 2. **execute_python_code** — Gere um PDF estilizado com reportlab contendo:
@@ -208,8 +216,12 @@ Você DEVE usar as ferramentas disponíveis para produzir dois outputs:
        {"tipo": "<str>", "descricao": "<str>", "prioridade": "<str>"}
      ],
      "nota_final": <float>,
-     "detalhamento": "<str>"
+     "detalhamento": "<str>",
+     "_documento_ilegivel": <bool>,
+     "_campos_faltantes": ["<str>"]
    }
+   Defina _documento_ilegivel como true se o documento do aluno não pôde ser lido adequadamente.
+   Liste em _campos_faltantes quaisquer campos que não puderam ser preenchidos.
    Use extensão .json e nome descritivo.
 
 2. **execute_python_code** — Gere um PDF estilizado com reportlab contendo:

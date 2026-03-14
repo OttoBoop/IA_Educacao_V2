@@ -66,6 +66,9 @@ class VisaoAluno:
 
     # Pipeline error info (when processing failed)
     erro_pipeline: Optional[Dict[str, Any]] = None
+
+    # True when correction JSON had no structured fields (only resposta_raw or empty)
+    dados_incompletos: bool = False
     
     def to_dict(self) -> Dict[str, Any]:
         return {
@@ -88,6 +91,7 @@ class VisaoAluno:
             "feedback_geral": self.feedback_geral,
             "corrigido_em": self.corrigido_em.isoformat() if self.corrigido_em else None,
             "corrigido_por_ia": self.corrigido_por_ia,
+            "dados_incompletos": self.dados_incompletos,
             **({"erro_pipeline": self.erro_pipeline} if self.erro_pipeline else {})
         }
 
@@ -167,9 +171,46 @@ class VisualizadorResultados:
     def _processar_correcao(self, visao: VisaoAluno, data: Dict[str, Any]):
         """Processa dados de correção para a visão"""
         # Tentar diferentes formatos de resposta da IA
-        
+
+        # Formato 0: STAGE_TOOL_INSTRUCTIONS format (questoes[] + nota_final)
+        if "questoes" in data and "nota_final" in data:
+            visao.nota_final = float(data.get("nota_final", 0))
+            visao.percentual = (visao.nota_final / visao.nota_maxima * 100) if visao.nota_maxima > 0 else 0
+            visao.feedback_geral = data.get("feedback_geral", "")
+
+            questoes = data.get("questoes", [])
+            for q in questoes:
+                acerto = q.get("acerto", False)
+                nota = float(q.get("nota", 0))
+                nota_max = float(q.get("nota_maxima", 1))
+
+                # Map acerto bool to status string
+                if acerto:
+                    status = "correta"
+                    visao.questoes_corretas += 1
+                else:
+                    status = "incorreta"
+                    visao.questoes_incorretas += 1
+
+                questao = VisaoQuestao(
+                    numero=q.get("numero", len(visao.questoes) + 1),
+                    enunciado=q.get("enunciado", ""),
+                    resposta_esperada=q.get("resposta_esperada", ""),
+                    resposta_aluno=q.get("resposta_aluno", ""),
+                    nota=nota,
+                    nota_maxima=nota_max,
+                    percentual=(nota / nota_max * 100) if nota_max > 0 else 0,
+                    status=status,
+                    feedback=q.get("feedback", ""),
+                    pontos_positivos=q.get("pontos_positivos", []),
+                    pontos_melhorar=q.get("pontos_melhorar", []),
+                )
+                visao.questoes.append(questao)
+
+            visao.total_questoes = len(questoes)
+
         # Formato 1: Resposta direta com nota
-        if "nota" in data:
+        elif "nota" in data:
             visao.nota_final = float(data.get("nota", 0))
             visao.percentual = (visao.nota_final / visao.nota_maxima * 100) if visao.nota_maxima > 0 else 0
             visao.feedback_geral = data.get("feedback", "")
@@ -244,32 +285,50 @@ class VisualizadorResultados:
         # Formato 3: resposta_raw (texto livre)
         elif "resposta_raw" in data:
             visao.feedback_geral = data["resposta_raw"]
+            visao.dados_incompletos = True
+
+        # No recognized format
+        else:
+            visao.dados_incompletos = True
     
     def _processar_analise(self, visao: VisaoAluno, data: Dict[str, Any]):
         """Processa análise de habilidades"""
         if not data:
             return
-        
+
         # Habilidades
         habilidades = data.get("habilidades", {})
-        
+
         if isinstance(habilidades, dict):
+            # Existing format: dict with dominadas/em_desenvolvimento/nao_demonstradas
             dominadas = habilidades.get("dominadas", [])
             em_dev = habilidades.get("em_desenvolvimento", [])
             nao_dem = habilidades.get("nao_demonstradas", [])
-            
+
             visao.habilidades_demonstradas = [
-                h.get("nome", h) if isinstance(h, dict) else h 
+                h.get("nome", h) if isinstance(h, dict) else h
                 for h in dominadas
             ]
             visao.habilidades_faltantes = [
-                h.get("nome", h) if isinstance(h, dict) else h 
+                h.get("nome", h) if isinstance(h, dict) else h
                 for h in nao_dem
             ]
-        
+        elif isinstance(habilidades, list):
+            # STAGE_TOOL_INSTRUCTIONS format: flat list of dicts with nome/nivel/nota
+            for h in habilidades:
+                nome = h.get("nome", h) if isinstance(h, dict) else h
+                nivel = h.get("nivel", "").lower() if isinstance(h, dict) else ""
+                if nivel in ("avançado", "avancado", "dominado", "excelente"):
+                    visao.habilidades_demonstradas.append(nome)
+                elif nivel in ("nao_demonstrado", "ausente", "insuficiente"):
+                    visao.habilidades_faltantes.append(nome)
+                else:
+                    # intermediário or unknown → demonstrated (benefit of doubt)
+                    visao.habilidades_demonstradas.append(nome)
+
         # Recomendações
         visao.recomendacoes = data.get("recomendacoes", [])
-        
+
         # Feedback geral
         if not visao.feedback_geral:
             visao.feedback_geral = data.get("resumo_desempenho", "")

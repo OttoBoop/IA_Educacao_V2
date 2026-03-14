@@ -6522,14 +6522,33 @@
             const nota = resultado.nota_final ?? resultado.nota ?? resultado.pontuacao ?? null;
             const acertos = resultado.acertos ?? resultado.questoes_corretas ?? null;
             const total = resultado.total_questoes ?? resultado.questoes?.length ?? null;
+            const dadosIncompletos = resultado.dados_incompletos === true;
 
-            if (nota !== null || acertos !== null) {
+            // Always show resumo section — with N/A fallback when data is incomplete
+            html += `
+                <div class="data-section">
+                    <div class="data-section-title">📊 Resumo${dadosIncompletos ? ' <span style="background: #f59e0b; color: #fff; padding: 2px 8px; border-radius: 4px; font-size: 0.75rem; margin-left: 8px;">⚠ Dados incompletos</span>' : ''}</div>
+                    <div class="data-grid">
+            `;
+
+            if (dadosIncompletos) {
+                // N/A fallback for each field
                 html += `
-                    <div class="data-section">
-                        <div class="data-section-title">📊 Resumo</div>
-                        <div class="data-grid">
+                    <div class="data-item">
+                        <div class="data-label">Nota Final</div>
+                        <div class="data-value large" style="color: var(--text-muted);">N/A</div>
+                        <div style="font-size: 0.75rem; color: #f59e0b;">Correção não produziu dados estruturados</div>
+                    </div>
+                    <div class="data-item">
+                        <div class="data-label">Acertos</div>
+                        <div class="data-value large" style="color: var(--text-muted);">N/A</div>
+                    </div>
+                    <div class="data-item">
+                        <div class="data-label">Aproveitamento</div>
+                        <div class="data-value large" style="color: var(--text-muted);">N/A</div>
+                    </div>
                 `;
-
+            } else {
                 if (nota !== null) {
                     const notaClass = nota >= 7 ? 'success' : nota >= 5 ? 'warning' : 'danger';
                     html += `
@@ -6540,7 +6559,7 @@
                     `;
                 }
 
-                if (acertos !== null && total !== null) {
+                if (acertos !== null && total !== null && total > 0) {
                     const pct = Math.round((acertos / total) * 100);
                     html += `
                         <div class="data-item">
@@ -6552,10 +6571,22 @@
                             <div class="data-value large ${pct >= 70 ? 'success' : pct >= 50 ? 'warning' : 'danger'}">${pct}%</div>
                         </div>
                     `;
+                } else if (acertos !== null && total !== null) {
+                    // total === 0: avoid NaN
+                    html += `
+                        <div class="data-item">
+                            <div class="data-label">Acertos</div>
+                            <div class="data-value large">${acertos}/${total}</div>
+                        </div>
+                        <div class="data-item">
+                            <div class="data-label">Aproveitamento</div>
+                            <div class="data-value large" style="color: var(--text-muted);">N/A</div>
+                        </div>
+                    `;
                 }
-
-                html += '</div></div>';
             }
+
+            html += '</div></div>';
 
             // Questões detalhadas
             const questoes = resultado.questoes || resultado.correcoes || resultado.itens || [];

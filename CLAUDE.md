@@ -457,6 +457,25 @@ This has caused many debugging hours in the past. Model IDs and endpoints change
 
 ---
 
+## Adding Pipeline JSON Fields (Checklist)
+
+When adding new structured fields to pipeline stage JSONs, follow these steps:
+
+1. **Update `STAGE_TOOL_INSTRUCTIONS`** in `executor.py` (line ~144) — add the new field to the JSON schema for the relevant stage. This tells the AI what to produce.
+2. **Update `visualizador.py:_processar_correcao()`** (or `_processar_analise()`) — add logic to read the new field and map it to `VisaoAluno` / `VisaoQuestao`. Three formats must be checked:
+   - Format 0: `questoes[]` + `nota_final` (STAGE_TOOL_INSTRUCTIONS format)
+   - Format 1: `nota` (single question)
+   - Format 2: `correcoes[]` (multi-question legacy)
+   - Format 3: `resposta_raw` (fallback — no structured data)
+3. **Update `VisaoAluno.to_dict()`** — ensure the new field is included in the API response.
+4. **Update `index_v2.html`** — render the new field in the Resultado Final panel, with N/A fallback if missing.
+5. **Write unit tests** in `tests/unit/test_visualizador_structured_json.py` — cover all formats.
+6. **Run a live pipeline** — verify the AI produces the new field and it displays correctly.
+
+**Warning fields pattern:** Prefix internal/metadata fields with `_` (e.g., `_documento_ilegivel`, `_campos_faltantes`). These are captured in JSON but may not be displayed in the UI yet.
+
+---
+
 ## Deprecation & Unification
 
 The `../docs/guides/GENERAL_DEPRECATION_AND_UNIFICATION_GUIDE.md` is the **canonical deprecation guide** for this project. Use it whenever you need to deprecate, unify, or remove anything (endpoints, files, modules):
@@ -472,4 +491,5 @@ The `../docs/guides/GENERAL_DEPRECATION_AND_UNIFICATION_GUIDE.md` is the **canon
 
 | Date | Change |
 |------|--------|
+| 2026-03-14 | Added "Adding Pipeline JSON Fields" checklist — Resultado Final Wiring (F7-T1) |
 | 2026-02-18 | Initial creation — extracted from root CLAUDE.md during generalization |
