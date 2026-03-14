@@ -1,5 +1,5 @@
 """
-NOVO CR - API v2.0
+NOVO CR - API v2.0.2
 
 Endpoints organizados por recurso:
 - /api/materias
