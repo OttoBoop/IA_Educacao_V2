@@ -4055,6 +4055,375 @@
         body.health-degraded .app {
             margin-top: 42px;
         }
+
+        /* ============================================================
+         * PROMPTS PAGE — Stage Tabs, Cards, Badges, Pagination, History
+         * Plan: docs/PLAN_Prompts_Page_Rewrite.md (F9-T1)
+         * ============================================================ */
+
+        .prompts-tabs-container {
+            margin-bottom: 16px;
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+        }
+
+        .prompts-tabs {
+            display: flex;
+            gap: 4px;
+            white-space: nowrap;
+            padding-bottom: 4px;
+        }
+
+        .prompts-tab {
+            padding: 10px 16px;
+            border-radius: 8px 8px 0 0;
+            border: 1px solid var(--border);
+            border-bottom: none;
+            background: var(--bg-input);
+            color: var(--text-muted);
+            font-family: inherit;
+            font-size: 0.8rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.15s;
+            min-height: 44px;
+        }
+
+        .prompts-tab:hover {
+            background: var(--bg-hover);
+            color: var(--text);
+        }
+
+        .prompts-tab.tab-active {
+            background: var(--primary);
+            border-color: var(--primary);
+            color: white;
+            font-weight: 600;
+        }
+
+        .prompts-tab-warning {
+            display: inline-block;
+            background: var(--warning);
+            color: #000;
+            border-radius: 50%;
+            width: 16px;
+            height: 16px;
+            text-align: center;
+            font-size: 0.7rem;
+            line-height: 16px;
+            margin-left: 4px;
+        }
+
+        /* Prompt Cards */
+        .prompt-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            margin-bottom: 8px;
+            transition: border-color 0.15s;
+        }
+
+        .prompt-card:hover {
+            border-color: var(--primary);
+        }
+
+        .prompt-card.is-padrao {
+            border-left: 3px solid var(--primary);
+        }
+
+        .prompt-card-header {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 12px 16px;
+            cursor: pointer;
+            min-height: 44px;
+        }
+
+        .prompt-card-header:hover {
+            background: var(--bg-hover);
+            border-radius: 8px;
+        }
+
+        .prompt-card-title {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .prompt-card-name {
+            font-weight: 600;
+            font-size: 0.95rem;
+        }
+
+        .prompt-lock {
+            font-size: 0.85rem;
+            margin-right: 4px;
+        }
+
+        .prompt-card-badges {
+            display: flex;
+            gap: 6px;
+            flex-wrap: wrap;
+        }
+
+        .prompt-card-chevron {
+            color: var(--text-muted);
+            font-size: 0.7rem;
+            transition: transform 0.15s;
+        }
+
+        .prompt-card-body {
+            padding: 0 16px 16px;
+            border-top: 1px solid var(--border);
+        }
+
+        /* Badges */
+        .prompt-badge {
+            display: inline-block;
+            padding: 2px 8px;
+            border-radius: 12px;
+            font-size: 0.7rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .badge-padrao {
+            background: rgba(59, 130, 246, 0.15);
+            color: var(--primary);
+        }
+
+        .badge-custom {
+            background: rgba(168, 85, 247, 0.15);
+            color: var(--purple);
+        }
+
+        .badge-ativo {
+            background: rgba(34, 197, 94, 0.15);
+            color: var(--success);
+        }
+
+        .badge-inativo {
+            background: rgba(239, 68, 68, 0.15);
+            color: var(--danger);
+        }
+
+        .badge-global {
+            background: rgba(113, 113, 122, 0.15);
+            color: var(--text-muted);
+        }
+
+        .badge-materia {
+            background: rgba(234, 179, 8, 0.15);
+            color: var(--warning);
+        }
+
+        /* Prompt text sections */
+        .prompt-section {
+            margin-top: 12px;
+        }
+
+        .prompt-section-label {
+            display: block;
+            font-size: 0.75rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            color: var(--text-muted);
+            margin-bottom: 4px;
+            letter-spacing: 0.5px;
+        }
+
+        .prompt-text {
+            background: var(--bg-dark);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            padding: 12px;
+            font-size: 0.85rem;
+            line-height: 1.5;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            max-height: 300px;
+            overflow-y: auto;
+            margin: 0;
+        }
+
+        .prompt-descricao {
+            color: var(--text-muted);
+            font-size: 0.85rem;
+            margin: 8px 0 0;
+        }
+
+        .prompt-vars code {
+            background: var(--bg-hover);
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-size: 0.8rem;
+            color: var(--primary);
+        }
+
+        .prompt-meta {
+            display: flex;
+            gap: 16px;
+            margin-top: 12px;
+            font-size: 0.75rem;
+            color: var(--text-muted);
+        }
+
+        .prompt-actions {
+            display: flex;
+            gap: 8px;
+            margin-top: 12px;
+            flex-wrap: wrap;
+        }
+
+        .prompt-actions .btn-sm {
+            padding: 6px 12px;
+            font-size: 0.8rem;
+            min-height: 32px;
+        }
+
+        /* Pagination */
+        .prompts-pagination {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            margin-top: 16px;
+            flex-wrap: wrap;
+        }
+
+        .pagination-btn {
+            padding: 8px 12px;
+            border-radius: 6px;
+            border: 1px solid var(--border);
+            background: var(--bg-input);
+            color: var(--text);
+            font-family: inherit;
+            font-size: 0.8rem;
+            cursor: pointer;
+            min-height: 36px;
+            transition: all 0.15s;
+        }
+
+        .pagination-btn:hover:not(:disabled) {
+            background: var(--bg-hover);
+        }
+
+        .pagination-btn:disabled {
+            opacity: 0.4;
+            cursor: not-allowed;
+        }
+
+        .pagination-btn.pagination-active {
+            background: var(--primary);
+            border-color: var(--primary);
+            color: white;
+        }
+
+        .pagination-info {
+            margin-left: 8px;
+            color: var(--text-muted);
+            font-size: 0.8rem;
+        }
+
+        /* Version History */
+        .history-list {
+            padding: 8px 16px 16px;
+        }
+
+        .history-entry {
+            padding: 12px 0;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .history-entry:last-child {
+            border-bottom: none;
+        }
+
+        .history-meta {
+            display: flex;
+            gap: 12px;
+            margin-bottom: 8px;
+            font-size: 0.8rem;
+        }
+
+        .history-version {
+            font-weight: 600;
+            color: var(--primary);
+        }
+
+        .history-date {
+            color: var(--text-muted);
+        }
+
+        .history-author {
+            color: var(--text-muted);
+        }
+
+        .history-text {
+            max-height: 150px;
+            font-size: 0.8rem;
+        }
+
+        /* Edit form within card */
+        .prompt-edit-form .form-group {
+            margin-bottom: 12px;
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .prompts-tabs {
+                gap: 2px;
+            }
+
+            .prompts-tab {
+                padding: 8px 12px;
+                font-size: 0.75rem;
+            }
+
+            .prompt-card-header {
+                flex-wrap: wrap;
+                gap: 8px;
+            }
+
+            .prompt-card-badges {
+                width: 100%;
+            }
+
+            .prompt-actions {
+                flex-direction: column;
+            }
+
+            .prompt-actions .btn-sm {
+                width: 100%;
+                justify-content: center;
+            }
+
+            .prompts-pagination {
+                justify-content: center;
+            }
+
+            .history-meta {
+                flex-direction: column;
+                gap: 4px;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .prompts-tab {
+                padding: 8px 10px;
+                font-size: 0.7rem;
+            }
+
+            .prompt-card-name {
+                font-size: 0.85rem;
+            }
+
+            .prompt-text {
+                font-size: 0.75rem;
+                padding: 8px;
+                max-height: 200px;
+            }
+        }
     </style>
 </head>
 
@@ -8228,102 +8597,7 @@
             pushNavState();
             setBreadcrumb([{ nome: 'Início', onclick: 'showDashboard()' }, { nome: 'Prompts', onclick: 'showPrompts()' }]);
             clearHelpPanels();
-            try {
-                const [promptsData, etapasData, materiasData] = await Promise.all([
-                    api('/prompts'),
-                    api('/prompts/etapas'),
-                    api('/materias')
-                ]);
-                if (!isContentRequestActive(requestId, 'prompts')) return;
-                const materiaMap = materiasData.materias.reduce((acc, m) => {
-                    acc[m.id] = m.nome;
-                    return acc;
-                }, {});
-
-                document.getElementById('content').innerHTML = `
-                    <div class="page-header">
-                        <h1 class="page-title">
-                            Prompts
-                            <button class="section-help" onclick="toggleHelpPanel('prompts')" title="O que são prompts?">?</button>
-                        </h1>
-                        <p class="page-subtitle">${promptsData.total} prompt(s) ativos</p>
-                    </div>
-                    <div class="card">
-                        <div class="card-header">
-                            <h3 class="card-title">Novo Prompt</h3>
-                        </div>
-                        <div class="form-group">
-                            <label class="form-label">Nome *</label>
-                            <input type="text" class="form-input" id="input-prompt-nome" placeholder="Ex: Extrair gabarito - Matemática">
-                        </div>
-                        <div class="form-group">
-                            <label class="form-label">Etapa *</label>
-                            <select class="form-select" id="input-prompt-etapa">
-                                ${etapasData.etapas.map(e => `<option value="${e.id}">${e.nome}</option>`).join('')}
-                            </select>
-                        </div>
-                        <div class="form-group">
-                            <label class="form-label">Matéria (opcional)</label>
-                            <select class="form-select" id="input-prompt-materia">
-                                <option value="">Global</option>
-                                ${materiasData.materias.map(m => `<option value="${m.id}">${m.nome}</option>`).join('')}
-                            </select>
-                        </div>
-                        <div class="form-group">
-                            <label class="form-label">Descrição</label>
-                            <input type="text" class="form-input" id="input-prompt-descricao" placeholder="Descrição opcional">
-                        </div>
-                        <div class="form-group">
-                            <label class="form-label">Prompt de Sistema (opcional)</label>
-                            <textarea class="form-textarea" id="input-prompt-texto-sistema" placeholder="Instruções de sistema para o modelo..."></textarea>
-                        </div>
-                        <div class="form-group">
-                            <label class="form-label">Prompt do Usuário *</label>
-                            <textarea class="form-textarea" id="input-prompt-texto" placeholder="Digite o prompt do usuário aqui..."></textarea>
-                        </div>
-                        <button class="btn btn-primary" onclick="criarPrompt()">Salvar Prompt</button>
-                    </div>
-                    <div class="card">
-                        <div class="card-header">
-                            <h3 class="card-title">Prompts Existentes</h3>
-                        </div>
-                        ${promptsData.prompts.length === 0 ? `<div class="empty-state"><div class="empty-icon">🧠</div><div class="empty-title">Nenhum prompt</div></div>` : `
-                            <div class="table-container">
-                                <table>
-                                    <thead>
-                                        <tr>
-                                            <th>Nome</th>
-                                            <th>Etapa</th>
-                                            <th>Matéria</th>
-                                            <th>Prompt de Sistema</th>
-                                            <th>Prompt do Usuário</th>
-                                            <th>Ações</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        ${promptsData.prompts.map(p => `
-                                            <tr>
-                                                <td><strong>${p.nome}</strong></td>
-                                                <td>${p.etapa}</td>
-                                                <td>${p.materia_id ? (materiaMap[p.materia_id] || p.materia_id) : 'Global'}</td>
-                                                <td title="${escapeHtml(p.texto_sistema || 'Sem prompt de sistema')}">${escapeHtml(truncateText(p.texto_sistema || '—', 80))}</td>
-                                                <td title="${escapeHtml(p.texto || '')}">${escapeHtml(truncateText(p.texto || '—', 80))}</td>
-                                                <td style="display: flex; gap: 8px; flex-wrap: wrap;">
-                                                    <button class="btn btn-sm" onclick="openPromptPreview('${p.id}')">Preview</button>
-                                                    <button class="btn btn-sm" onclick="duplicarPrompt('${p.id}')">Duplicar</button>
-                                                    <button class="btn btn-sm btn-primary" onclick="definirPromptPadrao('${p.id}')">Definir padrão</button>
-                                                </td>
-                                            </tr>
-                                        `).join('')}
-                                    </tbody>
-                                </table>
-                            </div>
-                        `}
-                    </div>
-                `;
-            } catch (e) {
-                showToast('Erro ao carregar prompts', 'error');
-            }
+            await initPromptsPage(requestId);
         }
 
         async function showProviders() {
@@ -9876,80 +10150,6 @@
             document.getElementById('input-provider-api-key').value = '';
             document.getElementById('input-provider-base-url').value = '';
             showToast('Atualize os campos e salve o provider', 'success');
-        }
-
-        async function criarPrompt() {
-            const nome = document.getElementById('input-prompt-nome').value.trim();
-            const etapa = document.getElementById('input-prompt-etapa').value;
-            const materiaId = document.getElementById('input-prompt-materia').value;
-            const descricao = document.getElementById('input-prompt-descricao').value.trim();
-            const textoSistema = document.getElementById('input-prompt-texto-sistema').value.trim();
-            const texto = document.getElementById('input-prompt-texto').value.trim();
-            if (!nome || !texto) { showToast('Preencha nome e texto do prompt', 'error'); return; }
-            try {
-                await api('/prompts', {
-                    method: 'POST',
-                    body: JSON.stringify({
-                        nome,
-                        etapa,
-                        texto,
-                        texto_sistema: textoSistema || null,
-                        descricao: descricao || null,
-                        materia_id: materiaId || null
-                    })
-                });
-                showToast('Prompt criado!', 'success');
-                showPrompts();
-            } catch (e) { }
-        }
-
-        async function duplicarPrompt(promptId) {
-            const novoNome = prompt('Nome do novo prompt');
-            if (!novoNome) return;
-            try {
-                const formData = new FormData();
-                formData.append('novo_nome', novoNome);
-                await apiForm(`/prompts/${promptId}/duplicar`, formData);
-                showToast('Prompt duplicado!', 'success');
-                showPrompts();
-            } catch (e) { }
-        }
-
-        async function definirPromptPadrao(promptId) {
-            try {
-                const formData = new FormData();
-                await apiForm(`/prompts/${promptId}/definir-padrao`, formData);
-                showToast('Prompt definido como padrão', 'success');
-            } catch (e) { }
-        }
-
-        function openPromptPreview(promptId) {
-            document.getElementById('input-prompt-id').value = promptId;
-            document.getElementById('output-prompt-preview-sistema').value = '';
-            document.getElementById('output-prompt-preview').value = '';
-            openModal('modal-prompt-preview');
-        }
-
-        async function renderPrompt() {
-            const promptId = document.getElementById('input-prompt-id').value;
-            const variaveisRaw = document.getElementById('input-prompt-variaveis').value.trim();
-            let variaveis = {};
-            if (variaveisRaw) {
-                try {
-                    variaveis = JSON.parse(variaveisRaw);
-                } catch (e) {
-                    showToast('JSON inválido', 'error');
-                    return;
-                }
-            }
-            try {
-                const data = await api('/prompts/render', {
-                    method: 'POST',
-                    body: JSON.stringify({ prompt_id: promptId, variaveis })
-                });
-                document.getElementById('output-prompt-preview-sistema').value = data.texto_sistema_renderizado || '';
-                document.getElementById('output-prompt-preview').value = data.texto_renderizado || '';
-            } catch (e) { }
         }
 
         async function uploadDocumento() {
@@ -12329,6 +12529,7 @@ Seja preciso e educativo nas correções.`;
         });
     </script>
     <script src="/static/chat_system.js"></script>
+    <script src="/static/prompts.js"></script>
 </body>
 
 </html>

@@ -9,7 +9,7 @@ Endpoints para:
 ATUALIZADO: Integrado com chat_service.py (novo sistema de models/providers)
 """
 
-from fastapi import APIRouter, BackgroundTasks, HTTPException, Form, UploadFile, File
+from fastapi import APIRouter, BackgroundTasks, HTTPException, Form, UploadFile, File, Query
 from fastapi.responses import RedirectResponse
 from pydantic import BaseModel
 from typing import Optional, List, Dict, Any
@@ -117,15 +117,36 @@ class ProcessarEtapaSimples(BaseModel):
 async def listar_prompts(
     etapa: Optional[str] = None,
     materia_id: Optional[str] = None,
-    apenas_ativos: bool = True
+    apenas_ativos: bool = True,
+    page: int = Query(1, ge=1),
+    per_page: int = Query(0, ge=0)
 ):
-    """Lista todos os prompts com filtros opcionais"""
+    """Lista todos os prompts com filtros opcionais e paginação.
+
+    Quando per_page > 0, retorna resultados paginados com metadados.
+    Quando per_page == 0 (default), retorna todos os resultados (backwards compatible).
+    """
     etapa_enum = EtapaProcessamento(etapa) if etapa else None
     prompts = prompt_manager.listar_prompts(etapa_enum, materia_id, apenas_ativos)
-    
+    total = len(prompts)
+
+    if per_page > 0:
+        import math
+        total_pages = math.ceil(total / per_page) if total > 0 else 1
+        start = (page - 1) * per_page
+        end = start + per_page
+        prompts_page = prompts[start:end]
+        return {
+            "prompts": [p.to_dict() for p in prompts_page],
+            "total": total,
+            "page": page,
+            "per_page": per_page,
+            "total_pages": total_pages
+        }
+
     return {
         "prompts": [p.to_dict() for p in prompts],
-        "total": len(prompts)
+        "total": total
     }
 
 
