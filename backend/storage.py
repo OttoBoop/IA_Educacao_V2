@@ -22,6 +22,9 @@ import sqlite3
 import hashlib
 import shutil
 import json
+import logging
+import time
+from collections import defaultdict
 from pathlib import Path
 from datetime import datetime
 from typing import Optional, List, Dict, Any, Tuple
@@ -370,6 +373,133 @@ class StorageManager:
         for char in invalid_chars:
             name = name.replace(char, '_')
         return name
+
+    def _backend_label(self) -> str:
+        """Returns the active database backend label."""
+        return "postgresql" if self.use_postgresql else "sqlite"
+
+    def _normalize_select_columns(self, columns: Any) -> str:
+        """Normalizes select columns into a SQL/Supabase-friendly clause."""
+        if not columns:
+            return "*"
+        if isinstance(columns, str):
+            return columns
+        return ", ".join(str(column) for column in columns)
+
+    def _build_sql_filter_clause(self, key: str, value: Any) -> Tuple[str, List[Any]]:
+        """Builds a SQLite WHERE clause for eq/null/in filters."""
+        if isinstance(value, dict):
+            if "in" in value:
+                value = list(value["in"])
+            elif "eq" in value:
+                value = value["eq"]
+            elif "is" in value:
+                value = None if value["is"] == "null" else value["is"]
+            else:
+                raise ValueError(f"Unsupported filter operator for {key}: {value}")
+
+        if isinstance(value, (list, tuple, set)):
+            values = list(value)
+            if not values:
+                return "0 = 1", []
+            placeholders = ", ".join("?" for _ in values)
+            return f"{key} IN ({placeholders})", values
+
+        if value is None:
+            return f"{key} IS NULL", []
+
+        return f"{key} = ?", [value]
+
+    def _select_rows(self,
+                     table: str,
+                     filters: Dict[str, Any] = None,
+                     order_by: str = None,
+                     order_desc: bool = False,
+                     limit: int = None,
+                     columns: Any = None) -> List[Dict[str, Any]]:
+        """Returns raw rows with projection support for both backends."""
+        if self.use_postgresql:
+            return supabase_db.select(
+                table,
+                filters=filters,
+                order_by=order_by,
+                order_desc=order_desc,
+                limit=limit,
+                columns=columns,
+            )
+
+        conn = self._get_connection()
+        try:
+            cursor = conn.cursor()
+            query = f"SELECT {self._normalize_select_columns(columns)} FROM {table}"
+            params: List[Any] = []
+            clauses: List[str] = []
+
+            for key, value in (filters or {}).items():
+                clause, clause_params = self._build_sql_filter_clause(key, value)
+                clauses.append(clause)
+                params.extend(clause_params)
+
+            if clauses:
+                query += " WHERE " + " AND ".join(clauses)
+
+            if order_by:
+                if any(token in order_by.upper() for token in (" ", ",")):
+                    query += f" ORDER BY {order_by}"
+                else:
+                    direction = " DESC" if order_desc else ""
+                    query += f" ORDER BY {order_by}{direction}"
+
+            if limit is not None:
+                query += " LIMIT ?"
+                params.append(limit)
+
+            cursor.execute(query, params)
+            return [dict(row) for row in cursor.fetchall()]
+        finally:
+            conn.close()
+
+    def _count_rows(self, table: str, filters: Dict[str, Any] = None) -> int:
+        """Counts rows with filter support for both backends."""
+        if self.use_postgresql:
+            return supabase_db.count(table, filters=filters)
+
+        conn = self._get_connection()
+        try:
+            cursor = conn.cursor()
+            query = f"SELECT COUNT(*) AS total FROM {table}"
+            params: List[Any] = []
+            clauses: List[str] = []
+
+            for key, value in (filters or {}).items():
+                clause, clause_params = self._build_sql_filter_clause(key, value)
+                clauses.append(clause)
+                params.extend(clause_params)
+
+            if clauses:
+                query += " WHERE " + " AND ".join(clauses)
+
+            cursor.execute(query, params)
+            row = cursor.fetchone()
+            return int(row["total"]) if row else 0
+        finally:
+            conn.close()
+
+    def _log_hot_endpoint_profile(self,
+                                  endpoint: str,
+                                  started_at: float,
+                                  row_counts: Dict[str, int],
+                                  payload_counts: Dict[str, int] = None) -> None:
+        """Logs the duration and cardinality of a hot endpoint helper."""
+        duration_ms = round((time.perf_counter() - started_at) * 1000, 2)
+        logging.info(
+            "[hot-endpoint] endpoint=%s duration_ms=%.2f backend=%s rows=%s payload=%s",
+            endpoint,
+            duration_ms,
+            self._backend_label(),
+            row_counts,
+            payload_counts or {},
+        )
     
     # ============================================================
     # CRUD: MATÉRIAS
@@ -1617,49 +1747,371 @@ class StorageManager:
     # ============================================================
     # NAVEGAÇÃO HIERÁRQUICA
     # ============================================================
-    
+
+    def get_estatisticas_gerais_fast(self) -> Dict[str, Any]:
+        """Returns dashboard statistics with batched reads instead of N+1 loops."""
+        started_at = time.perf_counter()
+
+        total_materias = self._count_rows("materias")
+        total_turmas = self._count_rows("turmas")
+        total_alunos = self._count_rows("alunos")
+
+        atividades_rows = self._select_rows("atividades", columns=["id"])
+        atividade_ids = [row["id"] for row in atividades_rows]
+        documentos_rows = (
+            self._select_rows(
+                "documentos",
+                filters={"atividade_id": atividade_ids},
+                columns=["atividade_id", "tipo"],
+            )
+            if atividade_ids
+            else []
+        )
+
+        tipos_por_atividade: Dict[str, set] = defaultdict(set)
+        for row in documentos_rows:
+            tipos_por_atividade[row["atividade_id"]].add(row["tipo"])
+
+        gabarito_tipo = TipoDocumento.GABARITO.value
+        atividades_sem_gabarito = sum(
+            1
+            for atividade_id in atividade_ids
+            if gabarito_tipo not in tipos_por_atividade.get(atividade_id, set())
+        )
+
+        payload = {
+            "total_materias": total_materias,
+            "total_turmas": total_turmas,
+            "total_alunos": total_alunos,
+            "total_atividades": len(atividade_ids),
+            "total_documentos": len(documentos_rows),
+            "alertas": {
+                "atividades_sem_gabarito": atividades_sem_gabarito
+            }
+        }
+        self._log_hot_endpoint_profile(
+            "/api/estatisticas",
+            started_at,
+            {
+                "materias": total_materias,
+                "turmas": total_turmas,
+                "alunos": total_alunos,
+                "atividades": len(atividades_rows),
+                "documentos": len(documentos_rows),
+            },
+            {
+                "total_atividades": payload["total_atividades"],
+                "total_documentos": payload["total_documentos"],
+            },
+        )
+        return payload
+
+    def get_arvore_navegacao_fast(self) -> Dict[str, Any]:
+        """Returns the navigation tree with batched reads and merged duplicate matérias."""
+        started_at = time.perf_counter()
+
+        materias_rows = self._select_rows(
+            "materias",
+            order_by="nome",
+            columns=["id", "nome"],
+        )
+        materia_ids = [row["id"] for row in materias_rows]
+
+        turmas_rows = (
+            self._select_rows(
+                "turmas",
+                filters={"materia_id": materia_ids},
+                order_by="nome",
+                columns=["id", "materia_id", "nome", "ano_letivo"],
+            )
+            if materia_ids
+            else []
+        )
+        turma_ids = [row["id"] for row in turmas_rows]
+
+        atividades_rows = (
+            self._select_rows(
+                "atividades",
+                filters={"turma_id": turma_ids},
+                order_by="nome",
+                columns=["id", "turma_id", "nome", "tipo"],
+            )
+            if turma_ids
+            else []
+        )
+        atividade_ids = [row["id"] for row in atividades_rows]
+
+        documentos_rows = (
+            self._select_rows(
+                "documentos",
+                filters={"atividade_id": atividade_ids},
+                columns=["atividade_id"],
+            )
+            if atividade_ids
+            else []
+        )
+        vinculos_rows = (
+            self._select_rows(
+                "alunos_turmas",
+                filters={"turma_id": turma_ids, "ativo": True},
+                columns=["turma_id", "aluno_id"],
+            )
+            if turma_ids
+            else []
+        )
+
+        total_documentos_por_atividade: Dict[str, int] = defaultdict(int)
+        for row in documentos_rows:
+            total_documentos_por_atividade[row["atividade_id"]] += 1
+
+        total_alunos_por_turma: Dict[str, set] = defaultdict(set)
+        for row in vinculos_rows:
+            total_alunos_por_turma[row["turma_id"]].add(row["aluno_id"])
+
+        atividades_por_turma: Dict[str, List[Dict[str, Any]]] = defaultdict(list)
+        for atividade in atividades_rows:
+            atividades_por_turma[atividade["turma_id"]].append({
+                "id": atividade["id"],
+                "nome": atividade["nome"],
+                "tipo": atividade.get("tipo"),
+                "total_documentos": total_documentos_por_atividade.get(atividade["id"], 0),
+            })
+
+        turmas_por_materia: Dict[str, List[Dict[str, Any]]] = defaultdict(list)
+        for turma in turmas_rows:
+            turmas_por_materia[turma["materia_id"]].append({
+                "id": turma["id"],
+                "nome": turma["nome"],
+                "ano_letivo": turma.get("ano_letivo"),
+                "total_alunos": len(total_alunos_por_turma.get(turma["id"], set())),
+                "atividades": atividades_por_turma.get(turma["id"], []),
+            })
+
+        materias_por_nome: Dict[str, Dict[str, Any]] = {}
+        for materia in materias_rows:
+            entry = materias_por_nome.get(materia["nome"])
+            if not entry:
+                entry = {
+                    "id": materia["id"],
+                    "nome": materia["nome"],
+                    "turmas": [],
+                }
+                materias_por_nome[materia["nome"]] = entry
+            entry["turmas"].extend(turmas_por_materia.get(materia["id"], []))
+
+        payload = {"materias": list(materias_por_nome.values())}
+        self._log_hot_endpoint_profile(
+            "/api/navegacao/arvore",
+            started_at,
+            {
+                "materias": len(materias_rows),
+                "turmas": len(turmas_rows),
+                "atividades": len(atividades_rows),
+                "documentos": len(documentos_rows),
+                "alunos_turmas": len(vinculos_rows),
+            },
+            {
+                "materias": len(payload["materias"]),
+            },
+        )
+        return payload
+
+    def listar_documentos_com_contexto_fast(self, filters: Dict[str, Any]) -> List[Dict[str, Any]]:
+        """Returns /api/documentos/todos using batched reads and context maps."""
+        started_at = time.perf_counter()
+
+        filters = filters or {}
+        materia_ids = filters.get("materia_ids") or None
+        turma_ids = filters.get("turma_ids") or None
+        atividade_ids_filter = filters.get("atividade_ids") or None
+        aluno_ids = filters.get("aluno_ids") or None
+        tipos = filters.get("tipos") or None
+
+        turma_scope_rows: List[Dict[str, Any]] = []
+        turma_scope_ids: List[str] = []
+        if materia_ids or turma_ids or not atividade_ids_filter:
+            turma_filters: Dict[str, Any] = {}
+            if materia_ids:
+                turma_filters["materia_id"] = materia_ids
+            if turma_ids:
+                turma_filters["id"] = turma_ids
+
+            turma_scope_rows = self._select_rows(
+                "turmas",
+                filters=turma_filters or None,
+                order_by="nome",
+                columns=["id", "materia_id", "nome"],
+            )
+            turma_scope_ids = [row["id"] for row in turma_scope_rows]
+
+            if (materia_ids or turma_ids) and not turma_scope_ids:
+                self._log_hot_endpoint_profile(
+                    "/api/documentos/todos",
+                    started_at,
+                    {
+                        "materias": 0,
+                        "turmas": 0,
+                        "atividades": 0,
+                        "documentos": 0,
+                        "alunos": 0,
+                    },
+                    {"documentos": 0},
+                )
+                return []
+
+        atividade_filters: Dict[str, Any] = {}
+        if atividade_ids_filter:
+            atividade_filters["id"] = atividade_ids_filter
+        if turma_scope_ids:
+            atividade_filters["turma_id"] = turma_scope_ids
+        elif materia_ids or turma_ids or not atividade_ids_filter:
+            self._log_hot_endpoint_profile(
+                "/api/documentos/todos",
+                started_at,
+                {
+                    "materias": 0,
+                    "turmas": len(turma_scope_rows),
+                    "atividades": 0,
+                    "documentos": 0,
+                    "alunos": 0,
+                },
+                {"documentos": 0},
+            )
+            return []
+
+        atividades_rows = self._select_rows(
+            "atividades",
+            filters=atividade_filters or None,
+            order_by="nome",
+            columns=["id", "turma_id", "nome"],
+        )
+        atividade_ids = [row["id"] for row in atividades_rows]
+        if not atividade_ids:
+            self._log_hot_endpoint_profile(
+                "/api/documentos/todos",
+                started_at,
+                {
+                    "materias": 0,
+                    "turmas": len(turma_scope_rows),
+                    "atividades": 0,
+                    "documentos": 0,
+                    "alunos": 0,
+                },
+                {"documentos": 0},
+            )
+            return []
+
+        documentos_filters: Dict[str, Any] = {"atividade_id": atividade_ids}
+        if tipos:
+            documentos_filters["tipo"] = tipos
+        documentos_rows = self._select_rows(
+            "documentos",
+            filters=documentos_filters,
+            order_by="criado_em",
+            order_desc=True,
+            columns=["id", "nome_arquivo", "tipo", "atividade_id", "aluno_id", "criado_em"],
+        )
+
+        if aluno_ids:
+            aluno_ids_set = set(aluno_ids)
+            documentos_rows = [
+                row for row in documentos_rows
+                if row.get("aluno_id") is None or row.get("aluno_id") in aluno_ids_set
+            ]
+
+        turma_ids_relevantes = sorted({row["turma_id"] for row in atividades_rows})
+        turmas_rows = turma_scope_rows
+        if not turmas_rows:
+            turmas_rows = self._select_rows(
+                "turmas",
+                filters={"id": turma_ids_relevantes},
+                order_by="nome",
+                columns=["id", "materia_id", "nome"],
+            )
+        else:
+            turmas_rows = [row for row in turmas_rows if row["id"] in turma_ids_relevantes]
+
+        materia_ids_relevantes = sorted({row["materia_id"] for row in turmas_rows})
+        materias_rows = (
+            self._select_rows(
+                "materias",
+                filters={"id": materia_ids_relevantes},
+                order_by="nome",
+                columns=["id", "nome"],
+            )
+            if materia_ids_relevantes
+            else []
+        )
+
+        aluno_ids_relevantes = sorted({
+            row["aluno_id"] for row in documentos_rows
+            if row.get("aluno_id")
+        })
+        alunos_rows = (
+            self._select_rows(
+                "alunos",
+                filters={"id": aluno_ids_relevantes},
+                order_by="nome",
+                columns=["id", "nome"],
+            )
+            if aluno_ids_relevantes
+            else []
+        )
+        aluno_nome_por_id = {row["id"]: row["nome"] for row in alunos_rows}
+
+        atividades_por_turma: Dict[str, List[Dict[str, Any]]] = defaultdict(list)
+        for atividade in atividades_rows:
+            atividades_por_turma[atividade["turma_id"]].append(atividade)
+
+        turmas_por_materia: Dict[str, List[Dict[str, Any]]] = defaultdict(list)
+        for turma in turmas_rows:
+            turmas_por_materia[turma["materia_id"]].append(turma)
+
+        documentos_por_atividade: Dict[str, List[Dict[str, Any]]] = defaultdict(list)
+        for documento in documentos_rows:
+            documentos_por_atividade[documento["atividade_id"]].append(documento)
+
+        documentos: List[Dict[str, Any]] = []
+        for materia in materias_rows:
+            for turma in turmas_por_materia.get(materia["id"], []):
+                for atividade in atividades_por_turma.get(turma["id"], []):
+                    for documento in documentos_por_atividade.get(atividade["id"], []):
+                        documentos.append({
+                            "id": documento["id"],
+                            "nome_arquivo": documento.get("nome_arquivo"),
+                            "tipo": documento["tipo"],
+                            "materia_id": materia["id"],
+                            "materia_nome": materia["nome"],
+                            "turma_id": turma["id"],
+                            "turma_nome": turma["nome"],
+                            "atividade_id": atividade["id"],
+                            "atividade_nome": atividade["nome"],
+                            "aluno_id": documento.get("aluno_id"),
+                            "aluno_nome": aluno_nome_por_id.get(documento.get("aluno_id")),
+                            "criado_em": documento.get("criado_em"),
+                        })
+
+        self._log_hot_endpoint_profile(
+            "/api/documentos/todos",
+            started_at,
+            {
+                "materias": len(materias_rows),
+                "turmas": len(turmas_rows),
+                "atividades": len(atividades_rows),
+                "documentos": len(documentos_rows),
+                "alunos": len(alunos_rows),
+            },
+            {"documentos": len(documentos)},
+        )
+        return documentos
+
     def get_arvore_navegacao(self) -> Dict[str, Any]:
         """
         Retorna árvore completa para navegação.
         Estrutura: Matérias → Turmas → Atividades
-        Deduplicates matérias by nome, merging turmas from duplicates.
+        Deduplica matérias por nome, mesclando turmas das duplicadas.
         """
-        arvore = []
-        seen_nomes: set = set()
-
-        for materia in self.listar_materias():
-            if materia.nome in seen_nomes:
-                continue
-            seen_nomes.add(materia.nome)
-            turmas_data = []
-            
-            for turma in self.listar_turmas(materia.id):
-                atividades_data = []
-                
-                for atividade in self.listar_atividades(turma.id):
-                    docs = self.listar_documentos(atividade.id)
-                    atividades_data.append({
-                        "id": atividade.id,
-                        "nome": atividade.nome,
-                        "tipo": atividade.tipo,
-                        "total_documentos": len(docs)
-                    })
-                
-                turmas_data.append({
-                    "id": turma.id,
-                    "nome": turma.nome,
-                    "ano_letivo": turma.ano_letivo,
-                    "total_alunos": len(self.listar_alunos(turma.id)),
-                    "atividades": atividades_data
-                })
-            
-            arvore.append({
-                "id": materia.id,
-                "nome": materia.nome,
-                "turmas": turmas_data
-            })
-        
-        return {"materias": arvore}
+        return self.get_arvore_navegacao_fast()
 
 
 # ============================================================

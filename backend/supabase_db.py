@@ -97,25 +97,23 @@ class SupabaseDB:
 
     def select(self, table: str, filters: Dict[str, Any] = None,
                order_by: str = None, order_desc: bool = False,
-               limit: int = None) -> List[Dict[str, Any]]:
+               limit: int = None, columns: Any = None) -> List[Dict[str, Any]]:
         """Select rows from a table with optional filters"""
         if not self._enabled:
             return []
 
         try:
-            query = self._client.table(table).select("*")
-
-            if filters:
-                for key, value in filters.items():
-                    if value is None:
-                        query = query.is_(key, "null")
-                    else:
-                        query = query.eq(key, value)
+            query = self._client.table(table).select(
+                self._normalize_select_columns(columns)
+            )
+            query = self._apply_filters(query, filters)
+            if query is None:
+                return []
 
             if order_by:
                 query = query.order(order_by, desc=order_desc)
 
-            if limit:
+            if limit is not None:
                 query = query.limit(limit)
 
             result = query.execute()
@@ -124,13 +122,19 @@ class SupabaseDB:
             print(f"[SupabaseDB] Select error in {table}: {e}")
             return []
 
-    def select_one(self, table: str, id: str) -> Optional[Dict[str, Any]]:
+    def select_one(self, table: str, id: str, columns: Any = None) -> Optional[Dict[str, Any]]:
         """Select a single row by ID"""
         if not self._enabled:
             return None
 
         try:
-            result = self._client.table(table).select("*").eq("id", id).limit(1).execute()
+            result = (
+                self._client.table(table)
+                .select(self._normalize_select_columns(columns))
+                .eq("id", id)
+                .limit(1)
+                .execute()
+            )
 
             if result.data and len(result.data) > 0:
                 return result.data[0]
@@ -177,12 +181,9 @@ class SupabaseDB:
 
         try:
             query = self._client.table(table).delete()
-
-            for key, value in filters.items():
-                if value is None:
-                    query = query.is_(key, "null")
-                else:
-                    query = query.eq(key, value)
+            query = self._apply_filters(query, filters)
+            if query is None:
+                return 0
 
             result = query.execute()
             return len(result.data) if result.data else 0
@@ -197,13 +198,9 @@ class SupabaseDB:
 
         try:
             query = self._client.table(table).select("id", count="exact")
-
-            if filters:
-                for key, value in filters.items():
-                    if value is None:
-                        query = query.is_(key, "null")
-                    else:
-                        query = query.eq(key, value)
+            query = self._apply_filters(query, filters)
+            if query is None:
+                return 0
 
             result = query.execute()
             return result.count if result.count else 0
@@ -235,13 +232,9 @@ class SupabaseDB:
             # Supabase uses nested select for joins
             select_query = f"*, {join_table}(*)"
             query = self._client.table(table).select(select_query)
-
-            if filters:
-                for key, value in filters.items():
-                    if value is None:
-                        query = query.is_(key, "null")
-                    else:
-                        query = query.eq(key, value)
+            query = self._apply_filters(query, filters)
+            if query is None:
+                return []
 
             result = query.execute()
             return result.data if result.data else []
@@ -270,6 +263,46 @@ class SupabaseDB:
     # ============================================================
     # HELPERS
     # ============================================================
+
+    def _normalize_select_columns(self, columns: Any) -> str:
+        """Normalize select columns into the comma-separated PostgREST form."""
+        if not columns:
+            return "*"
+        if isinstance(columns, str):
+            return columns
+        return ",".join(str(column) for column in columns)
+
+    def _apply_filters(self, query: Any, filters: Optional[Dict[str, Any]]):
+        """Apply eq/null/in filters to a Supabase query builder."""
+        if not filters:
+            return query
+
+        for key, value in filters.items():
+            if isinstance(value, dict):
+                if "in" in value:
+                    values = list(value["in"])
+                    if not values:
+                        return None
+                    query = query.in_(key, values)
+                    continue
+                if "eq" in value:
+                    value = value["eq"]
+                elif "is" in value:
+                    value = None if value["is"] == "null" else value["is"]
+                else:
+                    raise ValueError(f"Unsupported filter operator for {key}: {value}")
+
+            if isinstance(value, (list, tuple, set)):
+                values = list(value)
+                if not values:
+                    return None
+                query = query.in_(key, values)
+            elif value is None:
+                query = query.is_(key, "null")
+            else:
+                query = query.eq(key, value)
+
+        return query
 
     def _get_table_columns(self, table: str) -> set:
         """Fetch columns for a table and cache them"""
