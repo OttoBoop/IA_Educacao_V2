@@ -556,17 +556,10 @@ async def listar_alunos(turma_id: Optional[str] = None):
 @app.get("/api/alunos/{aluno_id}", tags=["Alunos"])
 async def get_aluno(aluno_id: str):
     """Busca aluno por ID com suas turmas"""
-    aluno = storage.get_aluno(aluno_id)
-    if not aluno:
+    data = storage.get_aluno_detalhes_fast(aluno_id)
+    if not data:
         raise HTTPException(404, "Aluno não encontrado")
-    
-    turmas = storage.get_turmas_do_aluno(aluno_id)
-    
-    return {
-        "aluno": aluno.to_dict(),
-        "turmas": turmas,
-        "total_turmas": len(turmas)
-    }
+    return data
 
 
 @app.delete("/api/alunos/{aluno_id}", tags=["Alunos"])

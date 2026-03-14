@@ -13,6 +13,8 @@ from datetime import datetime
 from typing import Optional, Dict, Any, List
 from pathlib import Path
 import json
+import logging
+import time
 
 from models import TipoDocumento, Documento
 from storage import storage
@@ -101,16 +103,61 @@ class VisualizadorResultados:
     
     def __init__(self):
         self.storage = storage
+
+    def _safe_float(self, value: Any, default: Optional[float] = None) -> Optional[float]:
+        try:
+            if value is None or value == "":
+                return default
+            return float(value)
+        except (TypeError, ValueError):
+            return default
+
+    def _resumir_correcao(
+        self,
+        atividade_nota_maxima: float,
+        data: Dict[str, Any],
+    ) -> Dict[str, Optional[float]]:
+        """Extrai um resumo leve da correção sem montar a visão completa."""
+        nota_maxima = self._safe_float(atividade_nota_maxima, 0.0) or 0.0
+
+        if not data:
+            return {"nota": None, "nota_maxima": nota_maxima, "percentual": None}
+
+        nota = self._safe_float(data.get("nota_final"))
+        if nota is None:
+            nota = self._safe_float(data.get("nota"))
+
+        correcoes = data.get("correcoes")
+        if nota is None and isinstance(correcoes, list):
+            nota = 0.0
+            nota_max_total = 0.0
+            for correcao in correcoes:
+                nota += self._safe_float(correcao.get("nota"), 0.0) or 0.0
+                nota_max_total += self._safe_float(correcao.get("nota_maxima"), 0.0) or 0.0
+            if nota_max_total > 0:
+                nota_maxima = nota_max_total
+
+        percentual = None
+        if nota is not None and nota_maxima > 0:
+            percentual = nota / nota_maxima * 100
+
+        return {"nota": nota, "nota_maxima": nota_maxima, "percentual": percentual}
     
     def get_resultado_aluno(self, atividade_id: str, aluno_id: str) -> Optional[VisaoAluno]:
         """
         Monta visão consolidada do resultado de um aluno.
         Combina dados de correção, análise de habilidades e relatório.
         """
+        started_at = time.perf_counter()
         atividade = self.storage.get_atividade(atividade_id)
         aluno = self.storage.get_aluno(aluno_id)
         
         if not atividade or not aluno:
+            self.storage._log_hot_endpoint_profile(
+                "/api/resultados/{atividade_id}/{aluno_id}",
+                started_at,
+                {"atividade": 1 if atividade else 0, "aluno": 1 if aluno else 0, "documentos": 0},
+            )
             return None
         
         # Buscar documentos do aluno
@@ -121,11 +168,18 @@ class VisualizadorResultados:
         analise_doc = next((d for d in documentos if d.tipo == TipoDocumento.ANALISE_HABILIDADES), None)
         
         if not correcao_doc:
+            self.storage._log_hot_endpoint_profile(
+                "/api/resultados/{atividade_id}/{aluno_id}",
+                started_at,
+                {"atividade": 1, "aluno": 1, "documentos": len(documentos)},
+                {"json_reads": 0},
+            )
             return None
         
         # Ler dados da correção
         correcao_data = self._ler_json(correcao_doc)
         analise_data = self._ler_json(analise_doc) if analise_doc else {}
+        json_reads = 1 + (1 if analise_doc else 0)
         
         # Montar visão
         visao = VisaoAluno(
@@ -154,6 +208,13 @@ class VisualizadorResultados:
 
         # Processar análise de habilidades
         self._processar_analise(visao, analise_data)
+
+        self.storage._log_hot_endpoint_profile(
+            "/api/resultados/{atividade_id}/{aluno_id}",
+            started_at,
+            {"atividade": 1, "aluno": 1, "documentos": len(documentos)},
+            {"json_reads": json_reads},
+        )
 
         return visao
     
@@ -489,41 +550,187 @@ class VisualizadorResultados:
             }
         }
     
+    def get_historico_aluno_fast(
+        self,
+        aluno_id: str,
+        turmas_info: Optional[List[Dict[str, Any]]] = None,
+    ) -> List[Dict[str, Any]]:
+        """Retorna histórico agregado do aluno sem N+1 por atividade."""
+        started_at = time.perf_counter()
+        turmas = turmas_info if turmas_info is not None else self.storage.get_turmas_do_aluno(aluno_id)
+        if not turmas:
+            self.storage._log_hot_endpoint_profile(
+                "/api/dashboard/aluno/{aluno_id}/historico",
+                started_at,
+                {"turmas": 0, "atividades": 0, "documentos": 0},
+                {"json_reads": 0},
+            )
+            return []
+
+        turma_by_id = {
+            turma["id"]: turma
+            for turma in turmas
+            if turma.get("id")
+        }
+        turma_ids = list(turma_by_id.keys())
+        atividades_rows = self.storage._select_rows(
+            "atividades",
+            filters={"turma_id": turma_ids},
+            columns=["id", "turma_id", "nome", "tipo", "data_aplicacao", "nota_maxima"],
+        )
+
+        if not atividades_rows:
+            self.storage._log_hot_endpoint_profile(
+                "/api/dashboard/aluno/{aluno_id}/historico",
+                started_at,
+                {"turmas": len(turmas), "atividades": 0, "documentos": 0},
+                {"json_reads": 0},
+            )
+            return []
+
+        activity_ids = [row["id"] for row in atividades_rows if row.get("id")]
+        atividades_by_id = {
+            row["id"]: row
+            for row in atividades_rows
+            if row.get("id")
+        }
+        correction_rows = self.storage._select_rows(
+            "documentos",
+            filters={
+                "atividade_id": activity_ids,
+                "aluno_id": aluno_id,
+                "tipo": TipoDocumento.CORRECAO.value,
+            },
+            order_by="criado_em",
+            order_desc=True,
+        )
+
+        latest_docs: Dict[str, Documento] = {}
+        for row in correction_rows:
+            atividade_id = row.get("atividade_id")
+            if atividade_id and atividade_id not in latest_docs:
+                latest_docs[atividade_id] = Documento.from_dict(row)
+
+        summaries: Dict[str, Dict[str, Optional[float]]] = {}
+        json_reads = 0
+        for atividade_id, documento in latest_docs.items():
+            try:
+                correction_data = self._ler_json(documento)
+                json_reads += 1
+                atividade_row = atividades_by_id.get(atividade_id, {})
+                summaries[atividade_id] = self._resumir_correcao(
+                    atividade_row.get("nota_maxima", 0),
+                    correction_data,
+                )
+            except Exception as exc:
+                logging.warning(
+                    "[visualizador] Falha ao resumir correção do aluno atividade=%s aluno=%s: %s",
+                    atividade_id,
+                    aluno_id,
+                    exc,
+                )
+
+        historico: List[Dict[str, Any]] = []
+        for atividade in atividades_rows:
+            turma_info = turma_by_id.get(atividade.get("turma_id"))
+            if not turma_info:
+                continue
+
+            summary = summaries.get(atividade["id"])
+            historico.append({
+                "materia": turma_info.get("materia_nome") or "?",
+                "turma": turma_info.get("nome") or "?",
+                "atividade_id": atividade["id"],
+                "atividade": atividade.get("nome"),
+                "tipo": atividade.get("tipo"),
+                "data": atividade.get("data_aplicacao"),
+                "nota": summary["nota"] if summary else None,
+                "nota_maxima": (
+                    summary["nota_maxima"]
+                    if summary and summary.get("nota_maxima") is not None
+                    else atividade.get("nota_maxima")
+                ),
+                "percentual": summary["percentual"] if summary else None,
+                "corrigido": summary is not None,
+            })
+
+        historico.sort(key=lambda item: item["data"] or "", reverse=True)
+        self.storage._log_hot_endpoint_profile(
+            "/api/dashboard/aluno/{aluno_id}/historico",
+            started_at,
+            {
+                "turmas": len(turmas),
+                "atividades": len(atividades_rows),
+                "documentos": len(correction_rows),
+            },
+            {"json_reads": json_reads},
+        )
+        return historico
+
     def get_historico_aluno(self, aluno_id: str) -> List[Dict[str, Any]]:
         """
         Retorna histórico de todas as atividades de um aluno.
         """
-        turmas = self.storage.get_turmas_do_aluno(aluno_id)
-        historico = []
-        
-        for turma_info in turmas:
-            turma = self.storage.get_turma(turma_info["id"])
-            if not turma:
-                continue
-            
-            materia = self.storage.get_materia(turma.materia_id)
-            atividades = self.storage.listar_atividades(turma.id)
-            
-            for atividade in atividades:
-                resultado = self.get_resultado_aluno(atividade.id, aluno_id)
-                
-                historico.append({
-                    "materia": materia.nome if materia else "?",
-                    "turma": turma.nome,
-                    "atividade_id": atividade.id,
-                    "atividade": atividade.nome,
-                    "tipo": atividade.tipo,
-                    "data": atividade.data_aplicacao.isoformat() if atividade.data_aplicacao else None,
-                    "nota": resultado.nota_final if resultado else None,
-                    "nota_maxima": atividade.nota_maxima,
-                    "percentual": resultado.percentual if resultado else None,
-                    "corrigido": resultado is not None
-                })
-        
-        # Ordenar por data (mais recente primeiro)
-        historico.sort(key=lambda x: x["data"] or "", reverse=True)
-        
-        return historico
+        return self.get_historico_aluno_fast(aluno_id)
+
+    def get_dashboard_aluno_fast(self, aluno_id: str) -> Optional[Dict[str, Any]]:
+        """Monta o dashboard do aluno usando os helpers batch do storage."""
+        started_at = time.perf_counter()
+        aluno_data = self.storage.get_aluno_detalhes_fast(aluno_id)
+        if not aluno_data:
+            self.storage._log_hot_endpoint_profile(
+                "/api/dashboard/aluno/{aluno_id}",
+                started_at,
+                {"turmas": 0, "atividades": 0},
+            )
+            return None
+
+        historico = self.get_historico_aluno_fast(aluno_id, turmas_info=aluno_data["turmas"])
+
+        por_materia: Dict[str, Dict[str, Any]] = {}
+        for item in historico:
+            materia = item["materia"]
+            if materia not in por_materia:
+                por_materia[materia] = {
+                    "materia": materia,
+                    "total_atividades": 0,
+                    "corrigidas": 0,
+                    "notas": [],
+                }
+            por_materia[materia]["total_atividades"] += 1
+            if item["nota"] is not None:
+                por_materia[materia]["corrigidas"] += 1
+                por_materia[materia]["notas"].append(item["nota"])
+
+        materias_stats = []
+        for materia, dados in por_materia.items():
+            notas = dados.pop("notas")
+            materias_stats.append({
+                **dados,
+                "media": round(sum(notas) / len(notas), 2) if notas else None,
+            })
+
+        todas_notas = [item["nota"] for item in historico if item["nota"] is not None]
+        media_geral = round(sum(todas_notas) / len(todas_notas), 2) if todas_notas else None
+
+        payload = {
+            "aluno": aluno_data["aluno"],
+            "resumo": {
+                "total_turmas": aluno_data["total_turmas"],
+                "total_atividades": len(historico),
+                "atividades_corrigidas": len(todas_notas),
+                "media_geral": media_geral,
+            },
+            "por_materia": materias_stats,
+            "historico_recente": historico[:10],
+        }
+        self.storage._log_hot_endpoint_profile(
+            "/api/dashboard/aluno/{aluno_id}",
+            started_at,
+            {"turmas": aluno_data["total_turmas"], "atividades": len(historico)},
+            {"atividades_corrigidas": len(todas_notas)},
+        )
+        return payload
     
     def exportar_resultado_json(self, atividade_id: str, aluno_id: str) -> str:
         """Exporta resultado em JSON"""

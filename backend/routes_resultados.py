@@ -48,8 +48,9 @@ async def get_resultado_aluno(atividade_id: str, aluno_id: str):
     
     # Sem resultado final - retornar status parcial do pipeline
     # Buscar documentos disponíveis para mostrar progresso
-    docs_aluno = storage.listar_documentos(atividade_id, aluno_id)
-    docs_base = storage.listar_documentos(atividade_id)  # Docs da atividade (gabarito, etc)
+    docs_contexto = storage.listar_documentos(atividade_id, aluno_id)
+    docs_aluno = [doc for doc in docs_contexto if doc.aluno_id == aluno_id]
+    docs_base = [doc for doc in docs_contexto if not doc.aluno_id]
     
     # Definir etapas do pipeline e verificar quais foram concluídas
     etapas = {
@@ -120,7 +121,7 @@ async def get_resultado_aluno(atividade_id: str, aluno_id: str):
                 "nome": d.nome_arquivo,
                 "extensao": d.extensao
             }
-            for d in docs_aluno + [d for d in docs_base if not d.aluno_id]
+            for d in docs_aluno + docs_base
         ],
         "mensagem": f"Pipeline em progresso: {etapas_completas}/{total_etapas} etapas concluídas"
     }
@@ -378,57 +379,10 @@ async def dashboard_aluno(aluno_id: str):
     Dashboard completo de um aluno.
     Inclui desempenho em todas as matérias.
     """
-    aluno = storage.get_aluno(aluno_id)
-    if not aluno:
+    payload = visualizador.get_dashboard_aluno_fast(aluno_id)
+    if not payload:
         raise HTTPException(404, "Aluno não encontrado")
-    
-    turmas = storage.get_turmas_do_aluno(aluno_id)
-    historico = visualizador.get_historico_aluno(aluno_id)
-    
-    # Agrupar por matéria
-    por_materia = {}
-    for h in historico:
-        materia = h["materia"]
-        if materia not in por_materia:
-            por_materia[materia] = {
-                "materia": materia,
-                "atividades": [],
-                "notas": []
-            }
-        por_materia[materia]["atividades"].append(h)
-        if h["nota"] is not None:
-            por_materia[materia]["notas"].append(h["nota"])
-    
-    # Calcular médias por matéria
-    materias_stats = []
-    for materia, dados in por_materia.items():
-        notas = dados["notas"]
-        materias_stats.append({
-            "materia": materia,
-            "total_atividades": len(dados["atividades"]),
-            "corrigidas": len(notas),
-            "media": round(sum(notas) / len(notas), 2) if notas else None
-        })
-    
-    # Média geral
-    todas_notas = [h["nota"] for h in historico if h["nota"] is not None]
-    media_geral = sum(todas_notas) / len(todas_notas) if todas_notas else None
-    
-    return {
-        "aluno": {
-            "id": aluno.id,
-            "nome": aluno.nome,
-            "matricula": aluno.matricula
-        },
-        "resumo": {
-            "total_turmas": len(turmas),
-            "total_atividades": len(historico),
-            "atividades_corrigidas": len(todas_notas),
-            "media_geral": round(media_geral, 2) if media_geral else None
-        },
-        "por_materia": materias_stats,
-        "historico_recente": historico[:10]  # Últimas 10
-    }
+    return payload
 
 
 # ============================================================

@@ -7026,6 +7026,9 @@
             return activeNavTreeRequest === requestId;
         }
 
+        const CONTENT_REASSURANCE_DELAY_MS = 1500;
+        const CONTENT_RETRY_SUGGESTION_DELAY_MS = 6000;
+
         function renderLoadingNotice(message = 'Carregando...') {
             return `
                 <div style="display: flex; align-items: center; gap: 8px; color: var(--text-muted); padding: 12px 0;">
@@ -7149,6 +7152,192 @@
                     ${renderLoadingNotice(message)}
                 </div>
             `;
+        }
+
+        function renderPlaceholderStats(labels) {
+            return `
+                <div class="stats-grid">
+                    ${labels.map(label => `
+                        <div class="stat-card">
+                            <div class="stat-value" style="color: var(--text-muted);">...</div>
+                            <div class="stat-label">${label}</div>
+                        </div>
+                    `).join('')}
+                </div>
+            `;
+        }
+
+        function renderLoadingTablePlaceholder(headers, rowCount = 2) {
+            return `
+                <div class="table-container">
+                    <table>
+                        <thead>
+                            <tr>${headers.map(header => `<th>${header}</th>`).join('')}</tr>
+                        </thead>
+                        <tbody>
+                            ${Array.from({ length: rowCount }).map(() => `
+                                <tr>
+                                    ${headers.map(() => `<td style="color: var(--text-muted);">...</td>`).join('')}
+                                </tr>
+                            `).join('')}
+                        </tbody>
+                    </table>
+                </div>
+            `;
+        }
+
+        function renderReassuringLoadingShell({
+            requestId,
+            view,
+            title,
+            subtitle,
+            loadingMessage,
+            retryAction,
+            sections = [],
+            actionsHtml = '',
+            trustMessage = 'A página está funcionando. Isso pode levar alguns segundos.',
+            delayedMessage = 'Os dados estão demorando mais que o normal, mas o carregamento continua.'
+        }) {
+            const trustId = `loading-trust-${view}-${requestId}`;
+            const retryId = `loading-retry-${view}-${requestId}`;
+
+            document.getElementById('content').innerHTML = `
+                <div class="page-header">
+                    <h1 class="page-title">${title}</h1>
+                    <p class="page-subtitle">${subtitle}</p>
+                </div>
+                ${actionsHtml}
+                <div class="card">
+                    <div class="card-header">
+                        <h3 class="card-title">Carregando dados do aluno...</h3>
+                    </div>
+                    ${renderLoadingNotice(loadingMessage)}
+                    <div id="${trustId}" style="margin-top: 4px; color: var(--text-muted); font-size: 0.95rem;">
+                        ${trustMessage}
+                    </div>
+                    <div id="${retryId}" style="display: none; margin-top: 16px;">
+                        <button class="btn" onclick="${retryAction}">Tentar novamente</button>
+                    </div>
+                </div>
+                ${sections.map(section => `
+                    <div class="card">
+                        <div class="card-header">
+                            <h3 class="card-title">${section.title}</h3>
+                        </div>
+                        ${section.body}
+                    </div>
+                `).join('')}
+            `;
+
+            setTimeout(() => {
+                if (!isContentRequestActive(requestId, view)) return;
+                const trustEl = document.getElementById(trustId);
+                if (trustEl) trustEl.textContent = delayedMessage;
+            }, CONTENT_REASSURANCE_DELAY_MS);
+
+            setTimeout(() => {
+                if (!isContentRequestActive(requestId, view)) return;
+                const retryEl = document.getElementById(retryId);
+                if (retryEl) retryEl.style.display = 'block';
+            }, CONTENT_RETRY_SUGGESTION_DELAY_MS);
+        }
+
+        function renderStudentErrorShell(title, subtitle, retryAction) {
+            document.getElementById('content').innerHTML = `
+                <div class="page-header">
+                    <h1 class="page-title">${title}</h1>
+                    <p class="page-subtitle">${subtitle}</p>
+                </div>
+                <div class="card">
+                    ${renderInlineAlert('warning', 'Não foi possível carregar agora', 'A página respondeu, mas os dados não puderam ser carregados.')}
+                    <div style="margin-top: 16px;">
+                        <button class="btn" onclick="${retryAction}">Tentar novamente</button>
+                    </div>
+                </div>
+            `;
+        }
+
+        function getAlunoHint(alunoId, nome = '', matricula = '') {
+            if (nome || matricula) {
+                return {
+                    nome: nome || '',
+                    matricula: matricula || ''
+                };
+            }
+
+            if (window._alunoDetailData?.aluno?.id === alunoId) {
+                return {
+                    nome: window._alunoDetailData.aluno.nome || '',
+                    matricula: window._alunoDetailData.aluno.matricula || ''
+                };
+            }
+
+            const turmaAluno = Array.isArray(window._turmaData?.alunos)
+                ? window._turmaData.alunos.find(aluno => aluno.id === alunoId)
+                : null;
+            if (turmaAluno) {
+                return {
+                    nome: turmaAluno.nome || '',
+                    matricula: turmaAluno.matricula || ''
+                };
+            }
+
+            return { nome: '', matricula: '' };
+        }
+
+        function getAtividadeHint(atividadeId, atividadeNome = '') {
+            if (atividadeNome) return atividadeNome;
+            if (window._atividadeData?.atividade?.id === atividadeId) {
+                return window._atividadeData.atividade.nome || '';
+            }
+            return '';
+        }
+
+        function getTurmaBreadcrumbContext(turmaId) {
+            if (window._turmaData?.turma?.id === turmaId && window._turmaData?.materia) {
+                return window._turmaData;
+            }
+            return null;
+        }
+
+        async function hydrateResultadoAlunoBreadcrumb(requestId, atividadeId, alunoId, atividadeData, alunoData, atividadeNomeHint = '') {
+            if (!isContentRequestActive(requestId, 'resultado_aluno')) return;
+
+            const fallbackItems = [{ nome: 'Início', onclick: 'showDashboard()' }];
+            const hintedActivityName = atividadeData?.atividade?.nome || atividadeNomeHint || 'Atividade';
+            fallbackItems.push({ nome: hintedActivityName, onclick: `showAtividade('${atividadeId}')` });
+            fallbackItems.push({
+                nome: alunoData?.aluno?.nome || 'Resultado do Aluno',
+                onclick: `showResultadoAluno('${atividadeId}', '${alunoId}', ${jsString(alunoData?.aluno?.nome || '')}, ${jsString(hintedActivityName)})`
+            });
+            setBreadcrumb(fallbackItems);
+
+            const turmaId = atividadeData?.atividade?.turma_id;
+            if (!turmaId) return;
+
+            let turmaData = getTurmaBreadcrumbContext(turmaId);
+            if (!turmaData) {
+                try {
+                    turmaData = await api(`/turmas/${turmaId}`);
+                } catch (error) {
+                    return;
+                }
+            }
+            if (!isContentRequestActive(requestId, 'resultado_aluno')) return;
+            if (!turmaData?.turma?.id || !turmaData?.materia?.id) return;
+
+            currentTurma = turmaData.turma.id;
+            currentMateria = turmaData.materia.id;
+            setBreadcrumb([
+                { nome: 'Início', onclick: 'showDashboard()' },
+                { nome: turmaData.materia.nome, onclick: `showMateria('${turmaData.materia.id}')` },
+                { nome: turmaData.turma.nome, onclick: `showTurma('${turmaData.turma.id}')` },
+                { nome: atividadeData?.atividade?.nome || hintedActivityName, onclick: `showAtividade('${atividadeId}')` },
+                {
+                    nome: alunoData?.aluno?.nome || 'Resultado do Aluno',
+                    onclick: `showResultadoAluno('${atividadeId}', '${alunoId}', ${jsString(alunoData?.aluno?.nome || '')}, ${jsString(atividadeData?.atividade?.nome || hintedActivityName)})`
+                }
+            ]);
         }
 
         function renderDetailErrorShell(title, subtitle, message, retryAction) {
@@ -7700,7 +7889,7 @@
                         <div class="card-header"><h3 class="card-title">Alunos</h3><button class="btn btn-primary btn-sm" onclick="openModalAluno('${data.turma.id}')">+ Novo Aluno</button></div>
                         ${data.alunos.length === 0 ? `<div class="empty-state"><div class="empty-icon">👤</div><div class="empty-title">Nenhum aluno</div></div>` : `
                             <div class="table-container"><table><thead><tr><th>Nome</th><th>Matrícula</th><th>Email</th><th>Ações</th></tr></thead><tbody>
-                                ${data.alunos.map(a => `<tr><td><strong>${a.nome}</strong></td><td>${a.matricula || '-'}</td><td>${a.email || '-'}</td><td><button class="btn btn-sm" onclick="showAluno('${a.id}')">Ver</button> <button class="btn btn-sm btn-danger" onclick="excluirAluno('${a.id}')">🗑️</button></td></tr>`).join('')}
+                                ${data.alunos.map(a => `<tr><td><strong>${a.nome}</strong></td><td>${a.matricula || '-'}</td><td>${a.email || '-'}</td><td><button class="btn btn-sm" onclick="showAluno('${a.id}', ${jsString(a.nome)}, ${jsString(a.matricula || '')})">Ver</button> <button class="btn btn-sm btn-danger" onclick="excluirAluno('${a.id}')">🗑️</button></td></tr>`).join('')}
                             </tbody></table></div>
                         `}
                     </div>
@@ -7780,7 +7969,7 @@
                     <div class="card">
                         <div class="card-header"><h3 class="card-title">👥 Provas dos Alunos</h3><button class="btn btn-primary btn-sm" onclick="openModalUpload('${atividadeId}', 'aluno')">+ Upload Prova</button></div>
                         <div class="table-container"><table><thead><tr><th>Aluno</th><th>Prova</th><th>Correção</th><th>Relatório</th><th>Ações</th></tr></thead><tbody>
-                            ${data.alunos.detalhes.map(a => `<tr class="aluno-row" data-aluno-id="${a.aluno_id}" data-aluno-nome="${escapeHtml(a.aluno_nome || '')}"><td><strong>${a.aluno_nome}</strong></td><td>${a.tem_prova ? '<span class="badge badge-success">✓</span>' : '<span class="badge badge-danger">Falta</span>'}</td><td>${a.tem_correcao ? '<span class="badge badge-success">✓</span>' : '<span class="badge badge-warning">Pendente</span>'}</td><td>${a.tem_relatorio ? '<span class="badge badge-success">✓</span>' : '<span class="badge badge-warning">Pendente</span>'}</td><td><button class="btn btn-sm" onclick="showResultadoAluno('${atividadeId}', '${a.aluno_id}')">Ver Resultado</button></td></tr>`).join('')}
+                            ${data.alunos.detalhes.map(a => `<tr class="aluno-row" data-aluno-id="${a.aluno_id}" data-aluno-nome="${escapeHtml(a.aluno_nome || '')}"><td><strong>${a.aluno_nome}</strong></td><td>${a.tem_prova ? '<span class="badge badge-success">✓</span>' : '<span class="badge badge-danger">Falta</span>'}</td><td>${a.tem_correcao ? '<span class="badge badge-success">✓</span>' : '<span class="badge badge-warning">Pendente</span>'}</td><td>${a.tem_relatorio ? '<span class="badge badge-success">✓</span>' : '<span class="badge badge-warning">Pendente</span>'}</td><td><button class="btn btn-sm" onclick="showResultadoAluno('${atividadeId}', '${a.aluno_id}', ${jsString(a.aluno_nome || '')}, ${jsString(data.atividade.nome || '')})">Ver Resultado</button></td></tr>`).join('')}
                         </tbody></table></div>
                     </div>
                     </div>
@@ -8025,7 +8214,7 @@
                         <div class="card-header"><h3 class="card-title">Lista de Alunos</h3><button class="btn btn-primary btn-sm" onclick="openModal('modal-aluno')">+ Novo</button></div>
                         ${data.alunos.length === 0 ? `<div class="empty-state"><div class="empty-icon">👥</div><div class="empty-title">Nenhum aluno</div></div>` : `
                             <div class="table-container"><table><thead><tr><th>Nome</th><th>Matrícula</th><th>Email</th><th>Ações</th></tr></thead><tbody>
-                                ${data.alunos.map(a => `<tr><td><strong>${a.nome}</strong></td><td>${a.matricula || '-'}</td><td>${a.email || '-'}</td><td><button class="btn btn-sm" onclick="showAluno('${a.id}')">Ver Turmas</button> <button class="btn btn-sm btn-danger" onclick="excluirAluno('${a.id}')">🗑️</button></td></tr>`).join('')}
+                                ${data.alunos.map(a => `<tr><td><strong>${a.nome}</strong></td><td>${a.matricula || '-'}</td><td>${a.email || '-'}</td><td><button class="btn btn-sm" onclick="showAluno('${a.id}', ${jsString(a.nome)}, ${jsString(a.matricula || '')})">Ver Turmas</button> <button class="btn btn-sm btn-danger" onclick="excluirAluno('${a.id}')">🗑️</button></td></tr>`).join('')}
                             </tbody></table></div>
                         `}
                     </div>
@@ -8704,20 +8893,47 @@
             }
         }
 
-        async function showAluno(alunoId) {
+        async function showAluno(alunoId, alunoNome = '', matricula = '') {
             currentView = 'aluno';
             currentAluno = alunoId;
             const requestId = beginContentRequest('aluno');
+            const hint = getAlunoHint(alunoId, alunoNome, matricula);
+            const retryAction = `showAluno('${alunoId}', ${jsString(hint.nome)}, ${jsString(hint.matricula)})`;
             pushNavState();
+            clearHelpPanels();
+            setBreadcrumb([
+                { nome: 'Início', onclick: 'showDashboard()' },
+                { nome: 'Alunos', onclick: 'showAlunos()' },
+                { nome: hint.nome || 'Carregando aluno...' }
+            ]);
+            renderReassuringLoadingShell({
+                requestId,
+                view: 'aluno',
+                title: hint.nome || 'Carregando aluno...',
+                subtitle: hint.matricula ? `Matrícula: ${hint.matricula}` : 'Buscando turmas e dados do aluno...',
+                loadingMessage: 'Buscando turmas e dados do aluno...',
+                retryAction,
+                sections: [
+                    {
+                        title: 'Turmas do Aluno',
+                        body: renderLoadingTablePlaceholder(['Matéria', 'Turma', 'Ano', 'Ações'])
+                    }
+                ]
+            });
             try {
                 const data = await api(`/alunos/${alunoId}`);
                 if (!isContentRequestActive(requestId, 'aluno')) return;
-                setBreadcrumb([{ nome: 'Início', onclick: 'showDashboard()' }, { nome: 'Alunos', onclick: 'showAlunos()' }, { nome: data.aluno.nome, onclick: `showAluno('${alunoId}')` }]);
+                window._alunoDetailData = data;
+                setBreadcrumb([
+                    { nome: 'Início', onclick: 'showDashboard()' },
+                    { nome: 'Alunos', onclick: 'showAlunos()' },
+                    { nome: data.aluno.nome, onclick: `showAluno('${alunoId}', ${jsString(data.aluno.nome)}, ${jsString(data.aluno.matricula || '')})` }
+                ]);
 
                 document.getElementById('content').innerHTML = `
                     <div class="page-header"><h1 class="page-title">${data.aluno.nome}</h1><p class="page-subtitle">Matrícula: ${data.aluno.matricula || 'Não informada'}</p></div>
                     <div style="display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 16px;">
-                        <button class="btn" onclick="showDashboardAluno('${alunoId}')">📊 Dashboard do Aluno</button>
+                        <button class="btn" onclick="showDashboardAluno('${alunoId}', ${jsString(data.aluno.nome)}, ${jsString(data.aluno.matricula || '')})">📊 Dashboard do Aluno</button>
                     </div>
                     <div class="card">
                         <div class="card-header"><h3 class="card-title">Turmas do Aluno (${data.total_turmas})</h3></div>
@@ -8728,7 +8944,15 @@
                         `}
                     </div>
                 `;
-            } catch (e) { showToast('Erro ao carregar aluno', 'error'); }
+            } catch (e) {
+                if (!isContentRequestActive(requestId, 'aluno')) return;
+                renderStudentErrorShell(
+                    hint.nome || 'Aluno',
+                    hint.matricula ? `Matrícula: ${hint.matricula}` : 'Detalhes do aluno',
+                    retryAction
+                );
+                showToast('Erro ao carregar aluno', 'error');
+            }
         }
 
         // ============================================================
@@ -10711,13 +10935,36 @@
             } catch (e) { }
         }
 
-        async function showResultadoAluno(atividadeId, alunoId) {
+        async function showResultadoAluno(atividadeId, alunoId, alunoNome = '', atividadeNome = '') {
             const requestId = beginContentRequest('resultado_aluno');
+            const alunoHint = getAlunoHint(alunoId, alunoNome);
+            const atividadeHint = getAtividadeHint(atividadeId, atividadeNome);
             try {
                 currentView = 'resultado_aluno';
                 currentAtividade = atividadeId;
                 currentAluno = alunoId;
                 pushNavState();
+                clearHelpPanels();
+                setBreadcrumb([
+                    { nome: 'Início', onclick: 'showDashboard()' },
+                    { nome: atividadeHint || 'Atividade', onclick: `showAtividade('${atividadeId}')` },
+                    { nome: alunoHint.nome || 'Carregando aluno...' }
+                ]);
+                renderReassuringLoadingShell({
+                    requestId,
+                    view: 'resultado_aluno',
+                    title: alunoHint.nome ? `Resultado de ${alunoHint.nome}` : 'Resultado do Aluno',
+                    subtitle: atividadeHint
+                        ? `${atividadeHint} • Buscando correção, documentos e progresso...`
+                        : 'Buscando correção, documentos e progresso...',
+                    loadingMessage: 'Buscando correção, documentos e progresso...',
+                    retryAction: `showResultadoAluno('${atividadeId}', '${alunoId}', ${jsString(alunoHint.nome)}, ${jsString(atividadeHint)})`,
+                    sections: [
+                        { title: 'Resultado e Progresso', body: renderLoadingNotice('Carregando correção e etapas do pipeline...') },
+                        { title: 'Documentos do Aluno', body: renderLoadingNotice('Carregando documentos do aluno...') },
+                        { title: 'Comparativo das Etapas (IA)', body: renderLoadingNotice('Carregando etapas geradas pela IA...') }
+                    ]
+                });
                 const [resultadoResp, documentosResp, atividadeResp, alunoResp] = await Promise.allSettled([
                     api(`/resultados/${atividadeId}/${alunoId}`),
                     api(`/documentos?atividade_id=${atividadeId}&aluno_id=${alunoId}`),
@@ -10732,22 +10979,8 @@
                 const resultado = isComplete ? (resultadoData.resultado || {}) : {};
                 const documentos = documentosResp.status === 'fulfilled' ? (documentosResp.value.documentos || []) : [];
 
-                // Configurar breadcrumb com nome do aluno
                 const atividadeData = atividadeResp.status === 'fulfilled' ? atividadeResp.value : null;
                 const alunoData = alunoResp.status === 'fulfilled' ? alunoResp.value : null;
-                if (atividadeData && alunoData) {
-                    const turmaData = await api(`/turmas/${atividadeData.atividade.turma_id}`);
-                    if (!isContentRequestActive(requestId, 'resultado_aluno')) return;
-                    currentTurma = turmaData.turma.id;
-                    currentMateria = turmaData.materia.id;
-                    setBreadcrumb([
-                        { nome: 'Início', onclick: 'showDashboard()' },
-                        { nome: turmaData.materia.nome, onclick: `showMateria('${turmaData.materia.id}')` },
-                        { nome: turmaData.turma.nome, onclick: `showTurma('${turmaData.turma.id}')` },
-                        { nome: atividadeData.atividade.nome, onclick: `showAtividade('${atividadeId}')` },
-                        { nome: alunoData.aluno.nome, onclick: `showResultadoAluno('${atividadeId}', '${alunoId}')` }
-                    ]);
-                }
 
                 // Renderizar banner de erro se resultado tem erro_pipeline
                 let erroBanner = '';
@@ -10909,8 +11142,16 @@
                         ${gruposGerados || '<div class="empty-state"><div class="empty-icon">🤖</div><div class="empty-title">Nenhuma etapa gerada</div></div>'}
                     </div>
                 `;
+                void hydrateResultadoAlunoBreadcrumb(requestId, atividadeId, alunoId, atividadeData, alunoData, atividadeHint);
             } catch (e) {
+                if (!isContentRequestActive(requestId, 'resultado_aluno')) return;
+                renderStudentErrorShell(
+                    alunoHint.nome ? `Resultado de ${alunoHint.nome}` : 'Resultado do Aluno',
+                    atividadeHint || 'Correção do aluno',
+                    `showResultadoAluno('${atividadeId}', '${alunoId}', ${jsString(alunoHint.nome)}, ${jsString(atividadeHint)})`
+                );
                 console.error('Erro ao carregar resultado:', e);
+                showToast('Erro ao carregar resultado do aluno', 'error');
             }
         }
 
@@ -10937,11 +11178,49 @@
             } catch (e) { }
         }
 
-        async function showDashboardAluno(alunoId) {
+        async function showDashboardAluno(alunoId, alunoNome = '', matricula = '') {
+            currentView = 'dashboard_aluno';
+            currentAluno = alunoId;
             const requestId = beginContentRequest('dashboard_aluno');
+            const hint = getAlunoHint(alunoId, alunoNome, matricula);
+            const retryAction = `showDashboardAluno('${alunoId}', ${jsString(hint.nome)}, ${jsString(hint.matricula)})`;
             try {
+                pushNavState();
+                clearHelpPanels();
+                setBreadcrumb([
+                    { nome: 'Início', onclick: 'showDashboard()' },
+                    { nome: 'Alunos', onclick: 'showAlunos()' },
+                    { nome: hint.nome || 'Carregando aluno...' },
+                    { nome: 'Dashboard do Aluno' }
+                ]);
+                renderReassuringLoadingShell({
+                    requestId,
+                    view: 'dashboard_aluno',
+                    title: 'Dashboard do Aluno',
+                    subtitle: hint.nome
+                        ? `${hint.nome} • Calculando histórico e estatísticas...`
+                        : 'Calculando histórico e estatísticas...',
+                    loadingMessage: 'Calculando histórico e estatísticas...',
+                    retryAction,
+                    sections: [
+                        {
+                            title: '📊 Estatísticas do Aluno',
+                            body: renderPlaceholderStats(['Turmas', 'Atividades', 'Corrigidas', 'Média'])
+                        },
+                        {
+                            title: 'Histórico Recente',
+                            body: renderLoadingTablePlaceholder(['Matéria', 'Atividade', 'Nota', 'Status'])
+                        }
+                    ]
+                });
                 const data = await api(`/dashboard/aluno/${alunoId}`);
                 if (!isContentRequestActive(requestId, 'dashboard_aluno')) return;
+                setBreadcrumb([
+                    { nome: 'Início', onclick: 'showDashboard()' },
+                    { nome: 'Alunos', onclick: 'showAlunos()' },
+                    { nome: data.aluno.nome, onclick: `showAluno('${alunoId}', ${jsString(data.aluno.nome)}, ${jsString(data.aluno.matricula || '')})` },
+                    { nome: 'Dashboard do Aluno', onclick: `showDashboardAluno('${alunoId}', ${jsString(data.aluno.nome)}, ${jsString(data.aluno.matricula || '')})` }
+                ]);
                 document.getElementById('content').innerHTML = `
                     <div class="page-header"><h1 class="page-title">Dashboard do Aluno</h1></div>
                     <div class="card">
@@ -10957,7 +11236,11 @@
                         </div>
                     </div>
                 `;
-            } catch (e) { }
+            } catch (e) {
+                if (!isContentRequestActive(requestId, 'dashboard_aluno')) return;
+                renderStudentErrorShell('Dashboard do Aluno', hint.nome || 'Visão geral do aluno', retryAction);
+                showToast('Erro ao carregar dashboard do aluno', 'error');
+            }
         }
 
         // ============================================================
@@ -11011,7 +11294,7 @@
                 const data = await api(`/busca?q=${encodeURIComponent(termo)}`);
                 if (data.total === 0) { container.innerHTML = '<div style="color: var(--text-muted); padding: 20px; text-align: center;">Nenhum resultado</div>'; return; }
                 let html = '';
-                if (data.resultados.alunos.length > 0) { html += '<div style="margin-bottom: 12px;"><strong>Alunos</strong></div>' + data.resultados.alunos.map(a => `<div class="doc-item" onclick="closeModal('modal-busca'); showAluno('${a.id}')"><div class="doc-icon">👤</div><div class="doc-info"><div class="doc-name">${a.nome}</div><div class="doc-meta">${a.matricula || ''}</div></div></div>`).join(''); }
+                if (data.resultados.alunos.length > 0) { html += '<div style="margin-bottom: 12px;"><strong>Alunos</strong></div>' + data.resultados.alunos.map(a => `<div class="doc-item" onclick="closeModal('modal-busca'); showAluno('${a.id}', ${jsString(a.nome)}, ${jsString(a.matricula || '')})"><div class="doc-icon">👤</div><div class="doc-info"><div class="doc-name">${a.nome}</div><div class="doc-meta">${a.matricula || ''}</div></div></div>`).join(''); }
                 if (data.resultados.materias.length > 0) { html += '<div style="margin: 12px 0;"><strong>Matérias</strong></div>' + data.resultados.materias.map(m => `<div class="doc-item" onclick="closeModal('modal-busca'); showMateria('${m.id}')"><div class="doc-icon">📚</div><div class="doc-info"><div class="doc-name">${m.nome}</div></div></div>`).join(''); }
                 if (data.resultados.turmas.length > 0) { html += '<div style="margin: 12px 0;"><strong>Turmas</strong></div>' + data.resultados.turmas.map(t => `<div class="doc-item" onclick="closeModal('modal-busca'); showTurma('${t.id}')"><div class="doc-icon">👥</div><div class="doc-info"><div class="doc-name">${t.nome}</div><div class="doc-meta">${t.materia || ''}</div></div></div>`).join(''); }
                 if (data.resultados.atividades.length > 0) { html += '<div style="margin: 12px 0;"><strong>Atividades</strong></div>' + data.resultados.atividades.map(a => `<div class="doc-item" onclick="closeModal('modal-busca'); showAtividade('${a.id}')"><div class="doc-icon">📝</div><div class="doc-info"><div class="doc-name">${a.nome}</div><div class="doc-meta">${a.turma || ''}</div></div></div>`).join(''); }
@@ -11060,6 +11343,15 @@
             const div = document.createElement('div');
             div.textContent = text;
             return div.innerHTML;
+        }
+
+        function jsString(value) {
+            const text = String(value ?? '');
+            return `'${text
+                .replace(/\\/g, '\\\\')
+                .replace(/'/g, "\\'")
+                .replace(/\r/g, '\\r')
+                .replace(/\n/g, '\\n')}'`;
         }
 
         function truncateText(text, maxLength) {

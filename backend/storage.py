@@ -870,22 +870,19 @@ class StorageManager:
         """Lista alunos, opcionalmente filtrados por turma"""
         if self.use_postgresql:
             if turma_id:
-                # Get aluno IDs from vinculos first
-                vinculos = supabase_db.select("alunos_turmas",
-                    filters={"turma_id": turma_id, "ativo": True})
+                vinculos = self._select_rows(
+                    "alunos_turmas",
+                    filters={"turma_id": turma_id, "ativo": True},
+                    columns=["aluno_id"],
+                )
                 aluno_ids = [v["aluno_id"] for v in vinculos]
                 if not aluno_ids:
                     return []
-                # Get alunos
-                alunos = []
-                for aluno_id in aluno_ids:
-                    aluno = self.get_aluno(aluno_id)
-                    if aluno:
-                        alunos.append(aluno)
-                return sorted(alunos, key=lambda a: a.nome)
-            else:
-                rows = supabase_db.select("alunos", order_by="nome")
+                rows = self._select_rows("alunos", filters={"id": aluno_ids}, order_by="nome")
                 return [Aluno.from_dict(row) for row in rows]
+
+            rows = self._select_rows("alunos", order_by="nome")
+            return [Aluno.from_dict(row) for row in rows]
         else:
             conn = self._get_connection()
             c = conn.cursor()
@@ -1053,45 +1050,74 @@ class StorageManager:
             return affected > 0
 
     def get_turmas_do_aluno(self, aluno_id: str, apenas_ativas: bool = True) -> List[Dict[str, Any]]:
-        """Retorna todas as turmas de um aluno, com info da matéria"""
-        if self.use_postgresql:
-            # Get vinculos
-            filters = {"aluno_id": aluno_id}
-            if apenas_ativas:
-                filters["ativo"] = True
-            vinculos = supabase_db.select("alunos_turmas", filters=filters)
+        """Retorna todas as turmas de um aluno, com info da matéria, sem N+1."""
+        filters = {"aluno_id": aluno_id}
+        if apenas_ativas:
+            filters["ativo"] = True
 
-            result = []
-            for v in vinculos:
-                turma = self.get_turma(v["turma_id"])
-                if turma:
-                    materia = self.get_materia(turma.materia_id)
-                    turma_dict = turma.to_dict()
-                    turma_dict["materia_nome"] = materia.nome if materia else ""
-                    turma_dict["observacoes"] = v.get("observacoes")
-                    turma_dict["data_entrada"] = v.get("data_entrada")
-                    result.append(turma_dict)
-            return result
-        else:
-            conn = self._get_connection()
-            c = conn.cursor()
+        vinculos = self._select_rows(
+            "alunos_turmas",
+            filters=filters,
+            columns=["turma_id", "observacoes", "data_entrada"],
+        )
+        turma_ids = [v["turma_id"] for v in vinculos]
+        if not turma_ids:
+            return []
 
-            query = '''
-                SELECT t.*, m.nome as materia_nome, at.observacoes, at.data_entrada
-                FROM turmas t
-                JOIN alunos_turmas at ON t.id = at.turma_id
-                JOIN materias m ON t.materia_id = m.id
-                WHERE at.aluno_id = ?
-            '''
-            if apenas_ativas:
-                query += ' AND at.ativo = 1'
-            query += ' ORDER BY m.nome, t.ano_letivo DESC'
+        turmas_rows = self._select_rows("turmas", filters={"id": turma_ids})
+        turmas_by_id = {turma["id"]: turma for turma in turmas_rows}
+        materia_ids = list({turma["materia_id"] for turma in turmas_rows if turma.get("materia_id")})
+        materias_rows = (
+            self._select_rows("materias", filters={"id": materia_ids}, columns=["id", "nome"])
+            if materia_ids
+            else []
+        )
+        materias_by_id = {materia["id"]: materia["nome"] for materia in materias_rows}
 
-            c.execute(query, (aluno_id,))
-            rows = c.fetchall()
-            conn.close()
+        result = []
+        for vinculo in vinculos:
+            turma = turmas_by_id.get(vinculo["turma_id"])
+            if not turma:
+                continue
 
-            return [dict(row) for row in rows]
+            turma_dict = dict(turma)
+            turma_dict["materia_nome"] = materias_by_id.get(turma.get("materia_id"), "")
+            turma_dict["observacoes"] = vinculo.get("observacoes")
+            turma_dict["data_entrada"] = vinculo.get("data_entrada")
+            result.append(turma_dict)
+
+        result.sort(
+            key=lambda turma: (
+                (turma.get("materia_nome") or "").lower(),
+                -(turma.get("ano_letivo") or 0),
+                (turma.get("nome") or "").lower(),
+            )
+        )
+        return result
+
+    def get_aluno_detalhes_fast(self, aluno_id: str) -> Optional[Dict[str, Any]]:
+        """Retorna o payload de /api/alunos/{id} com leituras em lote."""
+        started_at = time.perf_counter()
+        aluno = self.get_aluno(aluno_id)
+        if not aluno:
+            return None
+
+        turmas = self.get_turmas_do_aluno(aluno_id)
+        payload = {
+            "aluno": aluno.to_dict(),
+            "turmas": turmas,
+            "total_turmas": len(turmas),
+        }
+        self._log_hot_endpoint_profile(
+            "/api/alunos/{id}",
+            started_at,
+            {
+                "alunos": 1,
+                "turmas": len(turmas),
+            },
+            {"total_turmas": len(turmas)},
+        )
+        return payload
     
     # ============================================================
     # CRUD: ATIVIDADES
@@ -1418,15 +1444,12 @@ class StorageManager:
 
             return Documento.from_dict(dict(row))
 
-    def resolver_caminho_documento(self, documento: Documento) -> Path:
+    def resolver_caminho_documento(self, documento: Documento, force_remote: bool = False) -> Path:
         """
         Resolve o caminho absoluto de um documento.
 
-        SEMPRE usa Supabase como fonte primária.
-        Local é apenas cache/fallback para dev.
+        Usa cache local primeiro e só baixa do Supabase quando necessário.
         """
-        import sys
-        import logging
         logger = logging.getLogger("pipeline")
 
         # Normalizar: converter barras invertidas para barras normais
@@ -1447,9 +1470,12 @@ class StorageManager:
         logger.info(f"[resolver_caminho] SUPABASE_AVAILABLE: {SUPABASE_AVAILABLE}")
         logger.info(f"[resolver_caminho] supabase_storage.enabled: {supabase_storage.enabled if supabase_storage else 'None'}")
 
-        # SEMPRE tentar Supabase primeiro
+        if local_path.exists() and not force_remote:
+            logger.info(f"[resolver_caminho] Cache local hit: {local_path}")
+            return local_path
+
         if SUPABASE_AVAILABLE and supabase_storage and supabase_storage.enabled:
-            logger.info(f"[resolver_caminho] Tentando Supabase...")
+            logger.info(f"[resolver_caminho] Cache miss, tentando Supabase...")
 
             # Criar diretório pai se não existir
             local_path.parent.mkdir(parents=True, exist_ok=True)
@@ -1475,7 +1501,6 @@ class StorageManager:
         else:
             logger.warning(f"[resolver_caminho] Supabase não disponível!")
 
-        # Fallback: verificar local (para dev sem Supabase)
         if local_path.exists():
             logger.info(f"[resolver_caminho] Usando cache local: {local_path}")
             return local_path
@@ -1491,12 +1516,32 @@ class StorageManager:
             if tipo:
                 filters["tipo"] = tipo.value
 
-            rows = supabase_db.select("documentos", filters=filters, order_by="criado_em", order_desc=True)
+            if aluno_id is None:
+                rows = self._select_rows(
+                    "documentos",
+                    filters=filters,
+                    order_by="criado_em",
+                    order_desc=True,
+                )
+            else:
+                rows_by_id: Dict[str, Dict[str, Any]] = {}
+                for query_filters in (
+                    {**filters, "aluno_id": aluno_id},
+                    {**filters, "aluno_id": None},
+                ):
+                    for row in self._select_rows(
+                        "documentos",
+                        filters=query_filters,
+                        order_by="criado_em",
+                        order_desc=True,
+                    ):
+                        rows_by_id[row["id"]] = row
 
-            # Filter by aluno_id in Python (Supabase doesn't support OR easily)
-            if aluno_id is not None:
-                rows = [r for r in rows if r.get("aluno_id") == aluno_id or r.get("aluno_id") is None]
-
+                rows = sorted(
+                    rows_by_id.values(),
+                    key=lambda row: row.get("criado_em") or "",
+                    reverse=True,
+                )
             return [Documento.from_dict(row) for row in rows]
         else:
             conn = self._get_connection()
