@@ -163,9 +163,17 @@ class VisualizadorResultados:
         # Buscar documentos do aluno
         documentos = self.storage.listar_documentos(atividade_id, aluno_id)
         
-        # Encontrar correção
-        correcao_doc = next((d for d in documentos if d.tipo == TipoDocumento.CORRECAO), None)
-        analise_doc = next((d for d in documentos if d.tipo == TipoDocumento.ANALISE_HABILIDADES), None)
+        # Encontrar correção — prefer JSON files over PDFs (pipeline creates both)
+        correcao_docs = [d for d in documentos if d.tipo == TipoDocumento.CORRECAO]
+        correcao_doc = next(
+            (d for d in correcao_docs if d.nome_arquivo and d.nome_arquivo.endswith('.json')),
+            next(iter(correcao_docs), None)
+        )
+        analise_docs = [d for d in documentos if d.tipo == TipoDocumento.ANALISE_HABILIDADES]
+        analise_doc = next(
+            (d for d in analise_docs if d.nome_arquivo and d.nome_arquivo.endswith('.json')),
+            next(iter(analise_docs), None)
+        )
         
         if not correcao_doc:
             self.storage._log_hot_endpoint_profile(
