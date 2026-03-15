@@ -688,6 +688,48 @@
             color: var(--purple);
         }
 
+        .badge-aviso {
+            background: rgba(249, 115, 22, 0.2);
+            color: #f97316;
+            cursor: pointer;
+        }
+
+        .badge-aviso:hover {
+            background: rgba(249, 115, 22, 0.3);
+        }
+
+        .aviso-dropdown {
+            display: none;
+            margin-top: 8px;
+            padding: 8px 12px;
+            background: var(--bg);
+            border-radius: 8px;
+            border-left: 3px solid #f97316;
+            font-size: 0.8rem;
+        }
+
+        .aviso-dropdown.expanded {
+            display: block;
+        }
+
+        .aviso-item {
+            padding: 6px 0;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .aviso-item:last-child {
+            border-bottom: none;
+        }
+
+        .aviso-item .aviso-code {
+            font-weight: 600;
+            font-size: 0.7rem;
+            text-transform: uppercase;
+        }
+
+        .aviso-item .aviso-code.orange { color: #f97316; }
+        .aviso-item .aviso-code.yellow { color: #eab308; }
+
         /* ALERTS */
         .alert {
             padding: 14px 18px;
@@ -6893,10 +6935,34 @@
             const total = resultado.total_questoes ?? resultado.questoes?.length ?? null;
             const dadosIncompletos = resultado.dados_incompletos === true;
 
+            // Warning/aviso data from pipeline
+            const avisos_documento = resultado.avisos_documento || [];
+            const avisos_questao = resultado.avisos_questao || [];
+            const totalAvisos = avisos_documento.length + avisos_questao.length;
+
+            // Build avisos badge + dropdown HTML
+            let avisosBadgeHtml = '';
+            if (totalAvisos > 0) {
+                const dropdownId = 'aviso-dropdown-' + Math.random().toString(36).substr(2, 6);
+                const avisosLabel = totalAvisos === 1 ? '1 aviso' : `${totalAvisos} avisos`;
+                avisosBadgeHtml = ` <span class="badge badge-aviso" onclick="toggleAvisos('${dropdownId}')">⚠ ${avisosLabel}</span>`;
+                avisosBadgeHtml += `<div id="${dropdownId}" class="aviso-dropdown">`;
+                for (const w of avisos_documento) {
+                    const cor = w.severidade || 'orange';
+                    avisosBadgeHtml += `<div class="aviso-item"><span class="aviso-code ${cor}">${escapeHtml(w.codigo || '')}</span> — ${escapeHtml(w.explicacao || '')}</div>`;
+                }
+                for (const w of avisos_questao) {
+                    const cor = w.severidade || 'orange';
+                    const qNum = w.questao ? ` (Q${w.questao})` : '';
+                    avisosBadgeHtml += `<div class="aviso-item"><span class="aviso-code ${cor}">${escapeHtml(w.codigo || '')}${qNum}</span> — ${escapeHtml(w.explicacao || '')}</div>`;
+                }
+                avisosBadgeHtml += '</div>';
+            }
+
             // Always show resumo section — with N/A fallback when data is incomplete
             html += `
                 <div class="data-section">
-                    <div class="data-section-title">📊 Resumo${dadosIncompletos ? ' <span style="background: #f59e0b; color: #fff; padding: 2px 8px; border-radius: 4px; font-size: 0.75rem; margin-left: 8px;">⚠ Dados incompletos</span>' : ''}</div>
+                    <div class="data-section-title">📊 Resumo${dadosIncompletos ? ' <span style="background: #f59e0b; color: #fff; padding: 2px 8px; border-radius: 4px; font-size: 0.75rem; margin-left: 8px;">⚠ Dados incompletos</span>' : ''}${avisosBadgeHtml}</div>
                     <div class="data-grid">
             `;
 
@@ -11543,6 +11609,11 @@
             const div = document.createElement('div');
             div.textContent = text;
             return div.innerHTML;
+        }
+
+        function toggleAvisos(dropdownId) {
+            const el = document.getElementById(dropdownId);
+            if (el) el.classList.toggle('expanded');
         }
 
         function jsString(value) {
