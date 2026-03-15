@@ -156,11 +156,23 @@ Você DEVE usar as ferramentas disponíveis para produzir dois outputs:
      "total_acertos": <int>,
      "total_erros": <int>,
      "feedback_geral": "<str>",
-     "_documento_ilegivel": <bool>,
-     "_campos_faltantes": ["<str>"]
+     "_avisos_documento": [
+       {"codigo": "<ILLEGIBLE_DOCUMENT|MISSING_CONTENT|LOW_CONFIDENCE>", "explicacao": "<str>"}
+     ],
+     "_avisos_questao": [
+       {"codigo": "<ILLEGIBLE_QUESTION|MISSING_CONTENT|LOW_CONFIDENCE>", "questao": <int>, "explicacao": "<str>"}
+     ]
    }
-   Defina _documento_ilegivel como true se o documento do aluno não pôde ser lido adequadamente.
-   Liste em _campos_faltantes quaisquer campos que não puderam ser preenchidos.
+
+   **Códigos de aviso disponíveis:**
+   - ILLEGIBLE_DOCUMENT — Documento inteiro ilegível ou muito borrado para processar
+   - ILLEGIBLE_QUESTION — Questão específica ilegível (resposta do aluno não pode ser lida)
+   - MISSING_CONTENT — Conteúdo ausente (aluno pode ter pulado a questão intencionalmente)
+   - LOW_CONFIDENCE — Baixa confiança na leitura/interpretação do conteúdo
+
+   Use _avisos_documento para problemas no documento inteiro.
+   Use _avisos_questao para problemas em questões específicas (inclua o número da questão).
+   Se não houver avisos, envie listas vazias [].
    Use extensão .json e nome descritivo (ex: "correcao_aluno.json").
 
 2. **execute_python_code** — Gere um PDF estilizado com reportlab contendo:
@@ -188,11 +200,23 @@ Você DEVE usar as ferramentas disponíveis para produzir dois outputs:
      "recomendacoes": [
        {"tipo": "<str>", "descricao": "<str>", "prioridade": "<str>"}
      ],
-     "_documento_ilegivel": <bool>,
-     "_campos_faltantes": ["<str>"]
+     "_avisos_documento": [
+       {"codigo": "<ILLEGIBLE_DOCUMENT|MISSING_CONTENT|LOW_CONFIDENCE>", "explicacao": "<str>"}
+     ],
+     "_avisos_questao": [
+       {"codigo": "<ILLEGIBLE_QUESTION|MISSING_CONTENT|LOW_CONFIDENCE>", "questao": <int>, "explicacao": "<str>"}
+     ]
    }
-   Defina _documento_ilegivel como true se o documento do aluno não pôde ser lido adequadamente.
-   Liste em _campos_faltantes quaisquer campos que não puderam ser preenchidos.
+
+   **Códigos de aviso disponíveis:**
+   - ILLEGIBLE_DOCUMENT — Documento inteiro ilegível ou muito borrado para processar
+   - ILLEGIBLE_QUESTION — Questão específica com resposta ilegível (confirme se houve problema de leitura)
+   - MISSING_CONTENT — Conteúdo ausente na análise (dados upstream incompletos)
+   - LOW_CONFIDENCE — Baixa confiança na análise de habilidades
+
+   Use _avisos_documento para problemas no documento inteiro.
+   Use _avisos_questao para problemas em questões específicas (inclua o número da questão).
+   Se não houver avisos, envie listas vazias [].
    Use extensão .json e nome descritivo.
 
 2. **execute_python_code** — Gere um PDF estilizado com reportlab contendo:
@@ -217,11 +241,23 @@ Você DEVE usar as ferramentas disponíveis para produzir dois outputs:
      ],
      "nota_final": <float>,
      "detalhamento": "<str>",
-     "_documento_ilegivel": <bool>,
-     "_campos_faltantes": ["<str>"]
+     "_avisos_documento": [
+       {"codigo": "<ILLEGIBLE_DOCUMENT|MISSING_CONTENT|LOW_CONFIDENCE>", "explicacao": "<str>"}
+     ],
+     "_avisos_questao": [
+       {"codigo": "<ILLEGIBLE_QUESTION|MISSING_CONTENT|LOW_CONFIDENCE>", "questao": <int>, "explicacao": "<str>"}
+     ]
    }
-   Defina _documento_ilegivel como true se o documento do aluno não pôde ser lido adequadamente.
-   Liste em _campos_faltantes quaisquer campos que não puderam ser preenchidos.
+
+   **Códigos de aviso disponíveis:**
+   - ILLEGIBLE_DOCUMENT — Documento inteiro ilegível ou muito borrado para processar
+   - ILLEGIBLE_QUESTION — Questão específica com resposta ilegível (confirme se houve problema de leitura)
+   - MISSING_CONTENT — Conteúdo ausente no relatório (dados upstream incompletos)
+   - LOW_CONFIDENCE — Baixa confiança na geração do relatório
+
+   Use _avisos_documento para problemas no documento inteiro.
+   Use _avisos_questao para problemas em questões específicas (inclua o número da questão).
+   Se não houver avisos, envie listas vazias [].
    Use extensão .json e nome descritivo.
 
 2. **execute_python_code** — Gere um PDF estilizado com reportlab contendo:

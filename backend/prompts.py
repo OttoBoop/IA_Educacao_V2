@@ -189,9 +189,23 @@ INSTRUÇÃO CRÍTICA: Retorne APENAS o JSON válido, sem texto adicional, explic
     }
   ],
   "total_questoes": 10,
-  "pontuacao_total": 10.0
+  "pontuacao_total": 10.0,
+  "_avisos_documento": [
+    {"codigo": "ILLEGIBLE_DOCUMENT", "explicacao": "Descrição do problema no documento"}
+  ],
+  "_avisos_questao": [
+    {"codigo": "ILLEGIBLE_QUESTION", "questao": 3, "explicacao": "Descrição do problema na questão"}
+  ]
 }
 ```
+
+**Códigos de aviso disponíveis (use quando aplicável):**
+- ILLEGIBLE_DOCUMENT — Documento inteiro ilegível ou muito borrado para extrair questões
+- ILLEGIBLE_QUESTION — Questão específica ilegível (enunciado não pode ser lido)
+- MISSING_CONTENT — Conteúdo ausente ou incompleto no documento
+- LOW_CONFIDENCE — Baixa confiança na extração (texto ambíguo, formatação incomum)
+
+Use _avisos_documento para problemas no documento inteiro. Use _avisos_questao para problemas em questões específicas (inclua o número da questão). Se não houver avisos, envie listas vazias [].
 
 Extraia TODAS as questões. Para questões sem pontuação explícita, estime com base no total da prova dividido pelo número de questões."""
     ),
@@ -247,9 +261,23 @@ INSTRUÇÃO CRÍTICA: Retorne APENAS o JSON válido, sem texto adicional, explic
         {"descricao": "Descrição do critério para crédito parcial", "percentual": 50}
       ]
     }
+  ],
+  "_avisos_documento": [
+    {"codigo": "ILLEGIBLE_DOCUMENT", "explicacao": "Descrição do problema no documento"}
+  ],
+  "_avisos_questao": [
+    {"codigo": "ILLEGIBLE_QUESTION", "questao": 3, "explicacao": "Descrição do problema na questão"}
   ]
 }
 ```
+
+**Códigos de aviso disponíveis (use quando aplicável):**
+- ILLEGIBLE_DOCUMENT — Documento do gabarito ilegível ou muito borrado
+- ILLEGIBLE_QUESTION — Resposta correta de questão específica ilegível
+- MISSING_CONTENT — Conteúdo ausente no gabarito (questão sem resposta)
+- LOW_CONFIDENCE — Baixa confiança na extração do gabarito
+
+Use _avisos_documento para problemas no documento inteiro. Use _avisos_questao para problemas em questões específicas (inclua o número da questão). Se não houver avisos, envie listas vazias [].
 
 Se não houver critérios parciais explícitos, deixe `criterios_parciais` como lista vazia `[]`."""
     ),
@@ -310,9 +338,23 @@ INSTRUÇÃO CRÍTICA: Retorne APENAS o JSON válido, sem texto adicional, explic
     }
   ],
   "questoes_respondidas": 8,
-  "questoes_em_branco": 2
+  "questoes_em_branco": 2,
+  "_avisos_documento": [
+    {"codigo": "ILLEGIBLE_DOCUMENT", "explicacao": "Descrição do problema no documento"}
+  ],
+  "_avisos_questao": [
+    {"codigo": "ILLEGIBLE_QUESTION", "questao": 3, "explicacao": "Descrição do problema na questão"}
+  ]
 }
 ```
+
+**Códigos de aviso disponíveis (use quando aplicável):**
+- ILLEGIBLE_DOCUMENT — Prova do aluno inteira ilegível ou muito borrada
+- ILLEGIBLE_QUESTION — Resposta específica do aluno ilegível (não pode ser lida)
+- MISSING_CONTENT — Conteúdo ausente (aluno pode ter pulado a questão intencionalmente)
+- LOW_CONFIDENCE — Baixa confiança na leitura da resposta do aluno
+
+Use _avisos_documento para problemas no documento inteiro. Use _avisos_questao para problemas em questões específicas (inclua o número da questão). Se não houver avisos, envie listas vazias [].
 
 Se não conseguir ler alguma resposta com certeza, marque como ilegível e transcreva o que for possível."""
     ),

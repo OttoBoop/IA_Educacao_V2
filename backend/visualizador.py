@@ -20,6 +20,40 @@ from models import TipoDocumento, Documento
 from storage import storage
 
 
+# ============================================================
+# WARNING SEVERITY MAPPING (stage + code → color)
+# ============================================================
+# MISSING_CONTENT is yellow in student-answer stages (student may skip intentionally)
+# All other codes are orange in all stages
+
+_YELLOW_MISSING_CONTENT_STAGES = frozenset({
+    "EXTRAIR_RESPOSTAS", "CORRIGIR",
+    "ANALISAR_HABILIDADES", "GERAR_RELATORIO",
+})
+
+_VALID_CODES = frozenset({
+    "ILLEGIBLE_DOCUMENT", "ILLEGIBLE_QUESTION",
+    "MISSING_CONTENT", "LOW_CONFIDENCE",
+})
+
+_VALID_STAGES = frozenset({
+    "EXTRAIR_QUESTOES", "EXTRAIR_GABARITO", "EXTRAIR_RESPOSTAS",
+    "CORRIGIR", "ANALISAR_HABILIDADES", "GERAR_RELATORIO",
+})
+
+
+def get_warning_severity(stage: str, code: str) -> str | None:
+    """Return severity color for a (stage, code) pair.
+
+    Returns "orange", "yellow", or None (unknown stage/code).
+    """
+    if stage not in _VALID_STAGES or code not in _VALID_CODES:
+        return None
+    if code == "MISSING_CONTENT" and stage in _YELLOW_MISSING_CONTENT_STAGES:
+        return "yellow"
+    return "orange"
+
+
 @dataclass
 class VisaoQuestao:
     """Visão consolidada de uma questão corrigida"""

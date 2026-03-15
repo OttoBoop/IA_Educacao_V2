@@ -472,7 +472,31 @@ When adding new structured fields to pipeline stage JSONs, follow these steps:
 5. **Write unit tests** in `tests/unit/test_visualizador_structured_json.py` — cover all formats.
 6. **Run a live pipeline** — verify the AI produces the new field and it displays correctly.
 
-**Warning fields pattern:** Prefix internal/metadata fields with `_` (e.g., `_documento_ilegivel`, `_campos_faltantes`). These are captured in JSON but may not be displayed in the UI yet.
+**Warning/aviso fields pattern:**
+
+All 6 student pipeline stages include two warning arrays in their JSON output:
+
+| Field | Scope | Schema |
+|-------|-------|--------|
+| `_avisos_documento` | Document-level warnings | `[{"codigo": "<enum>", "explicacao": "<str>"}]` |
+| `_avisos_questao` | Question-level warnings | `[{"codigo": "<enum>", "questao": <int>, "explicacao": "<str>"}]` |
+
+**Warning codes (strict enum):**
+- `ILLEGIBLE_DOCUMENT` — entire document unreadable
+- `ILLEGIBLE_QUESTION` — specific question unreadable
+- `MISSING_CONTENT` — content absent (may be intentional in student-answer stages)
+- `LOW_CONFIDENCE` — low confidence in AI reading/interpretation
+
+**Severity mapping:** `get_warning_severity(stage, code)` in `visualizador.py` returns `"orange"` or `"yellow"`:
+- `MISSING_CONTENT` → **yellow** in EXTRAIR_RESPOSTAS, CORRIGIR, ANALISAR_HABILIDADES, GERAR_RELATORIO (student may skip)
+- All other combos → **orange**
+- Unknown code/stage → `None` (red badge in UI = schema violation)
+
+**Where schemas live:**
+- CORRIGIR, ANALISAR_HABILIDADES, GERAR_RELATORIO → `STAGE_TOOL_INSTRUCTIONS` in `executor.py`
+- EXTRAIR_QUESTOES, EXTRAIR_GABARITO, EXTRAIR_RESPOSTAS → `PROMPTS_PADRAO` in `prompts.py`
+
+**Old fields removed:** `_documento_ilegivel` and `_campos_faltantes` were replaced by `_avisos_documento`/`_avisos_questao` (2026-03-15).
 
 ---
 
@@ -491,5 +515,6 @@ The `../docs/guides/GENERAL_DEPRECATION_AND_UNIFICATION_GUIDE.md` is the **canon
 
 | Date | Change |
 |------|--------|
+| 2026-03-15 | Updated warning fields pattern: replaced `_documento_ilegivel`/`_campos_faltantes` with `_avisos_documento`/`_avisos_questao` two-array schema, added severity mapping reference |
 | 2026-03-14 | Added "Adding Pipeline JSON Fields" checklist — Resultado Final Wiring (F7-T1) |
 | 2026-02-18 | Initial creation — extracted from root CLAUDE.md during generalization |
