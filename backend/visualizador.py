@@ -105,6 +105,14 @@ class VisaoAluno:
 
     # True when correction JSON had no structured fields (only resposta_raw or empty)
     dados_incompletos: bool = False
+
+    # Warning/aviso fields (populated from _avisos_documento/_avisos_questao in JSON)
+    avisos_documento: List[Dict[str, Any]] = field(default_factory=list)
+    avisos_questao: List[Dict[str, Any]] = field(default_factory=list)
+    _avisos_stage: str = ""  # stage context for severity computation
+
+    # GERAR_RELATORIO lineage (which upstream stages were consumed)
+    fontes_utilizadas: Optional[List[str]] = None
     
     def to_dict(self) -> Dict[str, Any]:
         return {
@@ -128,6 +136,15 @@ class VisaoAluno:
             "corrigido_em": self.corrigido_em.isoformat() if self.corrigido_em else None,
             "corrigido_por_ia": self.corrigido_por_ia,
             "dados_incompletos": self.dados_incompletos,
+            "avisos_documento": [
+                {**w, "severidade": get_warning_severity(self._avisos_stage, w.get("codigo", ""))}
+                for w in self.avisos_documento
+            ],
+            "avisos_questao": [
+                {**w, "severidade": get_warning_severity(self._avisos_stage, w.get("codigo", ""))}
+                for w in self.avisos_questao
+            ],
+            "fontes_utilizadas": self.fontes_utilizadas,
             **({"erro_pipeline": self.erro_pipeline} if self.erro_pipeline else {})
         }
 
@@ -402,7 +419,12 @@ class VisualizadorResultados:
         # No recognized format
         else:
             visao.dados_incompletos = True
-    
+
+        # Read warning/aviso fields (present in all formats, added by _avisos schema)
+        visao.avisos_documento = data.get("_avisos_documento", [])
+        visao.avisos_questao = data.get("_avisos_questao", [])
+        visao._avisos_stage = data.get("_avisos_stage", "CORRIGIR")
+
     def _processar_analise(self, visao: VisaoAluno, data: Dict[str, Any]):
         """Processa análise de habilidades"""
         if not data:
