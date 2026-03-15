@@ -82,6 +82,45 @@ class TestWarningBadgeRendering:
         )
 
 
+class TestRedBadgeSchemaViolations:
+    """F6-T1: Red badge for unknown warning codes or missing explanation."""
+
+    def test_known_codes_array_defined(self, html_content):
+        """Frontend must define a JS array/set of known warning codes for validation."""
+        # Must have an explicit validation list (not just using the codes in templates)
+        has_validation_array = (
+            "KNOWN_AVISO_CODES" in html_content
+            or "knownAvisoCodes" in html_content
+            or "codigosConhecidos" in html_content
+        )
+        assert has_validation_array, (
+            "index_v2.html must define a known-codes list for validation "
+            "(e.g., KNOWN_AVISO_CODES or codigosConhecidos)"
+        )
+
+    def test_red_css_class_for_aviso(self, html_content):
+        """A .aviso-code.red CSS class must exist (distinct from .badge-danger)."""
+        assert ".aviso-code.red" in html_content or "aviso-code red" in html_content, (
+            "index_v2.html must have a .aviso-code.red CSS rule for schema violations"
+        )
+
+    def test_schema_violation_message(self, html_content):
+        """Frontend must show 'Erro de esquema' or similar for unknown codes."""
+        assert "Erro de esquema" in html_content or "erro de esquema" in html_content, (
+            "index_v2.html must show 'Erro de esquema' message for unknown codes"
+        )
+
+    def test_missing_explicacao_error_message(self, html_content):
+        """Frontend must show error text when explicacao is missing."""
+        has_missing_msg = (
+            "Campo ausente" in html_content
+            or "campo ausente" in html_content
+        )
+        assert has_missing_msg, (
+            "index_v2.html must show 'Campo ausente' for missing explicacao field"
+        )
+
+
 class TestYellowBadgeUnaffected:
     """F5-T1: Yellow dados_incompletos badge still works after warning badge addition."""
 
