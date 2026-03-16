@@ -188,3 +188,22 @@ class TestSeverityMapping:
         assert result is None, (
             "Unknown stage should return None"
         )
+
+
+# ============================================================
+# F4-T1 supplement: _fontes_utilizadas in GERAR_RELATORIO
+# ============================================================
+
+class TestFontesUtilizadasSchema:
+    """GERAR_RELATORIO schema must include _fontes_utilizadas field."""
+
+    def test_gerar_relatorio_has_fontes_utilizadas(self):
+        """GERAR_RELATORIO STAGE_TOOL_INSTRUCTIONS must include _fontes_utilizadas."""
+        from executor import STAGE_TOOL_INSTRUCTIONS
+        from prompts import EtapaProcessamento
+
+        stage_enum = EtapaProcessamento["GERAR_RELATORIO"]
+        text = STAGE_TOOL_INSTRUCTIONS[stage_enum]
+        assert "_fontes_utilizadas" in text, (
+            "GERAR_RELATORIO STAGE_TOOL_INSTRUCTIONS missing '_fontes_utilizadas' field"
+        )

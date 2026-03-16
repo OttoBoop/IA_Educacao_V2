@@ -246,7 +246,8 @@ Você DEVE usar as ferramentas disponíveis para produzir dois outputs:
      ],
      "_avisos_questao": [
        {"codigo": "<ILLEGIBLE_QUESTION|MISSING_CONTENT|LOW_CONFIDENCE>", "questao": <int>, "explicacao": "<str>"}
-     ]
+     ],
+     "_fontes_utilizadas": ["<lista de etapas upstream cujos dados foram consumidos, ex: EXTRAIR_QUESTOES, CORRIGIR, ANALISAR_HABILIDADES>"]
    }
 
    **Códigos de aviso disponíveis:**
@@ -258,6 +259,7 @@ Você DEVE usar as ferramentas disponíveis para produzir dois outputs:
    Use _avisos_documento para problemas no documento inteiro.
    Use _avisos_questao para problemas em questões específicas (inclua o número da questão).
    Se não houver avisos, envie listas vazias [].
+   _fontes_utilizadas: liste quais etapas do pipeline você usou como fonte de dados para gerar este relatório.
    Use extensão .json e nome descritivo.
 
 2. **execute_python_code** — Gere um PDF estilizado com reportlab contendo:
