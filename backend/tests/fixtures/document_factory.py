@@ -502,6 +502,85 @@ Questão 2: Calcule a área de"""  # Cortado
         }
 
     # ============================================================
+    # WARNING / AVISO DOCUMENT FACTORIES
+    # ============================================================
+
+    def criar_correcao_com_avisos(
+        self,
+        aluno_nome: str = "Aluno Teste",
+        materia: str = "Matemática",
+        num_questoes: int = 4,
+        avisos_documento: Optional[List[Dict[str, Any]]] = None,
+        avisos_questao: Optional[List[Dict[str, Any]]] = None,
+        nota_final: float = 7.5,
+        fontes_utilizadas: Optional[List[str]] = None,
+    ) -> TestDocument:
+        """
+        Create a CORRECAO JSON file with pre-populated _avisos fields.
+
+        Simulates what the AI pipeline would produce when it detects
+        illegible writing, missing content, or low-confidence readings.
+
+        Args:
+            aluno_nome: Student name (for metadata)
+            materia: Subject (for metadata)
+            num_questoes: Number of questions in the correction
+            avisos_documento: Document-level warnings (e.g., ILLEGIBLE_DOCUMENT)
+            avisos_questao: Question-level warnings (e.g., ILLEGIBLE_QUESTION)
+            nota_final: Final grade
+            fontes_utilizadas: List of upstream stages consumed (GERAR_RELATORIO only)
+
+        Returns:
+            TestDocument with the CORRECAO JSON file path
+        """
+        avisos_documento = avisos_documento or []
+        avisos_questao = avisos_questao or []
+
+        # Build realistic CORRECAO JSON (matches STAGE_TOOL_INSTRUCTIONS schema)
+        questoes = []
+        for i in range(1, num_questoes + 1):
+            acerto = random.random() > 0.3
+            questoes.append({
+                "numero": i,
+                "nota": 2.5 if acerto else random.choice([0.0, 1.0]),
+                "nota_maxima": 2.5,
+                "acerto": acerto,
+                "feedback": f"Questão {i} {'correta' if acerto else 'incorreta'}."
+            })
+
+        total_acertos = sum(1 for q in questoes if q["acerto"])
+        data = {
+            "nota_final": nota_final,
+            "questoes": questoes,
+            "total_acertos": total_acertos,
+            "total_erros": num_questoes - total_acertos,
+            "feedback_geral": f"Correção de {aluno_nome} em {materia}.",
+            "_avisos_documento": avisos_documento,
+            "_avisos_questao": avisos_questao,
+        }
+        if fontes_utilizadas is not None:
+            data["_fontes_utilizadas"] = fontes_utilizadas
+
+        content = json.dumps(data, ensure_ascii=False, indent=2)
+        filename = f"correcao_{aluno_nome.replace(' ', '_')}_{uuid.uuid4().hex[:8]}.json"
+        path = self.output_dir / filename
+        path.write_text(content, encoding="utf-8")
+
+        return TestDocument(
+            path=path,
+            format=DocumentFormat.JSON,
+            quality=DocumentQuality.NORMAL,
+            content_type="correcao",
+            content=content,
+            expected_extraction=data,
+            metadata={
+                "aluno": aluno_nome,
+                "materia": materia,
+                "avisos_count": len(avisos_documento) + len(avisos_questao),
+            }
+        )
+
+    # ============================================================
     # MÉTODOS AUXILIARES
     # ============================================================
 
