@@ -8009,8 +8009,8 @@
                         html += '<span class="tree-group-label">\uD83D\uDCDD ' + escapeHtml(ativNome) + '</span>';
                         html += '</div><div class="tree-children expanded">';
 
-                        const pipelineTasks   = ativTasks.filter(t => !t.type.startsWith('pipeline_desempenho'));
-                        const desempenhoTasks = ativTasks.filter(t => t.type.startsWith('pipeline_desempenho'));
+                        const pipelineTasks   = ativTasks.filter(t => !(t.type || '').startsWith('pipeline_desempenho'));
+                        const desempenhoTasks = ativTasks.filter(t => (t.type || '').startsWith('pipeline_desempenho'));
 
                         // Run N counter for pipeline tasks
                         pipelineTasks.forEach((task, runIndex) => {
@@ -10435,6 +10435,7 @@
                 };
                 const initialState = {
                     task_id: taskId,
+                    type: taskType,
                     status: 'running',
                     students: alunoIdForTask
                         ? { [alunoIdForTask]: { stages: pendingStages } }

@@ -119,6 +119,84 @@ def test_listar_documentos_postgresql_fetches_student_and_base_docs_only(seeded_
     ]
 
 
+def test_deletar_documentos_aluno_atividade_postgresql_uses_row_selection_and_delete(seeded_storage, monkeypatch):
+    seeded_storage.use_postgresql = True
+    select_calls = []
+    deleted_ids = []
+
+    def fake_select_rows(table, filters=None, order_by=None, order_desc=False, limit=None, columns=None):
+        select_calls.append((table, dict(filters or {}), columns))
+        assert table == "documentos"
+        return [
+            {"id": "doc-1"},
+            {"id": "doc-2"},
+        ]
+
+    monkeypatch.setattr(seeded_storage, "_select_rows", fake_select_rows)
+    monkeypatch.setattr(
+        seeded_storage,
+        "deletar_documento",
+        lambda documento_id: deleted_ids.append(documento_id) or True,
+    )
+
+    deleted_count = seeded_storage.deletar_documentos_aluno_atividade("ativ-1", "aluno-1")
+
+    assert deleted_count == 2
+    assert deleted_ids == ["doc-1", "doc-2"]
+    assert select_calls == [
+        ("documentos", {"atividade_id": "ativ-1", "aluno_id": "aluno-1"}, ["id"])
+    ]
+
+
+def test_excluir_documentos_ai_aluno_atividade_postgresql_deletes_only_ai_docs(seeded_storage, monkeypatch):
+    seeded_storage.use_postgresql = True
+    deleted_ids = []
+
+    monkeypatch.setattr(
+        seeded_storage,
+        "_select_rows",
+        lambda *args, **kwargs: [
+            {"id": "doc-ai-provider", "tipo": "correcao", "ia_provider": "openai"},
+            {"id": "doc-ai-type", "tipo": "relatorio_final", "ia_provider": None},
+            {"id": "doc-manual", "tipo": "prova_respondida", "ia_provider": None},
+        ],
+    )
+    monkeypatch.setattr(
+        seeded_storage,
+        "deletar_documento",
+        lambda documento_id: deleted_ids.append(documento_id) or True,
+    )
+
+    deleted_count = seeded_storage.excluir_documentos_ai_aluno_atividade("ativ-1", "aluno-1")
+
+    assert deleted_count == 2
+    assert deleted_ids == ["doc-ai-provider", "doc-ai-type"]
+
+
+def test_resetar_extracoes_questoes_aluno_atividade_postgresql_deletes_only_question_extractions(seeded_storage, monkeypatch):
+    seeded_storage.use_postgresql = True
+    deleted_ids = []
+
+    monkeypatch.setattr(
+        seeded_storage,
+        "_select_rows",
+        lambda *args, **kwargs: [
+            {"id": "doc-questoes", "tipo": "extracao_questoes"},
+            {"id": "doc-outro", "tipo": "correcao"},
+        ],
+    )
+    monkeypatch.setattr(
+        seeded_storage,
+        "deletar_documento",
+        lambda documento_id: deleted_ids.append(documento_id) or True,
+    )
+
+    deleted_count = seeded_storage.resetar_extracoes_questoes_aluno_atividade("ativ-1", "aluno-1")
+
+    assert deleted_count == 1
+    assert deleted_ids == ["doc-questoes"]
+
+
 def test_resolver_caminho_documento_prefers_local_cache(tmp_path, monkeypatch):
     storage = _make_storage(tmp_path)
     local_path = tmp_path / "arquivos" / "cache" / "correcao.json"

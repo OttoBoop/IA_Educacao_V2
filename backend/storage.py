@@ -1601,83 +1601,49 @@ class StorageManager:
 
     def deletar_documentos_aluno_atividade(self, atividade_id: str, aluno_id: str) -> int:
         """Deleta todos os documentos de um aluno em uma atividade específica"""
-        # Buscar documentos do aluno nesta atividade
-        conn = self._get_connection()
-        c = conn.cursor()
-        c.execute('''
-            SELECT id, caminho_arquivo FROM documentos
-            WHERE atividade_id = ? AND aluno_id = ?
-        ''', (atividade_id, aluno_id))
-        rows = c.fetchall()
+        rows = self._select_rows(
+            "documentos",
+            filters={"atividade_id": atividade_id, "aluno_id": aluno_id},
+            columns=["id"],
+        )
 
         count = 0
         for row in rows:
-            # Remover arquivo físico
-            if row['caminho_arquivo']:
-                arquivo = Path(row['caminho_arquivo'])
-                if arquivo.exists():
-                    arquivo.unlink()
-            count += 1
-
-        # Remover do banco
-        c.execute('DELETE FROM documentos WHERE atividade_id = ? AND aluno_id = ?', (atividade_id, aluno_id))
-        conn.commit()
-        conn.close()
+            if self.deletar_documento(row["id"]):
+                count += 1
 
         return count
 
     def excluir_documentos_ai_aluno_atividade(self, atividade_id: str, aluno_id: str) -> int:
         """Deleta apenas os documentos gerados por IA de um aluno em uma atividade específica"""
         ai_types = ['extracao_questoes', 'extracao_gabarito', 'extracao_respostas', 'correcao', 'analise_habilidades', 'relatorio_final']
-        # Buscar documentos do aluno nesta atividade que são AI-generated
-        conn = self._get_connection()
-        c = conn.cursor()
-        c.execute('''
-            SELECT id, caminho_arquivo FROM documentos
-            WHERE atividade_id = ? AND aluno_id = ? AND (ia_provider IS NOT NULL OR tipo IN ({placeholders}))
-        '''.format(placeholders=','.join(['?']*len(ai_types))), (atividade_id, aluno_id) + tuple(ai_types))
-        rows = c.fetchall()
+        rows = self._select_rows(
+            "documentos",
+            filters={"atividade_id": atividade_id, "aluno_id": aluno_id},
+            columns=["id", "tipo", "ia_provider"],
+        )
 
         count = 0
         for row in rows:
-            # Remover arquivo físico
-            if row['caminho_arquivo']:
-                arquivo = Path(row['caminho_arquivo'])
-                if arquivo.exists():
-                    arquivo.unlink()
-            count += 1
-
-        # Remover do banco
-        c.execute('DELETE FROM documentos WHERE atividade_id = ? AND aluno_id = ? AND (ia_provider IS NOT NULL OR tipo IN ({placeholders}))'.format(placeholders=','.join(['?']*len(ai_types))), (atividade_id, aluno_id) + tuple(ai_types))
-        conn.commit()
-        conn.close()
+            if row.get("ia_provider") or row.get("tipo") in ai_types:
+                if self.deletar_documento(row["id"]):
+                    count += 1
 
         return count
 
     def resetar_extracoes_questoes_aluno_atividade(self, atividade_id: str, aluno_id: str) -> int:
         """Reseta as extrações de questões de um aluno em uma atividade específica"""
-        # Buscar documentos do aluno nesta atividade que são extrações de questões
-        conn = self._get_connection()
-        c = conn.cursor()
-        c.execute('''
-            SELECT id, caminho_arquivo FROM documentos
-            WHERE atividade_id = ? AND aluno_id = ? AND tipo = ?
-        ''', (atividade_id, aluno_id, 'extracao_questoes'))
-        rows = c.fetchall()
+        rows = self._select_rows(
+            "documentos",
+            filters={"atividade_id": atividade_id, "aluno_id": aluno_id, "tipo": "extracao_questoes"},
+            columns=["id", "tipo"],
+        )
 
         count = 0
         for row in rows:
-            # Remover arquivo físico
-            if row['caminho_arquivo']:
-                arquivo = Path(row['caminho_arquivo'])
-                if arquivo.exists():
-                    arquivo.unlink()
-            count += 1
-
-        # Remover do banco
-        c.execute('DELETE FROM documentos WHERE atividade_id = ? AND aluno_id = ? AND tipo = ?', (atividade_id, aluno_id, 'extracao_questoes'))
-        conn.commit()
-        conn.close()
+            if row.get("tipo") == "extracao_questoes":
+                if self.deletar_documento(row["id"]):
+                    count += 1
 
         return count
 
