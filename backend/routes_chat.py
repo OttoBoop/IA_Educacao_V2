@@ -214,6 +214,10 @@ class ModelUpdate(BaseModel):
     system_prompt: Optional[str] = None
     base_url: Optional[str] = None
     ativo: Optional[bool] = None
+    suporta_function_calling: Optional[bool] = None
+    suporta_vision: Optional[bool] = None
+    suporta_streaming: Optional[bool] = None
+    suporta_temperature: Optional[bool] = None
 
 class ChatSessionCreate(BaseModel):
     titulo: Optional[str] = "Nova conversa"
@@ -1092,6 +1096,10 @@ class CustomModelCreate(BaseModel):
     max_tokens: Optional[int] = 4096
     temperature: Optional[float] = 0.7
     system_prompt: Optional[str] = None
+    suporta_function_calling: Optional[bool] = None
+    suporta_vision: Optional[bool] = None
+    suporta_streaming: Optional[bool] = None
+    suporta_temperature: Optional[bool] = None
 
 
 @router.post("/api/settings/models/custom", tags=["Models"])
@@ -1118,6 +1126,14 @@ async def criar_modelo_customizado(data: CustomModelCreate):
     if data.extra_headers:
         model.extra_headers = data.extra_headers
     model.custom_model_id = data.custom_model_id
+    if data.suporta_function_calling is not None:
+        model.suporta_function_calling = data.suporta_function_calling
+    if data.suporta_vision is not None:
+        model.suporta_vision = data.suporta_vision
+    if data.suporta_streaming is not None:
+        model.suporta_streaming = data.suporta_streaming
+    if data.suporta_temperature is not None:
+        model.suporta_temperature = data.suporta_temperature
 
     # Salvar alterações
     model_manager._save()
