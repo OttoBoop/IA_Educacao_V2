@@ -2337,7 +2337,7 @@ Seja preciso, educativo e construtivo em suas análises."""
 
             # F2-T1: Extract resposta_raw from create_document tool content
             # when the API content field is empty (LLM was busy calling tools)
-            raw_content = resposta.get("content", "")
+            raw_content = resposta.get("content") or ""
             is_sentinel = raw_content == "[Maximum tool iterations reached]"
 
             if not raw_content.strip() or is_sentinel:
