@@ -162,3 +162,41 @@ class TestPipelineRegistrationWiring:
             "After F3-T1, the endpoint returns { task_id, status: 'started' } immediately. "
             "Frontend must read data.task_id to call addBackendTask(task_id, pendingState)."
         )
+
+    def test_executar_pipeline_completo_initial_state_includes_task_type(self, active_html):
+        """Pending sidebar state must include `type` before polling returns.
+
+        Regression guard for the production crash seen when re-running a student
+        pipeline: `taskQueue.addBackendTask(taskId, initialState)` triggered
+        `renderTarefasTree()`, which immediately evaluated `t.type.startsWith(...)`.
+        If `initialState` omits `type`, the sidebar render crashes before the
+        success toast and polling flow complete.
+        """
+        func_body = _get_function_body(
+            active_html, "async function executarPipelineCompleto"
+        )
+        assert re.search(r"type\s*:\s*taskType", func_body), (
+            "executarPipelineCompleto must include `type: taskType` in the initial "
+            "pending state passed to addBackendTask(). Otherwise the sidebar can "
+            "crash on `t.type.startsWith(...)` before the first polling response arrives."
+        )
+
+    def test_render_tarefas_tree_defensively_handles_missing_task_type(self, active_html):
+        """renderTarefasTree must not assume every task object already has `type`.
+
+        The sidebar can render intermediate/pending task snapshots, restored tasks,
+        or malformed payloads. The filter that separates desempenho tasks must use
+        a string guard or a fallback string instead of calling startsWith directly
+        on a possibly undefined value.
+        """
+        render_body = _get_function_body(active_html, "function renderTarefasTree(")
+        assert (
+            "typeof t.type === 'string'" in render_body
+            or "(t.type || '')" in render_body
+            or "String(t.type || '')" in render_body
+            or "t.type?.startsWith" in render_body
+        ), (
+            "renderTarefasTree must guard `t.type` before using startsWith(). "
+            "This prevents the sidebar crash when a pending task snapshot is missing "
+            "its `type` field."
+        )
