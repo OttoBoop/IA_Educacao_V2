@@ -435,6 +435,126 @@ location.reload();
 
 ---
 
+## 12. Copy rascunhado v1 — grito + checklist da camada 1 (2026-04-11)
+
+> **Status:** rascunho para revisão do Otavio. Edite direto neste arquivo se quiser mudar palavras; Claude só toca no `index_v2.html` depois da sua aprovação.
+
+### 12.1 O grito (banner de primeiro acesso)
+
+**Tom decidido:** alerta urgente, quase assustador. Caixa alta, emojis de alerta, 3–4 exclamações no título, borda vermelha+amarela pulsando. Objetivo: **máxima chance de o usuário não fechar sem ler**.
+
+**Layout proposto (uma tela só, cabe em FHD sem scroll):**
+
+```
+┌─────────────────────────────────────────────┐
+│  🔴🟡🔴🟡🔴🟡 BORDA PISCANDO 🔴🟡🔴🟡🔴🟡  │
+│                                             │
+│              !!!  ⚠️  !!!                    │
+│                                             │
+│     PARE! PRIMEIRA VEZ AQUI?                │
+│     LEIA ANTES DE FECHAR!!!                 │
+│                                             │
+│   Este é o NOVO CR — um protótipo de       │
+│   correção e análise pedagógica com IA.    │
+│                                             │
+│   Se você ainda não sabe o que fazer,      │
+│   NÃO feche esta janela.                   │
+│   Em poucos minutos você sai daqui com     │
+│   sua primeira prova analisada.            │
+│                                             │
+│   ┌─────────────────────────────────────┐  │
+│   │ ➡️  QUERO COMEÇAR AGORA (recomendado)│  │
+│   └─────────────────────────────────────┘  │
+│                                             │
+│       já conheço, pular (não recomendado)  │
+│                                             │
+│  🔴🟡🔴🟡🔴🟡 BORDA PISCANDO 🔴🟡🔴🟡🔴🟡  │
+└─────────────────────────────────────────────┘
+```
+
+**Copy exato (PT-BR):**
+
+- **Badge superior:** `!!!  ⚠️  !!!` (animação: pulse lento)
+- **Título (h1, caixa alta, vermelho sobre fundo escuro):**
+  > PARE! PRIMEIRA VEZ AQUI?
+  > LEIA ANTES DE FECHAR!!!
+- **Parágrafo 1 (normal, centralizado):**
+  > Este é o **NOVO CR** — um protótipo de correção e análise pedagógica com IA.
+- **Parágrafo 2 (vermelho, negrito parcial):**
+  > Se você ainda não sabe o que fazer, **NÃO feche esta janela**. Em poucos minutos você sai daqui com sua primeira prova analisada.
+- **CTA primário (botão verde enorme, pulse, emoji à esquerda):**
+  > ➡️  QUERO COMEÇAR AGORA
+- **Link secundário (rodapé, pequeno, cinza):**
+  > já conheço, pular (não recomendado)
+
+**Comportamento:**
+- Aparece quando `localStorage.getItem('novocr-welcomed-v2') === null`
+- Clique no CTA primário: `localStorage.setItem('novocr-welcomed-v2','true')` + fecha o banner + abre **direto** o modal do tutorial camada 1 no passo 1
+- Clique no link secundário: mesma flag, fecha o banner, **não abre** o tutorial (o professor caiu de para-quedas mas sabe o que faz)
+- Reabrir manualmente: botão de ajuda (📖) no sidebar (já existe, só aponta para o mesmo modal)
+
+**CSS:** nova classe `.welcome-scream` com:
+- `border: 8px solid transparent` + `background-image` animado alternando vermelho/amarelo (ou `@keyframes` na borda)
+- `box-shadow: 0 0 40px red` pulsando
+- Backdrop preto 90% opacidade para travar o foco
+- **Não usar flash/blink intenso** — respeita usuários com sensibilidade a luz (pulse lento de 1.5s, não 200ms)
+
+---
+
+### 12.2 Checklist da camada 1 — o que o tutorial precisa cobrir
+
+**IMPORTANTE:** a lista abaixo é um **checklist de conceitos**, não uma lista de páginas. A divisão em páginas/telas só vai ser decidida depois de escrevermos o texto e medirmos o que cabe em FHD sem scroll. Algumas entradas podem virar uma tela só; outras podem caber juntas; outras podem virar uma tela com um link "ver detalhes" no rodapé.
+
+**Sequência pedagógica:**
+
+1. **Visão de 10 segundos** — "você vai criar: matéria → turma → atividade → subir 3 documentos → clicar um botão → ler o relatório → conversar com a IA."
+2. **Criar uma matéria** — o que é, onde fica o botão, quais campos importam, qual campo ignorar. Não colocar ano aqui.
+3. **Criar uma turma dentro da matéria** — aqui entra o ano letivo. Explicar por que separou: uma matéria pode ter muitas turmas.
+4. **Adicionar alunos à turma** — focar no "Criar Novo". Mencionar que existe "Selecionar Existente" como detalhe ao pé da tela ("Curioso? Ver detalhes"), mas não distrair.
+5. **Criar uma atividade na turma** — nome, tipo, nota máxima. Dica: "tipo 'prova' serve pra quase tudo se estiver em dúvida".
+6. **Os 3 documentos obrigatórios** — enunciado, gabarito, resposta do aluno. Explicar que o sistema aceita enunciado+gabarito num só arquivo, mas separado funciona melhor. Mencionar que cada documento pode ter múltiplos arquivos (um aluno respondeu parte manuscrita + parte em código). Formatos aceitos: PDF, imagem, Word. (**Nota interna:** a UI hoje só aceita esses; a divergência com o backend multimodal é um ticket separado.)
+7. **Rodar a pipeline** — o botão ⚡ Pipeline Aluno. Apontar o botão 🚀 Pipeline Turma Toda como "quando tiver mais de um aluno, use o verde". **Instruir o usuário não-experiente a ignorar** as opções avançadas dentro do modal (escolher modelo por etapa, forçar re-execução) — "deixa tudo no padrão, só aperta executar". Link "Curioso? Ver detalhes" apontando para o tutorial avançado de prompts/modelos (ainda a construir).
+8. **Checkpoint: verificar se rodou** — como o professor sabe que terminou? (painel de tarefas? ícone verde? timestamp? **precisamos explorar isso**: agente novo para mapear como o frontend mostra "pipeline rodou com sucesso" hoje.) O tutorial ensina o professor a olhar esse indicador e esperar a conclusão antes de seguir.
+9. **Abrir os documentos gerados** — apontar a listagem de documentos na página da atividade. Explicar que cada etapa do pipeline virou um documento. "Clique no ícone 👁️ para ver o conteúdo." Destacar dois documentos especialmente importantes:
+   - **Relatório final** (aba correção)
+   - **Análise de habilidades** (o que o aluno demonstrou)
+10. **Chat — fechamento da camada 1** — "Agora que você viu os documentos, vai adorar o chat." Ensinar a:
+    - Abrir o modo chat no sidebar
+    - **Filtrar pelos documentos que acabou de ver** (esse é o momento "aha" que o Otavio pediu: o filtro do chat é o que amarra tudo)
+    - Exemplos de perguntas prontas: "Me faça um resumo de onde esse aluno mais errou"; "Compare a performance dos meus alunos nessa atividade"; "O que o João acertou bem e onde ele pode melhorar?"
+11. **Próximo nível (footer do tutorial camada 1)** — "Agora você já é capaz de rodar uma atividade inteira. Quando quiser aprender mais, clique em [Tutoriais Avançados]." Link para:
+    - Pipeline detalhada (cada etapa e seus documentos)
+    - Modificação de prompts e modelos
+    - Adicionar novos modelos
+    - Trocar modelos no chat
+    - Filtros avançados do chat
+    - Relatórios agregados (turma, matéria)
+    - Filosofia do projeto (será a futura "view Sobre")
+
+### 12.3 Padrão do "Curioso? Ver detalhes"
+
+Em cada passo da camada 1, no rodapé, pequeno, cinza, sublinhado:
+
+> 🔍 Curioso? Ver detalhes
+
+Quando clicado, expande uma caixa com:
+- Explicações do que foi omitido do passo principal
+- Links para o tutorial avançado relacionado (se existir)
+- Eventualmente, pointers para as tooltips reais da UI ("esse campo tem uma dica ao passar o mouse")
+
+**Estilo:** não substitui o passo principal. É um **opt-in** para quem quer mergulhar. Fica colapsado por padrão.
+
+### 12.4 Pontos onde falta informação para fechar o copy
+
+O Claude precisa **explorar mais antes** de escrever o texto final de alguns passos. Pergunta ao usuário: autorizar estas novas rodadas de exploração?
+
+- **Passo 8 (checkpoint verificar):** como o painel de tarefas (`task-panel`) mostra que o pipeline terminou? Há ícone verde/vermelho/timestamp? É automático ou o professor tem que dar refresh? Um agente Explore resolve.
+- **Passo 9 (abrir documentos):** a listagem real de documentos da atividade após a pipeline. Ordem? Ícones? Rótulos? Se o "Relatório final" está claramente identificado ou se o professor precisa saber onde procurar.
+- **Passo 10 (chat + filtro):** como o filtro do chat funciona hoje? Ele filtra por matéria/turma/atividade/documento individual? Quão fácil é "filtrar pelos docs que acabei de ver"? Pode ser que a gente precise ajustar a UI do filtro ANTES de escrever o tutorial — se o filtro é ruim, explicar vira explicar um bug.
+- **Tutoriais avançados:** Claude não sabe hoje o suficiente sobre cada relatório automático para documentar direito. O Otavio precisa ou detalhar isso por texto, ou autorizar agente Explore para ler código do executor e mapear cada relatório.
+
+---
+
 ## 11. Próximos passos imediatos
 
 1. ~~Lançar agentes Explore para mapear tutorial atual, tooltips, fluxo de criação.~~ ✅ 2026-04-11
