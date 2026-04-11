@@ -253,7 +253,52 @@ Agregados de turma/matéria via tab "📊 Desempenho" [8289](../frontend/index_v
 
 **Chat e Prompts:** chat sempre visível no sidebar [4497](../frontend/index_v2.html#L4497). **Prompts está escondido** atrás de um toggle "Advanced Mode" (classe `.technical-item`, body class `show-technical`) [56](../frontend/index_v2.html#L56) + [8673](../frontend/index_v2.html#L8673) — confere com o plano de colocar Prompts na camada 3.
 
-### 6.5 Pontos de fricção e dívidas técnicas encontradas
+### 6.5 Sistema atual de "primeiro acesso" (rodada 2 de exploração)
+
+**Componentes:**
+- **Modal HTML:** [frontend/index_v2.html:5617-5704](../frontend/index_v2.html#L5617) — `#modal-welcome`, classe `.modal-overlay.modal-welcome`. Cabeçalho: _"🧪 PROTÓTIPO"_, _"🎓 Bem-vindo ao NOVO CR"_, _"Sistema de correção automática de provas e análise educacional com IA"_. Dois botões: **🎓 Tutorial Interativo** (verde, abre o modal de tutorial) e **Começar a Usar →** (azul, só fecha). Tem checkbox "Não mostrar novamente" mas a lógica atual **sempre** persiste o dismiss (ver abaixo).
+
+**Cadeia de chamadas no page load:**
+1. `DOMContentLoaded` em [index_v2.html:7361](../frontend/index_v2.html#L7361)
+2. Chama `checkFirstVisit()` em [index_v2.html:7374](../frontend/index_v2.html#L7374)
+3. `checkFirstVisit()` [7328-7333](../frontend/index_v2.html#L7328):
+   ```js
+   function checkFirstVisit() {
+     const welcomed = localStorage.getItem('novocr-welcomed');
+     if (!welcomed) setTimeout(() => openWelcome(), 500);
+   }
+   ```
+4. Se for primeira visita, `openWelcome()` [7224-7232](../frontend/index_v2.html#L7224) ativa o overlay.
+
+**Persistência:**
+- **Chave:** `localStorage.getItem('novocr-welcomed')` / `setItem('novocr-welcomed', 'true')`
+- **Tipo:** `localStorage` puro (não sessionStorage, não cookie, **nenhum tracking server-side**)
+- **Escrita:** `closeWelcome()` [7234-7241](../frontend/index_v2.html#L7234) **sempre** grava `'true'` ao fechar — o checkbox "Não mostrar novamente" visual não tem efeito diferente do close normal
+- **Onde o close é disparado:** botões "Começar a Usar" [5699](../frontend/index_v2.html#L5699), "Tutorial Interativo" (via `closeWelcome()` na cadeia), e clique fora do overlay [7391-7392](../frontend/index_v2.html#L7391)
+
+**"Novo dispositivo" = o quê na prática:**
+- `localStorage` é por **origin + navegador + perfil**, então o welcome reaparece em:
+  - Outra máquina
+  - Outro navegador (Chrome ↔ Firefox) na mesma máquina
+  - Modo anônimo/incógnito (flag perde ao fechar a aba)
+  - Dev/prod se for URL diferente
+- **Não há reconhecimento cross-device.** Usuário volta no celular = welcome aparece de novo.
+
+**Resetar manualmente (para Otavio testar):**
+```js
+localStorage.removeItem('novocr-welcomed');
+location.reload();
+```
+
+**Outras flags localStorage relacionadas:**
+- `'novocr-view-mode'` — `'visual'` ou `'json'`, toggle entre visões de documento ([6862](../frontend/index_v2.html#L6862), [6883](../frontend/index_v2.html#L6883)). Nada a ver com tutorial.
+- **Nenhuma** outra flag relacionada a tutorial/onboarding. Variáveis `currentTutorialMode`/`currentTutorialStep` em [6401-6402](../frontend/index_v2.html#L6401) são **in-memory** — fechar e reabrir o tutorial volta para o passo 0.
+
+**Version-busting — NÃO EXISTE:** se só atualizarmos `tutorialContent`, usuários com `novocr-welcomed = true` **nunca vão ver o novo tutorial automaticamente**. Terão que clicar no botão de ajuda no sidebar. **Implicação para o banner novo:** precisamos usar uma **chave nova** (ex.: `novocr-welcomed-v2` ou `novocr-tutorial-version = 2`) para garantir que usuários recorrentes sejam reapresentados ao grito.
+
+**Encapsulamento (o que quebra se rippar):** o sistema é totalmente encapsulado. Dependências: `modal-welcome` HTML, `checkFirstVisit/openWelcome/closeWelcome`, chamada em DOMContentLoaded, botão de ajuda (`help-btn`) com `onclick="openWelcome()"` [4558](../frontend/index_v2.html#L4558), CSS `.modal-welcome` [2154](../frontend/index_v2.html#L2154), [3436](../frontend/index_v2.html#L3436). Nenhuma outra feature depende disso.
+
+### 6.6 Pontos de fricção e dívidas técnicas encontradas
 
 1. **Upload aceita lista pequena de formatos** mas backend é multimodal — UI mente por omissão [index_v2.html:4778](../frontend/index_v2.html#L4778).
 2. **Tipos de documento deprecated** (`CORRECAO_NARRATIVA`, `ANALISE_HABILIDADES_NARRATIVA`, `RELATORIO_NARRATIVO`) ainda no enum [backend/models.py:60-68](../backend/models.py#L60); frontend não marca.
@@ -263,21 +308,57 @@ Agregados de turma/matéria via tab "📊 Desempenho" [8289](../frontend/index_v
 
 ---
 
-## 7. Banner — especificação _(pendente)_
+## 7. Banner / welcome "gritão" — especificação (v1, 2026-04-11)
 
-- **Local:** _a definir_
-- **Copy (PT-BR):** _a definir_
-- **CTA:** _a definir_
-- **Comportamento:** _a definir_ (dismiss persistente? reaparece para novos usuários? cookie?)
-- **Arquivos a alterar:** _a descobrir na Fase B_
+**Objetivo:** na primeira vez que um professor abre o site, a tela inteira precisa **gritar visualmente** que ele está diante de um protótipo novo e que, se está em dúvida sobre o que fazer, **PRECISA** ler as próximas páginas.
+
+**Base técnica:** aproveitar o modal `#modal-welcome` e a cadeia `checkFirstVisit → openWelcome → closeWelcome` documentada em 6.5, **substituindo o conteúdo** e **usando uma chave nova** (`novocr-welcomed-v2` ou `novocr-tutorial-version`) para que usuários com a flag antiga sejam reapresentados ao grito.
+
+**Elementos visuais (rascunho — refinar com Otavio):**
+- Borda grossa **vermelha + amarela alternadas** (tipo "AVISO")
+- Badge `!!!` no topo, talvez com animação pulse
+- Título enorme tipo **"⚠️ PRIMEIRA VEZ AQUI? LEIA ISTO!"** (CAIXA ALTA, emojis, exclamações)
+- Subtítulo curto, em vermelho, do tipo _"Se você ainda não sabe o que fazer, não feche esta janela sem ler os próximos 7 passos."_
+- CTA primário **único e óbvio**: _"➡️ QUERO COMEÇAR AGORA"_ (verde, grande, pulse)
+- Link secundário pequeno, no rodapé: _"já conheço, pular (não recomendado)"_
+- Animação sutil de pulse/shake para chamar atenção, sem ser epilético
+
+**Comportamento:**
+- Aparece no primeiro acesso (flag nova ausente)
+- Aparece também para usuários antigos (`novocr-welcomed = true` mas sem a flag nova) — a primeira vez que subirmos o banner novo, todo mundo vê.
+- Close persistente (`novocr-welcomed-v2 = 'true'`). Pode ser reaberto pelo botão de ajuda no sidebar.
+- Enquanto o usuário não tem nenhuma matéria criada, o **empty state do dashboard** reforça: "Você ainda não tem nenhuma matéria. Quer ver o tutorial?" (decisão menor, valida-se depois).
+
+**Arquivos a alterar (previsão):**
+- [frontend/index_v2.html:5617-5704](../frontend/index_v2.html#L5617) — conteúdo do `modal-welcome` reescrito
+- [frontend/index_v2.html:7328-7333](../frontend/index_v2.html#L7328) — `checkFirstVisit()` muda a chave
+- [frontend/index_v2.html:7234-7241](../frontend/index_v2.html#L7234) — `closeWelcome()` grava a chave nova
+- CSS novo: classe `.welcome-scream` com borda/pulse (em [index_v2.html:2154](../frontend/index_v2.html#L2154) ou num bloco novo)
+
+**Pontos pendentes de decisão:**
+- Copy exata do título e subtítulo (usuário confirma)
+- Quantas páginas o grito apresenta antes de entregar o usuário no modal do tutorial (é uma tela só com CTA, ou um mini-fluxo de 2-3 telas dentro do próprio welcome?)
+- Se o modal do tutorial camada 1 abre **automaticamente** ao clicar o CTA ou se o CTA só fecha o welcome e deixa o dashboard visível com o empty state reforçado
 
 ---
 
-## 8. Arquivamento do tutorial antigo _(pendente)_
+## 8. Arquivamento do tutorial antigo (v1, 2026-04-11)
 
-- **Localização atual do conteúdo:** _a descobrir_
-- **Nova localização (rota/arquivo):** _a definir_
-- **Como será linkado a partir do novo tutorial:** _a definir_
+**Decisão:** o tutorial atual é **rippado do frontend**, mas salvo como arquivo HTML standalone para referência posterior. Marcado como `DEPRECATED`.
+
+**Plano:**
+1. Criar `docs/tutorial_arquivado_v1.html` contendo:
+   - O conteúdo dos 12 passos do modo "Completo" + 4 passos do modo "Quick" (extraídos do objeto `tutorialContent` [6118-6399](../frontend/index_v2.html#L6118)).
+   - As imagens em [frontend/tutorial-images-v2/](../frontend/tutorial-images-v2/) linkadas via caminho relativo.
+   - Cabeçalho grande: **`DEPRECATED — conteúdo de referência, não exposto ao usuário final`**. Data do snapshot. Link para a tag `v1.3.0-pre-tutorial-rework`.
+   - Nota: contém ideias de filosofia que podem ser reaproveitadas numa view "Sobre / Filosofia" futura.
+2. Remover do `index_v2.html`:
+   - `tutorialContent` (quick + full)
+   - Funções relacionadas (`switchTutorialMode`, `renderTutorialStep`) — ou mantê-las esqueleto para o tutorial novo reusar o modal
+   - Entradas do tipo "Tutorial Interativo" no welcome antigo (o "grito" novo tem seu próprio CTA)
+3. **Manter** [frontend/tutorial-images-v2/](../frontend/tutorial-images-v2/) por enquanto — a pasta é usada pelo HTML arquivado; decidir depois se vai para `docs/assets/`.
+4. O tutorial novo (camada 1) **reusa a infraestrutura** do modal de tutorial atual (CSS, `openTutorial`/`closeTutorial`) com conteúdo totalmente novo.
+5. Depois que a camada 1 estiver estável, abrir um ticket separado para a **view de Filosofia** (reaproveitando prosa do arquivado).
 
 ---
 
@@ -342,6 +423,15 @@ Agregados de turma/matéria via tab "📊 Desempenho" [8289](../frontend/index_v
 | 2026-04-11 | Claude commita localmente a cada mudança sem perguntar, mas não dá push automático. | Resposta do Otavio na rodada de perguntas iniciais. |
 | 2026-04-11 | Regra de iteração: após cada fatia de exploração, Claude **para** e volta ao usuário com perguntas antes de seguir. | Pedido explícito do Otavio após a primeira proposta de plano. |
 | 2026-04-11 | Fase B rodada 1 executada: 3 agentes Explore mapearam tutorial atual, tooltips e fluxo de criação. Achados consolidados nas seções 6.1–6.5 e 16 perguntas abertas registradas na seção 9. | Primeira rodada do loop explorar-parar-perguntar. |
+| 2026-04-11 | **Arquivamento:** o tutorial antigo é **rippado do frontend** e salvo como arquivo HTML standalone (ex.: `docs/tutorial_arquivado_v1.html`) para Otavio/IA consultarem depois. Marcado como DEPRECIADO. Depois criaremos uma *view nova* de filosofia, mas só após a camada 1 estar clara. | Resposta direta do Otavio rodada 1. |
+| 2026-04-11 | **Banner — primeira chamada:** o welcome modal atual é a base, mas a primeira chamada precisa **GRITAR visualmente** — borda vermelha e amarela, elementos piscando, exclamações. "Se é a primeira vez do professor aqui, ele PRECISA ler as próximas páginas." Depois desse grito entram as explicações do sistema base. | Resposta direta rodada 1. |
+| 2026-04-11 | **Formato do tutorial camada 1:** reaproveita o modal existente (dark, full-screen), mas **tudo tem que caber em FHD sem scroll** (ponto fraco do atual). Visual é secundário — o importante é o passo a passo básico bem claro: matéria → turma → alunos → atividades + documentos base → botões para gerar relatórios → chat para consultas customizadas. | Resposta direta rodada 1. |
+| 2026-04-11 | **Integração com tooltips:** o tutorial camada 1 deve mencionar que há tooltips nos botões para quando o usuário esquecer algo; e deve instruir o usuário não-experiente a **ignorar** opções avançadas dos botões de pipeline. Curiosos vão para o tutorial avançado. | Resposta direta rodada 1. |
+| 2026-04-11 | **Tutoriais avançados planejados** (pós-camada-1, escopo a detalhar): documentos individuais do pipeline do aluno; modificação de prompts e modelos; adicionar novos modelos; trocar modelos na função chat; filtros avançados no chat; leitura dos relatórios automáticos (vai precisar rodada de exploração dedicada para entender cada um). | Resposta direta rodada 1. |
+| 2026-04-11 | **Screenshots:** o tutorial atual tem imagens pouco explicativas. Futuramente, capturar novas imagens vai exigir um loop de altíssima qualidade (tirar → revisar → refazer). Por ora, o novo tutorial **não precisa ser muito visual** — prioridade é o texto do passo a passo. | Resposta direta rodada 1. |
+| 2026-04-11 | **Branch/deploy:** commits vão direto na `main` (review do Otavio depende do site do Render, que só auto-deploya a partir da main). Antes de começar, criar um **tag de backup** (versão "pré-mudança de tutorial") como rollback point. | Resposta direta rodada 1. |
+| 2026-04-11 | **Tag de backup criada e empurrada:** `v1.3.0-pre-tutorial-rework` (tags anteriores eram `v1.0.0` e `v1.2.0`). Rollback: `git checkout v1.3.0-pre-tutorial-rework`. | Executado. |
+| 2026-04-11 | **Sistema de primeiro acesso investigado** (rodada 2 de exploração). Resumo na seção 6.6. Implicação: quando colocarmos o banner novo, temos que usar uma **flag nova** (ex.: `novocr-welcomed-v2`) para garantir que usuários que já marcaram a antiga como vista vejam o grito novo. | Decorrente da pergunta do Otavio sobre "como guardamos que é um novo dispositivo". |
 
 ---
 
