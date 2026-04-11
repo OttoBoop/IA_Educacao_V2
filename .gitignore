@@ -55,6 +55,11 @@ frontend/ui-audit/
 frontend/visual-test/
 frontend/version-comparison/
 
+# Exception: archived tutorial assets must be versioned so the standalone
+# reference HTML stays self-contained.
+!docs/tutorial_arquivado_v1_assets/
+!docs/tutorial_arquivado_v1_assets/*.png
+
 # Backend test data and downloads
 backend/data/e2b_downloads/
 backend/logs/
