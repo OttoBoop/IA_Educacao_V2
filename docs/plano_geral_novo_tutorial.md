@@ -790,6 +790,51 @@ Em comparação com B/C, a saída D acrescenta:
 - **Risco 2:** race condition entre `loadAvailableDocuments` e a pré-seleção (tanto na saída B quanto C). Se aparecer, mitigar com `await` na promise do load antes de aplicar seleção.
 - **Risco 3:** o teste com agente depende de um fluxo end-to-end funcionando; se o pipeline falhar por motivo não-relacionado (API key, modelo lento), o teste do botão pode ser mascarado. Rodar o happy path primeiro, isolado.
 
+### 13.5.0 Achados técnicos da rodada 4 (2026-04-11)
+
+Leitura dirigida de `showChatGeral`, `executor.gerar_relatorio` e o estado do chat, com três resultados que mudam o plano:
+
+**A. `showChatGeral` hoje é minimalista.** Em [index_v2.html:8772-8804](../frontend/index_v2.html#L8772) ela apenas:
+- Seta `currentView = 'chat_geral'`
+- Guarda `window._chatGeralAlunoId = preselectedAlunoId` (só como referência)
+- Monta breadcrumb
+- Chama `loadAvailableDocuments(requestId)` em chat_system.js
+
+**Ela NÃO toca no painel de filtros — não marca o aluno, não marca atividade, nada.** O `preselectedAlunoId` de hoje é decorativo. Então para a saída D funcionar, precisamos ou estender `showChatGeral` (adicionar parâmetro novo + chamar a função de seleção depois que os docs carregarem) ou chamar a função de seleção manualmente do lado de quem invoca.
+
+**B. `gerar_relatorio` tem dependências duras** ([executor.py:1098-1117](../backend/executor.py#L1098)):
+- `correcoes` (JSON) — **obrigatório**
+- `analise_habilidades` (JSON) — **obrigatório**
+
+Se faltar, entra em `documentos_faltantes` e o prompt da IA é alimentado com contexto vazio. O resultado "funciona" mas é inútil — o relatório não tem o que relatar. Consequência: **não dá para rodar só `gerar_relatorio` no sandbox** como atalho; vamos precisar rodar pelo menos até `analisar_habilidades`, ou seja, as 6 etapas inteiras (na prática pipeline completa).
+
+**Recomendação revisada para dados de teste:** criar uma atividade minúscula na `Matematica-v` (PDFs de 1 parágrafo cada), rodar a **pipeline completa** com modelo barato (`gpt-5-mini` ou `claude-haiku-4-5-20251001`) num único aluno. Deve ser <30s e <$0.01.
+
+**C. O estado de seleção do chat está em `window.chatState.context`** ([chat_system.js:1-47](../frontend/chat_system.js#L1)), com três campos chave:
+- `mode: 'all' | 'filtered' | 'manual'`
+- `excludedDocs: Set<id>` (usado em filtered/all)
+- `includedDocs: Set<id>` (usado em manual)
+
+Seleção por checkbox: `toggleDocSelection(docId)` [1561-1607](../frontend/chat_system.js#L1561). Leitura quando envia mensagem: `getSelectedDocumentIds()` [1685-1696](../frontend/chat_system.js#L1685), que faz `Array.from(includedDocs)` em modo manual.
+
+**Hook para a saída D — função de 4 linhas:**
+```js
+function setChatDocumentSelection(documentIds) {
+  window.chatState.context.mode = 'manual';
+  window.chatState.context.includedDocs = new Set(documentIds);
+  window.chatState.context.excludedDocs.clear();
+  updateDocumentsList();  // re-render dos checkboxes
+}
+```
+
+**Risco de race:** `updateDocumentsList` só renderiza o que está em `availableDocs`. Esse array é preenchido por `loadAvailableDocuments()`, que é **async**. Chamar `setChatDocumentSelection` antes do load resolver = seleção marca IDs, mas o painel renderiza vazio. Solução: chamar **depois** que o load resolver. Opções:
+- (a) Estender `showChatGeral` para aceitar `preselectedDocIds` e chamar a função depois do `await loadAvailableDocuments(...)` que já existe nela.
+- (b) Fazer a chamada no callback/then do lado do invocador. Mais frágil.
+
+**Recomendação:** opção (a). Mudança fica toda dentro de `showChatGeral` + a função `setChatDocumentSelection` nova.
+
+**Não existe** hoje nenhum código para pre-seleção de docs (grep por `preselectedDocumentoIds`, `preselectedDocIds`, `documento_ids`, `doc_ids` retorna zero). Terreno limpo.
+
 ### 13.5 Ordem de trabalho recomendada
 
 1. Otavio aprova a saída (B / C / B-depois-C) nesta seção.
