@@ -695,7 +695,14 @@ O tutorial camada 1 depende desse botão para o clímax do chat ter fluidez. Sem
 - Passar também a lista de `documento_ids` (os 6 docs do pipeline + docs obrigatórios) e o chat abre com **exatamente esses checkboxes marcados** no painel de filtros.
 - Exige: (a) novo parâmetro opcional em `showChatGeral`, (b) lógica no init do chat que respeite a pré-seleção antes do `loadAvailableDocuments` rodar, (c) cuidado com race condition (os docs podem estar chegando via fetch quando a pré-seleção tenta marcar).
 
-**Recomendação:** começar com B, testar, depois upgrade para C se a necessidade persistir. A própria camada 1 funciona com B; C só melhora.
+**Comportamento (sa\u00edda D — a que o Otavio realmente pediu):**
+- Na tela de resultado (seção "🤖 Comparativo das Etapas (IA)" e/ou "📌 Documentos do Aluno"), cada documento **já completo** (com ✅ verde) ganha um **checkbox próprio**.
+- O professor marca os que quer levar ao chat (um, vários, todos).
+- Um botão fixo no rodapé do card ou ao final da listagem — **"💬 Perguntar no chat sobre os documentos selecionados (N)"** — abre o chat já com **exatamente esses IDs marcados** nos filtros laterais.
+- Se nada selecionado, o botão fica desabilitado com tooltip "Selecione ao menos um documento".
+- É a melhor UX: dá controle, cobre os casos "só o relatório final", "todos os intermediários", "só a análise de habilidades + relatório final" — e é genérico o bastante para funcionar tanto na vista de aluno quanto em vistas futuras de turma/matéria.
+
+**Recomendação atual (pós-resposta do Otavio):** partir direto para a **saída D**. É a que o tutorial precisa para brilhar; as variantes B e C ficam como degraus intermediários que não vamos construir.
 
 ### 13.2 Plano de implementação (saída B)
 
@@ -710,6 +717,17 @@ O tutorial camada 1 depende desse botão para o clímax do chat ter fluidez. Sem
 4. **Criar `abrirChatComContexto(atividadeId, alunoId)`** — função fina que só chama `showChatGeral(atividadeId, alunoId)` e garante que o chat abra na view correta. Se `showChatGeral` hoje não navega (só renderiza), adicionar chamada de rota/show.
 5. **Ajustar o welcome message** do chat quando vem do handoff: _"Vim da atividade X, aluno Y. Os documentos já estão filtrados. Faça sua pergunta."_
 6. **Opcional já nesta versão:** no painel de filtros do chat, pré-selecionar o aluno (1 dropdown) e a atividade (1 dropdown). Isso cai entre B e C, mas é quase de graça.
+
+### 13.2.1 Saída D — desafios extras
+
+Em comparação com B/C, a saída D acrescenta:
+
+- **Estado local** no view de resultado: um `Set` de `documento_ids` selecionados, atualizado a cada clique em checkbox.
+- **Contagem dinâmica** no label do botão: `Perguntar no chat sobre os documentos selecionados (3)`.
+- **Persistência de seleção entre re-renders** — se a página re-renderiza por algum motivo (ex.: fetch de novo documento), preservar a seleção.
+- **Estender `showChatGeral`** para aceitar `preselectedDocumentoIds: number[]`, aplicar no init do filtro.
+- **Cuidado com docs incompletos:** só oferecer checkbox para documentos com status `completed` (ou equivalente). Documentos em processamento ou com erro não devem entrar na seleção.
+- **Escopo de "onde mostrar o botão":** hoje esta seção prevê adicionar na tela de um aluno individual. O Otavio apontou que a mesma lógica pode fazer sentido em visões de turma e de matéria — precisamos decidir se nesta rodada fazemos só aluno e registramos os outros níveis como follow-up, ou se já pensamos o componente genérico desde o início.
 
 ### 13.3 Plano de teste
 
@@ -746,9 +764,24 @@ O tutorial camada 1 depende desse botão para o clímax do chat ter fluidez. Sem
 4. **Regressão da pipeline principal** (não quebrar o que já funciona):
    - `cd backend && pytest tests/scenarios/test_happy_path.py -v` (confirma que pipeline end-to-end ainda roda)
 
-**Dados de teste necessários:**
-- Uma matéria real no live site (ou local) que tenha: 1 turma, 1 aluno, 1 atividade com enunciado+gabarito+resposta-do-aluno e o pipeline **já rodado**. Se não existe, precisamos criar um antes do teste.
-- Perguntar ao Otavio: **você já tem uma matéria/turma/atividade "sandbox" no live que eu possa usar pra rodar o teste sem quebrar dados reais dos seus testes anteriores?**
+**Dados de teste (confirmado com o Otavio):**
+- Sandbox existente: **matéria `Matematica-v`** no live. Vamos reusar ao invés de criar outra.
+- Otavio chamou atenção para pensarmos em **entrada mínima de teste**: em vez de sempre rodar todas as 6 etapas, dá para pedir **só `gerar_relatorio`** direto, sem criar as etapas anteriores, via o modal "Executar Etapa". Isso deixa o teste rápido, focado no botão novo, e ainda valida os relatórios de desempenho.
+- **Edge cases a cobrir nos testes:**
+  - ✅ 1 documento selecionado
+  - ✅ Vários documentos selecionados
+  - ✅ Todos os documentos selecionados
+  - ✅ Nenhum selecionado (botão desabilitado)
+  - ✅ Tentar selecionar documento ainda não completo (deve estar oculto/bloqueado)
+  - ✅ Saída D funciona no nível aluno individual (principal)
+  - ❓ Saída D funciona no nível turma (botões de relatórios agregados)?
+  - ❓ Saída D funciona no nível matéria (agregados de alto nível)?
+  - ❓ Comportamento quando um documento é de um aluno diferente do contexto atual
+- **Plano de dados mínimos:**
+  1. Na `Matematica-v`, reusar ou criar uma turma `Tutorial-Test` com 1 aluno `Aluno-Test`.
+  2. Criar uma atividade `Test-D-handoff` com enunciado + gabarito + resposta do aluno (PDFs pequenos, ~1 página cada).
+  3. Em vez de rodar a pipeline completa, usar **Executar Etapa → `gerar_relatorio`** direto (modelo barato) — assumindo que o executor aceita isso com contexto vazio. Se não aceitar, rodar a pipeline inteira com o modelo mais barato (`gpt-5-mini` ou `claude-haiku-4-5-20251001`).
+  4. Reusar esse aluno/atividade em cada iteração do teste.
 
 ### 13.4 Dependências e riscos
 
