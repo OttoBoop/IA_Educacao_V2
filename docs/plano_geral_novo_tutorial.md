@@ -432,6 +432,8 @@ location.reload();
 | 2026-04-11 | **Branch/deploy:** commits vão direto na `main` (review do Otavio depende do site do Render, que só auto-deploya a partir da main). Antes de começar, criar um **tag de backup** (versão "pré-mudança de tutorial") como rollback point. | Resposta direta rodada 1. |
 | 2026-04-11 | **Tag de backup criada e empurrada:** `v1.3.0-pre-tutorial-rework` (tags anteriores eram `v1.0.0` e `v1.2.0`). Rollback: `git checkout v1.3.0-pre-tutorial-rework`. | Executado. |
 | 2026-04-11 | **Sistema de primeiro acesso investigado** (rodada 2 de exploração). Resumo na seção 6.6. Implicação: quando colocarmos o banner novo, temos que usar uma **flag nova** (ex.: `novocr-welcomed-v2`) para garantir que usuários que já marcaram a antiga como vista vejam o grito novo. | Decorrente da pergunta do Otavio sobre "como guardamos que é um novo dispositivo". |
+| 2026-04-11 | **Alunos globais são feature proposital**, não bug. Um mesmo aluno participa de múltiplas turmas para permitir relatórios longitudinais (acompanhar um aluno através de matérias/anos). O tutorial camada 1 precisa **ensinar explicitamente**: (1) como criar aluno novo, (2) como adicionar um aluno existente a uma turma nova. A UI não muda. | Resposta direta do Otavio. |
+| 2026-04-11 | **Relatórios longitudinais automáticos ainda não existem como pipeline**; Otavio já criou alguns manualmente via prompts de teste no chat. Implicação para o tutorial avançado: o caminho "análise cross-turma" hoje passa pelo **chat + filtros + prompts customizados**, não por um botão dedicado. Guardar esses prompts como material de referência quando formos escrever o tutorial avançado dos relatórios automáticos. | Info lateral do Otavio na mesma resposta. |
 
 ---
 
