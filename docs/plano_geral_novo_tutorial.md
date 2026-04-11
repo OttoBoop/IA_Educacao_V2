@@ -298,6 +298,104 @@ location.reload();
 
 **Encapsulamento (o que quebra se rippar):** o sistema é totalmente encapsulado. Dependências: `modal-welcome` HTML, `checkFirstVisit/openWelcome/closeWelcome`, chamada em DOMContentLoaded, botão de ajuda (`help-btn`) com `onclick="openWelcome()"` [4558](../frontend/index_v2.html#L4558), CSS `.modal-welcome` [2154](../frontend/index_v2.html#L2154), [3436](../frontend/index_v2.html#L3436). Nenhuma outra feature depende disso.
 
+### 6.7 Estado da UI pós-pipeline (rodada 3, 2026-04-11)
+
+#### 6.7.1 Painel de tarefas — sinal de "terminou"
+
+- **Onde mora:** `#tree-tarefas` dentro da sidebar esquerda [index_v2.html:4537](../frontend/index_v2.html#L4537), logo abaixo da árvore de matérias/turmas/atividades. Header: "Tarefas" [4530-4536](../frontend/index_v2.html#L4530). Estado vazio: _"Nenhuma tarefa em execução"_ [4538-4541](../frontend/index_v2.html#L4538). **Sempre visível em desktop**; mobile abre quando o usuário dispara uma pipeline [10393-10395](../frontend/index_v2.html#L10393).
+- **Como é alimentado:** ao clicar "Executar Pipeline", `executarPipelineCompleto()` [10328](../frontend/index_v2.html#L10328) faz POST para `/executar/pipeline-completo` ou `/executar/pipeline-todos-os-alunos` [10410, 10423](../frontend/index_v2.html#L10410), recebe `task_id`, cria estado inicial `status: 'running'` [10436-10443](../frontend/index_v2.html#L10436) e chama `taskQueue.addBackendTask(taskId, initialState)` [10444](../frontend/index_v2.html#L10444).
+- **Como atualiza:** polling de **3 em 3 segundos** via `setInterval(() => pollTaskProgress(taskId), 3000)` em [6012-6017](../frontend/index_v2.html#L6012). Chama GET `/api/task-progress/{taskId}`, atualiza estado via `taskQueue.updateFromBackend()` [6024](../frontend/index_v2.html#L6024) e re-renderiza `renderTarefasTree()` [7888](../frontend/index_v2.html#L7888).
+- **Ícones por status** [7892](../frontend/index_v2.html#L7892):
+  - `✅` completed
+  - `⏳` running
+  - `⬜` pending
+  - `❌` failed
+- **Hierarquia na árvore:** Matéria > Turma > Atividade > Run N > Aluno > Etapa. Cada etapa do pipeline (extrair_questoes, extrair_gabarito, extrair_respostas, corrigir, analisar_habilidades, gerar_relatorio) tem seu próprio ícone [8042-8047](../frontend/index_v2.html#L8042).
+- **Borda esquerda colorida por status:** `.task-item.running` azul, `.task-item.success` verde, `.task-item.error` vermelho [1231-1241](../frontend/index_v2.html#L1231).
+- **Momento do sucesso:** toast verde por 5s com texto exato **"Pipeline concluído com sucesso!"** [11719-11724](../frontend/index_v2.html#L11719). Polling para. Ícones todos viram `✅`.
+- **CRÍTICO — não há auto-refresh da página de atividade.** O professor precisa **clicar manualmente em "Ver Resultado"** [8420](../frontend/index_v2.html#L8420) para chegar na tela com os documentos novos. Isso precisa estar **explicitamente** no tutorial: "quando o toast verde aparecer, clique em 'Ver Resultado' do aluno".
+- **Momento da falha:** toast vermelho + ícone `❌`. Na tela de resultado do aluno, banner "⚠️ ERRO DE PROCESSAMENTO" [11270-11282](../frontend/index_v2.html#L11270) com tipo, mensagem, etapa, severidade.
+
+#### 6.7.2 Tela de resultado do aluno (`showResultadoAluno`)
+
+- **Tipo:** página (não modal). Função em [11230](../frontend/index_v2.html#L11230).
+- **Seções renderizadas em ordem:**
+  1. Barra de botões (Pipeline Aluno, Executar Etapa, Comparar Versões, Excluir)
+  2. Banner de erro (se `erro_pipeline === true`) — [11270-11282](../frontend/index_v2.html#L11270)
+  3. Card "⏳ Pipeline em Progresso" (se não completo) — [11292-11317](../frontend/index_v2.html#L11292)
+  4. Card **"✅ Correção Concluída!"** (ou "⚠️ Erro no Pipeline") — [11374](../frontend/index_v2.html#L11374)
+     - Dentro dele, seção **"📊 Resultado Final"** [11389-11400](../frontend/index_v2.html#L11389) que renderiza:
+       - Nota grande com cor (success/warning/danger) via `renderResultadoVisual()` [6902-7005](../frontend/index_v2.html#L6902)
+       - Habilidades como barras de progresso [7093-7100](../frontend/index_v2.html#L7093)
+       - Feedback geral [7108-7115](../frontend/index_v2.html#L7108)
+     - Botões de export: **"📥 Baixar Relatório PDF"**, **"📄 Markdown"**, **"{ } JSON"** [11377-11381](../frontend/index_v2.html#L11377)
+  5. Card **"📌 Documentos do Aluno"** — documentos que o professor subiu (prova respondida, gabarito se aluno, correção do professor)
+  6. Card **"🤖 Comparativo das Etapas (IA)"** — os 6 documentos gerados pelo pipeline, via `renderDocumentoGrupo()` [8575](../frontend/index_v2.html#L8575)
+
+- **Rótulos exatos dos 6 documentos gerados** [11337-11365](../frontend/index_v2.html#L11337):
+  - `extracao_questoes` → **"🔎 Extração de Questões da Atividade"**
+  - `extracao_gabarito` → **"🧩 Extração de Gabarito"**
+  - `extracao_respostas` → **"📝 Extração de Respostas do Aluno"**
+  - `correcao` → **"✅ Correção da IA"**
+  - `analise_habilidades` → **"📊 Análise de Habilidades"**
+  - `relatorio_final` → **"📄 Relatório Final"** (com classe especial `doc-group-final`, borda azul 2px, gradiente azul suave no fundo [971-989](../frontend/index_v2.html#L971))
+
+- **Visualizar um documento:** botão `👁️ Visualizar` → `visualizarDocumento(documentoId)` [9534](../frontend/index_v2.html#L9534). Busca `/api/documentos/{id}/conteudo`:
+  - Se JSON: renderiza num `<pre>` com `JSON.stringify` [9552](../frontend/index_v2.html#L9552)
+  - Se markdown: renderiza com `marked.parse()` no modal `modal-documento-conteudo` [9559](../frontend/index_v2.html#L9559)
+  - Se não visualizável: download [9561](../frontend/index_v2.html#L9561)
+
+- **"Correção do Professor" não é uma aba.** É apenas um tipo de documento (`correcao_professor`) que o professor **sobe manualmente** via o modal de upload [4756](../frontend/index_v2.html#L4756), escolhendo `<option value="correcao_professor">🧑‍🏫 Correção do Professor</option>`. **Isso contradiz o tutorial antigo** que afirmava ter "aba da correção do professor". Importante corrigir no tutorial novo.
+
+- **Não há edição inline das saídas da IA.** Se o professor achar que a correção saiu errada, o único caminho é abrir "⚙️ Executar Etapa" [9677](../frontend/index_v2.html#L9677), selecionar `corrigir` de novo, opcionalmente editar o prompt [4943-4954](../frontend/index_v2.html#L4943), executar. Não existe um "editar JSON".
+
+- **Estado vazio (pipeline nunca rodou):** [11319](../frontend/index_v2.html#L11319) — _"Resultado indisponível — Ainda não há correção para este aluno. Inicie o pipeline."_
+
+#### 6.7.3 Chat + filtro de documentos
+
+- **Entry point padrão:** sidebar → "Chat com IA" → `showChat()` [chat_system.js:66](../frontend/chat_system.js#L66). Layout two-column: painel de filtros esquerdo (320px) + área de chat principal. Welcome message estática [193](../frontend/chat_system.js#L193): _"Olá! Sou seu assistente para análise e correção de provas. 📚 Contexto: Você pode selecionar documentos no painel à esquerda..."_
+- **Filtro = 5 dropdowns multi-select** [226](../frontend/chat_system.js#L226):
+  - 👤 Alunos
+  - 📚 Matérias
+  - 👥 Turmas
+  - 📝 Atividades
+  - 📄 Tipos de Documento
+- **Cada dropdown tem** checkbox + busca textual (se >5 itens) via `createFilterDropdown()` [2019](../frontend/chat_system.js#L2019). Toggle **"🔒 Ocultar arquivos JSON"** [1678](../frontend/chat_system.js#L1678). Botão **"🗑️ Limpar Filtros"** [2333](../frontend/chat_system.js#L2333).
+- **Cascata lógica:** selecionar matéria carrega turmas dessa matéria automaticamente; selecionar turma carrega atividades; etc. Mas **visualmente é flat** (5 dropdowns lado a lado, não uma árvore).
+- **"Inverter seleção"** [1609](../frontend/chat_system.js#L1609) inverte a seleção **global** dos documentos filtrados (útil se quer excluir poucos docs). Não funciona por nível.
+- **Entry point alternativo (IMPORTANTE):** `showChatGeral(preselectedAtividadeId, preselectedAlunoId)` [index_v2.html:8772](../frontend/index_v2.html#L8772). Aceita pré-seleção de atividade + aluno, popula o dropdown `chat-geral-context` [8798](../frontend/index_v2.html#L8798) e muda a welcome para _"Os documentos da atividade já estão carregados como contexto"_. **Mas hoje, a tela de resultado do aluno NÃO tem um botão "abrir chat com esses docs" que chame essa função.** A função existe mas não é exercitada no fluxo pós-pipeline.
+- **Seleção de modelo:** dropdown `chat-model-select` no header [303](../frontend/chat_system.js#L303). Modelo padrão vem da API `/settings/models` com `is_default=true` [91](../frontend/chat_system.js#L91). Sem aviso de custo. Se nenhum modelo configurado, mostra warning ⚠️.
+- **Sem sugestões de prompts:** não há cards "tente perguntar X". Só o welcome estático e o textarea vazio [342](../frontend/chat_system.js#L342).
+- **Persistência:** conversa em memória (`window.chatState.history` [8](../frontend/chat_system.js#L8)). **Apaga ao recarregar a aba.** Sem auth, sem threads múltiplos, sem histórico server-side. Botão "🗑️ Limpar conversa" [889](../frontend/chat_system.js#L889).
+- **TODO/FIXME/HACK:** nenhum no chat_system.js. Um comentário deprecated em [629](../frontend/chat_system.js#L629) sobre AI usar `python-exec:` em vez de `documento:` — retrocompat, não é bug aberto.
+
+#### 6.7.4 Receita manual hoje: "perguntar sobre a prova que o João acabou de ser corrigida"
+
+Dado que o professor acabou de ver os documentos de João na atividade "Prova Final 2025":
+
+1. Sidebar → **"Chat com IA"** (entra no chat zerado, sem contexto).
+2. Dropdown **👤 Alunos** → buscar "João" → marcar.
+3. Dropdown **📝 Atividades** → buscar "Prova Final" → marcar.
+4. (Opcional) Dropdown **📄 Tipos** → marcar só os que interessam (ex.: relatório final + análise de habilidades).
+5. Conferir contador "Selecionados: X / Y" no painel.
+6. (Opcional) Header → escolher modelo.
+7. Escrever pergunta no textarea.
+8. Enviar (Ctrl+Enter ou botão).
+
+**Quantos cliques:** ~8-12 dependendo dos filtros. **O ponto mais frágil:** não existe um único botão "chat sobre esses docs". Toda a transição é manual.
+
+#### 6.7.5 Implicação crítica para o tutorial
+
+O "aha" que o Otavio quer — _"agora que você viu os docs, vai adorar o chat filtrado por eles"_ — **bate de frente com a UX atual**. Duas saídas possíveis:
+
+- **Saída A — Ensinar o caminho manual.** O tutorial leva o professor dos 8 cliques. Honesto, mas quebra o ritmo: depois de 10 passos fluídos, o passo final é trabalhoso. Risco: professor novo desiste.
+- **Saída B — Adicionar um atalho na UI antes do tutorial.** Um botão **"💬 Perguntar no chat sobre estes documentos"** dentro da seção "Correção Concluída" de `showResultadoAluno()` que chama `showChatGeral(atividadeId, alunoId)` já passando os IDs certos. Pequena mudança de frontend (~30 linhas). Permite ao tutorial dizer: _"agora clique nesse botão e faça sua pergunta"_. UX melhora para todos os usuários, não só os do tutorial.
+- **Saída C — A mais ambiciosa: pre-selecionar os documentos exatos** que o professor acabou de ver (não só atividade+aluno, mas os 6 docs gerados). Isso exigiria passar uma lista de `documento_ids` pra `showChatGeral` e o filtro respeitar isso no carregamento inicial. Mais trabalho, melhor resultado.
+
+**Recomendação do Claude:** Saída B, com nota para evoluir para C depois. Ver seção 9 rodada 3 para a pergunta ao usuário.
+
+---
+
 ### 6.6 Pontos de fricção e dívidas técnicas encontradas
 
 1. **Upload aceita lista pequena de formatos** mas backend é multimodal — UI mente por omissão [index_v2.html:4778](../frontend/index_v2.html#L4778).
@@ -363,6 +461,17 @@ location.reload();
 ---
 
 ## 9. Perguntas abertas
+
+### Rodada 3 — após mapear task panel + resultado + chat (2026-04-11)
+
+**A pergunta central:** o handoff "vi os documentos → vou pro chat filtrado por eles" hoje exige 8-12 cliques manuais (ver 6.7.4) porque não há um botão de atalho. Três saídas na seção 6.7.5 (A/B/C).
+
+1. Qual saída adotar? **Recomendação Claude = B** (adicionar botão 💬 na tela de resultado chamando `showChatGeral(atividadeId, alunoId)`). Saída C (pré-selecionar os 6 docs exatos) é upgrade natural.
+2. Dois fatos novos **contradizem o tutorial antigo** e precisam ser corrigidos também:
+   - Não existe "aba da correção do professor" — é upload comum de documento com `tipo=correcao_professor`. O tutorial antigo afirmava o contrário.
+   - Não existe edição inline das saídas da IA; a única rota é re-executar a etapa com prompt customizado.
+3. O ponto do **painel de tarefas como checkpoint**: quer que eu adicione no tutorial o texto _"Olhe a sidebar: cada etapa vira um ✅ quando termina. Quando todos viram ✅ e o toast verde aparece, clique em 'Ver Resultado'"_, ou prefere que o tutorial evite apontar para a árvore detalhada e só fale do toast final?
+4. **Chat history é in-memory** (some ao recarregar a aba). Para o tutorial, quer que eu avise explicitamente o usuário (_"sua conversa some ao sair da página"_) ou isso entra só no tutorial avançado do chat?
 
 ### Rodada 1 — após o inventário (2026-04-11)
 
@@ -434,6 +543,8 @@ location.reload();
 | 2026-04-11 | **Sistema de primeiro acesso investigado** (rodada 2 de exploração). Resumo na seção 6.6. Implicação: quando colocarmos o banner novo, temos que usar uma **flag nova** (ex.: `novocr-welcomed-v2`) para garantir que usuários que já marcaram a antiga como vista vejam o grito novo. | Decorrente da pergunta do Otavio sobre "como guardamos que é um novo dispositivo". |
 | 2026-04-11 | **Alunos globais são feature proposital**, não bug. Um mesmo aluno participa de múltiplas turmas para permitir relatórios longitudinais (acompanhar um aluno através de matérias/anos). O tutorial camada 1 precisa **ensinar explicitamente**: (1) como criar aluno novo, (2) como adicionar um aluno existente a uma turma nova. A UI não muda. | Resposta direta do Otavio. |
 | 2026-04-11 | **Relatórios longitudinais automáticos ainda não existem como pipeline**; Otavio já criou alguns manualmente via prompts de teste no chat. Implicação para o tutorial avançado: o caminho "análise cross-turma" hoje passa pelo **chat + filtros + prompts customizados**, não por um botão dedicado. Guardar esses prompts como material de referência quando formos escrever o tutorial avançado dos relatórios automáticos. | Info lateral do Otavio na mesma resposta. |
+| 2026-04-11 | **Fase B rodada 3 executada:** 3 agentes Explore mapearam (1) painel de tarefas/sinais de conclusão, (2) tela `showResultadoAluno` e rotulação exata dos docs gerados, (3) chat + filtro + handoff. Achado crítico: **não existe atalho do resultado para o chat filtrado** — caminho manual leva 8-12 cliques. Detalhes na seção 6.7. | Terceira rodada do loop. |
+| 2026-04-11 | **Dois fatos contradizem o tutorial antigo** (descobertos na rodada 3): (a) não há "aba da correção do professor" — é upload normal com `tipo=correcao_professor`; (b) não há edição inline das saídas da IA — a única via é re-executar a etapa com prompt customizado. O copy da camada 1 e o texto do arquivo arquivado precisam refletir isso. | Fato descoberto pela rodada 3. |
 
 ---
 
