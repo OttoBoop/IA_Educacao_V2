@@ -545,6 +545,9 @@ O "aha" que o Otavio quer — _"agora que você viu os docs, vai adorar o chat f
 | 2026-04-11 | **Relatórios longitudinais automáticos ainda não existem como pipeline**; Otavio já criou alguns manualmente via prompts de teste no chat. Implicação para o tutorial avançado: o caminho "análise cross-turma" hoje passa pelo **chat + filtros + prompts customizados**, não por um botão dedicado. Guardar esses prompts como material de referência quando formos escrever o tutorial avançado dos relatórios automáticos. | Info lateral do Otavio na mesma resposta. |
 | 2026-04-11 | **Fase B rodada 3 executada:** 3 agentes Explore mapearam (1) painel de tarefas/sinais de conclusão, (2) tela `showResultadoAluno` e rotulação exata dos docs gerados, (3) chat + filtro + handoff. Achado crítico: **não existe atalho do resultado para o chat filtrado** — caminho manual leva 8-12 cliques. Detalhes na seção 6.7. | Terceira rodada do loop. |
 | 2026-04-11 | **Dois fatos contradizem o tutorial antigo** (descobertos na rodada 3): (a) não há "aba da correção do professor" — é upload normal com `tipo=correcao_professor`; (b) não há edição inline das saídas da IA — a única via é re-executar a etapa com prompt customizado. O copy da camada 1 e o texto do arquivo arquivado precisam refletir isso. | Fato descoberto pela rodada 3. |
+| 2026-04-11 | **Escopo expandido — mudança de código necessária**: o tutorial da camada 1 não pode ser bom sem um atalho do resultado para o chat filtrado. Otavio autorizou pensar em "como fazer + como testar" a adição de um botão/atalho. Proposta detalhada na seção 13. | Resposta direta do Otavio. |
+| 2026-04-11 | **Checkpoint do tutorial = toast verde + árvore de tarefas na sidebar.** O tutorial ensina os dois sinais para o professor construir um modelo mental do pipeline. | Resposta direta do Otavio. |
+| 2026-04-11 | **Aviso "chat sem histórico" entra na camada 1** como linha discreta ("Dica: sua conversa existe só enquanto a aba estiver aberta. Salve o que for importante."). Evita surpresas sem poluir. | Resposta direta do Otavio. |
 
 ---
 
@@ -665,6 +668,103 @@ O Claude precisa **explorar mais antes** de escrever o texto final de alguns pas
 - **Passo 9 (abrir documentos):** a listagem real de documentos da atividade após a pipeline. Ordem? Ícones? Rótulos? Se o "Relatório final" está claramente identificado ou se o professor precisa saber onde procurar.
 - **Passo 10 (chat + filtro):** como o filtro do chat funciona hoje? Ele filtra por matéria/turma/atividade/documento individual? Quão fácil é "filtrar pelos docs que acabei de ver"? Pode ser que a gente precise ajustar a UI do filtro ANTES de escrever o tutorial — se o filtro é ruim, explicar vira explicar um bug.
 - **Tutoriais avançados:** Claude não sabe hoje o suficiente sobre cada relatório automático para documentar direito. O Otavio precisa ou detalhar isso por texto, ou autorizar agente Explore para ler código do executor e mapear cada relatório.
+
+---
+
+## 13. Escopo expandido — botão de handoff resultado → chat (2026-04-11)
+
+> **Status:** proposta para revisão do Otavio. Nenhum código tocado ainda.
+
+O tutorial camada 1 depende desse botão para o clímax do chat ter fluidez. Sem ele, são 8-12 cliques manuais e o professor desiste.
+
+### 13.1 O que o botão faz
+
+**Nome interno sugerido:** `abrirChatComContexto` (ou reaproveitar `showChatGeral` passando parâmetros novos).
+
+**UI:**
+- Botão grande, visualmente convidativo, na seção **"✅ Correção Concluída!"** da `showResultadoAluno()`, logo abaixo dos botões de export PDF/Markdown/JSON em [index_v2.html:11377-11381](../frontend/index_v2.html#L11377).
+- Texto (rascunho): **"💬 Perguntar no chat sobre estes documentos"**
+- Cor: primário (azul), tamanho médio.
+
+**Comportamento (versão mínima — "saída B"):**
+1. Recolhe o `atividade_id` e o `aluno_id` do estado atual do view.
+2. Chama `showChatGeral(atividade_id, aluno_id)` — função já existente em [index_v2.html:8772](../frontend/index_v2.html#L8772).
+3. A função atual já pré-seleciona a atividade no dropdown `chat-geral-context`. **Confirmação necessária:** ela também pré-seleciona o aluno nos filtros laterais? Se não, é preciso estender.
+
+**Comportamento (versão ideal — "saída C", upgrade posterior):**
+- Passar também a lista de `documento_ids` (os 6 docs do pipeline + docs obrigatórios) e o chat abre com **exatamente esses checkboxes marcados** no painel de filtros.
+- Exige: (a) novo parâmetro opcional em `showChatGeral`, (b) lógica no init do chat que respeite a pré-seleção antes do `loadAvailableDocuments` rodar, (c) cuidado com race condition (os docs podem estar chegando via fetch quando a pré-seleção tenta marcar).
+
+**Recomendação:** começar com B, testar, depois upgrade para C se a necessidade persistir. A própria camada 1 funciona com B; C só melhora.
+
+### 13.2 Plano de implementação (saída B)
+
+1. **Ler `showChatGeral` com atenção** — confirmar se ela lida com `preselectedAlunoId` hoje, e se o filtro lateral reflete essa pré-seleção automaticamente.
+2. **Ler `showResultadoAluno`** em [index_v2.html:11230](../frontend/index_v2.html#L11230) — identificar as variáveis locais com `atividade_id` e `aluno_id` disponíveis no escopo.
+3. **Adicionar o botão** no cabeçalho da seção "Correção Concluída" [~11374](../frontend/index_v2.html#L11374):
+   ```html
+   <button class="btn btn-primary" onclick="abrirChatComContexto(${atividade_id}, ${aluno_id})">
+     💬 Perguntar no chat sobre estes documentos
+   </button>
+   ```
+4. **Criar `abrirChatComContexto(atividadeId, alunoId)`** — função fina que só chama `showChatGeral(atividadeId, alunoId)` e garante que o chat abra na view correta. Se `showChatGeral` hoje não navega (só renderiza), adicionar chamada de rota/show.
+5. **Ajustar o welcome message** do chat quando vem do handoff: _"Vim da atividade X, aluno Y. Os documentos já estão filtrados. Faça sua pergunta."_
+6. **Opcional já nesta versão:** no painel de filtros do chat, pré-selecionar o aluno (1 dropdown) e a atividade (1 dropdown). Isso cai entre B e C, mas é quase de graça.
+
+### 13.3 Plano de teste
+
+**Camadas:**
+
+1. **Smoke local rápido** (3-5 min, antes de commitar):
+   - Rodar `cd backend && python -m uvicorn main_v2:app --port 8000 --reload`
+   - Abrir `http://localhost:8000` no navegador
+   - Criar manualmente (ou reusar) uma matéria+turma+aluno+atividade com os 3 docs obrigatórios já carregados
+   - Rodar pipeline simples (modelo barato: `gpt-5-mini` ou `claude-haiku-4-5-20251001`)
+   - Clicar em "Ver Resultado"
+   - **Clicar no botão novo** → verificar que abre o chat, que o contexto mostra a atividade, que os filtros refletem o aluno
+   - Fazer uma pergunta simples e confirmar resposta
+
+2. **Verificação automatizada com agente** (preferida pelo Otavio):
+   - Usar o `investor_journey_agent` em modo `tester`, conforme descrito no CLAUDE.md
+   - Persona: `tester` com `--goal "Verificar o novo botão 💬 na tela de Correção Concluída: deve abrir o chat com contexto pré-carregado da atividade e do aluno"`
+   - Rodar em `--local` (http://localhost:8000) antes do push
+   - Screenshots em cada passo, report HTML consolidado
+   - Se passar local, fazer deploy e re-rodar contra `https://ia-educacao-v2.onrender.com`
+   - Comando concreto:
+     ```bash
+     cd backend && python -m tests.ui.investor_journey_agent \
+       --persona tester \
+       --goal "Verify new '💬 Perguntar no chat' button on Correção Concluída: click it, confirm chat opens with preselected atividade and aluno, confirm a question can be sent" \
+       --max-steps 15 \
+       --local
+     ```
+
+3. **Teste unitário (opcional, se for trivial):**
+   - `tests/ui/` contém Playwright tests. Se a UI tiver um teste existente cobrindo a tela de resultado, adicionar um caso novo clicando no botão e verificando a URL/hash/state subsequente.
+   - Se não houver, **não criar uma suíte nova só pra isso** — o journey agent cobre.
+
+4. **Regressão da pipeline principal** (não quebrar o que já funciona):
+   - `cd backend && pytest tests/scenarios/test_happy_path.py -v` (confirma que pipeline end-to-end ainda roda)
+
+**Dados de teste necessários:**
+- Uma matéria real no live site (ou local) que tenha: 1 turma, 1 aluno, 1 atividade com enunciado+gabarito+resposta-do-aluno e o pipeline **já rodado**. Se não existe, precisamos criar um antes do teste.
+- Perguntar ao Otavio: **você já tem uma matéria/turma/atividade "sandbox" no live que eu possa usar pra rodar o teste sem quebrar dados reais dos seus testes anteriores?**
+
+### 13.4 Dependências e riscos
+
+- **Dependência:** o botão precisa ser adicionado **antes** do tutorial camada 1 ser escrito, porque o texto do tutorial vai depender desse atalho existir.
+- **Risco 1:** `showChatGeral` pode não lidar com aluno pré-selecionado hoje — pode exigir mudanças adicionais em chat_system.js.
+- **Risco 2:** race condition entre `loadAvailableDocuments` e a pré-seleção (tanto na saída B quanto C). Se aparecer, mitigar com `await` na promise do load antes de aplicar seleção.
+- **Risco 3:** o teste com agente depende de um fluxo end-to-end funcionando; se o pipeline falhar por motivo não-relacionado (API key, modelo lento), o teste do botão pode ser mascarado. Rodar o happy path primeiro, isolado.
+
+### 13.5 Ordem de trabalho recomendada
+
+1. Otavio aprova a saída (B / C / B-depois-C) nesta seção.
+2. Claude confirma se existe uma matéria sandbox reutilizável.
+3. Claude implementa o botão em um commit isolado (branch ou direto em main, conforme decisão anterior).
+4. Claude roda smoke local + journey agent com persona tester.
+5. Se passar: push para main, Render deploya, Claude re-roda o journey contra o live.
+6. Se todos os verdes, o botão está pronto **e** a camada 1 do tutorial pode começar a ser escrita, porque agora ela pode apontar para o botão real.
 
 ---
 
