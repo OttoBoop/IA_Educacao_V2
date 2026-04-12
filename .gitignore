@@ -59,6 +59,8 @@ frontend/version-comparison/
 # reference HTML stays self-contained.
 !docs/tutorial_arquivado_v1_assets/
 !docs/tutorial_arquivado_v1_assets/*.png
+!frontend/tutorial-images-v2/
+!frontend/tutorial-images-v2/**/*.png
 
 # Backend test data and downloads
 backend/data/e2b_downloads/
