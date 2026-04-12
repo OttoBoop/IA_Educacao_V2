@@ -862,6 +862,7 @@ function setChatDocumentSelection(documentIds) {
 5. ~~Banner gritão (welcome-scream): borda vermelha/amarela pulsando, flag v2.~~ ✅ 2026-04-12
 6. ~~Tutorial camada 1: 11 passos no modal, padrão "Curioso? Ver detalhes".~~ ✅ 2026-04-12
 7. ~~Tooltips críticas: 15 campos nos modais de criação + pipeline.~~ ✅ 2026-04-12
-8. **Aguardando deploy do Render para verificação live.** ← ESTAMOS AQUI
-9. Expandir saída D para turma e matéria (relatórios de desempenho → chat).
+8. ~~Deploy do Render resolvido (manual). Monitor contínuo configurado.~~ ✅ 2026-04-12
+9. ~~Expandir saída D para turma e matéria: checkboxes + barra sticky em `renderDesempenhoRuns`.~~ ✅ 2026-04-12
 10. Tutoriais avançados (camadas 2 e 3).
+11. Screenshots novos para o tutorial (ciclo tirar → revisar → refazer).
