@@ -15,6 +15,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="novocr-deploy" content="02582cd">
     <title>NOVO CR</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
@@ -6171,7 +6172,7 @@
                 {
                     title: '🗺️ Visão de 10 segundos',
                     subtitle: 'Tudo que você precisa fazer, resumido',
-                    image: '/static/tutorial-images-v2/01-dashboard-anotado.png',
+                    image: '',
                     content: `
                         <p>Você vai seguir este caminho:</p>
                         <ol>
@@ -6218,6 +6219,9 @@
                         <div class="tutorial-highlight">
                             <strong>📅 O ano fica aqui!</strong> Assim uma matéria pode ter turmas de anos diferentes.
                         </div>
+                        <details class="tutorial-details"><summary>🔍 Curioso? Ver detalhes</summary>
+                        <p>Por que separar matéria e turma? Porque uma mesma matéria pode ser dada para turmas diferentes, em anos diferentes. O período (Manhã/Tarde) é só para organização — não afeta nada no processamento.</p>
+                        </details>
                     `
                 },
                 {
@@ -6251,6 +6255,9 @@
                         <div class="tutorial-highlight">
                             <strong>💡 Dica:</strong> Se tiver dúvida, use tipo "Prova" — serve pra quase tudo.
                         </div>
+                        <details class="tutorial-details"><summary>🔍 Curioso? Ver detalhes</summary>
+                        <p>O "Tipo" serve só para organização — não muda o processamento. A "Nota Máxima" é usada pela IA para calcular a nota do aluno proporcionalmente (ex.: se a nota máxima é 100 mas o aluno acertou 70%, a nota será 70).</p>
+                        </details>
                     `
                 },
                 {
@@ -6294,9 +6301,9 @@
                     `
                 },
                 {
-                    title: '✅ Verificar se Terminou',
-                    subtitle: 'O painel de tarefas mostra o progresso',
-                    image: '/static/tutorial-images-v2/14-resultados.png',
+                    title: '✅ Ver o Resultado',
+                    subtitle: 'Quando o pipeline terminar, explore os documentos gerados',
+                    image: '',
                     content: `
                         <p>Olhe a <strong>sidebar esquerda</strong>, seção "Tarefas":</p>
                         <ul>
@@ -6304,26 +6311,15 @@
                             <li><strong>✅</strong> = etapa concluída</li>
                             <li><strong>❌</strong> = erro (raro — tente de novo)</li>
                         </ul>
-                        <p>Quando <strong>todas as etapas virarem ✅</strong>, aparece um <strong>toast verde</strong>: "Pipeline concluído com sucesso!"</p>
-                        <div class="tutorial-highlight">
-                            <strong>👉 Agora clique em "Ver Resultado"</strong> do aluno para ver o que a IA gerou.
-                        </div>
-                    `
-                },
-                {
-                    title: '📊 Abrir os Documentos Gerados',
-                    subtitle: 'Veja o que a IA produziu para cada etapa',
-                    image: '/static/tutorial-images-v2/14-resultados.png',
-                    content: `
-                        <p>Na tela de resultado do aluno, você verá:</p>
+                        <p>Quando todas virarem ✅, aparece um <strong>toast verde</strong>. Clique em <strong>"Ver Resultado"</strong> do aluno.</p>
+                        <p>Na tela de resultado você verá:</p>
                         <ul>
                             <li><strong>📊 Resultado Final</strong> — nota, habilidades, feedback geral</li>
                             <li><strong>📌 Documentos do Aluno</strong> — o que foi enviado</li>
                             <li><strong>🤖 Documentos da IA</strong> — os 6 gerados pelo pipeline</li>
                         </ul>
-                        <p>Clique no <strong>ícone 👁️</strong> para visualizar cada documento.</p>
                         <div class="tutorial-highlight">
-                            <strong>📄 Os mais importantes:</strong> "Relatório Final" (feedback completo) e "Análise de Habilidades" (pontos fortes/fracos).
+                            <strong>📄 Os mais importantes:</strong> clique no 👁️ do <strong>"Relatório Final"</strong> (feedback completo) e <strong>"Análise de Habilidades"</strong> (pontos fortes/fracos).
                         </div>
                     `
                 },
@@ -6342,12 +6338,15 @@
                         <div class="tutorial-highlight">
                             <strong>💡 Dica:</strong> Sua conversa existe só enquanto a aba estiver aberta. Salve o que for importante.
                         </div>
+                        <details class="tutorial-details"><summary>🔍 Não vê checkboxes?</summary>
+                        <p>Use o <strong>"Chat com IA"</strong> no menu lateral — lá você filtra por matéria, turma e aluno manualmente. O resultado é o mesmo, só exige alguns cliques a mais.</p>
+                        </details>
                     `
                 },
                 {
                     title: '🎉 Pronto! E agora?',
                     subtitle: 'Você completou o básico — há muito mais para explorar',
-                    image: '/static/tutorial-images-v2/01-dashboard-anotado.png',
+                    image: '',
                     content: `
                         <p>Parabéns! Você já sabe usar o NOVO CR para:</p>
                         <ul>
@@ -7245,15 +7244,18 @@
             const step = steps[currentTutorialStep];
 
             const content = document.getElementById('tutorial-content');
+            const imageHtml = step.image
+                ? `<div class="tutorial-image-container">
+                        <img src="${step.image}" alt="${step.title}" class="tutorial-image"
+                             onload="this.parentElement.style.minHeight='auto'"
+                             onerror="this.outerHTML='<div class=tutorial-image-placeholder><span class=tutorial-image-placeholder-icon>🖼️</span><span>Imagem indisponível</span></div>'">
+                   </div>`
+                : '';
             content.innerHTML = `
                 <div class="tutorial-step active">
                     <h2 class="tutorial-step-title">${step.title}</h2>
                     <p class="tutorial-step-subtitle">${step.subtitle}</p>
-                    <div class="tutorial-image-container">
-                        <img src="${step.image}" alt="${step.title}" class="tutorial-image" 
-                             onload="this.parentElement.style.minHeight='auto'"
-                             onerror="this.outerHTML='<div class=tutorial-image-placeholder><span class=tutorial-image-placeholder-icon>🖼️</span><span>Imagem indisponível</span></div>'">
-                    </div>
+                    ${imageHtml}
                     <div class="tutorial-text">${step.content}</div>
                 </div>
             `;
