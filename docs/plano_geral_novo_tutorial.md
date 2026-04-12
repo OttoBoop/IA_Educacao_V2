@@ -555,6 +555,8 @@ O "aha" que o Otavio quer — _"agora que você viu os docs, vai adorar o chat f
 | 2026-04-12 | **Tooltips críticas adicionadas** (commit c68e8b5): 15 campos com `data-tooltip` nos modais de criação (matéria, turma, atividade, aluno) + pipeline (forçar re-execução) + upload em lote (modo identificação) + busca de aluno existente. | Implementação. |
 | 2026-04-12 | **Deploy do Render resolvido.** Otavio fez deploy manual no dashboard. Auto-deploy não disparou com pushes — causa desconhecida. Site agora serve código com banner, tutorial e tooltips. | Bloqueador resolvido. |
 | 2026-04-12 | **Auto-revisão de design executada.** Identificados 7 problemas. Corrigidos no commit 3ca8502: (1) imagens erradas removidas dos passos textuais; (2) passos 8+9 fundidos em "Ver o Resultado" (11→10 passos); (3) fallback "Não vê checkboxes?" no passo do Chat; (4) `<details>` adicionados nos passos Turma e Atividade; (5) `renderTutorialStep` condicional para imagem; (6) `.scream-tip` escondido em ≤480px; (7) `scripts/check_deploy.sh` + `scripts/wait_deploy.sh` + `<meta name="novocr-deploy">` criados. | Revisão de design. |
+| 2026-04-12 | **Deploy hook configurado.** Auto-deploy não funciona (repo conectado via URL pública, não GitHub OAuth). Otavio forneceu deploy hook URL. Fluxo: push → `curl deploy hook` → poll meta tag. Salvo em memória do Claude para sessões futuras. | Infraestrutura. |
+| 2026-04-12 | **8 mini-tutoriais avançados implementados** (commit 4d0b3e0). Tutorial agora tem 18 passos: 10 básicos (camada 1) + 8 avançados (camadas 2/3). Passo "Pronto" reescrito como hub com links clicáveis para cada tópico. Nova função `goToTutorialStep(n)`. Tópicos: critérios de correção, correção do professor, múltiplos arquivos, pipeline turma toda, filtros chat, prompts, relatórios agregados, filosofia. Cada tópico tem "← Voltar ao menu". | Implementação camadas 2/3. |
 
 ---
 
@@ -864,5 +866,6 @@ function setChatDocumentSelection(documentIds) {
 7. ~~Tooltips críticas: 15 campos nos modais de criação + pipeline.~~ ✅ 2026-04-12
 8. ~~Deploy do Render resolvido (manual). Monitor contínuo configurado.~~ ✅ 2026-04-12
 9. ~~Expandir saída D para turma e matéria: checkboxes + barra sticky em `renderDesempenhoRuns`.~~ ✅ 2026-04-12
-10. Tutoriais avançados (camadas 2 e 3).
+10. ~~Tutoriais avançados (camadas 2 e 3): 8 mini-tutoriais com navegação direta.~~ ✅ 2026-04-12
 11. Screenshots novos para o tutorial (ciclo tirar → revisar → refazer).
+12. Deploy hook integrado (`scripts/check_deploy.sh`, `scripts/wait_deploy.sh`). Auto-deploy não funciona (repo via URL pública).
