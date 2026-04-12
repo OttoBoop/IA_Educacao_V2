@@ -557,6 +557,83 @@ O "aha" que o Otavio quer — _"agora que você viu os docs, vai adorar o chat f
 | 2026-04-12 | **Auto-revisão de design executada.** Identificados 7 problemas. Corrigidos no commit 3ca8502: (1) imagens erradas removidas dos passos textuais; (2) passos 8+9 fundidos em "Ver o Resultado" (11→10 passos); (3) fallback "Não vê checkboxes?" no passo do Chat; (4) `<details>` adicionados nos passos Turma e Atividade; (5) `renderTutorialStep` condicional para imagem; (6) `.scream-tip` escondido em ≤480px; (7) `scripts/check_deploy.sh` + `scripts/wait_deploy.sh` + `<meta name="novocr-deploy">` criados. | Revisão de design. |
 | 2026-04-12 | **Deploy hook configurado.** Auto-deploy não funciona (repo conectado via URL pública, não GitHub OAuth). Otavio forneceu deploy hook URL. Fluxo: push → `curl deploy hook` → poll meta tag. Salvo em memória do Claude para sessões futuras. | Infraestrutura. |
 | 2026-04-12 | **8 mini-tutoriais avançados implementados** (commit 4d0b3e0). Tutorial agora tem 18 passos: 10 básicos (camada 1) + 8 avançados (camadas 2/3). Passo "Pronto" reescrito como hub com links clicáveis para cada tópico. Nova função `goToTutorialStep(n)`. Tópicos: critérios de correção, correção do professor, múltiplos arquivos, pipeline turma toda, filtros chat, prompts, relatórios agregados, filosofia. Cada tópico tem "← Voltar ao menu". | Implementação camadas 2/3. |
+| 2026-04-12 | **Revisão "8.5→10" — decisões de design para polimento final:** | Rodada colaborativa. |
+| | (1) **Imagens:** cropadas para mostrar só o modal/área relevante (não background todo). Max-height limitado. Tirar prints e revisar se o crop mostra o necessário. | |
+| | (2) **Módulos avançados:** Hub + sub-páginas independentes. Passo "Pronto" = hub fixo (10/10). Cada módulo tem contagem própria (ex.: "Critérios 1/2"). Dots mudam para refletir só o módulo ativo. | |
+| | (3) **Tooltips:** Mencionadas no passo 1 (Visão Geral). Precisam de prints mostrando a tooltip aparecendo. | |
+| | (4) **Filosofia:** Módulo avançado expandido (2-3 slides). Hyperlink no INÍCIO do hub avançado (além do final), porque às vezes o usuário quer saber o que o site faz antes de usar. É o módulo mais importante. | |
+| | (5) **Todos os módulos avançados precisam de revisão colaborativa detalhada.** | |
+| 2026-04-12 | **Achados da exploração profunda (agentes):** | Exploração. |
+| | (a) **Chat:** 3 modos de seleção (filtrar/todos/manual). Limite hardcoded: 50 docs, 5000 chars/doc — professor não é avisado. Sem prompts/templates sugeridos. Cascata funciona: matéria→turmas→atividades. Inverter seleção inverte exclusões. | |
+| | (b) **Critérios de correção:** Aceita qualquer formato. Inseridos no prompt da etapa CORRIGIR como `{{criterios}}`. Sem critérios: "Nenhum critério específico fornecido". | |
+| | (c) **Correção do professor:** NÃO substitui a IA — fica como documento paralelo. Sem re-processamento automático. Tutorial mantém explicação atual; nota para o futuro. | |
+| | (d) **Múltiplos arquivos:** BUG — executor usa o primeiro (mais antigo), frontend mostra o mais recente. Se professor atualiza critérios, IA usa versão antiga. Ticket separado. | |
+| | (e) **Limite 50 docs:** Otavio considerou arbitrário e problemático. Precisa: (1) contador visível na UI, (2) revisão do limite no backend, (3) tutorial ensina estratégias de filtro. | |
+| 2026-04-12 | **Decisões de conteúdo dos módulos avançados:** | Rodada colaborativa. |
+| | (a) **Chat avançado:** Expandir com cenários concretos: matéria específica, longitudinal do aluno, comparar turmas, questão que todos erraram, devolutiva para pais. Ensinar estratégias de filtro (menos docs = mais preciso e barato). | |
+| | (b) **Prompts sugeridos:** Só no tutorial (não na UI do chat). Listar exemplos por cenário. | |
+| | (c) **Correção do professor:** Manter como está no tutorial; nota para futuro quando tiver mais dados. | |
+| | (d) **Filosofia — DEFINIÇÃO CENTRAL do produto (validada com Otavio 2026-04-12):** | |
+| | O fluxo IDEAL: (1) professor corrige manualmente (como sempre fez), (2) sobe sua correção no sistema, (3) a IA USA a correção do professor como base para gerar relatórios detalhados. A IA não substitui — ela AMPLIA. Transforma a correção em relatórios ricos que o professor não teria tempo de escrever. | |
+| | **Caso de uso real (FGV, história pessoal):** Após provas, monitores gastam horas explicando erros aluno a aluno. Professores terminam aulas com filas. Alguns dão pontos extras a quem NÃO pede revisão para economizar tempo. Com o NOVO CR: (1) aluno lê relatório e entende seus erros sem monitor, (2) se discorda, pleiteia por escrito com precisão, (3) professor gasta menos tempo, (4) dados ficam registrados para relatórios longitudinais. | |
+| | **Narrativa:** começa com o PROBLEMA ("Você já terminou uma aula com fila de alunos?"), depois a solução. Tom pessoal com exemplos reais da FGV. | |
+| | **5 blocos de conteúdo:** (1) IA não substitui professor — ela amplia a correção dele, (2) por que a correção automática funciona (classificação, não resolução), (3) objetivo real: relatórios não notas, (4) aluno como protagonista (monitoria, pleiteio, revisão), (5) fechamento — mais que um número, dados reutilizáveis. | |
+| 2026-04-12 | **Lista completa de 10 módulos avançados validada:** (1) Filosofia, (2) Visão individual (6 docs), (3) Critérios de correção, (4) Correção do professor, (5) Múltiplos arquivos, (6) Pipeline turma toda, (7) Filtros avançados do chat, (8) Prompts customizados, (9) Adicionar/configurar modelos, (10) Relatórios agregados. | Rodada sistemática. |
+| | **Decisões por módulo:** Visão individual: explicar todos os 6 docs + fluxo do pipeline. Prompts: acessível para qualquer professor + details técnico para avançados. Modelos: ensinar professor técnico a adicionar modelo básico (não tutorial completo de todos os parâmetros). | |
+| | **Imagens:** Precisam ser definidas JUNTO com o conteúdo de cada módulo, não depois. Cada módulo precisa de uma lista de prints necessários. | |
+
+## 14. Módulos avançados — conteúdo + imagens por módulo (definição colaborativa 2026-04-12)
+
+> Cada módulo vira um sub-tutorial com contagem própria (hub + sub-páginas). O passo "Pronto" é o hub fixo (10/10). Imagens cropadas (só área relevante, max-height limitado).
+
+### M1. Filosofia do Projeto (o mais importante)
+**Narrativa:** Começa com o PROBLEMA, tom pessoal FGV.
+**5 blocos:** (1) IA não substitui professor — amplia a correção dele, (2) por que correção automática funciona (classificação), (3) objetivo real: relatórios não notas, (4) aluno como protagonista (monitoria FGV, pleiteio preciso, professor economiza tempo, dados ficam), (5) mais que um número — dados reutilizáveis.
+**Imagens:** Print do relatório final como exemplo do "resultado real". Possivelmente print da tela de resultado mostrando avisos/nota.
+**Hyperlink:** No INÍCIO e no FINAL do hub avançado.
+
+### M2. Visão Individual (6 documentos do pipeline)
+**Conteúdo:** Explicar TODOS os 6 docs e a cadeia: Extração Questões → Gabarito → Respostas → Correção → Análise → Relatório. Cada doc é uma etapa. Explicar avisos (amarelo/vermelho): letra ilegível, documento faltante, baixa confiança. Ensinar a baixar PDF vs ver JSON (JSON tem avisos detalhados).
+**Imagens (4):** (1) Tela resultado completa (nota + cards), (2) Relatório Final aberto (👁️), (3) Análise de Habilidades com barras, (4) Correção questão por questão com nota. Todos com crop no conteúdo, não no background.
+
+### M3. Critérios de Correção
+**Conteúdo:** O que são, como subir (upload tipo "Critérios"), formato ideal (rubrica: "Questão 1: 2pts se X, 1pt se parcial"), impacto na precisão (com vs sem). Rápido mas com exemplo concreto.
+**Imagens:** Print do modal upload com tipo "Critérios" selecionado.
+
+### M4. Correção do Professor
+**Conteúdo:** Como subir (upload tipo "Correção do Professor" + selecionar aluno), que fica como documento paralelo para comparação. Fluxo ideal: professor corrige → sobe → IA gera relatórios a partir da correção do professor. Nota para futuro.
+**Imagens:** Print do modal upload com tipo selecionado.
+
+### M5. Múltiplos Arquivos por Documento
+**Conteúdo:** Quando usar (manuscrito + código, enunciado em 2 páginas), como fazer (seleção múltipla no upload), IA agrupa automaticamente.
+**Imagens:** Print do campo de upload mostrando seleção múltipla.
+
+### M6. Pipeline Turma Toda
+**Conteúdo:** Botão verde vs azul, pré-requisito (todas as provas uploaded), opções no padrão, tempo estimado (~5-10min para 30 alunos), painel de tarefas mostrando progresso em paralelo.
+**Imagens:** (1) Botão verde no topo da atividade, (2) Painel de tarefas com vários alunos em paralelo.
+
+### M7. Filtros Avançados do Chat (módulo mais detalhado)
+**Conteúdo:** 5 cenários com passo a passo de filtros para cada um:
+1. "Avaliar turma específica" → filtrar Matéria + Turma. Print dos filtros configurados + pergunta + resposta.
+2. "Acompanhar aluno ao longo do tempo" → filtrar só Aluno. Print dos filtros + resposta longitudinal.
+3. "Questão que todos erraram" → filtrar Atividade + Tipo "Correção". Print.
+4. "Devolutiva para pais" → filtrar Aluno + relatórios. Print.
+5. "Trade-off: docs originais vs relatórios" → explicar custo/contexto/precisão.
++ Como trocar o modelo no chat (dropdown). Print.
++ Limite de documentos e estratégia de seleção.
+**Imagens (muitas):** Print para cada cenário mostrando filtros configurados. Print mostrando contagem de docs. Print mostrando troca de modelo. Prints REAIS com dados da Matematica-V.
+
+### M8. Prompts Customizados
+**Conteúdo:** O que é um prompt ("instruções em português para a IA"), como acessar (toggle Advanced Mode), os 6 prompts e o que cada um controla, exemplo prático ("relatórios mais curtos"), cuidados (testar com 1 aluno), como reverter. Acessível para qualquer professor + details técnico.
+**Imagens (3):** (1) Tela de prompts com os 6 listados, (2) Um prompt aberto em edição, (3) Onde fica o toggle Advanced Mode.
+
+### M9. Adicionar/Configurar Modelos
+**Conteúdo:** Quando adicionar ("se sua instituição tem API key própria"), passo a passo (provedor → modelo → apelido → salvar), parâmetros avançados em details colapsável, como escolher qual modelo usar no pipeline e no chat.
+**Imagens (3):** (1) Modal 'Adicionar Modelo' preenchido, (2) Lista de modelos disponíveis, (3) Dropdown de modelo no pipeline.
+
+### M10. Relatórios Agregados (Turma/Matéria)
+**Conteúdo:** Diferença turma vs matéria (escopo), como gerar (aba Desempenho → Gerar), o que esperar (narrativa, não só números), como baixar PDF, JSON com avisos detalhados (erros, docs faltantes). Conexão com chat: checkboxes → discutir resultados.
+**Imagens (2):** (1) Tab Desempenho com botão Gerar, (2) Relatório gerado mostrando conteúdo narrativo + botão download.
 
 ---
 
