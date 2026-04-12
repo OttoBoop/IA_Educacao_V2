@@ -2669,6 +2669,31 @@
             margin: 16px 0;
         }
 
+        .tutorial-details {
+            margin-top: 12px;
+            padding: 10px 14px;
+            background: var(--bg-hover);
+            border-radius: 8px;
+            font-size: 0.9rem;
+            color: var(--text-muted);
+            cursor: pointer;
+        }
+
+        .tutorial-details summary {
+            font-size: 0.85rem;
+            color: var(--text-muted);
+            text-decoration: underline;
+        }
+
+        .tutorial-details[open] summary {
+            margin-bottom: 8px;
+        }
+
+        .tutorial-details p {
+            margin: 0;
+            line-height: 1.5;
+        }
+
         .tutorial-nav {
             display: flex;
             justify-content: space-between;
@@ -5716,20 +5741,15 @@
         </div>
     </div>
 
-    <!-- Modal: Tutorial Interativo -->
+    <!-- Modal: Tutorial Interativo (Camada 1) -->
     <div class="modal-overlay modal-tutorial" id="modal-tutorial">
         <div class="modal">
             <div class="modal-header">
-                <h3 class="modal-title">📖 Tutorial - NOVO CR</h3>
+                <h3 class="modal-title">📖 Passo a Passo — NOVO CR</h3>
                 <button class="modal-close" onclick="closeTutorial()">×</button>
             </div>
 
-            <div class="tutorial-tabs">
-                <button class="tutorial-tab active" data-mode="quick" onclick="switchTutorialMode('quick')">⚡ 3 Passos
-                    Essenciais</button>
-                <button class="tutorial-tab" data-mode="full" onclick="switchTutorialMode('full')">📚 Completo (12
-                    passos)</button>
-            </div>
+            <!-- Tabs removidos: camada 1 é o único modo agora -->
 
             <div class="modal-body">
                 <div class="tutorial-content" id="tutorial-content">
@@ -6128,289 +6148,214 @@
         // ============================================================
 
         // Conteúdo do Tutorial
+        // ============================================================
+        // TUTORIAL CAMADA 1 — passo a passo mínimo obrigatório
+        // ============================================================
         const tutorialContent = {
             quick: [
                 {
-                    title: '🎯 O que é o NOVO CR?',
-                    subtitle: 'Relatórios de performance que vão além da nota',
+                    title: '🗺️ Visão de 10 segundos',
+                    subtitle: 'Tudo que você precisa fazer, resumido',
                     image: '/static/tutorial-images-v2/01-dashboard-anotado.png',
                     content: `
-                        <p>O NOVO CR <strong>não é só um corretor automático</strong>. Seu objetivo principal é:</p>
-                        <ul>
-                            <li><strong>📊 Relatórios de performance</strong> - Entender onde o aluno precisa melhorar, não só a nota</li>
-                            <li><strong>🤖 Auxiliar a correção</strong> - Não substituir você! Tem aba para sua correção manual</li>
-                            <li><strong>💬 Chat para o aluno</strong> - O aluno pode conversar com a IA para entender seus erros</li>
-                            <li><strong>📈 Visão consolidada</strong> - Juntando várias atividades, vemos o progresso do aluno</li>
-                        </ul>
-                        <div class="tutorial-highlight">
-                            <strong>💡 Filosofia:</strong> A IA cria documentos que <em>auxiliam</em> sua avaliação, gerando insights que seriam difíceis de ver manualmente.
-                        </div>
-                    `
-                },
-                {
-                    title: '📂 Estrutura: Matéria → Turma → Atividade',
-                    subtitle: 'Organize suas aulas para criar relatórios poderosos',
-                    image: '/static/tutorial-images-v2/02-sidebar-anotado.png',
-                    content: `
-                        <p>A organização é simples:</p>
+                        <p>Você vai seguir este caminho:</p>
                         <ol>
-                            <li><strong>📚 Matéria</strong> - A disciplina (Matemática, Português, etc.)</li>
-                            <li><strong>👥 Turma</strong> - O grupo de alunos (9º A, 1º EM, etc.)</li>
-                            <li><strong>📝 Atividade</strong> - Uma prova, trabalho ou exercício específico</li>
-                        </ol>
-                        <p>Para cada <strong>Atividade</strong>, você envia:</p>
-                        <ul>
-                            <li><strong>📄 Enunciado</strong> - A prova em branco com as questões</li>
-                            <li><strong>✅ Gabarito</strong> - As respostas corretas</li>
-                            <li><strong>👤 Prova do aluno</strong> - O que cada aluno respondeu</li>
-                        </ul>
-                        <div class="tutorial-highlight">
-                            <strong>▶️ Para começar:</strong> Clique em "+ Nova Matéria" no menu lateral.
-                        </div>
-                    `
-                },
-                {
-                    title: '⚙️ O Pipeline: Como a IA Processa',
-                    subtitle: 'Cada etapa gera um documento que você pode revisar',
-                    image: '/static/tutorial-images-v2/06-fluxo-correcao.png',
-                    content: `
-                        <p>O <strong>Pipeline</strong> são etapas que a IA executa em sequência:</p>
-                        <ol>
-                            <li><strong>🔎 Extração de Questões</strong> - Lê o enunciado e identifica cada questão e seu tipo</li>
-                            <li><strong>🧩 Extração de Gabarito</strong> - Estrutura as respostas corretas</li>
-                            <li><strong>📝 Extração de Respostas</strong> - Lê o que o aluno escreveu</li>
-                            <li><strong>✅ Correção</strong> - Compara respostas com gabarito e atribui notas</li>
-                            <li><strong>📊 Análise de Habilidades</strong> - Identifica pontos fortes e fracos</li>
-                            <li><strong>📄 Relatório Final</strong> - Feedback completo para o aluno</li>
+                            <li><strong>Criar matéria</strong> → <strong>turma</strong> → <strong>alunos</strong> → <strong>atividade</strong></li>
+                            <li><strong>Subir 3 documentos:</strong> enunciado, gabarito, resposta do aluno</li>
+                            <li><strong>Clicar um botão</strong> para a IA processar</li>
+                            <li><strong>Ler o relatório</strong> e <strong>conversar com a IA</strong> sobre os resultados</li>
                         </ol>
                         <div class="tutorial-highlight">
-                            <strong>👁️ Cada etapa gera um documento</strong> que você pode visualizar e editar. A correção do professor tem sua própria aba!
+                            <strong>⏱️ Em ~5 minutos</strong> você terá sua primeira prova analisada. Vamos lá!
                         </div>
                     `
                 },
                 {
-                    title: '💬 O Chat: Aluno Aprende com a IA',
-                    subtitle: 'O objetivo final é ajudar o aluno a entender seus erros',
-                    image: '/static/tutorial-images-v2/03-chat-anotado.png',
-                    content: `
-                        <p>O <strong>Chat com IA</strong> é onde tudo se conecta:</p>
-                        <ul>
-                            <li><strong>Para você (professor):</strong> "Quais questões a turma mais errou?" / "Faça um relatório da turma"</li>
-                            <li><strong>Para o aluno:</strong> "Por que eu errei a questão 3?" / "Me explique como resolver isso"</li>
-                            <li><strong>Visão consolidada:</strong> Juntando várias atividades, o chat mostra a evolução do aluno ao longo do tempo</li>
-                        </ul>
-                        <p><strong>Use os filtros:</strong> Selecione matéria, turma ou aluno para a IA focar nos documentos certos.</p>
-                        <div class="tutorial-highlight">
-                            <strong>🎯 O objetivo final:</strong> O aluno entende onde precisa melhorar e <em>como</em> melhorar, não só vê a nota.
-                        </div>
-                    `
-                }
-            ],
-            full: [
-                {
-                    title: '🎯 A Filosofia do NOVO CR',
-                    subtitle: 'Muito além de um corretor automático',
-                    image: '/static/tutorial-images-v2/01-dashboard-anotado.png',
-                    content: `
-                        <p>O NOVO CR foi criado com um objetivo claro:</p>
-                        <ul>
-                            <li><strong>📊 Relatórios que vão além da nota</strong> - Entender <em>por que</em> o aluno errou, não só <em>quanto</em> ele errou</li>
-                            <li><strong>🧑‍🏫 Auxiliar, não substituir</strong> - A IA cria documentos de apoio. Sua correção manual tem aba própria!</li>
-                            <li><strong>💬 Aprendizado ativo</strong> - O aluno pode conversar com a IA para entender seus erros</li>
-                            <li><strong>📈 Visão de longo prazo</strong> - Juntando várias atividades, vemos evolução e padrões</li>
-                        </ul>
-                        <div class="tutorial-highlight">
-                            <strong>💡 Pense assim:</strong> A IA faz o trabalho pesado de análise, você faz o julgamento pedagógico final.
-                        </div>
-                    `
-                },
-                {
-                    title: '📚 Passo 1: Crie uma Matéria',
-                    subtitle: 'Organize suas disciplinas',
+                    title: '📚 Criar uma Matéria',
+                    subtitle: 'A disciplina que agrupa suas turmas',
                     image: '/static/tutorial-images-v2/05-nova-materia-anotado.png',
                     content: `
-                        <p><strong>Matéria = Disciplina</strong> que agrupa todas as turmas:</p>
+                        <p>No menu lateral, clique em <strong>"+ Nova Matéria"</strong>.</p>
                         <ol>
-                            <li>Clique em <strong>"+ Nova Matéria"</strong> no rodapé do menu lateral</li>
-                            <li><strong>Nome:</strong> Digite o nome da disciplina (ex: "Matemática")</li>
-                            <li><strong>Descrição:</strong> Opcional - ex: "Matemática básica"</li>
+                            <li><strong>Nome:</strong> O nome da disciplina (ex.: "Matemática", "Cálculo 1")</li>
+                            <li><strong>Descrição:</strong> Opcional — pode deixar em branco</li>
                             <li><strong>Nível:</strong> Escolha o nível de ensino</li>
                         </ol>
                         <div class="tutorial-highlight">
-                            <strong>💡 NÃO coloque o ano aqui!</strong> O ano fica na Turma.
+                            <strong>💡 NÃO coloque o ano aqui!</strong> O ano vai na Turma, no próximo passo.
                         </div>
+                        <details class="tutorial-details"><summary>🔍 Curioso? Ver detalhes</summary>
+                        <p>Uma matéria pode ter muitas turmas (ex.: "Matemática" com turmas de 2024 e 2025). Por isso o ano fica separado.</p>
+                        </details>
                     `
                 },
                 {
-                    title: '👥 Passo 2: Crie uma Turma',
-                    subtitle: 'Agrupe seus alunos por ano letivo',
+                    title: '👥 Criar uma Turma',
+                    subtitle: 'O grupo de alunos dentro da matéria',
                     image: '/static/tutorial-images-v2/07-nova-turma.png',
                     content: `
-                        <p><strong>Turma = Grupo de alunos em um ano específico:</strong></p>
+                        <p>Dentro da matéria, clique em <strong>"+ Nova Turma"</strong>.</p>
                         <ol>
-                            <li>Clique na matéria para abri-la</li>
-                            <li>Clique em <strong>"+ Nova Turma"</strong></li>
-                            <li><strong>Nome:</strong> Ex: "9º Ano A" ou "Turma Manhã"</li>
-                            <li><strong>Ano Letivo:</strong> 2024, 2025...</li>
+                            <li><strong>Nome:</strong> Ex.: "9º Ano A", "Turma Manhã"</li>
+                            <li><strong>Ano Letivo:</strong> 2025, 2026...</li>
                             <li><strong>Período:</strong> Opcional (Manhã, Tarde...)</li>
                         </ol>
                         <div class="tutorial-highlight">
-                            <strong>📅 O ANO fica aqui!</strong> Assim você pode ter várias turmas da mesma matéria em anos diferentes.
+                            <strong>📅 O ano fica aqui!</strong> Assim uma matéria pode ter turmas de anos diferentes.
                         </div>
                     `
                 },
                 {
-                    title: '👤 Passo 3: Adicione Alunos',
-                    subtitle: 'Individual ou em lote via CSV',
+                    title: '👤 Adicionar Alunos',
+                    subtitle: 'Crie novos ou adicione existentes à turma',
                     image: '/static/tutorial-images-v2/08-adicionar-alunos.png',
                     content: `
-                        <p><strong>Duas formas de adicionar alunos:</strong></p>
-                        <ul>
-                            <li><strong>🔍 Selecionar Existente:</strong> Busque alunos já cadastrados no sistema</li>
-                            <li><strong>➕ Criar Novo:</strong> Cadastre nome, matrícula e email</li>
-                        </ul>
-                        <p><strong>Para muitos alunos:</strong></p>
-                        <ul>
-                            <li>Use <strong>"Importar CSV"</strong> com colunas: nome, matricula, email</li>
-                            <li>Alunos podem ser compartilhados entre turmas</li>
-                        </ul>
+                        <p>Dentro da turma, clique em <strong>"+ Adicionar Aluno"</strong>.</p>
+                        <p>Use a aba <strong>"Criar Novo"</strong>:</p>
+                        <ol>
+                            <li><strong>Nome Completo</strong> do aluno</li>
+                            <li><strong>Matrícula</strong> (opcional)</li>
+                            <li><strong>Email</strong> (opcional)</li>
+                        </ol>
+                        <details class="tutorial-details"><summary>🔍 Curioso? Ver detalhes</summary>
+                        <p>A aba <strong>"Selecionar Existente"</strong> serve para adicionar a esta turma um aluno que já existe no sistema (ex.: de outra turma). Um mesmo aluno pode participar de múltiplas turmas — isso permite acompanhar seu progresso ao longo do tempo.</p>
+                        </details>
                     `
                 },
                 {
-                    title: '📝 Passo 4: Crie uma Atividade',
-                    subtitle: 'Prova, trabalho ou exercício',
+                    title: '📝 Criar uma Atividade',
+                    subtitle: 'A prova, trabalho ou exercício que será analisado',
                     image: '/static/tutorial-images-v2/09-nova-atividade.png',
                     content: `
-                        <p>Dentro de uma turma, crie a atividade:</p>
+                        <p>Dentro da turma, clique em <strong>"+ Nova Atividade"</strong>.</p>
                         <ol>
-                            <li>Clique na turma para abri-la</li>
-                            <li>Clique em <strong>"+ Nova Atividade"</strong></li>
-                            <li><strong>Nome:</strong> Ex: "Prova Bimestral"</li>
-                            <li><strong>Tipo:</strong> Prova, Trabalho, Exercício...</li>
-                            <li><strong>Nota Máxima:</strong> Valor total da atividade</li>
+                            <li><strong>Nome:</strong> Ex.: "Prova Bimestral", "Lista 3"</li>
+                            <li><strong>Tipo:</strong> Prova, Trabalho, Exercício ou Outro</li>
+                            <li><strong>Nota Máxima:</strong> Valor total (padrão: 10)</li>
                         </ol>
                         <div class="tutorial-highlight">
-                            <strong>📝 Próximo passo:</strong> Enviar os documentos da atividade!
+                            <strong>💡 Dica:</strong> Se tiver dúvida, use tipo "Prova" — serve pra quase tudo.
                         </div>
                     `
                 },
                 {
-                    title: '📤 Passo 5: Envie Enunciado e Gabarito',
-                    subtitle: 'Os documentos base da atividade',
+                    title: '📤 Subir os 3 Documentos Obrigatórios',
+                    subtitle: 'Enunciado + Gabarito + Resposta do aluno',
                     image: '/static/tutorial-images-v2/10-upload-docs.png',
                     content: `
-                        <p>Na página da atividade, faça upload dos documentos:</p>
-                        <ul>
-                            <li><strong>📄 Enunciado:</strong> A prova em branco com as questões</li>
-                            <li><strong>✅ Gabarito:</strong> As respostas corretas</li>
-                            <li><strong>📋 Critérios:</strong> (Opcional) Como avaliar cada questão</li>
-                        </ul>
-                        <p><strong>Formatos aceitos:</strong> PDF, imagens (JPG, PNG), Word</p>
+                        <p>Na página da atividade, clique em <strong>"Upload"</strong> para enviar:</p>
+                        <ol>
+                            <li><strong>📄 Enunciado</strong> — a prova em branco com as questões</li>
+                            <li><strong>✅ Gabarito</strong> — as respostas corretas</li>
+                            <li><strong>👤 Prova Respondida</strong> — o que o aluno escreveu (selecione o aluno no dropdown)</li>
+                        </ol>
+                        <p><strong>Formatos aceitos:</strong> PDF, imagem (JPG, PNG), Word (.docx).</p>
                         <div class="tutorial-highlight">
-                            <strong>🖱️ Arraste os arquivos</strong> ou clique para selecionar!
+                            <strong>💡</strong> Separar enunciado e gabarito em arquivos diferentes melhora a precisão da IA. Mas funciona junto também.
                         </div>
+                        <details class="tutorial-details"><summary>🔍 Curioso? Ver detalhes</summary>
+                        <p>Cada documento pode ter múltiplos arquivos (ex.: parte manuscrita + parte digital). Existem também documentos <strong>opcionais</strong> (critérios de correção, correção do professor) que refinam a análise — você pode explorar depois.</p>
+                        </details>
                     `
                 },
                 {
-                    title: '📚 Passo 6: Envie as Provas dos Alunos',
-                    subtitle: 'Upload individual ou em lote',
-                    image: '/static/tutorial-images-v2/11-upload-lote.png',
-                    content: `
-                        <p><strong>Duas formas de enviar provas respondidas:</strong></p>
-                        <ul>
-                            <li><strong>Individual:</strong> Upload → Tipo "Prova do Aluno" → Selecione o aluno</li>
-                            <li><strong>Em Lote:</strong> Use "Upload Provas em Lote" para várias de uma vez</li>
-                        </ul>
-                        <div class="tutorial-highlight">
-                            <strong>💡 Dica para lote:</strong> Nomeie os arquivos com o nome do aluno (ex: "joao_silva.pdf") para identificação automática!
-                        </div>
-                    `
-                },
-                {
-                    title: '⚙️ Passo 7: Execute o Pipeline',
-                    subtitle: 'Processe as provas com IA',
+                    title: '⚡ Rodar a Pipeline',
+                    subtitle: 'A IA analisa tudo em sequência',
                     image: '/static/tutorial-images-v2/12-botoes-pipeline.png',
                     content: `
-                        <p>Na página da atividade, você tem <strong>4 botões</strong> principais:</p>
-                        <ul>
-                            <li><strong>⚙️ Executar Etapa:</strong> Executa uma etapa específica</li>
-                            <li><strong>⚡ Pipeline Aluno:</strong> Processa todas as etapas para um aluno</li>
-                            <li><strong>🚀 Pipeline Todos os Alunos:</strong> Processa toda a turma de uma vez</li>
-                            <li><strong>📚 Upload em Lote:</strong> Envia várias provas</li>
-                        </ul>
+                        <p>Na página da atividade, clique no botão azul <strong>"⚡ Pipeline Aluno"</strong>.</p>
+                        <ol>
+                            <li>Selecione o aluno</li>
+                            <li><strong>Deixe tudo no padrão</strong> — não mude as opções avançadas</li>
+                            <li>Clique em <strong>"Executar"</strong></li>
+                        </ol>
+                        <p>A IA vai rodar 6 etapas automaticamente (extração, correção, análise, relatório).</p>
                         <div class="tutorial-highlight">
-                            <strong>▶️ Recomendação:</strong> Use "Pipeline Todos os Alunos" para processar todos os alunos de uma vez!
+                            <strong>🚀 Tem mais de um aluno?</strong> Use o botão verde "Pipeline Todos os Alunos" para processar a turma inteira de uma vez.
                         </div>
+                        <details class="tutorial-details"><summary>🔍 Curioso? Ver detalhes</summary>
+                        <p>As opções avançadas (escolher modelo por etapa, forçar re-execução) são para quando você já conhece o sistema. Por enquanto, o padrão funciona bem.</p>
+                        </details>
                     `
                 },
                 {
-                    title: '🤖 Passo 8: Configure a IA',
-                    subtitle: 'Escolha modelos por etapa (opcional)',
-                    image: '/static/tutorial-images-v2/13-config-pipeline.png',
-                    content: `
-                        <p>Ao executar o pipeline, você pode configurar:</p>
-                        <ul>
-                            <li><strong>Modo:</strong> Um aluno específico ou turma toda</li>
-                            <li><strong>Modelo Padrão:</strong> IA que fará todas as etapas</li>
-                            <li><strong>Etapas:</strong> Selecione quais executar</li>
-                            <li><strong>Modelo por Etapa:</strong> (Opcional) Customize cada etapa</li>
-                        </ul>
-                        <div class="tutorial-highlight">
-                            <strong>💡 Simples:</strong> Por padrão, um modelo faz tudo. Só customize se necessário!
-                        </div>
-                    `
-                },
-                {
-                    title: '👁️ Visualize os Resultados',
-                    subtitle: 'Confira o trabalho da IA',
+                    title: '✅ Verificar se Terminou',
+                    subtitle: 'O painel de tarefas mostra o progresso',
                     image: '/static/tutorial-images-v2/14-resultados.png',
                     content: `
-                        <p>Após o pipeline, a página de resultados mostra:</p>
+                        <p>Olhe a <strong>sidebar esquerda</strong>, seção "Tarefas":</p>
                         <ul>
-                            <li><strong>📌 Documentos do Aluno:</strong> Prova respondida, sua correção manual</li>
-                            <li><strong>🤖 Etapas da IA:</strong> Cada documento gerado pelo pipeline</li>
-                            <li><strong>📊 Resultado Final:</strong> Nota, habilidades, relatório</li>
+                            <li><strong>⏳</strong> = etapa em andamento</li>
+                            <li><strong>✅</strong> = etapa concluída</li>
+                            <li><strong>❌</strong> = erro (raro — tente de novo)</li>
                         </ul>
-                        <p>Use o <strong>ícone 👁️</strong> para visualizar cada documento.</p>
+                        <p>Quando <strong>todas as etapas virarem ✅</strong>, aparece um <strong>toast verde</strong>: "Pipeline concluído com sucesso!"</p>
                         <div class="tutorial-highlight">
-                            <strong>🧑‍🏫 Sua correção:</strong> A aba "Correção do Professor" é para sua avaliação manual!
+                            <strong>👉 Agora clique em "Ver Resultado"</strong> do aluno para ver o que a IA gerou.
                         </div>
                     `
                 },
                 {
-                    title: '💬 Use o Chat para Relatórios',
-                    subtitle: 'Pergunte à IA sobre desempenho',
-                    image: '/static/tutorial-images-v2/03-chat-anotado.png',
+                    title: '📊 Abrir os Documentos Gerados',
+                    subtitle: 'Veja o que a IA produziu para cada etapa',
+                    image: '/static/tutorial-images-v2/14-resultados.png',
                     content: `
-                        <p>O <strong>Chat com IA</strong> lê todos os documentos e responde:</p>
+                        <p>Na tela de resultado do aluno, você verá:</p>
                         <ul>
-                            <li><strong>📊 Para a turma:</strong> "Quais questões a turma mais errou?"</li>
-                            <li><strong>👤 Para um aluno:</strong> "Como está o desempenho do João?"</li>
-                            <li><strong>📈 Evolução:</strong> "Compare as provas 1 e 2"</li>
+                            <li><strong>📊 Resultado Final</strong> — nota, habilidades, feedback geral</li>
+                            <li><strong>📌 Documentos do Aluno</strong> — o que foi enviado</li>
+                            <li><strong>🤖 Documentos da IA</strong> — os 6 gerados pelo pipeline</li>
                         </ul>
-                        <p><strong>Use os filtros</strong> para focar em matéria, turma ou aluno específico.</p>
+                        <p>Clique no <strong>ícone 👁️</strong> para visualizar cada documento.</p>
+                        <div class="tutorial-highlight">
+                            <strong>📄 Os mais importantes:</strong> "Relatório Final" (feedback completo) e "Análise de Habilidades" (pontos fortes/fracos).
+                        </div>
                     `
                 },
                 {
-                    title: '🎓 O Aluno Também Usa o Chat!',
-                    subtitle: 'Aprendizado personalizado',
-                    image: '/static/tutorial-images-v2/04-chat-exemplos.png',
+                    title: '💬 Conversar com a IA sobre os Resultados',
+                    subtitle: 'O momento "aha" — chat filtrado pelos documentos',
+                    image: '/static/tutorial-images-v2/03-chat-anotado.png',
                     content: `
-                        <p>O aluno pode acessar o chat e perguntar:</p>
+                        <p>Ainda na tela de resultado, <strong>marque os documentos</strong> que quer discutir (checkboxes ao lado de cada um) e clique em <strong>"💬 Perguntar no chat sobre os selecionados"</strong>.</p>
+                        <p>O chat abre já filtrado. Experimente perguntar:</p>
                         <ul>
-                            <li><strong>"Por que eu errei a questão 3?"</strong></li>
-                            <li><strong>"Me ensina a resolver isso"</strong></li>
-                            <li><strong>"Onde eu preciso melhorar?"</strong></li>
-                            <li><strong>"Como estudar para a próxima prova?"</strong></li>
+                            <li>"Me faça um resumo de onde esse aluno mais errou"</li>
+                            <li>"O que ele acertou bem e onde pode melhorar?"</li>
+                            <li>"Compare a performance dele com a do gabarito"</li>
                         </ul>
                         <div class="tutorial-highlight">
-                            <strong>🎯 Objetivo final:</strong> O aluno entende onde errou e <em>como</em> melhorar, não só vê a nota!
+                            <strong>💡 Dica:</strong> Sua conversa existe só enquanto a aba estiver aberta. Salve o que for importante.
+                        </div>
+                    `
+                },
+                {
+                    title: '🎉 Pronto! E agora?',
+                    subtitle: 'Você completou o básico — há muito mais para explorar',
+                    image: '/static/tutorial-images-v2/01-dashboard-anotado.png',
+                    content: `
+                        <p>Parabéns! Você já sabe usar o NOVO CR para:</p>
+                        <ul>
+                            <li>✅ Criar matérias, turmas, alunos e atividades</li>
+                            <li>✅ Subir documentos e rodar a pipeline</li>
+                            <li>✅ Ler relatórios e conversar com a IA</li>
+                        </ul>
+                        <p><strong>Quando quiser ir além:</strong></p>
+                        <ul>
+                            <li>📋 <strong>Critérios de correção</strong> — defina como avaliar cada questão</li>
+                            <li>🧑‍🏫 <strong>Correção do professor</strong> — suba sua própria correção para comparar</li>
+                            <li>🔧 <strong>Prompts customizados</strong> — ajuste o que a IA faz em cada etapa</li>
+                            <li>📈 <strong>Relatórios de turma/matéria</strong> — visão consolidada</li>
+                        </ul>
+                        <div class="tutorial-highlight">
+                            <strong>ⓘ Lembre-se:</strong> Ao longo do app, passe o mouse nos ícones <strong>ⓘ</strong> e <strong>?</strong> para ver ajuda contextual.
                         </div>
                     `
                 }
             ]
         };
 
+        // Camada 1 é o único modo agora
         let currentTutorialMode = 'quick';
         let currentTutorialStep = 0;
 
