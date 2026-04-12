@@ -4693,15 +4693,18 @@
             <div class="modal-body">
                 <div class="form-group">
                     <label class="form-label">Nome da Matéria *</label>
-                    <input type="text" class="form-input" id="input-materia-nome" placeholder="Ex: Matemática">
+                    <input type="text" class="form-input" id="input-materia-nome" placeholder="Ex: Matemática"
+                        data-tooltip="A disciplina que agrupa turmas (ex.: 'Cálculo 1', 'Português'). NÃO coloque o ano aqui — o ano fica na turma." data-tooltip-pos="top">
                 </div>
                 <div class="form-group">
                     <label class="form-label">Descrição</label>
-                    <textarea class="form-textarea" id="input-materia-desc" placeholder="Descrição opcional"></textarea>
+                    <textarea class="form-textarea" id="input-materia-desc" placeholder="Descrição opcional"
+                        data-tooltip="Opcional. Uma nota curta sobre a matéria (ex.: 'Curso do professor Silva')" data-tooltip-pos="top"></textarea>
                 </div>
                 <div class="form-group">
                     <label class="form-label">Nível de Ensino</label>
-                    <select class="form-select" id="input-materia-nivel">
+                    <select class="form-select" id="input-materia-nivel"
+                        data-tooltip="Ajuda a organizar suas matérias. Não afeta o processamento." data-tooltip-pos="top">
                         <option value="outro">Outro</option>
                         <option value="fundamental_1">Fundamental I</option>
                         <option value="fundamental_2">Fundamental II</option>
@@ -4727,15 +4730,18 @@
             <div class="modal-body">
                 <div class="form-group">
                     <label class="form-label">Nome da Turma *</label>
-                    <input type="text" class="form-input" id="input-turma-nome" placeholder="Ex: 9º Ano A">
+                    <input type="text" class="form-input" id="input-turma-nome" placeholder="Ex: 9º Ano A"
+                        data-tooltip="O grupo de alunos dentro da matéria (ex.: '9º Ano A', 'Turma Manhã')" data-tooltip-pos="top">
                 </div>
                 <div class="form-group">
                     <label class="form-label">Ano Letivo</label>
-                    <input type="number" class="form-input" id="input-turma-ano" placeholder="2024" value="2024">
+                    <input type="number" class="form-input" id="input-turma-ano" placeholder="2024" value="2024"
+                        data-tooltip="Ano em que esta turma está ativa. Permite ter turmas da mesma matéria em anos diferentes." data-tooltip-pos="top">
                 </div>
                 <div class="form-group">
                     <label class="form-label">Período</label>
-                    <input type="text" class="form-input" id="input-turma-periodo" placeholder="Ex: Manhã">
+                    <input type="text" class="form-input" id="input-turma-periodo" placeholder="Ex: Manhã"
+                        data-tooltip="Opcional. Manhã, Tarde, Noite — só para organização." data-tooltip-pos="top">
                 </div>
                 <input type="hidden" id="input-turma-materia-id">
             </div>
@@ -4756,11 +4762,13 @@
             <div class="modal-body">
                 <div class="form-group">
                     <label class="form-label">Nome da Atividade *</label>
-                    <input type="text" class="form-input" id="input-ativ-nome" placeholder="Ex: Prova 1 - Bimestre 1">
+                    <input type="text" class="form-input" id="input-ativ-nome" placeholder="Ex: Prova 1 - Bimestre 1"
+                        data-tooltip="Nome da prova, trabalho ou exercício que será analisado pela IA" data-tooltip-pos="top">
                 </div>
                 <div class="form-group">
                     <label class="form-label">Tipo</label>
-                    <select class="form-select" id="input-ativ-tipo">
+                    <select class="form-select" id="input-ativ-tipo"
+                        data-tooltip="Serve para organização. Na dúvida, use 'Prova' — não afeta o processamento." data-tooltip-pos="top">
                         <option value="prova">Prova</option>
                         <option value="trabalho">Trabalho</option>
                         <option value="exercicio">Exercício</option>
@@ -4769,7 +4777,8 @@
                 </div>
                 <div class="form-group">
                     <label class="form-label">Nota Máxima</label>
-                    <input type="number" class="form-input" id="input-ativ-nota" value="10" step="0.5">
+                    <input type="number" class="form-input" id="input-ativ-nota" value="10" step="0.5"
+                        data-tooltip="O valor total da atividade (padrão: 10). A IA usa isso para calcular a nota do aluno." data-tooltip-pos="top">
                 </div>
                 <input type="hidden" id="input-ativ-turma-id">
             </div>
@@ -4799,7 +4808,8 @@
                 <!-- Tab: Select Existing -->
                 <div id="tab-selecionar-aluno">
                     <input type="text" class="form-input" id="input-busca-aluno" placeholder="Buscar por nome..."
-                        oninput="filtrarAlunos()">
+                        oninput="filtrarAlunos()"
+                        data-tooltip="Busca em TODOS os alunos do sistema. Um aluno pode participar de várias turmas — basta selecioná-lo aqui." data-tooltip-pos="top">
                     <div id="lista-alunos" class="aluno-list"></div>
                 </div>
 
@@ -4807,15 +4817,18 @@
                 <div id="tab-criar-aluno" style="display: none;">
                     <div class="form-group">
                         <label class="form-label">Nome Completo *</label>
-                        <input type="text" class="form-input" id="input-aluno-nome" placeholder="Ex: João da Silva">
+                        <input type="text" class="form-input" id="input-aluno-nome" placeholder="Ex: João da Silva"
+                            data-tooltip="Nome completo do aluno. Será usado nos relatórios e filtros do chat." data-tooltip-pos="top">
                     </div>
                     <div class="form-group">
                         <label class="form-label">Matrícula</label>
-                        <input type="text" class="form-input" id="input-aluno-matricula" placeholder="Ex: 2024001">
+                        <input type="text" class="form-input" id="input-aluno-matricula" placeholder="Ex: 2024001"
+                            data-tooltip="Opcional. Útil para importação em lote e identificação." data-tooltip-pos="top">
                     </div>
                     <div class="form-group">
                         <label class="form-label">Email</label>
-                        <input type="email" class="form-input" id="input-aluno-email" placeholder="email@exemplo.com">
+                        <input type="email" class="form-input" id="input-aluno-email" placeholder="email@exemplo.com"
+                            data-tooltip="Opcional. Pode ser usado futuramente para compartilhar relatórios." data-tooltip-pos="top">
                     </div>
                 </div>
 
@@ -4957,7 +4970,8 @@
             <div class="modal-body">
                 <div class="form-group">
                     <label class="form-label">Modo de identificação</label>
-                    <select class="form-select" id="input-upload-provas-modo">
+                    <select class="form-select" id="input-upload-provas-modo"
+                        data-tooltip="Como o sistema identifica de qual aluno é cada arquivo. 'Matrícula': busca o número no nome do arquivo. 'Nome': busca o nome do aluno." data-tooltip-pos="top">
                         <option value="matricula">Matrícula no nome do arquivo</option>
                         <option value="nome">Nome do aluno no arquivo</option>
                     </select>
@@ -5135,7 +5149,8 @@
                 </div>
                 <div class="form-group">
                     <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
-                        <input type="checkbox" id="input-pipeline-force-rerun">
+                        <input type="checkbox" id="input-pipeline-force-rerun"
+                            data-tooltip="Deixe DESMARCADO se for a primeira vez. Só marque para refazer etapas com um modelo diferente." data-tooltip-pos="top">
                         Forçar re-execução (criar nova versão)
                     </label>
                     <small style="color: var(--text-muted); display: block; margin-top: 4px;">
