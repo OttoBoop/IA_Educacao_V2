@@ -943,6 +943,31 @@
             background: var(--bg-input);
         }
 
+        .chat-doc-select {
+            width: 18px;
+            height: 18px;
+            cursor: pointer;
+            accent-color: var(--primary);
+            flex-shrink: 0;
+            margin-right: 4px;
+        }
+
+        .chat-doc-selection-bar {
+            position: sticky;
+            bottom: 0;
+            background: var(--bg-card);
+            border: 2px solid var(--primary);
+            border-radius: 12px;
+            padding: 12px 20px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            margin-top: 16px;
+            box-shadow: 0 -4px 24px rgba(0,0,0,0.4);
+            z-index: 50;
+        }
+
         /* === FASE 3: Destaque para Documentos Gerados === */
         .doc-group-highlight {
             border: 2px solid var(--success);
@@ -8533,6 +8558,50 @@
             }
         }
 
+        // Chat doc selection helpers
+        window._chatDocSelection = window._chatDocSelection || new Set();
+
+        function toggleChatDocSelection(docId) {
+            if (window._chatDocSelection.has(docId)) {
+                window._chatDocSelection.delete(docId);
+            } else {
+                window._chatDocSelection.add(docId);
+            }
+            updateChatDocSelectionUI();
+        }
+
+        function updateChatDocSelectionUI() {
+            const bar = document.getElementById('chat-doc-selection-bar');
+            const countEl = document.getElementById('chat-doc-selection-count');
+            if (!bar) return;
+            const n = window._chatDocSelection.size;
+            bar.style.display = n > 0 ? 'flex' : 'none';
+            if (countEl) {
+                countEl.textContent = n === 1 ? '1 documento selecionado' : `${n} documentos selecionados`;
+            }
+        }
+
+        function selectAllChatDocs() {
+            document.querySelectorAll('.chat-doc-select').forEach(cb => {
+                const docId = cb.dataset.docId;
+                cb.checked = true;
+                window._chatDocSelection.add(docId);
+            });
+            updateChatDocSelectionUI();
+        }
+
+        function clearChatDocSelection() {
+            window._chatDocSelection.clear();
+            document.querySelectorAll('.chat-doc-select').forEach(cb => { cb.checked = false; });
+            updateChatDocSelectionUI();
+        }
+
+        function enviarSelecaoParaChat() {
+            const ids = Array.from(window._chatDocSelection);
+            if (ids.length === 0) return;
+            showChat(ids);
+        }
+
         function renderDocumentoItem(doc, options = {}) {
             const metaItems = [];
             if (doc.criado_em) metaItems.push(`Enviado: ${formatDateTime(doc.criado_em)}`);
@@ -8560,8 +8629,13 @@
                 actions.push(`<button class="btn btn-sm btn-danger" onclick="deleteDocumento('${doc.id}')">Excluir</button>`);
             }
 
+            const chatCheckbox = options.showSelectForChat
+                ? `<input type="checkbox" class="chat-doc-select" data-doc-id="${doc.id}" onchange="toggleChatDocSelection('${doc.id}')" title="Selecionar para o chat" />`
+                : '';
+
             return `
                 <div class="doc-item doc-item-static" data-tipo="${doc.tipo || ''}" data-aluno-id="${doc.aluno_id || ''}">
+                    ${chatCheckbox}
                     <div class="doc-icon">${options.icon || '📄'}</div>
                     <div class="doc-info">
                         <div class="doc-name">${escapeHtml(doc.display_name || doc.nome_arquivo || doc.id)}</div>
@@ -8572,7 +8646,7 @@
             `;
         }
 
-        function renderDocumentoGrupo({ titulo, tipo, atividadeId, alunoId, docs, onAdicionar, icon, showVisualizar, isGenerated }) {
+        function renderDocumentoGrupo({ titulo, tipo, atividadeId, alunoId, docs, onAdicionar, icon, showVisualizar, isGenerated, showSelectForChat }) {
             const list = docs || [];
             const adicionarLabel = list.length ? '+ Novo' : 'Upload';
             const btnAdicionar = onAdicionar
@@ -8604,6 +8678,7 @@
                     showVisualizar,
                     showTrocar: Boolean(onAdicionar),
                     showExcluir: true,
+                    showSelectForChat,
                     onTrocar: `openModalUploadSubstituir('${atividadeId}', '${tipo}', '${alunoId || ''}', '${doc.id}')`
                 })).join('')
                 : `<div class="doc-meta" style="padding: 8px 0;">Nenhum documento enviado.</div>`;
@@ -11350,7 +11425,8 @@
                     docs: docsPorTipo[tipo] || [],
                     icon: tipo === 'correcao_professor' ? '🧑‍🏫' : '👤',
                     onAdicionar: `openModalUploadAlunoTipo('${atividadeId}', '${alunoId}', '${tipo}')`,
-                    showVisualizar: true
+                    showVisualizar: true,
+                    showSelectForChat: true
                 })).join('');
                 const gruposGerados = tiposGerados.map(tipo => renderDocumentoGrupo({
                     titulo: labels[tipo] || tipo,
@@ -11361,7 +11437,8 @@
                     icon: '🤖',
                     onAdicionar: '',
                     showVisualizar: true,
-                    isGenerated: true  // Fase 3: marcar como gerado pela IA
+                    isGenerated: true,
+                    showSelectForChat: true
                 })).join('');
 
                 // Só mostrar resultado final se completo
@@ -11421,7 +11498,18 @@
                         <div class="card-header"><h3 class="card-title">🤖 Comparativo das Etapas (IA)</h3></div>
                         ${gruposGerados || '<div class="empty-state"><div class="empty-icon">🤖</div><div class="empty-title">Nenhuma etapa gerada</div></div>'}
                     </div>
+                    <div id="chat-doc-selection-bar" class="chat-doc-selection-bar" style="display: none;">
+                        <span id="chat-doc-selection-count">0 documentos selecionados</span>
+                        <div style="display: flex; gap: 8px;">
+                            <button class="btn btn-sm" onclick="selectAllChatDocs()">Selecionar todos</button>
+                            <button class="btn btn-sm" onclick="clearChatDocSelection()">Limpar</button>
+                            <button class="btn btn-primary" id="chat-doc-send-btn" onclick="enviarSelecaoParaChat()">
+                                💬 Perguntar no chat sobre os selecionados
+                            </button>
+                        </div>
+                    </div>
                 `;
+                window._chatDocSelection = new Set();
                 void hydrateResultadoAlunoBreadcrumb(requestId, atividadeId, alunoId, atividadeData, alunoData, atividadeHint);
             } catch (e) {
                 if (!isContentRequestActive(requestId, 'resultado_aluno')) return;
