@@ -63,7 +63,7 @@ const TIPO_DOC_LABELS = {
 // ============================================================
 // FUNÇÃO PRINCIPAL: showChat
 // ============================================================
-async function showChat() {
+async function showChat(preselectedDocIds = null) {
     currentView = 'chat';
     const requestId = beginContentRequest('chat');
     document.getElementById('content').innerHTML = renderChatLoadingView();
@@ -96,6 +96,9 @@ async function showChat() {
 
     // Setup event listeners
     setupChatEventListeners();
+
+    // Sinalizar pre-seleção pendente antes do load de docs
+    window._chatPendingDocSelection = preselectedDocIds;
 
     // Carregar documentos disponíveis
     loadAvailableDocuments(requestId);
@@ -1468,12 +1471,28 @@ async function loadAvailableDocuments(requestId = null) {
         }
 
         updateDocumentsList();
+
+        if (window._chatPendingDocSelection) {
+            setChatDocumentSelection(window._chatPendingDocSelection);
+            window._chatPendingDocSelection = null;
+        }
     } catch (e) {
         if (requestId && !isContentRequestActive(requestId, 'chat')) return;
         console.error('Erro ao carregar documentos:', e);
         window.chatState.context.availableDocs = [];
         updateDocumentsList();
     }
+}
+
+function setChatDocumentSelection(documentIds) {
+    const ctx = window.chatState.context;
+    ctx.mode = 'manual';
+    ctx.includedDocs = new Set(documentIds);
+    ctx.excludedDocs.clear();
+    ctx.manualOverrides.included.clear();
+    ctx.manualOverrides.excluded.clear();
+    updateDocumentsList();
+    updateContextStatus();
 }
 
 function updateDocumentsList() {
