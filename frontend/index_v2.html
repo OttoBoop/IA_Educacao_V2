@@ -10507,6 +10507,8 @@
                     return `
                         <div style="display: flex; align-items: center; justify-content: space-between; padding: 8px 12px; border-bottom: 1px solid var(--border);">
                             <div style="display: flex; align-items: center; gap: 8px;">
+                                <input type="checkbox" class="chat-doc-select" data-doc-id="${doc.id}"
+                                    onchange="toggleChatDocSelection('${doc.id}')" title="Selecionar para o chat" />
                                 <span class="badge badge-primary">${ext || '📄'}</span>
                                 <span>${label}</span>
                             </div>
@@ -10613,7 +10615,20 @@
                 }
 
                 // B-T2: Render grouped runs
-                container.innerHTML = renderDesempenhoRuns(runs, level, entityId);
+                window._chatDocSelection = new Set();
+                container.innerHTML = renderDesempenhoRuns(runs, level, entityId) + `
+                    <div id="chat-doc-selection-bar" class="chat-doc-selection-bar" style="display: none;">
+                        <span id="chat-doc-selection-count" style="font-weight: 600;">0 documentos selecionados</span>
+                        <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+                            <button class="btn btn-sm" onclick="selectAllChatDocs()">Selecionar todos</button>
+                            <button class="btn btn-sm" onclick="clearChatDocSelection()">Limpar</button>
+                            <button class="btn btn-primary" onclick="enviarSelecaoParaChat()"
+                                data-tooltip="Abrir o Chat com IA já filtrado por estes documentos" data-tooltip-pos="top">
+                                💬 Perguntar no chat sobre os selecionados
+                            </button>
+                        </div>
+                    </div>
+                `;
 
                 // Gap-3: Auto-expand first doc of latest run
                 if (runs.length > 0 && runs[0].docs && runs[0].docs.length > 0) {
