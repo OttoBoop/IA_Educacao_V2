@@ -2413,6 +2413,109 @@
             cursor: pointer;
         }
 
+        /* ============================================================
+           WELCOME SCREAM — banner gritão para primeiro acesso (v2)
+           ============================================================ */
+        .welcome-scream {
+            max-width: 620px !important;
+            border: 6px solid transparent;
+            background-clip: padding-box;
+            position: relative;
+            animation: modalBounceIn 0.4s cubic-bezier(0.34, 1.56, 0.64, 1), screamBorderPulse 1.5s ease-in-out infinite;
+            box-shadow: 0 0 40px rgba(255, 0, 0, 0.4), 0 0 80px rgba(255, 0, 0, 0.15);
+        }
+
+        @keyframes screamBorderPulse {
+            0%, 100% { border-color: #e53e3e; box-shadow: 0 0 40px rgba(255, 0, 0, 0.4); }
+            50% { border-color: #ecc94b; box-shadow: 0 0 40px rgba(236, 201, 75, 0.4); }
+        }
+
+        .scream-badge {
+            font-size: 1.8rem;
+            font-weight: 900;
+            color: #ecc94b;
+            animation: screamPulse 1.5s ease-in-out infinite;
+            margin-bottom: 12px;
+            letter-spacing: 4px;
+        }
+
+        @keyframes screamPulse {
+            0%, 100% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.7; transform: scale(1.05); }
+        }
+
+        .scream-title {
+            font-size: 1.6rem;
+            font-weight: 900;
+            color: #fc8181;
+            text-transform: uppercase;
+            line-height: 1.3;
+            margin-bottom: 16px;
+        }
+
+        .scream-intro {
+            font-size: 1rem;
+            color: var(--text);
+            margin-bottom: 8px;
+        }
+
+        .scream-warning {
+            font-size: 1rem;
+            color: #fc8181;
+            margin-bottom: 24px;
+            line-height: 1.5;
+        }
+
+        .btn-scream-cta {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            background: linear-gradient(135deg, #38a169, #2f855a);
+            color: #fff;
+            font-size: 1.2rem;
+            font-weight: 700;
+            padding: 16px 40px;
+            border-radius: 12px;
+            border: none;
+            cursor: pointer;
+            animation: screamCtaPulse 2s ease-in-out infinite;
+            transition: transform 0.15s;
+        }
+
+        .btn-scream-cta:hover {
+            transform: scale(1.05);
+        }
+
+        @keyframes screamCtaPulse {
+            0%, 100% { box-shadow: 0 0 0 0 rgba(56, 161, 105, 0.5); }
+            50% { box-shadow: 0 0 0 12px rgba(56, 161, 105, 0); }
+        }
+
+        .scream-skip {
+            margin-top: 16px;
+        }
+
+        .scream-skip a {
+            font-size: 0.8rem;
+            color: var(--text-muted);
+            text-decoration: underline;
+            opacity: 0.6;
+        }
+
+        .scream-skip a:hover {
+            opacity: 1;
+        }
+
+        .scream-tip {
+            margin-top: 20px;
+            font-size: 0.85rem;
+            color: var(--text-muted);
+            padding: 10px 16px;
+            background: var(--bg-hover);
+            border-radius: 8px;
+            border-left: 3px solid var(--primary);
+        }
+
         /* Chat Modal */
         .modal-chat .modal {
             height: 80vh;
@@ -3666,54 +3769,37 @@
                 right: 16px;
             }
 
-            /* Welcome modal — compact spacing for CTA above fold */
+            /* Welcome scream — mobile compact */
             .modal-welcome .modal-body {
-                padding: 12px !important;
+                padding: 16px !important;
             }
 
-            .welcome-badge {
-                margin-bottom: 6px;
-                font-size: 0.7rem;
-                padding: 2px 8px;
+            .welcome-scream {
+                border-width: 4px;
             }
 
-            .welcome-subtitle {
+            .scream-badge {
+                font-size: 1.3rem;
                 margin-bottom: 8px;
-                font-size: 0.85rem;
             }
 
-            .welcome-section {
-                padding: 8px;
-                margin-bottom: 6px;
-            }
-
-            .welcome-section h4 {
-                font-size: 0.8rem;
-                margin-bottom: 6px;
-            }
-
-            .model-chip {
-                padding: 3px 8px;
-                font-size: 0.75rem;
-            }
-
-            .flow-card {
-                padding: 8px;
-            }
-
-            .flow-card-icon {
+            .scream-title {
                 font-size: 1.2rem;
-                margin-bottom: 2px;
+                margin-bottom: 12px;
             }
 
-            .flow-card h5 {
+            .scream-intro,
+            .scream-warning {
+                font-size: 0.9rem;
+            }
+
+            .btn-scream-cta {
+                font-size: 1rem;
+                padding: 14px 28px;
+            }
+
+            .scream-tip {
                 font-size: 0.8rem;
-                margin-bottom: 2px;
-            }
-
-            .flow-card p {
-                font-size: 0.7rem;
-                line-height: 1.3;
             }
 
             .chat-examples {
@@ -3730,22 +3816,7 @@
                 font-size: 1rem;
             }
 
-            .welcome-tips {
-                margin-top: 4px;
-                margin-bottom: 4px;
-                gap: 4px;
-            }
-
-            .tip-item {
-                padding: 6px 10px;
-                font-size: 0.75rem;
-                gap: 6px;
-            }
-
-            .welcome-footer {
-                margin-top: 8px;
-                padding-top: 8px;
-            }
+            /* (welcome-tips, tip-item, welcome-footer removed — replaced by scream-* classes) */
         }
 
         /* ============================================================
@@ -3766,15 +3837,7 @@
                 font-size: 1.25rem;
             }
 
-            /* Flow cards single column */
-            .flow-cards {
-                grid-template-columns: 1fr;
-            }
-
-            /* Welcome modal adjustments */
-            .welcome-title {
-                font-size: 1.25rem;
-            }
+            /* (flow-cards, welcome-title responsive removed — replaced by scream-* classes) */
 
             /* Modal tabs more compact and organized */
             .tabs {
@@ -3958,16 +4021,7 @@
                 padding: 10px 12px;
             }
 
-            /* Model chips in welcome - wrap nicely */
-            .model-chips {
-                flex-wrap: wrap;
-                gap: 6px;
-            }
-
-            .model-chip {
-                padding: 6px 10px;
-                font-size: 0.75rem;
-            }
+            /* (model-chips mobile removed — replaced by scream-* classes) */
 
             /* Modal close button larger on phone */
             .modal-close {
@@ -4013,15 +4067,7 @@
                 width: 100%;
             }
 
-            /* Welcome modal adjustments */
-            .welcome-footer {
-                flex-direction: column;
-                gap: 12px;
-            }
-
-            .welcome-footer .btn {
-                width: 100%;
-            }
+            /* (welcome-footer mobile removed — replaced by scream-* classes) */
 
             /* Alert stack */
             .alert {
@@ -5638,91 +5684,33 @@
         </div>
     </div>
 
-    <!-- Modal: Boas-vindas ao Protótipo -->
+    <!-- Modal: Boas-vindas GRITÃO (v2) -->
     <div class="modal-overlay modal-welcome" id="modal-welcome">
-        <div class="modal">
-            <div class="modal-body" style="padding: 28px;">
-                <span class="welcome-badge">🧪 PROTÓTIPO</span>
-                <h2 class="welcome-title">🎓 Bem-vindo ao NOVO CR</h2>
-                <p class="welcome-subtitle">Sistema de correção automática de provas e análise educacional com IA</p>
+        <div class="modal welcome-scream">
+            <div class="modal-body" style="padding: 32px; text-align: center;">
+                <div class="scream-badge">!!!  ⚠️  !!!</div>
 
-                <div class="welcome-section">
-                    <h4>🤖 Modelos Disponíveis</h4>
-                    <div class="model-chips">
-                        <span class="model-chip">
-                            <span class="model-icon">🟢</span>
-                            OpenAI (GPT)
-                        </span>
-                        <span class="model-chip">
-                            <span class="model-icon">🔵</span>
-                            Google (Gemini)
-                        </span>
-                        <span class="model-chip">
-                            <span class="model-icon">🟠</span>
-                            Anthropic (Claude)
-                        </span>
-                    </div>
+                <h1 class="scream-title">PARE! PRIMEIRA VEZ AQUI?<br>LEIA ANTES DE FECHAR!!!</h1>
+
+                <p class="scream-intro">
+                    Este é o <strong>NOVO CR</strong> — um protótipo de correção e análise pedagógica com IA.
+                </p>
+
+                <p class="scream-warning">
+                    Se você ainda não sabe o que fazer, <strong>NÃO feche esta janela</strong>.<br>
+                    Em poucos minutos você sai daqui com sua primeira prova analisada.
+                </p>
+
+                <button class="btn btn-scream-cta" onclick="closeWelcome(); openTutorial();">
+                    ➡️  QUERO COMEÇAR AGORA
+                </button>
+
+                <div class="scream-skip">
+                    <a href="#" onclick="event.preventDefault(); closeWelcome();">já conheço, pular (não recomendado)</a>
                 </div>
 
-                <div class="welcome-section">
-                    <h4>📋 Dois Fluxos Principais</h4>
-                    <div class="flow-cards">
-                        <div class="flow-card" onclick="closeWelcome(); showDashboard()">
-                            <div class="flow-card-icon">⚙️</div>
-                            <h5>Pipeline de Correção</h5>
-                            <p>Adicione provas, gabarito e critérios → Execute o pipeline → Receba correções e
-                                relatórios individuais automaticamente</p>
-                        </div>
-                        <div class="flow-card" onclick="closeWelcome(); showChat()">
-                            <div class="flow-card-icon">💬</div>
-                            <h5>Chat com Documentos</h5>
-                            <p>Converse com a IA sobre todos os documentos. Use filtros para gerar relatórios
-                                específicos de turmas, matérias ou alunos</p>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="welcome-section">
-                    <h4>🔍 Exemplos de Perguntas ao Chat</h4>
-                    <div class="chat-examples">
-                        <div class="chat-example">
-                            <span class="chat-example-icon">📊</span>
-                            <span>"Faça um relatório da turma 3A"</span>
-                        </div>
-                        <div class="chat-example">
-                            <span class="chat-example-icon">👤</span>
-                            <span>"Como está o desempenho do João?"</span>
-                        </div>
-                        <div class="chat-example">
-                            <span class="chat-example-icon">❓</span>
-                            <span>"Quais questões os alunos mais erraram?"</span>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="welcome-tips">
-                    <div class="tip-item">
-                        <span class="tip-icon">💡</span>
-                        <span><strong>Claude</strong> faz relatórios mais elaborados, <strong>Gemini</strong> é mais
-                            rápido!</span>
-                    </div>
-                    <div class="tip-item tip-warning">
-                        <span class="tip-icon">💰</span>
-                        <span>Protótipo custeado por <strong>Otávio Bopp</strong> — use com moderação 🙏</span>
-                    </div>
-                </div>
-
-                <div class="welcome-footer">
-                    <label>
-                        <input type="checkbox" id="welcome-dont-show">
-                        Não mostrar novamente
-                    </label>
-                    <div style="display: flex; gap: 12px;">
-                        <button class="btn btn-tutorial" onclick="openTutorial()">
-                            <span style="font-size: 1.2rem;">🎓</span> Tutorial Interativo
-                        </button>
-                        <button class="btn btn-primary" onclick="closeWelcome()">Começar a Usar →</button>
-                    </div>
+                <div class="scream-tip">
+                    💡 Ao longo do app você vai ver ícones <strong>ⓘ</strong> e <strong>?</strong> — passe o mouse para ver ajuda contextual.
                 </div>
             </div>
         </div>
@@ -7257,8 +7245,9 @@
         }
 
         function closeWelcome() {
-            // Always persist dismissal so reloads don't re-show the overlay
+            // Persist both flags (v1 for compat, v2 for new scream banner)
             localStorage.setItem('novocr-welcomed', 'true');
+            localStorage.setItem('novocr-welcomed-v2', 'true');
             document.getElementById('modal-welcome').classList.remove('active');
             // Also stop pulsing when user closes welcome
             const helpBtn = document.getElementById('help-btn');
@@ -7351,7 +7340,8 @@
         }
 
         function checkFirstVisit() {
-            const welcomed = localStorage.getItem('novocr-welcomed');
+            // Use v2 flag so old users also see the new scream banner
+            const welcomed = localStorage.getItem('novocr-welcomed-v2');
             if (!welcomed) {
                 setTimeout(() => openWelcome(), 500);
             }
