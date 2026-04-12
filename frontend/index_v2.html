@@ -6423,10 +6423,14 @@
                             <ol>
                                 <li>Na página da atividade, clique em <strong>"Upload"</strong></li>
                                 <li>Escolha tipo <strong>"📋 Critérios de Correção"</strong></li>
-                                <li>Suba um PDF/Word descrevendo: pontuação por questão, critérios de pontuação parcial, o que vale ponto e o que não vale</li>
+                                <li>Suba um PDF/Word descrevendo a rubrica de avaliação</li>
                             </ol>
+                            <p><strong>Exemplo de formato ideal:</strong></p>
+                            <div style="background: var(--bg); padding: 12px 16px; border-radius: 8px; font-size: 0.9rem; margin: 8px 0;">
+                                <em>Questão 1 (2,0 pts):</em> 2,0 se resposta completa com justificativa. 1,0 se resposta correta sem justificativa. 0,5 se abordagem correta mas erro de cálculo. 0,0 se em branco ou totalmente errada.
+                            </div>
                             <div class="tutorial-highlight">
-                                <strong>💡 Resultado:</strong> A IA usa seus critérios para dar notas mais precisas. Sem critérios, ela infere a pontuação pelo gabarito — funciona, mas é menos preciso.
+                                <strong>💡 Impacto:</strong> <strong>Com</strong> critérios, a IA sabe exatamente o que vale ponto — notas mais precisas. <strong>Sem</strong> critérios, ela infere pelo gabarito — funciona, mas é menos preciso.
                             </div>
                         `
                     }
@@ -6585,16 +6589,52 @@
                         `
                     },
                     {
-                        title: '🔍 Mais Cenários e Dicas',
-                        subtitle: 'Questão problemática, devolutiva, troca de modelo',
-                        image: '',
+                        title: '🔍 Cenário: Questão Problemática',
+                        subtitle: 'Investigar uma questão que muitos erraram',
+                        image: '/static/tutorial-images-v2/cropped/chat-filtros-crop.png',
                         content: `
-                            <p><strong>Questão que todos erraram:</strong> Filtre Atividade + Tipo "Correção". Pergunte: <em>"Analise as respostas da questão 5. O que os alunos estão entendendo errado?"</em></p>
-                            <p><strong>Devolutiva para os pais:</strong> Filtre Aluno + todos os relatórios. Pergunte: <em>"Faça um resumo do desempenho para uma reunião de pais, em linguagem acessível."</em></p>
-                            <p><strong>Trocar o modelo:</strong> No topo do chat há um dropdown para escolher qual IA usar. Modelos diferentes têm estilos diferentes de resposta.</p>
+                            <p><strong>Objetivo:</strong> "O que os alunos estão entendendo errado na questão 5?"</p>
+                            <ol>
+                                <li>Selecione a <strong>Atividade</strong> no filtro</li>
+                                <li>Em <strong>Tipos</strong>, selecione "Correção" (para ver as respostas individuais)</li>
+                                <li>Pergunte: <em>"Analise as respostas da questão 5. O que os alunos estão entendendo errado? Qual conceito está faltando?"</em></li>
+                            </ol>
+                            <div class="tutorial-highlight">
+                                <strong>💡</strong> Incluir as correções (não só relatórios) permite que a IA veja exatamente o que cada aluno respondeu.
+                            </div>
+                        `
+                    },
+                    {
+                        title: '🔍 Cenário: Devolutiva para Pais',
+                        subtitle: 'Preparar resumo em linguagem acessível',
+                        image: '/static/tutorial-images-v2/cropped/chat-filtro-materia-crop.png',
+                        content: `
+                            <p><strong>Objetivo:</strong> Resumo para reunião de pais</p>
+                            <ol>
+                                <li>Selecione o <strong>Aluno</strong> no filtro</li>
+                                <li>Em <strong>Tipos</strong>, selecione "Relatório Final" e "Análise de Habilidades"</li>
+                                <li>Pergunte: <em>"Faça um resumo do desempenho para uma reunião de pais, em linguagem acessível e positiva."</em></li>
+                            </ol>
+                            <div class="tutorial-highlight">
+                                <strong>💡</strong> A IA adapta o tom — peça linguagem acessível e ela evita jargão técnico.
+                            </div>
+                        `
+                    },
+                    {
+                        title: '🔍 Dicas Avançadas do Chat',
+                        subtitle: 'Trade-offs, modelo e inversão de seleção',
+                        image: '/static/tutorial-images-v2/cropped/chat-filtros-crop.png',
+                        content: `
+                            <p><strong>Docs originais vs relatórios:</strong></p>
+                            <ul>
+                                <li><strong>Só relatórios</strong> = resposta mais rápida, mais barata, visão geral</li>
+                                <li><strong>Com originais</strong> = a IA vê detalhes que o relatório pode ter omitido — melhor para poucos alunos</li>
+                            </ul>
+                            <p><strong>Trocar o modelo:</strong> No topo do chat há um dropdown. Modelos diferentes dão respostas diferentes.</p>
                             <div class="tutorial-highlight">
                                 <strong>↔️ Inverter seleção:</strong> Troca marcados por não-marcados. Útil quando quer excluir poucos docs em vez de selecionar muitos.
                             </div>
+                            <p><strong>⚠️ Menos documentos = respostas mais precisas e baratas.</strong> Selecione só o que é relevante.</p>
                         `
                     }
                 ],
