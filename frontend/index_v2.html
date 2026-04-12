@@ -2626,6 +2626,8 @@
 
         .tutorial-image {
             width: 100%;
+            max-height: 300px;
+            object-fit: contain;
             border-radius: 12px;
             border: 1px solid var(--border);
             box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
@@ -6213,6 +6215,9 @@
                         <div class="tutorial-highlight">
                             <strong>⏱️ Em ~5 minutos</strong> você terá sua primeira prova analisada. Vamos lá!
                         </div>
+                        <div class="tutorial-highlight" style="margin-top: 8px; background: rgba(236, 201, 75, 0.1); border-left-color: #ecc94b;">
+                            <strong>💡 Dica:</strong> Ao longo do app, ícones <strong>ⓘ</strong> e <strong>?</strong> mostram ajuda contextual. Passe o mouse para ver.
+                        </div>
                     `
                 },
                 {
@@ -6383,181 +6388,382 @@
                             <li>✅ Subir documentos e rodar a pipeline</li>
                             <li>✅ Ler relatórios e conversar com a IA</li>
                         </ul>
+                        <p><a href="#" onclick="event.preventDefault(); openTutorialModule('filosofia')" style="color: var(--primary); font-weight: 600;">🎯 Quer saber o que este sistema faz e por quê? Leia a Filosofia do Projeto</a></p>
                         <p><strong>Tutoriais avançados:</strong></p>
                         <ul class="tutorial-advanced-links">
-                            <li><a href="#" onclick="event.preventDefault(); goToTutorialStep(10)">📋 Critérios de correção</a> — defina pesos por questão</li>
-                            <li><a href="#" onclick="event.preventDefault(); goToTutorialStep(11)">🧑‍🏫 Correção do professor</a> — suba sua correção manual</li>
-                            <li><a href="#" onclick="event.preventDefault(); goToTutorialStep(12)">📎 Múltiplos arquivos</a> — manuscrito + código no mesmo documento</li>
-                            <li><a href="#" onclick="event.preventDefault(); goToTutorialStep(13)">🚀 Pipeline turma toda</a> — processar todos os alunos de uma vez</li>
-                            <li><a href="#" onclick="event.preventDefault(); goToTutorialStep(14)">🔍 Filtros avançados do chat</a> — 5 dropdowns, cascata, inversão</li>
-                            <li><a href="#" onclick="event.preventDefault(); goToTutorialStep(15)">🔧 Prompts customizados</a> — modifique o comportamento da IA</li>
-                            <li><a href="#" onclick="event.preventDefault(); goToTutorialStep(16)">📊 Relatórios agregados</a> — desempenho de turma e matéria</li>
-                            <li><a href="#" onclick="event.preventDefault(); goToTutorialStep(17)">🎯 Filosofia do projeto</a> — o porquê por trás do NOVO CR</li>
+                            <li><a href="#" onclick="event.preventDefault(); openTutorialModule('criterios')">📋 Critérios de correção</a> — defina pesos por questão</li>
+                            <li><a href="#" onclick="event.preventDefault(); openTutorialModule('correcao_prof')">🧑‍🏫 Correção do professor</a> — suba sua correção manual</li>
+                            <li><a href="#" onclick="event.preventDefault(); openTutorialModule('multiplos_arquivos')">📎 Múltiplos arquivos</a> — manuscrito + código no mesmo documento</li>
+                            <li><a href="#" onclick="event.preventDefault(); openTutorialModule('pipeline_turma')">🚀 Pipeline turma toda</a> — processar todos os alunos de uma vez</li>
+                            <li><a href="#" onclick="event.preventDefault(); openTutorialModule('visao_individual')">👁️ Visão individual</a> — os 6 documentos gerados pelo pipeline</li>
+                            <li><a href="#" onclick="event.preventDefault(); openTutorialModule('chat_avancado')">🔍 Filtros avançados do chat</a> — cenários práticos de uso</li>
+                            <li><a href="#" onclick="event.preventDefault(); openTutorialModule('prompts')">🔧 Prompts customizados</a> — modifique o comportamento da IA</li>
+                            <li><a href="#" onclick="event.preventDefault(); openTutorialModule('modelos')">🤖 Adicionar modelos</a> — configure novos modelos de IA</li>
+                            <li><a href="#" onclick="event.preventDefault(); openTutorialModule('relatorios')">📊 Relatórios agregados</a> — desempenho de turma e matéria</li>
+                            <li><a href="#" onclick="event.preventDefault(); openTutorialModule('filosofia')">🎯 Filosofia do projeto</a> — o porquê por trás do NOVO CR</li>
                         </ul>
                         <div class="tutorial-highlight">
                             <strong>ⓘ Lembre-se:</strong> Passe o mouse nos ícones <strong>ⓘ</strong> e <strong>?</strong> pelo app para ver ajuda contextual.
                         </div>
                     `
-                },
-                // ============================================================
-                // TUTORIAIS AVANÇADOS (camadas 2 e 3)
-                // Cada tópico = 1 passo. Acessíveis via links no passo "Pronto".
-                // ============================================================
-                {
-                    title: '📋 Critérios de Correção',
-                    subtitle: 'Defina pesos e critérios parciais por questão',
-                    image: '',
-                    content: `
-                        <p>Critérios de correção são um <strong>documento opcional</strong> que você sobe junto com o enunciado e gabarito.</p>
-                        <ol>
-                            <li>Na página da atividade, clique em <strong>"Upload"</strong></li>
-                            <li>Escolha tipo <strong>"📋 Critérios de Correção"</strong></li>
-                            <li>Suba um PDF/Word descrevendo: pontuação por questão, critérios de pontuação parcial, o que vale ponto e o que não vale</li>
-                        </ol>
-                        <div class="tutorial-highlight">
-                            <strong>💡 Resultado:</strong> A IA usa seus critérios para dar notas mais precisas. Sem critérios, ela infere a pontuação pelo gabarito — funciona, mas é menos preciso.
-                        </div>
-                        <p style="margin-top: 16px;"><a href="#" onclick="event.preventDefault(); goToTutorialStep(9)" style="color: var(--text-muted);">← Voltar ao menu de tópicos</a></p>
-                    `
-                },
-                {
-                    title: '🧑‍🏫 Correção do Professor',
-                    subtitle: 'Suba sua correção manual para comparar com a IA',
-                    image: '',
-                    content: `
-                        <p>A "Correção do Professor" é outro <strong>documento opcional</strong>. Não é uma aba especial — é um upload normal:</p>
-                        <ol>
-                            <li>Na página da atividade, clique em <strong>"Upload"</strong></li>
-                            <li>Escolha tipo <strong>"🧑‍🏫 Correção do Professor"</strong></li>
-                            <li>Selecione o <strong>aluno</strong> correspondente</li>
-                            <li>Suba seu arquivo de correção (PDF, imagem, Word)</li>
-                        </ol>
-                        <div class="tutorial-highlight">
-                            <strong>💡 O que muda:</strong> Quando existe uma correção do professor, a IA a utiliza como referência em vez de gerar a sua própria. O relatório final compara as duas visões.
-                        </div>
-                        <p style="margin-top: 16px;"><a href="#" onclick="event.preventDefault(); goToTutorialStep(9)" style="color: var(--text-muted);">← Voltar ao menu de tópicos</a></p>
-                    `
-                },
-                {
-                    title: '📎 Múltiplos Arquivos por Documento',
-                    subtitle: 'Quando um documento tem várias partes',
-                    image: '',
-                    content: `
-                        <p>Cada tipo de documento aceita <strong>múltiplos arquivos</strong>. Exemplos comuns:</p>
-                        <ul>
-                            <li>Aluno respondeu parte <strong>manuscrita</strong> (foto/scan) + parte em <strong>código</strong> (.py)</li>
-                            <li>Enunciado tem <strong>2 páginas</strong> escaneadas separadamente</li>
-                            <li>Gabarito em <strong>PDF</strong> + planilha <strong>Excel</strong> com as notas</li>
-                        </ul>
-                        <p><strong>Como fazer:</strong> No upload, o campo de arquivo aceita seleção múltipla. Selecione todos os arquivos de uma vez, ou faça uploads separados para o mesmo tipo — o sistema agrupa automaticamente.</p>
-                        <div class="tutorial-highlight">
-                            <strong>💡</strong> A IA lê todos os arquivos do mesmo tipo como um documento unificado.
-                        </div>
-                        <p style="margin-top: 16px;"><a href="#" onclick="event.preventDefault(); goToTutorialStep(9)" style="color: var(--text-muted);">← Voltar ao menu de tópicos</a></p>
-                    `
-                },
-                {
-                    title: '🚀 Pipeline Turma Toda',
-                    subtitle: 'Processar todos os alunos de uma vez',
-                    image: '',
-                    content: `
-                        <p>No tutorial básico você usou <strong>"⚡ Pipeline Aluno"</strong> (azul) para um aluno. O botão <strong>"🚀 Pipeline Todos os Alunos"</strong> (verde) faz o mesmo para a turma inteira:</p>
-                        <ol>
-                            <li>Certifique-se de que <strong>todos os alunos</strong> têm suas provas respondidas uploaded</li>
-                            <li>Clique no botão verde <strong>"🚀 Pipeline Todos os Alunos"</strong></li>
-                            <li>Deixe as opções no padrão e clique <strong>"Executar"</strong></li>
-                        </ol>
-                        <p>O painel de tarefas mostra o progresso de cada aluno em paralelo.</p>
-                        <div class="tutorial-highlight">
-                            <strong>⏱️ Tempo:</strong> Depende do número de alunos e do modelo escolhido. Uma turma de 30 alunos com modelo rápido leva ~5-10 minutos.
-                        </div>
-                        <p style="margin-top: 16px;"><a href="#" onclick="event.preventDefault(); goToTutorialStep(9)" style="color: var(--text-muted);">← Voltar ao menu de tópicos</a></p>
-                    `
-                },
-                {
-                    title: '🔍 Filtros Avançados do Chat',
-                    subtitle: 'Os 5 dropdowns que controlam o contexto da IA',
-                    image: '',
-                    content: `
-                        <p>No <strong>"Chat com IA"</strong> (menu lateral), o painel esquerdo tem 5 filtros:</p>
-                        <ol>
-                            <li><strong>👤 Alunos</strong> — filtra documentos de alunos específicos</li>
-                            <li><strong>📚 Matérias</strong> — filtra por disciplina</li>
-                            <li><strong>👥 Turmas</strong> — filtra por turma</li>
-                            <li><strong>📝 Atividades</strong> — filtra por prova/trabalho</li>
-                            <li><strong>📄 Tipos de Documento</strong> — filtra por tipo (relatório, correção, etc.)</li>
-                        </ol>
-                        <p>Os filtros funcionam em <strong>cascata</strong>: selecionar uma matéria carrega automaticamente suas turmas.</p>
-                        <div class="tutorial-highlight">
-                            <strong>💡 Dica avançada:</strong> O botão "Inverter seleção" troca todos os documentos marcados pelos não-marcados — útil quando você quer excluir poucos docs em vez de selecionar muitos.
-                        </div>
-                        <p style="margin-top: 16px;"><a href="#" onclick="event.preventDefault(); goToTutorialStep(9)" style="color: var(--text-muted);">← Voltar ao menu de tópicos</a></p>
-                    `
-                },
-                {
-                    title: '🔧 Prompts Customizados',
-                    subtitle: 'Modifique o que a IA faz em cada etapa do pipeline',
-                    image: '',
-                    content: `
-                        <p>Os prompts controlam o comportamento da IA em cada etapa. Para acessá-los:</p>
-                        <ol>
-                            <li>No menu lateral, clique em <strong>"🧠 Prompts"</strong></li>
-                            <li>Você verá os prompts de cada etapa: extração de questões, gabarito, respostas, correção, análise, relatório</li>
-                            <li>Clique em um prompt para editá-lo</li>
-                        </ol>
-                        <p><strong>Quando usar:</strong> Se a IA está dando resultados estranhos em uma etapa específica, ou se você quer um formato de relatório diferente.</p>
-                        <div class="tutorial-highlight">
-                            <strong>⚠️ Cuidado:</strong> Prompts são poderosos mas sensíveis. Mudanças pequenas podem ter efeitos grandes. Teste com um aluno antes de rodar para a turma toda.
-                        </div>
-                        <details class="tutorial-details"><summary>🔍 Onde fica?</summary>
-                        <p>O item "Prompts" pode estar escondido atrás do modo avançado. Se não aparecer no menu, procure por um toggle "Modo Avançado" ou "Technical Mode" no rodapé do sidebar.</p>
-                        </details>
-                        <p style="margin-top: 16px;"><a href="#" onclick="event.preventDefault(); goToTutorialStep(9)" style="color: var(--text-muted);">← Voltar ao menu de tópicos</a></p>
-                    `
-                },
-                {
-                    title: '📊 Relatórios Agregados',
-                    subtitle: 'Desempenho consolidado de turma e matéria',
-                    image: '',
-                    content: `
-                        <p>Além do relatório individual de cada aluno, o sistema gera relatórios agregados:</p>
-                        <ul>
-                            <li><strong>Nível Turma:</strong> Abra uma turma → aba <strong>"📊 Desempenho"</strong> → <strong>"Gerar Relatório"</strong></li>
-                            <li><strong>Nível Matéria:</strong> Abra uma matéria → aba <strong>"📊 Desempenho"</strong> → <strong>"Gerar Relatório"</strong></li>
-                        </ul>
-                        <p>Esses relatórios analisam: progresso ao longo do tempo, problemas persistentes, perfil da classe, e evolução individual.</p>
-                        <div class="tutorial-highlight">
-                            <strong>💬 Dica:</strong> Após gerar, use os checkboxes ao lado de cada documento gerado e clique "Perguntar no chat" para discutir os resultados com a IA.
-                        </div>
-                        <p style="margin-top: 16px;"><a href="#" onclick="event.preventDefault(); goToTutorialStep(9)" style="color: var(--text-muted);">← Voltar ao menu de tópicos</a></p>
-                    `
-                },
-                {
-                    title: '🎯 Filosofia do Projeto',
-                    subtitle: 'O porquê por trás do NOVO CR',
-                    image: '',
-                    content: `
-                        <p>O NOVO CR foi criado com um princípio central:</p>
-                        <blockquote style="border-left: 3px solid var(--primary); padding: 12px 16px; margin: 12px 0; color: var(--text-muted); font-style: italic;">
-                            A correção automática pode ser muito precisa — a IA não precisa <em>resolver</em> a questão, apenas <em>comparar</em> a resposta ideal com a do aluno. É classificação pura. Mas o objetivo principal <strong>não é</strong> ter uma prova corrigida. É gerar <strong>relatórios que expliquem os erros</strong> e ajudem o aluno a entender onde melhorar.
-                        </blockquote>
-                        <p><strong>Na prática:</strong></p>
-                        <ul>
-                            <li>A decisão final é sempre do <strong>professor</strong></li>
-                            <li>O aluno pode <strong>questionar correções</strong> via chat</li>
-                            <li>Relatórios agregados mostram <strong>padrões</strong> que seriam difíceis de ver manualmente</li>
-                        </ul>
-                        <details class="tutorial-details"><summary>🔍 Tutorial original completo</summary>
-                        <p>O tutorial original do NOVO CR (com filosofia detalhada e todos os 16 passos) está arquivado como referência. Ele contém discussões mais profundas sobre o papel da IA na educação.</p>
-                        </details>
-                        <p style="margin-top: 16px;"><a href="#" onclick="event.preventDefault(); goToTutorialStep(9)" style="color: var(--text-muted);">← Voltar ao menu de tópicos</a></p>
-                    `
                 }
-            ]
+            ],
+            // ============================================================
+            // MÓDULOS AVANÇADOS — cada um é um sub-tutorial independente
+            // Acessíveis via links no hub "Pronto". Contagem própria por módulo.
+            // ============================================================
+            modules: {
+                criterios: [
+                    {
+                        title: '📋 Critérios de Correção',
+                        subtitle: 'Defina pesos e critérios parciais por questão',
+                        image: '',
+                        content: `
+                            <p>Critérios de correção são um <strong>documento opcional</strong> que você sobe junto com o enunciado e gabarito.</p>
+                            <ol>
+                                <li>Na página da atividade, clique em <strong>"Upload"</strong></li>
+                                <li>Escolha tipo <strong>"📋 Critérios de Correção"</strong></li>
+                                <li>Suba um PDF/Word descrevendo: pontuação por questão, critérios de pontuação parcial, o que vale ponto e o que não vale</li>
+                            </ol>
+                            <div class="tutorial-highlight">
+                                <strong>💡 Resultado:</strong> A IA usa seus critérios para dar notas mais precisas. Sem critérios, ela infere a pontuação pelo gabarito — funciona, mas é menos preciso.
+                            </div>
+                        `
+                    }
+                ],
+                correcao_prof: [
+                    {
+                        title: '🧑‍🏫 Correção do Professor',
+                        subtitle: 'Suba sua correção manual — a IA gera relatórios a partir dela',
+                        image: '',
+                        content: `
+                            <p>A "Correção do Professor" é outro <strong>documento opcional</strong>. Não é uma aba especial — é um upload normal:</p>
+                            <ol>
+                                <li>Na página da atividade, clique em <strong>"Upload"</strong></li>
+                                <li>Escolha tipo <strong>"🧑‍🏫 Correção do Professor"</strong></li>
+                                <li>Selecione o <strong>aluno</strong> correspondente</li>
+                                <li>Suba seu arquivo de correção (PDF, imagem, Word)</li>
+                            </ol>
+                            <div class="tutorial-highlight">
+                                <strong>💡 O que muda:</strong> A IA utiliza sua correção como referência para gerar relatórios mais precisos. O fluxo ideal: você corrige manualmente → sobe a correção → a IA amplia com relatórios detalhados que você não teria tempo de escrever.
+                            </div>
+                        `
+                    }
+                ],
+                multiplos_arquivos: [
+                    {
+                        title: '📎 Múltiplos Arquivos por Documento',
+                        subtitle: 'Quando um documento tem várias partes',
+                        image: '',
+                        content: `
+                            <p>Cada tipo de documento aceita <strong>múltiplos arquivos</strong>. Exemplos comuns:</p>
+                            <ul>
+                                <li>Aluno respondeu parte <strong>manuscrita</strong> (foto/scan) + parte em <strong>código</strong> (.py)</li>
+                                <li>Enunciado tem <strong>2 páginas</strong> escaneadas separadamente</li>
+                                <li>Gabarito em <strong>PDF</strong> + planilha <strong>Excel</strong> com as notas</li>
+                            </ul>
+                            <p><strong>Como fazer:</strong> No upload, o campo de arquivo aceita seleção múltipla. Selecione todos os arquivos de uma vez, ou faça uploads separados para o mesmo tipo — o sistema agrupa automaticamente.</p>
+                            <div class="tutorial-highlight">
+                                <strong>💡</strong> A IA lê todos os arquivos do mesmo tipo como um documento unificado.
+                            </div>
+                        `
+                    }
+                ],
+                pipeline_turma: [
+                    {
+                        title: '🚀 Pipeline Turma Toda',
+                        subtitle: 'Processar todos os alunos de uma vez',
+                        image: '',
+                        content: `
+                            <p>No tutorial básico você usou <strong>"⚡ Pipeline Aluno"</strong> (azul) para um aluno. O botão <strong>"🚀 Pipeline Todos os Alunos"</strong> (verde) faz o mesmo para a turma inteira:</p>
+                            <ol>
+                                <li>Certifique-se de que <strong>todos os alunos</strong> têm suas provas respondidas uploaded</li>
+                                <li>Clique no botão verde <strong>"🚀 Pipeline Todos os Alunos"</strong></li>
+                                <li>Deixe as opções no padrão e clique <strong>"Executar"</strong></li>
+                            </ol>
+                            <p>O painel de tarefas mostra o progresso de cada aluno em paralelo.</p>
+                            <div class="tutorial-highlight">
+                                <strong>⏱️ Tempo:</strong> Depende do número de alunos e do modelo escolhido. Uma turma de 30 alunos com modelo rápido leva ~5-10 minutos.
+                            </div>
+                        `
+                    }
+                ],
+                visao_individual: [
+                    {
+                        title: '👁️ Visão Individual — Os 6 Documentos',
+                        subtitle: 'Entenda o que a IA produziu em cada etapa',
+                        image: '',
+                        content: `
+                            <p>Ao clicar "Ver Resultado" de um aluno, você vê os <strong>6 documentos</strong> que a IA gerou, cada um correspondendo a uma etapa do pipeline:</p>
+                            <ol>
+                                <li><strong>🔎 Extração de Questões</strong> — identifica cada questão do enunciado</li>
+                                <li><strong>🧩 Extração de Gabarito</strong> — estrutura as respostas corretas</li>
+                                <li><strong>📝 Extração de Respostas</strong> — lê o que o aluno escreveu</li>
+                                <li><strong>✅ Correção da IA</strong> — compara respostas com gabarito, questão por questão</li>
+                                <li><strong>📊 Análise de Habilidades</strong> — avalia competências e pontos fortes/fracos</li>
+                                <li><strong>📄 Relatório Final</strong> — síntese com nota, feedback e recomendações</li>
+                            </ol>
+                            <div class="tutorial-highlight">
+                                <strong>👁️</strong> Clique no ícone 👁️ de cada documento para ver o conteúdo. Os mais importantes: <strong>Relatório Final</strong> e <strong>Análise de Habilidades</strong>.
+                            </div>
+                        `
+                    },
+                    {
+                        title: '👁️ Avisos e Downloads',
+                        subtitle: 'Entenda os alertas e exporte os resultados',
+                        image: '',
+                        content: `
+                            <p><strong>Avisos (badges coloridos):</strong></p>
+                            <ul>
+                                <li><strong style="color: #ecc94b;">⚠️ Amarelo</strong> — atenção: documento pode estar incompleto ou confiança baixa</li>
+                                <li><strong style="color: #fc8181;">❌ Vermelho</strong> — erro: letra ilegível, documento faltante, ou falha no processamento</li>
+                            </ul>
+                            <p><strong>Exportar resultados:</strong></p>
+                            <ul>
+                                <li><strong>📥 PDF</strong> — relatório formatado, pronto para enviar ao aluno</li>
+                                <li><strong>📄 Markdown</strong> — texto editável</li>
+                                <li><strong>{ } JSON</strong> — dados brutos com avisos detalhados (erros, documentos faltantes, confiança)</li>
+                            </ul>
+                            <div class="tutorial-highlight">
+                                <strong>💡</strong> O PDF é ideal para compartilhar com o aluno. O JSON é útil para quem quer integrar com outros sistemas ou investigar avisos detalhados.
+                            </div>
+                        `
+                    }
+                ],
+                chat_avancado: [
+                    {
+                        title: '🔍 Filtros do Chat — Visão Geral',
+                        subtitle: 'Os 5 dropdowns que controlam o contexto da IA',
+                        image: '',
+                        content: `
+                            <p>No <strong>"Chat com IA"</strong> (menu lateral), o painel esquerdo tem 5 filtros:</p>
+                            <ol>
+                                <li><strong>👤 Alunos</strong> — filtra documentos de alunos específicos</li>
+                                <li><strong>📚 Matérias</strong> — filtra por disciplina</li>
+                                <li><strong>👥 Turmas</strong> — filtra por turma</li>
+                                <li><strong>📝 Atividades</strong> — filtra por prova/trabalho</li>
+                                <li><strong>📄 Tipos de Documento</strong> — filtra por tipo (relatório, correção, etc.)</li>
+                            </ol>
+                            <p>Os filtros funcionam em <strong>cascata</strong>: selecionar uma matéria carrega automaticamente suas turmas.</p>
+                            <div class="tutorial-highlight">
+                                <strong>💡 Menos documentos = respostas mais precisas e baratas.</strong> Selecione só o que é relevante para sua pergunta.
+                            </div>
+                        `
+                    },
+                    {
+                        title: '🔍 Cenário: Avaliar uma Turma',
+                        subtitle: 'Como filtrar para perguntar sobre a turma toda',
+                        image: '',
+                        content: `
+                            <p><strong>Objetivo:</strong> "Quais questões a turma mais errou?"</p>
+                            <ol>
+                                <li>Selecione a <strong>Matéria</strong> no filtro</li>
+                                <li>Selecione a <strong>Turma</strong> (carrega automaticamente)</li>
+                                <li>Em <strong>Tipos</strong>, selecione "Correção" e "Relatório Final"</li>
+                                <li>Pergunte: <em>"Quais questões a turma mais errou? Onde estão as maiores dificuldades?"</em></li>
+                            </ol>
+                            <div class="tutorial-highlight">
+                                <strong>💡</strong> Incluir só correções e relatórios (não os documentos originais) deixa a resposta mais focada e barata.
+                            </div>
+                        `
+                    },
+                    {
+                        title: '🔍 Cenário: Acompanhar um Aluno',
+                        subtitle: 'Relatório longitudinal ao longo do tempo',
+                        image: '',
+                        content: `
+                            <p><strong>Objetivo:</strong> "Como o João evoluiu nas últimas provas?"</p>
+                            <ol>
+                                <li>Selecione o <strong>Aluno</strong> no filtro</li>
+                                <li>Deixe os outros filtros abertos (todas as matérias/turmas)</li>
+                                <li>Em <strong>Tipos</strong>, selecione "Relatório Final" e "Análise de Habilidades"</li>
+                                <li>Pergunte: <em>"Compare o desempenho do João nas últimas 3 atividades. O que melhorou?"</em></li>
+                            </ol>
+                            <div class="tutorial-highlight">
+                                <strong>💡</strong> Para análise profunda de poucos alunos, inclua os documentos originais — a IA vê detalhes que o relatório pode ter omitido.
+                            </div>
+                        `
+                    },
+                    {
+                        title: '🔍 Mais Cenários e Dicas',
+                        subtitle: 'Questão problemática, devolutiva, troca de modelo',
+                        image: '',
+                        content: `
+                            <p><strong>Questão que todos erraram:</strong> Filtre Atividade + Tipo "Correção". Pergunte: <em>"Analise as respostas da questão 5. O que os alunos estão entendendo errado?"</em></p>
+                            <p><strong>Devolutiva para os pais:</strong> Filtre Aluno + todos os relatórios. Pergunte: <em>"Faça um resumo do desempenho para uma reunião de pais, em linguagem acessível."</em></p>
+                            <p><strong>Trocar o modelo:</strong> No topo do chat há um dropdown para escolher qual IA usar. Modelos diferentes têm estilos diferentes de resposta.</p>
+                            <div class="tutorial-highlight">
+                                <strong>↔️ Inverter seleção:</strong> Troca marcados por não-marcados. Útil quando quer excluir poucos docs em vez de selecionar muitos.
+                            </div>
+                        `
+                    }
+                ],
+                prompts: [
+                    {
+                        title: '🔧 Prompts — O que São',
+                        subtitle: 'Instruções em português que controlam a IA',
+                        image: '',
+                        content: `
+                            <p>Prompts são <strong>instruções em português</strong> que dizem à IA o que fazer em cada etapa do pipeline. Você pode editá-los para mudar o comportamento.</p>
+                            <p><strong>Como acessar:</strong></p>
+                            <ol>
+                                <li>No menu lateral, clique em <strong>"🧠 Prompts"</strong></li>
+                                <li>Você verá os prompts de cada etapa: extração de questões, gabarito, respostas, correção, análise, relatório</li>
+                                <li>Clique em um prompt para editá-lo</li>
+                            </ol>
+                            <details class="tutorial-details"><summary>🔍 Não vê "Prompts" no menu?</summary>
+                            <p>O item pode estar escondido atrás do modo avançado. Procure por um toggle "Modo Avançado" ou "Technical Mode" no rodapé do sidebar.</p>
+                            </details>
+                        `
+                    },
+                    {
+                        title: '🔧 Editando Prompts',
+                        subtitle: 'Exemplos práticos e cuidados',
+                        image: '',
+                        content: `
+                            <p><strong>Exemplo:</strong> Se quer relatórios mais curtos, edite o prompt do "Relatório Final" e adicione: <em>"Seja conciso, máximo 1 parágrafo por questão."</em></p>
+                            <p><strong>Quando usar:</strong></p>
+                            <ul>
+                                <li>A IA está dando resultados estranhos em uma etapa</li>
+                                <li>Você quer um formato de relatório diferente</li>
+                                <li>Precisa de critérios específicos que não cabem no documento de critérios</li>
+                            </ul>
+                            <div class="tutorial-highlight">
+                                <strong>⚠️ Cuidado:</strong> Mudanças pequenas podem ter efeitos grandes. Teste com <strong>1 aluno</strong> antes de rodar para a turma toda.
+                            </div>
+                        `
+                    }
+                ],
+                modelos: [
+                    {
+                        title: '🤖 Adicionar um Modelo de IA',
+                        subtitle: 'Configure novos modelos se sua instituição tem API key própria',
+                        image: '',
+                        content: `
+                            <p><strong>Quando adicionar:</strong> Se sua instituição tem API key própria (OpenAI, Anthropic, Google, etc.) e quer usar modelos que não estão na lista.</p>
+                            <ol>
+                                <li>No menu lateral, clique em <strong>"🤖 Modelos de LLM"</strong></li>
+                                <li>Clique em <strong>"+ Adicionar Modelo"</strong></li>
+                                <li>Escolha o <strong>Provedor</strong> (OpenAI, Anthropic, Google...)</li>
+                                <li>Selecione o <strong>Modelo</strong> no dropdown (ou digite manualmente)</li>
+                                <li>Dê um <strong>Apelido</strong> (ex.: "GPT-4o Produção")</li>
+                                <li>Clique em <strong>Salvar</strong></li>
+                            </ol>
+                            <details class="tutorial-details"><summary>🔍 Parâmetros avançados</summary>
+                            <p><strong>Temperatura</strong> (0-2): 0 = determinístico, 0.7 = balanceado. <strong>Max Tokens</strong>: limite de resposta. <strong>Capacidades</strong>: Vision (imagens), Tool Use, Streaming. Na dúvida, deixe tudo no padrão.</p>
+                            </details>
+                        `
+                    },
+                    {
+                        title: '🤖 Escolhendo Modelos no Pipeline e Chat',
+                        subtitle: 'Onde selecionar qual IA usar',
+                        image: '',
+                        content: `
+                            <p><strong>No Pipeline:</strong> Ao executar, há um dropdown "Modelo Padrão" que define qual IA faz todas as etapas.</p>
+                            <p><strong>No Chat:</strong> No topo da janela de chat, outro dropdown permite trocar de modelo a qualquer momento.</p>
+                            <div class="tutorial-highlight">
+                                <strong>💡 Dica:</strong> Modelos mais caros (GPT-4o, Claude Opus) dão resultados melhores. Modelos baratos (GPT-5-mini, Haiku) são mais rápidos e econômicos. Use modelos caros para correções importantes e baratos para testes.
+                            </div>
+                        `
+                    }
+                ],
+                relatorios: [
+                    {
+                        title: '📊 Relatórios de Turma e Matéria',
+                        subtitle: 'Desempenho consolidado além do aluno individual',
+                        image: '',
+                        content: `
+                            <p>Além do relatório individual de cada aluno, o sistema gera relatórios agregados:</p>
+                            <ul>
+                                <li><strong>Nível Turma:</strong> Abra uma turma → aba <strong>"📊 Desempenho"</strong> → <strong>"Gerar Relatório"</strong></li>
+                                <li><strong>Nível Matéria:</strong> Abra uma matéria → aba <strong>"📊 Desempenho"</strong> → <strong>"Gerar Relatório"</strong></li>
+                            </ul>
+                            <p>Esses relatórios analisam: progresso ao longo do tempo, problemas persistentes, perfil da classe, e evolução individual.</p>
+                        `
+                    },
+                    {
+                        title: '📊 Download e Discussão',
+                        subtitle: 'Baixe PDFs e discuta no chat',
+                        image: '',
+                        content: `
+                            <p><strong>Baixar o relatório:</strong></p>
+                            <ul>
+                                <li>Clique no <strong>👁️</strong> para visualizar</li>
+                                <li>Use os botões <strong>📥 PDF</strong> para baixar — esse é o formato ideal para compartilhar</li>
+                                <li>O <strong>{ } JSON</strong> contém dados brutos: avisos de erros, documentos faltantes, notas de confiança</li>
+                            </ul>
+                            <div class="tutorial-highlight">
+                                <strong>💬 Dica:</strong> Use os checkboxes ao lado dos relatórios gerados e clique "Perguntar no chat" para discutir os resultados com a IA.
+                            </div>
+                        `
+                    }
+                ],
+                filosofia: [
+                    {
+                        title: '🎯 O Problema que o NOVO CR Resolve',
+                        subtitle: 'Por que esta ferramenta existe',
+                        image: '',
+                        content: `
+                            <p>Você já terminou uma aula com <strong>fila de alunos</strong> querendo entender suas notas? Monitores que passam horas explicando erros, aluno por aluno? Professores que dão <strong>pontos extras a quem NÃO pede revisão</strong> — só para economizar tempo?</p>
+                            <p>Hoje, professores e monitores gastam muito tempo para que os alunos entendam onde erraram. E essa informação é <strong>descartada</strong> — não vira dado, não vira relatório, não serve para comparações.</p>
+                            <div class="tutorial-highlight">
+                                <strong>O NOVO CR resolve isso.</strong> A IA gera relatórios detalhados automaticamente, e o aluno pode questionar via chat — sem depender do tempo limitado do professor.
+                            </div>
+                        `
+                    },
+                    {
+                        title: '🎯 A IA Não Substitui o Professor',
+                        subtitle: 'Ela amplia a correção que você já fez',
+                        image: '',
+                        content: `
+                            <p>O fluxo ideal:</p>
+                            <ol>
+                                <li>O professor <strong>corrige manualmente</strong> (como sempre fez)</li>
+                                <li>Sobe sua correção no sistema</li>
+                                <li>A IA usa a correção do professor como base para gerar <strong>relatórios detalhados</strong></li>
+                            </ol>
+                            <p>A IA não substitui — ela <strong>amplia</strong>. Transforma a correção em relatórios ricos que o professor não teria tempo de escrever.</p>
+                            <div class="tutorial-highlight">
+                                <strong>💡 Por que funciona tão bem?</strong> A IA não precisa <em>resolver</em> a questão — só precisa <em>comparar</em> a resposta ideal com a do aluno. É classificação pura. Com critérios de correção, a precisão aumenta ainda mais.
+                            </div>
+                        `
+                    },
+                    {
+                        title: '🎯 O Aluno Como Protagonista',
+                        subtitle: 'Entender erros, pleitear notas, estudar melhor',
+                        image: '',
+                        content: `
+                            <p>Com o NOVO CR, o aluno recebe um relatório detalhado: <strong>onde</strong> errou, <strong>por que</strong> errou, <strong>quantos pontos</strong> perdeu em cada questão. Ele não precisa esperar a monitoria.</p>
+                            <p>Se discorda da nota, pode perguntar no chat: <em>"Por que eu perdi pontos na questão 3?"</em> A IA explica com base nos documentos. Se a IA errou, o aluno descobre. Se o aluno errou, ele entende por quê.</p>
+                            <p>O aluno pode então <strong>escrever precisamente</strong> para o professor onde gostaria de revisão — em vez de uma conversa imprecisa de 30 minutos.</p>
+                            <div class="tutorial-highlight">
+                                <strong>Resultado:</strong> O professor gasta menos tempo, o aluno entende mais, e os dados ficam registrados para relatórios longitudinais.
+                            </div>
+                        `
+                    },
+                    {
+                        title: '🎯 Mais que um Número',
+                        subtitle: 'Relatórios, padrões, evolução',
+                        image: '',
+                        content: `
+                            <p>A nota é um <strong>subproduto</strong>. O verdadeiro valor do NOVO CR são os relatórios:</p>
+                            <ul>
+                                <li><strong>Para o aluno:</strong> entender erros, pedir dicas de estudo, identificar conceitos faltantes</li>
+                                <li><strong>Para o professor:</strong> ver padrões da turma, entender dificuldades persistentes, preparar aulas melhores</li>
+                                <li><strong>Para a instituição:</strong> dados longitudinais — acompanhar evolução ao longo de semestres</li>
+                            </ul>
+                            <div class="tutorial-highlight">
+                                <strong>🎯 Objetivo final:</strong> Uma ferramenta de <strong>aprendizado</strong>, não só de avaliação. O aluno entende como melhorar. O professor enxerga o que antes era invisível.
+                            </div>
+                        `
+                    }
+                ]
+            }
         };
 
-        // Camada 1 é o único modo agora
-        let currentTutorialMode = 'quick';
+        // Estado do tutorial
+        let currentTutorialMode = 'basic';  // 'basic' para camada 1
+        let currentTutorialModule = null;   // null = básico, string = nome do módulo
         let currentTutorialStep = 0;
 
         // ========================================
@@ -7406,6 +7612,7 @@
             if (taskPanel) taskPanel.classList.remove('show');
             document.getElementById('modal-welcome').classList.remove('active');
             document.getElementById('modal-tutorial').classList.add('active');
+            currentTutorialModule = null;
             currentTutorialStep = 0;
             renderTutorialStep();
         }
@@ -7414,20 +7621,23 @@
             document.getElementById('modal-tutorial').classList.remove('active');
         }
 
+        // switchTutorialMode kept for compatibility but no tabs exist anymore
         function switchTutorialMode(mode) {
             currentTutorialMode = mode;
+            currentTutorialModule = null;
             currentTutorialStep = 0;
-
-            // Update tabs
-            document.querySelectorAll('.tutorial-tab').forEach(tab => {
-                tab.classList.toggle('active', tab.dataset.mode === mode);
-            });
-
             renderTutorialStep();
         }
 
+        function getTutorialSteps() {
+            if (currentTutorialModule && tutorialContent.modules[currentTutorialModule]) {
+                return tutorialContent.modules[currentTutorialModule];
+            }
+            return tutorialContent[currentTutorialMode];
+        }
+
         function renderTutorialStep() {
-            const steps = tutorialContent[currentTutorialMode];
+            const steps = getTutorialSteps();
             const step = steps[currentTutorialStep];
 
             const content = document.getElementById('tutorial-content');
@@ -7438,12 +7648,19 @@
                              onerror="this.outerHTML='<div class=tutorial-image-placeholder><span class=tutorial-image-placeholder-icon>🖼️</span><span>Imagem indisponível</span></div>'">
                    </div>`
                 : '';
+
+            // "Voltar ao menu" link for modules
+            const backLink = currentTutorialModule
+                ? `<p style="margin-top: 16px;"><a href="#" onclick="event.preventDefault(); closeTutorialModule();" style="color: var(--text-muted);">← Voltar ao menu de tópicos</a></p>`
+                : '';
+
             content.innerHTML = `
                 <div class="tutorial-step active">
                     <h2 class="tutorial-step-title">${step.title}</h2>
                     <p class="tutorial-step-subtitle">${step.subtitle}</p>
                     ${imageHtml}
                     <div class="tutorial-text">${step.content}</div>
+                    ${backLink}
                 </div>
             `;
 
@@ -7455,8 +7672,13 @@
             prevBtn.style.visibility = currentTutorialStep === 0 ? 'hidden' : 'visible';
 
             if (currentTutorialStep === steps.length - 1) {
-                nextBtn.textContent = 'Concluir ✓';
-                nextBtn.onclick = closeTutorial;
+                if (currentTutorialModule) {
+                    nextBtn.textContent = '← Menu';
+                    nextBtn.onclick = closeTutorialModule;
+                } else {
+                    nextBtn.textContent = 'Concluir ✓';
+                    nextBtn.onclick = closeTutorial;
+                }
             } else {
                 nextBtn.textContent = 'Próximo →';
                 nextBtn.onclick = nextTutorialStep;
@@ -7469,22 +7691,17 @@
             `).join('');
 
             // Update progress text
+            const label = currentTutorialModule ? step.title.split(' ').slice(1).join(' ') : '';
             document.getElementById('tutorial-progress-text').textContent =
-                `${currentTutorialStep + 1} de ${steps.length}`;
+                currentTutorialModule
+                    ? `${currentTutorialStep + 1} de ${steps.length}`
+                    : `${currentTutorialStep + 1} de ${steps.length}`;
         }
 
         function nextTutorialStep() {
-            const steps = tutorialContent[currentTutorialMode];
+            const steps = getTutorialSteps();
             if (currentTutorialStep < steps.length - 1) {
                 currentTutorialStep++;
-                renderTutorialStep();
-            }
-        }
-
-        function goToTutorialStep(n) {
-            const steps = tutorialContent[currentTutorialMode];
-            if (n >= 0 && n < steps.length) {
-                currentTutorialStep = n;
                 renderTutorialStep();
             }
         }
@@ -7494,6 +7711,29 @@
                 currentTutorialStep--;
                 renderTutorialStep();
             }
+        }
+
+        function goToTutorialStep(n) {
+            const steps = getTutorialSteps();
+            if (n >= 0 && n < steps.length) {
+                currentTutorialStep = n;
+                renderTutorialStep();
+            }
+        }
+
+        function openTutorialModule(moduleName) {
+            if (tutorialContent.modules[moduleName]) {
+                currentTutorialModule = moduleName;
+                currentTutorialStep = 0;
+                renderTutorialStep();
+            }
+        }
+
+        function closeTutorialModule() {
+            currentTutorialModule = null;
+            // Go back to the hub (last step of basic = "Pronto")
+            currentTutorialStep = tutorialContent[currentTutorialMode].length - 1;
+            renderTutorialStep();
         }
 
         function checkFirstVisit() {
