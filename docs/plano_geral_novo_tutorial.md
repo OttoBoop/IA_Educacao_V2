@@ -547,8 +547,13 @@ O "aha" que o Otavio quer — _"agora que você viu os docs, vai adorar o chat f
 | 2026-04-11 | **Dois fatos contradizem o tutorial antigo** (descobertos na rodada 3): (a) não há "aba da correção do professor" — é upload normal com `tipo=correcao_professor`; (b) não há edição inline das saídas da IA — a única via é re-executar a etapa com prompt customizado. O copy da camada 1 e o texto do arquivo arquivado precisam refletir isso. | Fato descoberto pela rodada 3. |
 | 2026-04-11 | **Escopo expandido — mudança de código necessária**: o tutorial da camada 1 não pode ser bom sem um atalho do resultado para o chat filtrado. Otavio autorizou pensar em "como fazer + como testar" a adição de um botão/atalho. Proposta detalhada na seção 13. | Resposta direta do Otavio. |
 | 2026-04-11 | **Saída D confirmada, todos os níveis desde já** (aluno + turma + matéria). Sandbox: `Matematica-v` (já completa). 3 commits: hook chat / UI botão / copy tooltips. Teste: Claude tira screenshots, sem journey agent (custo). | Rodada final de alinhamento antes da implementação. |
+| 2026-04-12 | **3 commits da saída D implementados e empurrados:** (1) `setChatDocumentSelection` + `showChat(preselectedDocIds)` hook; (2) checkboxes por documento + barra sticky "Perguntar no chat" em `showResultadoAluno`; (3) welcome message + tooltips na barra. Aguardando deploy do Render para verificação live. | Implementação. |
 | 2026-04-11 | **Checkpoint do tutorial = toast verde + árvore de tarefas na sidebar.** O tutorial ensina os dois sinais para o professor construir um modelo mental do pipeline. | Resposta direta do Otavio. |
 | 2026-04-11 | **Aviso "chat sem histórico" entra na camada 1** como linha discreta ("Dica: sua conversa existe só enquanto a aba estiver aberta. Salve o que for importante."). Evita surpresas sem poluir. | Resposta direta do Otavio. |
+| 2026-04-12 | **Banner gritão implementado** (commit 1d3a2d8): modal-welcome reescrito com borda vermelha/amarela pulsando, CTA verde "QUERO COMEÇAR AGORA", link "já conheço, pular", hint de tooltips. Flag `novocr-welcomed-v2` garante que todos vejam. CSS `.welcome-scream` com `@keyframes screamBorderPulse`. | Implementação. |
+| 2026-04-12 | **Tutorial camada 1 implementado** (commit c9c2c38): 11 passos substituem os 4+12 antigos. Estrutura: visão geral → matéria → turma → alunos → atividade → 3 docs → pipeline → verificar → docs gerados → chat → próximos passos. Cada passo tem `<details>` "Curioso? Ver detalhes" colapsável. Tabs removidos (só um modo). | Implementação. |
+| 2026-04-12 | **Tooltips críticas adicionadas** (commit c68e8b5): 15 campos com `data-tooltip` nos modais de criação (matéria, turma, atividade, aluno) + pipeline (forçar re-execução) + upload em lote (modo identificação) + busca de aluno existente. | Implementação. |
+| 2026-04-12 | **Deploy do Render não está funcionando.** Remote tem commits corretos mas site serve código de 03/04/2026. Dois pushes e um empty commit não resolveram. Otavio verificando dashboard. Código validado via servidor estático local (http.server 8001): todos os elementos presentes (scream, tutorial, tooltips, saída D). | Bloqueador. |
 
 ---
 
@@ -851,6 +856,11 @@ function setChatDocumentSelection(documentIds) {
 
 1. ~~Lançar agentes Explore para mapear tutorial atual, tooltips, fluxo de criação.~~ ✅ 2026-04-11
 2. ~~Consolidar achados nas seções 6.1–6.5.~~ ✅ 2026-04-11
-3. **Parar e fazer as perguntas da seção 9 ao Otavio.** ← ESTAMOS AQUI
-4. Incorporar respostas na seção 10 (registro de decisões) e atualizar seções 7 (banner), 8 (arquivamento) e abrir seção nova 12 "Plano de implementação camada 1" com detalhes acionáveis.
-5. Só então decidir se precisamos de mais rodadas de exploração (ex.: executor/backend para entender melhor o pipeline; estados de erro; textos do Welcome modal) antes de começar a implementar.
+3. ~~Perguntas da seção 9 + decisões registradas na seção 10.~~ ✅ 2026-04-11
+4. ~~Saída D (checkboxes resultado→chat): 3 commits.~~ ✅ 2026-04-12
+5. ~~Banner gritão (welcome-scream): borda vermelha/amarela pulsando, flag v2.~~ ✅ 2026-04-12
+6. ~~Tutorial camada 1: 11 passos no modal, padrão "Curioso? Ver detalhes".~~ ✅ 2026-04-12
+7. ~~Tooltips críticas: 15 campos nos modais de criação + pipeline.~~ ✅ 2026-04-12
+8. **Aguardando deploy do Render para verificação live.** ← ESTAMOS AQUI
+9. Expandir saída D para turma e matéria (relatórios de desempenho → chat).
+10. Tutoriais avançados (camadas 2 e 3).
