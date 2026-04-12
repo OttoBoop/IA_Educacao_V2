@@ -11499,11 +11499,11 @@
                         ${gruposGerados || '<div class="empty-state"><div class="empty-icon">🤖</div><div class="empty-title">Nenhuma etapa gerada</div></div>'}
                     </div>
                     <div id="chat-doc-selection-bar" class="chat-doc-selection-bar" style="display: none;">
-                        <span id="chat-doc-selection-count">0 documentos selecionados</span>
-                        <div style="display: flex; gap: 8px;">
-                            <button class="btn btn-sm" onclick="selectAllChatDocs()">Selecionar todos</button>
+                        <span id="chat-doc-selection-count" style="font-weight: 600;">0 documentos selecionados</span>
+                        <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+                            <button class="btn btn-sm" onclick="selectAllChatDocs()" data-tooltip="Marcar todos os documentos desta página" data-tooltip-pos="top">Selecionar todos</button>
                             <button class="btn btn-sm" onclick="clearChatDocSelection()">Limpar</button>
-                            <button class="btn btn-primary" id="chat-doc-send-btn" onclick="enviarSelecaoParaChat()">
+                            <button class="btn btn-primary" id="chat-doc-send-btn" onclick="enviarSelecaoParaChat()" data-tooltip="Abrir o Chat com IA já filtrado por estes documentos" data-tooltip-pos="top">
                                 💬 Perguntar no chat sobre os selecionados
                             </button>
                         </div>

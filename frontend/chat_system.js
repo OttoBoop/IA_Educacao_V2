@@ -321,12 +321,16 @@ function renderChatView(models, materias, alunos) {
                 <div class="chat-messages" id="chat-messages">
                     <div class="message assistant">
                         <div class="message-content">
-                            Olá! Sou seu assistente para análise e correção de provas. 
-                            ${hasModels ? `
+                            ${window._chatPendingDocSelection && window._chatPendingDocSelection.length > 0
+                                ? `📄 <strong>${window._chatPendingDocSelection.length} documento(s)</strong> foram pré-selecionados da tela de resultados. Faça sua pergunta!
                                 <br><br>
+                                💡 <em>Dica: sua conversa existe só enquanto a aba estiver aberta. Salve o que for importante.</em>`
+                                : `Olá! Sou seu assistente para análise e correção de provas.`}
+                            ${hasModels ? `
+                                ${!window._chatPendingDocSelection || window._chatPendingDocSelection.length === 0 ? `<br><br>
                                 📚 <strong>Contexto:</strong> Você pode selecionar documentos no painel à esquerda para que eu tenha acesso às informações relevantes.
                                 <br><br>
-                                Como posso ajudar?
+                                Como posso ajudar?` : ''}
                             ` : `
                                 <br><br>
                                 ⚠️ <strong>Atenção:</strong> Nenhum modelo de IA está configurado.
