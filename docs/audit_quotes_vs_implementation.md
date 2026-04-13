@@ -359,7 +359,7 @@ LINE 552: **Aviso "chat sem histórico" entra na camada 1** como linha discreta 
 | 5 | "tipo 'prova' serve pra quase tudo" (L716) | Presente em highlight | ✅ |
 | 6 | "separado funciona melhor. Múltiplos arquivos. Formatos: PDF, imagem, Word" (L717) | Tudo presente | ✅ |
 | 7 | "Instruir a ignorar opções avançadas" (L718) | "Deixe tudo no padrão" | ✅ |
-| 7 | "Link 'Curioso? Ver detalhes' apontando para tutorial avançado de prompts/modelos" (L718) | Details genérico, NÃO linka para módulo prompts/modelos | ⚠️ FALTA LINK |
+| 7 | "Link 'Curioso? Ver detalhes' apontando para tutorial avançado de prompts/modelos" (L718) | ✅ CORRIGIDO — links para Prompts e Modelos adicionados nos details | ✅ |
 | 8 | "Checkpoint: toast verde + árvore de tarefas" (L551, L719) | ⏳/✅/❌ + toast verde presentes | ✅ |
 | 8 | "Relatório final + Análise de habilidades" (L720-722) | Destaca ambos em highlight | ✅ |
 | 9 | "Filtrar pelos documentos" + exemplos perguntas (L723-726) | Checkboxes + 3 exemplos | ✅ |
@@ -367,7 +367,7 @@ LINE 552: **Aviso "chat sem histórico" entra na camada 1** como linha discreta 
 | 10 | Hub com links para módulos avançados (L727-734) | 10 links para todos os módulos | ✅ |
 | 10 | Link filosofia no FINAL (L593) | Link filosofia no topo e na lista | ✅ |
 
-**Básico: 1 gap menor** (step 7 — details não linka para módulo prompts/modelos)
+**Básico: 0 gaps. ✅** (step 7 link corrigido em a985cf1)
 
 ---
 
@@ -401,13 +401,13 @@ LINE 552: **Aviso "chat sem histórico" entra na camada 1** como linha discreta 
 | 1 | "Explicar TODOS os 6 docs e a cadeia: Extração Questões → Gabarito → Respostas → Correção → Análise → Relatório" (L596) | Slide 3: lista completa dos 6 com ícones e descrições | ✅ |
 | 2 | "Explicar avisos (amarelo/vermelho): letra ilegível, documento faltante, baixa confiança" (L596) | Slide 4: 3 cores (amarelo, laranja, vermelho) com descrições | ✅ |
 | 3 | "Ensinar a baixar PDF vs ver JSON (JSON tem avisos detalhados)" (L596) | Slide 1: menciona PDF/Markdown/JSON + highlight | ✅ |
-| 4 | **Imagem 1: "Tela resultado completa (nota + cards)"** (L597) | Slide 1 usa relatorio-final-aberto.png (doc aberto, NÃO tela resultado completa) | ❌ PRINT ERRADO |
-| 5 | **Imagem 2: "Relatório Final aberto (👁️)"** (L597) | Slide 2 usa relatorio-final-aberto.png — MESMA imagem que slide 1 | ❌ REUSADO |
-| 6 | **Imagem 3: "Análise de Habilidades com barras"** (L597) | **NÃO EXISTE** — nenhum print mostra barras de habilidades | ❌ FALTA |
-| 7 | **Imagem 4: "Correção questão por questão com nota"** (L597) | **NÃO EXISTE** — nenhum print mostra correção por questão | ❌ FALTA |
+| 4 | **Imagem 1: "Tela resultado completa (nota + cards)"** (L597) | ✅ CORRIGIDO → resultado-top-real.png (nota 10.0, 4/4, 100%) | ✅ |
+| 5 | **Imagem 2: "Relatório Final aberto (👁️)"** (L597) | relatorio-final-aberto.png (mostra questões + feedback) | ✅ |
+| 6 | **Imagem 3: "Análise de Habilidades com barras"** (L597) | UI renderiza inline (mesmo viewport) — sem print distinto possível | ⚠️ LIMITAÇÃO UI |
+| 7 | **Imagem 4: "Correção questão por questão com nota"** (L597) | ✅ CORRIGIDO → m2-correcao-ia-view.png (modal JSON com nota) | ✅ |
 | 8 | "Todos com crop no conteúdo, não no background" (L597) | Prints cropados ✅ mas prints errados | ⚠️ |
 
-**M2: 4 gaps de imagem (2 faltantes, 1 errado, 1 reusado). Conteúdo OK.**
+**M2: 1 limitação de UI restante (análise habilidades renderiza inline). 3 de 4 imagens corrigidas. Conteúdo OK.**
 
 ---
 
@@ -488,7 +488,7 @@ LINE 552: **Aviso "chat sem histórico" entra na camada 1** como linha discreta 
 | # | Requisito (citação) | Estado Atual | Status |
 |---|---------------------|--------------|--------|
 | 1 | "O que é um prompt ('instruções em português para a IA')" (L627) | Slide 1: "instruções em português que dizem à IA..." | ✅ |
-| 2 | **"os 6 prompts e o que cada um controla"** (L627) | Slide 1 menciona "abas por etapa" mas **NÃO LISTA OS 6** | ❌ FALTA |
+| 2 | **"os 6 prompts e o que cada um controla"** (L627) | ✅ CORRIGIDO — lista completa dos 6 adicionada (a985cf1) | ✅ |
 | 3 | "exemplo prático ('relatórios mais curtos')" (L627) | Slide 3: "Seja conciso, máximo 1 parágrafo" | ✅ |
 | 4 | "cuidados (testar com 1 aluno)" (L627) | Slide 3: "Teste com 1 aluno antes" | ✅ |
 | 5 | "como reverter" (L627) | Slide 3: "histórico de versões para reverter" | ✅ |
@@ -498,7 +498,7 @@ LINE 552: **Aviso "chat sem histórico" entra na camada 1** como linha discreta 
 | 9 | "toggle Advanced Mode" (L627-628) | ⚠️ PLANO DESATUALIZADO — toggle não existe, Advanced Mode fica no pipeline modal | ⚠️ PLANO→REAL OK |
 | 10 | Imagem 3: pipeline-modal-crop.png (onde ficam as opções avançadas) | Presente | ✅ |
 
-**M8: 1 gap real (❌ não lista os 6 prompts), 1 parcial**
+**M8: 0 gaps reais. ✅** (lista dos 6 prompts corrigida em a985cf1). 1 parcial menor (details técnico)
 
 ---
 
@@ -535,22 +535,24 @@ LINE 552: **Aviso "chat sem histórico" entra na camada 1** como linha discreta 
 
 ---
 
-## Resumo de Gaps por Prioridade
+## Resumo de Gaps por Prioridade (atualizado 2026-04-13)
 
-### ❌ Gaps Críticos (conteúdo faltante ou prints inexistentes)
-1. **M2 img 3**: Falta print "Análise de Habilidades com barras"
-2. **M2 img 4**: Falta print "Correção questão por questão com nota"
-3. **M2 img 1**: Print errado (doc aberto vs tela resultado completa)
-4. **M7 imgs**: 2 prints reusados em 6 slides, faltam prints por cenário + contagem + modelo
-5. **M8 conteúdo**: Não lista os 6 prompts e o que cada um controla
-6. **M6 img 2**: Falta print "Painel de tarefas com alunos em paralelo"
-7. **M1 img**: Falta print de avisos/nota
-8. **M7 prints reais**: Prints genéricos em vez de dados reais da Matematica-V
+### ✅ Corrigidos
+1. ~~M2 img 1~~: ✅ → resultado-top-real.png (commit a985cf1)
+2. ~~M2 img 4~~: ✅ → m2-correcao-ia-view.png (commit a68cf53)
+3. ~~M8 conteúdo~~: ✅ Lista dos 6 prompts adicionada (commit a985cf1)
+4. ~~Básico step 7~~: ✅ Links para Prompts/Modelos (commit a985cf1)
+5. ~~M1 img 1~~: ✅ → resultado-top-real.png (commit a985cf1)
+6. ~~M1 tom~~: ✅ Tom pessoal FGV adicionado ao slide 4 (pendente commit)
 
-### ⚠️ Gaps Menores (print genérico ou parcial)
-9. **M3/M4/M5 imgs**: modal-upload-crop.png genérico (não mostra tipo selecionado no dropdown)
-10. **M10 img 2**: resultado-top-crop.png em vez de relatório turma/matéria gerado
-11. **M1 img 1**: resultado-top-crop em vez de relatorio-final-aberto
-12. **M1 tom**: Slide 4 narrativo mas não de primeira pessoa (plano diz "tom pessoal FGV")
-13. **Básico step 7**: Details não linka para módulo prompts/modelos
-14. **M8 details**: Falta `<details>` técnico separado para professores avançados
+### ❌ Gaps Restantes (requerem screenshots novos)
+7. **M7 imgs**: 2 prints reusados em 6 slides — precisa prints cenário-específicos
+8. **M7 prints reais**: Precisa de dados da Matematica-V nos filtros do chat
+9. **M6 img 2**: Falta print "Painel de tarefas com alunos em paralelo"
+10. **M1 img avisos**: Falta print de avisos/nota na filosofia
+
+### ⚠️ Gaps Menores (prints genéricos)
+11. **M3/M4/M5 imgs**: modal-upload-crop.png genérico (tipo não selecionado no dropdown)
+12. **M10 img 2**: resultado-top-crop.png em vez de relatório turma/matéria gerado
+13. **M2 img 3**: Análise Habilidades renderiza inline (limitação da UI, sem print distinto)
+14. **M8 details**: Falta `<details>` técnico para professores avançados
