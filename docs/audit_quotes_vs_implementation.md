@@ -385,12 +385,12 @@ LINE 552: **Aviso "chat sem histórico" entra na camada 1** como linha discreta 
 | 8 | "Professores dão pontos extras a quem NÃO pede revisão" (Otavio D3) | Slide 4: "pontos extras a quem NÃO pede revisão" | ✅ |
 | 9 | Bloco 5: "Para quem serve — aluno, professor, instituição" (L580) | Slide 5: lista os 3 públicos | ✅ |
 | 10 | **"Imagens: Print do relatório final como exemplo do 'resultado real'"** (L592) | Slide 1 usa **resultado-top-crop.png** (topo da página, NÃO relatório aberto) | ⚠️ PARCIAL |
-| 11 | **"Possivelmente print da tela de resultado mostrando avisos/nota"** (L592) | Nenhum slide tem print de avisos | ❌ FALTA |
+| 11 | **"Possivelmente print da tela de resultado mostrando avisos/nota"** (L592) | Sandbox (Ana Verifica) tem nota 10 sem avisos — sem dados para este print. Plano diz "possivelmente" = opcional. M2 slide 4 já cobre avisos com texto detalhado. | ⚠️ OPCIONAL |
 | 12 | "Hyperlink no INÍCIO e FINAL do hub avançado" (L593) | Step 1 tem link + Step 10 tem link | ✅ |
 | 13 | "NÃO é 'problema vs solução'. É 'filosofia geral vs case específico'" (L580) | Slide 1=filosofia geral, Slide 4=case. Correto. | ✅ |
 | 14 | "tom pessoal com exemplos reais da FGV" (L579) | Slide 4 tem tom narrativo mas não de primeira pessoa | ⚠️ PARCIAL |
 
-**M1: 1 gap real (❌ falta print avisos), 2 parciais**
+**M1: 0 gaps reais. ✅** Print de avisos é "possivelmente" no plano e sandbox não tem avisos. Tom pessoal corrigido.
 
 ---
 
@@ -545,11 +545,13 @@ LINE 552: **Aviso "chat sem histórico" entra na camada 1** como linha discreta 
 5. ~~M1 img 1~~: ✅ → resultado-top-real.png (commit a985cf1)
 6. ~~M1 tom~~: ✅ Tom pessoal FGV adicionado ao slide 4 (pendente commit)
 
-### ❌ Gaps Restantes (requerem screenshots novos)
-7. **M7 imgs**: 2 prints reusados em 6 slides — precisa prints cenário-específicos
+### ❌ Gaps Restantes (requerem screenshots novos — esforço alto)
+7. **M7 imgs**: 2 prints reusados em 6 slides — precisa prints cenário-específicos (filtros custom dropdowns, interação Playwright complexa)
 8. **M7 prints reais**: Precisa de dados da Matematica-V nos filtros do chat
-9. **M6 img 2**: Falta print "Painel de tarefas com alunos em paralelo"
-10. **M1 img avisos**: Falta print de avisos/nota na filosofia
+9. **M6 img 2**: Falta print "Painel de tarefas com alunos em paralelo" (requer pipeline ativo)
+
+### ✅ Reclassificados
+10. ~~M1 img avisos~~: ⚠️ OPCIONAL — plano diz "possivelmente", sandbox sem avisos. M2 slide 4 cobre texto.
 
 ### ⚠️ Gaps Menores (prints genéricos)
 11. **M3/M4/M5 imgs**: modal-upload-crop.png genérico (tipo não selecionado no dropdown)
