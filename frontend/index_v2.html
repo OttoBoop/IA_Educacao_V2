@@ -6815,19 +6815,41 @@
                         `
                     },
                     {
-                        title: '📊 Download e Discussão',
-                        subtitle: 'Baixe PDFs e discuta no chat',
-                        image: '/static/tutorial-images-v2/cropped/desempenho-tab-crop.png',
+                        title: '📊 Formatos de Download',
+                        subtitle: 'PDF para compartilhar, JSON para investigar',
+                        image: '/static/tutorial-images-v2/cropped/resultado-top-crop.png',
                         content: `
-                            <p><strong>Baixar o relatório:</strong></p>
+                            <p><strong>Dois formatos disponíveis:</strong></p>
                             <ul>
-                                <li>Clique no <strong>👁️</strong> para visualizar</li>
-                                <li>Use os botões <strong>📥 PDF</strong> para baixar — esse é o formato ideal para compartilhar</li>
-                                <li>O <strong>{ } JSON</strong> contém dados brutos: avisos de erros, documentos faltantes, notas de confiança</li>
+                                <li><strong>📥 PDF</strong> — relatório formatado, pronto para enviar ao aluno ou usar em reunião de pais. É o formato principal.</li>
+                                <li><strong>{ } JSON</strong> — dados brutos com informações técnicas que o PDF não mostra:</li>
                             </ul>
-                            <div class="tutorial-highlight">
-                                <strong>💬 Dica:</strong> Use os checkboxes ao lado dos relatórios gerados e clique "Perguntar no chat" para discutir os resultados com a IA.
-                            </div>
+                            <p><strong>Avisos no JSON:</strong></p>
+                            <ul>
+                                <li><strong>ILLEGIBLE_DOCUMENT</strong> — documento inteiro ilegível (re-escanear)</li>
+                                <li><strong>ILLEGIBLE_QUESTION</strong> — uma questão específica ilegível</li>
+                                <li><strong>MISSING_CONTENT</strong> — conteúdo ausente (aluno pode ter deixado em branco)</li>
+                                <li><strong>LOW_CONFIDENCE</strong> — IA teve baixa confiança na leitura/interpretação</li>
+                            </ul>
+                        `
+                    },
+                    {
+                        title: '📊 Discutindo Resultados no Chat',
+                        subtitle: 'Selecione relatórios e faça perguntas',
+                        image: '/static/tutorial-images-v2/cropped/resultado-docs-crop.png',
+                        content: `
+                            <p>Após gerar relatórios de turma ou matéria:</p>
+                            <ol>
+                                <li>Marque os <strong>checkboxes</strong> ao lado dos relatórios gerados</li>
+                                <li>Clique em <strong>"💬 Perguntar no chat sobre os selecionados"</strong></li>
+                                <li>Pergunte à IA sobre os resultados agregados</li>
+                            </ol>
+                            <p><strong>Exemplos de perguntas:</strong></p>
+                            <ul>
+                                <li><em>"Quais são os principais problemas desta turma?"</em></li>
+                                <li><em>"Compare o desempenho das turmas A e B"</em></li>
+                                <li><em>"Quais alunos precisam de atenção especial?"</em></li>
+                            </ul>
                         `
                     }
                 ],
