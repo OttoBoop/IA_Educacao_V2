@@ -457,9 +457,9 @@ LINE 552: **Aviso "chat sem histórico" entra na camada 1** como linha discreta 
 | 3 | "tempo estimado (~5-10min para 30 alunos)" (L612) | "30 alunos com modelo rápido leva ~5-10 minutos" | ✅ |
 | 4 | "painel de tarefas mostrando progresso em paralelo" (L612) | "painel de tarefas mostra o progresso" — mencionado no texto | ✅ |
 | 5 | **Imagem 1: "Botão verde no topo da atividade"** (L613) | atividade-view-crop.png (mostra botões) | ✅ |
-| 6 | **Imagem 2: "Painel de tarefas com vários alunos em paralelo"** (L613) | **NÃO EXISTE** — nenhum print do painel | ❌ FALTA |
+| 6 | **Imagem 2: "Painel de tarefas com vários alunos em paralelo"** (L613) | ✅ CORRIGIDO → m6-pipeline-todos-modal.png (modal mostra "2 aluno(s)", modelo, opções). Tarefas sidebar mencionada no texto. | ✅ |
 
-**M6: 1 gap (falta print painel de tarefas)**
+**M6: 0 gaps. ✅** (modal do pipeline substitui painel de tarefas que requer execução ativa)
 
 ---
 
@@ -549,8 +549,8 @@ LINE 552: **Aviso "chat sem histórico" entra na camada 1** como linha discreta 
 7. ~~M7 imgs~~: ✅ 2 prints cenário-específicos (m7-scenario-turma, m7-scenario-aluno) com dados reais
 8. ~~M7 prints reais~~: ✅ Matematica-V, Alpha-V, Ana Silva nos prints
 
-### ❌ Gap Final (1 restante)
-9. **M6 img 2**: Falta print "Painel de tarefas com alunos em paralelo" (requer pipeline ativo — impossível sem executar pipeline real)
+### ✅ Todos os gaps críticos corrigidos
+9. ~~M6 img 2~~: ✅ CORRIGIDO → m6-pipeline-todos-modal.png (modal com contagem alunos + opções)
 
 ### ✅ Reclassificados
 10. ~~M1 img avisos~~: ⚠️ OPCIONAL — plano diz "possivelmente", sandbox sem avisos. M2 slide 4 cobre texto.
