@@ -4,7 +4,7 @@ Use estes arquivos para testar manualmente o novo fluxo de importacao de alunos 
 
 ## Tabelas de alunos
 
-- `alunos_importacao_guiada.csv`: tabela limpa, separada por ponto-e-virgula, com cabecalhos diferentes dos nomes internos.
+- `alunos_importacao_guiada.csv`: tabela limpa, separada por ponto-e-virgula, com cabecalhos diferentes dos nomes internos. Os e-mails sao opcionais e alguns ficam vazios.
 - `alunos_importacao_com_problemas.csv`: tabela com uma linha duplicada e uma linha sem nome.
 - `alunos_multiplas_abas.xlsx`: planilha com uma aba `Resumo` e uma aba `Alunos 9A`.
 - `alunos_multiplas_abas.ods`: versao ODS da mesma ideia.
@@ -27,8 +27,8 @@ Os PDFs em `provas/` foram nomeados para exercitar a associacao por aluno:
 4. Clique em `Analisar Tabela`.
 5. Confira os dropdowns:
    - nome -> `nome do aluno`
-   - email -> `E-mail institucional`
-   - matricula -> `RA do estudante`
+   - email -> `E-mail institucional` ou vazio, se voce quiser testar importacao sem e-mail
+   - matricula -> `RA do estudante` ou vazio, se voce quiser testar importacao sem matricula
 6. Clique em `Importar`.
 7. Reenvie o mesmo CSV para confirmar que nao duplica alunos.
 8. Abra uma atividade dessa turma e clique em `Upload Provas em Lote`.

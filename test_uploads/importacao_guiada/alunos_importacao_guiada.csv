@@ -1,5 +1,5 @@
 nome do aluno;E-mail institucional;RA do estudante;Observacao ignorada
-Ana Lima;ana.lima@example.com;A001;linha limpa
-Bruno Reis;bruno.reis@example.com;B002;linha limpa
-Carla Dias;carla.dias@example.com;C003;linha limpa
+Ana Lima;login-a001@escola.test;A001;linha limpa
+Bruno Reis;portal-8802@escola.test;B002;linha limpa
+Carla Dias;;C003;sem email, deve importar mesmo assim
 Diego Souza;;D004;sem email, deve importar mesmo assim

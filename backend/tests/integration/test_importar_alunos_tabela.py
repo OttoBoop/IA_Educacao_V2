@@ -42,7 +42,7 @@ def _post_table(client, endpoint, filename, content, data=None, content_type="te
 
 def test_preview_csv_semicolon_suggests_flexible_headers(client_env):
     client = client_env["client"]
-    csv_bytes = "nome do aluno;matrícula;e-mail\nAna Lima;A001;ana@example.com\n".encode("utf-8")
+    csv_bytes = "nome do aluno;matrícula;e-mail\nAna Lima;A001;login-a001@escola.test\n".encode("utf-8")
 
     response = _post_table(
         client,
@@ -66,8 +66,8 @@ def test_import_is_idempotent_and_links_existing_students(client_env):
     turma_id = client_env["turma"].id
     csv_bytes = (
         "nome do aluno;matrícula;e-mail\n"
-        "Ana Lima;A001;ana@example.com\n"
-        "Bruno Reis;B002;bruno@example.com\n"
+        "Ana Lima;A001;login-a001@escola.test\n"
+        "Bruno Reis;B002;portal-8802@escola.test\n"
     ).encode("utf-8")
     mapping = json.dumps({"nome": 0, "matricula": 1, "email": 2})
 
@@ -103,7 +103,7 @@ def test_import_requires_nome_mapping(client_env):
         client_env["client"],
         "/api/alunos/importar-tabela",
         "alunos.csv",
-        b"email\nana@example.com\n",
+        b"email\nlogin-a001@escola.test\n",
         data={"turma_id": client_env["turma"].id, "mapping": json.dumps({"email": 0})},
     )
 
@@ -114,8 +114,8 @@ def test_import_requires_nome_mapping(client_env):
 def test_import_allows_fixing_missing_name_from_preview(client_env):
     csv_bytes = (
         "nome do aluno;matrícula;e-mail\n"
-        "Ana Lima;A001;ana@example.com\n"
-        ";B002;bruno@example.com\n"
+        "Ana Lima;A001;login-a001@escola.test\n"
+        ";B002;portal-8802@escola.test\n"
     ).encode("utf-8")
     mapping = json.dumps({"nome": 0, "matricula": 1, "email": 2})
     row_overrides = json.dumps({"3": {"nome": "Bruno Reis"}})
@@ -175,7 +175,7 @@ def test_preview_xlsx_and_ods(client_env):
     df = pd.DataFrame({
         "Nome do aluno": ["Carla Dias"],
         "RA": ["C003"],
-        "Email": ["carla@example.com"],
+        "Email": ["cadastro-c003@escola.test"],
     })
 
     xlsx = io.BytesIO()

@@ -1,5 +1,5 @@
 nome do aluno;E-mail institucional;RA do estudante;Observacao ignorada
-Ana Lima;ana.lima@example.com;A001;duplicada proposital
-Ana Lima;ana.lima@example.com;A001;esta linha deve ser ignorada como duplicada
-;sem.nome@example.com;S000;esta linha deve aparecer como sem nome
-Eva Rocha;eva.rocha@example.com;E005;aluna nova para testar reimportacao
+Ana Lima;login-a001@escola.test;A001;duplicada proposital
+Ana Lima;login-a001@escola.test;A001;esta linha deve ser ignorada como duplicada
+;registro-s000@escola.test;S000;esta linha deve aparecer como sem nome
+Eva Rocha;conta-e005@escola.test;E005;aluna nova para testar reimportacao
