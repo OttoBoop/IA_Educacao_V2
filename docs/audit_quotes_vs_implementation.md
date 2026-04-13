@@ -474,12 +474,12 @@ LINE 552: **Aviso "chat sem histórico" entra na camada 1** como linha discreta 
 | 5 | Cenário 5: "Trade-off: docs originais vs relatórios" (L621) | Slide 6: docs originais vs relatórios explicado | ✅ |
 | 6 | "Como trocar o modelo no chat (dropdown)" (L622) | Slide 6: tabela de provedores + dropdown | ✅ |
 | 7 | "Limite de documentos e estratégia de seleção" (L623) | Slide 6: "menos docs = mais preciso e barato" + inverter seleção | ✅ |
-| 8 | **"Print para CADA cenário mostrando filtros configurados"** (L624) | ✅ PARCIAL — 2 cenários com prints reais (turma + aluno), 4 slides ainda com prints genéricos | ⚠️ MELHORADO |
+| 8 | **"Print para CADA cenário mostrando filtros configurados"** (L624) | ✅ CORRIGIDO — 4 cenários com prints reais (turma, aluno, questão, pais). Slide 6 (dicas) mantém genérico OK. | ✅ |
 | 9 | **"Print mostrando contagem de docs"** (L624) | m7-scenario-turma.png mostra "Selecionados: 31/31" no rodapé | ✅ |
 | 10 | **"Print mostrando troca de modelo"** (L624) | Nenhum print mostra dropdown de modelo | ⚠️ MENOR |
 | 11 | **"Prints REAIS com dados da Matematica-V"** (L624) | ✅ CORRIGIDO — prints com Matemática-V, Alpha-V, Ana Silva reais | ✅ |
 
-**M7: Conteúdo excelente ✅. Imagens: 2 cenários com prints reais, 4 slides com prints genéricos. Significativa melhoria.**
+**M7: Conteúdo excelente ✅. Imagens: 5 prints distintos em 6 slides (4 cenários reais + 1 overview + 1 genérico para dicas). ✅**
 
 ---
 
@@ -549,9 +549,8 @@ LINE 552: **Aviso "chat sem histórico" entra na camada 1** como linha discreta 
 7. ~~M7 imgs~~: ✅ 2 prints cenário-específicos (m7-scenario-turma, m7-scenario-aluno) com dados reais
 8. ~~M7 prints reais~~: ✅ Matematica-V, Alpha-V, Ana Silva nos prints
 
-### ❌ Gaps Finais (esforço alto vs impacto baixo)
-9. **M6 img 2**: Falta print "Painel de tarefas com alunos em paralelo" (requer pipeline ativo/rodando)
-10. **M7 slides 4-6**: Ainda usam prints genéricos (cenários Questão/Pais/Dicas)
+### ❌ Gap Final (1 restante)
+9. **M6 img 2**: Falta print "Painel de tarefas com alunos em paralelo" (requer pipeline ativo — impossível sem executar pipeline real)
 
 ### ✅ Reclassificados
 10. ~~M1 img avisos~~: ⚠️ OPCIONAL — plano diz "possivelmente", sandbox sem avisos. M2 slide 4 cobre texto.
