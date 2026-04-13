@@ -417,9 +417,9 @@ LINE 552: **Aviso "chat sem histórico" entra na camada 1** como linha discreta 
 |---|---------------------|--------------|--------|
 | 1 | "formato ideal (rubrica: 'Questão 1: 2pts se X, 1pt se parcial')" (L600) | Exemplo formatado com parcial/completa/em branco | ✅ |
 | 2 | "impacto na precisão (com vs sem)" (L600) | Highlight "Com critérios → preciso. Sem → infere pelo gabarito" | ✅ |
-| 3 | **"Print do modal upload com tipo 'Critérios' selecionado"** (L601) | modal-upload-crop.png genérico (não mostra "Critérios" no dropdown) | ⚠️ PRINT GENÉRICO |
+| 3 | **"Print do modal upload com tipo 'Critérios' selecionado"** (L601) | ✅ CORRIGIDO → modal-upload-criterios.png (tipo selecionado, campo visível) | ✅ |
 
-**M3: 1 gap menor (print genérico vs específico)**
+**M3: 0 gaps. ✅**
 
 ---
 
@@ -429,9 +429,9 @@ LINE 552: **Aviso "chat sem histórico" entra na camada 1** como linha discreta 
 |---|---------------------|--------------|--------|
 | 1 | "upload tipo 'Correção do Professor' + selecionar aluno" (L604) | Passos 1-4 cobrem upload + seleção aluno | ✅ |
 | 2 | "Fluxo ideal: professor corrige → sobe → IA gera relatórios" (L604) | Highlight tem fluxo completo | ✅ |
-| 3 | **"Print do modal upload com tipo selecionado"** (L605) | modal-upload-crop.png genérico | ⚠️ PRINT GENÉRICO |
+| 3 | **"Print do modal upload com tipo selecionado"** (L605) | ✅ CORRIGIDO → modal-upload-correcao-prof.png (tipo + campo aluno visível) | ✅ |
 
-**M4: 1 gap menor (mesmo que M3)**
+**M4: 0 gaps. ✅**
 
 ---
 
@@ -554,7 +554,7 @@ LINE 552: **Aviso "chat sem histórico" entra na camada 1** como linha discreta 
 10. ~~M1 img avisos~~: ⚠️ OPCIONAL — plano diz "possivelmente", sandbox sem avisos. M2 slide 4 cobre texto.
 
 ### ⚠️ Gaps Menores (prints genéricos)
-11. **M3/M4/M5 imgs**: modal-upload-crop.png genérico (tipo não selecionado no dropdown)
+11. ~~M3/M4~~: ✅ CORRIGIDO — prints específicos com tipo selecionado. M5 mantém genérico (seleção múltipla difícil de capturar).
 12. **M10 img 2**: resultado-top-crop.png em vez de relatório turma/matéria gerado
 13. **M2 img 3**: Análise Habilidades renderiza inline (limitação da UI, sem print distinto)
 14. **M8 details**: Falta `<details>` técnico para professores avançados
