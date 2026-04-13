@@ -6332,6 +6332,7 @@
                         </div>
                         <details class="tutorial-details"><summary>🔍 Curioso? Ver detalhes</summary>
                         <p>As opções avançadas (escolher modelo por etapa, forçar re-execução) são para quando você já conhece o sistema. Por enquanto, o padrão funciona bem.</p>
+                        <p>Quando quiser personalizar: <a href="#" onclick="event.preventDefault(); openTutorialModule('prompts')" style="color: var(--primary);">🔧 Prompts customizados</a> · <a href="#" onclick="event.preventDefault(); openTutorialModule('modelos')" style="color: var(--primary);">🤖 Adicionar modelos</a></p>
                         </details>
                     `
                 },
@@ -6497,7 +6498,7 @@
                     {
                         title: '👁️ Resultado do Aluno — Visão Geral',
                         subtitle: 'O que aparece ao clicar "Ver Resultado"',
-                        image: '/static/tutorial-images-v2/cropped/relatorio-final-aberto.png',
+                        image: '/static/tutorial-images-v2/cropped/resultado-top-real.png',
                         content: `
                             <p>Ao clicar <strong>"Ver Resultado"</strong> de um aluno, a página mostra:</p>
                             <ul>
@@ -6548,7 +6549,7 @@
                     {
                         title: '👁️ Avisos e Alertas',
                         subtitle: 'Badges coloridos indicam problemas',
-                        image: '/static/tutorial-images-v2/cropped/relatorio-final-aberto.png',
+                        image: '/static/tutorial-images-v2/cropped/resultado-docs-crop.png',
                         content: `
                             <p>Se a IA encontrar problemas, aparece um <strong>badge de avisos</strong> com contagem:</p>
                             <ul>
@@ -6715,7 +6716,16 @@
                         content: `
                             <p>Prompts são <strong>instruções em português</strong> que dizem à IA o que fazer em cada etapa do pipeline.</p>
                             <p><strong>Como acessar:</strong> No menu lateral, clique em <strong>"🧠 Prompts"</strong>.</p>
-                            <p>A tela mostra <strong>abas por etapa</strong> (Extrair Questões, Extrair Gabarito, Corrigir, etc.). Cada aba lista os prompts disponíveis como cards expansíveis.</p>
+                            <p>A tela mostra <strong>abas por etapa</strong>. As 6 etapas do pipeline e o que cada prompt controla:</p>
+                            <ol style="font-size: 0.92rem;">
+                                <li><strong>🔎 Extrair Questões</strong> — identifica cada questão no enunciado</li>
+                                <li><strong>🧩 Extrair Gabarito</strong> — estrutura as respostas corretas</li>
+                                <li><strong>📝 Extrair Respostas</strong> — lê o que o aluno escreveu</li>
+                                <li><strong>✅ Corrigir</strong> — compara respostas com gabarito, questão por questão</li>
+                                <li><strong>📊 Analisar Habilidades</strong> — avalia competências demonstradas</li>
+                                <li><strong>📄 Gerar Relatório</strong> — sintetiza tudo em feedback detalhado</li>
+                            </ol>
+                            <p>Cada aba lista os prompts disponíveis como cards expansíveis.</p>
                             <p><strong>Ao expandir um card</strong>, você vê: o texto do prompt, variáveis usadas (ex.: <code>{{criterios}}</code>), e botões para editar, duplicar ou ver histórico.</p>
                         `
                     },
@@ -6857,7 +6867,7 @@
                     {
                         title: '🎯 O Objetivo do NOVO CR',
                         subtitle: 'Correções mais completas, dados que revelam lacunas',
-                        image: '/static/tutorial-images-v2/cropped/resultado-top-crop.png',
+                        image: '/static/tutorial-images-v2/cropped/resultado-top-real.png',
                         content: `
                             <p>O NOVO CR gera <strong>correções mais completas</strong> e <strong>dados detalhados</strong> que permitem que professores e alunos entendam melhor as lacunas no aprendizado.</p>
                             <p>A nota é um <strong>subproduto</strong>. O verdadeiro valor são os <strong>relatórios</strong>:</p>
