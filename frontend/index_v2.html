@@ -6218,6 +6218,7 @@
                         <div class="tutorial-highlight" style="margin-top: 8px; background: rgba(236, 201, 75, 0.1); border-left-color: #ecc94b;">
                             <strong>💡 Dica:</strong> Ao longo do app, ícones <strong>ⓘ</strong> e <strong>?</strong> mostram ajuda contextual. Passe o mouse para ver.
                         </div>
+                        <p style="margin-top: 12px;"><a href="#" onclick="event.preventDefault(); openTutorialModule('filosofia')" style="color: var(--text-muted); font-size: 0.9rem;">🎯 Não quer corrigir agora? <strong>Leia a Filosofia do Projeto</strong> para entender o que este sistema faz.</a></p>
                     `
                 },
                 {
@@ -6740,14 +6741,19 @@
                 ],
                 filosofia: [
                     {
-                        title: '🎯 O Problema que o NOVO CR Resolve',
-                        subtitle: 'Por que esta ferramenta existe',
-                        image: '/static/tutorial-images-v2/cropped/resultado-aluno-crop.png',
+                        title: '🎯 O Objetivo do NOVO CR',
+                        subtitle: 'Correções mais completas, dados que revelam lacunas',
+                        image: '',
                         content: `
-                            <p>Você já terminou uma aula com <strong>fila de alunos</strong> querendo entender suas notas? Monitores que passam horas explicando erros, aluno por aluno? Professores que dão <strong>pontos extras a quem NÃO pede revisão</strong> — só para economizar tempo?</p>
-                            <p>Hoje, professores e monitores gastam muito tempo para que os alunos entendam onde erraram. E essa informação é <strong>descartada</strong> — não vira dado, não vira relatório, não serve para comparações.</p>
+                            <p>O NOVO CR gera <strong>correções mais completas</strong> e <strong>dados detalhados</strong> que permitem que professores e alunos entendam melhor as lacunas no aprendizado.</p>
+                            <p>A nota é um <strong>subproduto</strong>. O verdadeiro valor são os <strong>relatórios</strong>:</p>
+                            <ul>
+                                <li><strong>Onde</strong> o aluno errou e <strong>por que</strong></li>
+                                <li><strong>Quais habilidades</strong> ele domina e quais precisa desenvolver</li>
+                                <li><strong>Padrões</strong> ao longo do tempo — evolução, dificuldades persistentes</li>
+                            </ul>
                             <div class="tutorial-highlight">
-                                <strong>O NOVO CR resolve isso.</strong> A IA gera relatórios detalhados automaticamente, e o aluno pode questionar via chat — sem depender do tempo limitado do professor.
+                                <strong>Muito mais que uma nota.</strong> Uma ferramenta de <strong>aprendizado</strong>, não só de avaliação.
                             </div>
                         `
                     },
@@ -6763,6 +6769,9 @@
                                 <li>A IA usa a correção do professor como base para gerar <strong>relatórios detalhados</strong></li>
                             </ol>
                             <p>A IA não substitui — ela <strong>amplia</strong>. Transforma a correção em relatórios ricos que o professor não teria tempo de escrever.</p>
+                            <div class="tutorial-highlight">
+                                <strong>💡</strong> A decisão final é <strong>sempre</strong> do professor. A IA é sua assistente, não sua substituta.
+                            </div>
                         `
                     },
                     {
@@ -6778,31 +6787,34 @@
                         `
                     },
                     {
-                        title: '🎯 O Aluno Como Protagonista',
-                        subtitle: 'Entender erros, pleitear notas, estudar melhor',
+                        title: '🎯 Na Prática: Um Caso de Uso Real',
+                        subtitle: 'Como o NOVO CR transforma a rotina de correção',
                         image: '',
                         content: `
-                            <p>Com o NOVO CR, o aluno recebe um relatório detalhado: <strong>onde</strong> errou, <strong>por que</strong> errou, <strong>quantos pontos</strong> perdeu em cada questão. Ele não precisa esperar a monitoria.</p>
-                            <p>Se discorda da nota, pode perguntar no chat: <em>"Por que eu perdi pontos na questão 3?"</em> A IA explica com base nos documentos. Se a IA errou, o aluno descobre. Se o aluno errou, ele entende por quê.</p>
-                            <p>O aluno pode então <strong>escrever precisamente</strong> para o professor onde gostaria de revisão — em vez de uma conversa imprecisa de 30 minutos.</p>
+                            <p>Você já terminou uma aula com <strong>fila de alunos</strong> querendo entender suas notas? Monitores que passam horas explicando erros, aluno por aluno? Professores que dão <strong>pontos extras a quem NÃO pede revisão</strong> — só para economizar tempo?</p>
+                            <p>Com o NOVO CR:</p>
+                            <ul>
+                                <li>O aluno recebe um <strong>relatório detalhado</strong> e entende seus erros <strong>sem depender do monitor</strong></li>
+                                <li>Se discorda, pode <strong>pleitear revisão por escrito</strong> com precisão — em vez de uma conversa de 30 minutos</li>
+                                <li>O professor <strong>gasta menos tempo</strong> e os dados ficam <strong>registrados</strong> para análises futuras</li>
+                            </ul>
                             <div class="tutorial-highlight">
-                                <strong>Resultado:</strong> O professor gasta menos tempo, o aluno entende mais, e os dados ficam registrados para relatórios longitudinais.
+                                <strong>💡</strong> Toda informação que antes era descartada agora vira dado — relatórios longitudinais, padrões de turma, evolução individual.
                             </div>
                         `
                     },
                     {
-                        title: '🎯 Mais que um Número',
-                        subtitle: 'Relatórios, padrões, evolução',
+                        title: '🎯 Para Todos os Envolvidos',
+                        subtitle: 'Aluno, professor e instituição',
                         image: '',
                         content: `
-                            <p>A nota é um <strong>subproduto</strong>. O verdadeiro valor do NOVO CR são os relatórios:</p>
                             <ul>
-                                <li><strong>Para o aluno:</strong> entender erros, pedir dicas de estudo, identificar conceitos faltantes</li>
-                                <li><strong>Para o professor:</strong> ver padrões da turma, entender dificuldades persistentes, preparar aulas melhores</li>
-                                <li><strong>Para a instituição:</strong> dados longitudinais — acompanhar evolução ao longo de semestres</li>
+                                <li><strong>Para o aluno:</strong> entender erros, pedir dicas de estudo à IA, questionar correções com base nos documentos, identificar conceitos que precisa reforçar</li>
+                                <li><strong>Para o professor:</strong> ver padrões da turma, entender dificuldades persistentes, ter relatórios prontos para devolutivas e reuniões de pais</li>
+                                <li><strong>Para a instituição:</strong> dados longitudinais — acompanhar evolução de alunos ao longo de semestres e disciplinas</li>
                             </ul>
                             <div class="tutorial-highlight">
-                                <strong>🎯 Objetivo final:</strong> Uma ferramenta de <strong>aprendizado</strong>, não só de avaliação. O aluno entende como melhorar. O professor enxerga o que antes era invisível.
+                                <strong>🎯 O aluno entende como melhorar. O professor enxerga o que antes era invisível.</strong>
                             </div>
                         `
                     }
