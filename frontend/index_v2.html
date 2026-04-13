@@ -5079,10 +5079,14 @@
                                     <th>Nome</th>
                                     <th>E-mail</th>
                                     <th>Matrícula</th>
+                                    <th>Status</th>
                                 </tr>
                             </thead>
                             <tbody id="importar-preview-body"></tbody>
                         </table>
+                    </div>
+                    <div class="form-hint" style="margin-top: 8px;">
+                        Você pode corrigir valores na prévia. Linhas sem nome que continuarem vazias serão ignoradas, sem bloquear o resto da importação.
                     </div>
                 </div>
                 <input type="hidden" id="input-importar-turma-id">
@@ -6067,6 +6071,7 @@
         let activeNavTreeRequest = 0;
         let importarTabelaState = {
             preview: null,
+            rowOverrides: {},
             mappingTimer: null,
             busy: false
         };
@@ -10266,6 +10271,7 @@
 
         function resetImportarTabelaModal() {
             importarTabelaState.preview = null;
+            importarTabelaState.rowOverrides = {};
             importarTabelaState.busy = false;
             clearTimeout(importarTabelaState.mappingTimer);
             document.getElementById('input-importar-csv').value = '';
@@ -10320,6 +10326,7 @@
 
         function onImportarTabelaFileChange() {
             importarTabelaState.preview = null;
+            importarTabelaState.rowOverrides = {};
             document.getElementById('importar-sheet-group').style.display = 'none';
             document.getElementById('importar-mapping-section').style.display = 'none';
             document.getElementById('importar-preview-section').style.display = 'none';
@@ -10352,8 +10359,29 @@
             formData.append('file', fileInput.files[0]);
             if (turmaId) formData.append('turma_id', turmaId);
             if (sheetSelect && sheetSelect.value) formData.append('sheet_name', sheetSelect.value);
-            if (includeMapping) formData.append('mapping', JSON.stringify(getImportarTabelaMapping()));
+            if (includeMapping) {
+                formData.append('mapping', JSON.stringify(getImportarTabelaMapping()));
+                const rowOverrides = getImportarRowOverrides();
+                if (Object.keys(rowOverrides).length) {
+                    formData.append('row_overrides', JSON.stringify(rowOverrides));
+                }
+            }
             return formData;
+        }
+
+        function getImportarRowOverrides() {
+            const overrides = {};
+            document.querySelectorAll('.importar-row-input').forEach(input => {
+                const linha = input.dataset.linha;
+                const field = input.dataset.field;
+                const original = input.dataset.original || '';
+                const value = input.value || '';
+                if (!linha || !field || value === original) return;
+                if (!overrides[linha]) overrides[linha] = {};
+                overrides[linha][field] = value;
+            });
+            importarTabelaState.rowOverrides = overrides;
+            return overrides;
         }
 
         async function analisarImportacaoTabela(includeMapping = false) {
@@ -10366,7 +10394,12 @@
                 const data = await apiForm('/alunos/importar-tabela/preview', appendImportarTabelaFormData(includeMapping));
                 importarTabelaState.preview = data;
                 renderImportarTabelaPreview(data);
-                setImportarTabelaStatus('Confira o mapeamento das colunas antes de importar.', 'success');
+                const analise = data.analise || {};
+                if ((analise.sem_nome || 0) > 0) {
+                    setImportarTabelaStatus('Há linhas sem nome. Corrija na prévia ou importe o restante da tabela.', 'warning');
+                } else {
+                    setImportarTabelaStatus('Confira o mapeamento das colunas antes de importar.', 'success');
+                }
             } catch (e) {
                 document.getElementById('btn-confirmar-importar').disabled = true;
                 setImportarTabelaStatus(e.message || 'Erro ao analisar tabela', 'error');
@@ -10387,6 +10420,7 @@
                 sheetGroup.style.display = 'none';
             }
 
+            importarTabelaState.rowOverrides = {};
             const mapping = data.mapping || data.sugestoes || {};
             renderImportarMappingSelects(data.columns || [], mapping);
             renderImportarSummary(data.analise || {});
@@ -10439,19 +10473,36 @@
         function renderImportarRows(rows) {
             const tbody = document.getElementById('importar-preview-body');
             if (!rows.length) {
-                tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;color:var(--text-muted);">Nenhuma linha encontrada.</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:var(--text-muted);">Nenhuma linha encontrada.</td></tr>';
                 return;
             }
             tbody.innerHTML = rows.map(row => {
                 const mapped = row.mapeado || {};
                 const rowClass = mapped.nome ? '' : ' class="batch-row-error"';
+                const status = mapped.nome
+                    ? (row.corrigido ? 'Corrigido na prévia' : 'Pronto')
+                    : 'Nome vazio. Corrija aqui ou importe o restante.';
                 return `<tr${rowClass}>
                     <td>${row.linha || '-'}</td>
-                    <td>${escapeHtml(mapped.nome || '')}</td>
-                    <td>${escapeHtml(mapped.email || '')}</td>
-                    <td>${escapeHtml(mapped.matricula || '')}</td>
+                    <td><input type="text" class="form-input importar-row-input" data-linha="${row.linha || ''}" data-field="nome" data-original="${escapeHtml(mapped.nome || '')}" value="${escapeHtml(mapped.nome || '')}" oninput="onImportarRowEdit(this)"></td>
+                    <td><input type="text" class="form-input importar-row-input" data-linha="${row.linha || ''}" data-field="email" data-original="${escapeHtml(mapped.email || '')}" value="${escapeHtml(mapped.email || '')}" oninput="onImportarRowEdit(this)"></td>
+                    <td><input type="text" class="form-input importar-row-input" data-linha="${row.linha || ''}" data-field="matricula" data-original="${escapeHtml(mapped.matricula || '')}" value="${escapeHtml(mapped.matricula || '')}" oninput="onImportarRowEdit(this)"></td>
+                    <td class="importar-row-status">${escapeHtml(status)}</td>
                 </tr>`;
             }).join('');
+        }
+
+        function onImportarRowEdit(input) {
+            const row = input.closest('tr');
+            if (!row) return;
+            const nomeInput = row.querySelector('.importar-row-input[data-field="nome"]');
+            const status = row.querySelector('.importar-row-status');
+            const hasNome = Boolean((nomeInput?.value || '').trim());
+            row.classList.toggle('batch-row-error', !hasNome);
+            if (status) {
+                status.textContent = hasNome ? 'Corrigido na prévia' : 'Nome vazio. Será ignorado se não for corrigido.';
+            }
+            getImportarRowOverrides();
         }
 
         function onImportarMappingChange() {

@@ -111,6 +111,38 @@ def test_import_requires_nome_mapping(client_env):
     assert "nome" in response.text.lower()
 
 
+def test_import_allows_fixing_missing_name_from_preview(client_env):
+    csv_bytes = (
+        "nome do aluno;matrícula;e-mail\n"
+        "Ana Lima;A001;ana@example.com\n"
+        ";B002;bruno@example.com\n"
+    ).encode("utf-8")
+    mapping = json.dumps({"nome": 0, "matricula": 1, "email": 2})
+    row_overrides = json.dumps({"3": {"nome": "Bruno Reis"}})
+
+    response = _post_table(
+        client_env["client"],
+        "/api/alunos/importar-tabela",
+        "alunos.csv",
+        csv_bytes,
+        data={
+            "turma_id": client_env["turma"].id,
+            "mapping": mapping,
+            "row_overrides": row_overrides,
+        },
+    )
+
+    assert response.status_code == 200, response.text
+    data = response.json()
+    assert data["criados"] == 2
+    assert data["ignorados"] == 0
+    assert data["erros"] == 0
+    assert {aluno.nome for aluno in client_env["storage"].listar_alunos(client_env["turma"].id)} == {
+        "Ana Lima",
+        "Bruno Reis",
+    }
+
+
 def test_preview_xlsx_and_ods(client_env):
     pytest.importorskip("pandas")
     pytest.importorskip("openpyxl")

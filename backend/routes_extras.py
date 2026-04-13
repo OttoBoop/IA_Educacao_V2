@@ -298,6 +298,42 @@ def _row_mapped_values(row, mapping: Dict[str, Optional[int]]) -> Dict[str, str]
     return mapped
 
 
+def _parse_row_overrides(row_overrides: Optional[str]) -> Dict[int, Dict[str, str]]:
+    if not row_overrides:
+        return {}
+
+    try:
+        raw = json.loads(row_overrides)
+    except json.JSONDecodeError:
+        raise HTTPException(400, "Correções de linha inválidas. Envie JSON.")
+    if not isinstance(raw, dict):
+        raise HTTPException(400, "Correções de linha inválidas. Envie um objeto JSON.")
+
+    parsed: Dict[int, Dict[str, str]] = {}
+    for line_key, values in raw.items():
+        try:
+            line_number = int(line_key)
+        except (TypeError, ValueError):
+            raise HTTPException(400, f"Linha inválida nas correções: {line_key}")
+        if not isinstance(values, dict):
+            raise HTTPException(400, f"Correções inválidas para a linha {line_number}.")
+
+        parsed[line_number] = {}
+        for field in IMPORT_FIELDS:
+            if field in values:
+                parsed[line_number][field] = _cell_to_text(values.get(field))
+
+    return parsed
+
+
+def _apply_row_overrides(mapped: Dict[str, str], row_number: int,
+                         row_overrides: Dict[int, Dict[str, str]]) -> Dict[str, str]:
+    override = row_overrides.get(row_number)
+    if not override:
+        return mapped
+    return {**mapped, **override}
+
+
 def _student_indexes():
     by_matricula: Dict[str, Any] = {}
     by_email: Dict[str, Any] = {}
@@ -352,7 +388,8 @@ def _row_identity(mapped: Dict[str, str]) -> Optional[str]:
     return None
 
 
-def _analyze_import_rows(df, mapping: Dict[str, Optional[int]], turma_id: Optional[str] = None) -> Dict[str, Any]:
+def _analyze_import_rows(df, mapping: Dict[str, Optional[int]], turma_id: Optional[str] = None,
+                         row_overrides: Optional[Dict[int, Dict[str, str]]] = None) -> Dict[str, Any]:
     analysis = {
         "total_linhas": int(len(df)),
         "validos": 0,
@@ -375,9 +412,10 @@ def _analyze_import_rows(df, mapping: Dict[str, Optional[int]], turma_id: Option
 
     indexes = _student_indexes()
     seen = set()
+    row_overrides = row_overrides or {}
     for idx, row in df.iterrows():
-        mapped = _row_mapped_values(row, mapping)
         row_number = int(idx) + 2
+        mapped = _apply_row_overrides(_row_mapped_values(row, mapping), row_number, row_overrides)
         if not mapped.get("nome"):
             analysis["sem_nome"] += 1
             if len(analysis["erros_amostra"]) < 5:
@@ -410,24 +448,33 @@ def _analyze_import_rows(df, mapping: Dict[str, Optional[int]], turma_id: Option
     return analysis
 
 
-def _preview_rows(df, mapping: Dict[str, Optional[int]]) -> List[Dict[str, Any]]:
+def _preview_rows(df, mapping: Dict[str, Optional[int]],
+                  row_overrides: Optional[Dict[int, Dict[str, str]]] = None) -> List[Dict[str, Any]]:
     rows = []
+    row_overrides = row_overrides or {}
     for idx, row in df.head(10).iterrows():
+        row_number = int(idx) + 2
         values = [_cell_to_text(value) for value in row.tolist()]
+        mapped = _apply_row_overrides(_row_mapped_values(row, mapping), row_number, row_overrides)
+        erro = "Nome vazio" if mapping.get("nome") is not None and not mapped.get("nome") else None
         rows.append({
-            "linha": int(idx) + 2,
+            "linha": row_number,
             "values": values,
-            "mapeado": _row_mapped_values(row, mapping),
+            "mapeado": mapped,
+            "erro": erro,
+            "corrigido": bool(row_overrides.get(row_number)),
         })
     return rows
 
 
 def _build_table_preview(content: bytes, filename: str, sheet_name: Optional[str],
-                         mapping_json: Optional[str], turma_id: Optional[str] = None) -> Dict[str, Any]:
+                         mapping_json: Optional[str], turma_id: Optional[str] = None,
+                         row_overrides_json: Optional[str] = None) -> Dict[str, Any]:
     df, current_sheet, sheets, formato = _read_table_from_upload(content, filename, sheet_name)
     columns = _columns_payload(df)
     suggestions = _suggest_mapping(columns)
     mapping = _parse_mapping(mapping_json, columns) if mapping_json else suggestions
+    row_overrides = _parse_row_overrides(row_overrides_json)
 
     return {
         "success": True,
@@ -439,8 +486,8 @@ def _build_table_preview(content: bytes, filename: str, sheet_name: Optional[str
         "sugestoes": suggestions,
         "mapping": mapping,
         "total_rows": int(len(df)),
-        "sample_rows": _preview_rows(df, mapping),
-        "analise": _analyze_import_rows(df, mapping, turma_id),
+        "sample_rows": _preview_rows(df, mapping, row_overrides),
+        "analise": _analyze_import_rows(df, mapping, turma_id, row_overrides),
     }
 
 
@@ -544,6 +591,7 @@ async def preview_importar_alunos_tabela(
     sheet_name: Optional[str] = Form(None),
     mapping: Optional[str] = Form(None),
     turma_id: Optional[str] = Form(None),
+    row_overrides: Optional[str] = Form(None),
 ):
     """
     Analisa uma tabela de alunos sem salvar nada.
@@ -552,7 +600,7 @@ async def preview_importar_alunos_tabela(
     mapeamento e uma prévia já mapeada para nome/e-mail/matrícula.
     """
     content = await file.read()
-    return _build_table_preview(content, file.filename or "alunos", sheet_name, mapping, turma_id)
+    return _build_table_preview(content, file.filename or "alunos", sheet_name, mapping, turma_id, row_overrides)
 
 
 @router.post("/api/alunos/importar-tabela", tags=["Lote"])
@@ -561,6 +609,7 @@ async def importar_alunos_tabela(
     turma_id: Optional[str] = Form(None),
     sheet_name: Optional[str] = Form(None),
     mapping: str = Form(...),
+    row_overrides: Optional[str] = Form(None),
 ):
     """
     Importa alunos de CSV/Excel/ODS usando mapeamento explícito de colunas.
@@ -576,6 +625,7 @@ async def importar_alunos_tabela(
     df, current_sheet, sheets, formato = _read_table_from_upload(content, file.filename or "alunos", sheet_name)
     columns = _columns_payload(df)
     resolved_mapping = _parse_mapping(mapping, columns)
+    parsed_row_overrides = _parse_row_overrides(row_overrides)
 
     if resolved_mapping.get("nome") is None:
         raise HTTPException(400, "Mapeie a coluna de nome antes de importar.")
@@ -593,7 +643,7 @@ async def importar_alunos_tabela(
 
     for idx, row in df.iterrows():
         row_number = int(idx) + 2
-        mapped = _row_mapped_values(row, resolved_mapping)
+        mapped = _apply_row_overrides(_row_mapped_values(row, resolved_mapping), row_number, parsed_row_overrides)
         nome = mapped.get("nome", "").strip()
         email = mapped.get("email", "").strip() or None
         matricula = mapped.get("matricula", "").strip() or None
