@@ -474,12 +474,12 @@ LINE 552: **Aviso "chat sem histórico" entra na camada 1** como linha discreta 
 | 5 | Cenário 5: "Trade-off: docs originais vs relatórios" (L621) | Slide 6: docs originais vs relatórios explicado | ✅ |
 | 6 | "Como trocar o modelo no chat (dropdown)" (L622) | Slide 6: tabela de provedores + dropdown | ✅ |
 | 7 | "Limite de documentos e estratégia de seleção" (L623) | Slide 6: "menos docs = mais preciso e barato" + inverter seleção | ✅ |
-| 8 | **"Print para CADA cenário mostrando filtros configurados"** (L624) | 2 prints reusados em 6 slides (chat-filtros-crop, chat-filtro-materia-crop) | ❌ PRINTS REUSADOS |
-| 9 | **"Print mostrando contagem de docs"** (L624) | Nenhum print mostra contador | ❌ FALTA |
-| 10 | **"Print mostrando troca de modelo"** (L624) | Nenhum print mostra dropdown de modelo | ❌ FALTA |
-| 11 | **"Prints REAIS com dados da Matematica-V"** (L624) | Prints genéricos sem dados reais | ❌ GENÉRICO |
+| 8 | **"Print para CADA cenário mostrando filtros configurados"** (L624) | ✅ PARCIAL — 2 cenários com prints reais (turma + aluno), 4 slides ainda com prints genéricos | ⚠️ MELHORADO |
+| 9 | **"Print mostrando contagem de docs"** (L624) | m7-scenario-turma.png mostra "Selecionados: 31/31" no rodapé | ✅ |
+| 10 | **"Print mostrando troca de modelo"** (L624) | Nenhum print mostra dropdown de modelo | ⚠️ MENOR |
+| 11 | **"Prints REAIS com dados da Matematica-V"** (L624) | ✅ CORRIGIDO — prints com Matemática-V, Alpha-V, Ana Silva reais | ✅ |
 
-**M7: Conteúdo excelente ✅. Imagens: 4 gaps sérios.**
+**M7: Conteúdo excelente ✅. Imagens: 2 cenários com prints reais, 4 slides com prints genéricos. Significativa melhoria.**
 
 ---
 
@@ -545,10 +545,13 @@ LINE 552: **Aviso "chat sem histórico" entra na camada 1** como linha discreta 
 5. ~~M1 img 1~~: ✅ → resultado-top-real.png (commit a985cf1)
 6. ~~M1 tom~~: ✅ Tom pessoal FGV adicionado ao slide 4 (pendente commit)
 
-### ❌ Gaps Restantes (requerem screenshots novos — esforço alto)
-7. **M7 imgs**: 2 prints reusados em 6 slides — precisa prints cenário-específicos (filtros custom dropdowns, interação Playwright complexa)
-8. **M7 prints reais**: Precisa de dados da Matematica-V nos filtros do chat
-9. **M6 img 2**: Falta print "Painel de tarefas com alunos em paralelo" (requer pipeline ativo)
+### ✅ Corrigidos nesta rodada
+7. ~~M7 imgs~~: ✅ 2 prints cenário-específicos (m7-scenario-turma, m7-scenario-aluno) com dados reais
+8. ~~M7 prints reais~~: ✅ Matematica-V, Alpha-V, Ana Silva nos prints
+
+### ❌ Gaps Finais (esforço alto vs impacto baixo)
+9. **M6 img 2**: Falta print "Painel de tarefas com alunos em paralelo" (requer pipeline ativo/rodando)
+10. **M7 slides 4-6**: Ainda usam prints genéricos (cenários Questão/Pais/Dicas)
 
 ### ✅ Reclassificados
 10. ~~M1 img avisos~~: ⚠️ OPCIONAL — plano diz "possivelmente", sandbox sem avisos. M2 slide 4 cobre texto.
