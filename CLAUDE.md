@@ -511,6 +511,37 @@ The `../docs/guides/GENERAL_DEPRECATION_AND_UNIFICATION_GUIDE.md` is the **canon
 
 ---
 
+## Prompt Log e Plano Mestre — Regras para Loops
+
+### Prompt Log (automático)
+- O hook `.claude/hooks/log-prompts.sh` grava automaticamente as mensagens do Otavio em `docs/prompts/sessao_<ID>.md` (1 arquivo por sessão)
+- **Periodicamente** (a cada ~5 mensagens ou no início de um loop), reler o log e CLASSIFICAR cada mensagem não-classificada:
+  - 🔴 DECISÃO — define o que construir ou como interpretar
+  - 🟡 CORREÇÃO — corrige algo que o Claude fez errado  
+  - ⚪ OPERACIONAL — "continue", "a tarefa travou", etc.
+- A classificação é adicionada como prefixo no heading da mensagem
+
+### Enriquecimento do Plano Mestre
+- Quando detectar uma 🔴 DECISÃO ou 🟡 CORREÇÃO:
+  - Adicionar a citação EXATA no plano mestre (`docs/plano_geral_novo_tutorial.md`), na seção do módulo afetado
+  - Formato: `> "texto exato" — Otavio (sessao_X, P##)`
+  - Avisar o Otavio: "Adicionei sua decisão sobre [módulo] ao plano."
+- **NUNCA parafrasear** — copiar verbatim do prompt log
+
+### Seções Protegidas
+- Blocos entre `<!-- PROTEGIDO -->` e `<!-- FIM PROTEGIDO -->` NÃO podem ser editados pelo Claude
+- Isso inclui: citações do Otavio e decisões marcadas como 🔴
+- Se uma quote precisa ser atualizada (Otavio mudou de ideia), criar NOVA quote e marcar anterior como `[SUPERADA por P##]`
+- O Claude PODE editar: specs técnicas, inventário de código, status de implementação, notas técnicas
+
+### Regras do Loop de Implementação
+- Antes de implementar qualquer módulo: **RELER as quotes do Otavio** para esse módulo no plano mestre
+- Comparar implementação contra a **QUOTE EXATA**, não contra resumos
+- Se a quote é ambígua: **PERGUNTAR** ao Otavio, não interpretar
+- Nunca modificar o plano para "encaixar" o que já foi feito — o plano define o que fazer, não o contrário
+
+---
+
 ## Changelog
 
 | Date | Change |

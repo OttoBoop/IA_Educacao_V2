@@ -62,6 +62,12 @@ frontend/version-comparison/
 !frontend/tutorial-images-v2/
 !frontend/tutorial-images-v2/**/*.png
 
+# Prompt logs (personal messages, session-specific, not for public repo)
+docs/prompts/
+
+# Claude hooks config (local paths)
+.claude/settings.local.json
+
 # Backend test data and downloads
 backend/data/e2b_downloads/
 backend/logs/

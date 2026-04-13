@@ -592,9 +592,30 @@ O "aha" que o Otavio quer — _"agora que você viu os docs, vai adorar o chat f
 **Imagens:** Print do relatório final como exemplo do "resultado real". Possivelmente print da tela de resultado mostrando avisos/nota.
 **Hyperlink:** No INÍCIO e no FINAL do hub avançado.
 
+<!-- PROTEGIDO: Quotes do Otavio sobre filosofia — NÃO editar -->
+**Quotes do Otavio (referência para implementação):**
+> "O objetivo principal dessa ferramenta é gerar os relatórios de desempenho." — Otavio (sessao_5caa6b6b, P18)
+
+> "MUITO MAIS QUE UM NÚMERO, o professor e alunos recebem relatórios individualizados." — Otavio (sessao_5caa6b6b, P18)
+
+> "Alguns professores na FGV inclusive dão pontos extras para alunos que não pedem revisão nas suas notas, para evitar o tempo gasto com essa tarefa!" — Otavio (sessao_5caa6b6b, P19)
+
+> "hey, essa é a filosofia geral: construir relatórios. Vs hey, aqui está um case." — Otavio (sessao_5caa6b6b, P27) → FRAMING: filosofia geral PRIMEIRO, case DEPOIS
+
+> "a filosofia real é simplesmente gerar correções mais completas, gerar mais dados que permitam que professores e alunos entendam melhor suas lacunas no aprendizado." — Otavio (sessao_5caa6b6b, P27)
+
+> "E sim, eu estou disposto a falar histórias pessoais da FGV nesse tutorial!" — Otavio (sessao_5caa6b6b, P19)
+<!-- FIM PROTEGIDO -->
+
 ### M2. Visão Individual (6 documentos do pipeline)
 **Conteúdo:** Explicar TODOS os 6 docs e a cadeia: Extração Questões → Gabarito → Respostas → Correção → Análise → Relatório. Cada doc é uma etapa. Explicar avisos (amarelo/vermelho): letra ilegível, documento faltante, baixa confiança. Ensinar a baixar PDF vs ver JSON (JSON tem avisos detalhados).
 **Imagens (4):** (1) Tela resultado completa (nota + cards), (2) Relatório Final aberto (👁️), (3) Análise de Habilidades com barras, (4) Correção questão por questão com nota. Todos com crop no conteúdo, não no background.
+
+<!-- PROTEGIDO: Quotes do Otavio sobre M2 -->
+> "Aqui a gente tem 6 documentos pra explicar, coisas na UI, dá pra ter um monte de prints e slides detalhadas, e vc quis resumir tudo em 2 e colocar um único mega print." — Otavio (sessao_5caa6b6b, P27) → M2 precisa de slides DETALHADOS, não resumidos
+
+> "Sobre os prints no tutorial, eles tem a view do computador e tem um espaço bem grandinho de background. A informação principal está toda numa caixinha, mas vemos todo o background." — Otavio (sessao_5caa6b6b, P15) → prints CROPADOS, sem background
+<!-- FIM PROTEGIDO -->
 
 ### M3. Critérios de Correção
 **Conteúdo:** O que são, como subir (upload tipo "Critérios"), formato ideal (rubrica: "Questão 1: 2pts se X, 1pt se parcial"), impacto na precisão (com vs sem). Rápido mas com exemplo concreto.
@@ -624,8 +645,14 @@ O "aha" que o Otavio quer — _"agora que você viu os docs, vai adorar o chat f
 **Imagens (muitas):** Print para cada cenário mostrando filtros configurados. Print mostrando contagem de docs. Print mostrando troca de modelo. Prints REAIS com dados da Matematica-V.
 
 ### M8. Prompts Customizados
-**Conteúdo:** O que é um prompt ("instruções em português para a IA"), como acessar (toggle Advanced Mode), os 6 prompts e o que cada um controla, exemplo prático ("relatórios mais curtos"), cuidados (testar com 1 aluno), como reverter. Acessível para qualquer professor + details técnico.
-**Imagens (3):** (1) Tela de prompts com os 6 listados, (2) Um prompt aberto em edição, (3) Onde fica o toggle Advanced Mode.
+**Conteúdo:** O que é um prompt ("instruções em português para a IA"), como acessar (tela Prompts no sidebar + opções avançadas no modal do pipeline), os 6 prompts e o que cada um controla, exemplo prático ("relatórios mais curtos"), cuidados (testar com 1 aluno), como reverter. Acessível para qualquer professor + details técnico.
+**Imagens (3):** (1) Tela de prompts com os 6 listados, (2) Um prompt aberto em edição, (3) Modal do pipeline mostrando opções avançadas por etapa.
+
+<!-- PROTEGIDO: Quote do Otavio sobre M8 -->
+> "Amigo, o advanced mode, onde vc pode modificar os prompts, fica nas pipelines..." — Otavio (sessao_5caa6b6b, P27) → NÃO existe toggle Advanced Mode na tela de Prompts. O Advanced Mode fica no MODAL DE PIPELINE onde se escolhe prompt por etapa.
+
+> "A seção prompts tb está péssima... você precisa entender melhor como o modal funciona e me fazer perguntas sobre o que colocar lá" — Otavio (sessao_5caa6b6b, P27)
+<!-- FIM PROTEGIDO -->
 
 ### M9. Adicionar/Configurar Modelos
 **Conteúdo:** Quando adicionar ("se sua instituição tem API key própria"), passo a passo (provedor → modelo → apelido → salvar), parâmetros avançados em details colapsável, como escolher qual modelo usar no pipeline e no chat.
