@@ -557,6 +557,12 @@
             background: var(--bg-hover);
         }
 
+        .btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            pointer-events: none;
+        }
+
         .btn-primary {
             background: var(--primary);
             border-color: var(--primary);
@@ -1611,6 +1617,60 @@
             font-size: 0.75rem;
             color: var(--text-muted);
             margin-top: 4px;
+        }
+
+        .batch-table-wrap {
+            overflow-x: auto;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            margin-top: 12px;
+        }
+
+        .batch-table {
+            min-width: 760px;
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        .batch-table th,
+        .batch-table td {
+            padding: 8px 10px;
+            border: 1px solid var(--border);
+            vertical-align: top;
+            font-size: 0.85rem;
+        }
+
+        .batch-row-error {
+            background: rgba(239, 68, 68, 0.08);
+        }
+
+        .batch-row-warning {
+            background: rgba(234, 179, 8, 0.08);
+        }
+
+        .import-summary-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+            gap: 8px;
+            margin: 12px 0;
+        }
+
+        .import-summary-item {
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 10px;
+            background: var(--bg-input);
+        }
+
+        .import-summary-value {
+            font-weight: 700;
+            font-size: 1.1rem;
+        }
+
+        .import-summary-label {
+            color: var(--text-muted);
+            font-size: 0.75rem;
+            margin-top: 2px;
         }
 
         .model-warning {
@@ -4968,26 +5028,69 @@
         </div>
     </div>
 
-    <!-- Modal: Importar Alunos (CSV) -->
+    <!-- Modal: Importar Alunos (Tabela) -->
     <div class="modal-overlay" id="modal-importar-csv">
-        <div class="modal">
+        <div class="modal" style="max-width: 920px;">
             <div class="modal-header">
-                <h3 class="modal-title">Importar Alunos (CSV)</h3>
+                <h3 class="modal-title">Importar Alunos por Tabela</h3>
                 <button class="modal-close" onclick="closeModal('modal-importar-csv')">×</button>
             </div>
             <div class="modal-body">
                 <p style="color: var(--text-muted); font-size: 0.85rem; margin-bottom: 12px;">
-                    Cabeçalho esperado: nome,email,matricula
+                    Envie CSV, Excel ou ODS. Depois confira quais colunas representam nome, e-mail e matrícula.
                 </p>
                 <div class="form-group">
-                    <label class="form-label">Arquivo CSV *</label>
-                    <input type="file" class="form-input" id="input-importar-csv" accept=".csv">
+                    <label class="form-label">Arquivo *</label>
+                    <input type="file" class="form-input" id="input-importar-csv" accept=".csv,.xlsx,.xls,.ods"
+                        onchange="onImportarTabelaFileChange()">
+                    <div class="form-hint">A coluna de nome é obrigatória. E-mail e matrícula são opcionais.</div>
+                </div>
+                <div class="form-group" id="importar-sheet-group" style="display: none;">
+                    <label class="form-label">Aba da planilha</label>
+                    <select class="form-select" id="select-importar-sheet" onchange="analisarImportacaoTabela()"></select>
+                </div>
+                <div id="importar-status" class="inline-hint" style="display: none;"></div>
+                <div id="importar-mapping-section" style="display: none;">
+                    <div class="form-row" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px;">
+                        <div class="form-group">
+                            <label class="form-label">Coluna de nome *</label>
+                            <select class="form-select importar-map-select" id="select-importar-map-nome"
+                                onchange="onImportarMappingChange()"></select>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Coluna de e-mail</label>
+                            <select class="form-select importar-map-select" id="select-importar-map-email"
+                                onchange="onImportarMappingChange()"></select>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Coluna de matrícula</label>
+                            <select class="form-select importar-map-select" id="select-importar-map-matricula"
+                                onchange="onImportarMappingChange()"></select>
+                        </div>
+                    </div>
+                </div>
+                <div id="importar-preview-section" style="display: none;">
+                    <div id="importar-preview-summary"></div>
+                    <div class="batch-table-wrap">
+                        <table class="batch-table">
+                            <thead>
+                                <tr>
+                                    <th>Linha</th>
+                                    <th>Nome</th>
+                                    <th>E-mail</th>
+                                    <th>Matrícula</th>
+                                </tr>
+                            </thead>
+                            <tbody id="importar-preview-body"></tbody>
+                        </table>
+                    </div>
                 </div>
                 <input type="hidden" id="input-importar-turma-id">
             </div>
             <div class="modal-footer">
                 <button class="btn" onclick="closeModal('modal-importar-csv')">Cancelar</button>
-                <button class="btn btn-primary" onclick="importarAlunosCsv()">Importar</button>
+                <button class="btn" id="btn-analisar-importar" onclick="analisarImportacaoTabela()">Analisar Tabela</button>
+                <button class="btn btn-primary" id="btn-confirmar-importar" onclick="importarAlunosCsv()" disabled>Importar</button>
             </div>
         </div>
     </div>
@@ -5015,28 +5118,25 @@
                 </div>
                 <input type="hidden" id="input-upload-provas-atividade-id">
                 <!-- Batch preview table (F5-T1): populated by JS on file selection -->
-                <div id="batch-preview-container" style="display: none; margin-top: 12px;">
-                    <table class="batch-preview-table" style="width: 100%; border-collapse: collapse;">
+                <div id="batch-preview-container" class="batch-table-wrap" style="display: none;">
+                    <table class="batch-preview-table batch-table">
                         <thead>
                             <tr>
-                                <th
-                                    style="text-align: left; padding: 6px 8px; border-bottom: 1px solid var(--border-color);">
-                                    Arquivo</th>
-                                <th
-                                    style="text-align: left; padding: 6px 8px; border-bottom: 1px solid var(--border-color);">
-                                    Aluno</th>
-                                <th
-                                    style="text-align: left; padding: 6px 8px; border-bottom: 1px solid var(--border-color);">
-                                    Nome do Documento</th>
+                                <th>Arquivo</th>
+                                <th>Aluno</th>
+                                <th>Ação</th>
+                                <th>Nome do Documento</th>
+                                <th>Status</th>
                             </tr>
                         </thead>
                         <tbody id="batch-preview-body"></tbody>
                     </table>
                 </div>
+                <div id="batch-preview-message" class="inline-hint" style="display: none;"></div>
             </div>
             <div class="modal-footer">
                 <button class="btn" onclick="closeModal('modal-upload-provas')">Cancelar</button>
-                <button class="btn btn-primary" onclick="uploadProvasEmLote()">Enviar</button>
+                <button class="btn btn-primary" id="btn-upload-provas-enviar" onclick="uploadProvasEmLote()" disabled>Enviar</button>
             </div>
         </div>
     </div>
@@ -5965,6 +6065,15 @@
         let activeContentRequest = { id: 0, view: 'dashboard' };
         let navTreeRequestSequence = 0;
         let activeNavTreeRequest = 0;
+        let importarTabelaState = {
+            preview: null,
+            mappingTimer: null,
+            busy: false
+        };
+        let uploadProvasState = {
+            rows: [],
+            valid: false
+        };
 
         // ============================================================
         // SISTEMA DE TAREFAS (TASK QUEUE)
@@ -7209,7 +7318,7 @@
                                 <div class="help-step-number">3</div>
                                 <div class="help-step-text">Clique em <strong>"Salvar"</strong></div>
                             </div>
-                            <p style="margin-top: 12px;"><strong>📋 Importar em lote:</strong> Clique em "Importar CSV" com colunas: nome, matricula, email</p>
+                            <p style="margin-top: 12px;"><strong>📋 Importar em lote:</strong> Clique em "Importar Alunos" e confira as colunas da tabela antes de importar.</p>
                         `
                     },
                     {
@@ -8014,6 +8123,19 @@
             }
         }
 
+        function formatApiErrorMessage(data) {
+            const rawMessage = data?.error?.message || data?.detail || data?.message || data?.raw;
+            if (!rawMessage) return 'Erro na requisição';
+            if (typeof rawMessage === 'string') return rawMessage;
+            if (rawMessage.mensagem) {
+                const firstError = Array.isArray(rawMessage.erros) && rawMessage.erros.length
+                    ? ` ${rawMessage.erros[0].erro || ''}`.trim()
+                    : '';
+                return firstError ? `${rawMessage.mensagem} ${firstError}` : rawMessage.mensagem;
+            }
+            return 'Erro na requisição';
+        }
+
         async function api(endpoint, options = {}) {
             try {
                 const response = await fetch(`${API}${endpoint}`, {
@@ -8022,8 +8144,7 @@
                 });
                 const data = await parseApiResponse(response);
                 if (!response.ok) {
-                    const message = data?.error?.message || data?.detail || data?.message || data?.raw || 'Erro na requisição';
-                    throw new Error(message);
+                    throw new Error(formatApiErrorMessage(data));
                 }
                 return data;
             } catch (error) {
@@ -8038,8 +8159,7 @@
                 const response = await fetch(`${API}${endpoint}`, { method: 'POST', body: formData });
                 const data = await parseApiResponse(response);
                 if (!response.ok) {
-                    const message = data?.error?.message || data?.detail || data?.message || data?.raw || 'Erro na requisição';
-                    throw new Error(message);
+                    throw new Error(formatApiErrorMessage(data));
                 }
                 return data;
             } catch (error) {
@@ -8879,7 +8999,7 @@
                     </div>
                     <div style="display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 16px;">
                         <button class="btn" onclick="showDashboardTurma('${turmaId}')">📊 Dashboard da Turma</button>
-                        <button class="btn" onclick="openModalImportarCsv('${turmaId}')">⬇️ Importar Alunos (CSV)</button>
+                        <button class="btn" onclick="openModalImportarCsv('${turmaId}')">⬇️ Importar Alunos (Tabela)</button>
                         <button class="btn" onclick="exportarAlunosCsv('${turmaId}')">📤 Exportar Alunos (CSV)</button>
                     </div>
                     <div class="tabs">
@@ -10144,7 +10264,205 @@
             }
         }
 
-        function openModalImportarCsv(turmaId) { document.getElementById('input-importar-turma-id').value = turmaId || ''; openModal('modal-importar-csv'); }
+        function resetImportarTabelaModal() {
+            importarTabelaState.preview = null;
+            importarTabelaState.busy = false;
+            clearTimeout(importarTabelaState.mappingTimer);
+            document.getElementById('input-importar-csv').value = '';
+            document.getElementById('importar-sheet-group').style.display = 'none';
+            document.getElementById('select-importar-sheet').innerHTML = '';
+            document.getElementById('importar-mapping-section').style.display = 'none';
+            document.getElementById('importar-preview-section').style.display = 'none';
+            document.getElementById('importar-preview-summary').innerHTML = '';
+            document.getElementById('importar-preview-body').innerHTML = '';
+            document.getElementById('btn-confirmar-importar').disabled = true;
+            document.getElementById('btn-analisar-importar').disabled = false;
+            document.getElementById('btn-analisar-importar').innerHTML = 'Analisar Tabela';
+            document.getElementById('btn-confirmar-importar').innerHTML = 'Importar';
+            setImportarTabelaStatus('', 'info');
+        }
+
+        function setImportarTabelaStatus(message, type = 'info') {
+            const status = document.getElementById('importar-status');
+            if (!message) {
+                status.style.display = 'none';
+                status.textContent = '';
+                return;
+            }
+            const colors = {
+                info: 'var(--text-muted)',
+                success: 'var(--success)',
+                warning: 'var(--warning)',
+                error: 'var(--danger)'
+            };
+            status.style.display = 'flex';
+            status.style.color = colors[type] || colors.info;
+            status.textContent = message;
+        }
+
+        function setImportarTabelaBusy(isBusy, message = '') {
+            importarTabelaState.busy = isBusy;
+            const analyzeBtn = document.getElementById('btn-analisar-importar');
+            const importBtn = document.getElementById('btn-confirmar-importar');
+            const hasFile = Boolean(document.getElementById('input-importar-csv')?.files?.length);
+            analyzeBtn.disabled = isBusy;
+            importBtn.disabled = isBusy || !isImportarMappingValid() || !hasFile;
+            analyzeBtn.innerHTML = isBusy ? '<span class="spinner"></span> Analisando...' : 'Analisar Tabela';
+            importBtn.innerHTML = isBusy ? '<span class="spinner"></span> Importando...' : 'Importar';
+            if (message) setImportarTabelaStatus(message, 'info');
+        }
+
+        function openModalImportarCsv(turmaId) {
+            document.getElementById('input-importar-turma-id').value = turmaId || '';
+            resetImportarTabelaModal();
+            openModal('modal-importar-csv');
+        }
+
+        function onImportarTabelaFileChange() {
+            importarTabelaState.preview = null;
+            document.getElementById('importar-sheet-group').style.display = 'none';
+            document.getElementById('importar-mapping-section').style.display = 'none';
+            document.getElementById('importar-preview-section').style.display = 'none';
+            document.getElementById('btn-confirmar-importar').disabled = true;
+            const fileInput = document.getElementById('input-importar-csv');
+            if (fileInput.files.length) {
+                setImportarTabelaStatus('Arquivo selecionado. Clique em "Analisar Tabela" para conferir as colunas.', 'info');
+            } else {
+                setImportarTabelaStatus('', 'info');
+            }
+        }
+
+        function getImportarTabelaMapping() {
+            return {
+                nome: document.getElementById('select-importar-map-nome')?.value || '',
+                email: document.getElementById('select-importar-map-email')?.value || '',
+                matricula: document.getElementById('select-importar-map-matricula')?.value || ''
+            };
+        }
+
+        function isImportarMappingValid() {
+            return Boolean(document.getElementById('select-importar-map-nome')?.value);
+        }
+
+        function appendImportarTabelaFormData(includeMapping = false) {
+            const fileInput = document.getElementById('input-importar-csv');
+            const turmaId = document.getElementById('input-importar-turma-id').value;
+            const sheetSelect = document.getElementById('select-importar-sheet');
+            const formData = new FormData();
+            formData.append('file', fileInput.files[0]);
+            if (turmaId) formData.append('turma_id', turmaId);
+            if (sheetSelect && sheetSelect.value) formData.append('sheet_name', sheetSelect.value);
+            if (includeMapping) formData.append('mapping', JSON.stringify(getImportarTabelaMapping()));
+            return formData;
+        }
+
+        async function analisarImportacaoTabela(includeMapping = false) {
+            if (importarTabelaState.busy) return;
+            const fileInput = document.getElementById('input-importar-csv');
+            if (!fileInput.files.length) { showToast('Selecione uma tabela', 'error'); return; }
+
+            try {
+                setImportarTabelaBusy(true, includeMapping ? 'Atualizando prévia...' : 'Analisando tabela...');
+                const data = await apiForm('/alunos/importar-tabela/preview', appendImportarTabelaFormData(includeMapping));
+                importarTabelaState.preview = data;
+                renderImportarTabelaPreview(data);
+                setImportarTabelaStatus('Confira o mapeamento das colunas antes de importar.', 'success');
+            } catch (e) {
+                document.getElementById('btn-confirmar-importar').disabled = true;
+                setImportarTabelaStatus(e.message || 'Erro ao analisar tabela', 'error');
+            } finally {
+                setImportarTabelaBusy(false);
+            }
+        }
+
+        function renderImportarTabelaPreview(data) {
+            const sheetGroup = document.getElementById('importar-sheet-group');
+            const sheetSelect = document.getElementById('select-importar-sheet');
+            if (data.sheets && data.sheets.length > 1) {
+                sheetGroup.style.display = 'block';
+                sheetSelect.innerHTML = data.sheets.map(sheet =>
+                    `<option value="${escapeHtml(sheet)}"${sheet === data.sheet_name ? ' selected' : ''}>${escapeHtml(sheet)}</option>`
+                ).join('');
+            } else {
+                sheetGroup.style.display = 'none';
+            }
+
+            const mapping = data.mapping || data.sugestoes || {};
+            renderImportarMappingSelects(data.columns || [], mapping);
+            renderImportarSummary(data.analise || {});
+            renderImportarRows(data.sample_rows || []);
+
+            document.getElementById('importar-mapping-section').style.display = 'block';
+            document.getElementById('importar-preview-section').style.display = 'block';
+            document.getElementById('btn-confirmar-importar').disabled = !isImportarMappingValid();
+        }
+
+        function renderImportarMappingSelects(columns, mapping) {
+            const fields = [
+                ['nome', 'Selecione a coluna de nome'],
+                ['email', 'Não importar e-mail'],
+                ['matricula', 'Não importar matrícula']
+            ];
+            fields.forEach(([field, emptyLabel]) => {
+                const select = document.getElementById(`select-importar-map-${field}`);
+                const selectedValue = mapping[field] !== null && mapping[field] !== undefined ? String(mapping[field]) : '';
+                select.innerHTML = `<option value="">${emptyLabel}</option>` + columns.map(col => {
+                    const value = String(col.index);
+                    return `<option value="${value}"${value === selectedValue ? ' selected' : ''}>${escapeHtml(col.label)}</option>`;
+                }).join('');
+            });
+        }
+
+        function renderImportarSummary(analise) {
+            const summary = document.getElementById('importar-preview-summary');
+            const items = [
+                ['Linhas', analise.total_linhas ?? 0],
+                ['Novos', analise.novos ?? 0],
+                ['Existentes', analise.existentes ?? 0],
+                ['A vincular', analise.a_vincular ?? 0],
+                ['Já vinculados', analise.ja_vinculados ?? 0],
+                ['Sem nome', analise.sem_nome ?? 0],
+                ['Duplicados', analise.duplicados_tabela ?? 0]
+            ];
+            summary.innerHTML = `
+                <div class="import-summary-grid">
+                    ${items.map(([label, value]) => `
+                        <div class="import-summary-item">
+                            <div class="import-summary-value">${value}</div>
+                            <div class="import-summary-label">${label}</div>
+                        </div>
+                    `).join('')}
+                </div>
+            `;
+        }
+
+        function renderImportarRows(rows) {
+            const tbody = document.getElementById('importar-preview-body');
+            if (!rows.length) {
+                tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;color:var(--text-muted);">Nenhuma linha encontrada.</td></tr>';
+                return;
+            }
+            tbody.innerHTML = rows.map(row => {
+                const mapped = row.mapeado || {};
+                const rowClass = mapped.nome ? '' : ' class="batch-row-error"';
+                return `<tr${rowClass}>
+                    <td>${row.linha || '-'}</td>
+                    <td>${escapeHtml(mapped.nome || '')}</td>
+                    <td>${escapeHtml(mapped.email || '')}</td>
+                    <td>${escapeHtml(mapped.matricula || '')}</td>
+                </tr>`;
+            }).join('');
+        }
+
+        function onImportarMappingChange() {
+            document.getElementById('btn-confirmar-importar').disabled = !isImportarMappingValid();
+            clearTimeout(importarTabelaState.mappingTimer);
+            if (!isImportarMappingValid()) {
+                setImportarTabelaStatus('Escolha qual coluna contém o nome do aluno.', 'warning');
+                return;
+            }
+            importarTabelaState.mappingTimer = setTimeout(() => analisarImportacaoTabela(true), 300);
+        }
 
         function openDocumento(documentoId) {
             if (!documentoId) return;
@@ -10270,57 +10588,213 @@
             return (window._atividadeData?.alunos?.total ?? 0) > 0;
         }
 
-        function openModalUploadProvas(atividadeId) {
+        async function openModalUploadProvas(atividadeId) {
             if (!hasStudentsInTurma()) {
                 showToast('Nenhum aluno na turma. Adicione alunos antes de enviar provas.', 'warning');
                 return;
             }
+            await ensureAtividadeData(atividadeId);
             document.getElementById('input-upload-provas-atividade-id').value = atividadeId;
+            document.getElementById('input-upload-provas-files').value = '';
             document.getElementById('input-upload-provas-files').onchange = populateBatchPreview;
+            document.getElementById('batch-preview-container').style.display = 'none';
+            document.getElementById('batch-preview-body').innerHTML = '';
+            document.getElementById('batch-preview-message').style.display = 'none';
+            document.getElementById('btn-upload-provas-enviar').disabled = true;
+            uploadProvasState = { rows: [], valid: false };
             openModal('modal-upload-provas');
+        }
+
+        function getBatchAlunosDetalhados() {
+            const atividadeAlunos = window._atividadeData?.alunos?.detalhes || [];
+            const turmaAlunos = Array.isArray(window._turmaData?.alunos) ? window._turmaData.alunos : [];
+            return atividadeAlunos.map(a => {
+                const turmaAluno = turmaAlunos.find(t => t.id === a.aluno_id) || {};
+                return {
+                    aluno_id: a.aluno_id,
+                    aluno_nome: a.aluno_nome,
+                    matricula: turmaAluno.matricula || '',
+                    email: turmaAluno.email || '',
+                    tem_prova: Boolean(a.tem_prova)
+                };
+            });
+        }
+
+        function normalizeMatchText(text) {
+            return String(text || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+        }
+
+        function guessAlunoForFile(file, alunos) {
+            const baseName = file.name.replace(/\.[^.]+$/, '');
+            const normalizedFile = normalizeMatchText(baseName).replace(/[^a-z0-9]+/g, '_');
+            const compactFile = normalizedFile.replace(/[^a-z0-9]+/g, '');
+            return alunos.find(aluno => {
+                const normalizedName = normalizeMatchText(aluno.aluno_nome).replace(/[^a-z0-9]+/g, '_');
+                const compactName = normalizedName.replace(/[^a-z0-9]+/g, '');
+                const compactMatricula = normalizeMatchText(aluno.matricula).replace(/[^a-z0-9]+/g, '');
+                return (
+                    (compactMatricula && compactFile.includes(compactMatricula)) ||
+                    (compactName && (compactFile.includes(compactName) || compactName.includes(compactFile)))
+                );
+            });
         }
 
         function populateBatchPreview() {
             const filesInput = document.getElementById('input-upload-provas-files');
             const container = document.getElementById('batch-preview-container');
             const tbody = document.getElementById('batch-preview-body');
+            const message = document.getElementById('batch-preview-message');
 
             if (!filesInput.files.length) {
                 container.style.display = 'none';
                 tbody.innerHTML = '';
+                message.style.display = 'none';
+                document.getElementById('btn-upload-provas-enviar').disabled = true;
+                uploadProvasState = { rows: [], valid: false };
                 return;
             }
 
-            const data = window._atividadeData;
-            const alunos = data?.alunos?.detalhes || [];
+            const alunos = getBatchAlunosDetalhados();
             const materiaNome = window._turmaData?.materia?.nome || '';
             const turmaNome = window._turmaData?.turma?.nome || '';
 
             let rows = '';
             Array.from(filesInput.files).forEach((file, idx) => {
-                const baseName = file.name.replace(/\.[^.]+$/, '');
-                const normalizedFile = baseName.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
-
-                const matchedAluno = alunos.find(a => {
-                    const normalizedName = a.aluno_nome.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
-                    return normalizedFile.includes(normalizedName) || normalizedName.includes(normalizedFile);
-                });
+                const matchedAluno = guessAlunoForFile(file, alunos);
 
                 const alunoNome = matchedAluno?.aluno_nome || '';
                 const displayName = buildDisplayName('prova_respondida', alunoNome, materiaNome, turmaNome);
-                const alunoDisplay = matchedAluno
-                    ? escapeHtml(matchedAluno.aluno_nome)
-                    : '<span style="color: var(--danger-color);">Não identificado</span>';
+                const alunoOptions = '<option value="">Escolha o aluno...</option>' + alunos.map(aluno => {
+                    const selected = matchedAluno?.aluno_id === aluno.aluno_id ? ' selected' : '';
+                    const meta = aluno.matricula ? ` • ${aluno.matricula}` : '';
+                    return `<option value="${aluno.aluno_id}"${selected}>${escapeHtml(aluno.aluno_nome + meta)}</option>`;
+                }).join('');
 
                 rows += `<tr>
-                    <td style="padding: 6px 8px;">${escapeHtml(file.name)}</td>
-                    <td style="padding: 6px 8px;">${alunoDisplay}</td>
-                    <td style="padding: 6px 8px;"><input type="text" class="form-input batch-name-input" value="${escapeHtml(displayName)}" data-file-idx="${idx}" style="width: 100%;"></td>
+                    <td>${escapeHtml(file.name)}</td>
+                    <td>
+                        <select class="form-select batch-aluno-select" data-file-idx="${idx}" onchange="onBatchAssignmentChange()">
+                            ${alunoOptions}
+                        </select>
+                    </td>
+                    <td>
+                        <select class="form-select batch-action-select" data-file-idx="${idx}" onchange="onBatchAssignmentChange()"></select>
+                    </td>
+                    <td><input type="text" class="form-input batch-name-input" value="${escapeHtml(displayName)}" data-file-idx="${idx}" style="width: 100%;"></td>
+                    <td class="batch-status" data-file-idx="${idx}"></td>
                 </tr>`;
             });
 
             tbody.innerHTML = rows;
             document.getElementById('batch-preview-container').style.display = 'block';
+            message.style.display = 'flex';
+            onBatchAssignmentChange();
+        }
+
+        function updateBatchActionOptions(row, aluno) {
+            const actionSelect = row.querySelector('.batch-action-select');
+            const current = actionSelect.value;
+            if (!aluno) {
+                actionSelect.innerHTML = `
+                    <option value="">Escolha o aluno...</option>
+                    <option value="pular">Remover deste envio</option>
+                `;
+                actionSelect.value = current === 'pular' ? 'pular' : '';
+                return;
+            }
+
+            if (aluno.tem_prova) {
+                actionSelect.innerHTML = `
+                    <option value="">Escolha uma ação...</option>
+                    <option value="substituir">Substituir prova existente</option>
+                    <option value="pular">Remover deste envio</option>
+                `;
+                actionSelect.value = ['substituir', 'pular'].includes(current) ? current : '';
+            } else {
+                actionSelect.innerHTML = `
+                    <option value="enviar">Enviar prova</option>
+                    <option value="pular">Remover deste envio</option>
+                `;
+                actionSelect.value = ['enviar', 'pular'].includes(current) ? current : 'enviar';
+            }
+        }
+
+        function onBatchAssignmentChange() {
+            const alunos = getBatchAlunosDetalhados();
+            const alunosById = new Map(alunos.map(a => [a.aluno_id, a]));
+            const rows = Array.from(document.querySelectorAll('#batch-preview-body tr'));
+            const selectedActive = new Map();
+            let invalidCount = 0;
+            let activeCount = 0;
+            const assignments = [];
+
+            rows.forEach(row => {
+                const alunoSelect = row.querySelector('.batch-aluno-select');
+                const actionSelect = row.querySelector('.batch-action-select');
+                const nameInput = row.querySelector('.batch-name-input');
+                const statusCell = row.querySelector('.batch-status');
+                const idx = Number(alunoSelect?.dataset.fileIdx || 0);
+                const aluno = alunosById.get(alunoSelect.value);
+
+                updateBatchActionOptions(row, aluno);
+                const action = actionSelect.value;
+
+                row.classList.remove('batch-row-error', 'batch-row-warning');
+                let status = 'Pronto para enviar';
+                let valid = true;
+
+                if (action === 'pular') {
+                    status = 'Removido do envio';
+                    valid = true;
+                } else if (!aluno) {
+                    status = 'Escolha um aluno ou remova este arquivo';
+                    valid = false;
+                } else if (!action) {
+                    status = aluno.tem_prova ? 'Já existe prova. Escolha substituir ou remover.' : 'Escolha uma ação';
+                    valid = false;
+                } else {
+                    activeCount += 1;
+                    const previous = selectedActive.get(aluno.aluno_id);
+                    if (previous !== undefined) {
+                        status = 'Este aluno já está em outro arquivo desta fila';
+                        valid = false;
+                    } else {
+                        selectedActive.set(aluno.aluno_id, idx);
+                    }
+                }
+
+                if (!valid) {
+                    invalidCount += 1;
+                    row.classList.add('batch-row-error');
+                } else if (aluno?.tem_prova && action === 'substituir') {
+                    row.classList.add('batch-row-warning');
+                    status = 'Vai substituir a prova existente';
+                }
+
+                statusCell.textContent = status;
+                assignments[idx] = {
+                    aluno_id: aluno?.aluno_id || '',
+                    action: action || '',
+                    display_name: nameInput?.value || ''
+                };
+            });
+
+            const message = document.getElementById('batch-preview-message');
+            const sendBtn = document.getElementById('btn-upload-provas-enviar');
+            if (invalidCount > 0) {
+                message.textContent = `${invalidCount} arquivo(s) precisam de decisão antes do envio.`;
+                message.style.color = 'var(--danger)';
+                sendBtn.disabled = true;
+            } else if (activeCount === 0) {
+                message.textContent = 'Nenhum arquivo será enviado. Escolha pelo menos um aluno.';
+                message.style.color = 'var(--warning)';
+                sendBtn.disabled = true;
+            } else {
+                message.textContent = `${activeCount} arquivo(s) prontos para envio.`;
+                message.style.color = 'var(--success)';
+                sendBtn.disabled = false;
+            }
+            uploadProvasState = { rows: assignments, valid: invalidCount === 0 && activeCount > 0 };
         }
 
         async function openModalExecucao(atividadeId) {
@@ -10921,16 +11395,46 @@
         async function importarAlunosCsv() {
             const fileInput = document.getElementById('input-importar-csv');
             const turmaId = document.getElementById('input-importar-turma-id').value;
-            if (!fileInput.files.length) { showToast('Selecione um arquivo CSV', 'error'); return; }
-            const formData = new FormData();
-            formData.append('file', fileInput.files[0]);
-            if (turmaId) formData.append('turma_id', turmaId);
+            if (!fileInput.files.length) { showToast('Selecione uma tabela', 'error'); return; }
+            if (!isImportarMappingValid()) { showToast('Mapeie a coluna de nome', 'error'); return; }
+            if (importarTabelaState.busy) return;
             try {
-                const result = await apiForm('/alunos/importar-csv', formData);
-                showToast(`Importados: ${result.criados || 0}`, 'success');
-                closeModal('modal-importar-csv');
+                setImportarTabelaBusy(true, 'Importando alunos...');
+                const result = await apiForm('/alunos/importar-tabela', appendImportarTabelaFormData(true));
+                const resumo = result.resumo || result;
+                renderImportarResultadoFinal(resumo);
+                setImportarTabelaStatus('Importação concluída. Confira o resumo abaixo.', 'success');
+                showToast(`Criados: ${resumo.criados || 0} • Reaproveitados: ${resumo.reaproveitados || 0}`, 'success');
+                fileInput.value = '';
+                document.getElementById('btn-confirmar-importar').disabled = true;
                 if (turmaId) showTurma(turmaId); else showAlunos();
-            } catch (e) { }
+            } catch (e) {
+                setImportarTabelaStatus(e.message || 'Erro ao importar alunos', 'error');
+            } finally {
+                setImportarTabelaBusy(false);
+            }
+        }
+
+        function renderImportarResultadoFinal(resumo) {
+            const summary = document.getElementById('importar-preview-summary');
+            const items = [
+                ['Criados', resumo.criados ?? 0],
+                ['Reaproveitados', resumo.reaproveitados ?? 0],
+                ['Vinculados', resumo.vinculados ?? 0],
+                ['Já vinculados', resumo.ja_vinculados ?? 0],
+                ['Ignorados', resumo.ignorados ?? 0],
+                ['Erros', resumo.erros ?? 0]
+            ];
+            summary.innerHTML = `
+                <div class="import-summary-grid">
+                    ${items.map(([label, value]) => `
+                        <div class="import-summary-item">
+                            <div class="import-summary-value">${value}</div>
+                            <div class="import-summary-label">${label}</div>
+                        </div>
+                    `).join('')}
+                </div>
+            `;
         }
 
         async function exportarAlunosCsv(turmaId) {
@@ -10951,20 +11455,42 @@
             const atividadeId = document.getElementById('input-upload-provas-atividade-id').value;
             const modo = document.getElementById('input-upload-provas-modo').value;
             if (!filesInput.files.length) { showToast('Selecione arquivos', 'error'); return; }
+            onBatchAssignmentChange();
+            if (!uploadProvasState.valid) {
+                showToast('Resolva os arquivos pendentes antes de enviar', 'error');
+                return;
+            }
+            const sendBtn = document.getElementById('btn-upload-provas-enviar');
             const formData = new FormData();
             Array.from(filesInput.files).forEach(file => formData.append('files', file));
             formData.append('atividade_id', atividadeId);
             formData.append('modo_nome', modo);
-            const nameInputs = document.querySelectorAll('.batch-name-input');
-            const displayNames = Array.from(nameInputs).map(input => input.value);
+            const displayNames = [];
+            const assignments = [];
+            document.querySelectorAll('#batch-preview-body tr').forEach(row => {
+                const idx = Number(row.querySelector('.batch-aluno-select')?.dataset.fileIdx || 0);
+                const alunoId = row.querySelector('.batch-aluno-select')?.value || '';
+                const action = row.querySelector('.batch-action-select')?.value || '';
+                const displayName = row.querySelector('.batch-name-input')?.value || '';
+                displayNames[idx] = displayName;
+                assignments[idx] = { aluno_id: alunoId, action, display_name: displayName };
+            });
             formData.append('display_names', JSON.stringify(displayNames));
+            formData.append('assignments', JSON.stringify(assignments));
             try {
+                sendBtn.disabled = true;
+                sendBtn.innerHTML = '<span class="spinner"></span> Enviando...';
                 const result = await apiForm('/documentos/upload-provas-alunos', formData);
-                showToast(`Enviados: ${result.salvos || 0}`, 'success');
+                showToast(`Enviados: ${result.salvos || 0} • Removidos: ${result.pulados || 0}`, 'success');
                 document.getElementById('batch-preview-container').style.display = 'none';
                 closeModal('modal-upload-provas');
                 showAtividade(atividadeId);
-            } catch (e) { }
+            } catch (e) {
+                showToast(e.message || 'Erro ao enviar provas', 'error');
+            } finally {
+                sendBtn.innerHTML = 'Enviar';
+                sendBtn.disabled = !uploadProvasState.valid;
+            }
         }
 
         function onPipelineModoChange() {

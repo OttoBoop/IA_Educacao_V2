@@ -8,7 +8,7 @@ Este arquivo contém endpoints extras que são importados pelo main_v2.py:
 """
 
 from fastapi import APIRouter, UploadFile, File, Form, HTTPException, Query
-from typing import Optional, List
+from typing import Optional, List, Dict, Any, Tuple
 from pydantic import BaseModel
 from datetime import datetime
 import logging
@@ -17,6 +17,8 @@ import os
 import csv
 import io
 import json
+import re
+import unicodedata
 from pathlib import Path
 
 from models import TipoDocumento
@@ -43,6 +45,403 @@ class ImportarAlunosRequest(BaseModel):
 class BuscaRequest(BaseModel):
     termo: str
     tipo: Optional[str] = None  # "aluno", "materia", "turma", "atividade"
+
+
+# ============================================================
+# HELPERS: IMPORTAÇÃO GUIADA DE ALUNOS
+# ============================================================
+
+IMPORT_FIELDS = ("nome", "email", "matricula")
+
+FIELD_ALIASES = {
+    "nome": [
+        "nome", "nome aluno", "nome do aluno", "aluno", "estudante",
+        "student", "student name", "name", "full name", "nome completo"
+    ],
+    "email": [
+        "email", "e-mail", "mail", "correio", "correio eletronico",
+        "correio eletrônico", "email do aluno", "e-mail do aluno"
+    ],
+    "matricula": [
+        "matricula", "matrícula", "matricula aluno", "matrícula aluno",
+        "matricula do aluno", "matrícula do aluno", "ra", "registro",
+        "codigo", "código", "codigo aluno", "id", "id aluno"
+    ],
+}
+
+
+def _normalize_text(value: Any) -> str:
+    """Normaliza texto para comparações tolerantes a acento, caixa e espaços."""
+    text = str(value or "").strip().lower()
+    text = unicodedata.normalize("NFD", text)
+    text = "".join(ch for ch in text if unicodedata.category(ch) != "Mn")
+    text = re.sub(r"\s+", " ", text)
+    return text.strip()
+
+
+def _normalize_identifier(value: Any) -> str:
+    text = _normalize_text(value)
+    return re.sub(r"[^a-z0-9]+", "", text)
+
+
+def _normalize_email(value: Any) -> str:
+    return str(value or "").strip().lower()
+
+
+def _cell_to_text(value: Any) -> str:
+    if value is None:
+        return ""
+    text = str(value).strip()
+    if text.lower() in {"nan", "none", "nat"}:
+        return ""
+    # Pandas often renders integer-like spreadsheet cells as "123.0".
+    if re.fullmatch(r"-?\d+\.0", text):
+        return text[:-2]
+    return text
+
+
+def _require_pandas():
+    try:
+        import pandas as pd  # type: ignore
+        return pd
+    except ImportError:
+        raise HTTPException(
+            500,
+            "Dependências de planilha não instaladas. Instale pandas, openpyxl, xlrd e odfpy."
+        )
+
+
+def _clean_header(value: Any, index: int) -> str:
+    text = _cell_to_text(value)
+    if not text or text.lower().startswith("unnamed:"):
+        return f"Coluna {index + 1}"
+    return text
+
+
+def _clean_dataframe(pd, df):
+    df = df.fillna("")
+    df.columns = [_clean_header(col, idx) for idx, col in enumerate(df.columns)]
+    keep_rows = []
+    for _, row in df.iterrows():
+        keep_rows.append(any(_cell_to_text(value) for value in row.tolist()))
+    if not keep_rows:
+        return df.iloc[0:0].reset_index(drop=True)
+    return df[keep_rows].reset_index(drop=True)
+
+
+def _read_table_from_upload(content: bytes, filename: str, sheet_name: Optional[str] = None):
+    """Lê CSV/XLSX/XLS/ODS e retorna (df, sheet_atual, sheets_disponiveis, formato)."""
+    pd = _require_pandas()
+    suffix = Path(filename or "").suffix.lower()
+
+    if suffix == ".csv":
+        text = None
+        for encoding in ("utf-8-sig", "utf-8", "latin-1"):
+            try:
+                text = content.decode(encoding)
+                break
+            except UnicodeDecodeError:
+                continue
+        if text is None:
+            raise HTTPException(400, "Não foi possível decodificar o CSV.")
+
+        try:
+            df = pd.read_csv(
+                io.StringIO(text),
+                dtype=str,
+                keep_default_na=False,
+                sep=None,
+                engine="python",
+                skip_blank_lines=True,
+            )
+        except Exception as exc:
+            raise HTTPException(400, f"Erro ao ler CSV: {exc}")
+
+        return _clean_dataframe(pd, df), None, [], "csv"
+
+    if suffix not in {".xlsx", ".xls", ".ods"}:
+        raise HTTPException(400, "Formato não suportado. Envie .csv, .xlsx, .xls ou .ods.")
+
+    engine = None
+    if suffix == ".xlsx":
+        engine = "openpyxl"
+    elif suffix == ".xls":
+        engine = "xlrd"
+    elif suffix == ".ods":
+        engine = "odf"
+
+    try:
+        excel = pd.ExcelFile(io.BytesIO(content), engine=engine)
+    except Exception as exc:
+        raise HTTPException(400, f"Erro ao abrir planilha: {exc}")
+
+    sheets = list(excel.sheet_names)
+    if not sheets:
+        raise HTTPException(400, "A planilha não possui abas.")
+
+    candidate_sheets = [sheet_name] if sheet_name else sheets
+    selected_df = None
+    selected_sheet = None
+
+    for candidate in candidate_sheets:
+        if candidate not in sheets:
+            raise HTTPException(400, f"Aba não encontrada: {candidate}")
+        try:
+            df = pd.read_excel(
+                excel,
+                sheet_name=candidate,
+                dtype=str,
+                keep_default_na=False,
+            )
+        except Exception as exc:
+            raise HTTPException(400, f"Erro ao ler aba '{candidate}': {exc}")
+
+        df = _clean_dataframe(pd, df)
+        if sheet_name or len(df) > 0:
+            selected_df = df
+            selected_sheet = candidate
+            break
+
+    if selected_df is None:
+        # Todas as abas vazias: devolve a primeira para a UI conseguir explicar.
+        selected_sheet = sheets[0]
+        selected_df = _clean_dataframe(
+            pd,
+            pd.read_excel(excel, sheet_name=selected_sheet, dtype=str, keep_default_na=False),
+        )
+
+    return selected_df, selected_sheet, sheets, suffix.lstrip(".")
+
+
+def _columns_payload(df) -> List[Dict[str, Any]]:
+    return [
+        {"index": idx, "name": str(col), "label": f"{idx + 1}. {col}"}
+        for idx, col in enumerate(df.columns.tolist())
+    ]
+
+
+def _suggest_mapping(columns: List[Dict[str, Any]]) -> Dict[str, Optional[int]]:
+    suggestions: Dict[str, Optional[int]] = {field: None for field in IMPORT_FIELDS}
+    used = set()
+
+    for field in IMPORT_FIELDS:
+        aliases = [_normalize_text(alias) for alias in FIELD_ALIASES[field]]
+        best_score = -1
+        best_idx = None
+        for col in columns:
+            idx = col["index"]
+            if idx in used:
+                continue
+            normalized = _normalize_text(col["name"])
+            score = -1
+            if normalized in aliases:
+                score = 100
+            else:
+                for alias in aliases:
+                    if alias and (alias in normalized or normalized in alias):
+                        score = max(score, 60)
+            if field == "nome" and "mae" in normalized:
+                score -= 30
+            if score > best_score:
+                best_score = score
+                best_idx = idx
+        if best_idx is not None and best_score >= 50:
+            suggestions[field] = best_idx
+            used.add(best_idx)
+
+    return suggestions
+
+
+def _parse_mapping(mapping: Optional[str], columns: List[Dict[str, Any]]) -> Dict[str, Optional[int]]:
+    if not mapping:
+        return {field: None for field in IMPORT_FIELDS}
+
+    try:
+        raw = json.loads(mapping)
+    except json.JSONDecodeError:
+        raise HTTPException(400, "Mapeamento inválido. Envie JSON.")
+    if not isinstance(raw, dict):
+        raise HTTPException(400, "Mapeamento inválido. Envie um objeto JSON.")
+
+    columns_by_name = {_normalize_text(col["name"]): col["index"] for col in columns}
+    max_idx = len(columns) - 1
+    resolved: Dict[str, Optional[int]] = {field: None for field in IMPORT_FIELDS}
+
+    for field in IMPORT_FIELDS:
+        value = raw.get(field)
+        if value in (None, ""):
+            continue
+        if isinstance(value, int):
+            idx = value
+        elif isinstance(value, str) and value.isdigit():
+            idx = int(value)
+        elif isinstance(value, str):
+            idx = columns_by_name.get(_normalize_text(value))
+            if idx is None:
+                raise HTTPException(400, f"Coluna não encontrada para {field}: {value}")
+        else:
+            raise HTTPException(400, f"Mapeamento inválido para {field}.")
+
+        if idx < 0 or idx > max_idx:
+            raise HTTPException(400, f"Índice de coluna inválido para {field}: {idx}")
+        resolved[field] = idx
+
+    return resolved
+
+
+def _row_mapped_values(row, mapping: Dict[str, Optional[int]]) -> Dict[str, str]:
+    values = row.tolist()
+    mapped = {}
+    for field in IMPORT_FIELDS:
+        idx = mapping.get(field)
+        mapped[field] = _cell_to_text(values[idx]) if idx is not None and idx < len(values) else ""
+    return mapped
+
+
+def _student_indexes():
+    by_matricula: Dict[str, Any] = {}
+    by_email: Dict[str, Any] = {}
+    by_nome: Dict[str, Any] = {}
+
+    for aluno in storage.listar_alunos():
+        if aluno.matricula:
+            by_matricula.setdefault(_normalize_identifier(aluno.matricula), aluno)
+        if aluno.email:
+            by_email.setdefault(_normalize_email(aluno.email), aluno)
+        by_nome.setdefault(_normalize_text(aluno.nome), aluno)
+
+    return by_matricula, by_email, by_nome
+
+
+def _add_student_to_indexes(aluno, indexes: Tuple[Dict[str, Any], Dict[str, Any], Dict[str, Any]]):
+    by_matricula, by_email, by_nome = indexes
+    if aluno.matricula:
+        by_matricula.setdefault(_normalize_identifier(aluno.matricula), aluno)
+    if aluno.email:
+        by_email.setdefault(_normalize_email(aluno.email), aluno)
+    by_nome.setdefault(_normalize_text(aluno.nome), aluno)
+
+
+def _find_existing_student(mapped: Dict[str, str], indexes: Tuple[Dict[str, Any], Dict[str, Any], Dict[str, Any]]):
+    by_matricula, by_email, by_nome = indexes
+    matricula_key = _normalize_identifier(mapped.get("matricula"))
+    if matricula_key and matricula_key in by_matricula:
+        return by_matricula[matricula_key], "matricula"
+
+    email_key = _normalize_email(mapped.get("email"))
+    if email_key and email_key in by_email:
+        return by_email[email_key], "email"
+
+    nome_key = _normalize_text(mapped.get("nome"))
+    if nome_key and nome_key in by_nome:
+        return by_nome[nome_key], "nome"
+
+    return None, None
+
+
+def _row_identity(mapped: Dict[str, str]) -> Optional[str]:
+    matricula = _normalize_identifier(mapped.get("matricula"))
+    if matricula:
+        return f"matricula:{matricula}"
+    email = _normalize_email(mapped.get("email"))
+    if email:
+        return f"email:{email}"
+    nome = _normalize_text(mapped.get("nome"))
+    if nome:
+        return f"nome:{nome}"
+    return None
+
+
+def _analyze_import_rows(df, mapping: Dict[str, Optional[int]], turma_id: Optional[str] = None) -> Dict[str, Any]:
+    analysis = {
+        "total_linhas": int(len(df)),
+        "validos": 0,
+        "sem_nome": 0,
+        "duplicados_tabela": 0,
+        "existentes": 0,
+        "novos": 0,
+        "ja_vinculados": 0,
+        "a_vincular": 0,
+        "erros_amostra": [],
+    }
+
+    if mapping.get("nome") is None:
+        analysis["sem_nome"] = int(len(df))
+        return analysis
+
+    turma_student_ids = set()
+    if turma_id:
+        turma_student_ids = {aluno.id for aluno in storage.listar_alunos(turma_id)}
+
+    indexes = _student_indexes()
+    seen = set()
+    for idx, row in df.iterrows():
+        mapped = _row_mapped_values(row, mapping)
+        row_number = int(idx) + 2
+        if not mapped.get("nome"):
+            analysis["sem_nome"] += 1
+            if len(analysis["erros_amostra"]) < 5:
+                analysis["erros_amostra"].append({"linha": row_number, "erro": "Nome vazio"})
+            continue
+
+        identity = _row_identity(mapped)
+        if identity and identity in seen:
+            analysis["duplicados_tabela"] += 1
+            if len(analysis["erros_amostra"]) < 5:
+                analysis["erros_amostra"].append({"linha": row_number, "erro": "Duplicado na tabela"})
+            continue
+        if identity:
+            seen.add(identity)
+
+        analysis["validos"] += 1
+        existing, _ = _find_existing_student(mapped, indexes)
+        if existing:
+            analysis["existentes"] += 1
+            if turma_id:
+                if existing.id in turma_student_ids:
+                    analysis["ja_vinculados"] += 1
+                else:
+                    analysis["a_vincular"] += 1
+        else:
+            analysis["novos"] += 1
+            if turma_id:
+                analysis["a_vincular"] += 1
+
+    return analysis
+
+
+def _preview_rows(df, mapping: Dict[str, Optional[int]]) -> List[Dict[str, Any]]:
+    rows = []
+    for idx, row in df.head(10).iterrows():
+        values = [_cell_to_text(value) for value in row.tolist()]
+        rows.append({
+            "linha": int(idx) + 2,
+            "values": values,
+            "mapeado": _row_mapped_values(row, mapping),
+        })
+    return rows
+
+
+def _build_table_preview(content: bytes, filename: str, sheet_name: Optional[str],
+                         mapping_json: Optional[str], turma_id: Optional[str] = None) -> Dict[str, Any]:
+    df, current_sheet, sheets, formato = _read_table_from_upload(content, filename, sheet_name)
+    columns = _columns_payload(df)
+    suggestions = _suggest_mapping(columns)
+    mapping = _parse_mapping(mapping_json, columns) if mapping_json else suggestions
+
+    return {
+        "success": True,
+        "arquivo": filename,
+        "formato": formato,
+        "sheet_name": current_sheet,
+        "sheets": sheets,
+        "columns": columns,
+        "sugestoes": suggestions,
+        "mapping": mapping,
+        "total_rows": int(len(df)),
+        "sample_rows": _preview_rows(df, mapping),
+        "analise": _analyze_import_rows(df, mapping, turma_id),
+    }
 
 
 # ============================================================
@@ -137,6 +536,158 @@ async def importar_alunos_csv(
         
     except Exception as e:
         raise HTTPException(400, f"Erro ao processar CSV: {str(e)}")
+
+
+@router.post("/api/alunos/importar-tabela/preview", tags=["Lote"])
+async def preview_importar_alunos_tabela(
+    file: UploadFile = File(...),
+    sheet_name: Optional[str] = Form(None),
+    mapping: Optional[str] = Form(None),
+    turma_id: Optional[str] = Form(None),
+):
+    """
+    Analisa uma tabela de alunos sem salvar nada.
+
+    Aceita CSV, XLSX, XLS e ODS. Retorna abas, colunas, sugestões de
+    mapeamento e uma prévia já mapeada para nome/e-mail/matrícula.
+    """
+    content = await file.read()
+    return _build_table_preview(content, file.filename or "alunos", sheet_name, mapping, turma_id)
+
+
+@router.post("/api/alunos/importar-tabela", tags=["Lote"])
+async def importar_alunos_tabela(
+    file: UploadFile = File(...),
+    turma_id: Optional[str] = Form(None),
+    sheet_name: Optional[str] = Form(None),
+    mapping: str = Form(...),
+):
+    """
+    Importa alunos de CSV/Excel/ODS usando mapeamento explícito de colunas.
+
+    A operação é idempotente: alunos existentes são reaproveitados por
+    matrícula, e-mail ou nome normalizado. Quando turma_id é enviado, alunos
+    novos ou existentes são vinculados à turma quando ainda não estiverem nela.
+    """
+    if turma_id and not storage.get_turma(turma_id):
+        raise HTTPException(404, "Turma não encontrada")
+
+    content = await file.read()
+    df, current_sheet, sheets, formato = _read_table_from_upload(content, file.filename or "alunos", sheet_name)
+    columns = _columns_payload(df)
+    resolved_mapping = _parse_mapping(mapping, columns)
+
+    if resolved_mapping.get("nome") is None:
+        raise HTTPException(400, "Mapeie a coluna de nome antes de importar.")
+
+    indexes = _student_indexes()
+    turma_student_ids = {aluno.id for aluno in storage.listar_alunos(turma_id)} if turma_id else set()
+    seen = set()
+
+    criados = []
+    reaproveitados = []
+    vinculados = []
+    ja_vinculados = []
+    ignorados = []
+    erros = []
+
+    for idx, row in df.iterrows():
+        row_number = int(idx) + 2
+        mapped = _row_mapped_values(row, resolved_mapping)
+        nome = mapped.get("nome", "").strip()
+        email = mapped.get("email", "").strip() or None
+        matricula = mapped.get("matricula", "").strip() or None
+
+        if not nome:
+            erros.append({"linha": row_number, "erro": "Nome vazio"})
+            ignorados.append({"linha": row_number, "motivo": "Nome vazio"})
+            continue
+
+        identity = _row_identity(mapped)
+        if identity and identity in seen:
+            erros.append({"linha": row_number, "nome": nome, "erro": "Duplicado na tabela"})
+            ignorados.append({"linha": row_number, "nome": nome, "motivo": "Duplicado na tabela"})
+            continue
+        if identity:
+            seen.add(identity)
+
+        try:
+            aluno, matched_by = _find_existing_student(mapped, indexes)
+            status = "existente" if aluno else "criado"
+
+            if aluno:
+                reaproveitados.append({
+                    "linha": row_number,
+                    "matched_by": matched_by,
+                    "aluno": aluno.to_dict(),
+                })
+            else:
+                aluno = storage.criar_aluno(nome=nome, email=email, matricula=matricula)
+                _add_student_to_indexes(aluno, indexes)
+                criados.append({"linha": row_number, "aluno": aluno.to_dict()})
+
+            vinculo_status = None
+            if turma_id:
+                if aluno.id in turma_student_ids:
+                    vinculo_status = "ja_vinculado"
+                    ja_vinculados.append({"linha": row_number, "aluno": aluno.to_dict()})
+                else:
+                    vinculo = storage.vincular_aluno_turma(aluno.id, turma_id)
+                    if vinculo:
+                        turma_student_ids.add(aluno.id)
+                        vinculo_status = "vinculado"
+                        vinculados.append({
+                            "linha": row_number,
+                            "aluno": aluno.to_dict(),
+                            "vinculo": vinculo.to_dict(),
+                        })
+                    else:
+                        # Provável corrida/duplicidade; se passou a aparecer na turma, trate como já vinculado.
+                        refreshed_ids = {a.id for a in storage.listar_alunos(turma_id)}
+                        if aluno.id in refreshed_ids:
+                            turma_student_ids.add(aluno.id)
+                            vinculo_status = "ja_vinculado"
+                            ja_vinculados.append({"linha": row_number, "aluno": aluno.to_dict()})
+                        else:
+                            vinculo_status = "erro_vinculo"
+                            erros.append({"linha": row_number, "nome": nome, "erro": "Não foi possível vincular à turma"})
+
+            aluno_dict = aluno.to_dict()
+            aluno_dict["_linha"] = row_number
+            aluno_dict["_status"] = status
+            aluno_dict["_vinculo_status"] = vinculo_status
+
+        except Exception as exc:
+            erros.append({"linha": row_number, "nome": nome, "erro": str(exc)})
+            ignorados.append({"linha": row_number, "nome": nome, "motivo": str(exc)})
+
+    return {
+        "success": True,
+        "arquivo": file.filename,
+        "formato": formato,
+        "sheet_name": current_sheet,
+        "sheets": sheets,
+        "mapping": resolved_mapping,
+        "criados": len(criados),
+        "reaproveitados": len(reaproveitados),
+        "vinculados": len(vinculados),
+        "ja_vinculados": len(ja_vinculados),
+        "ignorados": len(ignorados),
+        "erros": len(erros),
+        "alunos_criados": criados,
+        "alunos_reaproveitados": reaproveitados,
+        "detalhes_erros": erros,
+        "detalhes_ignorados": ignorados,
+        "resumo": {
+            "linhas_lidas": int(len(df)),
+            "criados": len(criados),
+            "reaproveitados": len(reaproveitados),
+            "vinculados": len(vinculados),
+            "ja_vinculados": len(ja_vinculados),
+            "ignorados": len(ignorados),
+            "erros": len(erros),
+        },
+    }
 
 
 @router.post("/api/alunos/vincular-lote", tags=["Lote"])
@@ -246,7 +797,8 @@ async def upload_provas_alunos(
     files: List[UploadFile] = File(...),
     atividade_id: str = Form(...),
     modo_nome: str = Form("matricula"),  # "matricula" ou "nome"
-    display_names: Optional[str] = Form(None)  # JSON array of per-file display names
+    display_names: Optional[str] = Form(None),  # JSON array of per-file display names
+    assignments: Optional[str] = Form(None)  # JSON array: {aluno_id, display_name, action}
 ):
     """
     Upload inteligente de provas de alunos.
@@ -264,6 +816,7 @@ async def upload_provas_alunos(
 
     turma = storage.get_turma(atividade.turma_id)
     alunos_turma = storage.listar_alunos(turma.id)
+    alunos_by_id = {aluno.id: aluno for aluno in alunos_turma}
 
     # Parse display_names JSON array (if provided)
     names_list = []
@@ -275,35 +828,145 @@ async def upload_provas_alunos(
         except (json.JSONDecodeError, TypeError):
             names_list = []
 
+    assignments_list = None
+    validated_assignments = None
+    if assignments:
+        try:
+            parsed_assignments = json.loads(assignments)
+            if not isinstance(parsed_assignments, list):
+                raise ValueError("assignments precisa ser uma lista")
+            assignments_list = parsed_assignments
+        except (json.JSONDecodeError, TypeError, ValueError) as exc:
+            raise HTTPException(400, f"Assignments inválidos: {exc}")
+
+    if assignments_list is not None:
+        validation_errors = []
+        selected_students = set()
+        validated_assignments = []
+
+        if len(assignments_list) != len(files):
+            validation_errors.append({
+                "erro": "Quantidade de assignments diferente da quantidade de arquivos"
+            })
+
+        for i, file in enumerate(files):
+            file_display_name = names_list[i] if i < len(names_list) and names_list[i] else None
+            if i >= len(assignments_list) or not isinstance(assignments_list[i], dict):
+                validation_errors.append({
+                    "arquivo": file.filename,
+                    "erro": "Assignment ausente ou inválido para este arquivo"
+                })
+                validated_assignments.append(None)
+                continue
+
+            assignment = assignments_list[i]
+            action = assignment.get("action") or assignment.get("acao") or "enviar"
+            if action not in {"enviar", "substituir", "pular"}:
+                validation_errors.append({"arquivo": file.filename, "erro": f"Ação inválida: {action}"})
+                validated_assignments.append(None)
+                continue
+
+            if action == "pular":
+                validated_assignments.append({
+                    "action": action,
+                    "aluno": None,
+                    "display_name": file_display_name,
+                    "existentes": [],
+                })
+                continue
+
+            aluno_id = assignment.get("aluno_id")
+            aluno_encontrado = alunos_by_id.get(aluno_id)
+            if not aluno_encontrado:
+                validation_errors.append({
+                    "arquivo": file.filename,
+                    "erro": "Selecione um aluno da turma para este arquivo"
+                })
+                validated_assignments.append(None)
+                continue
+
+            if aluno_encontrado.id in selected_students:
+                validation_errors.append({
+                    "arquivo": file.filename,
+                    "aluno": aluno_encontrado.nome,
+                    "erro": "Mais de um arquivo apontando para o mesmo aluno"
+                })
+                validated_assignments.append(None)
+                continue
+            selected_students.add(aluno_encontrado.id)
+
+            existentes = storage.listar_documentos(
+                atividade_id,
+                aluno_id=aluno_encontrado.id,
+                tipo=TipoDocumento.PROVA_RESPONDIDA,
+            )
+            if existentes and action != "substituir":
+                validation_errors.append({
+                    "arquivo": file.filename,
+                    "aluno": aluno_encontrado.nome,
+                    "erro": "Aluno já tem prova enviada. Escolha substituir ou remova este arquivo do envio."
+                })
+                validated_assignments.append(None)
+                continue
+
+            validated_assignments.append({
+                "action": action,
+                "aluno": aluno_encontrado,
+                "display_name": assignment.get("display_name") or file_display_name,
+                "existentes": existentes,
+            })
+
+        if validation_errors:
+            raise HTTPException(400, {
+                "mensagem": "Corrija a associação dos arquivos antes de enviar.",
+                "erros": validation_errors,
+            })
+
     salvos = []
     erros = []
+    pulados = []
+    substituidos = 0
 
     for i, file in enumerate(files):
+        tmp_path = None
         try:
-            # Extrair identificador do nome do arquivo
-            nome_arquivo = Path(file.filename).stem.lower()
-            
-            # Buscar aluno
-            aluno_encontrado = None
-            
-            if modo_nome == "matricula":
-                # Procura matrícula no nome do arquivo
-                for aluno in alunos_turma:
-                    if aluno.matricula and aluno.matricula.lower() in nome_arquivo:
-                        aluno_encontrado = aluno
-                        break
+            action = "enviar"
+            file_display_name = names_list[i] if i < len(names_list) and names_list[i] else None
+
+            if validated_assignments is not None:
+                assignment = validated_assignments[i]
+                action = assignment["action"]
+                if action == "pular":
+                    pulados.append({"arquivo": file.filename, "motivo": "Marcado para remover do envio"})
+                    continue
+
+                aluno_encontrado = assignment["aluno"]
+                file_display_name = assignment["display_name"] or file_display_name
+                if action == "substituir":
+                    for doc in assignment["existentes"]:
+                        if storage.deletar_documento(doc.id):
+                            substituidos += 1
             else:
-                # Procura nome no arquivo
-                for aluno in alunos_turma:
-                    nome_normalizado = aluno.nome.lower().replace(" ", "_")
-                    if nome_normalizado in nome_arquivo or nome_arquivo in nome_normalizado:
-                        aluno_encontrado = aluno
-                        break
-            
+                # Modo legado: tenta identificar pelo nome ou matrícula no arquivo.
+                nome_arquivo = Path(file.filename).stem.lower()
+                aluno_encontrado = None
+
+                if modo_nome == "matricula":
+                    for aluno in alunos_turma:
+                        if aluno.matricula and aluno.matricula.lower() in nome_arquivo:
+                            aluno_encontrado = aluno
+                            break
+                else:
+                    for aluno in alunos_turma:
+                        nome_normalizado = aluno.nome.lower().replace(" ", "_")
+                        if nome_normalizado in nome_arquivo or nome_arquivo in nome_normalizado:
+                            aluno_encontrado = aluno
+                            break
+
             if not aluno_encontrado:
                 erros.append({
                     "arquivo": file.filename,
-                    "erro": f"Aluno não encontrado. Nome do arquivo: {nome_arquivo}"
+                    "erro": "Aluno não encontrado no nome do arquivo"
                 })
                 continue
             
@@ -312,9 +975,6 @@ async def upload_provas_alunos(
                 content = await file.read()
                 tmp.write(content)
                 tmp_path = tmp.name
-            
-            # Use custom display_name from preview if provided
-            file_display_name = names_list[i] if i < len(names_list) and names_list[i] else None
 
             # Salvar documento
             documento = storage.salvar_documento(
@@ -326,21 +986,31 @@ async def upload_provas_alunos(
                 criado_por="usuario"
             )
 
-            os.unlink(tmp_path)
+            if tmp_path and os.path.exists(tmp_path):
+                os.unlink(tmp_path)
             salvos.append({
                 "documento": documento.to_dict(),
-                "aluno": aluno_encontrado.nome
+                "aluno": aluno_encontrado.nome,
+                "action": action,
             })
                 
         except Exception as e:
             erros.append({"arquivo": file.filename, "erro": str(e)})
+            if tmp_path and os.path.exists(tmp_path):
+                try:
+                    os.unlink(tmp_path)
+                except OSError:
+                    pass
     
     return {
         "success": True,
         "salvos": len(salvos),
         "erros": len(erros),
+        "pulados": len(pulados),
+        "substituidos": substituidos,
         "documentos": salvos,
         "detalhes_erros": erros,
+        "detalhes_pulados": pulados,
         "dica": "Certifique-se que o nome do arquivo contém a matrícula ou nome do aluno"
     }
 
