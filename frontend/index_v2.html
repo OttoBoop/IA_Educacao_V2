@@ -6224,7 +6224,7 @@
                 {
                     title: '📚 Criar uma Matéria',
                     subtitle: 'A disciplina que agrupa suas turmas',
-                    image: '/static/tutorial-images-v2/cropped/modal-materia-crop.png',
+                    image: '/static/tutorial-images-v2/cropped/tooltip-visible-crop.png',
                     content: `
                         <p>No menu lateral, clique em <strong>"+ Nova Matéria"</strong>.</p>
                         <ol>
@@ -6338,7 +6338,7 @@
                 {
                     title: '✅ Ver o Resultado',
                     subtitle: 'Quando o pipeline terminar, explore os documentos gerados',
-                    image: '/static/tutorial-images-v2/cropped/resultado-aluno-crop.png',
+                    image: '/static/tutorial-images-v2/cropped/resultado-top-crop.png',
                     content: `
                         <p>Olhe a <strong>sidebar esquerda</strong>, seção "Tarefas":</p>
                         <ul>
@@ -6495,42 +6495,86 @@
                 ],
                 visao_individual: [
                     {
-                        title: '👁️ Visão Individual — Os 6 Documentos',
-                        subtitle: 'Entenda o que a IA produziu em cada etapa',
-                        image: '/static/tutorial-images-v2/cropped/resultado-aluno-crop.png',
+                        title: '👁️ Resultado do Aluno — Visão Geral',
+                        subtitle: 'O que aparece ao clicar "Ver Resultado"',
+                        image: '/static/tutorial-images-v2/cropped/resultado-top-crop.png',
                         content: `
-                            <p>Ao clicar "Ver Resultado" de um aluno, você vê os <strong>6 documentos</strong> que a IA gerou, cada um correspondendo a uma etapa do pipeline:</p>
+                            <p>Ao clicar <strong>"Ver Resultado"</strong> de um aluno, a página mostra:</p>
+                            <ul>
+                                <li><strong>✅ Correção Concluída</strong> — banner verde confirmando que o pipeline rodou</li>
+                                <li><strong>📊 Resultado Final</strong> — nota, acertos, aproveitamento</li>
+                                <li><strong>Botões de export</strong> — PDF (vermelho), Markdown, JSON</li>
+                            </ul>
+                            <div class="tutorial-highlight">
+                                <strong>📥 O PDF</strong> é o formato ideal para enviar ao aluno. O JSON contém dados técnicos e avisos detalhados.
+                            </div>
+                        `
+                    },
+                    {
+                        title: '👁️ Nota, Habilidades e Feedback',
+                        subtitle: 'O resumo visual do desempenho',
+                        image: '/static/tutorial-images-v2/cropped/resultado-top-crop.png',
+                        content: `
+                            <p>A seção <strong>Resultado Final</strong> mostra:</p>
+                            <ul>
+                                <li><strong>Nota Final</strong> — colorida: <span style="color:#38a169;">verde ≥7</span>, <span style="color:#ecc94b;">amarelo ≥5</span>, <span style="color:#fc8181;">vermelho &lt;5</span></li>
+                                <li><strong>Acertos</strong> — quantas questões corretas do total</li>
+                                <li><strong>Aproveitamento</strong> — percentual</li>
+                                <li><strong>Habilidades</strong> — barras de progresso por competência avaliada</li>
+                                <li><strong>Feedback Geral</strong> — comentários da IA sobre o desempenho</li>
+                            </ul>
+                            <p>Você pode alternar entre visão <strong>Visual</strong> (padrão) e <strong>JSON</strong> (dados brutos).</p>
+                        `
+                    },
+                    {
+                        title: '👁️ Os 6 Documentos da IA',
+                        subtitle: 'Cada etapa do pipeline gera um documento',
+                        image: '/static/tutorial-images-v2/cropped/resultado-docs-crop.png',
+                        content: `
+                            <p>Na seção <strong>"🤖 Comparativo das Etapas (IA)"</strong>, você vê os 6 documentos gerados:</p>
                             <ol>
                                 <li><strong>🔎 Extração de Questões</strong> — identifica cada questão do enunciado</li>
                                 <li><strong>🧩 Extração de Gabarito</strong> — estrutura as respostas corretas</li>
                                 <li><strong>📝 Extração de Respostas</strong> — lê o que o aluno escreveu</li>
                                 <li><strong>✅ Correção da IA</strong> — compara respostas com gabarito, questão por questão</li>
-                                <li><strong>📊 Análise de Habilidades</strong> — avalia competências e pontos fortes/fracos</li>
-                                <li><strong>📄 Relatório Final</strong> — síntese com nota, feedback e recomendações</li>
+                                <li><strong>📊 Análise de Habilidades</strong> — avalia competências</li>
+                                <li><strong>📄 Relatório Final</strong> — síntese completa (destaque azul)</li>
                             </ol>
                             <div class="tutorial-highlight">
-                                <strong>👁️</strong> Clique no ícone 👁️ de cada documento para ver o conteúdo. Os mais importantes: <strong>Relatório Final</strong> e <strong>Análise de Habilidades</strong>.
+                                <strong>👁️</strong> Clique no ícone 👁️ para abrir qualquer documento. Os mais importantes: <strong>Relatório Final</strong> e <strong>Análise de Habilidades</strong>.
                             </div>
                         `
                     },
                     {
-                        title: '👁️ Avisos e Downloads',
-                        subtitle: 'Entenda os alertas e exporte os resultados',
-                        image: '/static/tutorial-images-v2/cropped/resultado-aluno-crop.png',
+                        title: '👁️ Avisos e Alertas',
+                        subtitle: 'Badges coloridos indicam problemas',
+                        image: '',
                         content: `
-                            <p><strong>Avisos (badges coloridos):</strong></p>
+                            <p>Se a IA encontrar problemas, aparece um <strong>badge de avisos</strong> com contagem:</p>
                             <ul>
-                                <li><strong style="color: #ecc94b;">⚠️ Amarelo</strong> — atenção: documento pode estar incompleto ou confiança baixa</li>
-                                <li><strong style="color: #fc8181;">❌ Vermelho</strong> — erro: letra ilegível, documento faltante, ou falha no processamento</li>
-                            </ul>
-                            <p><strong>Exportar resultados:</strong></p>
-                            <ul>
-                                <li><strong>📥 PDF</strong> — relatório formatado, pronto para enviar ao aluno</li>
-                                <li><strong>📄 Markdown</strong> — texto editável</li>
-                                <li><strong>{ } JSON</strong> — dados brutos com avisos detalhados (erros, documentos faltantes, confiança)</li>
+                                <li><strong style="color: #ecc94b;">⚠️ Amarelo</strong> — atenção: conteúdo pode estar incompleto ou confiança baixa da IA na leitura</li>
+                                <li><strong style="color: #f97316;">🟠 Laranja</strong> — letra ilegível em alguma questão, ou baixa confiança na interpretação</li>
+                                <li><strong style="color: #fc8181;">❌ Vermelho</strong> — erro grave: documento faltante ou falha no processamento</li>
                             </ul>
                             <div class="tutorial-highlight">
-                                <strong>💡</strong> O PDF é ideal para compartilhar com o aluno. O JSON é útil para quem quer integrar com outros sistemas ou investigar avisos detalhados.
+                                <strong>💡</strong> Avisos amarelos são comuns quando o aluno deixa questões em branco. Avisos vermelhos indicam que algo precisa ser corrigido (ex.: re-escanear um documento ilegível).
+                            </div>
+                        `
+                    },
+                    {
+                        title: '👁️ Enviando para o Chat',
+                        subtitle: 'Selecione documentos e discuta com a IA',
+                        image: '/static/tutorial-images-v2/cropped/resultado-docs-crop.png',
+                        content: `
+                            <p>Cada documento tem um <strong>checkbox</strong> ao lado. Marque os que quer discutir e clique em <strong>"💬 Perguntar no chat sobre os selecionados"</strong>.</p>
+                            <p>O chat abre com esses documentos já como contexto. Experimente:</p>
+                            <ul>
+                                <li><em>"Resuma onde este aluno mais errou"</em></li>
+                                <li><em>"O que ele precisa estudar para melhorar?"</em></li>
+                                <li><em>"Compare a correção da IA com o gabarito"</em></li>
+                            </ul>
+                            <div class="tutorial-highlight">
+                                <strong>💡 Dica:</strong> Selecione só o Relatório Final + Análise de Habilidades para respostas mais focadas.
                             </div>
                         `
                     }
@@ -6631,79 +6675,127 @@
                                 <li><strong>Só relatórios</strong> = resposta mais rápida, mais barata, visão geral</li>
                                 <li><strong>Com originais</strong> = a IA vê detalhes que o relatório pode ter omitido — melhor para poucos alunos</li>
                             </ul>
-                            <p><strong>Trocar o modelo:</strong> No topo do chat há um dropdown. Modelos diferentes dão respostas diferentes.</p>
-                            <div class="tutorial-highlight">
-                                <strong>↔️ Inverter seleção:</strong> Troca marcados por não-marcados. Útil quando quer excluir poucos docs em vez de selecionar muitos.
+                            <p><strong>Trocar o modelo:</strong> No topo do chat há um dropdown. Cada provedor tem modelos com diferentes velocidades e custos:</p>
+                            <div style="overflow-x: auto; margin: 8px 0;">
+                            <table style="width:100%; font-size:0.85rem; border-collapse:collapse;">
+                                <tr style="border-bottom:1px solid var(--border);">
+                                    <th style="text-align:left; padding:6px;">Provedor</th>
+                                    <th style="text-align:left; padding:6px;">Rápido/Barato</th>
+                                    <th style="text-align:left; padding:6px;">Balanceado</th>
+                                </tr>
+                                <tr style="border-bottom:1px solid var(--border);">
+                                    <td style="padding:6px;">🟢 OpenAI</td>
+                                    <td style="padding:6px;">GPT-5 Mini</td>
+                                    <td style="padding:6px;">GPT-5</td>
+                                </tr>
+                                <tr style="border-bottom:1px solid var(--border);">
+                                    <td style="padding:6px;">🟠 Anthropic</td>
+                                    <td style="padding:6px;">Haiku</td>
+                                    <td style="padding:6px;">Sonnet</td>
+                                </tr>
+                                <tr>
+                                    <td style="padding:6px;">🔵 Google</td>
+                                    <td style="padding:6px;">Flash</td>
+                                    <td style="padding:6px;">Pro</td>
+                                </tr>
+                            </table>
                             </div>
-                            <p><strong>⚠️ Menos documentos = respostas mais precisas e baratas.</strong> Selecione só o que é relevante.</p>
+                            <div class="tutorial-highlight">
+                                <strong>↔️ Inverter seleção:</strong> Troca marcados por não-marcados. Útil quando quer excluir poucos docs.
+                            </div>
+                            <p><strong>⚠️ Menos documentos = respostas mais precisas e baratas.</strong></p>
                         `
                     }
                 ],
                 prompts: [
                     {
-                        title: '🔧 Prompts — O que São',
-                        subtitle: 'Instruções em português que controlam a IA',
+                        title: '🔧 Tela de Prompts',
+                        subtitle: 'Veja e edite as instruções de cada etapa',
                         image: '/static/tutorial-images-v2/cropped/prompts-crop.png',
                         content: `
-                            <p>Prompts são <strong>instruções em português</strong> que dizem à IA o que fazer em cada etapa do pipeline. Você pode editá-los para mudar o comportamento.</p>
-                            <p><strong>Como acessar:</strong></p>
-                            <ol>
-                                <li>No menu lateral, clique em <strong>"🧠 Prompts"</strong></li>
-                                <li>Você verá os prompts de cada etapa: extração de questões, gabarito, respostas, correção, análise, relatório</li>
-                                <li>Clique em um prompt para editá-lo</li>
-                            </ol>
-                            <details class="tutorial-details"><summary>🔍 Não vê "Prompts" no menu?</summary>
-                            <p>O item pode estar escondido atrás do modo avançado. Procure por um toggle "Modo Avançado" ou "Technical Mode" no rodapé do sidebar.</p>
-                            </details>
+                            <p>Prompts são <strong>instruções em português</strong> que dizem à IA o que fazer em cada etapa do pipeline.</p>
+                            <p><strong>Como acessar:</strong> No menu lateral, clique em <strong>"🧠 Prompts"</strong>.</p>
+                            <p>A tela mostra <strong>abas por etapa</strong> (Extrair Questões, Extrair Gabarito, Corrigir, etc.). Cada aba lista os prompts disponíveis como cards expansíveis.</p>
+                            <p><strong>Ao expandir um card</strong>, você vê: o texto do prompt, variáveis usadas (ex.: <code>{{criterios}}</code>), e botões para editar, duplicar ou ver histórico.</p>
                         `
                     },
                     {
-                        title: '🔧 Editando Prompts',
-                        subtitle: 'Exemplos práticos e cuidados',
+                        title: '🔧 Escolhendo Prompts no Pipeline',
+                        subtitle: 'O modal de execução permite trocar o prompt por etapa',
+                        image: '/static/tutorial-images-v2/cropped/pipeline-modal-crop.png',
+                        content: `
+                            <p>Ao executar o pipeline, o modal mostra o campo <strong>"Prompt"</strong> — por padrão usa o prompt padrão de cada etapa.</p>
+                            <p>Clique em <strong>"Etapas a executar (avançado)"</strong> para ver as opções por etapa, incluindo qual prompt e modelo usar em cada uma.</p>
+                            <div class="tutorial-highlight">
+                                <strong>💡 Fluxo prático:</strong> Edite o prompt na tela Prompts → teste executando o pipeline com 1 aluno → se funcionar, rode para a turma toda.
+                            </div>
+                        `
+                    },
+                    {
+                        title: '🔧 Dicas e Cuidados',
+                        subtitle: 'Quando editar e como reverter',
                         image: '/static/tutorial-images-v2/cropped/prompts-editing-crop.png',
                         content: `
-                            <p><strong>Exemplo:</strong> Se quer relatórios mais curtos, edite o prompt do "Relatório Final" e adicione: <em>"Seja conciso, máximo 1 parágrafo por questão."</em></p>
-                            <p><strong>Quando usar:</strong></p>
+                            <p><strong>Quando editar:</strong></p>
                             <ul>
                                 <li>A IA está dando resultados estranhos em uma etapa</li>
-                                <li>Você quer um formato de relatório diferente</li>
-                                <li>Precisa de critérios específicos que não cabem no documento de critérios</li>
+                                <li>Você quer um formato de relatório diferente (ex.: mais curto)</li>
+                                <li>Precisa de critérios específicos no prompt direto</li>
                             </ul>
+                            <p><strong>Exemplo:</strong> Adicione ao prompt do Relatório Final: <em>"Seja conciso, máximo 1 parágrafo por questão."</em></p>
                             <div class="tutorial-highlight">
-                                <strong>⚠️ Cuidado:</strong> Mudanças pequenas podem ter efeitos grandes. Teste com <strong>1 aluno</strong> antes de rodar para a turma toda.
+                                <strong>⚠️ Cuidado:</strong> Mudanças pequenas podem ter efeitos grandes. Teste com <strong>1 aluno</strong> antes de rodar para a turma toda. Use o <strong>histórico de versões</strong> para reverter se necessário.
                             </div>
                         `
                     }
                 ],
                 modelos: [
                     {
-                        title: '🤖 Adicionar um Modelo de IA',
-                        subtitle: 'Configure novos modelos se sua instituição tem API key própria',
+                        title: '🤖 Lista de Modelos',
+                        subtitle: 'Veja os modelos configurados no sistema',
                         image: '/static/tutorial-images-v2/cropped/modelos-crop.png',
                         content: `
-                            <p><strong>Quando adicionar:</strong> Se sua instituição tem API key própria (OpenAI, Anthropic, Google, etc.) e quer usar modelos que não estão na lista.</p>
+                            <p>No menu lateral, clique em <strong>"🤖 Modelos de LLM"</strong>. Você verá os modelos já cadastrados:</p>
+                            <ul>
+                                <li><strong>Apelido</strong> — nome amigável (ex.: "GPT-4o Produção")</li>
+                                <li><strong>Provedor + ID</strong> — ex.: "openai • gpt-4o"</li>
+                                <li><strong>Badge "Padrão"</strong> — o modelo usado por default</li>
+                                <li><strong>Botões:</strong> ⭐ definir padrão, 🧪 testar, 🗑️ excluir</li>
+                            </ul>
+                        `
+                    },
+                    {
+                        title: '🤖 Adicionar um Modelo',
+                        subtitle: 'Quando sua instituição tem API key própria',
+                        image: '/static/tutorial-images-v2/cropped/modal-add-model-crop.png',
+                        content: `
+                            <p>Clique em <strong>"+ Adicionar Modelo"</strong>:</p>
                             <ol>
-                                <li>No menu lateral, clique em <strong>"🤖 Modelos de LLM"</strong></li>
-                                <li>Clique em <strong>"+ Adicionar Modelo"</strong></li>
-                                <li>Escolha o <strong>Provedor</strong> (OpenAI, Anthropic, Google...)</li>
-                                <li>Selecione o <strong>Modelo</strong> no dropdown (ou digite manualmente)</li>
-                                <li>Dê um <strong>Apelido</strong> (ex.: "GPT-4o Produção")</li>
+                                <li><strong>Apelido</strong> — nome para identificar (ex.: "Haiku Testes")</li>
+                                <li><strong>Provedor</strong> — 13 opções (OpenAI, Anthropic, Google, DeepSeek, Mistral, Ollama...)</li>
+                                <li><strong>Modelo</strong> — dropdown com sugestões ou campo manual para digitar o ID</li>
                                 <li>Clique em <strong>Salvar</strong></li>
                             </ol>
                             <details class="tutorial-details"><summary>🔍 Parâmetros avançados</summary>
-                            <p><strong>Temperatura</strong> (0-2): 0 = determinístico, 0.7 = balanceado. <strong>Max Tokens</strong>: limite de resposta. <strong>Capacidades</strong>: Vision (imagens), Tool Use, Streaming. Na dúvida, deixe tudo no padrão.</p>
+                            <p><strong>Temperatura</strong> (0-2): controla criatividade. <strong>Max Tokens</strong>: limite de resposta. <strong>Capacidades</strong>: Vision (imagens), Tool Use, Streaming. Na dúvida, deixe no padrão.</p>
                             </details>
                         `
                     },
                     {
-                        title: '🤖 Escolhendo Modelos no Pipeline e Chat',
-                        subtitle: 'Onde selecionar qual IA usar',
-                        image: '/static/tutorial-images-v2/cropped/modal-add-model-crop.png',
+                        title: '🤖 Qual Modelo Usar?',
+                        subtitle: 'Guia por provedor e caso de uso',
+                        image: '/static/tutorial-images-v2/cropped/pipeline-modal-crop.png',
                         content: `
-                            <p><strong>No Pipeline:</strong> Ao executar, há um dropdown "Modelo Padrão" que define qual IA faz todas as etapas.</p>
-                            <p><strong>No Chat:</strong> No topo da janela de chat, outro dropdown permite trocar de modelo a qualquer momento.</p>
+                            <div style="overflow-x: auto;">
+                            <table style="width:100%; font-size:0.85rem; border-collapse:collapse;">
+                                <tr style="border-bottom:1px solid var(--border);"><th style="text-align:left; padding:6px;">Provedor</th><th style="padding:6px;">Rápido</th><th style="padding:6px;">Balanceado</th><th style="padding:6px;">Poderoso</th></tr>
+                                <tr style="border-bottom:1px solid var(--border);"><td style="padding:6px;">🟢 OpenAI</td><td style="padding:6px;">GPT-5 Mini</td><td style="padding:6px;">GPT-5</td><td style="padding:6px;">o3</td></tr>
+                                <tr style="border-bottom:1px solid var(--border);"><td style="padding:6px;">🟠 Anthropic</td><td style="padding:6px;">Haiku</td><td style="padding:6px;">Sonnet</td><td style="padding:6px;">Opus</td></tr>
+                                <tr><td style="padding:6px;">🔵 Google</td><td style="padding:6px;">Flash</td><td style="padding:6px;">Pro</td><td style="padding:6px;">—</td></tr>
+                            </table>
+                            </div>
                             <div class="tutorial-highlight">
-                                <strong>💡 Dica:</strong> Modelos mais caros (GPT-4o, Claude Opus) dão resultados melhores. Modelos baratos (GPT-5-mini, Haiku) são mais rápidos e econômicos. Use modelos caros para correções importantes e baratos para testes.
+                                <strong>💡</strong> Use <strong>baratos para testes</strong>, <strong>poderosos para correções finais</strong>. No pipeline: dropdown "Modelo de IA". No chat: dropdown no topo.
                             </div>
                         `
                     }
