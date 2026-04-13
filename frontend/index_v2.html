@@ -5077,8 +5077,8 @@
                                 <tr>
                                     <th>Linha</th>
                                     <th>Nome</th>
-                                    <th>E-mail</th>
-                                    <th>Matrícula</th>
+                                    <th>E-mail (opcional)</th>
+                                    <th>Matrícula (opcional)</th>
                                     <th>Status</th>
                                 </tr>
                             </thead>
@@ -5086,7 +5086,7 @@
                         </table>
                     </div>
                     <div class="form-hint" style="margin-top: 8px;">
-                        Você pode corrigir valores na prévia. Linhas sem nome que continuarem vazias serão ignoradas, sem bloquear o resto da importação.
+                        Você pode corrigir valores na prévia. Só o nome é obrigatório; e-mail e matrícula são extras. Linhas sem nome que continuarem vazias serão ignoradas, sem bloquear o resto da importação.
                     </div>
                 </div>
                 <input type="hidden" id="input-importar-turma-id">
@@ -10396,7 +10396,7 @@
                 renderImportarTabelaPreview(data);
                 const analise = data.analise || {};
                 if ((analise.sem_nome || 0) > 0) {
-                    setImportarTabelaStatus('Há linhas sem nome. Corrija na prévia ou importe o restante da tabela.', 'warning');
+                    setImportarTabelaStatus('Há linhas sem nome. Só o nome é obrigatório: corrija na prévia ou importe o restante da tabela.', 'warning');
                 } else {
                     setImportarTabelaStatus('Confira o mapeamento das colunas antes de importar.', 'success');
                 }

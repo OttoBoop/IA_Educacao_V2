@@ -146,12 +146,17 @@ def _read_table_from_upload(content: bytes, filename: str, sheet_name: Optional[
             raise HTTPException(400, "Não foi possível decodificar o CSV.")
 
         try:
+            try:
+                dialect = csv.Sniffer().sniff(text[:4096], delimiters=",;\t|")
+                delimiter = dialect.delimiter
+            except csv.Error:
+                delimiter = ","
+
             df = pd.read_csv(
                 io.StringIO(text),
                 dtype=str,
                 keep_default_na=False,
-                sep=None,
-                engine="python",
+                sep=delimiter,
                 skip_blank_lines=True,
             )
         except Exception as exc:

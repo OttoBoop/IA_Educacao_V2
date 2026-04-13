@@ -143,6 +143,28 @@ def test_import_allows_fixing_missing_name_from_preview(client_env):
     }
 
 
+def test_import_accepts_name_only_mapping(client_env):
+    response = _post_table(
+        client_env["client"],
+        "/api/alunos/importar-tabela",
+        "nomes.csv",
+        "Nome completo\nAluno Sem Extras\n".encode("utf-8"),
+        data={
+            "turma_id": client_env["turma"].id,
+            "mapping": json.dumps({"nome": 0}),
+        },
+    )
+
+    assert response.status_code == 200, response.text
+    data = response.json()
+    assert data["criados"] == 1
+    assert data["ignorados"] == 0
+    aluno = client_env["storage"].listar_alunos(client_env["turma"].id)[0]
+    assert aluno.nome == "Aluno Sem Extras"
+    assert aluno.email is None
+    assert aluno.matricula is None
+
+
 def test_preview_xlsx_and_ods(client_env):
     pytest.importorskip("pandas")
     pytest.importorskip("openpyxl")

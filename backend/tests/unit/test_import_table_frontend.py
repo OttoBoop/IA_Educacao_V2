@@ -17,6 +17,7 @@ def test_import_table_modal_has_mapping_flow():
     assert 'id="select-importar-map-matricula"' in html
     assert "importar-row-input" in html
     assert "row_overrides" in html
+    assert "Só o nome é obrigatório" in html
     assert "importe o restante" in html
     assert "/alunos/importar-tabela/preview" in html
     assert "/alunos/importar-tabela" in html
