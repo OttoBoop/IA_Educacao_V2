@@ -979,9 +979,12 @@ class ChatClient:
             )
             
             if response.status_code != 200:
+                # Always include the actual API response for debugging
+                api_body = response.text[:500]
                 error_msg = f"Erro API Anthropic: {response.status_code}"
                 if response.status_code == 400:
-                    error_msg += f" - Modelo '{self.config.modelo}' pode estar indisponível ou com ID incorreto. Tente outro modelo como Claude Sonnet."
+                    # Include actual error — could be credit balance, invalid model, or other
+                    error_msg += f" - {api_body}"
                 elif response.status_code == 401:
                     error_msg += " - Chave de API inválida ou expirada."
                 elif response.status_code == 429:
@@ -989,7 +992,7 @@ class ChatClient:
                 elif response.status_code == 404:
                     error_msg += f" - Modelo '{self.config.modelo}' não encontrado. Tente outro modelo."
                 else:
-                    error_msg += f" - {response.text[:300]}"
+                    error_msg += f" - {api_body}"
                 raise Exception(error_msg)
 
             data = response.json()
