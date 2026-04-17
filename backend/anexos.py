@@ -731,7 +731,13 @@ class ClienteAPIMultimodal:
         messages.append({"role": "user", "content": content})
         
         # Fazer requisição
-        url = self.base_url or "https://api.anthropic.com/v1/messages"
+        # Fix: base_url may be "https://api.anthropic.com/v1" (without /messages)
+        # Always ensure we hit the /messages endpoint
+        base = self.base_url or "https://api.anthropic.com/v1"
+        if base.endswith("/messages"):
+            url = base
+        else:
+            url = f"{base.rstrip('/')}/messages"
 
         # Build params
         params = {
