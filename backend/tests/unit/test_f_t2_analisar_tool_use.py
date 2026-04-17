@@ -82,6 +82,21 @@ def _make_executor_with_mocks():
     executor.prompt_manager.get_prompt_padrao.return_value = prompt
     executor.prompt_manager.get_prompt.return_value = prompt
 
+    # Mock _preparar_contexto_json to return a complete context with all
+    # pre-requisite documents present. The executor now guards against missing
+    # documents (it returns _erro if CORRECAO JSON / EXTRACAO_QUESTOES aren't
+    # found) — since this helper fakes storage.listar_documentos as empty,
+    # we must bypass the guard by returning a valid context that simulates
+    # the prerequisite docs loaded.
+    executor._preparar_contexto_json = MagicMock(return_value={
+        "questoes_extraidas": '{"questoes": []}',
+        "correcoes": '{"nota": 8.5, "questoes": []}',
+        "_documentos_carregados": [
+            "questoes_extraidas",
+            "correcoes",
+        ],
+    })
+
     return executor
 
 
