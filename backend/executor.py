@@ -2178,10 +2178,19 @@ class PipelineExecutor:
                     except Exception as e:
                         print(f"[executar_com_tools] Fallback provider resolution failed: {e}")
             if not model:
+                if provider_id:
+                    # User explicitly requested a model that doesn't exist — fail loudly
+                    return self._erro(
+                        "tools",
+                        f"Modelo '{provider_id}' não encontrado. Verifique o ID do modelo "
+                        f"em Configurações > Modelos. Nenhum fallback será usado — o pipeline "
+                        f"deve rodar com o modelo solicitado ou falhar explicitamente."
+                    )
+                # No model specified at all — use default
                 model = model_manager.get_default()
 
             if not model:
-                return self._erro("tools", "Nenhum modelo configurado")
+                return self._erro("tools", "Nenhum modelo configurado. Configure pelo menos um modelo padrão em Configurações > Modelos.")
             
             # Obter API key (DB → api_key_manager → env var fallback)
             api_key = None

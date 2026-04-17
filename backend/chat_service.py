@@ -823,12 +823,14 @@ class ChatClient:
                 max_iterations=max_iterations
             )
         else:
-            # Fallback: regular chat without tools for unsupported providers
-            return await self.chat(
-                mensagem=mensagem,
-                historico=historico,
-                system_prompt=system_prompt,
-                documentos_contexto=documentos_contexto
+            # NO FALLBACK: if provider doesn't support tools, raise an explicit error.
+            # Silent fallback to chat-without-tools hides failures and produces
+            # documents without the expected JSON schema (no create_document call).
+            raise Exception(
+                f"Provider '{self.config.tipo.value}' não suporta tool-use (function calling). "
+                f"Modelo '{self.config.modelo}' não pode ser usado para etapas que requerem "
+                f"create_document/execute_python_code. Use um provider que suporte tools "
+                f"(openai, anthropic, google)."
             )
 
     def _formatar_documentos(self, documentos: List[Dict[str, Any]]) -> str:
