@@ -14,13 +14,13 @@
 
 ---
 
-## Matriz por Provider e Etapa
+## Matriz por Provider e Etapa (atualizada apos Rodada 4c/4d)
 
 | Provider/Modelo | 1. EXTRAIR_QUESTOES | 2. EXTRAIR_GABARITO | 3. EXTRAIR_RESPOSTAS | 4. CORRIGIR | 5. ANALISAR_HABILIDADES | 6. GERAR_RELATORIO |
 |-----------------|:---:|:---:|:---:|:---:|:---:|:---:|
 | **Claude Haiku 4.5** (`588f3efe7975`) | ⏸️ | ⏸️ | ⏸️ | 🚫 | 🚫 | 🚫 |
-| **Gemini 3 Flash** (`gem3flash001`) | ⏸️ | ⏸️ | ⏸️ | 🚫 503 | ⏸️ | ⏸️ |
-| **GPT-5 Nano** (`gpt5nano001`) | ⏸️ | ⏸️ | ⏸️ | ⚠️ | ⏸️ | ⏸️ |
+| **Gemini 3 Flash** (`gem3flash001`) | ⏸️ | ⏸️ | ⏸️ | ✅ | ✅ | ✅ |
+| **GPT-5 Nano** (`gpt5nano001`) | ⏸️ | ⏸️ | ⏸️ | ❌ | ❌ | ❌ |
 | **GPT-4o** (`180b8298a279`) — referencia | ✅ | ✅ | ✅ | ⚠️ | ⚠️ | ⚠️ |
 
 ---
@@ -35,35 +35,50 @@
 
 ---
 
-### Gemini 3 Flash Preview — 🚫 OVERLOAD + PARSE_ERR
+### Gemini 3 Flash Preview — ✅ SUCESSO (com 1 retry)
 
-**Motivo:** Modelo em preview retorna 503 "high demand" ou parse_err ao tentar CORRIGIR/pipeline-completo.
+**Testado via `pipeline-completo`** para Eric Manoel (ver [teste_gemini_pipeline_completo.md](teste_gemini_pipeline_completo.md))
 
-**Status:**
-- Tentativa via `/executar/etapa`: 503 (provider overload)
-- Tentativa via `pipeline-completo`: task disparou mas monitor reportou `status=parse_err` (Gemini retornou JSON malformado que nao passou no `_parsear_resposta`)
-- Fix do `/executar/etapa` foi aplicado, mas nao validado empiricamente com Gemini
+**Tentativa 1:** Falhou em ~30s (provavelmente 503 transiente)
+**Tentativa 2:** SUCESSO em ~105s, 3 documentos gerados
 
-**Acao recomendada:** Tentar novamente em horario menos pico. Ou testar com Gemini 2.5 Pro (nao-preview). O parse_err sugere que o schema JSON que Gemini retorna pode divergir do esperado — vale investigar.
+| Etapa | Status | Doc JSON | Doc PDF |
+|-------|--------|----------|---------|
+| CORRIGIR | ✅ | `bb0f0c63f75589dd` | `b3a786693fc384df` |
+| ANALISAR_HABILIDADES | ✅ | `f6e7fa7ef961bf15` | `085a078eebb5ef93` |
+| GERAR_RELATORIO | ✅ | `26697c8894eca2ad` | `4a00dcef2eed4ea3` |
+
+**Verificacoes que passaram:**
+- Nota final consistente cross-stage: **7.01**
+- Avisos `MISSING_CONTENT` propagaram corretamente para Q2 e Q4 (questoes em branco)
+- Todos os 3 JSONs tem `_avisos_documento`, `_avisos_questao` (com 2 itens reais!), `_avisos_stage`
+- Conteudo qualitativamente correto (Vandermonde+Julia, decomposicoes matriciais, forward substitution, minimos quadrados)
+
+**Ressalvas:**
+1. `tokens_usados=0` e `ia_modelo=null` no metadata do DB — bug de populamento (nao invalida conteudo)
+2. 50% de falha na primeira tentativa (precisa mais amostras para confiar sem retry)
+3. Endpoint `/conteudo` retorna metadata, nao conteudo — usar `/view` (gap de contrato)
 
 ---
 
-### GPT-5 Nano — ⚠️ PARCIAL
+### GPT-5 Nano — ❌ FALHA no pipeline-completo
 
-**Testado via `/executar/etapa`** (ver [teste_executar_etapa_corrigido.md](teste_executar_etapa_corrigido.md))
+**Testado em 2 caminhos com resultados muito diferentes:**
 
-**Etapa CORRIGIR para Henrique Coelho Beltrao:**
-- HTTP 200, sucesso=true
-- Tokens: 7093
-- JSON gerado: nota 5.72/10, feedback especifico (Q3/Q5/Q6/Q7, matrizes elementares)
-- Template `{{...}}` literais: **NENHUM** na saida (fix confirmado)
+#### Via `/executar/etapa` — ⚠️ PARCIAL
+Ver [teste_executar_etapa_corrigido.md](teste_executar_etapa_corrigido.md). Gerou nota 5.72/10 com feedback coerente, mas sem `_avisos_*`, schema flat, sem persistencia.
 
-**Problemas identificados:**
-1. ⚠️ **Sem campos `_avisos_*`** — JSON nao contem `_avisos_documento`, `_avisos_questao`, `_avisos_stage`. A injecao do `tool_handlers.py` nao pegou este caminho.
-2. ⚠️ **Schema antigo (flat)** — retornou `nota`, `feedback`, `pontos_positivos` em vez do STAGE_TOOL_INSTRUCTIONS (`nota_final`, `questoes[]`).
-3. ⚠️ **Nao persistiu** — `arquivos_gerados: []`, zero documentos `correcao` no banco apos o teste. Endpoint gera resposta mas nao salva.
+#### Via `pipeline-completo` — ❌ FALHA GRAVE
+Ver [teste_gpt5nano_pipeline_completo.md](teste_gpt5nano_pipeline_completo.md). Task `task_ca3769cfdc97` terminou em `failed` em ~23s.
 
-**Nao testado ainda:** outras 5 etapas.
+**Bugs descobertos no tool-use path:**
+1. **Multiplas chamadas `create_document` por stage** (deveria ser 1) — criou 3 docs lixo: JSON malformado, txt vazio, texto natural salvo em arquivo `.json`
+2. **Nomes/extensoes alucinadas:** `document_2.txt`, `correcao_henrique.pdf.json`
+3. **Sem validacao de schema** — stage marcada como "completed" apesar de outputs inutilizaveis
+4. **Metadata nula no DB:** `ia_provider`, `ia_modelo`, `tokens_usados`, `prompt_usado` ficaram null/0
+5. **Cascade de falha:** `analisar_habilidades` falhou (nao achou correcao valida), `gerar_relatorio` nem executou
+6. **`_avisos_*` NAO aparecem** — hipotese de que tool-use path injetaria foi **refutada**
+7. **Schema ainda flat** — GPT-5 Nano nao segue STAGE_TOOL_INSTRUCTIONS mesmo em pipeline-completo
 
 ---
 
@@ -103,14 +118,23 @@
 
 ---
 
-## Resumo Executivo
+## Resumo Executivo (atualizado)
 
-**Estado atual:** Apenas **GPT-4o via `pipeline-completo`** e **GPT-5 Nano via `/executar/etapa`** tem validacao empirica parcial (ambos com ressalvas sobre `_avisos_*`).
+**Estado atual:**
+- ✅ **Gemini 3 Flash via `pipeline-completo`:** VALIDADO end-to-end com todos os fixes. Marco 1 atingido com este provider (nota 7.01 consistente, avisos propagando, conteudo correto).
+- ❌ **GPT-5 Nano via `pipeline-completo`:** QUEBRADO — tool-use path produz documentos lixo. Fix necessario no loop de tool-use.
+- ⏸️ **Claude Haiku 4.5:** Aguardando creditos.
+- 📊 **Confiabilidade Gemini 3 Flash:** 50% de sucesso na primeira tentativa (1 em 2 testes). Precisa mais amostras.
 
-**Nenhum provider** foi validado end-to-end com os novos fixes aplicados (commits de hoje).
+**Marco 1 parcialmente atingido:** Gemini 3 Flash funciona com `pipeline-completo`. Quando Haiku tiver creditos, validamos o segundo provider.
 
-**Bloqueios:**
-- Anthropic: sem creditos (acao do Otavio)
-- Google (Gemini 3 Flash): 503 overload (aguardar)
+**Bugs criticos descobertos nesta sessao:**
+1. GPT-5 Nano tool-use: multiplas chamadas `create_document`, nomes alucinados, sem validacao de schema
+2. Metadata `tokens_usados`, `ia_modelo`, `ia_provider` nao sao populados no DB (afeta todos os providers testados)
+3. Endpoint `/conteudo` nao retorna conteudo para alguns tipos (usar `/view`)
+4. Sem endpoint de eventos de task (dificulta diagnostico de falhas transientes)
 
-**Proximo passo logico:** Quando Gemini estabilizar ou Anthropic recarregar, rodar `pipeline-completo` end-to-end com esse provider para o Eric e atualizar esta matriz.
+**Proximos passos:**
+1. Investigar por que GPT-5 Nano gera documentos lixo no tool-use (provavelmente loop de iteracoes sem limite + sem validacao de schema do `create_document`)
+2. Quando creditos Anthropic forem recarregados, validar Haiku 4.5 via `pipeline-completo`
+3. Corrigir populamento de metadata de tokens/modelo no DB
