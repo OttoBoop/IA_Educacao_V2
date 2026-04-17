@@ -684,40 +684,43 @@ async def _executar_com_chat_service(
     if not prompt and not prompt_customizado:
         raise HTTPException(404, f"Nenhum prompt encontrado para etapa {etapa.value}")
 
-    # Carregar variáveis
-    documentos = storage.listar_documentos(atividade_id, aluno_id)
-    variaveis = {}
+    # Carregar variáveis usando o executor (mesma lógica do pipeline-completo)
+    from executor import executor
 
-    for doc in documentos:
-        conteudo = _ler_conteudo_documento(doc)
-
-        if doc.tipo == TipoDocumento.ENUNCIADO:
-            variaveis["conteudo_documento"] = conteudo
-        elif doc.tipo == TipoDocumento.GABARITO:
-            variaveis["conteudo_documento"] = conteudo
-        elif doc.tipo == TipoDocumento.EXTRACAO_QUESTOES:
-            variaveis["questoes_extraidas"] = conteudo
-        elif doc.tipo == TipoDocumento.EXTRACAO_GABARITO:
-            variaveis["gabarito_extraido"] = conteudo
-        elif doc.tipo == TipoDocumento.EXTRACAO_RESPOSTAS:
-            variaveis["respostas_extraidas"] = conteudo
-        elif doc.tipo == TipoDocumento.CORRECAO:
-            variaveis["correcao"] = conteudo
-        elif doc.tipo == TipoDocumento.PROVA_RESPONDIDA:
-            variaveis["prova_aluno"] = conteudo
-
-    # Info contextual
     atividade = storage.get_atividade(atividade_id)
-    if atividade:
-        turma = storage.get_turma(atividade.turma_id)
-        materia = storage.get_materia(turma.materia_id) if turma else None
-        variaveis["materia"] = materia.nome if materia else "Não definida"
-        variaveis["atividade"] = atividade.nome
+    if not atividade:
+        raise HTTPException(404, f"Atividade não encontrada: {atividade_id}")
 
-    if aluno_id:
-        aluno = storage.get_aluno(aluno_id)
-        if aluno:
-            variaveis["nome_aluno"] = aluno.nome
+    turma = storage.get_turma(atividade.turma_id)
+    materia = storage.get_materia(turma.materia_id) if turma else None
+
+    variaveis = executor._preparar_variaveis_texto(
+        etapa, atividade_id, aluno_id, materia, atividade, usar_multimodal=True
+    )
+
+    # Carregar contexto JSON de etapas anteriores (questões, gabarito, respostas, correções)
+    contexto_json = executor._preparar_contexto_json(atividade_id, aluno_id, etapa)
+    docs_faltantes = contexto_json.pop("_documentos_faltantes", [])
+    contexto_json.pop("_documentos_carregados", [])
+
+    # Falhar explicitamente se faltam documentos de etapas anteriores
+    if docs_faltantes:
+        def _formatar_doc(d):
+            if isinstance(d, dict):
+                tipo = d.get("tipo") or d.get("descricao") or str(d)
+                desc = d.get("descricao")
+                return f"{tipo} ({desc})" if desc and desc != tipo else str(tipo)
+            return str(d)
+        lista = ", ".join(_formatar_doc(d) for d in docs_faltantes)
+        raise HTTPException(
+            400,
+            detail=(
+                f"Documentos necessários não encontrados: {lista}. "
+                "Execute as etapas anteriores do pipeline antes desta."
+            )
+        )
+
+    variaveis.update(contexto_json)
 
     # Renderizar prompt (usa customizado se fornecido)
     if prompt_customizado:
@@ -728,7 +731,7 @@ async def _executar_com_chat_service(
         texto_sistema = prompt.render_sistema(**variaveis) if prompt and prompt.texto_sistema else None
     else:
         texto_renderizado = prompt.render(**variaveis)
-    texto_sistema = prompt.render_sistema(**variaveis) if prompt.texto_sistema else None
+        texto_sistema = prompt.render_sistema(**variaveis) if prompt and prompt.texto_sistema else None
     
     # Criar sessão de chat
     sessao = chat_service.criar_sessao(

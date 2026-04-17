@@ -1218,8 +1218,18 @@ class PipelineExecutor:
         contexto_json = self._preparar_contexto_json(
             atividade_id, aluno_id, EtapaProcessamento.CORRIGIR
         )
-        contexto_json.pop("_documentos_faltantes", [])
+        documentos_faltantes = contexto_json.pop("_documentos_faltantes", [])
         contexto_json.pop("_documentos_carregados", [])
+
+        if documentos_faltantes:
+            lista = ", ".join(documentos_faltantes)
+            return self._erro(
+                EtapaProcessamento.CORRIGIR,
+                f"Documentos obrigatórios ausentes para corrigir: {lista}. "
+                f"Execute as etapas anteriores do pipeline antes da correção.",
+                provider=provider_id,
+            )
+
         variaveis.update(contexto_json)
 
         # Render prompt
@@ -1279,8 +1289,18 @@ class PipelineExecutor:
         contexto_json = self._preparar_contexto_json(
             atividade_id, aluno_id, EtapaProcessamento.ANALISAR_HABILIDADES
         )
-        contexto_json.pop("_documentos_faltantes", [])
+        documentos_faltantes = contexto_json.pop("_documentos_faltantes", [])
         contexto_json.pop("_documentos_carregados", [])
+
+        if documentos_faltantes:
+            lista = ", ".join(documentos_faltantes)
+            return self._erro(
+                EtapaProcessamento.ANALISAR_HABILIDADES,
+                f"Documentos obrigatórios ausentes para análise: {lista}. "
+                f"Execute as etapas anteriores do pipeline antes da análise.",
+                provider=provider_id,
+            )
+
         variaveis.update(contexto_json)
 
         # Render prompt
@@ -1340,8 +1360,18 @@ class PipelineExecutor:
         contexto_json = self._preparar_contexto_json(
             atividade_id, aluno_id, EtapaProcessamento.GERAR_RELATORIO
         )
-        contexto_json.pop("_documentos_faltantes", [])
+        documentos_faltantes = contexto_json.pop("_documentos_faltantes", [])
         contexto_json.pop("_documentos_carregados", [])
+
+        if documentos_faltantes:
+            lista = ", ".join(documentos_faltantes)
+            return self._erro(
+                EtapaProcessamento.GERAR_RELATORIO,
+                f"Documentos obrigatórios ausentes para gerar relatório: {lista}. "
+                f"Execute as etapas anteriores do pipeline antes de gerar o relatório.",
+                provider=provider_id,
+            )
+
         variaveis.update(contexto_json)
 
         # Render prompt
@@ -1547,6 +1577,10 @@ class PipelineExecutor:
                     variaveis["nota_final"] = str(total)
             except:
                 variaveis["nota_final"] = "N/A"
+
+        # Fallback: garantir que nota_final sempre existe para evitar {{nota_final}} literal no output
+        if "nota_final" not in variaveis:
+            variaveis["nota_final"] = "N/A"
 
         return variaveis
     
@@ -3280,6 +3314,24 @@ Crie UM documento separado para cada aluno, nomeando como "relatorio_[nome_aluno
             etapas_puladas["extrair_gabarito"] = reason
 
         # 3. Extrair respostas do aluno
+        # Pre-flight: verificar se o aluno tem prova enviada antes de tentar extrair respostas
+        tem_prova_respondida = any(d.tipo == TipoDocumento.PROVA_RESPONDIDA for d in docs_aluno)
+        if not tem_prova_respondida:
+            aluno_obj = self.storage.get_aluno(aluno_id)
+            nome_aluno = aluno_obj.nome if aluno_obj else aluno_id
+            msg = f"Aluno {nome_aluno} não tem prova enviada — pulando."
+            logger.warning(f"[3/6] extrair_respostas: PULANDO — {msg}")
+            resultados["extrair_respostas"] = ResultadoExecucao(
+                sucesso=False,
+                etapa=EtapaProcessamento.EXTRAIR_RESPOSTAS,
+                erro=msg,
+            )
+            _marcar_erro_pipeline(resultados["extrair_respostas"])
+            if task_id:
+                update_stage_progress(task_id, aluno_id, "extrair_respostas", "failed")
+                complete_pipeline_task(task_id, "failed")
+            return resultados
+
         should_run, reason = _should_run("extrair_respostas", TipoDocumento.EXTRACAO_RESPOSTAS, docs_aluno)
         logger.info(f"[3/6] extrair_respostas: run={should_run}, reason={reason}")
         if should_run:

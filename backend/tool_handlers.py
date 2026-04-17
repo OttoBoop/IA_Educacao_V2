@@ -575,6 +575,81 @@ async def handle_save_correction(
 
 
 # =============================================================================
+# AVISOS DEFAULT INJECTION HELPER
+# =============================================================================
+
+# Map TipoDocumento → pipeline stage name used by visualizador severity logic.
+_TIPO_TO_STAGE: Dict[str, str] = {
+    "correcao":            "CORRIGIR",
+    "analise_habilidades": "ANALISAR_HABILIDADES",
+    "relatorio_final":     "GERAR_RELATORIO",
+    "extracao_questoes":   "EXTRAIR_QUESTOES",
+    "extracao_gabarito":   "EXTRAIR_GABARITO",
+    "extracao_respostas":  "EXTRAIR_RESPOSTAS",
+}
+
+
+def _inject_default_avisos(file_path: str, tipo) -> None:
+    """Read a saved JSON file and inject missing ``_avisos_*`` fields.
+
+    * ``_avisos_documento``: defaults to ``[]``
+    * ``_avisos_questao``: defaults to ``[]``
+    * ``_avisos_stage``: defaults to the stage name derived from *tipo*
+
+    If the LLM already included any of these fields, they are preserved.
+    If the file is not valid JSON, a warning is logged and no changes are made.
+    """
+    import os
+
+    if not os.path.isfile(file_path):
+        return
+
+    raw = open(file_path, "r", encoding="utf-8").read()
+
+    try:
+        data = json.loads(raw)
+    except (json.JSONDecodeError, ValueError):
+        logger.warning(
+            "[_inject_default_avisos] File is not valid JSON, skipping: %s",
+            file_path,
+        )
+        return
+
+    if not isinstance(data, dict):
+        # Top-level is a list or scalar — nothing to inject into
+        return
+
+    changed = False
+
+    if "_avisos_documento" not in data:
+        data["_avisos_documento"] = []
+        changed = True
+
+    if "_avisos_questao" not in data:
+        data["_avisos_questao"] = []
+        changed = True
+
+    if "_avisos_stage" not in data:
+        tipo_value = tipo.value if hasattr(tipo, "value") else str(tipo)
+        stage_name = _TIPO_TO_STAGE.get(tipo_value)
+        if stage_name:
+            data["_avisos_stage"] = stage_name
+            changed = True
+        # If stage_name is None (unknown tipo), skip _avisos_stage injection
+        # to avoid writing an invalid stage that would produce red badges in the UI.
+
+    if changed:
+        tmp_path = file_path + ".tmp"
+        with open(tmp_path, "w", encoding="utf-8") as f:
+            json.dump(data, f, ensure_ascii=False, indent=2)
+        os.replace(tmp_path, file_path)
+        logger.info(
+            "[_inject_default_avisos] Injected missing _avisos_* fields into %s",
+            file_path,
+        )
+
+
+# =============================================================================
 # CREATE DOCUMENT HANDLER
 # =============================================================================
 
@@ -719,6 +794,20 @@ async def handle_create_document(
                 # Default: save as text
                 with open(temp_path, 'w', encoding='utf-8') as f:
                     f.write(content)
+
+            # ---------------------------------------------------------
+            # PRE-STORAGE: inject default _avisos_* fields into
+            # JSON files so the copy that goes into storage already
+            # has them, even when the LLM omits them.
+            # ---------------------------------------------------------
+            if ext == '.json':
+                try:
+                    _inject_default_avisos(temp_path, tipo)
+                except Exception as inj_err:
+                    logger.warning(
+                        "[create_document] _avisos injection failed for '%s': %s",
+                        unique_filename, inj_err,
+                    )
 
             # Register document in storage if we have context
             doc_info = {
