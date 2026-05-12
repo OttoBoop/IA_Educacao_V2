@@ -1,8 +1,8 @@
 # Matriz Provider × Fase — Status Atual
 
-**Atualizado:** 2026-04-17
+**Atualizado:** 2026-04-28
 **Atividade de teste:** Lista0 — Algebra Linear Avancada (`126e8b5ad7dd6d59`)
-**Commits aplicados:** `a632883`, `5737611`
+**Commits aplicados/observados:** `a632883`, `5737611`, `50935ea`, `479b77d`
 
 ## Legenda
 
@@ -14,14 +14,42 @@
 
 ---
 
-## Matriz por Provider e Etapa (atualizada apos Rodada 4c/4d)
+## Matriz Consolidada — 3 Categorias por Provider
 
-| Provider/Modelo | 1. EXTRAIR_QUESTOES | 2. EXTRAIR_GABARITO | 3. EXTRAIR_RESPOSTAS | 4. CORRIGIR | 5. ANALISAR_HABILIDADES | 6. GERAR_RELATORIO |
+### Categoria 1: Pipeline do Aluno (6 etapas)
+
+| Provider/Modelo | EXTRAIR_QUESTOES | EXTRAIR_GABARITO | EXTRAIR_RESPOSTAS | CORRIGIR | ANALISAR_HABILIDADES | GERAR_RELATORIO |
 |-----------------|:---:|:---:|:---:|:---:|:---:|:---:|
 | **Claude Haiku 4.5** (`588f3efe7975`) | ⏸️ | ⏸️ | ⏸️ | 🚫 | 🚫 | 🚫 |
 | **Gemini 3 Flash** (`gem3flash001`) | ⏸️ | ⏸️ | ⏸️ | ✅ | ✅ | ✅ |
 | **GPT-5 Nano** (`gpt5nano001`) | ⏸️ | ⏸️ | ⏸️ | ❌ | ❌ | ❌ |
 | **GPT-4o** (`180b8298a279`) — referencia | ✅ | ✅ | ✅ | ⚠️ | ⚠️ | ⚠️ |
+
+### Categoria 2: Relatorios de Desempenho (3 niveis)
+
+| Provider/Modelo | DESEMPENHO_TAREFA | DESEMPENHO_TURMA | DESEMPENHO_MATERIA |
+|-----------------|:---:|:---:|:---:|
+| **Claude Haiku 4.5** | ⏸️ | ⏸️ | ⏸️ |
+| **Gemini 3 Flash** | ⏸️ (sendo testado) | ⏸️ | ⏸️ |
+| **GPT-5 Nano** | ⏸️ | ⏸️ | ⏸️ |
+| **GPT-4o** | ⏸️ | ⏸️ | ⏸️ |
+
+### Categoria 3: Chat Interativo (`POST /api/chat`)
+
+| Provider/Modelo | Chat |
+|-----------------|:---:|
+| **Claude Haiku 4.5** | ⏸️ |
+| **Gemini 3 Flash** | ✅ |
+| **GPT-5 Nano** | ⏸️ |
+| **GPT-4o** | ⏸️ |
+
+**Gemini 3 Flash:** Validado em 2 testes (mensagem única + multi-turn). Ver [teste_chat_gemini.md](arquivo_2026_04_17/teste_chat_gemini.md).
+- Teste 1: 662 tokens, 1930ms, resposta em PT correta
+- Teste 2: 2502 tokens, 14993ms, usou contexto do histórico
+- Sem templates `{{...}}`
+- Zero retries necessários
+
+**Achado colateral** (não bloqueia, mas reportar): `/api/chat` está usando o **system prompt do fluxo de correção de provas** ("Você é um assistente educacional especializado em correção de provas..."). Consequência: Gemini anexou espontaneamente um PDF base64 no teste 2. Sugere que `/api/chat` deveria ter system prompt próprio mais neutro.
 
 ---
 
@@ -37,7 +65,7 @@
 
 ### Gemini 3 Flash Preview — ✅ SUCESSO (com 1 retry)
 
-**Testado via `pipeline-completo`** para Eric Manoel (ver [teste_gemini_pipeline_completo.md](teste_gemini_pipeline_completo.md))
+**Testado via `pipeline-completo`** para Eric Manoel (ver [teste_gemini_pipeline_completo.md](arquivo_2026_04_17/teste_gemini_pipeline_completo.md))
 
 **Tentativa 1:** Falhou em ~30s (provavelmente 503 transiente)
 **Tentativa 2:** SUCESSO em ~105s, 3 documentos gerados
@@ -66,10 +94,10 @@
 **Testado em 2 caminhos com resultados muito diferentes:**
 
 #### Via `/executar/etapa` — ⚠️ PARCIAL
-Ver [teste_executar_etapa_corrigido.md](teste_executar_etapa_corrigido.md). Gerou nota 5.72/10 com feedback coerente, mas sem `_avisos_*`, schema flat, sem persistencia.
+Ver [teste_executar_etapa_corrigido.md](arquivo_2026_04_17/teste_executar_etapa_corrigido.md). Gerou nota 5.72/10 com feedback coerente, mas sem `_avisos_*`, schema flat, sem persistencia.
 
 #### Via `pipeline-completo` — ❌ FALHA GRAVE
-Ver [teste_gpt5nano_pipeline_completo.md](teste_gpt5nano_pipeline_completo.md). Task `task_ca3769cfdc97` terminou em `failed` em ~23s.
+Ver [teste_gpt5nano_pipeline_completo.md](arquivo_2026_04_17/teste_gpt5nano_pipeline_completo.md). Task `task_ca3769cfdc97` terminou em `failed` em ~23s.
 
 **Bugs descobertos no tool-use path:**
 1. **Multiplas chamadas `create_document` por stage** (deveria ser 1) — criou 3 docs lixo: JSON malformado, txt vazio, texto natural salvo em arquivo `.json`
@@ -84,7 +112,7 @@ Ver [teste_gpt5nano_pipeline_completo.md](teste_gpt5nano_pipeline_completo.md). 
 
 ### GPT-4o — ⚠️ PARCIAL (modelo de referencia/fallback anterior)
 
-**Testado via `pipeline-completo`** para Eric Manoel (ver [teste_haiku_eric.md](teste_haiku_eric.md))
+**Testado via `pipeline-completo`** para Eric Manoel (ver [teste_haiku_eric.md](arquivo_2026_04_17/teste_haiku_eric.md))
 
 | Etapa | Status | Doc ID | Tokens In | Tokens Out | Tempo |
 |-------|--------|--------|-----------|------------|-------|

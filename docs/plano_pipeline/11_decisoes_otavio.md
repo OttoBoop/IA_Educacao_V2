@@ -23,10 +23,11 @@ Implicação: Plano geral em `.md` é artefato permanente, não scratchpad.
 
 Implicação: Usar subagentes para descobrir código existente ANTES de propor mudanças. Otávio quer ser consultado.
 
-### D4. Deploy hook do Render (referência fixa)
-> "Deploy hook: https://api.render.com/deploy/srv-d5t8gbh4tr6s738fr3s0?key=q5MTYJzOPpwAqui o service id srv-d5t8gbh4tr6s738fr3s0" — (P21)
+### D4. Deploy hook do Render (referência sanitizada)
+> "Deploy hook: [REDACTED_RENDER_DEPLOY_HOOK_URL]; service id: [REDACTED_RENDER_SERVICE_ID]" — (P21)
 
 Implicação: Este é o canal oficial para forçar deploy. O auto-deploy do git não funciona — tem que bater este webhook.
+Segurança: o hook que apareceu anteriormente em claro deve ser rotacionado no Render antes de qualquer uso. Não registrar URL com key, token, API key ou hook completo neste documento.
 
 ### D5. Monitoramento contínuo de deploy (não bloqueante)
 > "nunca mais me pare dizendo que está esperando o render. Eu preciso que voce pense num fluxo razoavel para voce, primeiro de tudo, se certificar que o site seuqer esta atualizando." — (P13)
@@ -289,8 +290,9 @@ Correto: Explicitar hipótese + raciocínio → aguardar confirmação/ajuste.
 - Filosofia (case FGV de monitoria/revisão verbatim)
 
 ### Deploy
-- **Hook:** `https://api.render.com/deploy/srv-d5t8gbh4tr6s738fr3s0?key=q5MTYJzOPpw`
-- **Service ID:** `srv-d5t8gbh4tr6s738fr3s0`
+- **Hook:** `[REDACTED_RENDER_DEPLOY_HOOK_URL]`
+- **Service ID:** `[REDACTED_RENDER_SERVICE_ID]`
+- **Segurança:** rotacionar o deploy hook no Render antes de usar; nunca commitar URL com key/token/API key ou hook completo
 - Auto-deploy do git NÃO funciona — disparar hook manualmente
 - Nunca bloquear o loop esperando deploy — monitorar em background
 - Sempre verificar primeiro se o pedido foi aceito, depois monitorar

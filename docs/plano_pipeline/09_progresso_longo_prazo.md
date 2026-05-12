@@ -1,223 +1,167 @@
-# Progresso de Longo Prazo — Visao Geral do Projeto
+# Painel Vivo Paulo -- NOVO CR
 
-## Objetivo do Projeto
+**Atualizado:** 2026-05-06
+**Responsavel operacional:** Paulo
+**Status geral:** Sprint 0 de saneamento documental concluida
 
-Garantir que a pipeline do NOVO CR funcione de forma confiavel com multiplos modelos de IA (Haiku, Gemini 3 Flash, GPT-5 Nano, e eventualmente Rio 3.0), produzindo documentos corretos com avisos de qualidade, e rastreando custos por materia.
+Este e o ponto de entrada do plano. O objetivo deste arquivo e dizer, em poucas
+linhas, onde estamos, qual e a proxima fila e quais frentes estao pausadas.
+Detalhes historicos ficam em anexos, nao aqui.
 
-## Estado Atual por Frente de Trabalho
+## Como Ler Esta Pasta
 
-### Frente 1: Documentacao e Diagnostico — 90% concluida
+Leia primeiro este arquivo. Use os demais apenas quando precisar de detalhe:
 
-| Documento | Status | Arquivo |
-|-----------|--------|---------|
-| 01 Historico de Problemas | Concluido | [01_historico_problemas_pipeline.md](01_historico_problemas_pipeline.md) |
-| 02 Decisoes Arquiteturais | Concluido (com ressalvas — algumas hipoteses precisam validacao empirica) | [02_contexto_decisoes_arquiteturais.md](02_contexto_decisoes_arquiteturais.md) |
-| 03 Plano Operacional | Concluido | [03_plano_operacional_debug.md](03_plano_operacional_debug.md) |
-| 04 Fontes e Governanca | Concluido — melhor documento, catalogo de referencia | [04_fontes_dados_governanca.md](04_fontes_dados_governanca.md) |
-| 05 Visao Longo Prazo | Concluido | [05_visao_longo_prazo.md](05_visao_longo_prazo.md) |
-| 06 Orquestracao | Concluido | [06_fluxo_orquestracao_case_tracking.md](06_fluxo_orquestracao_case_tracking.md) |
-| 07 Auditoria Lista0 | Concluido — 402 docs auditados | [07_relatorio_auditoria.md](07_relatorio_auditoria.md) |
-| Investigacao prova_respondida | Concluido — nao e bug, e limitacao do endpoint | [investigacao_prova_respondida.md](investigacao_prova_respondida.md) |
-| Investigacao fantasmas/templates | Concluido — causas raiz encontradas | [investigacao_fantasmas_templates.md](investigacao_fantasmas_templates.md) |
-| Teste Haiku/Eric | Concluido (com fallback GPT-4o) | [teste_haiku_eric.md](teste_haiku_eric.md) |
+- [05_visao_longo_prazo.md](05_visao_longo_prazo.md): estrategia, custos e
+  roadmap tecnico.
+- [12_matriz_provider_fase.md](12_matriz_provider_fase.md): testes por modelo e
+  fase.
+- [04_fontes_dados_governanca.md](04_fontes_dados_governanca.md): catalogo de
+  dados, schemas e fontes.
+- [13_plano_curto_paulo_rio3_render.md](13_plano_curto_paulo_rio3_render.md):
+  plano Rio 3 preservado, mas pausado.
+- [arquivo_2026_04_17](arquivo_2026_04_17): relatorios, testes e investigacoes
+  historicas.
+- [notas](notas): notas tecnicas pequenas.
+- [rio3_pausado](rio3_pausado): pesquisa Rio 3 congelada ate nova decisao.
 
-### Frente 2: Testes Multi-Provider — 33% concluida
+## Objetivo Atual
 
-| Modelo | Testado? | Resultado |
-|--------|----------|-----------|
-| Claude Haiku 4.5 | Tentado | Falha por falta de creditos Anthropic |
-| GPT-4o (fallback) | Sim | Pipeline completou, mas sem `_avisos_*` e com schema antigo |
-| Gemini 3 Flash | Pendente | — |
-| GPT-5 Nano | Pendente | — |
+Estabilizar o NOVO CR para que a pipeline:
 
-### Frente 3: Correcao de Bugs — 2 fixes aplicados, 5+ pendentes
+- rode com confiabilidade em multiplos modelos;
+- gere documentos corretos e com avisos de qualidade;
+- registre tokens e custos por materia/atividade/aluno;
+- mostre erros de forma compreensivel na interface;
+- mantenha documentacao curta o bastante para orientar decisao.
 
-**Aplicados:**
-- [x] URL Anthropic multimodal sem /messages (anexos.py)
-- [x] Mensagem de erro generica no 400 (chat_service.py)
+## Estado Das Frentes
 
-**Pendentes (priorizados):**
-- [ ] **P1:** Unificar schemas PROMPTS_PADRAO vs STAGE_TOOL_INSTRUCTIONS
-- [ ] **P2:** Injetar defaults `_avisos_*` no handler create_document
-- [ ] **P3:** Corrigir visualizador para ler avisos de ANALISAR/GERAR
-- [ ] **P4:** Adicionar checagem pre-voo de prova_respondida antes de EXTRAIR_RESPOSTAS
-- [ ] **P5:** Corrigir `_preparar_variaveis_texto()` para fallback de nota_final
-- [ ] **P6:** Nao descartar `_documentos_faltantes` em gerar_relatorio()
-- [ ] **P7:** Corrigir flags em models.json (Sonnet function_calling, Gemini Lite)
+| Frente | Estado | Proximo passo |
+|--------|--------|---------------|
+| Docs e plano | Em Sprint 0 | Fechar este painel como fonte oficial e manter anexos fora do fluxo diario |
+| Pipeline | Pendente | Corrigir P4, P5 e P6 antes de novas comparacoes amplas |
+| Schema e avisos | Pendente | Alinhar schema, defaults `_avisos_*` e visualizador |
+| Custos/tokens | Nao iniciada | Corrigir `input_tokens`/`output_tokens` antes de persistir custo |
+| UI de erros | Pendente | Mostrar falha por aluno/etapa sem depender de terminal |
+| Limpeza de dados | Pendente | Reclassificar "fantasmas" antes de qualquer delecao |
+| Rio 3 | Pausada | Nao pedir chave, nao rodar smoke, nao deployar Rio sem nova decisao |
 
-### Frente 4: Limpeza de Dados — Pendente
+## Loop Operacional
 
-- [ ] Deletar 183 documentos fantasma (aguardando aprovacao)
-- [ ] Remover duplicatas de extracao_questoes/gabarito (54 docs redundantes)
+Cada ciclo deve seguir esta ordem:
 
-### Frente 5: Rastreamento de Custos — Nao iniciada
+1. Orientar: ler este painel, `git status`, matriz de providers e problema-alvo.
+2. Escolher alvo: uma tese por ciclo.
+3. Diagnosticar: reproduzir ou localizar causa com teste/leitura focada.
+4. Corrigir: menor mudanca suficiente.
+5. Validar: teste focado, `git diff --check`, `py_compile` quando Python mudar.
+6. Registrar: bloco curto neste arquivo, sem criar novo doc.
+7. Git/deploy: stage explicito, sem `.pytest_tmp`; deploy e segredo exigem gate.
 
-- Arquitetura proposta no Doc 05
-- Depende de: corrigir tokens_saida no Path 2 + ChatClient retornar input/output separados
-- Estimativa: trabalho medio, 3-4 arquivos a modificar
+## Fila Priorizada
 
-### Frente 6: Provider Rio 3.0 — WIP (catalogado; aguardando planejamento/provisionamento no site oficial Render)
+### Sprint 0 -- Painel Doc 09
 
-- Familia Rio publica catalogada no Doc 08: Rio 3.0 Open, Open Search, Open Mini,
-  Open Nano, Rio 2.5 Open e Rio 2.5 Open VL
-- Usuario informou acesso a Mini e Nano
-- Escopo de teste inicial travado: rodar somente Rio Open Mini, e somente como
-  progresso operacional quando estiver planejado e provisionado no site oficial
-  Render
-- ProviderType.CUSTOM ja existe e cai em formato OpenAI-compatible
+Objetivo: deixar o projeto navegavel antes de corrigir codigo.
 
-#### Registro de evento e decisao - 2026-04-17
+Critérios de pronto:
 
-- O orquestrador/Paulo tratou um popup/local como se ele resolvesse o site
-  oficial; isso foi reclassificado como falso progresso para a Frente 6
-- Decisao de rumo: Rio 3 so conta como progresso operacional quando estiver
-  planejado e provisionado no site oficial Render
-- Revisao dos subagentes Maxwell (Planejador Rio 3) e Hume (Seguranca Site
-  Oficial): secret deve entrar via Render env primeiro; popup publico fica
-  bloqueado sem admin gate; Rio Open Mini e o unico alvo de teste; tool calling
-  ainda nao foi validado
-- Nao registrar segredo de API neste documento
+- este arquivo e a entrada unica do plano;
+- historicos estao em [arquivo_2026_04_17](arquivo_2026_04_17);
+- notas pequenas estao em [notas](notas);
+- Rio esta em [rio3_pausado](rio3_pausado) e marcado como pausado;
+- lote Rio/codigo fica congelado e fora do commit de docs;
+- links locais e `git diff --check` passam.
 
-#### Estado atual consolidado - 2026-04-17
+### Sprint 1 -- Confiabilidade Da Pipeline
 
-- Bloqueio atual: site oficial ainda depende de secrets `RIO3_*` no Render e de
-  governanca/admin gate antes de qualquer popup publico de chave real
-- Decisao ja travada: Rio Open Mini e o unico alvo de teste inicial; Nano fica
-  documentado, mas fora da primeira bateria
-- Proximo gate necessario: provisionar `RIO3_API_KEY`, `RIO3_BASE_URL` e
-  `RIO3_MODEL_ID` no Render, confirmar deploy e so entao testar conexao sem
-  expor segredo
-- Ajuste aplicado na orquestracao: `render.yaml` deve declarar as variaveis
-  `RIO3_*` para o site oficial, alinhando blueprint, codigo e testes
+Prioridade: P4, P5 e P6.
 
-#### Registro Log Vivo Rio 3 - 2026-04-17
+- P4: barrar `EXTRAIR_RESPOSTAS` sem `prova_respondida` valida.
+- P5: garantir fallback de `nota_final`.
+- P6: nao descartar `_documentos_faltantes` em `gerar_relatorio`.
 
-- Agentes anteriores da Frente 6 finalizaram a passagem; novos agentes de
-  execucao foram acionados pelo orquestrador Paulo para acompanhar o fluxo
-  real no site oficial Render.
-- Ainda nao ha chamada real Rio 3 validada: ela so deve ocorrer depois que a
-  chave e demais `RIO3_*` estiverem provisionados no Render, sem registrar
-  segredo em chat, docs ou logs.
-- Estado esperado agora: registrar falhas reais de smoke test/harness e
-  evidencias de bloqueio ate a configuracao server-side existir no Render.
+Critério de pronto: falha clara e rastreavel, sem output silencioso ruim.
 
-#### Registro de execucao segura - 2026-04-17
+### Sprint 2 -- Schema E Avisos
 
-- Sonda do site oficial: `GET /api/health` respondeu HTTP 200/healthy, mas
-  `/api/settings/models` mostrou 13 modelos e nenhum Rio/Rio Open Mini.
-- Sonda de chaves: `/api/settings/api-keys` respondeu HTTP 200 com 3 chaves
-  mascaradas de providers existentes, sem chave `custom`/Rio; nenhum preview foi
-  registrado neste documento.
-- Harness criado: `backend/scripts/rio3_smoke.py` passa a emitir JSON seguro
-  para `/models` e `chat/completions`, sem tool calling e sem imprimir segredo.
-- Erro operacional atual reproduzido sem segredo: `MISSING_RIO3_ENV` quando
-  `RIO3_API_KEY`, `RIO3_BASE_URL` e `RIO3_MODEL_ID` nao estao no ambiente.
-- Suite focada Rio 3 validada por runner direto: 10 testes passaram cobrindo
-  cofre, mascaramento, blueprint Render, frontend, sync por env e harness.
-- Risco reforcado: rotas publicas de settings ainda expõem metadados
-  administrativos; isso nao bloqueia secret via Render, mas bloqueia popup
-  publico para chave real ate existir admin gate.
+Prioridade: P1, P2 e P3.
 
-#### Fila operacional para Paulo destravar
+- P1: unificar schemas `PROMPTS_PADRAO` vs `STAGE_TOOL_INSTRUCTIONS`.
+- P2: garantir defaults `_avisos_*` no handler `create_document`.
+- P3: fazer o visualizador ler avisos de ANALISAR/GERAR.
 
-1. Prioridade imediata: deployar suporte `RIO3_*` no Render para secret
-   server-side; admin gate fica como requisito antes de aceitar chave real por
-   UI publica.
-2. Caminho da chave: orientar o usuario a abrir o painel seguro do Render e
-   cadastrar `RIO3_API_KEY`, sem colar o valor no chat.
-3. Endpoint/modelo: obter `RIO3_BASE_URL` e descobrir `RIO3_MODEL_ID` via
-   `/v1/models` ou equivalente, sem imprimir headers ou segredo.
-4. Confirmacao permitida: pedir apenas "secret configurado" depois que o valor
-   estiver salvo no Render.
-5. Deploy: pedir autorizacao explicita antes de push, deploy manual ou hook
-   Render.
-6. Governanca: registrar quem pode administrar modelos/chaves no site oficial e
-   manter a URL publica proibida para chave real enquanto nao houver admin gate.
+Critério de pronto: documentos gerados ficam consistentes e legiveis.
 
-#### Protocolo de monitoramento do Paulo
+### Sprint 3 -- Custos/Tokens
 
-- Paulo deve manter uma visao ativa dos subagentes acionados: quem esta
-  trabalhando, qual pergunta recebeu, qual arquivo ou decisao afeta, e qual
-  resultado ainda falta
-- Enquanto agentes estiverem em execucao, Paulo deve relatar periodicamente ao
-  usuario o que cada agente esta fazendo e como isso muda a interpretacao do
-  plano, mesmo que o usuario nao esteja acompanhando cada mensagem em tempo real
-- Cada relatorio deve separar fatos, inferencias e decisoes pendentes
-- Paulo deve pensar em paralelo sobre as consequencias das respostas dos agentes,
-  em vez de apenas repassar conclusoes mecanicamente
-- Quando nem Paulo nem os agentes tiverem informacao suficiente para uma decisao
-  segura, Paulo deve parar e fazer pergunta objetiva ao usuario antes de seguir
-- Nenhum novo subagente deve ser acionado sem objetivo, constraints, entradas
-  permitidas e saida esperada definidos; quando a aprovacao humana for exigida
-  pelo protocolo da frente, Paulo deve pedir aprovacao antes
+Prioridade: corrigir medicao antes de criar dashboard.
 
-#### Protocolo para agentes externos/paralelos
+- `ChatClient` deve retornar `input_tokens` e `output_tokens`.
+- `executar_com_tools` deve preencher `tokens_entrada` e `tokens_saida`.
+- Persistencia `TokenUsageRecord` entra so depois disso.
 
-- Paulo deve assumir que podem existir agentes externos ativos, mesmo quando nao
-  foram criados por ele
-- Paulo deve descobrir esses agentes por sinais locais antes de perguntar ao
-  usuario: processos `codex`/`claude`, diretorios `/tmp/claude-*`, arquivos
-  `subagents/*.jsonl`, timestamps recentes, `git status` e diffs por arquivo
-- Esses agentes podem editar os mesmos `.md`; antes de qualquer alteracao em
-  documento compartilhado, Paulo deve reler o trecho atual e conferir o estado
-  do workspace
-- Relatorios de Paulo devem distinguir:
-  - agentes criados por Paulo;
-  - agentes/processos externos inferidos por alteracoes no workspace;
-  - mudancas cuja autoria nao esta clara
-- Paulo nao deve sobrescrever ou "limpar" mudancas de autoria incerta; se houver
-  conflito de narrativa, ele deve registrar o conflito ou perguntar ao usuario
-- Quando um documento de plano for compartilhado por varios agentes, Paulo deve
-  preferir adicionar registros datados e pequenas secoes de consolidacao, em vez
-  de reescrever secoes amplas sem coordenacao
-- Se um agente externo mudar um arquivo critico para a Frente 6, Paulo deve
-  reportar o arquivo, o tipo de mudanca observado e a decisao que pode ser
-  afetada
-- Se um agente externo alterar qualquer doc de Rio 3, o fato deve virar registro
-  datado neste Doc 09 antes de reescrever narrativa ou atualizar a visao geral
+Critério de pronto: custo pode ser calculado com input/output separados.
 
-### Frente 7 (NOVA): Erros e Feedback na UI
+### Sprint 4 -- UI De Erros
 
-Descoberta durante os testes: quando a pipeline falha, a UI nao comunica claramente o que aconteceu. O usuario fica sem saber se deu erro, qual erro, e o que fazer.
+- Mostrar falhas por aluno e etapa.
+- Exibir mensagens claras para credito insuficiente, documento faltante, modelo
+  sem tools e falhas de provider.
 
-**Problemas identificados:**
-- Nenhum popup ou banner de erro quando pipeline falha
-- Status do aluno nao distingue visualmente "falhou" de "pendente" de "nunca rodou"
-- Mensagens de erro genericas ("modelo indisponivel") que nao ajudam o usuario
-- Log de erros so acessivel via backend/terminal, nao pela interface
-- Quando creditos acabam, nao ha aviso proativo — o usuario so descobre quando tenta rodar
+Critério de pronto: usuario entende o que falhou sem abrir terminal.
 
-**O que precisa ter:**
-- [ ] Popup/toast de erro quando qualquer etapa falha, com mensagem especifica
-- [ ] Estado visual por aluno: icones/cores para sucesso/falha/pendente/nunca_rodou
-- [ ] Painel de erros recentes acessivel na interface
-- [ ] Mensagens claras para erros comuns: "creditos insuficientes", "modelo nao suporta tools", "documento faltante para o aluno X"
-- [ ] Quando pipeline falha no meio: mostrar QUAL etapa falhou e QUAL aluno
+### Sprint 5 -- Limpeza De Dados
 
-### Frente 8 (NOVA): Endpoint /executar/etapa nao substitui variaveis
+- Reclassificar a lista historica de "fantasmas".
+- Nunca deletar `prova_respondida` PDF so por `conteudo=null`.
 
-Descoberta durante testes empiricos: o endpoint `/api/executar/etapa` (usado pela GUI para rodar etapas individuais) envia o prompt com variaveis de template nao substituidas (`{{questao}}`, `{{resposta_aluno}}`, `{{gabarito}}`).
+Critério de pronto: lista de limpeza segura e revisada.
 
-**Impacto:** Qualquer tentativa de rodar uma etapa individual pela GUI falha silenciosamente — a IA recebe um prompt vazio e responde "nao tenho dados".
+## Separacoes Importantes
 
-**Causa provavel:** O endpoint nao carrega os documentos de etapas anteriores antes de renderizar o prompt. O `pipeline-completo` faz esse carregamento, mas o `/executar/etapa` nao.
+### `prova_respondida`
 
-**Fix necessario:** Investigar `routes_prompts.py` endpoint `/executar/etapa` (linhas 578-621) e garantir que `_preparar_variaveis_texto()` e `_preparar_contexto_json()` sejam chamados antes de `prompt.render()`.
+- PDF com `conteudo=null` em `/api/documentos/{id}/conteudo` e limitacao do
+  endpoint, documentada em [nota_tecnica_conteudo_pdf.md](notas/nota_tecnica_conteudo_pdf.md).
+- Pipeline rodar para aluno sem `prova_respondida` valida e bug real de fluxo.
+- Limpeza de dados deve verificar `download/view` e storage antes de delecao.
+
+### Rio 3
+
+- Rio 3 esta pausado por decisao do usuario.
+- A tentativa de usar chave em chat deve ser tratada como chave exposta.
+- O teste seguro feito via popup retornou `401 Token invalido ou expirado`; nenhuma
+  pipeline de matematica rodou com Rio 3.
+- O endpoint oficial observado usa contrato eAI Gateway, nao OpenAI-compatible
+  direto; a retomada provavelmente exige adaptador.
+- Arquivos de codigo/Rio ja preparados ficam congelados fora da Sprint 0.
+
+### Git E Workspace
+
+- O workspace esta sujo e contem muito ruido em `backend/.pytest_tmp`.
+- O commit da Sprint 0 deve ser apenas documental.
+- Nunca usar `git add .`.
+- Antes de qualquer commit, stagear explicitamente so os arquivos do ciclo.
+
+## Registro De Ciclos
+
+### 2026-05-06 -- Sprint 0: Painel Doc 09
+
+- Alvo: transformar o Doc 09 no painel vivo oficial.
+- Status: concluida.
+- Decisoes: docs primeiro; Rio 3 congelado; ciclos registrados somente aqui.
+- Validacoes: links Markdown locais passaram; `git diff --check --cached` passou;
+  raiz de `docs/plano_pipeline` ficou limitada aos docs vivos.
+- Git: lote staged agora e documental; codigo/Rio permanece no worktree, fora do
+  stage da Sprint 0.
+- Proximo alvo depois da Sprint 0: Sprint 1, confiabilidade da pipeline.
 
 ## Riscos Abertos
 
-1. **Creditos Anthropic:** Sem creditos, nao podemos testar Haiku (modelo default do sistema)
-2. **Schema drift:** Enquanto PROMPTS_PADRAO e STAGE_TOOL_INSTRUCTIONS divergem, cada modelo pode gerar JSON em formato diferente
-3. **Fantasmas poluindo dados:** 183 registros vazios distorcem estatisticas e confundem o status de alunos
-4. **Endpoint /conteudo nao le PDFs:** Qualquer logica que dependa desse endpoint para acessar provas recebe null
-5. **(NOVO) UI nao comunica erros:** Usuarios nao sabem quando/por que a pipeline falhou
-6. **(NOVO) /executar/etapa quebrado:** Etapas individuais nao funcionam pela GUI
-7. **(NOVO) Testes multi-provider incompletos:** So GPT-4o foi testado via pipeline-completo. Haiku, Gemini e GPT-5 Nano ainda precisam ser testados pelo caminho correto
-
-## Licoes Aprendidas nesta Sessao
-
-1. **Testar empiricamente antes de teorizar.** Os 6 docs de diagnostico mapearam o terreno, mas varias hipoteses so foram confirmadas/refutadas quando rodamos a pipeline de verdade.
-2. **Nunca fazer fallback silencioso.** O sistema trocava de modelo sem avisar. Agora falha explicitamente (commit 44c5786).
-3. **Testar pelo caminho certo.** Testamos via `/executar/etapa` (quebrado) e quase reportamos como "modelo nao funciona" quando o bug era no endpoint.
-4. **Relatorios precisam ser claros.** Tabelas enormes sem contexto nao ajudam. Explicar o que esta acontecendo em linguagem humana antes de jogar dados.
-5. **Mudancas relevantes no plano longo prazo ficam registradas aqui.** Quando houver virada de status, decisao de escopo ou correcao de rumo em frentes como a do Rio 3, este documento deve receber o registro datado antes de o trabalho seguir adiante.
+1. Creditos Anthropic insuficientes ainda bloqueiam validacao Haiku.
+2. Schema drift pode fazer modelos gerarem formatos diferentes.
+3. Metadata de tokens/modelo ainda falha ou fica incompleta em caminhos testados.
+4. UI ainda nao comunica falhas da pipeline com clareza suficiente.
+5. Rio 3 nao deve voltar ao fluxo ativo sem nova decisao e nova chave segura.

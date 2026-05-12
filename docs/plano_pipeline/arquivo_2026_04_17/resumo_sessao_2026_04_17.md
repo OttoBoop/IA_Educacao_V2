@@ -22,10 +22,10 @@ Dois problemas interagem:
 - O prompt em `prompts.py:515` tem `"nota_final": "{{nota_final}}"` como exemplo. Quando a variavel nao e substituida, a IA copia o literal `{{nota_final}}` para o output.
 - `gerar_relatorio()` (executor.py:1343) silenciosamente descarta a lista de documentos faltantes com `contexto_json.pop("_documentos_faltantes", [])`.
 
-### 4. Entendemos que prova_respondida null NAO e bug
-**Arquivo:** [investigacao_prova_respondida.md](investigacao_prova_respondida.md)
+### 4. Esclarecemos a limitacao do endpoint `/conteudo` para PDFs
+**Arquivo:** [nota_tecnica_conteudo_pdf.md](../notas/nota_tecnica_conteudo_pdf.md)
 
-O endpoint `/api/documentos/{id}/conteudo` nao sabe ler PDFs — so le .json, .txt e .md. Os PDFs das provas estao intactos e acessiveis via `/download` e `/view`. O campo `conteudo=null` e uma limitacao do endpoint, nao um documento vazio.
+O endpoint `/api/documentos/{id}/conteudo` nao sabe ler PDFs — so le .json, .txt e .md. Os PDFs das provas estao intactos e acessiveis via `/download` e `/view`. Portanto, `conteudo=null` nesse endpoint nao basta para chamar um `prova_respondida` de vazio ou fantasma.
 
 ### 5. Dois bugs reais corrigidos e deployados
 - **commit 1eb37cb:** URL do Anthropic multimodal estava sem `/messages` quando `base_url` era fornecida pelo `ai_registry`. Fix em `anexos.py`.
