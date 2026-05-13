@@ -1,6 +1,6 @@
 # Painel Vivo Paulo -- NOVO CR
 
-**Atualizado:** 2026-05-06
+**Atualizado:** 2026-05-12
 **Responsavel operacional:** Paulo
 **Status geral:** Sprint 0 de saneamento documental concluida
 
@@ -39,8 +39,8 @@ Estabilizar o NOVO CR para que a pipeline:
 
 | Frente | Estado | Proximo passo |
 |--------|--------|---------------|
-| Docs e plano | Em Sprint 0 | Fechar este painel como fonte oficial e manter anexos fora do fluxo diario |
-| Pipeline | Pendente | Corrigir P4, P5 e P6 antes de novas comparacoes amplas |
+| Docs e plano | Sprint 0 concluida | Manter este painel como fonte oficial e anexos fora do fluxo diario |
+| Pipeline | Em Sprint 1 | Corrigir P5 e P6 antes de novas comparacoes amplas |
 | Schema e avisos | Pendente | Alinhar schema, defaults `_avisos_*` e visualizador |
 | Custos/tokens | Nao iniciada | Corrigir `input_tokens`/`output_tokens` antes de persistir custo |
 | UI de erros | Pendente | Mostrar falha por aluno/etapa sem depender de terminal |
@@ -78,7 +78,7 @@ Critérios de pronto:
 
 Prioridade: P4, P5 e P6.
 
-- P4: barrar `EXTRAIR_RESPOSTAS` sem `prova_respondida` valida.
+- P4: barrar `EXTRAIR_RESPOSTAS` sem `prova_respondida` valida. **Concluido em 2026-05-12.**
 - P5: garantir fallback de `nota_final`.
 - P6: nao descartar `_documentos_faltantes` em `gerar_relatorio`.
 
@@ -157,6 +157,20 @@ Critério de pronto: lista de limpeza segura e revisada.
 - Git: lote staged agora e documental; codigo/Rio permanece no worktree, fora do
   stage da Sprint 0.
 - Proximo alvo depois da Sprint 0: Sprint 1, confiabilidade da pipeline.
+
+### 2026-05-12 -- Sprint 1/P4: prova_respondida valida
+
+- Alvo: impedir `EXTRAIR_RESPOSTAS` sem `prova_respondida` com arquivo resolvivel.
+- Status: concluido localmente.
+- Arquivos tocados: `backend/executor.py`, `backend/tests/unit/test_erro_pipeline.py`.
+- Comportamento: fluxo completo e fluxo direto falham cedo sem prova valida; PDF
+  existente e aceito sem depender de `/conteudo`; etapas nao selecionadas nao sao
+  bloqueadas por falta de prova.
+- Validacoes: `python -m py_compile backend/executor.py backend/tests/unit/test_erro_pipeline.py`;
+  `git diff --check`; `PYTHONPATH=backend /home/otavio/Documents/vscode/.venv/bin/python -m pytest backend/tests/unit/test_erro_pipeline.py -q`
+  passou com 32 testes e 1 aviso de config `timeout` desconhecida.
+- Git: Sprint 0 documental foi commitada em `7e4b852` antes do ciclo P4.
+- Proximo alvo: Sprint 1/P5, fallback robusto de `nota_final`.
 
 ## Riscos Abertos
 

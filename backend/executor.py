@@ -1173,6 +1173,16 @@ class PipelineExecutor:
         provider_id: str = None
     ) -> ResultadoExecucao:
         """Extrai respostas da prova do aluno usando visão multimodal"""
+        prova_valida, mensagem_erro, _ = self._validar_prova_respondida_para_extracao(
+            atividade_id, aluno_id
+        )
+        if not prova_valida:
+            return self._erro(
+                EtapaProcessamento.EXTRAIR_RESPOSTAS,
+                mensagem_erro,
+                provider=provider_id,
+            )
+
         return await self.executar_etapa(
             etapa=EtapaProcessamento.EXTRAIR_RESPOSTAS,
             atividade_id=atividade_id,
@@ -1467,6 +1477,71 @@ class PipelineExecutor:
             provider=provider or "",
             modelo=modelo or "",
             erro=mensagem
+        )
+
+    def _validar_prova_respondida_para_extracao(
+        self,
+        atividade_id: str,
+        aluno_id: Optional[str],
+        docs_aluno: Optional[List[Any]] = None,
+    ) -> tuple[bool, str, Optional[Documento]]:
+        """Valida se EXTRAIR_RESPOSTAS tem um arquivo de prova do aluno acessivel."""
+        if not aluno_id:
+            return False, "Aluno nao informado para extrair respostas.", None
+
+        if docs_aluno is None:
+            try:
+                docs_aluno = self.storage.listar_documentos(atividade_id, aluno_id)
+            except Exception as e:
+                return False, f"Erro ao listar documentos do aluno: {e}", None
+
+        def _tipo_documento(doc) -> Optional[str]:
+            tipo = getattr(doc, "tipo", None)
+            return getattr(tipo, "value", tipo)
+
+        provas = [
+            doc for doc in docs_aluno
+            if _tipo_documento(doc) == TipoDocumento.PROVA_RESPONDIDA.value
+        ]
+
+        nome_aluno = aluno_id
+        try:
+            aluno = self.storage.get_aluno(aluno_id)
+            nome_aluno = getattr(aluno, "nome", None) or aluno_id
+        except Exception:
+            pass
+
+        if not provas:
+            return (
+                False,
+                f"Aluno {nome_aluno} nao tem prova_respondida enviada.",
+                None,
+            )
+
+        erros_resolucao = []
+        for doc in provas:
+            doc_id = getattr(doc, "id", "sem-id")
+            try:
+                caminho = self.storage.resolver_caminho_documento(doc)
+            except Exception as e:
+                erros_resolucao.append(f"{doc_id}: erro ao resolver caminho ({e})")
+                continue
+
+            if caminho and Path(caminho).exists():
+                return True, "", doc
+
+            caminho_original = getattr(doc, "caminho_arquivo", None) or caminho or "sem caminho"
+            erros_resolucao.append(f"{doc_id}: arquivo nao encontrado ({caminho_original})")
+
+        detalhes = ""
+        if erros_resolucao:
+            detalhes = " Detalhes: " + "; ".join(erros_resolucao[:3])
+
+        return (
+            False,
+            f"Aluno {nome_aluno} tem prova_respondida cadastrada, "
+            f"mas nenhum arquivo foi encontrado no storage.{detalhes}",
+            None,
         )
     
     def _preparar_variaveis_texto(
@@ -3314,27 +3389,25 @@ Crie UM documento separado para cada aluno, nomeando como "relatorio_[nome_aluno
             etapas_puladas["extrair_gabarito"] = reason
 
         # 3. Extrair respostas do aluno
-        # Pre-flight: verificar se o aluno tem prova enviada antes de tentar extrair respostas
-        tem_prova_respondida = any(d.tipo == TipoDocumento.PROVA_RESPONDIDA for d in docs_aluno)
-        if not tem_prova_respondida:
-            aluno_obj = self.storage.get_aluno(aluno_id)
-            nome_aluno = aluno_obj.nome if aluno_obj else aluno_id
-            msg = f"Aluno {nome_aluno} não tem prova enviada — pulando."
-            logger.warning(f"[3/6] extrair_respostas: PULANDO — {msg}")
-            resultados["extrair_respostas"] = ResultadoExecucao(
-                sucesso=False,
-                etapa=EtapaProcessamento.EXTRAIR_RESPOSTAS,
-                erro=msg,
-            )
-            _marcar_erro_pipeline(resultados["extrair_respostas"])
-            if task_id:
-                update_stage_progress(task_id, aluno_id, "extrair_respostas", "failed")
-                complete_pipeline_task(task_id, "failed")
-            return resultados
-
         should_run, reason = _should_run("extrair_respostas", TipoDocumento.EXTRACAO_RESPOSTAS, docs_aluno)
         logger.info(f"[3/6] extrair_respostas: run={should_run}, reason={reason}")
         if should_run:
+            prova_valida, mensagem_erro, _ = self._validar_prova_respondida_para_extracao(
+                atividade_id, aluno_id, docs_aluno
+            )
+            if not prova_valida:
+                logger.warning(f"[3/6] extrair_respostas: BLOQUEADO - {mensagem_erro}")
+                resultados["extrair_respostas"] = ResultadoExecucao(
+                    sucesso=False,
+                    etapa=EtapaProcessamento.EXTRAIR_RESPOSTAS,
+                    erro=mensagem_erro,
+                )
+                _marcar_erro_pipeline(resultados["extrair_respostas"])
+                if task_id:
+                    update_stage_progress(task_id, aluno_id, "extrair_respostas", "failed")
+                    complete_pipeline_task(task_id, "failed")
+                return resultados
+
             if task_id and task_registry.get(task_id, {}).get("cancel_requested"):
                 complete_pipeline_task(task_id, "cancelled")
                 return resultados

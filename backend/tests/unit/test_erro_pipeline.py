@@ -120,6 +120,10 @@ class TestF3T1_DocumentoFaltante:
         executor.storage = MagicMock()
         executor.prompt_manager = MagicMock()
         executor.preparador = None
+        executor._get_provider_config = MagicMock(return_value={
+            "tipo": "test-provider",
+            "modelo": "test-model",
+        })
 
         # Track what content gets saved via _salvar_resultado
         executor._saved_contents = []
@@ -474,6 +478,149 @@ class TestF3T2_PipelineOrquestracao:
 
 
 # ============================================================
+# P4: EXTRAIR_RESPOSTAS requires a valid prova_respondida file
+# ============================================================
+
+class TestP4ProvaRespondidaGate:
+    """P4: EXTRAIR_RESPOSTAS must fail early without a valid student proof file."""
+
+    @pytest.fixture
+    def executor_pipeline(self):
+        """Create executor for P4 orchestration tests."""
+        from executor import PipelineExecutor
+        executor = PipelineExecutor.__new__(PipelineExecutor)
+        executor.storage = MagicMock()
+        executor.prompt_manager = MagicMock()
+        executor.preparador = MagicMock()
+        return executor
+
+    @staticmethod
+    def _doc(tipo, doc_id="doc-test", path="doc-test.pdf", extensao=".pdf"):
+        doc = MagicMock()
+        doc.tipo = tipo
+        doc.id = doc_id
+        doc.caminho_arquivo = path
+        doc.extensao = extensao
+        return doc
+
+    @pytest.mark.asyncio
+    async def test_pipeline_does_not_call_ai_when_respostas_needs_missing_prova(self, executor_pipeline):
+        """Pipeline should block before AI when extrair_respostas is selected and proof is absent."""
+        from executor import EtapaProcessamento
+
+        executor = executor_pipeline
+        executor.storage.listar_documentos = MagicMock(return_value=[])
+        aluno = MagicMock()
+        aluno.nome = "Aluno Sem Prova"
+        executor.storage.get_aluno = MagicMock(return_value=aluno)
+        executor.executar_etapa = AsyncMock()
+
+        resultados = await executor.executar_pipeline_completo(
+            atividade_id="ativ_test",
+            aluno_id="aluno_test",
+            selected_steps=["extrair_respostas"],
+        )
+
+        executor.executar_etapa.assert_not_called()
+        assert resultados["extrair_respostas"].sucesso is False
+        assert resultados["extrair_respostas"].etapa == EtapaProcessamento.EXTRAIR_RESPOSTAS
+        assert "_pipeline_erro" in resultados
+
+    @pytest.mark.asyncio
+    async def test_pipeline_fails_when_prova_doc_exists_but_file_missing(self, executor_pipeline, tmp_path):
+        """A registered prova_respondida is not valid if storage cannot resolve an existing file."""
+        from models import TipoDocumento
+
+        executor = executor_pipeline
+        missing_path = tmp_path / "missing.pdf"
+        prova_doc = self._doc(TipoDocumento.PROVA_RESPONDIDA, "prova-1", str(missing_path))
+        executor.storage.listar_documentos = MagicMock(
+            side_effect=lambda _ativ, aluno_id=None: [prova_doc] if aluno_id else []
+        )
+        executor.storage.get_aluno = MagicMock(return_value=MagicMock(nome="Aluno Com Caminho Quebrado"))
+        executor.storage.resolver_caminho_documento = MagicMock(return_value=missing_path)
+        executor.executar_etapa = AsyncMock()
+
+        resultados = await executor.executar_pipeline_completo(
+            atividade_id="ativ_test",
+            aluno_id="aluno_test",
+            selected_steps=["extrair_respostas"],
+        )
+
+        executor.executar_etapa.assert_not_called()
+        assert resultados["extrair_respostas"].sucesso is False
+        assert "arquivo" in resultados["extrair_respostas"].erro.lower()
+        assert "_pipeline_erro" in resultados
+
+    @pytest.mark.asyncio
+    async def test_pipeline_does_not_block_when_extrair_respostas_not_selected(self, executor_pipeline):
+        """Missing proof must not block unrelated selected steps."""
+        from executor import ResultadoExecucao, EtapaProcessamento
+
+        executor = executor_pipeline
+        executor.storage.listar_documentos = MagicMock(return_value=[])
+        executor.corrigir = AsyncMock(return_value=ResultadoExecucao(
+            sucesso=True,
+            etapa=EtapaProcessamento.CORRIGIR,
+        ))
+
+        resultados = await executor.executar_pipeline_completo(
+            atividade_id="ativ_test",
+            aluno_id="aluno_test",
+            selected_steps=["corrigir"],
+        )
+
+        executor.corrigir.assert_awaited_once()
+        assert "extrair_respostas" not in resultados
+        assert "_pipeline_erro" not in resultados
+
+    @pytest.mark.asyncio
+    async def test_extrair_respostas_aluno_fails_early_without_prova(self, executor_pipeline):
+        """Direct extraction must also block before executar_etapa when proof is absent."""
+        executor = executor_pipeline
+        executor.storage.listar_documentos = MagicMock(return_value=[])
+        executor.storage.get_aluno = MagicMock(return_value=MagicMock(nome="Aluno Sem Prova"))
+        executor.executar_etapa = AsyncMock()
+
+        resultado = await executor.extrair_respostas_aluno(
+            atividade_id="ativ_test",
+            aluno_id="aluno_test",
+            provider_id="provider-test",
+        )
+
+        executor.executar_etapa.assert_not_called()
+        assert resultado.sucesso is False
+        assert "prova_respondida" in resultado.erro
+
+    @pytest.mark.asyncio
+    async def test_existing_pdf_prova_is_valid_even_without_text_content(self, executor_pipeline, tmp_path):
+        """A PDF proof is valid when its file exists; the gate must not require /conteudo."""
+        from executor import ResultadoExecucao, EtapaProcessamento
+        from models import TipoDocumento
+
+        executor = executor_pipeline
+        prova_path = tmp_path / "prova_respondida.pdf"
+        prova_path.write_bytes(b"%PDF-1.4\n% test\n")
+        prova_doc = self._doc(TipoDocumento.PROVA_RESPONDIDA, "prova-pdf", str(prova_path))
+        executor.storage.listar_documentos = MagicMock(return_value=[prova_doc])
+        executor.storage.get_aluno = MagicMock(return_value=MagicMock(nome="Aluno Com PDF"))
+        executor.storage.resolver_caminho_documento = MagicMock(return_value=prova_path)
+        executor.executar_etapa = AsyncMock(return_value=ResultadoExecucao(
+            sucesso=True,
+            etapa=EtapaProcessamento.EXTRAIR_RESPOSTAS,
+        ))
+
+        resultado = await executor.extrair_respostas_aluno(
+            atividade_id="ativ_test",
+            aluno_id="aluno_test",
+            provider_id="provider-test",
+        )
+
+        executor.executar_etapa.assert_awaited_once()
+        assert resultado.sucesso is True
+
+
+# ============================================================
 # F5-T1: API propagates _erro_pipeline in response JSON
 # ============================================================
 
@@ -735,6 +882,7 @@ class TestF7T1_PDFErroSection:
     def test_pdf_with_erro_pipeline_contains_error_text(self):
         """PDF generated from data with _erro_pipeline should contain ERRO DE PROCESSAMENTO."""
         from document_generators import generate_pdf
+        import fitz
 
         data_with_error = {
             "_erro_pipeline": {
@@ -751,14 +899,15 @@ class TestF7T1_PDFErroSection:
         pdf_bytes = generate_pdf(data_with_error, title="Resultado", doc_type="correcao")
         assert isinstance(pdf_bytes, bytes), "generate_pdf should return bytes"
 
-        # Check PDF content for error text (decode bytes to find text strings)
-        pdf_text = pdf_bytes.decode("latin-1", errors="ignore")
+        with fitz.open(stream=pdf_bytes, filetype="pdf") as pdf_doc:
+            pdf_text = "\n".join(page.get_text() for page in pdf_doc)
         assert "ERRO DE PROCESSAMENTO" in pdf_text, \
             "PDF with _erro_pipeline should contain 'ERRO DE PROCESSAMENTO' text"
 
     def test_pdf_without_erro_pipeline_no_error_section(self):
         """Normal PDF should NOT contain ERRO DE PROCESSAMENTO."""
         from document_generators import generate_pdf
+        import fitz
 
         normal_data = {
             "nota": 8.5,
@@ -767,6 +916,7 @@ class TestF7T1_PDFErroSection:
         }
 
         pdf_bytes = generate_pdf(normal_data, title="Resultado", doc_type="correcao")
-        pdf_text = pdf_bytes.decode("latin-1", errors="ignore")
+        with fitz.open(stream=pdf_bytes, filetype="pdf") as pdf_doc:
+            pdf_text = "\n".join(page.get_text() for page in pdf_doc)
         assert "ERRO DE PROCESSAMENTO" not in pdf_text, \
             "Normal PDF should NOT contain error section"
