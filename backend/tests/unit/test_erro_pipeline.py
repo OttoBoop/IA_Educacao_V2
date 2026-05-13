@@ -621,6 +621,133 @@ class TestP4ProvaRespondidaGate:
 
 
 # ============================================================
+# P5/P6: Robust nota_final and missing-doc preservation
+# ============================================================
+
+class TestP5NotaFinalFallback:
+    """P5: GERAR_RELATORIO must get a robust nota_final from correction JSON."""
+
+    @pytest.fixture
+    def executor(self):
+        from executor import PipelineExecutor
+        return PipelineExecutor.__new__(PipelineExecutor)
+
+    def test_nota_final_top_level_wins(self, executor):
+        data = {"nota_final": 8.5, "nota": 1, "questoes": [{"nota": 2}]}
+
+        assert executor._calcular_nota_final_de_correcoes(data) == "8.5"
+
+    def test_nota_top_level_is_fallback(self, executor):
+        data = {"nota": 7.25, "questoes": [{"nota": 2}]}
+
+        assert executor._calcular_nota_final_de_correcoes(data) == "7.25"
+
+    def test_questoes_notas_are_summed(self, executor):
+        data = {"questoes": [{"nota": 2}, {"nota": "3.5"}, {"feedback": "sem nota"}]}
+
+        assert executor._calcular_nota_final_de_correcoes(data) == "5.5"
+
+    def test_correcoes_notas_are_summed(self, executor):
+        data = {"correcoes": [{"nota": 4}, {"nota": 1.75}]}
+
+        assert executor._calcular_nota_final_de_correcoes(data) == "5.75"
+
+    def test_invalid_json_or_no_numeric_grade_returns_na(self, executor):
+        assert executor._calcular_nota_final_de_correcoes("{json inválido") == "N/A"
+        assert executor._calcular_nota_final_de_correcoes({"feedback": "sem nota"}) == "N/A"
+
+
+class TestP6GerarRelatorioDocumentosFaltantes:
+    """P6: GERAR_RELATORIO must preserve missing document metadata."""
+
+    @pytest.fixture
+    def executor_relatorio(self):
+        from executor import PipelineExecutor
+
+        executor = PipelineExecutor.__new__(PipelineExecutor)
+        executor.storage = MagicMock()
+        executor.prompt_manager = MagicMock()
+        executor.preparador = MagicMock()
+
+        atividade = MagicMock()
+        atividade.turma_id = "turma-test"
+        turma = MagicMock()
+        turma.materia_id = "materia-test"
+        materia = MagicMock()
+        materia.id = "materia-test"
+        prompt = MagicMock()
+        prompt.id = "prompt-gerar-relatorio"
+
+        executor.storage.get_atividade = MagicMock(return_value=atividade)
+        executor.storage.get_turma = MagicMock(return_value=turma)
+        executor.storage.get_materia = MagicMock(return_value=materia)
+        executor.prompt_manager.get_prompt_padrao = MagicMock(return_value=prompt)
+        executor._preparar_variaveis_texto = MagicMock(return_value={})
+        executor._preparar_contexto_json = MagicMock(return_value={
+            "_documentos_faltantes": ["correcoes", "analise_habilidades"],
+            "_documentos_carregados": ["questoes_extraidas"],
+        })
+        executor._salvar_resultado = AsyncMock(return_value="doc-erro")
+        return executor
+
+    @pytest.mark.asyncio
+    async def test_gerar_relatorio_missing_docs_returns_structured_error(self, executor_relatorio):
+        resultado = await executor_relatorio.gerar_relatorio("ativ-test", "aluno-test")
+
+        assert resultado.sucesso is False
+        assert resultado.resposta_parsed["_erro_pipeline"]["tipo"] == "DOCUMENTO_FALTANTE"
+        assert resultado.resposta_parsed["_documentos_faltantes"] == [
+            "correcoes",
+            "analise_habilidades",
+        ]
+        assert resultado.resposta_parsed["_documentos_carregados"] == ["questoes_extraidas"]
+
+    @pytest.mark.asyncio
+    async def test_gerar_relatorio_missing_docs_does_not_save_by_default(self, executor_relatorio):
+        await executor_relatorio.gerar_relatorio("ativ-test", "aluno-test")
+
+        executor_relatorio._salvar_resultado.assert_not_called()
+
+    @pytest.mark.asyncio
+    async def test_gerar_relatorio_can_save_error_json_without_extra_formats(self, executor_relatorio):
+        resultado = await executor_relatorio.gerar_relatorio(
+            "ativ-test",
+            "aluno-test",
+            salvar_erro_documento=True,
+        )
+
+        executor_relatorio._salvar_resultado.assert_awaited_once()
+        args, kwargs = executor_relatorio._salvar_resultado.call_args
+        assert args[4]["_documentos_faltantes"] == ["correcoes", "analise_habilidades"]
+        assert kwargs["gerar_formatos_extras"] is False
+        assert resultado.documento_id == "doc-erro"
+
+    @pytest.mark.asyncio
+    async def test_pipeline_erro_preserves_documentos_faltantes(self):
+        from executor import PipelineExecutor, ResultadoExecucao, EtapaProcessamento
+
+        executor = PipelineExecutor.__new__(PipelineExecutor)
+        executor.storage = MagicMock()
+        executor.prompt_manager = MagicMock()
+        executor.preparador = MagicMock()
+        executor.storage.listar_documentos = MagicMock(return_value=[])
+        executor.gerar_relatorio = AsyncMock(return_value=ResultadoExecucao(
+            sucesso=False,
+            etapa=EtapaProcessamento.GERAR_RELATORIO,
+            erro="Documentos obrigatórios ausentes",
+            resposta_parsed={"_documentos_faltantes": ["correcoes"]},
+        ))
+
+        resultados = await executor.executar_pipeline_completo(
+            atividade_id="ativ-test",
+            aluno_id="aluno-test",
+            selected_steps=["gerar_relatorio"],
+        )
+
+        assert resultados["_pipeline_erro"]["documentos_faltantes"] == ["correcoes"]
+
+
+# ============================================================
 # F5-T1: API propagates _erro_pipeline in response JSON
 # ============================================================
 

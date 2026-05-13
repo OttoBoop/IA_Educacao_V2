@@ -20,6 +20,7 @@ import time
 import re
 import tempfile
 import os
+import math
 import fitz  # PyMuPDF — extract text from binary PDFs (RELATORIO_FINAL)
 
 from models import TipoDocumento, Documento, criar_erro_pipeline, ERRO_DOCUMENTO_FALTANTE, ERRO_QUESTOES_FALTANTES, SeveridadeErro
@@ -1337,7 +1338,8 @@ class PipelineExecutor:
         self,
         atividade_id: str,
         aluno_id: str = None,
-        provider_id: str = None
+        provider_id: str = None,
+        salvar_erro_documento: bool = False
     ) -> ResultadoExecucao:
         """Gera o relatório final do aluno using tool-use for dual output (JSON + PDF).
 
@@ -1371,15 +1373,50 @@ class PipelineExecutor:
             atividade_id, aluno_id, EtapaProcessamento.GERAR_RELATORIO
         )
         documentos_faltantes = contexto_json.pop("_documentos_faltantes", [])
-        contexto_json.pop("_documentos_carregados", [])
+        documentos_carregados = contexto_json.pop("_documentos_carregados", [])
 
         if documentos_faltantes:
             lista = ", ".join(documentos_faltantes)
-            return self._erro(
-                EtapaProcessamento.GERAR_RELATORIO,
+            mensagem = (
                 f"Documentos obrigatórios ausentes para gerar relatório: {lista}. "
-                f"Execute as etapas anteriores do pipeline antes de gerar o relatório.",
-                provider=provider_id,
+                f"Execute as etapas anteriores do pipeline antes de gerar o relatório."
+            )
+            erro_pipeline = criar_erro_pipeline(
+                tipo=ERRO_DOCUMENTO_FALTANTE,
+                mensagem=mensagem,
+                severidade=SeveridadeErro.CRITICO,
+                etapa=EtapaProcessamento.GERAR_RELATORIO.value,
+            )
+            erro_content = {
+                "_erro_pipeline": erro_pipeline,
+                "_documentos_faltantes": documentos_faltantes,
+                "_documentos_carregados": documentos_carregados,
+            }
+            documento_id = None
+            if salvar_erro_documento:
+                documento_id = await self._salvar_resultado(
+                    EtapaProcessamento.GERAR_RELATORIO,
+                    atividade_id,
+                    aluno_id,
+                    "",
+                    erro_content,
+                    provider_id or "",
+                    "",
+                    prompt.id,
+                    0,
+                    0,
+                    gerar_formatos_extras=False,
+                )
+            return ResultadoExecucao(
+                sucesso=False,
+                etapa=EtapaProcessamento.GERAR_RELATORIO,
+                prompt_usado="",
+                prompt_id=prompt.id,
+                provider=provider_id or "",
+                modelo="",
+                erro=mensagem,
+                resposta_parsed=erro_content,
+                documento_id=documento_id,
             )
 
         variaveis.update(contexto_json)
@@ -1543,6 +1580,75 @@ class PipelineExecutor:
             f"mas nenhum arquivo foi encontrado no storage.{detalhes}",
             None,
         )
+
+    def _nota_como_float(self, valor: Any) -> Optional[float]:
+        if valor is None or isinstance(valor, bool):
+            return None
+        if isinstance(valor, (int, float)):
+            nota = float(valor)
+        elif isinstance(valor, str):
+            texto = valor.strip().replace(",", ".")
+            if not re.fullmatch(r"[-+]?\d+(?:\.\d+)?", texto):
+                return None
+            nota = float(texto)
+        else:
+            return None
+
+        return nota if math.isfinite(nota) else None
+
+    def _nota_final_top_level(self, valor: Any) -> Optional[str]:
+        nota = self._nota_como_float(valor)
+        if nota is None:
+            return None
+        if isinstance(valor, str):
+            return valor.strip().replace(",", ".")
+        return str(valor)
+
+    def _somar_notas(self, itens: Any) -> Optional[str]:
+        if not isinstance(itens, list):
+            return None
+
+        total = 0.0
+        notas_encontradas = 0
+        for item in itens:
+            if not isinstance(item, dict):
+                continue
+            nota = self._nota_como_float(item.get("nota"))
+            if nota is None:
+                continue
+            total += nota
+            notas_encontradas += 1
+
+        if notas_encontradas == 0:
+            return None
+        return str(total)
+
+    def _calcular_nota_final_de_correcoes(self, correcoes: Any) -> str:
+        """Calcula nota_final para GERAR_RELATORIO sem inventar nota silenciosa."""
+        dados = correcoes
+        if isinstance(correcoes, str):
+            try:
+                dados = json.loads(correcoes)
+            except json.JSONDecodeError:
+                return "N/A"
+
+        if isinstance(dados, dict):
+            for chave in ("nota_final", "nota"):
+                nota = self._nota_final_top_level(dados.get(chave))
+                if nota is not None:
+                    return nota
+
+            for chave in ("questoes", "correcoes"):
+                nota = self._somar_notas(dados.get(chave))
+                if nota is not None:
+                    return nota
+
+        elif isinstance(dados, list):
+            nota = self._somar_notas(dados)
+            if nota is not None:
+                return nota
+
+        return "N/A"
     
     def _preparar_variaveis_texto(
         self,
@@ -1641,17 +1747,10 @@ class PipelineExecutor:
             variaveis["criterios"] = "(Nenhum critério específico fornecido)"
 
         # Calcular nota_final se houver correções (para gerar_relatorio)
-        if "correcoes" in variaveis and "nota_final" not in variaveis:
-            try:
-                import json as json_module
-                correcoes_data = json_module.loads(variaveis["correcoes"]) if isinstance(variaveis["correcoes"], str) else variaveis["correcoes"]
-                if isinstance(correcoes_data, dict) and "nota_final" in correcoes_data:
-                    variaveis["nota_final"] = str(correcoes_data["nota_final"])
-                elif isinstance(correcoes_data, list):
-                    total = sum(c.get("nota", 0) for c in correcoes_data if isinstance(c, dict))
-                    variaveis["nota_final"] = str(total)
-            except:
-                variaveis["nota_final"] = "N/A"
+        if etapa == EtapaProcessamento.GERAR_RELATORIO and "correcoes" in variaveis and "nota_final" not in variaveis:
+            variaveis["nota_final"] = self._calcular_nota_final_de_correcoes(
+                variaveis["correcoes"]
+            )
 
         # Fallback: garantir que nota_final sempre existe para evitar {{nota_final}} literal no output
         if "nota_final" not in variaveis:
@@ -3336,11 +3435,16 @@ Crie UM documento separado para cada aluno, nomeando como "relatorio_[nome_aluno
         def _marcar_erro_pipeline(resultado):
             """Add _pipeline_erro to results dict when pipeline halts due to failure."""
             etapa_val = resultado.etapa.value if hasattr(resultado.etapa, 'value') else str(resultado.etapa)
-            resultados["_pipeline_erro"] = {
+            erro_pipeline = {
                 "etapa_falha": etapa_val,
                 "erro": resultado.erro,
                 "sucesso": False
             }
+            if isinstance(resultado.resposta_parsed, dict):
+                documentos_faltantes = resultado.resposta_parsed.get("_documentos_faltantes")
+                if documentos_faltantes:
+                    erro_pipeline["documentos_faltantes"] = documentos_faltantes
+            resultados["_pipeline_erro"] = erro_pipeline
 
         # 1. Extrair questões
         should_run, reason = _should_run("extrair_questoes", TipoDocumento.EXTRACAO_QUESTOES, docs)

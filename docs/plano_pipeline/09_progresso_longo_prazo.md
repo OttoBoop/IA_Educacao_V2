@@ -1,6 +1,6 @@
 # Painel Vivo Paulo -- NOVO CR
 
-**Atualizado:** 2026-05-12
+**Atualizado:** 2026-05-13
 **Responsavel operacional:** Paulo
 **Status geral:** Sprint 0 de saneamento documental concluida
 
@@ -40,8 +40,8 @@ Estabilizar o NOVO CR para que a pipeline:
 | Frente | Estado | Proximo passo |
 |--------|--------|---------------|
 | Docs e plano | Sprint 0 concluida | Manter este painel como fonte oficial e anexos fora do fluxo diario |
-| Pipeline | Em Sprint 1 | Corrigir P5 e P6 antes de novas comparacoes amplas |
-| Schema e avisos | Pendente | Alinhar schema, defaults `_avisos_*` e visualizador |
+| Pipeline | Sprint 1 concluida localmente | Entrar na Sprint 2 antes de novas comparacoes amplas |
+| Schema e avisos | Proxima sprint | Alinhar schema, defaults `_avisos_*` e visualizador |
 | Custos/tokens | Nao iniciada | Corrigir `input_tokens`/`output_tokens` antes de persistir custo |
 | UI de erros | Pendente | Mostrar falha por aluno/etapa sem depender de terminal |
 | Limpeza de dados | Pendente | Reclassificar "fantasmas" antes de qualquer delecao |
@@ -79,8 +79,8 @@ Critérios de pronto:
 Prioridade: P4, P5 e P6.
 
 - P4: barrar `EXTRAIR_RESPOSTAS` sem `prova_respondida` valida. **Concluido em 2026-05-12.**
-- P5: garantir fallback de `nota_final`.
-- P6: nao descartar `_documentos_faltantes` em `gerar_relatorio`.
+- P5: garantir fallback de `nota_final`. **Concluido em 2026-05-13.**
+- P6: nao descartar `_documentos_faltantes` em `gerar_relatorio`. **Concluido em 2026-05-13.**
 
 Critério de pronto: falha clara e rastreavel, sem output silencioso ruim.
 
@@ -171,6 +171,20 @@ Critério de pronto: lista de limpeza segura e revisada.
   passou com 32 testes e 1 aviso de config `timeout` desconhecida.
 - Git: Sprint 0 documental foi commitada em `7e4b852` antes do ciclo P4.
 - Proximo alvo: Sprint 1/P5, fallback robusto de `nota_final`.
+
+### 2026-05-13 -- Sprint 1/P5-P6: nota_final e documentos faltantes
+
+- Alvo: robustecer `nota_final` em `GERAR_RELATORIO` e preservar
+  `_documentos_faltantes` quando o relatório não puder rodar.
+- Status: concluido localmente.
+- Arquivos tocados: `backend/executor.py`, `backend/tests/unit/test_erro_pipeline.py`.
+- Comportamento: nota usa fallback ordenado (`nota_final`, `nota`, soma de
+  `questoes[].nota`, soma de `correcoes[].nota`, `N/A`); erro de relatório
+  retorna `_erro_pipeline`, `_documentos_faltantes` e `_documentos_carregados`.
+- Validacoes: `python -m py_compile backend/executor.py backend/tests/unit/test_erro_pipeline.py`;
+  `git diff --check`; `PYTHONPATH=backend /home/otavio/Documents/vscode/.venv/bin/python -m pytest backend/tests/unit/test_erro_pipeline.py -q`
+  passou com 41 testes e 1 aviso de config `timeout` desconhecida.
+- Proximo alvo: Sprint 2, schema e avisos.
 
 ## Riscos Abertos
 
