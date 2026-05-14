@@ -228,7 +228,7 @@ def test_cost_summary_inclui_token_usage_sem_documento():
 
 
 def test_token_usage_store_persiste_json_mensal(tmp_path):
-    store = TokenUsageStore(tmp_path)
+    store = TokenUsageStore(tmp_path, use_supabase=False)
     usage = TokenUsageRecord(
         id="usage-persist",
         cost_run_id="run-persist",

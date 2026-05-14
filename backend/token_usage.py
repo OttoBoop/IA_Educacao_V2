@@ -17,6 +17,13 @@ from typing import Any, Dict, List, Optional
 
 from storage import storage
 
+try:
+    from supabase_db import supabase_db
+    SUPABASE_TOKEN_USAGE_AVAILABLE = supabase_db.enabled
+except Exception:
+    supabase_db = None
+    SUPABASE_TOKEN_USAGE_AVAILABLE = False
+
 
 def _utc_now_iso() -> str:
     return datetime.now(timezone.utc).isoformat()
@@ -79,9 +86,10 @@ class TokenUsageRecord:
 
 
 class TokenUsageStore:
-    def __init__(self, base_path: Optional[Path] = None):
+    def __init__(self, base_path: Optional[Path] = None, use_supabase: Optional[bool] = None):
         self.base_path = Path(base_path) if base_path is not None else storage.base_path
         self.usage_path = self.base_path / "token_usage"
+        self.use_supabase = SUPABASE_TOKEN_USAGE_AVAILABLE if use_supabase is None else use_supabase
 
     def _path_for(self, created_at: Optional[str] = None) -> Path:
         date_text = created_at or _utc_now_iso()
@@ -89,6 +97,16 @@ class TokenUsageStore:
         return self.usage_path / f"{month}.json"
 
     def add(self, record: TokenUsageRecord) -> TokenUsageRecord:
+        if self.use_supabase and supabase_db is not None:
+            try:
+                inserted = supabase_db.insert("token_usage", record.to_dict())
+                if inserted:
+                    return record
+            except Exception:
+                # Fall back to the local monthly file. The endpoint will still
+                # expose the record, but docs must keep this limitation visible.
+                pass
+
         self.usage_path.mkdir(parents=True, exist_ok=True)
         path = self._path_for(record.criado_em)
         records = [item.to_dict() for item in self._read_file(path)]
@@ -99,15 +117,32 @@ class TokenUsageStore:
         return record
 
     def list_records(self, limit: Optional[int] = None) -> List[TokenUsageRecord]:
-        if not self.usage_path.exists():
-            return []
+        records_by_id: Dict[str, TokenUsageRecord] = {}
+        if self.use_supabase and supabase_db is not None:
+            for row in supabase_db.select(
+                "token_usage",
+                order_by="criado_em",
+                order_desc=True,
+                limit=limit,
+            ):
+                try:
+                    record = TokenUsageRecord.from_dict(row)
+                except Exception:
+                    continue
+                records_by_id[record.id] = record
 
-        records: List[TokenUsageRecord] = []
+        if not self.usage_path.exists():
+            records = list(records_by_id.values())
+            return sorted(records, key=lambda item: item.criado_em, reverse=True)[:limit]
+
         for path in sorted(self.usage_path.glob("*.json"), reverse=True):
-            records.extend(self._read_file(path))
-            if limit is not None and len(records) >= limit:
-                return records[:limit]
-        return records
+            for record in self._read_file(path):
+                records_by_id.setdefault(record.id, record)
+            if limit is not None and len(records_by_id) >= limit:
+                break
+
+        records = sorted(records_by_id.values(), key=lambda item: item.criado_em, reverse=True)
+        return records[:limit] if limit is not None else records
 
     def _read_file(self, path: Path) -> List[TokenUsageRecord]:
         if not path.exists():

@@ -120,6 +120,39 @@ CREATE INDEX IF NOT EXISTS idx_documentos_atividade ON documentos(atividade_id);
 CREATE INDEX IF NOT EXISTS idx_documentos_aluno ON documentos(aluno_id);
 
 -- =================================================================
+-- TABLE: token_usage
+-- =================================================================
+-- Cost/audit records for AI calls. This is separate from documentos because
+-- failed runs can spend tokens before any artifact is safely persisted.
+CREATE TABLE IF NOT EXISTS token_usage (
+    id TEXT PRIMARY KEY,
+    cost_run_id TEXT NOT NULL,
+    atividade_id TEXT,
+    aluno_id TEXT,
+    etapa TEXT NOT NULL,
+    provider TEXT NOT NULL,
+    modelo TEXT NOT NULL,
+    tokens_entrada INTEGER DEFAULT 0,
+    tokens_saida INTEGER DEFAULT 0,
+    tokens_total INTEGER DEFAULT 0,
+    status TEXT NOT NULL,
+    erro TEXT,
+    erro_codigo INTEGER,
+    retryable BOOLEAN DEFAULT FALSE,
+    tentativas INTEGER DEFAULT 1,
+    tempo_ms REAL DEFAULT 0,
+    prompt_id TEXT,
+    source TEXT DEFAULT 'executor',
+    metadata JSONB DEFAULT '{}'::jsonb,
+    criado_em TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_token_usage_cost_run ON token_usage(cost_run_id);
+CREATE INDEX IF NOT EXISTS idx_token_usage_atividade ON token_usage(atividade_id);
+CREATE INDEX IF NOT EXISTS idx_token_usage_aluno ON token_usage(aluno_id);
+CREATE INDEX IF NOT EXISTS idx_token_usage_criado_em ON token_usage(criado_em);
+
+-- =================================================================
 -- TABLE: resultados
 -- =================================================================
 CREATE TABLE IF NOT EXISTS resultados (
