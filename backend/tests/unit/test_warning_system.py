@@ -311,3 +311,22 @@ class TestCreateDocumentAvisosDefaults:
         assert result.is_error is True
         assert result.files_generated == []
         assert "only accepts .json" in result.content
+
+    @pytest.mark.asyncio
+    async def test_create_document_rejects_malformed_documents_entries(self):
+        """Malformed documents entries must return a tool error, not an exception."""
+        from tool_handlers import handle_create_document
+        from tools import ToolExecutionContext
+
+        result = await handle_create_document(
+            {"documents": ["correcao.pdf"]},
+            ToolExecutionContext(
+                atividade_id="ativ-1",
+                aluno_id="aluno-1",
+                etapa="correcao",
+            ),
+        )
+
+        assert result.is_error is True
+        assert result.files_generated == []
+        assert "Invalid document entry" in result.content

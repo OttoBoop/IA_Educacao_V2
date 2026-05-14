@@ -679,7 +679,18 @@ async def handle_create_document(
     import os
     import tempfile
 
-    documents = input_data.get("documents", [])
+    raw_documents = input_data.get("documents", [])
+    if isinstance(raw_documents, dict):
+        documents = [raw_documents]
+    elif isinstance(raw_documents, list):
+        documents = raw_documents
+    else:
+        return ToolResult(
+            tool_use_id="",
+            content="Error: documents must be an array of document objects.",
+            is_error=True
+        )
+
     aluno_id = input_data.get("aluno_id") or (context.aluno_id if context else None)
     atividade_id = input_data.get("atividade_id") or (context.atividade_id if context else None)
     turma_id = input_data.get("turma_id")
@@ -706,6 +717,13 @@ async def handle_create_document(
     errors = []
 
     for idx, doc_data in enumerate(documents):
+        if not isinstance(doc_data, dict):
+            errors.append({
+                "filename": f"document_{idx+1}",
+                "error": "Invalid document entry: expected object with filename/content.",
+            })
+            continue
+
         try:
             filename = doc_data.get("filename", f"document_{idx+1}.txt")
             content = doc_data.get("content", "")
@@ -890,8 +908,13 @@ async def handle_create_document(
             created_docs.append(doc_info)
 
         except Exception as e:
+            safe_filename = (
+                doc_data.get("filename", f"document_{idx+1}")
+                if isinstance(doc_data, dict)
+                else f"document_{idx+1}"
+            )
             errors.append({
-                "filename": doc_data.get("filename", f"document_{idx+1}"),
+                "filename": safe_filename,
                 "error": str(e)
             })
 
