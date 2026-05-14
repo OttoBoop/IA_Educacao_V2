@@ -885,11 +885,11 @@ Diferenças importantes:
 
 Fatos oficiais observados em 2026-05-15:
 
-- `origin/main` contem `99483d1` e registros documentais posteriores.
+- `origin/main` contem `ec95193` e registros documentais posteriores.
 - `462ea1d` e apenas marcador de deploy; o hash funcional de custos/docs e
   `f67055c`.
-- Render live saiu de `2e1098f` para `b12be9a` e depois confirmou marcador
-  `b4d7ee6`.
+- Render live saiu de `2e1098f` para `b12be9a` e depois confirmou marcadores
+  `b4d7ee6`, `f505be6` e `97a7c79`.
 - `/api/custos/status` no Render retornou HTTP 200, confirmando que o endpoint
   novo esta no backend live.
 - Smokes live de chat em 2026-05-15: Gemini 3 Flash e GPT-5 Nano responderam
@@ -927,6 +927,9 @@ O que foi feito localmente:
 - Sprint 4c: se tools criarem documentos e uma chamada posterior do provider
   falhar, esses documentos parciais devem ser marcados `ERRO`, nao `concluido`
   com tokens zerados.
+- Deploy final do bloco: Render confirmou `97a7c79`. Gemini 3 Flash em
+  `corrigir` completou com custo medido; GPT-5 Nano em `corrigir` falhou alto
+  sem fallback automatico.
 
 Mapa dos commits publicados ou preparados:
 
@@ -943,8 +946,10 @@ Mapa dos commits publicados ou preparados:
 | `b4d7ee6` | Sprint 4a erro visivel em task-progress | Publicado no GitHub e confirmado no Render; smoke repetido expôs Google 503. |
 | `99483d1` | Marcador `novocr-deploy` para `b4d7ee6` | Publicado; `check_deploy.sh b4d7ee6` passou. |
 | `d24623b` | Registro documental pos-deploy | Publicado no GitHub; nao altera marker funcional. |
-| `pendente` | Sprint 4b retryability em tool-use | Validado localmente; precisa commit, marker, push, deploy e smoke. |
-| `pendente` | Sprint 4c docs parciais em erro | Validado localmente; precisa commit, marker, push e deploy. |
+| `f505be6` | Sprint 4b retryability em tool-use | Publicado e confirmado no Render; smoke Gemini passou depois. |
+| `d75b05a` | Marcador `novocr-deploy` para `f505be6` | Publicado; `check_deploy.sh f505be6` passou. |
+| `97a7c79` | Sprint 4c docs parciais em erro | Publicado e confirmado no Render. |
+| `ec95193` | Marcador `novocr-deploy` para `97a7c79` | Publicado; `check_deploy.sh 97a7c79` passou. |
 
 Estado do worktree no momento desta auditoria:
 
@@ -2420,8 +2425,8 @@ Fila minima para custo real:
 
 | Provider/modelo | Estado atual | Evidencia | O que falta |
 |---|---|---|---|
-| Gemini 3 Flash | Chat OK; pipeline pos-fix falhou no `corrigir` por 503 Google | Chat live passou; task `task_08d4648d7053` falhou com `error` visivel; historico downstream positivo; Sprint 4b torna 503 retryable localmente | Deployar Sprint 4b e repetir smoke. |
-| GPT-5 Nano | Falhou em pipeline-completo | Gerou documentos lixo e schema invalido | Corrigir tool-use/schema ou manter bloqueado. |
+| Gemini 3 Flash | Chat OK; `corrigir` pos-fix OK com custo | Task `task_8f53987c57c4`; JSON `6396c4feb3d5b92b`; PDF `6c62faa4ce6df137`; custo `US$ 0.007931` | Validar `analisar_habilidades` e `gerar_relatorio` com custo/metadata. |
+| GPT-5 Nano | Falhou alto em `corrigir` | Task `task_49b7ada546d4`; nao produziu JSON/PDF obrigatorios; nenhum fallback automatico | Registrar custo de falhas sem documento final e investigar schema/tool-use. |
 | Claude Haiku 4.5 | Bloqueado | Creditos Anthropic insuficientes | Recarregar creditos e testar sem trocar provider. |
 | GPT-4o | Parcial/referencia historica | Gerou 3 etapas, mas schema antigo e sem avisos | Revalidar como modelo explicito, nao fallback. |
 | Gemini 2.5 Flash/Lite | Incerto | Catalogo/flags historicamente inconsistentes | Validar capabilities antes de pipeline. |
@@ -2442,8 +2447,8 @@ Erros conhecidos por provider/rota:
 | Provider/modelo | Rota | Erro observado | Status de produto |
 |---|---|---|---|
 | Gemini 3 Flash | `pipeline-completo` | Primeira tentativa falhou sem diagnostico acessivel; metadata zerada/null | Usavel parcialmente; precisa mais amostras e custo real. |
-| Gemini 3 Flash | `pipeline-completo` pos-fix `corrigir` | Task `task_08d4648d7053` falhou com Google 503 `UNAVAILABLE`, alta demanda temporaria | Bloqueado por overload/retry; erro ja aparece no site. |
-| GPT-5 Nano | `pipeline-completo` | Tool-use gerou documentos lixo, schema invalido e metadata null | Bloqueado para pipeline ate falhar alto ou corrigir. |
+| Gemini 3 Flash | `pipeline-completo` pos-fix `corrigir` | Depois de 503 retryability, task `task_8f53987c57c4` completou com JSON/PDF e custo | Confirmado para `corrigir`; nao para pipeline completa. |
+| GPT-5 Nano | `pipeline-completo` pos-fix `corrigir` | Task `task_49b7ada546d4` falhou alto por saida obrigatoria incompleta | Bloqueado para pipeline, mas nao gera mais sucesso falso nesse caso. |
 | Claude Haiku 4.5 | `pipeline-completo` | Creditos Anthropic insuficientes; wrapper mascarou causa como modelo invalido | Bloqueado por credito; erro deve ser exposto com causa real. |
 | GPT-4o | referencia historica | Outputs em schema antigo e sem `_avisos_*` | Revalidar explicitamente; nao usar como fallback. |
 
@@ -2502,9 +2507,9 @@ Esta e a leitura curta para retomar o longo prazo sem se perder:
 | P4 confiabilidade | Falha antes de extrair respostas sem prova valida | Revalidar no site oficial depois de deploy | GitHub tem os commits, mas Render nao atualizou. |
 | P5/P6 relatorio | Preserva faltantes e evita template literal | Converter `N/A`/nota ausente em erro alto | Contencao pode parecer sucesso se nao for removida. |
 | Sprint 2 schema/avisos | Testes locais de schema e visualizador | Revalidar providers pos-fix | GPT-5 Nano ainda tem historico de schema ruim. |
-| Sprint 3/3b custos | `input_tokens`/`output_tokens`; metadata de documentos; endpoints `/api/custos/*` live | Smoke oficial de execucao fresca e persistencia de falhas com tokens | Historico antigo bloqueia custo por falta de split/provider. |
-| Docs parciais de run falho | Patch local marca `created_document_ids` como ERRO quando provider falha depois das tools | Deploy e novo caso falho para provar em producao | Ja existem dois docs antigos com token split faltante do run anterior. |
-| Providers | Gemini e Nano passam em chat simples live; Gemini falhou no `corrigir` pos-fix por 503; Nano ainda falhou historicamente no pipeline; Haiku bloqueado; GPT-4o historico | Smoke matrix pos-fixes por provider/rota/pipeline | Credito Anthropic e deploy/smoke do retry Gemini. |
+| Sprint 3/3b custos | `input_tokens`/`output_tokens`; metadata de documentos; endpoints `/api/custos/*` live | Criar registro de custo para falhas sem documento final | Historico antigo bloqueia custo por falta de split/provider. |
+| Docs parciais de run falho | Patch marca `created_document_ids` como ERRO quando provider falha depois das tools | Novo caso falho em producao para provar quando ocorrer | Ja existem dois docs antigos com token split faltante do run anterior. |
+| Providers | Gemini `corrigir` OK; Nano falha alto; Haiku bloqueado; GPT-4o historico | Smoke matrix pos-fixes por provider/rota/pipeline | Credito Anthropic e custo de falhas sem documento. |
 | UI de erro | `task.error` agora aparece no site oficial para falha de etapa | Melhorar apresentacao e retry de erros provider | Mensagem ainda e bruta e longa. |
 | Dados fantasmas | Nota PDF impede delecao por `conteudo=null` | Reclassificar lista antes de qualquer limpeza | Delecao errada de prova respondida PDF. |
 | Rio 3 | Congelado e separado | Nada neste ciclo | Qualquer chave em chat e exposta. |
@@ -2554,8 +2559,8 @@ Objetivo: revalidar providers pos-fixes locais.
 
 Aceite:
 
-- Gemini 3 Flash: repetir primeiro o `corrigir` depois do deploy do retry
-  429/5xx; so entao exigir 2 execucoes sem trocar modelo, com custo/metadata.
+- Gemini 3 Flash: seguir para `analisar_habilidades` e `gerar_relatorio`, depois
+  exigir 2 execucoes completas sem trocar modelo, com custo/metadata.
 - GPT-5 Nano: confirmar falha alta ou corrigir schema/tool-use antes de promover.
 - Haiku: testar somente quando credito Anthropic existir.
 - GPT-4o: testar explicitamente, nunca como fallback automatico.

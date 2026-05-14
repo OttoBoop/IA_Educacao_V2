@@ -3,16 +3,17 @@
 **Atualizado:** 2026-05-15
 **Atividade de teste:** Lista0 — Algebra Linear Avancada (`126e8b5ad7dd6d59`)
 **Commits aplicados/observados:** `a632883`, `5737611`, `50935ea`, `479b77d`,
-`b12be9a`, `301eba6`, `f67055c`, `462ea1d`, `b4d7ee6`, `99483d1`
+`b12be9a`, `301eba6`, `f67055c`, `462ea1d`, `b4d7ee6`, `99483d1`,
+`f505be6`, `d75b05a`, `97a7c79`, `ec95193`
 
 ## Status Oficial De Deploy
 
-- GitHub `origin/main` contem `99483d1` e registros documentais posteriores; o
-  marcador HTML aponta para `b4d7ee6`.
-- Render live confirma marcador `b4d7ee6`; `/api/health` e `/api/custos/status`
+- GitHub `origin/main` contem `ec95193` e registros documentais posteriores; o
+  marcador HTML aponta para `97a7c79`.
+- Render live confirma marcador `97a7c79`; `/api/health` e `/api/custos/status`
   responderam HTTP 200.
 - Portanto, os smokes live de 2026-05-15 abaixo sao oficiais para o estado
-  `b4d7ee6`.
+  `97a7c79`.
 
 ## Legenda
 
@@ -31,7 +32,7 @@
 | Provider/Modelo | EXTRAIR_QUESTOES | EXTRAIR_GABARITO | EXTRAIR_RESPOSTAS | CORRIGIR | ANALISAR_HABILIDADES | GERAR_RELATORIO |
 |-----------------|:---:|:---:|:---:|:---:|:---:|:---:|
 | **Claude Haiku 4.5** (`588f3efe7975`) | ⏸️ | ⏸️ | ⏸️ | 🚫 | 🚫 | 🚫 |
-| **Gemini 3 Flash** (`gem3flash001`) | ⏸️ | ⏸️ | ⏸️ | ❌ | ⚠️ | ⚠️ |
+| **Gemini 3 Flash** (`gem3flash001`) | ⏸️ | ⏸️ | ⏸️ | ✅ | ⚠️ | ⚠️ |
 | **GPT-5 Nano** (`gpt5nano001`) | ⏸️ | ⏸️ | ⏸️ | ❌ | ❌ | ❌ |
 | **GPT-4o** (`180b8298a279`) — referencia | ✅ | ✅ | ✅ | ⚠️ | ⚠️ | ⚠️ |
 
@@ -71,6 +72,11 @@
   mais silencioso; Gemini segue nao confirmado para pipeline.
 - Patch Sprint 4b local: 429/5xx em tool-use agora preserva `retryable=True` e
   `erro_codigo`, para o retry acontecer no mesmo modelo de forma visivel.
+- Depois do deploy `f505be6`/`97a7c79`, Gemini 3 Flash em `corrigir` completou
+  na task `task_8f53987c57c4`, gerando JSON `6396c4feb3d5b92b` e PDF
+  `6c62faa4ce6df137` com tokens/custo medidos.
+- GPT-5 Nano em `corrigir` falhou alto na task `task_49b7ada546d4`: nao produziu
+  JSON/PDF obrigatorios e nao houve fallback automatico.
 
 **Gemini 3 Flash:** tambem validado em 2 testes historicos de chat (mensagem unica + multi-turn). Ver [teste_chat_gemini.md](arquivo_2026_04_17/teste_chat_gemini.md).
 - Teste 1: 662 tokens, 1930ms, resposta em PT correta
@@ -93,13 +99,14 @@
 
 ---
 
-### Gemini 3 Flash Preview — ❌ PIPELINE POS-FIX FALHOU NO CORRIGIR
+### Gemini 3 Flash Preview — ✅ CORRIGIR POS-FIX VALIDADO
 
 **Smoke live pos-fix:** `pipeline-completo` com apenas `corrigir` falhou em
 2026-05-15. Antes do patch, a task nao expôs `error`; depois do deploy
 `b4d7ee6`, a causa apareceu: Google API 503 `UNAVAILABLE` por alta demanda.
-Antes de promover Gemini como confirmado, e necessario repetir a etapa quando o
-provider sair de overload ou implementar retry visivel no caminho tool-use.
+Depois do deploy `f505be6`, a repeticao `task_8f53987c57c4` completou em
+`corrigir`, com custo medido. Gemini ainda precisa validar as etapas seguintes
+antes de voltar a "pipeline completa confirmada".
 
 **Historico positivo via `pipeline-completo`** para Eric Manoel antes dos commits
 `b12be9a`/Sprint 3b (ver [teste_gemini_pipeline_completo.md](arquivo_2026_04_17/teste_gemini_pipeline_completo.md)).
@@ -133,6 +140,11 @@ provider sair de overload ou implementar retry visivel no caminho tool-use.
 **Smoke live de chat em 2026-05-15:** respondeu JSON simples corretamente via
 `POST /api/chat` com `model_id=gpt5nano001` e 526 tokens. Portanto o bloqueio
 atual do Nano nao e conexao/API key; e pipeline/tool-use/schema.
+
+**Smoke live de `corrigir` em 2026-05-15:** task `task_49b7ada546d4` falhou alto
+com "Saida obrigatoria incompleta: JSON via create_document, PDF via
+execute_python_code". Isso e melhor que o historico anterior: nao houve
+documento lixo aprovado nem fallback de PDF/JSON.
 
 **Testado em 2 caminhos com resultados muito diferentes:**
 
@@ -175,8 +187,10 @@ Ver [teste_gpt5nano_pipeline_completo.md](arquivo_2026_04_17/teste_gpt5nano_pipe
 ## Testes Pendentes (para fechar Marco 1)
 
 ### Prioridade ALTA
-- [ ] Deployar Sprint 4b e repetir `pipeline-completo` com Gemini 3 Flash para
-      confirmar retry visivel em 503/429 ou sucesso quando a sobrecarga passar
+- [ ] Rodar Gemini 3 Flash em `analisar_habilidades` e `gerar_relatorio` com
+      custo/metadata
+- [ ] Registrar custo de falhas sem documento final, como o GPT-5 Nano que falha
+      antes de criar artefato
 - [ ] Investigar por que `_avisos_*` nao aparece com GPT-5 Nano mesmo com injecao ativa
 - [ ] Investigar por que `/executar/etapa` nao persiste documento (gap ou by-design?)
 
@@ -193,10 +207,10 @@ Ver [teste_gpt5nano_pipeline_completo.md](arquivo_2026_04_17/teste_gpt5nano_pipe
 ## Resumo Executivo (atualizado)
 
 **Estado atual:**
-- ⚠️ **Gemini 3 Flash:** chat simples live OK; pipeline historica teve sucesso,
-  mas o smoke pos-fix de `corrigir` falhou por Google 503 `UNAVAILABLE`. Nao
-  esta confirmado para pipeline oficial.
-- ❌ **GPT-5 Nano via `pipeline-completo`:** QUEBRADO — tool-use path produz documentos lixo. Fix necessario no loop de tool-use.
+- ⚠️ **Gemini 3 Flash:** chat simples live OK e `corrigir` pos-fix OK com
+  custo; ainda falta validar `analisar_habilidades` e `gerar_relatorio`.
+- ❌ **GPT-5 Nano via `pipeline-completo`:** ainda falha em `corrigir`, mas agora
+  falha alto sem documento lixo aprovado.
 - ⏸️ **Claude Haiku 4.5:** Aguardando creditos.
 - 📊 **Confiabilidade Gemini 3 Flash:** 50% de sucesso na primeira tentativa (1 em 2 testes). Precisa mais amostras.
 
@@ -211,11 +225,9 @@ visiveis.
 4. Sem endpoint de eventos de task (dificulta diagnostico de falhas transientes)
 
 **Proximos passos:**
-1. Desbloquear deploy oficial; sem Render no hash esperado, a matriz continua
-   historica.
-2. Corrigir/classificar retry visivel para Google 503/429 em tool-use, ou
-   repetir Gemini 3 Flash quando a sobrecarga passar.
-3. Revalidar GPT-5 Nano esperando falha alta quando dual-output estiver
-   incompleto; nao aceitar JSON/PDF lixo como sucesso.
+1. Manter deploy oficial confirmado por marker antes de cada smoke novo.
+2. Revalidar Gemini 3 Flash nas etapas seguintes com custo/metadata.
+3. Criar registro de custo para falhas sem documento final; GPT-5 Nano e o caso
+   vivo atual.
 4. Quando creditos Anthropic forem recarregados, validar Haiku 4.5 via
    `pipeline-completo`.

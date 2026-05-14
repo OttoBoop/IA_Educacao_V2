@@ -3,8 +3,8 @@
 **Atualizado:** 2026-05-15
 **Responsavel operacional:** Paulo
 **Status geral:** fixes de pipeline/custos/erro visivel publicados no GitHub e
-confirmados no Render; smoke `corrigir` com Gemini falhou alto por 503 Google
-UNAVAILABLE, com causa agora visivel em `/api/task-progress`.
+confirmados no Render; smoke `corrigir` com Gemini passou com custo medido;
+GPT-5 Nano falhou alto sem fallback.
 
 Este e o ponto de entrada do plano. O objetivo deste arquivo e dizer, em poucas
 linhas, onde estamos, qual e a proxima fila e quais frentes estao pausadas.
@@ -54,17 +54,18 @@ Estabilizar o NOVO CR para que a pipeline:
 - Local funcional anterior validado: `b12be9a`.
 - Commit funcional de custos/docs: `f67055c`.
 - Commit funcional de erro visivel: `b4d7ee6`.
-- Marker atual de deploy: `99483d1` (`chore: mark deploy b4d7ee6`).
-- GitHub `origin/main`: contem `99483d1` e registros documentais posteriores.
+- Commit funcional de retryability: `f505be6`.
+- Commit funcional de docs parciais em erro: `97a7c79`.
+- Marker atual de deploy: `ec95193` (`chore: mark deploy 97a7c79`).
+- GitHub `origin/main`: contem `ec95193` e registros documentais posteriores.
 - Render live observado: saiu de `2e1098f` para `b12be9a` e depois confirmou
-  marcador `b4d7ee6`.
-- `/api/custos/status` no Render: HTTP 200, confirmando que o backend ja tem os
-  endpoints de custo, embora o marcador HTML esteja atrasado.
+  marcadores `b4d7ee6`, `f505be6` e `97a7c79`.
+- `/api/custos/status` no Render: HTTP 200, confirmando endpoints de custo live.
 - GitHub Actions: sem runs recentes observaveis.
 - GitHub webhooks/deployments via `gh api`: sem entradas visiveis.
 - Render MCP: bloqueado por workspace nao selecionado.
-- Inferencia operacional: auto-deploy e lento, mas funcionou neste ciclo; marker
-  apareceu apos cerca de 140s de espera.
+- Inferencia operacional: auto-deploy e lento, mas funcionou neste ciclo; markers
+  apareceram entre cerca de 140s e 200s de espera.
 
 ## Loop Operacional
 
@@ -322,7 +323,7 @@ Critério de pronto: lista de limpeza segura e revisada.
 
 - Alvo: transformar o 503 Google descoberto no smoke em erro retryable, sem
   trocar de modelo/provider e sem mascarar a falha.
-- Status: concluido localmente, aguardando commit/push/deploy.
+- Status: publicado e deployado.
 - Arquivos tocados: `backend/chat_service.py`, `backend/executor.py`,
   `backend/tests/unit/test_cost_tracking.py`,
   `backend/tests/unit/test_d_t2_google_tool_use.py`.
@@ -334,9 +335,15 @@ Critério de pronto: lista de limpeza segura e revisada.
 - Validacoes: `py_compile` passou; `git diff --check` passou; suite focada de
   executor/task/progresso/UI/custo/Google tool-use passou com 99 testes e 1
   aviso de config `timeout` desconhecida.
-- Proximo alvo: publicar/deployar Sprint 4b e repetir o smoke Gemini `corrigir`;
-  aceitar como sucesso somente se a etapa concluir ou se as tentativas visiveis
-  terminarem em erro estruturado.
+- Git/deploy: commit funcional `f505be6`; marker `d75b05a`; Render confirmou
+  `f505be6`.
+- Smoke oficial: Gemini 3 Flash em `corrigir`, task `task_8f53987c57c4`,
+  completou; criou JSON `6396c4feb3d5b92b` e PDF `6c62faa4ce6df137` com
+  provider/modelo/tokens/custo.
+- Custo medido: 16.639 tokens entrada, 2.449 saida, 19.088 total,
+  custo estimado/medido `US$ 0.007931` para `google/gemini-3-flash-preview`.
+- Proximo alvo: expandir smoke para `analisar_habilidades`/`gerar_relatorio` e
+  confirmar custo/metadata por etapa.
 
 ### 2026-05-15 -- Sprint 4c: docs parciais de tool-use em erro
 
@@ -346,7 +353,7 @@ Critério de pronto: lista de limpeza segura e revisada.
   mas `tokens_usados=0`, status `concluido` e custo bloqueado por
   `token_split_missing`; isso pode acontecer quando tools salvam JSON/PDF e a
   chamada final do provider falha.
-- Status: concluido localmente, aguardando commit/push/deploy.
+- Status: publicado e deployado.
 - Arquivos tocados: `backend/executor.py`, `backend/tests/unit/test_cost_tracking.py`.
 - Comportamento: se `ProviderAPIError` acontecer depois de tools criarem
   documentos, o executor marca cada `created_document_id` como
@@ -354,8 +361,13 @@ Critério de pronto: lista de limpeza segura e revisada.
 - Validacoes: `py_compile` passou; `git diff --check` passou; suite focada de
   executor/task/progresso/UI/custo/Google tool-use passou com 99 testes e 1
   aviso de config `timeout` desconhecida.
-- Proximo alvo: publicar/deployar e manter a regra: artefato parcial de run
-  falho nao pode parecer documento final confiavel.
+- Git/deploy: commit funcional `97a7c79`; marker `ec95193`; Render confirmou
+  `97a7c79`.
+- Smoke relacionado: GPT-5 Nano em `corrigir`, task `task_49b7ada546d4`, falhou
+  alto com "Saida obrigatoria incompleta: JSON via create_document, PDF via
+  execute_python_code"; nenhum fallback de PDF/JSON foi inventado.
+- Proximo alvo: registrar custos de falhas que consomem tokens mesmo quando nao
+  ha documento final criado.
 
 ## Riscos Abertos
 
@@ -363,6 +375,6 @@ Critério de pronto: lista de limpeza segura e revisada.
 2. Schema drift pode fazer modelos gerarem formatos diferentes.
 3. Metadata de tokens/modelo foi corrigida localmente para documentos de IA e
    tools, mas ainda precisa deploy/smoke oficial.
-4. UI de tarefas ja mostra `task.error` no site oficial; falta melhorar a
-   apresentacao de erro provider e retry para 503/429 no tool-use.
+4. Falhas sem documento final ainda nao entram no resumo de custos; precisamos
+   de registro proprio de run/custo para erro sem artefato.
 5. Rio 3 nao deve voltar ao fluxo ativo sem nova decisao e nova chave segura.
