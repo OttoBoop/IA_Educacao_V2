@@ -40,7 +40,7 @@
 | Provider/Modelo | EXTRAIR_QUESTOES | EXTRAIR_GABARITO | EXTRAIR_RESPOSTAS | CORRIGIR | ANALISAR_HABILIDADES | GERAR_RELATORIO |
 |-----------------|:---:|:---:|:---:|:---:|:---:|:---:|
 | **Claude Haiku 4.5** (`588f3efe7975`) | ⏸️ | ⏸️ | ⏸️ | 🚫 | 🚫 | 🚫 |
-| **Gemini 3 Flash** (`gem3flash001`) | ⏸️ | ⏸️ | ⏸️ | ✅ | ⚠️ | ⚠️ |
+| **Gemini 3 Flash** (`gem3flash001`) | ⏸️ | ⏸️ | ⏸️ | ✅ | ✅ | ✅ |
 | **GPT-5 Nano** (`gpt5nano001`) | ⏸️ | ⏸️ | ⏸️ | ✅ | ⏸️ | ⏸️ |
 | **GPT-4o** (`180b8298a279`) — referencia | ✅ | ✅ | ✅ | ⚠️ | ⚠️ | ⚠️ |
 
@@ -124,6 +124,12 @@
   `backend/migrations/002_create_token_usage.sql`. Isso e preparo de banco,
   nao prova de persistencia: a matriz so pode marcar custo de falha como duravel
   quando o endpoint live retornar `table_available=true`.
+- Depois disso, Gemini 3 Flash passou em `analisar_habilidades`
+  (`task_a78369e23e5c`) e `gerar_relatorio` (`task_58fb48fc8324`) no Render
+  live `4f27dae`. A primeira gerou JSON `7904a6a1aa34131f` e PDF
+  `245970da4cc42c02`, 15.993/3.874 tokens, `US$ 0.009447`; a segunda gerou
+  JSON `fe6ad549481a0ed9` e PDF `b815d1faa5aeab77`, 9.215/2.796 tokens,
+  `US$ 0.006120`.
 
 **Gemini 3 Flash:** tambem validado em 2 testes historicos de chat (mensagem unica + multi-turn). Ver [teste_chat_gemini.md](arquivo_2026_04_17/teste_chat_gemini.md).
 - Teste 1: 662 tokens, 1930ms, resposta em PT correta
@@ -146,14 +152,15 @@
 
 ---
 
-### Gemini 3 Flash Preview — ✅ CORRIGIR POS-FIX VALIDADO
+### Gemini 3 Flash Preview — ✅ ETAPAS FINAIS DO ALUNO POS-FIX VALIDADAS
 
 **Smoke live pos-fix:** `pipeline-completo` com apenas `corrigir` falhou em
 2026-05-15. Antes do patch, a task nao expôs `error`; depois do deploy
 `b4d7ee6`, a causa apareceu: Google API 503 `UNAVAILABLE` por alta demanda.
 Depois do deploy `f505be6`, a repeticao `task_8f53987c57c4` completou em
-`corrigir`, com custo medido. Gemini ainda precisa validar as etapas seguintes
-antes de voltar a "pipeline completa confirmada".
+`corrigir`, com custo medido. Depois do deploy `4f27dae`, Gemini tambem passou
+em `analisar_habilidades` e `gerar_relatorio`, com custo medido. As tres etapas
+de extracao continuam nao revalidadas pos-fix.
 
 **Historico positivo via `pipeline-completo`** para Eric Manoel antes dos commits
 `b12be9a`/Sprint 3b (ver [teste_gemini_pipeline_completo.md](arquivo_2026_04_17/teste_gemini_pipeline_completo.md)).
@@ -249,7 +256,7 @@ Ver [teste_gpt5nano_pipeline_completo.md](arquivo_2026_04_17/teste_gpt5nano_pipe
 ## Testes Pendentes (para fechar Marco 1)
 
 ### Prioridade ALTA
-- [ ] Rodar Gemini 3 Flash em `analisar_habilidades` e `gerar_relatorio` com
+- [x] Rodar Gemini 3 Flash em `analisar_habilidades` e `gerar_relatorio` com
       custo/metadata
 - [ ] Aplicar `backend/migrations/002_create_token_usage.sql` no Supabase e revalidar
       `token_usage_backend.supabase.table_available=true`
@@ -276,8 +283,9 @@ Ver [teste_gpt5nano_pipeline_completo.md](arquivo_2026_04_17/teste_gpt5nano_pipe
 ## Resumo Executivo (atualizado)
 
 **Estado atual:**
-- ⚠️ **Gemini 3 Flash:** chat simples live OK e `corrigir` pos-fix OK com
-  custo; ainda falta validar `analisar_habilidades` e `gerar_relatorio`.
+- ✅ **Gemini 3 Flash:** chat simples live OK; `corrigir`,
+  `analisar_habilidades` e `gerar_relatorio` pos-fix OK com custo/metadata.
+  Faltam as etapas de extracao.
 - ⚠️ **GPT-5 Nano via `pipeline-completo`:** `corrigir` pos-fix OK com JSON
   parseavel, PDF via `execute_python_code`, custo e sem artefato extra; ainda
   falta pipeline completa, schema minimo e custo de falhas sem documento final.
@@ -296,7 +304,7 @@ visiveis.
 
 **Proximos passos:**
 1. Manter deploy oficial confirmado por marker antes de cada smoke novo.
-2. Revalidar Gemini 3 Flash e GPT-5 Nano nas etapas seguintes com custo/metadata.
+2. Revalidar GPT-5 Nano nas etapas seguintes com custo/metadata.
 3. Criar registro de custo para falhas sem documento final.
 4. Quando creditos Anthropic forem recarregados, validar Haiku 4.5 via
    `pipeline-completo`.

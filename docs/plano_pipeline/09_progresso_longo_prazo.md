@@ -3,8 +3,9 @@
 **Atualizado:** 2026-05-15
 **Responsavel operacional:** Paulo
 **Status geral:** Render oficial confirmou o marker `f0dae61`, que aponta para
-o commit funcional `4f27dae`. Gemini `corrigir` passou com custo medido; GPT-5
-Nano agora tambem passou em `corrigir` no site oficial com JSON parseavel, PDF
+o commit funcional `4f27dae`. Gemini passou no site oficial em `corrigir`,
+`analisar_habilidades` e `gerar_relatorio`, todos com custo medido; GPT-5 Nano
+agora tambem passou em `corrigir` no site oficial com JSON parseavel, PDF
 via `execute_python_code`, tokens splitados e custo medido, sem PDF extra via
 `create_document`. O resumo de custos agora agrega por `cost_run_id`, entao
 JSON+PDF do mesmo run contam uma vez. Falhas tool-use sem documento final agora
@@ -50,7 +51,7 @@ Estabilizar o NOVO CR para que a pipeline:
 | Frente | Estado | Proximo passo |
 |--------|--------|---------------|
 | Docs e plano | Sprint 0 concluida | Manter este painel como fonte oficial e anexos fora do fluxo diario |
-| Pipeline | `corrigir` validado oficialmente para Gemini 3 Flash e GPT-5 Nano com JSON/PDF/custo | Expandir para `analisar_habilidades` e `gerar_relatorio`; validar schema minimo por etapa |
+| Pipeline | Gemini 3 Flash validado oficialmente em `corrigir`, `analisar_habilidades` e `gerar_relatorio`; GPT-5 Nano validado em `corrigir` | Expandir GPT-5 Nano para `analisar_habilidades` e `gerar_relatorio`; validar schema minimo por etapa |
 | Schema e avisos | Sprint 2 concluida localmente | Manter schema oficial, defaults e visualizador cobertos por testes |
 | Custos/tokens | Metadata de documento, endpoints live, resumo por `cost_run_id`, `TokenUsageRecord` local, migration Supabase dedicada `b2dc88b` e diagnostico live no deploy `4f27dae` | Aplicar `backend/migrations/002_create_token_usage.sql` no Supabase; validar uma falha real sem documento em producao |
 | UI de erros | Pendente | Mostrar falha por aluno/etapa sem depender de terminal |
@@ -651,6 +652,27 @@ Critério de pronto: lista de limpeza segura e revisada.
 - Proximo alvo: aplicar `backend/migrations/002_create_token_usage.sql` por
   caminho seguro de banco ou, enquanto esse gate nao ocorrer, continuar
   revalidacao de providers nas etapas `analisar_habilidades` e `gerar_relatorio`.
+
+### 2026-05-15 -- Provider smoke: Gemini etapas finais do aluno
+
+- Alvo: tirar Gemini 3 Flash do estado parcial nas etapas finais do aluno.
+- Status: smoke oficial passou no Render live `4f27dae`.
+- `analisar_habilidades`: task `task_a78369e23e5c`, status `completed`.
+  Gerou JSON `7904a6a1aa34131f` e PDF `245970da4cc42c02`, provider/modelo
+  `google/gemini-3-flash-preview`, tokens `15993/3874`, custo estimado
+  `US$ 0.009447`, `cost_run_id=tool_894f18eb3d5d`.
+- `gerar_relatorio`: task `task_58fb48fc8324`, status `completed`.
+  Gerou JSON `fe6ad549481a0ed9` e PDF `b815d1faa5aeab77`, provider/modelo
+  `google/gemini-3-flash-preview`, tokens `9215/2796`, custo estimado
+  `US$ 0.006120`, `cost_run_id=tool_c80e7fc2af97`.
+- `/api/custos/status?limit=500`: `runs_precificados=7`,
+  `runs_bloqueados=483`; `token_usage_backend.durable=false` segue bloqueado
+  por `PGRST205`.
+- Interpretacao: Gemini 3 Flash esta confirmado para as tres etapas finais do
+  aluno com metadata/custo. Isso nao valida as tres etapas de extracao nem
+  remove o bloqueio de custo duravel.
+- Proximo alvo: rodar GPT-5 Nano em `analisar_habilidades` e
+  `gerar_relatorio`, esperando erro alto se schema/output quebrar.
 
 ## Riscos Abertos
 
