@@ -2380,7 +2380,13 @@ class PipelineExecutor:
         inicio = time.time()
         
         try:
-            from chat_service import model_manager, api_key_manager, ChatClient, ProviderType
+            from chat_service import (
+                model_manager,
+                api_key_manager,
+                ChatClient,
+                ProviderType,
+                ProviderAPIError,
+            )
             from tools import ToolRegistry, CREATE_DOCUMENT, EXECUTE_PYTHON_CODE, PIPELINE_TOOLS
             from tool_handlers import TOOL_HANDLERS
             
@@ -2687,6 +2693,16 @@ Seja preciso, educativo e construtivo em suas análises."""
                 pdf_fallback_used=pdf_fallback_used,
             )
             
+        except ProviderAPIError as e:
+            return ResultadoExecucao(
+                sucesso=False,
+                etapa="tools",
+                erro=str(e),
+                erro_codigo=e.status_code,
+                retryable=e.retryable,
+                provider=getattr(e, "provider", ""),
+                tempo_ms=(time.time() - inicio) * 1000,
+            )
         except Exception as e:
             return self._erro("tools", str(e))
     

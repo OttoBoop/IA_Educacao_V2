@@ -51,6 +51,24 @@ class ProviderType(Enum):
     CUSTOM = "custom"
 
 
+RETRYABLE_HTTP_STATUS = {408, 409, 425, 429, 500, 502, 503, 504}
+
+
+class ProviderAPIError(Exception):
+    """Erro HTTP de provider preservando status e retryability."""
+
+    def __init__(self, provider: str, status_code: int, body: str):
+        body_preview = (body or "").strip()[:500]
+        message = f"Erro API {provider}: {status_code}"
+        if body_preview:
+            message += f" - {body_preview}"
+        super().__init__(message)
+        self.provider = provider
+        self.status_code = status_code
+        self.body = body_preview
+        self.retryable = status_code in RETRYABLE_HTTP_STATUS
+
+
 # URLs padrão por tipo
 DEFAULT_URLS = {
     ProviderType.OPENAI: "https://api.openai.com/v1",
@@ -1091,7 +1109,7 @@ class ChatClient:
                 )
 
                 if response.status_code != 200:
-                    raise Exception(f"Erro API Anthropic: {response.status_code} - {response.text}")
+                    raise ProviderAPIError("Anthropic", response.status_code, response.text)
 
                 data = response.json()
 
@@ -1251,7 +1269,7 @@ class ChatClient:
                 )
 
                 if response.status_code != 200:
-                    raise Exception(f"Erro API OpenAI: {response.status_code} - {response.text}")
+                    raise ProviderAPIError("OpenAI", response.status_code, response.text)
 
                 data = response.json()
 
@@ -1399,7 +1417,7 @@ class ChatClient:
                 )
 
                 if response.status_code != 200:
-                    raise Exception(f"Erro API Google: {response.status_code} - {response.text}")
+                    raise ProviderAPIError("Google", response.status_code, response.text)
 
                 data = response.json()
 

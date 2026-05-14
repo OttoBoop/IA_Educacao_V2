@@ -318,6 +318,26 @@ Critério de pronto: lista de limpeza segura e revisada.
   tool-use ou repetir smoke quando a sobrecarga Gemini passar; nao promover
   Gemini pipeline enquanto `corrigir` falhar.
 
+### 2026-05-15 -- Sprint 4b: retryability de provider no tool-use
+
+- Alvo: transformar o 503 Google descoberto no smoke em erro retryable, sem
+  trocar de modelo/provider e sem mascarar a falha.
+- Status: concluido localmente, aguardando commit/push/deploy.
+- Arquivos tocados: `backend/chat_service.py`, `backend/executor.py`,
+  `backend/tests/unit/test_cost_tracking.py`,
+  `backend/tests/unit/test_d_t2_google_tool_use.py`.
+- Comportamento: erros HTTP de tool-use agora usam `ProviderAPIError` com
+  `status_code` e `retryable`; Google/OpenAI/Anthropic preservam 429/5xx como
+  retryable; `executar_com_tools` devolve `ResultadoExecucao` com
+  `erro_codigo=503` e `retryable=True`, permitindo que o orquestrador retente no
+  mesmo modelo de forma visivel.
+- Validacoes: `py_compile` passou; `git diff --check` passou; suite focada de
+  executor/task/progresso/UI/custo/Google tool-use passou com 99 testes e 1
+  aviso de config `timeout` desconhecida.
+- Proximo alvo: publicar/deployar Sprint 4b e repetir o smoke Gemini `corrigir`;
+  aceitar como sucesso somente se a etapa concluir ou se as tentativas visiveis
+  terminarem em erro estruturado.
+
 ## Riscos Abertos
 
 1. Creditos Anthropic insuficientes ainda bloqueiam validacao Haiku.

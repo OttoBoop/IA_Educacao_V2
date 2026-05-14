@@ -21,7 +21,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
-from chat_service import ChatClient, ModelConfig, ProviderType
+from chat_service import ChatClient, ModelConfig, ProviderType, ProviderAPIError
 from tools import ToolCall, ToolResult, ToolRegistry, ToolDefinition, ToolParameter, ToolExecutionContext
 
 
@@ -432,3 +432,34 @@ class TestGoogleResponseStructure:
         assert "modelo" in result
         assert "provider" in result
         assert "tool_calls" in result
+
+
+class TestGoogleProviderErrors:
+    """Google tool-use HTTP errors preserve retryability."""
+
+    @pytest.mark.asyncio
+    async def test_503_is_retryable_provider_error(
+        self, google_client, mock_tool_registry, anthropic_format_tools
+    ):
+        with patch("httpx.AsyncClient") as mock_client_cls:
+            mock_client = AsyncMock()
+            mock_client_cls.return_value.__aenter__ = AsyncMock(return_value=mock_client)
+            mock_client_cls.return_value.__aexit__ = AsyncMock(return_value=False)
+
+            mock_resp = MagicMock(status_code=503)
+            mock_resp.text = '{"error":{"status":"UNAVAILABLE"}}'
+            mock_client.post = AsyncMock(return_value=mock_resp)
+
+            with pytest.raises(ProviderAPIError) as exc:
+                await google_client._chat_google_with_tools(
+                    mensagem="Hi",
+                    historico=[],
+                    system="Helper",
+                    tools=anthropic_format_tools,
+                    tool_registry=mock_tool_registry,
+                    max_iterations=10,
+                )
+
+        assert exc.value.status_code == 503
+        assert exc.value.retryable is True
+        assert "UNAVAILABLE" in str(exc.value)

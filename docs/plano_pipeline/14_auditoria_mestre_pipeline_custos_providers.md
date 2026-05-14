@@ -921,6 +921,9 @@ O que foi feito localmente:
   mensagem no toast e na arvore de tarefas. Commit funcional `b4d7ee6`, marker
   `99483d1`, publicados no GitHub e confirmados no Render; smoke repetido
   descobriu a causa real da falha Gemini: 503 Google por alta demanda.
+- Sprint 4b: erros HTTP de tool-use agora usam `ProviderAPIError`, preservando
+  `status_code` e `retryable` para 429/5xx. Isso permite retry no mesmo modelo,
+  visivel e rastreavel, sem fallback de provider.
 
 Mapa dos commits publicados ou preparados:
 
@@ -937,6 +940,7 @@ Mapa dos commits publicados ou preparados:
 | `b4d7ee6` | Sprint 4a erro visivel em task-progress | Publicado no GitHub e confirmado no Render; smoke repetido expôs Google 503. |
 | `99483d1` | Marcador `novocr-deploy` para `b4d7ee6` | Publicado; `check_deploy.sh b4d7ee6` passou. |
 | `d24623b` | Registro documental pos-deploy | Publicado no GitHub; nao altera marker funcional. |
+| `pendente` | Sprint 4b retryability em tool-use | Validado localmente; precisa commit, marker, push, deploy e smoke. |
 
 Estado do worktree no momento desta auditoria:
 
@@ -2412,7 +2416,7 @@ Fila minima para custo real:
 
 | Provider/modelo | Estado atual | Evidencia | O que falta |
 |---|---|---|---|
-| Gemini 3 Flash | Chat OK; pipeline pos-fix falhou no `corrigir` por 503 Google | Chat live passou; task `task_08d4648d7053` falhou com `error` visivel; historico downstream positivo | Repetir quando overload passar ou implementar retry visivel para 429/5xx em tool-use. |
+| Gemini 3 Flash | Chat OK; pipeline pos-fix falhou no `corrigir` por 503 Google | Chat live passou; task `task_08d4648d7053` falhou com `error` visivel; historico downstream positivo; Sprint 4b torna 503 retryable localmente | Deployar Sprint 4b e repetir smoke. |
 | GPT-5 Nano | Falhou em pipeline-completo | Gerou documentos lixo e schema invalido | Corrigir tool-use/schema ou manter bloqueado. |
 | Claude Haiku 4.5 | Bloqueado | Creditos Anthropic insuficientes | Recarregar creditos e testar sem trocar provider. |
 | GPT-4o | Parcial/referencia historica | Gerou 3 etapas, mas schema antigo e sem avisos | Revalidar como modelo explicito, nao fallback. |
@@ -2495,7 +2499,7 @@ Esta e a leitura curta para retomar o longo prazo sem se perder:
 | P5/P6 relatorio | Preserva faltantes e evita template literal | Converter `N/A`/nota ausente em erro alto | Contencao pode parecer sucesso se nao for removida. |
 | Sprint 2 schema/avisos | Testes locais de schema e visualizador | Revalidar providers pos-fix | GPT-5 Nano ainda tem historico de schema ruim. |
 | Sprint 3/3b custos | `input_tokens`/`output_tokens`; metadata de documentos; endpoints `/api/custos/*` live | Smoke oficial de execucao fresca e persistencia de falhas com tokens | Historico antigo bloqueia custo por falta de split/provider. |
-| Providers | Gemini e Nano passam em chat simples live; Gemini falhou no `corrigir` pos-fix por 503; Nano ainda falhou historicamente no pipeline; Haiku bloqueado; GPT-4o historico | Smoke matrix pos-fixes por provider/rota/pipeline | Credito Anthropic e overload/retry Gemini. |
+| Providers | Gemini e Nano passam em chat simples live; Gemini falhou no `corrigir` pos-fix por 503; Nano ainda falhou historicamente no pipeline; Haiku bloqueado; GPT-4o historico | Smoke matrix pos-fixes por provider/rota/pipeline | Credito Anthropic e deploy/smoke do retry Gemini. |
 | UI de erro | `task.error` agora aparece no site oficial para falha de etapa | Melhorar apresentacao e retry de erros provider | Mensagem ainda e bruta e longa. |
 | Dados fantasmas | Nota PDF impede delecao por `conteudo=null` | Reclassificar lista antes de qualquer limpeza | Delecao errada de prova respondida PDF. |
 | Rio 3 | Congelado e separado | Nada neste ciclo | Qualquer chave em chat e exposta. |
@@ -2545,8 +2549,8 @@ Objetivo: revalidar providers pos-fixes locais.
 
 Aceite:
 
-- Gemini 3 Flash: repetir primeiro o `corrigir` depois que 503 passar ou depois
-  do retry 429/5xx; so entao exigir 2 execucoes sem trocar modelo, com custo/metadata.
+- Gemini 3 Flash: repetir primeiro o `corrigir` depois do deploy do retry
+  429/5xx; so entao exigir 2 execucoes sem trocar modelo, com custo/metadata.
 - GPT-5 Nano: confirmar falha alta ou corrigir schema/tool-use antes de promover.
 - Haiku: testar somente quando credito Anthropic existir.
 - GPT-4o: testar explicitamente, nunca como fallback automatico.

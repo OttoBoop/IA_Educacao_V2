@@ -178,3 +178,59 @@ async def test_executar_com_tools_falha_sem_pdf_obrigatorio(monkeypatch):
     assert resultado.sucesso is False
     assert "Saída obrigatória incompleta" in resultado.erro
     assert "fallback automático" in resultado.erro
+
+
+@pytest.mark.asyncio
+async def test_executar_com_tools_preserva_503_retryable(monkeypatch):
+    import chat_service
+    from executor import PipelineExecutor
+    from chat_service import ProviderAPIError, ProviderType
+
+    model = SimpleNamespace(
+        id="gemini",
+        tipo=ProviderType.GOOGLE,
+        modelo="gemini-3-flash-preview",
+        api_key_id=None,
+        suporta_function_calling=True,
+        max_tokens=1024,
+        temperature=0,
+        suporta_temperature=False,
+    )
+
+    monkeypatch.setattr(chat_service.model_manager, "get", lambda model_id: model)
+    monkeypatch.setattr(chat_service.api_key_manager, "get", lambda key_id: None)
+    monkeypatch.setattr(
+        chat_service.api_key_manager,
+        "get_por_empresa",
+        lambda provider: SimpleNamespace(api_key="test-key"),
+    )
+
+    class DummyClient:
+        def __init__(self, model_config, api_key):
+            self.model_config = model_config
+            self.api_key = api_key
+
+        async def chat_with_tools(self, **kwargs):
+            raise ProviderAPIError(
+                "Google",
+                503,
+                '{"error":{"status":"UNAVAILABLE","message":"high demand"}}',
+            )
+
+    monkeypatch.setattr(chat_service, "ChatClient", DummyClient)
+
+    executor = PipelineExecutor()
+    resultado = await executor.executar_com_tools(
+        mensagem="corrija",
+        atividade_id="ativ-1",
+        aluno_id="aluno-1",
+        provider_id="gemini",
+        tools_to_use=["create_document", "execute_python_code"],
+        expected_document_type=TipoDocumento.CORRECAO,
+        prompt_id="prompt-1",
+    )
+
+    assert resultado.sucesso is False
+    assert resultado.retryable is True
+    assert resultado.erro_codigo == 503
+    assert "UNAVAILABLE" in resultado.erro

@@ -69,6 +69,8 @@
   falhou de novo em `corrigir`, agora com causa visivel: Google API 503
   `UNAVAILABLE`, alta demanda temporaria do modelo. Resultado: o erro nao esta
   mais silencioso; Gemini segue nao confirmado para pipeline.
+- Patch Sprint 4b local: 429/5xx em tool-use agora preserva `retryable=True` e
+  `erro_codigo`, para o retry acontecer no mesmo modelo de forma visivel.
 
 **Gemini 3 Flash:** tambem validado em 2 testes historicos de chat (mensagem unica + multi-turn). Ver [teste_chat_gemini.md](arquivo_2026_04_17/teste_chat_gemini.md).
 - Teste 1: 662 tokens, 1930ms, resposta em PT correta
@@ -173,8 +175,8 @@ Ver [teste_gpt5nano_pipeline_completo.md](arquivo_2026_04_17/teste_gpt5nano_pipe
 ## Testes Pendentes (para fechar Marco 1)
 
 ### Prioridade ALTA
-- [ ] Repetir `pipeline-completo` com Gemini 3 Flash quando 503 passar, ou
-      corrigir retry visivel para 429/5xx no tool-use antes da repeticao
+- [ ] Deployar Sprint 4b e repetir `pipeline-completo` com Gemini 3 Flash para
+      confirmar retry visivel em 503/429 ou sucesso quando a sobrecarga passar
 - [ ] Investigar por que `_avisos_*` nao aparece com GPT-5 Nano mesmo com injecao ativa
 - [ ] Investigar por que `/executar/etapa` nao persiste documento (gap ou by-design?)
 
