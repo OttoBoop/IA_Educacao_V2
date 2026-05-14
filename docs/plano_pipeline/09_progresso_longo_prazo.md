@@ -2,10 +2,12 @@
 
 **Atualizado:** 2026-05-15
 **Responsavel operacional:** Paulo
-**Status geral:** Render oficial esta em `97a7c79`; GitHub ja tem o patch
-OpenAI/GPT-5 Nano `ff7b92a`, mas o site ainda nao serviu esse marker.
-Gemini `corrigir` passou com custo medido no deploy anterior; GPT-5 Nano ainda
-precisa smoke oficial pos-deploy do patch novo.
+**Status geral:** Render oficial confirmou o marker `3ddf6c5`, que aponta para
+o commit funcional `39aa50a`. Gemini `corrigir` passou com custo medido; GPT-5
+Nano agora tambem passou em `corrigir` no site oficial com JSON parseavel, PDF
+via `execute_python_code`, tokens splitados e custo medido. Ainda nao ha
+pipeline completa validada para Nano, e ha ruido a corrigir: o Nano tambem criou
+um PDF extra via `create_document`.
 
 Este e o ponto de entrada do plano. O objetivo deste arquivo e dizer, em poucas
 linhas, onde estamos, qual e a proxima fila e quais frentes estao pausadas.
@@ -43,9 +45,9 @@ Estabilizar o NOVO CR para que a pipeline:
 | Frente | Estado | Proximo passo |
 |--------|--------|---------------|
 | Docs e plano | Sprint 0 concluida | Manter este painel como fonte oficial e anexos fora do fluxo diario |
-| Pipeline | Fixes publicados no GitHub; Render live ainda em `97a7c79` | Desbloquear deploy oficial e rodar smoke GPT-5 Nano pos-patch |
+| Pipeline | `corrigir` validado oficialmente para Gemini 3 Flash e GPT-5 Nano com JSON/PDF/custo | Expandir para `analisar_habilidades` e `gerar_relatorio`; restringir artefatos extras |
 | Schema e avisos | Sprint 2 concluida localmente | Manter schema oficial, defaults e visualizador cobertos por testes |
-| Custos/tokens | Metadata de documento e endpoints de custo live para deploy `97a7c79` | Registrar tambem falhas sem documento final |
+| Custos/tokens | Metadata de documento e endpoints de custo live no deploy `39aa50a` | Registrar tambem falhas sem documento final |
 | UI de erros | Pendente | Mostrar falha por aluno/etapa sem depender de terminal |
 | Limpeza de dados | Pendente | Reclassificar "fantasmas" antes de qualquer delecao |
 | Rio 3 | Pausada | Nao pedir chave, nao rodar smoke, nao deployar Rio sem nova decisao |
@@ -58,11 +60,13 @@ Estabilizar o NOVO CR para que a pipeline:
 - Commit funcional de retryability: `f505be6`.
 - Commit funcional de docs parciais em erro: `97a7c79`.
 - Commit funcional OpenAI tool-choice/GPT-5 Nano: `ff7b92a`.
-- Marker mais novo publicado: `68ebe51` (`chore: mark deploy ff7b92a`).
-- Marker atual visto no Render: `ec95193` (`chore: mark deploy 97a7c79`).
-- GitHub `origin/main`: `68ebe51`; Render live ainda serve `97a7c79`.
+- Commit funcional de validacao de artefato persistido: `c75af88`.
+- Commit funcional de JSON valido/artefato por extensao: `39aa50a`.
+- Marker mais novo publicado: `3ddf6c5` (`chore: mark deploy 39aa50a`).
+- Marker atual visto no Render: `3ddf6c5`, HTML com `novocr-deploy=39aa50a`.
+- GitHub `origin/main`: `3ddf6c5`; Render live confirmado em `39aa50a`.
 - Render live observado: saiu de `2e1098f` para `b12be9a` e depois confirmou
-  marcadores `b4d7ee6`, `f505be6` e `97a7c79`; nao confirmou `ff7b92a`.
+  marcadores `b4d7ee6`, `f505be6`, `97a7c79`, `c75af88` e `39aa50a`.
 - `/api/custos/status` no Render: HTTP 200, confirmando endpoints de custo live.
 - GitHub Actions: sem runs recentes observaveis.
 - GitHub webhooks/deployments via `gh api`: sem entradas visiveis.
@@ -71,8 +75,9 @@ Estabilizar o NOVO CR para que a pipeline:
   auto-deploy do Git nao funciona porque o Render foi conectado via URL publica,
   nao GitHub OAuth; o canal oficial era deploy hook, que precisa estar rotacionado
   antes de qualquer uso.
-- Inferencia operacional: o deploy nao vai sair apenas por push; nao rodar smoke
-  oficial do Nano enquanto o HTML live nao mostrar `ff7b92a`.
+- Inferencia operacional: o deploy nao sai de forma confiavel apenas por push;
+  usar deploy API/Dashboard e so aceitar smoke oficial quando o HTML live
+  mostrar o marker funcional esperado.
 
 ## Loop Operacional
 
@@ -403,12 +408,66 @@ Critério de pronto: lista de limpeza segura e revisada.
 - Proximo alvo: desbloquear deploy Render por Dashboard/workspace/hook seguro.
   Nao rodar smoke GPT-5 Nano como oficial ate o marker live mostrar `ff7b92a`.
 
+### 2026-05-15 -- Sprint 4e: artefato persistido obrigatorio
+
+- Alvo: corrigir o falso sucesso descoberto no smoke live do GPT-5 Nano, onde a
+  task completou com JSON novo, mas sem PDF persistido.
+- Status: publicado, deployado e smokeado.
+- Arquivos tocados: `backend/chat_service.py`, `backend/executor.py`,
+  `backend/tools.py`, `backend/tests/unit/test_cost_tracking.py`.
+- Comportamento: `chat_with_tools` registra `is_error` e `files_generated` das
+  tools sem ecoar base64; `executar_com_tools` nao aceita mais apenas o nome da
+  tool. Para etapa dual-output, precisa haver artefato persistido por
+  `create_document` e por `execute_python_code`; se faltar, ha retry explicito
+  no mesmo modelo e depois erro alto.
+- Validacoes: `py_compile` passou; `git diff --check` passou; suite focada
+  passou com 180 testes e 1 aviso de config `timeout` desconhecida. Suite
+  unitária ampla continua vermelha por 49 falhas antigas/stale fora deste ciclo.
+- Git/deploy: commit funcional `c75af88`; marker `45d543a`; Render confirmou
+  `c75af88` via `wait_deploy.sh`/`check_deploy.sh`; `/api/health` healthy.
+- Smoke oficial: GPT-5 Nano em `corrigir`, task `task_edb822810ddc`, completou
+  e criou PDF por `execute_python_code` (`a2533557b2ef2712`), mas o JSON
+  principal `2a272f58b1f5ecce` nao era parseavel (`Invalid control character`).
+  Isso revelou o proximo bloqueador: artefato existe nao basta; JSON precisa
+  validar antes de sucesso.
+
+### 2026-05-15 -- Sprint 4f: JSON invalido nao entra no storage
+
+- Alvo: impedir `completed` quando `create_document` salva `.json` invalido.
+- Status: publicado, deployado e smokeado.
+- Arquivos tocados: `backend/tool_handlers.py`, `backend/executor.py`,
+  `backend/tests/unit/test_warning_system.py`,
+  `backend/tests/unit/test_cost_tracking.py`.
+- Comportamento: `handle_create_document` valida `.json` com `json.loads` antes
+  de salvar; erro de JSON torna a tool `is_error=True`; o executor exige
+  `create_document` com extensao `.json` e `execute_python_code` com extensao
+  `.pdf` para concluir etapa dual-output.
+- Validacoes: `py_compile` passou; `git diff --check` passou; suite focada
+  passou com 180 testes e 1 aviso de config `timeout` desconhecida.
+- Git/deploy: commit funcional `39aa50a`; marker `3ddf6c5`; Render confirmou
+  `39aa50a`; `/api/health` healthy.
+- Smoke oficial: GPT-5 Nano em `corrigir`, task `task_1a7857360267`, completou.
+  Run `tool_e42200b613f0` criou JSON parseavel `d3a4be288960e301` via
+  `create_document` e PDF `3e0d534238dc0067` via `execute_python_code`.
+  Tokens/custo: 20.127 entrada, 6.817 saida, 26.944 total, custo estimado
+  `US$ 0.003733` para `openai/gpt-5-nano`.
+- Observacao: o Nano tambem criou um PDF extra via `create_document`
+  (`29d20245529f26a7`). Nao bloqueou o smoke porque o PDF obrigatorio veio pela
+  tool correta, mas o proximo ciclo deve decidir se `create_document` fica
+  restrito a `.json` nas etapas dual-output.
+- Custos live apos smoke: `/api/custos/status` retornou `runs_precificados=4`,
+  `runs_bloqueados=491`, com bloqueios `token_split_missing=165` e
+  `provider_model_missing=326`.
+- Proximo alvo: expandir smoke para `analisar_habilidades`/`gerar_relatorio`
+  com Gemini e Nano, ou antes endurecer a regra de artefato extra em
+  `create_document`.
+
 ## Riscos Abertos
 
 1. Creditos Anthropic insuficientes ainda bloqueiam validacao Haiku.
 2. Schema drift pode fazer modelos gerarem formatos diferentes.
-3. Render nao atualizou para `ff7b92a`; patch OpenAI/Nano esta no GitHub, nao no
-   site oficial.
+3. Artefatos extras ainda podem poluir a lista de documentos, como PDF criado por
+   `create_document` alem do PDF obrigatorio via `execute_python_code`.
 4. Falhas sem documento final ainda nao entram no resumo de custos; precisamos
    de registro proprio de run/custo para erro sem artefato.
 5. Rio 3 nao deve voltar ao fluxo ativo sem nova decisao e nova chave segura.

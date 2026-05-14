@@ -158,47 +158,44 @@ detalhar e auditar estas linhas.
    por tool-use, alem de relatorios agregados.
 3. O Doc 02 mostrou que o maior risco arquitetural esta no Path 2: schemas
    conflitantes, JSON opaco, avisos/metadata/tokens incompletos e tools parciais.
-4. Os fixes foram publicados no GitHub; Render avancou do marcador `2e1098f`
-   para `b12be9a` e o backend ja responde `/api/custos/*`, mas o HTML ainda nao
-   mostra o marcador `f67055c`.
+4. Os fixes principais ja chegaram ao site oficial: Render confirmou `39aa50a`
+   via marker `3ddf6c5`, com `/api/health` e `/api/custos/*` respondendo.
 5. P4 foi corrigido localmente: `EXTRAIR_RESPOSTAS` nao deve rodar sem
    `prova_respondida` valida.
 6. P5/P6 melhoraram relatorio e documentos faltantes, mas `nota_final=N/A` e
    apenas contencao temporaria e precisa virar erro alto.
 7. Sprint 2 melhorou schema/defaults/visualizador, mas nao fechou o contrato do
    Doc 02 porque Path 2 ainda precisa validar schema antes de sucesso.
-8. Sprint 3 separou `input_tokens`/`output_tokens`; Sprint 3b iniciou metadata
-   persistida em documentos e endpoints `/api/custos/*`, ainda pendentes de
-   deploy/smoke oficial.
-9. Gemini 3 Flash e o melhor positivo parcial; GPT-5 Nano falhou grave;
-   Haiku esta bloqueado por creditos; Rio 3 esta pausado. Em chat simples live,
-   Gemini e GPT-5 Nano responderam JSON corretamente em 2026-05-15.
-10. O proximo eixo correto e desbloquear deploy oficial e revalidar no site;
-    depois vem anti-fallback/Path 2, providers e custos medidos em producao.
+8. Sprint 3 separou `input_tokens`/`output_tokens`; Sprint 3b/4f confirmaram
+   metadata/custo em documentos reais no site para Gemini e GPT-5 Nano.
+9. Gemini 3 Flash e GPT-5 Nano estao confirmados para `corrigir`; Haiku segue
+   bloqueado por creditos; Rio 3 esta pausado.
+10. O proximo eixo correto e ampliar a revalidacao por etapa/provider e
+    endurecer o contrato contra artefatos extras, schema ruim e custo de falhas.
 
 ### O Que Temos
 
 | Frente | Temos hoje | Limite da afirmacao |
 |---|---|---|
 | Documentacao | Doc 09 como painel curto; Doc 14 como auditoria mestre; Doc 05/12 com notas de status | Doc 14 ainda precisa revisao humana e commit. |
-| Git/GitHub | Commits `7e4b852`, `3b3291f`, `a695db4`, `76c8467`, `b12be9a`, `f67055c` publicados; marcador `462ea1d` em `origin/main` | Render refletiu API de custos, mas HTML ainda marca `b12be9a`; docs podem ter commits acima do marcador. |
+| Git/GitHub | Commits ate `39aa50a` publicados; marcador `3ddf6c5` em `origin/main` | Usar marker HTML antes de aceitar qualquer smoke como oficial. |
 | Pipeline P4 | Bloqueio local de extracao de respostas sem prova valida | Precisa push/deploy/smoke para virar oficial. |
 | Pipeline P5/P6 | Contencao de nota e preservacao de `_documentos_faltantes` | `N/A` ainda e fallback proibido como estado final. |
 | Schema/avisos | Defaults `_avisos_*`, visualizador melhorado e schemas mais permissivos | Permissividade nao e contrato forte; pode aceitar legado demais. |
-| Tokens/custos | Split input/output; metadata de documento; endpoints `/api/custos/status` e `/api/custos/resumo` respondendo live | Falta gerar documento novo pos-fix para provar metadata/custo em execucao fresca e persistir falhas com tokens. |
-| Providers | Gemini e GPT-5 Nano passaram em chat simples live; Haiku bloqueado por credito; pipeline ainda depende de revalidacao | Chat simples nao prova pipeline/tool-use. |
+| Tokens/custos | Split input/output; metadata de documento; endpoints `/api/custos/status` e `/api/custos/resumo` respondendo live; Gemini e Nano geraram runs custeaveis | Falta persistir falhas sem documento final. |
+| Providers | Gemini e GPT-5 Nano passaram em chat simples live e em `corrigir`; Haiku bloqueado por credito | `corrigir` nao prova pipeline completa. |
 | Seguranca Rio | Regra de nao usar chave em chat e Rio pausado | Arquivos Rio/untracked continuam fora do ciclo ativo. |
 
 ### O Que Falta
 
 | Frente | Falta | Por que importa |
 |---|---|---|
-| Path 2/tool-use | Parsear e validar JSON salvo por `create_document`; retornar etapa real, documento principal e `resposta_parsed` | Sem isso, documento ruim pode parecer etapa concluida. |
+| Path 2/tool-use | Restringir artefatos extras e validar schema minimo, alem do JSON parseavel | Sem isso, documento ruidoso pode parecer resultado pedagogico final. |
 | Anti-fallback | Remover sucesso verde para PDF auto-fallback, `nota_final=N/A`, JSON permissivo e provider/model swap | Fallback silencioso engana o usuario. |
 | Prompts/schema | Resolver conflito entre `PROMPTS_PADRAO` legado e `STAGE_TOOL_INSTRUCTIONS` | Modelos pequenos podem seguir o schema errado. |
-| Custos | Confirmar `/api/custos/*` em producao e registrar falhas que consomem tokens | Sem deploy, o custo ainda nao e oficial. |
-| Metadata | Revalidar provider/modelo/tokens/tempo em documentos gerados no site | A correcao existe localmente, mas precisa smoke oficial. |
-| Providers | Revalidar Gemini, Nano, Haiku e GPT-4o depois dos fixes locais | Resultado historico nao prova estado atual. |
+| Custos | Registrar falhas que consomem tokens sem documento final | Sucesso com documento ja tem custo medido; falha ainda pode sumir. |
+| Metadata | Revalidar provider/modelo/tokens/tempo nas etapas seguintes | `corrigir` esta validado; `analisar_habilidades`/`gerar_relatorio` nao. |
+| Providers | Revalidar Gemini, Nano, Haiku e GPT-4o nas etapas restantes | Resultado historico nao prova estado atual. |
 | UI de erro | Mostrar aluno, etapa, provider, causa e artefato real/parcial/erro | Backend falhar alto nao basta se a UI traduz mal. |
 | Dados | Reclassificar "fantasmas" sem deletar PDF valido por `/conteudo=null` | Evita apagar prova respondida real. |
 | Git/deploy | Acionar Render por canal seguro e confirmar hash `b12be9a`/marcador | Sem isso, progresso no GitHub nao vira produto. |
@@ -207,7 +204,7 @@ detalhar e auditar estas linhas.
 
 | Item | Estado | Acao correta |
 |---|---|---|
-| Render/site oficial | Bloqueado/stale em `2e1098f` | Usar deploy hook rotacionado/manual seguro; Render MCP sem workspace. |
+| Render/site oficial | Confirmado em `39aa50a` pelo marker `3ddf6c5` | Continuar usando marker/check_deploy antes de smoke oficial. |
 | Anthropic Haiku | Bloqueado por creditos | Testar apenas quando houver credito; erro deve aparecer claro. |
 | Rio 3 | Pausado | Nao pedir chave, nao rodar smoke, nao misturar no ciclo atual. |
 | `.pytest_tmp` e assets soltos | Muito ruido no worktree | Nao stagear por acidente; nunca usar `git add .`. |
@@ -2431,7 +2428,7 @@ Fila minima para custo real:
 | Provider/modelo | Estado atual | Evidencia | O que falta |
 |---|---|---|---|
 | Gemini 3 Flash | Chat OK; `corrigir` pos-fix OK com custo | Task `task_8f53987c57c4`; JSON `6396c4feb3d5b92b`; PDF `6c62faa4ce6df137`; custo `US$ 0.007931` | Validar `analisar_habilidades` e `gerar_relatorio` com custo/metadata. |
-| GPT-5 Nano | Falhou alto em `corrigir` | Task `task_49b7ada546d4`; nao produziu JSON/PDF obrigatorios; nenhum fallback automatico | Registrar custo de falhas sem documento final e investigar schema/tool-use. |
+| GPT-5 Nano | Chat OK; `corrigir` pos-fix OK com custo | Task `task_1a7857360267`; JSON parseavel `d3a4be288960e301`; PDF execute `3e0d534238dc0067`; custo `US$ 0.003733` | Validar etapas seguintes e restringir PDF extra via `create_document`. |
 | Claude Haiku 4.5 | Bloqueado | Creditos Anthropic insuficientes | Recarregar creditos e testar sem trocar provider. |
 | GPT-4o | Parcial/referencia historica | Gerou 3 etapas, mas schema antigo e sem avisos | Revalidar como modelo explicito, nao fallback. |
 | Gemini 2.5 Flash/Lite | Incerto | Catalogo/flags historicamente inconsistentes | Validar capabilities antes de pipeline. |
@@ -2453,7 +2450,9 @@ Erros conhecidos por provider/rota:
 |---|---|---|---|
 | Gemini 3 Flash | `pipeline-completo` | Primeira tentativa falhou sem diagnostico acessivel; metadata zerada/null | Usavel parcialmente; precisa mais amostras e custo real. |
 | Gemini 3 Flash | `pipeline-completo` pos-fix `corrigir` | Depois de 503 retryability, task `task_8f53987c57c4` completou com JSON/PDF e custo | Confirmado para `corrigir`; nao para pipeline completa. |
-| GPT-5 Nano | `pipeline-completo` pos-fix `corrigir` | Task `task_49b7ada546d4` falhou alto por saida obrigatoria incompleta | Bloqueado para pipeline, mas nao gera mais sucesso falso nesse caso. |
+| GPT-5 Nano | `pipeline-completo` pos-fix `corrigir` | Task `task_49b7ada546d4` falhou alto por saida obrigatoria incompleta | Falha correta, sem fallback. |
+| GPT-5 Nano | `pipeline-completo` pos-fix `corrigir` | Task `task_edb822810ddc` completou com PDF, mas JSON invalido | Corrigido por `39aa50a`; JSON invalido nao deve entrar no storage. |
+| GPT-5 Nano | `pipeline-completo` pos-fix `corrigir` | Task `task_1a7857360267` completou com JSON parseavel, PDF via execute e custo | Confirmado para `corrigir`; nao para pipeline completa. |
 | Claude Haiku 4.5 | `pipeline-completo` | Creditos Anthropic insuficientes; wrapper mascarou causa como modelo invalido | Bloqueado por credito; erro deve ser exposto com causa real. |
 | GPT-4o | referencia historica | Outputs em schema antigo e sem `_avisos_*` | Revalidar explicitamente; nao usar como fallback. |
 
@@ -2512,9 +2511,9 @@ Esta e a leitura curta para retomar o longo prazo sem se perder:
 | P4 confiabilidade | Falha antes de extrair respostas sem prova valida | Revalidar no site oficial depois de deploy | GitHub tem os commits, mas Render nao atualizou. |
 | P5/P6 relatorio | Preserva faltantes e evita template literal | Converter `N/A`/nota ausente em erro alto | Contencao pode parecer sucesso se nao for removida. |
 | Sprint 2 schema/avisos | Testes locais de schema e visualizador | Revalidar providers pos-fix | GPT-5 Nano ainda tem historico de schema ruim. |
-| Sprint 3/3b custos | `input_tokens`/`output_tokens`; metadata de documentos; endpoints `/api/custos/*` live | Criar registro de custo para falhas sem documento final | Historico antigo bloqueia custo por falta de split/provider. |
+| Sprint 3/3b custos | `input_tokens`/`output_tokens`; metadata de documentos; endpoints `/api/custos/*` live; runs Gemini/Nano custeaveis | Criar registro de custo para falhas sem documento final | Historico antigo bloqueia custo por falta de split/provider. |
 | Docs parciais de run falho | Patch marca `created_document_ids` como ERRO quando provider falha depois das tools | Novo caso falho em producao para provar quando ocorrer | Ja existem dois docs antigos com token split faltante do run anterior. |
-| Providers | Gemini `corrigir` OK; Nano falha alto; Haiku bloqueado; GPT-4o historico | Smoke matrix pos-fixes por provider/rota/pipeline | Credito Anthropic e custo de falhas sem documento. |
+| Providers | Gemini `corrigir` OK; Nano `corrigir` OK; Haiku bloqueado; GPT-4o historico | Smoke matrix pos-fixes por provider/rota/pipeline | Credito Anthropic, etapas restantes e custo de falhas sem documento. |
 | UI de erro | `task.error` agora aparece no site oficial para falha de etapa | Melhorar apresentacao e retry de erros provider | Mensagem ainda e bruta e longa. |
 | Dados fantasmas | Nota PDF impede delecao por `conteudo=null` | Reclassificar lista antes de qualquer limpeza | Delecao errada de prova respondida PDF. |
 | Rio 3 | Congelado e separado | Nada neste ciclo | Qualquer chave em chat e exposta. |
@@ -2539,13 +2538,16 @@ Aceite:
 ### Ciclo B -- Schema Invalido Falha Na Etapa Original
 
 Objetivo: impedir `completed` quando o documento gerado nao parseia ou nao segue
-schema minimo.
+schema minimo. A parte de JSON parseavel foi fechada em `39aa50a`; schema minimo
+e restricao de artefatos extras ainda ficam abertos.
 
 Aceite:
 
 - GPT-5 Nano-like malformed JSON falha em `CORRIGIR`.
 - Nenhuma proxima etapa precisa descobrir o problema.
 - Documento lixo nao e salvo como resultado real.
+- `create_document` nao gera artefato extra nao-JSON em etapa dual-output, ou
+  esse artefato fica marcado como erro/ruido.
 
 ### Ciclo C -- Metadata E Custo Real
 
@@ -2566,7 +2568,8 @@ Aceite:
 
 - Gemini 3 Flash: seguir para `analisar_habilidades` e `gerar_relatorio`, depois
   exigir 2 execucoes completas sem trocar modelo, com custo/metadata.
-- GPT-5 Nano: confirmar falha alta ou corrigir schema/tool-use antes de promover.
+- GPT-5 Nano: seguir para `analisar_habilidades`/`gerar_relatorio`, mas nao
+  promover pipeline completa ate nao haver artefato extra e schema minimo passar.
 - Haiku: testar somente quando credito Anthropic existir.
 - GPT-4o: testar explicitamente, nunca como fallback automatico.
 

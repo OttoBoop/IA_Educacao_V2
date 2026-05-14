@@ -4,19 +4,18 @@
 **Atividade de teste:** Lista0 — Algebra Linear Avancada (`126e8b5ad7dd6d59`)
 **Commits aplicados/observados:** `a632883`, `5737611`, `50935ea`, `479b77d`,
 `b12be9a`, `301eba6`, `f67055c`, `462ea1d`, `b4d7ee6`, `99483d1`,
-`f505be6`, `d75b05a`, `97a7c79`, `ec95193`, `ff7b92a`, `68ebe51`
+`f505be6`, `d75b05a`, `97a7c79`, `ec95193`, `ff7b92a`, `68ebe51`,
+`c75af88`, `45d543a`, `39aa50a`, `3ddf6c5`
 
 ## Status Oficial De Deploy
 
-- GitHub `origin/main` contem o patch OpenAI/Nano `ff7b92a` e o marker
-  `68ebe51`; o marcador HTML desse commit aponta para `ff7b92a`.
-- Render live ainda confirma marcador `97a7c79`; `/api/health` e
-  `/api/custos/status` responderam HTTP 200, mas no codigo anterior ao patch
-  OpenAI/Nano.
-- Docs antigos registram que auto-deploy Git nao funciona; deploy novo depende
-  de workspace Render no MCP ou Dashboard/hook rotacionado seguro.
-- Portanto, os smokes live de 2026-05-15 abaixo sao oficiais para o estado
-  `97a7c79`; `ff7b92a` ainda exige deploy antes de smoke oficial.
+- GitHub `origin/main` contem o marker `3ddf6c5`; o marcador HTML aponta para
+  o commit funcional `39aa50a`.
+- Render live confirmou `39aa50a` por `wait_deploy.sh`, `check_deploy.sh` e
+  `/api/health`.
+- Docs antigos registram que auto-deploy Git nao funciona de forma confiavel; o
+  ciclo usou deploy via API Render com token local seguro, sem imprimir segredo.
+- Os smokes live de 2026-05-15 abaixo sao oficiais para o estado `39aa50a`.
 
 ## Legenda
 
@@ -36,7 +35,7 @@
 |-----------------|:---:|:---:|:---:|:---:|:---:|:---:|
 | **Claude Haiku 4.5** (`588f3efe7975`) | ⏸️ | ⏸️ | ⏸️ | 🚫 | 🚫 | 🚫 |
 | **Gemini 3 Flash** (`gem3flash001`) | ⏸️ | ⏸️ | ⏸️ | ✅ | ⚠️ | ⚠️ |
-| **GPT-5 Nano** (`gpt5nano001`) | ⏸️ | ⏸️ | ⏸️ | ❌ | ❌ | ❌ |
+| **GPT-5 Nano** (`gpt5nano001`) | ⏸️ | ⏸️ | ⏸️ | ✅ | ⏸️ | ⏸️ |
 | **GPT-4o** (`180b8298a279`) — referencia | ✅ | ✅ | ✅ | ⚠️ | ⚠️ | ⚠️ |
 
 ### Categoria 2: Relatorios de Desempenho (3 niveis)
@@ -82,8 +81,16 @@
   JSON/PDF obrigatorios e nao houve fallback automatico.
 - Patch `ff7b92a` publicado no GitHub tenta corrigir esse ponto usando
   `tool_choice="required"` no primeiro request OpenAI e tool-choice especifico
-  no retry de reparo. Ainda nao foi validado em producao porque Render segue em
-  `97a7c79`.
+  no retry de reparo.
+- Depois do deploy `c75af88`, GPT-5 Nano completou `corrigir`
+  (`task_edb822810ddc`), mas o JSON principal nao parseava
+  (`Invalid control character`). Isso rebaixou o resultado: artefato persistido
+  sem JSON valido nao basta.
+- Depois do deploy `39aa50a`, GPT-5 Nano completou `corrigir`
+  (`task_1a7857360267`) com JSON parseavel `d3a4be288960e301`, PDF via
+  `execute_python_code` `3e0d534238dc0067`, tokens 20.127/6.817 e custo
+  `US$ 0.003733`. Observacao: criou tambem PDF extra via `create_document`
+  (`29d20245529f26a7`), a restringir em ciclo futuro.
 
 **Gemini 3 Flash:** tambem validado em 2 testes historicos de chat (mensagem unica + multi-turn). Ver [teste_chat_gemini.md](arquivo_2026_04_17/teste_chat_gemini.md).
 - Teste 1: 662 tokens, 1930ms, resposta em PT correta
@@ -142,23 +149,24 @@ antes de voltar a "pipeline completa confirmada".
 
 ---
 
-### GPT-5 Nano — ✅ CHAT SIMPLES, ❌ FALHA no pipeline-completo
+### GPT-5 Nano — ✅ CHAT SIMPLES, ✅ CORRIGIR POS-FIX VALIDADO
 
 **Smoke live de chat em 2026-05-15:** respondeu JSON simples corretamente via
 `POST /api/chat` com `model_id=gpt5nano001` e 526 tokens. Portanto o bloqueio
-atual do Nano nao e conexao/API key; e pipeline/tool-use/schema.
+inicial do Nano nao era conexao/API key; era pipeline/tool-use/schema.
 
-**Smoke live de `corrigir` em 2026-05-15:** task `task_49b7ada546d4` falhou alto
-com "Saida obrigatoria incompleta: JSON via create_document, PDF via
-execute_python_code". Isso e melhor que o historico anterior: nao houve
-documento lixo aprovado nem fallback de PDF/JSON.
+**Smoke live de `corrigir` em 2026-05-15:** depois dos patches `ff7b92a`,
+`c75af88` e `39aa50a`, a task `task_1a7857360267` completou com JSON parseavel,
+PDF obrigatorio via `execute_python_code`, provider/modelo/tokens/custo no
+storage. Ainda nao esta pipeline-ready porque faltam `analisar_habilidades`,
+`gerar_relatorio` e pelo menos uma execucao sem artefato extra.
 
 **Testado em 2 caminhos com resultados muito diferentes:**
 
 #### Via `/executar/etapa` — ⚠️ PARCIAL
 Ver [teste_executar_etapa_corrigido.md](arquivo_2026_04_17/teste_executar_etapa_corrigido.md). Gerou nota 5.72/10 com feedback coerente, mas sem `_avisos_*`, schema flat, sem persistencia.
 
-#### Via `pipeline-completo` — ❌ FALHA GRAVE
+#### Via `pipeline-completo` historico — ❌ FALHA GRAVE
 Ver [teste_gpt5nano_pipeline_completo.md](arquivo_2026_04_17/teste_gpt5nano_pipeline_completo.md). Task `task_ca3769cfdc97` terminou em `failed` em ~23s.
 
 **Bugs descobertos no tool-use path:**
@@ -169,6 +177,15 @@ Ver [teste_gpt5nano_pipeline_completo.md](arquivo_2026_04_17/teste_gpt5nano_pipe
 5. **Cascade de falha:** `analisar_habilidades` falhou (nao achou correcao valida), `gerar_relatorio` nem executou
 6. **`_avisos_*` NAO aparecem** — hipotese de que tool-use path injetaria foi **refutada**
 7. **Schema ainda flat** — GPT-5 Nano nao segue STAGE_TOOL_INSTRUCTIONS mesmo em pipeline-completo
+
+**Bugs corrigidos depois desse historico:**
+1. OpenAI dual-output inicia com `tool_choice="required"` e retry forca a tool
+   faltante quando conhecida (`ff7b92a`).
+2. Sucesso exige artefato persistido por tool, nao apenas nome de tool
+   (`c75af88`).
+3. `.json` salvo por `create_document` precisa parsear antes de entrar no
+   storage; dual-output exige `.json` por `create_document` e `.pdf` por
+   `execute_python_code` (`39aa50a`).
 
 ---
 
@@ -198,11 +215,13 @@ Ver [teste_gpt5nano_pipeline_completo.md](arquivo_2026_04_17/teste_gpt5nano_pipe
       custo/metadata
 - [ ] Registrar custo de falhas sem documento final, como o GPT-5 Nano que falha
       antes de criar artefato
-- [ ] Investigar por que `_avisos_*` nao aparece com GPT-5 Nano mesmo com injecao ativa
+- [ ] Restringir ou marcar como erro artefato extra `create_document` nao-JSON em
+      etapas dual-output
 - [ ] Investigar por que `/executar/etapa` nao persiste documento (gap ou by-design?)
 
 ### Prioridade MEDIA
-- [ ] Validar `pipeline-completo` com GPT-5 Nano para 1 aluno
+- [x] Validar `corrigir` com GPT-5 Nano para 1 aluno no site oficial
+- [ ] Validar `analisar_habilidades` e `gerar_relatorio` com GPT-5 Nano
 - [ ] Testar Haiku 4.5 (bloqueado ate creditos recarregarem)
 
 ### Prioridade BAIXA
@@ -216,8 +235,9 @@ Ver [teste_gpt5nano_pipeline_completo.md](arquivo_2026_04_17/teste_gpt5nano_pipe
 **Estado atual:**
 - ⚠️ **Gemini 3 Flash:** chat simples live OK e `corrigir` pos-fix OK com
   custo; ainda falta validar `analisar_habilidades` e `gerar_relatorio`.
-- ❌ **GPT-5 Nano via `pipeline-completo`:** ainda falha em `corrigir`, mas agora
-  falha alto sem documento lixo aprovado.
+- ⚠️ **GPT-5 Nano via `pipeline-completo`:** `corrigir` pos-fix OK com JSON
+  parseavel, PDF via `execute_python_code` e custo; ainda falta pipeline
+  completa e limpeza de artefato extra.
 - ⏸️ **Claude Haiku 4.5:** Aguardando creditos.
 - 📊 **Confiabilidade Gemini 3 Flash:** 50% de sucesso na primeira tentativa (1 em 2 testes). Precisa mais amostras.
 
@@ -226,15 +246,14 @@ mas o site oficial precisa passar pipeline pos-fix com erro/custo/metadata
 visiveis.
 
 **Bugs criticos descobertos nesta sessao:**
-1. GPT-5 Nano tool-use: multiplas chamadas `create_document`, nomes alucinados, sem validacao de schema
-2. Metadata `tokens_usados`, `ia_modelo`, `ia_provider` nao sao populados no DB (afeta todos os providers testados)
+1. GPT-5 Nano tool-use historico: multiplas chamadas `create_document`, nomes alucinados, sem validacao de schema
+2. Metadata `tokens_usados`, `ia_modelo`, `ia_provider` faltava no DB historico; smokes pos-fix de Gemini e Nano ja registram metadata/custo
 3. Endpoint `/conteudo` nao retorna conteudo para alguns tipos (usar `/view`)
 4. Sem endpoint de eventos de task (dificulta diagnostico de falhas transientes)
 
 **Proximos passos:**
 1. Manter deploy oficial confirmado por marker antes de cada smoke novo.
-2. Revalidar Gemini 3 Flash nas etapas seguintes com custo/metadata.
-3. Criar registro de custo para falhas sem documento final; GPT-5 Nano e o caso
-   vivo atual.
+2. Revalidar Gemini 3 Flash e GPT-5 Nano nas etapas seguintes com custo/metadata.
+3. Criar registro de custo para falhas sem documento final.
 4. Quando creditos Anthropic forem recarregados, validar Haiku 4.5 via
    `pipeline-completo`.
