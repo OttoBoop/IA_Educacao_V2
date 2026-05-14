@@ -2,9 +2,10 @@
 
 **Atualizado:** 2026-05-15
 **Responsavel operacional:** Paulo
-**Status geral:** fixes de pipeline/custos/erro visivel publicados no GitHub e
-confirmados no Render; smoke `corrigir` com Gemini passou com custo medido;
-GPT-5 Nano falhou alto sem fallback.
+**Status geral:** Render oficial esta em `97a7c79`; GitHub ja tem o patch
+OpenAI/GPT-5 Nano `ff7b92a`, mas o site ainda nao serviu esse marker.
+Gemini `corrigir` passou com custo medido no deploy anterior; GPT-5 Nano ainda
+precisa smoke oficial pos-deploy do patch novo.
 
 Este e o ponto de entrada do plano. O objetivo deste arquivo e dizer, em poucas
 linhas, onde estamos, qual e a proxima fila e quais frentes estao pausadas.
@@ -42,9 +43,9 @@ Estabilizar o NOVO CR para que a pipeline:
 | Frente | Estado | Proximo passo |
 |--------|--------|---------------|
 | Docs e plano | Sprint 0 concluida | Manter este painel como fonte oficial e anexos fora do fluxo diario |
-| Pipeline | Fixes locais publicados no GitHub; Render ainda stale | Confirmar deploy oficial antes de chamar qualquer fix de pronto |
+| Pipeline | Fixes publicados no GitHub; Render live ainda em `97a7c79` | Desbloquear deploy oficial e rodar smoke GPT-5 Nano pos-patch |
 | Schema e avisos | Sprint 2 concluida localmente | Manter schema oficial, defaults e visualizador cobertos por testes |
-| Custos/tokens | Metadata de documento e endpoints de custo implementados localmente | Publicar, deployar e validar `/api/custos/*` no site oficial |
+| Custos/tokens | Metadata de documento e endpoints de custo live para deploy `97a7c79` | Registrar tambem falhas sem documento final |
 | UI de erros | Pendente | Mostrar falha por aluno/etapa sem depender de terminal |
 | Limpeza de dados | Pendente | Reclassificar "fantasmas" antes de qualquer delecao |
 | Rio 3 | Pausada | Nao pedir chave, nao rodar smoke, nao deployar Rio sem nova decisao |
@@ -56,16 +57,19 @@ Estabilizar o NOVO CR para que a pipeline:
 - Commit funcional de erro visivel: `b4d7ee6`.
 - Commit funcional de retryability: `f505be6`.
 - Commit funcional de docs parciais em erro: `97a7c79`.
-- Marker atual de deploy: `ec95193` (`chore: mark deploy 97a7c79`).
-- GitHub `origin/main`: contem `ec95193` e registros documentais posteriores.
+- Commit funcional OpenAI tool-choice/GPT-5 Nano: `ff7b92a`.
+- Marker mais novo publicado: `68ebe51` (`chore: mark deploy ff7b92a`).
+- Marker atual visto no Render: `ec95193` (`chore: mark deploy 97a7c79`).
+- GitHub `origin/main`: `68ebe51`; Render live ainda serve `97a7c79`.
 - Render live observado: saiu de `2e1098f` para `b12be9a` e depois confirmou
-  marcadores `b4d7ee6`, `f505be6` e `97a7c79`.
+  marcadores `b4d7ee6`, `f505be6` e `97a7c79`; nao confirmou `ff7b92a`.
 - `/api/custos/status` no Render: HTTP 200, confirmando endpoints de custo live.
 - GitHub Actions: sem runs recentes observaveis.
 - GitHub webhooks/deployments via `gh api`: sem entradas visiveis.
-- Render MCP: bloqueado por workspace nao selecionado.
-- Inferencia operacional: auto-deploy e lento, mas funcionou neste ciclo; markers
-  apareceram entre cerca de 140s e 200s de espera.
+- Render MCP: bloqueado por workspace nao selecionado ("no workspace set").
+- Inferencia operacional: deploy automatico esta indisponivel ou preso para o
+  commit `68ebe51`; nao rodar smoke oficial do Nano enquanto o HTML live nao
+  mostrar `ff7b92a`.
 
 ## Loop Operacional
 
@@ -369,12 +373,38 @@ Critério de pronto: lista de limpeza segura e revisada.
 - Proximo alvo: registrar custos de falhas que consomem tokens mesmo quando nao
   ha documento final criado.
 
+### 2026-05-15 -- Sprint 4d: OpenAI tool-choice para GPT-5 Nano
+
+- Alvo: corrigir a falha do GPT-5 Nano em `corrigir`, onde o modelo respondia
+  sem produzir JSON+PDF obrigatorios por tools.
+- Status: publicado no GitHub, **nao deployado oficialmente**.
+- Arquivos tocados: `backend/chat_service.py`, `backend/executor.py`,
+  `backend/ai_providers.py`, `backend/anexos.py`, `backend/data/model_catalog.json`,
+  `backend/docs/MODELS_REFERENCE.md` e testes unitarios de OpenAI/tool-use/P0.
+- Comportamento: chamadas OpenAI de dual-output agora iniciam com
+  `tool_choice="required"`; o retry explicito no mesmo modelo forca a tool
+  faltante quando ela e conhecida; se mesmo assim faltar JSON/PDF, a etapa falha
+  alto, sem fallback automatico. Catalogo/listas de reasoning receberam
+  `gpt-5.4*` e `gpt-5.5*` com referencias oficiais OpenAI documentadas.
+- Validacoes locais: `py_compile` passou; `git diff --check` passou; JSON do
+  catalogo validou; suite focada passou com 147 testes e 1 aviso de config
+  `timeout` desconhecida.
+- Git: commit funcional `ff7b92a`; marker `68ebe51`; ambos publicados em
+  `origin/main`.
+- Deploy: `check_deploy.sh ff7b92a` falhou; Render live ainda mostra `97a7c79`.
+  `GET /api/health` segue healthy/Supabase true, mas no codigo antigo.
+- Evidencia do bloqueio: `gh run list` sem runs; `gh api deployments` e
+  `gh api hooks` retornaram listas vazias; Render MCP respondeu "no workspace
+  set" e nao permitiu listar/acessar o servico `prova-ai`.
+- Proximo alvo: desbloquear deploy Render por Dashboard/workspace/hook seguro.
+  Nao rodar smoke GPT-5 Nano como oficial ate o marker live mostrar `ff7b92a`.
+
 ## Riscos Abertos
 
 1. Creditos Anthropic insuficientes ainda bloqueiam validacao Haiku.
 2. Schema drift pode fazer modelos gerarem formatos diferentes.
-3. Metadata de tokens/modelo foi corrigida localmente para documentos de IA e
-   tools, mas ainda precisa deploy/smoke oficial.
+3. Render nao atualizou para `ff7b92a`; patch OpenAI/Nano esta no GitHub, nao no
+   site oficial.
 4. Falhas sem documento final ainda nao entram no resumo de custos; precisamos
    de registro proprio de run/custo para erro sem artefato.
 5. Rio 3 nao deve voltar ao fluxo ativo sem nova decisao e nova chave segura.

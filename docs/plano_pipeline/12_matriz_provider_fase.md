@@ -4,16 +4,17 @@
 **Atividade de teste:** Lista0 — Algebra Linear Avancada (`126e8b5ad7dd6d59`)
 **Commits aplicados/observados:** `a632883`, `5737611`, `50935ea`, `479b77d`,
 `b12be9a`, `301eba6`, `f67055c`, `462ea1d`, `b4d7ee6`, `99483d1`,
-`f505be6`, `d75b05a`, `97a7c79`, `ec95193`
+`f505be6`, `d75b05a`, `97a7c79`, `ec95193`, `ff7b92a`, `68ebe51`
 
 ## Status Oficial De Deploy
 
-- GitHub `origin/main` contem `ec95193` e registros documentais posteriores; o
-  marcador HTML aponta para `97a7c79`.
-- Render live confirma marcador `97a7c79`; `/api/health` e `/api/custos/status`
-  responderam HTTP 200.
+- GitHub `origin/main` contem o patch OpenAI/Nano `ff7b92a` e o marker
+  `68ebe51`; o marcador HTML desse commit aponta para `ff7b92a`.
+- Render live ainda confirma marcador `97a7c79`; `/api/health` e
+  `/api/custos/status` responderam HTTP 200, mas no codigo anterior ao patch
+  OpenAI/Nano.
 - Portanto, os smokes live de 2026-05-15 abaixo sao oficiais para o estado
-  `97a7c79`.
+  `97a7c79`; `ff7b92a` ainda exige deploy antes de smoke oficial.
 
 ## Legenda
 
@@ -77,6 +78,10 @@
   `6c62faa4ce6df137` com tokens/custo medidos.
 - GPT-5 Nano em `corrigir` falhou alto na task `task_49b7ada546d4`: nao produziu
   JSON/PDF obrigatorios e nao houve fallback automatico.
+- Patch `ff7b92a` publicado no GitHub tenta corrigir esse ponto usando
+  `tool_choice="required"` no primeiro request OpenAI e tool-choice especifico
+  no retry de reparo. Ainda nao foi validado em producao porque Render segue em
+  `97a7c79`.
 
 **Gemini 3 Flash:** tambem validado em 2 testes historicos de chat (mensagem unica + multi-turn). Ver [teste_chat_gemini.md](arquivo_2026_04_17/teste_chat_gemini.md).
 - Teste 1: 662 tokens, 1930ms, resposta em PT correta
