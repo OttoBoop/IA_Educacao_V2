@@ -268,6 +268,7 @@ def build_cost_summary(
         "storage_backend": storage._backend_label(),
         "persistent_storage": storage._backend_label() == "postgresql",
         "catalog_loaded": bool(model_catalog.providers),
+        "token_usage_backend": token_usage_store.status(),
         "documentos_analisados": len(document_rows),
         "token_usage_analisados": len(usage_rows),
         "runs_analisados": len(rows_by_run),

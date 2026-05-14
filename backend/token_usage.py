@@ -96,6 +96,43 @@ class TokenUsageStore:
         month = date_text[:7]
         return self.usage_path / f"{month}.json"
 
+    def status(self) -> Dict[str, Any]:
+        local_count = 0
+        local_error = None
+        if self.usage_path.exists():
+            try:
+                for path in self.usage_path.glob("*.json"):
+                    local_count += len(self._read_file(path))
+            except Exception as exc:
+                local_error = str(exc)[:200]
+
+        supabase_status: Dict[str, Any] = {
+            "enabled": bool(self.use_supabase and supabase_db is not None),
+            "table_available": False,
+            "record_count": None,
+            "error": None,
+        }
+        if supabase_status["enabled"]:
+            try:
+                result = (
+                    supabase_db.client.table("token_usage")
+                    .select("id", count="exact")
+                    .limit(1)
+                    .execute()
+                )
+                supabase_status["table_available"] = True
+                supabase_status["record_count"] = int(result.count or 0)
+            except Exception as exc:
+                supabase_status["error"] = str(exc)[:200]
+
+        return {
+            "local_path": str(self.usage_path),
+            "local_record_count": local_count,
+            "local_error": local_error,
+            "supabase": supabase_status,
+            "durable": bool(supabase_status["table_available"]),
+        }
+
     def add(self, record: TokenUsageRecord) -> TokenUsageRecord:
         if self.use_supabase and supabase_db is not None:
             try:

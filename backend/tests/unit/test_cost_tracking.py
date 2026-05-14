@@ -253,6 +253,30 @@ def test_token_usage_store_persiste_json_mensal(tmp_path):
     assert loaded[0].tokens_total == 18
 
 
+def test_token_usage_store_status_expoe_backend_local(tmp_path):
+    store = TokenUsageStore(tmp_path, use_supabase=False)
+    usage = TokenUsageRecord(
+        id="usage-status",
+        cost_run_id="run-status",
+        atividade_id=None,
+        aluno_id=None,
+        etapa="tools",
+        provider="openai",
+        modelo="gpt-5-nano",
+        tokens_entrada=1,
+        tokens_saida=2,
+        status="erro",
+    )
+    store.add(usage)
+
+    status = store.status()
+
+    assert status["local_record_count"] == 1
+    assert status["supabase"]["enabled"] is False
+    assert status["supabase"]["table_available"] is False
+    assert status["durable"] is False
+
+
 def test_cost_summary_deduplica_documento_e_token_usage_mesmo_run(tmp_path):
     store, atividade, aluno = _seed_storage(tmp_path)
     arquivo_json = tmp_path / "correcao.json"
