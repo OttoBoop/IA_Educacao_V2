@@ -158,8 +158,8 @@ detalhar e auditar estas linhas.
    por tool-use, alem de relatorios agregados.
 3. O Doc 02 mostrou que o maior risco arquitetural esta no Path 2: schemas
    conflitantes, JSON opaco, avisos/metadata/tokens incompletos e tools parciais.
-4. Os fixes principais ja chegaram ao site oficial: Render confirmou `55e168a`
-   via marker `9823afb`, com `/api/health` e `/api/custos/*` respondendo.
+4. Os fixes principais ja chegaram ao site oficial: Render confirmou `4f27dae`
+   via marker `f0dae61`, com `/api/health` e `/api/custos/*` respondendo.
 5. P4 ja esta no codigo publicado: `EXTRAIR_RESPOSTAS` nao deve rodar sem
    `prova_respondida` valida; falta apenas smoke dedicado se esse bug voltar a
    ser alvo.
@@ -170,10 +170,11 @@ detalhar e auditar estas linhas.
 8. Sprint 3 separou `input_tokens`/`output_tokens`; Sprint 3b/4h confirmaram
    metadata/custo em documentos reais; Sprint 3c agrupou custo por `cost_run_id`;
    Sprint 3d criou `TokenUsageRecord` local para falhas sem documento; Sprint 3e
-   preparou Supabase `token_usage`.
+   preparou Supabase `token_usage`; Sprint 3f confirmou no endpoint live que a
+   tabela ainda nao existe.
 9. Gemini 3 Flash e GPT-5 Nano estao confirmados para `corrigir`; Haiku segue
    bloqueado por creditos; Rio 3 esta pausado.
-10. O proximo eixo correto e aplicar/verificar a migration `token_usage`,
+10. O proximo eixo correto e aplicar a migration `token_usage`,
     ampliar a revalidacao por etapa/provider e endurecer o contrato contra
     schema ruim.
 
@@ -182,11 +183,11 @@ detalhar e auditar estas linhas.
 | Frente | Temos hoje | Limite da afirmacao |
 |---|---|---|
 | Documentacao | Doc 09 como painel curto; Doc 14 como auditoria mestre; Doc 05/12 com notas de status | Manter Doc 09 curto e Doc 14 detalhado; registrar novos ciclos sem criar doc extra. |
-| Git/GitHub | Commits ate `55e168a` publicados; marcador funcional `9823afb`; pode haver docs acima do marker em `origin/main` | Usar marker HTML antes de aceitar qualquer smoke como oficial. |
+| Git/GitHub | Commits ate `4f27dae` publicados; marcador funcional `f0dae61`; pode haver docs acima do marker em `origin/main` | Usar marker HTML antes de aceitar qualquer smoke como oficial. |
 | Pipeline P4 | Bloqueio de extracao de respostas sem prova valida esta no codigo publicado | Precisa smoke dedicado apenas se P4 voltar a ser alvo. |
 | Pipeline P5/P6 | Contencao de nota e preservacao de `_documentos_faltantes` | `N/A` ainda e fallback proibido como estado final. |
 | Schema/avisos | Defaults `_avisos_*`, visualizador melhorado e schemas mais permissivos | Permissividade nao e contrato forte; pode aceitar legado demais. |
-| Tokens/custos | Split input/output; metadata de documento; endpoints `/api/custos/status` e `/api/custos/resumo` respondendo live; resumo agrega por `cost_run_id`; `TokenUsageRecord` local cobre falha sem documento; codigo/migration Supabase preparados; Gemini e Nano geraram runs custeaveis | Falta aplicar/verificar migration `token_usage` no Supabase. |
+| Tokens/custos | Split input/output; metadata de documento; endpoints `/api/custos/status` e `/api/custos/resumo` respondendo live; resumo agrega por `cost_run_id`; `TokenUsageRecord` local cobre falha sem documento; codigo/migration Supabase preparados; diagnostico live mostra `PGRST205`; Gemini e Nano geraram runs custeaveis | Falta aplicar migration `token_usage` no Supabase. |
 | Providers | Gemini e GPT-5 Nano passaram em chat simples live e em `corrigir`; Haiku bloqueado por credito | `corrigir` nao prova pipeline completa. |
 | Seguranca Rio | Regra de nao usar chave em chat e Rio pausado | Arquivos Rio/untracked continuam fora do ciclo ativo. |
 
@@ -208,7 +209,7 @@ detalhar e auditar estas linhas.
 
 | Item | Estado | Acao correta |
 |---|---|---|
-| Render/site oficial | Confirmado em `55e168a` pelo marker `9823afb` | Continuar usando marker/check_deploy antes de smoke oficial. |
+| Render/site oficial | Confirmado em `4f27dae` pelo marker `f0dae61` | Continuar usando marker/check_deploy antes de smoke oficial. |
 | Anthropic Haiku | Bloqueado por creditos | Testar apenas quando houver credito; erro deve aparecer claro. |
 | Rio 3 | Pausado | Nao pedir chave, nao rodar smoke, nao misturar no ciclo atual. |
 | `.pytest_tmp` e assets soltos | Muito ruido no worktree | Nao stagear por acidente; nunca usar `git add .`. |
@@ -304,7 +305,7 @@ fila de tarefas. Cada item abaixo deve ser entendido como contrato herdado.
 | D02-3 | Resolver conflito `PROMPTS_PADRAO` vs `STAGE_TOOL_INSTRUCTIONS` | Aberto | Validacao aceita formatos, mas prompt legado ainda pode orientar modelo ao schema errado | Teste: prompt ativo de Path 2 contem apenas contrato esperado ou marca legado como fora do caminho ativo. |
 | D02-4 | `_avisos_documento`, `_avisos_questao`, `_avisos_stage` devem ser confiaveis | Parcial | Defaults foram injetados; visualizador melhorou; ainda falta distinguir default de output real do modelo | Teste: ausencia de `_avisos_*` em JSON de IA gera alerta de schema/default, nao sucesso silencioso. |
 | D02-5 | Tokens do Path 2 precisam de input/output separados | Feito live para smokes recentes | Gemini e Nano em `corrigir` registraram `tokens_entrada`/`tokens_saida`; manter cobertura | Revalidar nas etapas `analisar_habilidades` e `gerar_relatorio`. |
-| D02-6 | Tokens precisam virar custo persistido por contexto educacional | Parcial | Endpoints `/api/custos/*` respondem, precificam runs com split, agrupam JSON+PDF por `cost_run_id`; `TokenUsageRecord` local e codigo/migration Supabase existem | Teste: tabela Supabase `token_usage` existe e falha depois de consumir tokens cria registro duravel. |
+| D02-6 | Tokens precisam virar custo persistido por contexto educacional | Parcial | Endpoints `/api/custos/*` respondem, precificam runs com split, agrupam JSON+PDF por `cost_run_id`; `TokenUsageRecord` local e codigo/migration Supabase existem; live confirma `PGRST205` | Teste: aplicar tabela Supabase `token_usage` e falha depois de consumir tokens cria registro duravel. |
 | D02-7 | Metadata dos documentos deve ter provider/modelo/tokens/tempo | Parcial live | Documentos recentes de Gemini/Nano carregam provider/modelo/tokens/custo; falta cobrir todas as etapas e falhas | Teste: documento gerado por IA tem `ia_provider`, `ia_modelo`, `tokens_usados`, `tempo_processamento_ms` em cada etapa. |
 | D02-8 | Provider sem tools nao pode cair em chat simples | Parcialmente fechado | `chat_service.py` agora falha explicitamente; manter contrato | Teste: provider sem function calling em etapa tool-use falha antes de criar artefato. |
 | D02-9 | PDF obrigatorio ausente nao pode virar sucesso enganoso | Aberto P0 | PDF auto-fallback ainda pode salvar PDF e retornar `sucesso=True` | Teste: modelo que nao chama `execute_python_code` falha ou retorna parcial bloqueante, nunca verde. |
@@ -988,7 +989,7 @@ Esta secao fica antes do mapa de documentos porque ela responde a pergunta
 |---|---|---|---|
 | Local diferente de oficial | O workspace tem fixes que `origin/main` e Render ainda nao provaram ter. | `main` local 5 commits a frente de `origin/main`. | Commit/push/deploy em ciclo proprio, com gate. |
 | Fallbacks ainda misturados com robustez | Alguns docs/testes antigos tratam fallback como comportamento bom. | PDF auto-fallback, `nota_final=N/A`, parsing permissivo. | Ciclo anti-fallback antes de custo/dashboard. |
-| Custo parcialmente persistido | Documentos recentes e `TokenUsageRecord` local cobrem parte do problema; historico por periodo ainda nao e duravel. | Deploy `55e168a` e endpoints `/api/custos/*`. | Aplicar/verificar `token_usage` no Supabase e validar falha real sem documento. |
+| Custo parcialmente persistido | Documentos recentes e `TokenUsageRecord` local cobrem parte do problema; historico por periodo ainda nao e duravel. | Deploy `4f27dae` e endpoints `/api/custos/*`; `PGRST205` confirma tabela ausente. | Aplicar `token_usage` no Supabase e validar falha real sem documento. |
 | Provider matrix esta stale | Matriz reflete testes antes dos fixes locais mais recentes. | Doc 12 e testes de abril; commits locais de maio nao revalidados. | Smoke por provider/rota depois de deploy. |
 | UI nao explica falhas suficientes | Usuario pode ver status/documento sem entender falha real. | Riscos do Doc 09 e logs antigos de UI/deploy. | Sprint 4 com mensagens por aluno/etapa/provider. |
 | Dados fantasmas ainda confundem status | JSON de erro e PDF com `/conteudo=null` podem ser interpretados errado. | Doc 07 + nota tecnica PDF + historico de fantasmas. | Reclassificacao segura antes de limpeza. |
@@ -2520,7 +2521,7 @@ Esta e a leitura curta para retomar o longo prazo sem se perder:
 | P4 confiabilidade | Falha antes de extrair respostas sem prova valida | Smoke especifico de P4 se esse bug voltar a ser alvo | Codigo ja esta no deploy oficial, mas nao foi o smoke principal de 2026-05-15. |
 | P5/P6 relatorio | Preserva faltantes e evita template literal | Converter `N/A`/nota ausente em erro alto | Contencao pode parecer sucesso se nao for removida. |
 | Sprint 2 schema/avisos | Testes locais de schema e visualizador | Revalidar providers pos-fix | GPT-5 Nano ainda tem historico de schema ruim. |
-| Sprint 3/3b/3c/3d/3e custos | `input_tokens`/`output_tokens`; metadata de documentos; endpoints `/api/custos/*` live; runs Gemini/Nano custeaveis; amostras agrupadas por `cost_run_id`; registro local para falha sem documento; codigo/migration Supabase preparados | Aplicar/verificar tabela Supabase `token_usage` | Historico antigo bloqueia custo por falta de split/provider; se a tabela nao existir, o fallback local nao e duravel entre deploys. |
+| Sprint 3/3b/3c/3d/3e/3f custos | `input_tokens`/`output_tokens`; metadata de documentos; endpoints `/api/custos/*` live; runs Gemini/Nano custeaveis; amostras agrupadas por `cost_run_id`; registro local para falha sem documento; codigo/migration Supabase preparados; endpoint diagnostica backend | Aplicar tabela Supabase `token_usage` | Historico antigo bloqueia custo por falta de split/provider; live confirmou `PGRST205`, entao fallback local nao e duravel entre deploys. |
 | Docs parciais de run falho | Patch marca `created_document_ids` como ERRO quando provider falha depois das tools | Novo caso falho em producao para provar quando ocorrer | Ja existem dois docs antigos com token split faltante do run anterior. |
 | Providers | Gemini `corrigir` OK; Nano `corrigir` OK; Haiku bloqueado; GPT-4o historico | Smoke matrix pos-fixes por provider/rota/pipeline | Credito Anthropic, etapas restantes e custo de falhas sem documento. |
 | UI de erro | `task.error` agora aparece no site oficial para falha de etapa | Melhorar apresentacao e retry de erros provider | Mensagem ainda e bruta e longa. |
@@ -2571,7 +2572,8 @@ Aceite:
   PDF pertencem ao mesmo run. **Fechado em `7ed8b8b`.**
 - Falhas que consomem tokens sem documento ficam registradas em
   `TokenUsageRecord` local, sem parecer sucesso. **Primeira versao em
-  `839968e`; preparo Supabase em `55e168a`; falta aplicar/verificar a tabela.**
+  `839968e`; preparo Supabase em `55e168a`; diagnostico live em `4f27dae`
+  confirmou `PGRST205`; falta aplicar a tabela.**
 
 ### Ciclo D -- Provider Revalidation
 

@@ -2,14 +2,15 @@
 
 **Atualizado:** 2026-05-15
 **Responsavel operacional:** Paulo
-**Status geral:** Render oficial confirmou o marker `9823afb`, que aponta para
-o commit funcional `55e168a`. Gemini `corrigir` passou com custo medido; GPT-5
+**Status geral:** Render oficial confirmou o marker `f0dae61`, que aponta para
+o commit funcional `4f27dae`. Gemini `corrigir` passou com custo medido; GPT-5
 Nano agora tambem passou em `corrigir` no site oficial com JSON parseavel, PDF
 via `execute_python_code`, tokens splitados e custo medido, sem PDF extra via
 `create_document`. O resumo de custos agora agrega por `cost_run_id`, entao
 JSON+PDF do mesmo run contam uma vez. Falhas tool-use sem documento final agora
 tem `TokenUsageRecord` local mensal e codigo preparado para Supabase quando a
-tabela `token_usage` existir. Ainda nao ha pipeline completa validada para Nano.
+tabela `token_usage` existir; o endpoint live confirmou que essa tabela ainda
+nao existe (`PGRST205`). Ainda nao ha pipeline completa validada para Nano.
 
 Este e o ponto de entrada do plano. O objetivo deste arquivo e dizer, em poucas
 linhas, onde estamos, qual e a proxima fila e quais frentes estao pausadas.
@@ -49,7 +50,7 @@ Estabilizar o NOVO CR para que a pipeline:
 | Docs e plano | Sprint 0 concluida | Manter este painel como fonte oficial e anexos fora do fluxo diario |
 | Pipeline | `corrigir` validado oficialmente para Gemini 3 Flash e GPT-5 Nano com JSON/PDF/custo | Expandir para `analisar_habilidades` e `gerar_relatorio`; validar schema minimo por etapa |
 | Schema e avisos | Sprint 2 concluida localmente | Manter schema oficial, defaults e visualizador cobertos por testes |
-| Custos/tokens | Metadata de documento, endpoints live, resumo por `cost_run_id`, `TokenUsageRecord` local e migration Supabase no deploy `55e168a` | Aplicar/verificar tabela `token_usage` no Supabase; validar uma falha real sem documento em producao |
+| Custos/tokens | Metadata de documento, endpoints live, resumo por `cost_run_id`, `TokenUsageRecord` local, migration Supabase e diagnostico live no deploy `4f27dae` | Aplicar tabela `token_usage` no Supabase; validar uma falha real sem documento em producao |
 | UI de erros | Pendente | Mostrar falha por aluno/etapa sem depender de terminal |
 | Limpeza de dados | Pendente | Reclassificar "fantasmas" antes de qualquer delecao |
 | Rio 3 | Pausada | Nao pedir chave, nao rodar smoke, nao deployar Rio sem nova decisao |
@@ -69,14 +70,15 @@ Estabilizar o NOVO CR para que a pipeline:
 - Commit funcional de resumo de custos por run: `7ed8b8b`.
 - Commit funcional de `TokenUsageRecord` para falhas sem documento: `839968e`.
 - Commit funcional de preparo Supabase `token_usage`: `55e168a`.
-- Marker mais novo publicado: `9823afb` (`chore: mark deploy 55e168a`).
-- Marker atual visto no Render: `9823afb`, HTML com `novocr-deploy=55e168a`.
+- Commit funcional de diagnostico backend `token_usage`: `4f27dae`.
+- Marker mais novo publicado: `f0dae61` (`chore: mark deploy 4f27dae`).
+- Marker atual visto no Render: `f0dae61`, HTML com `novocr-deploy=4f27dae`.
 - GitHub `origin/main`: pode conter commits documentais posteriores; o ultimo
-  marker funcional publicado e `9823afb`, e Render live esta confirmado em
-  `55e168a`.
+  marker funcional publicado e `f0dae61`, e Render live esta confirmado em
+  `4f27dae`.
 - Render live observado: saiu de `2e1098f` para `b12be9a` e depois confirmou
   marcadores `b4d7ee6`, `f505be6`, `97a7c79`, `c75af88`, `39aa50a`,
-  `b24f03e`, `eab7d90`, `7ed8b8b`, `839968e` e `55e168a`.
+  `b24f03e`, `eab7d90`, `7ed8b8b`, `839968e`, `55e168a` e `4f27dae`.
 - `/api/custos/status` no Render: HTTP 200, confirmando endpoints de custo live.
 - GitHub Actions: sem runs recentes observaveis.
 - GitHub webhooks/deployments via `gh api`: sem entradas visiveis.
@@ -603,12 +605,38 @@ Critério de pronto: lista de limpeza segura e revisada.
 - Proximo alvo: aplicar/verificar a tabela Supabase `token_usage` ou seguir para
   revalidacao de `analisar_habilidades`/`gerar_relatorio` por provider.
 
+### 2026-05-15 -- Sprint 3f: diagnostico live do backend `token_usage`
+
+- Alvo: o endpoint de custos deve dizer se `TokenUsageRecord` esta duravel em
+  Supabase ou apenas em fallback local.
+- Status: publicado, deployado e smokeado.
+- Arquivos tocados: `backend/token_usage.py`, `backend/cost_tracking.py`,
+  `backend/routes_costs.py`, `backend/tests/unit/test_cost_tracking.py`.
+- Comportamento: `/api/custos/status` agora retorna `token_usage_backend` com
+  `local_record_count`, `supabase.enabled`, `supabase.table_available`,
+  `supabase.error` e `durable`.
+- Validacoes locais: `py_compile` passou; `git diff --check` passou;
+  `test_cost_tracking.py` passou com 13 testes e 1 aviso conhecido de config
+  `timeout` desconhecida.
+- Git/deploy: commit funcional `4f27dae`; marker `f0dae61`; Render confirmou
+  `4f27dae` via `wait_deploy.sh` e `check_deploy.sh`; `/api/health` healthy.
+- Smoke oficial de custos: `/api/custos/status?limit=500` retornou
+  `token_usage_backend.supabase.enabled=true`,
+  `token_usage_backend.supabase.table_available=false`,
+  `token_usage_backend.durable=false`, `token_usage_analisados=0`,
+  `runs_analisados=492`, `runs_precificados=5`, `runs_bloqueados=487`.
+- Bloqueio confirmado: erro Supabase/PostgREST `PGRST205`, com mensagem
+  "Could not find the table 'public.token_usage' in the schema cache".
+- Proximo alvo: aplicar a migration `backend/migrations/001_create_tables.sql`
+  no Supabase ou criar uma migration dedicada so de `token_usage`, depois
+  revalidar o endpoint ate `table_available=true`.
+
 ## Riscos Abertos
 
 1. Creditos Anthropic insuficientes ainda bloqueiam validacao Haiku.
 2. Schema drift pode fazer modelos gerarem formatos diferentes.
 3. Schema minimo ainda nao esta validado para todas as etapas; JSON parseavel e
    necessario, mas nao prova qualidade pedagogica.
-4. A tabela Supabase `token_usage` esta descrita na migration, mas a aplicacao
-   live dessa migration ainda nao foi confirmada.
+4. A tabela Supabase `token_usage` esta descrita na migration e o live confirmou
+   que ela ainda nao existe no schema cache (`PGRST205`).
 5. Rio 3 nao deve voltar ao fluxo ativo sem nova decisao e nova chave segura.
