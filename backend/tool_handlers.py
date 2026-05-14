@@ -724,6 +724,16 @@ async def handle_create_document(
                 ext = ".txt"
                 filename = f"{filename}.txt"
 
+            if context and context.expected_document_type and ext != ".json":
+                errors.append({
+                    "filename": filename,
+                    "error": (
+                        "create_document in pipeline stages only accepts .json. "
+                        "Use execute_python_code for PDF or other generated files."
+                    ),
+                })
+                continue
+
             # Create the file content based on extension
             temp_dir = tempfile.gettempdir()
             timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
