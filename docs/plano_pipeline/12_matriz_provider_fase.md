@@ -51,10 +51,16 @@
 |-----------------|:---:|
 | **Claude Haiku 4.5** | ⏸️ |
 | **Gemini 3 Flash** | ✅ |
-| **GPT-5 Nano** | ⏸️ |
+| **GPT-5 Nano** | ✅ |
 | **GPT-4o** | ⏸️ |
 
-**Gemini 3 Flash:** Validado em 2 testes historicos de chat (mensagem unica + multi-turn). Ver [teste_chat_gemini.md](arquivo_2026_04_17/teste_chat_gemini.md).
+**Smokes live de chat em 2026-05-15:**
+- Gemini 3 Flash (`gem3flash001`): respondeu JSON simples, 585 tokens, HTTP 200.
+- GPT-5 Nano (`gpt5nano001`): respondeu JSON simples, 526 tokens, HTTP 200.
+- Claude Haiku 4.5 (`588f3efe7975`): HTTP 500 com erro Anthropic de credito
+  baixo. Bloqueado por billing, nao por codigo do chat.
+
+**Gemini 3 Flash:** tambem validado em 2 testes historicos de chat (mensagem unica + multi-turn). Ver [teste_chat_gemini.md](arquivo_2026_04_17/teste_chat_gemini.md).
 - Teste 1: 662 tokens, 1930ms, resposta em PT correta
 - Teste 2: 2502 tokens, 14993ms, usou contexto do histórico
 - Sem templates `{{...}}`
@@ -68,7 +74,8 @@
 
 ### Claude Haiku 4.5 — 🚫 BLOQUEADO
 
-**Motivo:** Creditos Anthropic insuficientes. Todas as tentativas retornam 400 com "This organization's credit balance is too low."
+**Motivo:** Creditos Anthropic insuficientes. O smoke live de chat em
+2026-05-15 retornou erro Anthropic "Your credit balance is too low".
 
 **Acao necessaria (Otavio):** Recarregar creditos na conta Anthropic. Nenhum teste possivel ate la.
 
@@ -103,7 +110,11 @@
 
 ---
 
-### GPT-5 Nano — ❌ FALHA no pipeline-completo
+### GPT-5 Nano — ✅ CHAT SIMPLES, ❌ FALHA no pipeline-completo
+
+**Smoke live de chat em 2026-05-15:** respondeu JSON simples corretamente via
+`POST /api/chat` com `model_id=gpt5nano001` e 526 tokens. Portanto o bloqueio
+atual do Nano nao e conexao/API key; e pipeline/tool-use/schema.
 
 **Testado em 2 caminhos com resultados muito diferentes:**
 

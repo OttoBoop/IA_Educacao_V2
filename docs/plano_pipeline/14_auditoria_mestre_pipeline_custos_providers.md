@@ -171,7 +171,8 @@ detalhar e auditar estas linhas.
    persistida em documentos e endpoints `/api/custos/*`, ainda pendentes de
    deploy/smoke oficial.
 9. Gemini 3 Flash e o melhor positivo parcial; GPT-5 Nano falhou grave;
-   Haiku esta bloqueado por creditos; Rio 3 esta pausado.
+   Haiku esta bloqueado por creditos; Rio 3 esta pausado. Em chat simples live,
+   Gemini e GPT-5 Nano responderam JSON corretamente em 2026-05-15.
 10. O proximo eixo correto e desbloquear deploy oficial e revalidar no site;
     depois vem anti-fallback/Path 2, providers e custos medidos em producao.
 
@@ -184,8 +185,8 @@ detalhar e auditar estas linhas.
 | Pipeline P4 | Bloqueio local de extracao de respostas sem prova valida | Precisa push/deploy/smoke para virar oficial. |
 | Pipeline P5/P6 | Contencao de nota e preservacao de `_documentos_faltantes` | `N/A` ainda e fallback proibido como estado final. |
 | Schema/avisos | Defaults `_avisos_*`, visualizador melhorado e schemas mais permissivos | Permissividade nao e contrato forte; pode aceitar legado demais. |
-| Tokens/custos | Split input/output; metadata de documento; endpoints `/api/custos/status` e `/api/custos/resumo` locais | Falta deploy/smoke oficial e persistencia de falhas consumindo tokens. |
-| Providers | Evidencias historicas por provider no Doc 12 | Matriz esta stale ate revalidar por commit/rota/ambiente. |
+| Tokens/custos | Split input/output; metadata de documento; endpoints `/api/custos/status` e `/api/custos/resumo` respondendo live | Falta gerar documento novo pos-fix para provar metadata/custo em execucao fresca e persistir falhas com tokens. |
+| Providers | Gemini e GPT-5 Nano passaram em chat simples live; Haiku bloqueado por credito; pipeline ainda depende de revalidacao | Chat simples nao prova pipeline/tool-use. |
 | Seguranca Rio | Regra de nao usar chave em chat e Rio pausado | Arquivos Rio/untracked continuam fora do ciclo ativo. |
 
 ### O Que Falta
@@ -891,6 +892,8 @@ Fatos oficiais observados em 2026-05-15:
   ainda falha.
 - `/api/custos/status` no Render retornou HTTP 200, confirmando que o endpoint
   novo esta no backend live.
+- Smokes live de chat em 2026-05-15: Gemini 3 Flash e GPT-5 Nano responderam
+  JSON simples; Haiku falhou por credito Anthropic baixo.
 - `GET /api/health` no Render respondeu healthy/Supabase true, mas no codigo
   antigo, nao no hash esperado.
 - GitHub Actions nao mostrou runs; GitHub API nao mostrou webhooks/deployments
@@ -2479,7 +2482,7 @@ Esta e a leitura curta para retomar o longo prazo sem se perder:
 | P5/P6 relatorio | Preserva faltantes e evita template literal | Converter `N/A`/nota ausente em erro alto | Contencao pode parecer sucesso se nao for removida. |
 | Sprint 2 schema/avisos | Testes locais de schema e visualizador | Revalidar providers pos-fix | GPT-5 Nano ainda tem historico de schema ruim. |
 | Sprint 3/3b custos | `input_tokens`/`output_tokens`; metadata de documentos; endpoints `/api/custos/*` locais | Deploy/smoke oficial e persistencia de falhas com tokens | Render bloqueado/stale. |
-| Providers | Gemini parcial; Nano falhou; Haiku bloqueado; GPT-4o historico | Smoke matrix pos-fixes por provider/rota | Credito Anthropic e falta de deploy. |
+| Providers | Gemini e Nano passam em chat simples live; Nano ainda falhou historicamente no pipeline; Haiku bloqueado; GPT-4o historico | Smoke matrix pos-fixes por provider/rota/pipeline | Credito Anthropic e marcador Render atrasado. |
 | UI de erro | Existem banners/toasts historicos | Mostrar falha por aluno/etapa com causa real | Usuario ainda pode achar que pipeline terminou bem. |
 | Dados fantasmas | Nota PDF impede delecao por `conteudo=null` | Reclassificar lista antes de qualquer limpeza | Delecao errada de prova respondida PDF. |
 | Rio 3 | Congelado e separado | Nada neste ciclo | Qualquer chave em chat e exposta. |

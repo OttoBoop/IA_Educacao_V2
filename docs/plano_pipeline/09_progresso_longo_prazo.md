@@ -270,6 +270,12 @@ Critério de pronto: lista de limpeza segura e revisada.
   precificacao no catalogo.
 - Regra P0 aplicada: PDF obrigatorio ausente em dual-output agora falha alto;
   o backend nao gera PDF automatico para fingir sucesso.
+- Smoke live de chat: Gemini 3 Flash respondeu JSON simples com 585 tokens;
+  GPT-5 Nano respondeu JSON simples com 526 tokens; Claude Haiku 4.5 falhou por
+  credito Anthropic baixo. Estes smokes confirmam conexao de chat, nao pipeline.
+- Smoke live de custos: `/api/custos/status` HTTP 200 com Supabase/postgresql e
+  catalogo carregado; resumo apontou 500 documentos bloqueados para custo
+  medido porque historico antigo nao tem split ou provider/modelo.
 - Validacoes: `py_compile` dos arquivos tocados passou; `git diff --check`
   passou; `pytest backend/tests/unit/test_cost_tracking.py -q` passou com 4
   testes; suite focada ampliada passou com 171 testes, 5 skipped e 1 aviso de
