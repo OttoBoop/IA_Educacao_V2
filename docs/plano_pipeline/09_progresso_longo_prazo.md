@@ -273,6 +273,11 @@ Critério de pronto: lista de limpeza segura e revisada.
 - Smoke live de chat: Gemini 3 Flash respondeu JSON simples com 585 tokens;
   GPT-5 Nano respondeu JSON simples com 526 tokens; Claude Haiku 4.5 falhou por
   credito Anthropic baixo. Estes smokes confirmam conexao de chat, nao pipeline.
+- Smoke live de pipeline: `pipeline-completo` com Gemini 3 Flash, aluno Eric,
+  `selected_steps=["corrigir"]`, task `task_e22dbdbffe4d`, falhou com
+  `corrigir=failed`. A rota `/api/task-progress/{task_id}` nao trouxe campo
+  `error`, entao o usuario veria falha sem causa. Isso rebaixa Gemini para
+  "chat OK, pipeline pos-fix nao confirmado" e cria bloqueador de UI/observabilidade.
 - Smoke live de custos: `/api/custos/status` HTTP 200 com Supabase/postgresql e
   catalogo carregado; resumo apontou 500 documentos bloqueados para custo
   medido porque historico antigo nao tem split ou provider/modelo.
@@ -284,11 +289,31 @@ Critério de pronto: lista de limpeza segura e revisada.
 - Proximo alvo: esperar/acionar o marcador `f67055c` e rodar smoke provider que
   gere documento novo, para confirmar metadata/custo de execucao fresca.
 
+### 2026-05-15 -- Sprint 4a: erro visivel em task-progress
+
+- Alvo: corrigir o bloqueador descoberto no smoke live de pipeline: task marcada
+  como `failed` sem causa visivel para a UI.
+- Status: patch local pronto para validacao/commit.
+- Arquivos tocados: `backend/executor.py`, `frontend/index_v2.html`,
+  `backend/tests/unit/test_erro_pipeline.py`,
+  `backend/tests/unit/test_notification_wiring.py`,
+  `backend/tests/unit/test_a4_render_tarefas_tree.py`.
+- Comportamento: falhas de etapa agora chamam `complete_pipeline_task(...,
+  error=...)`; o toast de pipeline falho usa `data.error`; a arvore de tarefas
+  mostra `task.error` em bloco vermelho. Falha ao carregar documentos tambem
+  encerra a task como erro, em vez de deixa-la silenciosa.
+- Validacoes: `py_compile` dos arquivos Python tocados passou; `git diff --check`
+  passou; testes focados de orquestracao/notification/render passaram com 15
+  testes e 1 aviso de config `timeout` desconhecida.
+- Proximo alvo: commit/push/deploy deste patch e repetir o smoke `corrigir` no
+  site oficial para obter a causa real da falha Gemini.
+
 ## Riscos Abertos
 
 1. Creditos Anthropic insuficientes ainda bloqueiam validacao Haiku.
 2. Schema drift pode fazer modelos gerarem formatos diferentes.
 3. Metadata de tokens/modelo foi corrigida localmente para documentos de IA e
    tools, mas ainda precisa deploy/smoke oficial.
-4. UI ainda nao comunica falhas da pipeline com clareza suficiente.
+4. UI de tarefas passa a mostrar `task.error` localmente, mas ainda precisa
+   deploy/smoke oficial para provar que o professor ve a causa no site.
 5. Rio 3 nao deve voltar ao fluxo ativo sem nova decisao e nova chave segura.

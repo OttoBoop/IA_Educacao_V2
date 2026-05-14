@@ -3442,6 +3442,8 @@ Crie UM documento separado para cada aluno, nomeando como "relatorio_[nome_aluno
             logger.debug(f"Tipos aluno: {[d.tipo.value for d in docs_aluno]}")
         except Exception as e:
             logger.error(f"Erro ao carregar documentos: {e}")
+            if task_id:
+                complete_pipeline_task(task_id, "failed", error=f"carregar_documentos: {str(e)}")
             # Retorna resultado de erro
             return {
                 "_erro_carregamento": ResultadoExecucao(
@@ -3466,6 +3468,17 @@ Crie UM documento separado para cada aluno, nomeando como "relatorio_[nome_aluno
                     erro_pipeline["documentos_faltantes"] = documentos_faltantes
             resultados["_pipeline_erro"] = erro_pipeline
 
+        def _mensagem_erro_task(resultado):
+            etapa_val = resultado.etapa.value if hasattr(resultado.etapa, 'value') else str(resultado.etapa)
+            detalhe = resultado.erro or "Pipeline falhou sem detalhe do provider."
+            if resultado.erro_codigo:
+                detalhe = f"{detalhe} (codigo {resultado.erro_codigo})"
+            return f"{etapa_val}: {detalhe}"
+
+        def _finalizar_task_com_erro(resultado):
+            if task_id:
+                complete_pipeline_task(task_id, "failed", error=_mensagem_erro_task(resultado))
+
         # 1. Extrair questões
         should_run, reason = _should_run("extrair_questoes", TipoDocumento.EXTRACAO_QUESTOES, docs)
         logger.info(f"[1/6] extrair_questoes: run={should_run}, reason={reason}")
@@ -3483,8 +3496,7 @@ Crie UM documento separado para cada aluno, nomeando como "relatorio_[nome_aluno
             if not resultado.sucesso:
                 logger.error(f"  -> FALHA DEFINITIVA: {resultado.erro} (código: {resultado.erro_codigo})")
                 _marcar_erro_pipeline(resultado)
-                if task_id:
-                    complete_pipeline_task(task_id, "failed")
+                _finalizar_task_com_erro(resultado)
                 return resultados
         else:
             etapas_puladas["extrair_questoes"] = reason
@@ -3506,8 +3518,7 @@ Crie UM documento separado para cada aluno, nomeando como "relatorio_[nome_aluno
             if not resultado.sucesso:
                 logger.error(f"  -> FALHA DEFINITIVA: {resultado.erro} (código: {resultado.erro_codigo})")
                 _marcar_erro_pipeline(resultado)
-                if task_id:
-                    complete_pipeline_task(task_id, "failed")
+                _finalizar_task_com_erro(resultado)
                 return resultados
         else:
             etapas_puladas["extrair_gabarito"] = reason
@@ -3529,7 +3540,7 @@ Crie UM documento separado para cada aluno, nomeando como "relatorio_[nome_aluno
                 _marcar_erro_pipeline(resultados["extrair_respostas"])
                 if task_id:
                     update_stage_progress(task_id, aluno_id, "extrair_respostas", "failed")
-                    complete_pipeline_task(task_id, "failed")
+                _finalizar_task_com_erro(resultados["extrair_respostas"])
                 return resultados
 
             if task_id and task_registry.get(task_id, {}).get("cancel_requested"):
@@ -3545,8 +3556,7 @@ Crie UM documento separado para cada aluno, nomeando como "relatorio_[nome_aluno
             if not resultado.sucesso:
                 logger.error(f"  -> FALHA DEFINITIVA: {resultado.erro} (código: {resultado.erro_codigo})")
                 _marcar_erro_pipeline(resultado)
-                if task_id:
-                    complete_pipeline_task(task_id, "failed")
+                _finalizar_task_com_erro(resultado)
                 return resultados
         else:
             etapas_puladas["extrair_respostas"] = reason
@@ -3568,8 +3578,7 @@ Crie UM documento separado para cada aluno, nomeando como "relatorio_[nome_aluno
             if not resultado.sucesso:
                 logger.error(f"  -> FALHA DEFINITIVA: {resultado.erro} (código: {resultado.erro_codigo})")
                 _marcar_erro_pipeline(resultado)
-                if task_id:
-                    complete_pipeline_task(task_id, "failed")
+                _finalizar_task_com_erro(resultado)
                 return resultados
         else:
             etapas_puladas["corrigir"] = reason
@@ -3591,8 +3600,7 @@ Crie UM documento separado para cada aluno, nomeando como "relatorio_[nome_aluno
             if not resultado.sucesso:
                 logger.error(f"  -> FALHA DEFINITIVA: {resultado.erro} (código: {resultado.erro_codigo})")
                 _marcar_erro_pipeline(resultado)
-                if task_id:
-                    complete_pipeline_task(task_id, "failed")
+                _finalizar_task_com_erro(resultado)
                 return resultados
         else:
             etapas_puladas["analisar_habilidades"] = reason
@@ -3614,8 +3622,7 @@ Crie UM documento separado para cada aluno, nomeando como "relatorio_[nome_aluno
             if not resultado.sucesso:
                 logger.error(f"  -> FALHA DEFINITIVA: {resultado.erro} (código: {resultado.erro_codigo})")
                 _marcar_erro_pipeline(resultado)
-                if task_id:
-                    complete_pipeline_task(task_id, "failed")
+                _finalizar_task_com_erro(resultado)
                 return resultados
         else:
             etapas_puladas["gerar_relatorio"] = reason

@@ -98,3 +98,11 @@ class TestNotificationWiring:
             "and failed (error) by calling showPipelineToast with different types. "
             "Currently neither type appears in the function body."
         )
+
+    def test_failed_notification_includes_backend_error(self, html_content):
+        """Failed pipeline toast must include the backend error message when present."""
+        func_body = _get_function_body(html_content, "async function pollTaskProgress")
+        assert "data.error" in func_body, (
+            "pollTaskProgress must read data.error from /api/task-progress so "
+            "a failed pipeline tells the professor what failed without opening a terminal."
+        )

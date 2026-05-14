@@ -476,6 +476,39 @@ class TestF3T2_PipelineOrquestracao:
         assert "etapa_falha" in erro, "Should have etapa_falha field"
         assert erro.get("sucesso") is False, "sucesso should be False"
 
+    @pytest.mark.asyncio
+    async def test_failed_stage_records_task_error(self, executor_pipeline):
+        """Task progress must expose the failure reason, not just status=failed."""
+        from executor import ResultadoExecucao, EtapaProcessamento
+        from routes_tasks import register_pipeline_task, task_registry
+
+        executor = executor_pipeline
+        executor.storage.listar_documentos = MagicMock(return_value=[])
+        executor.corrigir = AsyncMock(return_value=ResultadoExecucao(
+            sucesso=False,
+            etapa=EtapaProcessamento.CORRIGIR,
+            erro="Provider recusou tool-use",
+            erro_codigo=400,
+            retryable=False,
+        ))
+        task_id = register_pipeline_task("pipeline", "ativ_test", ["aluno_test"])
+
+        try:
+            await executor.executar_pipeline_completo(
+                atividade_id="ativ_test",
+                aluno_id="aluno_test",
+                selected_steps=["corrigir"],
+                task_id=task_id,
+            )
+
+            task = task_registry[task_id]
+            assert task["status"] == "failed"
+            assert "corrigir" in task["error"]
+            assert "Provider recusou tool-use" in task["error"]
+            assert "400" in task["error"]
+        finally:
+            task_registry.pop(task_id, None)
+
 
 # ============================================================
 # P4: EXTRAIR_RESPOSTAS requires a valid prova_respondida file

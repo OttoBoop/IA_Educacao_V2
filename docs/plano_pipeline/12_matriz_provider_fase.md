@@ -32,7 +32,7 @@
 | Provider/Modelo | EXTRAIR_QUESTOES | EXTRAIR_GABARITO | EXTRAIR_RESPOSTAS | CORRIGIR | ANALISAR_HABILIDADES | GERAR_RELATORIO |
 |-----------------|:---:|:---:|:---:|:---:|:---:|:---:|
 | **Claude Haiku 4.5** (`588f3efe7975`) | ⏸️ | ⏸️ | ⏸️ | 🚫 | 🚫 | 🚫 |
-| **Gemini 3 Flash** (`gem3flash001`) | ⏸️ | ⏸️ | ⏸️ | ⚠️ | ⚠️ | ⚠️ |
+| **Gemini 3 Flash** (`gem3flash001`) | ⏸️ | ⏸️ | ⏸️ | ❌ | ⚠️ | ⚠️ |
 | **GPT-5 Nano** (`gpt5nano001`) | ⏸️ | ⏸️ | ⏸️ | ❌ | ❌ | ❌ |
 | **GPT-4o** (`180b8298a279`) — referencia | ✅ | ✅ | ✅ | ⚠️ | ⚠️ | ⚠️ |
 
@@ -60,6 +60,13 @@
 - Claude Haiku 4.5 (`588f3efe7975`): HTTP 500 com erro Anthropic de credito
   baixo. Bloqueado por billing, nao por codigo do chat.
 
+**Smoke live de pipeline em 2026-05-15:**
+- Gemini 3 Flash (`gem3flash001`) em `pipeline-completo`, aluno Eric,
+  `selected_steps=["corrigir"]`, task `task_e22dbdbffe4d`: terminou `failed`,
+  com `corrigir=failed`. A resposta de `/api/task-progress/{task_id}` nao
+  trazia `error`, entao a causa ficou invisivel no site. Resultado: Gemini
+  continua OK em chat, mas nao esta confirmado para pipeline pos-fix.
+
 **Gemini 3 Flash:** tambem validado em 2 testes historicos de chat (mensagem unica + multi-turn). Ver [teste_chat_gemini.md](arquivo_2026_04_17/teste_chat_gemini.md).
 - Teste 1: 662 tokens, 1930ms, resposta em PT correta
 - Teste 2: 2502 tokens, 14993ms, usou contexto do histórico
@@ -81,9 +88,14 @@
 
 ---
 
-### Gemini 3 Flash Preview — ⚠️ SUCESSO HISTORICO, NAO REVALIDADO POS-FIX
+### Gemini 3 Flash Preview — ❌ PIPELINE POS-FIX FALHOU NO CORRIGIR
 
-**Testado via `pipeline-completo`** para Eric Manoel antes dos commits
+**Smoke live pos-fix:** `pipeline-completo` com apenas `corrigir` falhou em
+2026-05-15. A task nao expôs `error`, o que tornou a falha invisivel para o
+usuario. Antes de promover Gemini como confirmado, e necessario deployar o patch
+de erro visivel, repetir a etapa e registrar a causa real.
+
+**Historico positivo via `pipeline-completo`** para Eric Manoel antes dos commits
 `b12be9a`/Sprint 3b (ver [teste_gemini_pipeline_completo.md](arquivo_2026_04_17/teste_gemini_pipeline_completo.md)).
 
 **Tentativa 1:** Falhou em ~30s (provavelmente 503 transiente)
@@ -157,7 +169,8 @@ Ver [teste_gpt5nano_pipeline_completo.md](arquivo_2026_04_17/teste_gpt5nano_pipe
 ## Testes Pendentes (para fechar Marco 1)
 
 ### Prioridade ALTA
-- [ ] Validar `pipeline-completo` com Gemini 3 Flash (quando overload passar) para 1 aluno
+- [ ] Deployar patch de `task.error` e repetir `pipeline-completo` com Gemini 3
+      Flash para capturar a causa real da falha em `corrigir`
 - [ ] Investigar por que `_avisos_*` nao aparece com GPT-5 Nano mesmo com injecao ativa
 - [ ] Investigar por que `/executar/etapa` nao persiste documento (gap ou by-design?)
 
@@ -174,12 +187,16 @@ Ver [teste_gpt5nano_pipeline_completo.md](arquivo_2026_04_17/teste_gpt5nano_pipe
 ## Resumo Executivo (atualizado)
 
 **Estado atual:**
-- ✅ **Gemini 3 Flash via `pipeline-completo`:** VALIDADO end-to-end com todos os fixes. Marco 1 atingido com este provider (nota 7.01 consistente, avisos propagando, conteudo correto).
+- ⚠️ **Gemini 3 Flash:** chat simples live OK; pipeline historica teve sucesso,
+  mas o smoke pos-fix de `corrigir` falhou e nao mostrou causa. Nao esta
+  confirmado para pipeline oficial.
 - ❌ **GPT-5 Nano via `pipeline-completo`:** QUEBRADO — tool-use path produz documentos lixo. Fix necessario no loop de tool-use.
 - ⏸️ **Claude Haiku 4.5:** Aguardando creditos.
 - 📊 **Confiabilidade Gemini 3 Flash:** 50% de sucesso na primeira tentativa (1 em 2 testes). Precisa mais amostras.
 
-**Marco 1 parcialmente atingido:** Gemini 3 Flash funciona com `pipeline-completo`. Quando Haiku tiver creditos, validamos o segundo provider.
+**Marco 1 ainda nao atingido oficialmente:** chat e historico positivo ajudam,
+mas o site oficial precisa passar pipeline pos-fix com erro/custo/metadata
+visiveis.
 
 **Bugs criticos descobertos nesta sessao:**
 1. GPT-5 Nano tool-use: multiplas chamadas `create_document`, nomes alucinados, sem validacao de schema
@@ -190,8 +207,8 @@ Ver [teste_gpt5nano_pipeline_completo.md](arquivo_2026_04_17/teste_gpt5nano_pipe
 **Proximos passos:**
 1. Desbloquear deploy oficial; sem Render no hash esperado, a matriz continua
    historica.
-2. Revalidar Gemini 3 Flash via `pipeline-completo` no site oficial e confirmar
-   metadata/custos.
+2. Deployar erro visivel em task-progress, repetir Gemini 3 Flash via
+   `pipeline-completo` no site oficial e confirmar causa, metadata/custos.
 3. Revalidar GPT-5 Nano esperando falha alta quando dual-output estiver
    incompleto; nao aceitar JSON/PDF lixo como sucesso.
 4. Quando creditos Anthropic forem recarregados, validar Haiku 4.5 via

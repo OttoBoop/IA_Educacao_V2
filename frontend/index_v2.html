@@ -282,6 +282,18 @@
             color: var(--danger, #e74c3c);
         }
 
+        .tarefa-error-message {
+            margin: 4px 10px 6px 20px;
+            padding: 6px 8px;
+            border: 1px solid rgba(231, 76, 60, 0.35);
+            border-radius: 6px;
+            background: rgba(231, 76, 60, 0.08);
+            color: var(--danger, #e74c3c);
+            font-size: 0.78rem;
+            line-height: 1.35;
+            white-space: normal;
+        }
+
         .tarefa-cancelled-label {
             font-size: 0.75rem;
             color: var(--danger, #e74c3c);
@@ -6227,7 +6239,8 @@
                         // F7-T2: PDF fallback loud notification
                         _checkPdfFallbackAlert(data);
                     } else if (data.status === 'failed') {
-                        showPipelineToast('Pipeline falhou. Verifique os detalhes.', 'error');
+                        const failureDetail = data.error ? ` ${data.error}` : ' Verifique os detalhes.';
+                        showPipelineToast(`Pipeline falhou.${failureDetail}`, 'error');
                     }
                 }
             } catch (err) {
@@ -8752,6 +8765,10 @@
                                 html += '<button class="tarefa-cancel" onclick="event.stopPropagation(); cancelTask(\'' + taskId + '\')" title="Cancelar">\u00D7</button>';
                             }
                             html += '</div><div class="tree-children expanded">';
+
+                            if (task.status === 'failed' && task.error) {
+                                html += '<div class="tarefa-error-message">Erro: ' + escapeHtml(task.error) + '</div>';
+                            }
 
                             for (const [alunoId, aluno] of Object.entries(task.students || {})) {
                                 const stages   = aluno.stages || {};

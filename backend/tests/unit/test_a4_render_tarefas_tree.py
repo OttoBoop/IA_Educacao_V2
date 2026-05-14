@@ -28,8 +28,8 @@ def get_render_tarefas_tree_source():
     # Find the function start
     start = html.find("function renderTarefasTree(")
     assert start != -1, "renderTarefasTree not found in index_v2.html"
-    # Grab a large enough window (up to 8000 chars covers the full function)
-    return html[start:start + 8000]
+    # Grab a large enough window to cover the full function and late run rendering.
+    return html[start:start + 12000]
 
 
 class TestRenderTarefasTreeHierarchy:
@@ -84,4 +84,15 @@ class TestRenderTarefasTreeHierarchy:
         assert "Unknown" in source or "unknown" in source.lower() or "Desconhecida" in source, (
             "renderTarefasTree() must show a placeholder (Unknown/Desconhecida) "
             "when materia_nome or turma_nome is missing"
+        )
+
+    def test_function_shows_backend_task_error(self):
+        """Failed runs must render task.error so the sidebar is diagnostic."""
+        source = get_render_tarefas_tree_source()
+        assert "task.error" in source, (
+            "renderTarefasTree() must display task.error for failed backend tasks; "
+            "otherwise the sidebar shows only a red icon and hides the cause."
+        )
+        assert "tarefa-error-message" in source, (
+            "renderTarefasTree() must render a visible error message block for failed tasks."
         )
