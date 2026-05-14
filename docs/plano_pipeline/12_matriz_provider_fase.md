@@ -8,17 +8,18 @@
 `c75af88`, `45d543a`, `39aa50a`, `3ddf6c5`, `b24f03e`, `6ed31a4`,
 `eab7d90`, `dcecdfa`, `7ed8b8b`, `9e1aee5`, `839968e`, `45c6f97`,
 `55e168a`, `9823afb`, `4f27dae`, `f0dae61`, `87bdee2`, `b2dc88b`,
-`28cfd6a`, `cacedcd`, `a311ade`, `924fd79`, `0dfdbbe`
+`28cfd6a`, `cacedcd`, `a311ade`, `924fd79`, `0dfdbbe`, `d653c13`,
+`2947178`
 
 ## Status Oficial De Deploy
 
 - GitHub `origin/main` pode conter commits documentais posteriores; o ultimo
   marker funcional publicado e `f0dae61`, e o marcador HTML aponta para o commit
   funcional `4f27dae`.
-- O patch `924fd79` e o marker `0dfdbbe` estao no GitHub, mas ainda nao foram
-  confirmados no Render. Em 2026-05-15, chamadas com timeout de 20s para `/` e
-  `/api/health` retornaram `HTTP_STATUS=000`, e o Render MCP falhou por erro de
-  transporte.
+- Os patches `924fd79`/`d653c13` e markers `0dfdbbe`/`2947178` estao no GitHub,
+  mas ainda nao foram confirmados no Render. Em 2026-05-15, chamadas com
+  timeout de 20s para `/` e `/api/health` retornaram `HTTP_STATUS=000`, e o
+  Render MCP falhou por erro de transporte.
 - `origin/main` tambem contem a migration dedicada `b2dc88b`
   (`backend/migrations/002_create_token_usage.sql`), ainda nao aplicada ao
   Supabase de producao.
@@ -143,6 +144,8 @@
   nome/conteudo generico `student123`.
 - Patch `924fd79` reforca o retry de PDF/JSON mantendo o contexto original da
   etapa e proibindo placeholders; ainda aguarda deploy e smoke oficial.
+- Patch `d653c13` faz JSON de `ANALISAR_HABILIDADES` com placeholder proibido
+  falhar alto mesmo quando JSON+PDF existem; ainda aguarda deploy e smoke.
 
 **Gemini 3 Flash:** tambem validado em 2 testes historicos de chat (mensagem unica + multi-turn). Ver [teste_chat_gemini.md](arquivo_2026_04_17/teste_chat_gemini.md).
 - Teste 1: 662 tokens, 1930ms, resposta em PT correta
@@ -292,7 +295,7 @@ Ver [teste_gpt5nano_pipeline_completo.md](arquivo_2026_04_17/teste_gpt5nano_pipe
 - [x] Validar `corrigir` com GPT-5 Nano para 1 aluno no site oficial
 - [ ] Corrigir GPT-5 Nano em `analisar_habilidades`; hoje falha alto por PDF
       obrigatorio ausente e placeholder `student123`
-- [ ] Confirmar deploy `924fd79` e rerodar GPT-5 Nano em `analisar_habilidades`
+- [ ] Confirmar deploy `d653c13` e rerodar GPT-5 Nano em `analisar_habilidades`
 - [ ] Validar `gerar_relatorio` com GPT-5 Nano apos `analisar_habilidades`
 - [ ] Testar Haiku 4.5 (bloqueado ate creditos recarregarem)
 

@@ -8,7 +8,9 @@ o commit funcional `4f27dae`. Gemini passou no site oficial em `corrigir`,
 passou em `corrigir`, mas falhou alto em `analisar_habilidades` por nao gerar
 PDF obrigatorio, com custo da falha visivel. O patch `924fd79` reforca o retry
 do PDF mantendo o contexto original e proibindo placeholders, mas ainda nao foi
-confirmado no Render porque o site e o MCP Render deram timeout. GPT-5 Nano em
+confirmado no Render porque o site e o MCP Render deram timeout. O patch
+`d653c13` adiciona uma trava extra: JSON de `ANALISAR_HABILIDADES` com
+placeholder proibido, como `student123`, falha alto mesmo se houver PDF. GPT-5 Nano em
 `corrigir` teve JSON
 parseavel, PDF
 via `execute_python_code`, tokens splitados e custo medido, sem PDF extra via
@@ -56,7 +58,7 @@ Estabilizar o NOVO CR para que a pipeline:
 | Frente | Estado | Proximo passo |
 |--------|--------|---------------|
 | Docs e plano | Sprint 0 concluida | Manter este painel como fonte oficial e anexos fora do fluxo diario |
-| Pipeline | Gemini 3 Flash validado oficialmente em `corrigir`, `analisar_habilidades` e `gerar_relatorio`; GPT-5 Nano validado em `corrigir` e falhando alto em `analisar_habilidades`; patch `924fd79` publicado para retry/contexto | Confirmar deploy `924fd79`; rerodar Nano em `analisar_habilidades`; depois testar `gerar_relatorio`; validar schema minimo por etapa |
+| Pipeline | Gemini 3 Flash validado oficialmente em `corrigir`, `analisar_habilidades` e `gerar_relatorio`; GPT-5 Nano validado em `corrigir` e falhando alto em `analisar_habilidades`; patches `924fd79`/`d653c13` publicados para retry/contexto e placeholder | Confirmar deploy `d653c13`; rerodar Nano em `analisar_habilidades`; depois testar `gerar_relatorio`; validar schema minimo por etapa |
 | Schema e avisos | Sprint 2 concluida localmente | Manter schema oficial, defaults e visualizador cobertos por testes |
 | Custos/tokens | Metadata de documento, endpoints live, resumo por `cost_run_id`, `TokenUsageRecord` local, migration Supabase dedicada `b2dc88b` e diagnostico live no deploy `4f27dae` | Aplicar `backend/migrations/002_create_token_usage.sql` no Supabase; validar uma falha real sem documento em producao |
 | UI de erros | Pendente | Mostrar falha por aluno/etapa sem depender de terminal |
@@ -82,11 +84,13 @@ Estabilizar o NOVO CR para que a pipeline:
 - Commit de migration dedicada `token_usage`: `b2dc88b` (GitHub; nao muda o
   runtime do site ate a SQL ser aplicada no Supabase).
 - Commit funcional de retry/contexto Nano: `924fd79`.
-- Marker mais novo publicado no GitHub: `0dfdbbe` (`chore: mark deploy 924fd79`).
+- Commit funcional de rejeicao de placeholder em analise Nano: `d653c13`.
+- Marker mais novo publicado no GitHub: `2947178` (`chore: mark deploy d653c13`).
 - Marker atual confirmado no Render: `f0dae61`, HTML com `novocr-deploy=4f27dae`.
 - GitHub `origin/main`: pode conter commits documentais posteriores; o ultimo
   marker confirmado no Render e `f0dae61`; `origin/main` contem `924fd79` e o
-  marker `0dfdbbe`, ainda sem deploy confirmado.
+  marker `0dfdbbe`, alem de `d653c13` e o marker `2947178`, ainda sem deploy
+  confirmado.
 - Render live observado: saiu de `2e1098f` para `b12be9a` e depois confirmou
   marcadores `b4d7ee6`, `f505be6`, `97a7c79`, `c75af88`, `39aa50a`,
   `b24f03e`, `eab7d90`, `7ed8b8b`, `839968e`, `55e168a` e `4f27dae`.
@@ -704,29 +708,32 @@ Critério de pronto: lista de limpeza segura e revisada.
   `analisar_habilidades` com GPT-5 Nano para exigir PDF real e nomes/contexto
   corretos, sem aceitar JSON parcial como conclusao.
 
-### 2026-05-15 -- Patch Nano retry/contexto e bloqueio Render
+### 2026-05-15 -- Patch Nano retry/contexto, placeholder e bloqueio Render
 
 - Alvo: reduzir a falha do GPT-5 Nano em `analisar_habilidades`, onde o retry
   do PDF recebia mensagem curta demais e podia inventar placeholder `student123`.
 - Status: codigo e testes publicados no GitHub; deploy oficial nao confirmado.
 - Arquivos tocados: `backend/executor.py`,
-  `backend/tests/unit/test_e_t2_retry_partial_output.py`.
+  `backend/tests/unit/test_e_t2_retry_partial_output.py`,
+  `backend/tests/unit/test_cost_tracking.py`.
 - Mudanca: o retry de output parcial agora inclui o contexto original truncado
   da etapa, proibe placeholders e exige que `execute_python_code` grave um PDF
   real em disco com `output_files`. As instrucoes de `ANALISAR_HABILIDADES`
-  tambem proibem valores ficticios.
+  tambem proibem valores ficticios. O segundo patch faz JSON persistido de
+  `ANALISAR_HABILIDADES` falhar alto quando contem placeholders proibidos ou
+  nao traz `habilidades`.
 - Validacoes locais: `py_compile` passou; `git diff --check` passou;
   `test_e_t2_retry_partial_output.py` passou com 16 testes; `test_cost_tracking.py`
-  passou com 13 testes; `test_f_t2_analisar_tool_migration.py` passou com 9
+  passou com 14 testes; `test_f_t2_analisar_tool_migration.py` passou com 9
   testes. Aviso conhecido: `pytest.ini` tem opcao `timeout` desconhecida.
-- Git: commit funcional `924fd79`; marker `0dfdbbe`; ambos publicados em
-  `origin/main`.
+- Git: commits funcionais `924fd79` e `d653c13`; markers `0dfdbbe` e
+  `2947178`; todos publicados em `origin/main`.
 - Bloqueio de deploy/smoke: `curl --max-time 20` para `/` e `/api/health`
-  retornou timeout (`HTTP_STATUS=000`); Render MCP falhou com erro de transporte
-  para `https://mcp.render.com/mcp`. Portanto o site oficial continua aceito
-  apenas ate `4f27dae` ate nova confirmacao.
+  retornou timeout (`HTTP_STATUS=000`) em duas tentativas; Render MCP falhou com
+  erro de transporte para `https://mcp.render.com/mcp`. Portanto o site oficial
+  continua aceito apenas ate `4f27dae` ate nova confirmacao.
 - Proximo alvo: quando Render responder, rodar `wait_deploy/check_deploy` para
-  `924fd79`, `/api/health`, e novo smoke GPT-5 Nano em
+  `d653c13`, `/api/health`, e novo smoke GPT-5 Nano em
   `analisar_habilidades`.
 
 ## Riscos Abertos
@@ -738,5 +745,5 @@ Critério de pronto: lista de limpeza segura e revisada.
 4. A tabela Supabase `token_usage` tem migration dedicada em `b2dc88b`, mas o
    live confirmou que ela ainda nao existe no schema cache (`PGRST205`).
 5. Render/site oficial esta temporariamente inacessivel por timeout; nao aceitar
-   `924fd79` como live ate o marker `novocr-deploy=924fd79` aparecer.
+   `d653c13` como live ate o marker `novocr-deploy=d653c13` aparecer.
 6. Rio 3 nao deve voltar ao fluxo ativo sem nova decisao e nova chave segura.
