@@ -2,12 +2,13 @@
 
 **Atualizado:** 2026-05-15
 **Responsavel operacional:** Paulo
-**Status geral:** Render oficial confirmou o marker `3ddf6c5`, que aponta para
-o commit funcional `39aa50a`. Gemini `corrigir` passou com custo medido; GPT-5
+**Status geral:** Render oficial confirmou o marker `dcecdfa`, que aponta para
+o commit funcional `eab7d90`. Gemini `corrigir` passou com custo medido; GPT-5
 Nano agora tambem passou em `corrigir` no site oficial com JSON parseavel, PDF
-via `execute_python_code`, tokens splitados e custo medido. Ainda nao ha
-pipeline completa validada para Nano, e ha ruido a corrigir: o Nano tambem criou
-um PDF extra via `create_document`.
+via `execute_python_code`, tokens splitados e custo medido, sem PDF extra via
+`create_document`. Ainda nao ha pipeline completa validada para Nano. O proximo
+bloqueador real e auditar custo por `cost_run_id`, porque o resumo live mostra
+dois documentos do mesmo run com o mesmo custo.
 
 Este e o ponto de entrada do plano. O objetivo deste arquivo e dizer, em poucas
 linhas, onde estamos, qual e a proxima fila e quais frentes estao pausadas.
@@ -45,9 +46,9 @@ Estabilizar o NOVO CR para que a pipeline:
 | Frente | Estado | Proximo passo |
 |--------|--------|---------------|
 | Docs e plano | Sprint 0 concluida | Manter este painel como fonte oficial e anexos fora do fluxo diario |
-| Pipeline | `corrigir` validado oficialmente para Gemini 3 Flash e GPT-5 Nano com JSON/PDF/custo | Expandir para `analisar_habilidades` e `gerar_relatorio`; restringir artefatos extras |
+| Pipeline | `corrigir` validado oficialmente para Gemini 3 Flash e GPT-5 Nano com JSON/PDF/custo | Expandir para `analisar_habilidades` e `gerar_relatorio`; validar schema minimo por etapa |
 | Schema e avisos | Sprint 2 concluida localmente | Manter schema oficial, defaults e visualizador cobertos por testes |
-| Custos/tokens | Metadata de documento e endpoints de custo live no deploy `39aa50a` | Registrar tambem falhas sem documento final |
+| Custos/tokens | Metadata de documento e endpoints de custo live no deploy `eab7d90` | Auditar agregacao por `cost_run_id`; registrar tambem falhas sem documento final |
 | UI de erros | Pendente | Mostrar falha por aluno/etapa sem depender de terminal |
 | Limpeza de dados | Pendente | Reclassificar "fantasmas" antes de qualquer delecao |
 | Rio 3 | Pausada | Nao pedir chave, nao rodar smoke, nao deployar Rio sem nova decisao |
@@ -62,13 +63,16 @@ Estabilizar o NOVO CR para que a pipeline:
 - Commit funcional OpenAI tool-choice/GPT-5 Nano: `ff7b92a`.
 - Commit funcional de validacao de artefato persistido: `c75af88`.
 - Commit funcional de JSON valido/artefato por extensao: `39aa50a`.
-- Marker mais novo publicado: `3ddf6c5` (`chore: mark deploy 39aa50a`).
-- Marker atual visto no Render: `3ddf6c5`, HTML com `novocr-deploy=39aa50a`.
+- Commit funcional de restricao de artefato por tool: `b24f03e`.
+- Commit funcional de payload malformado em `create_document`: `eab7d90`.
+- Marker mais novo publicado: `dcecdfa` (`chore: mark deploy eab7d90`).
+- Marker atual visto no Render: `dcecdfa`, HTML com `novocr-deploy=eab7d90`.
 - GitHub `origin/main`: pode conter commits documentais posteriores; o ultimo
-  marker funcional publicado e `3ddf6c5`, e Render live esta confirmado em
-  `39aa50a`.
+  marker funcional publicado e `dcecdfa`, e Render live esta confirmado em
+  `eab7d90`.
 - Render live observado: saiu de `2e1098f` para `b12be9a` e depois confirmou
-  marcadores `b4d7ee6`, `f505be6`, `97a7c79`, `c75af88` e `39aa50a`.
+  marcadores `b4d7ee6`, `f505be6`, `97a7c79`, `c75af88`, `39aa50a`,
+  `b24f03e` e `eab7d90`.
 - `/api/custos/status` no Render: HTTP 200, confirmando endpoints de custo live.
 - GitHub Actions: sem runs recentes observaveis.
 - GitHub webhooks/deployments via `gh api`: sem entradas visiveis.
@@ -464,12 +468,59 @@ Critério de pronto: lista de limpeza segura e revisada.
   com Gemini e Nano, ou antes endurecer a regra de artefato extra em
   `create_document`.
 
+### 2026-05-15 -- Sprint 4g: `create_document` restrito a JSON em pipeline
+
+- Alvo: impedir que `create_document` crie PDF/artefato extra em etapas
+  dual-output; PDF obrigatorio deve vir de `execute_python_code`.
+- Status: publicado, deployado e smokeado; revelou novo bug.
+- Arquivos tocados: `backend/chat_service.py`, `backend/tool_handlers.py`,
+  `backend/tests/unit/test_warning_system.py`.
+- Comportamento: quando `ToolContext.expected_document_type` esta ativo,
+  `create_document` rejeita documento nao-JSON; artefatos gerados por tools
+  carregam `is_error` e resumo de arquivos para o executor decidir sem ler base64.
+- Validacoes: `py_compile` passou; `git diff --check` passou; suite focada
+  passou com 99 testes e 1 aviso de config `timeout` desconhecida.
+- Git/deploy: commit funcional `b24f03e`; marker `6ed31a4`; Render confirmou
+  `b24f03e`; `/api/health` healthy.
+- Smoke oficial: GPT-5 Nano em `corrigir`, task `task_c460627779fc`, falhou sem
+  falso sucesso. A falha exposta foi interna demais: `tools: 'str' object has no
+  attribute 'get'`, causada por payload malformado em `documents`.
+- Proximo alvo: transformar payload malformado em erro estruturado da tool, nao
+  excecao Python crua.
+
+### 2026-05-15 -- Sprint 4h: payload malformado vira erro seguro
+
+- Alvo: `create_document` nao pode quebrar com `.get` em string quando o modelo
+  manda `documents` fora do contrato; deve falhar alto, estruturado e rastreavel.
+- Status: publicado, deployado e smokeado.
+- Arquivos tocados: `backend/tool_handlers.py`,
+  `backend/tests/unit/test_warning_system.py`.
+- Comportamento: `handle_create_document` normaliza `documents`, rejeita array
+  com item nao-objeto, marca `is_error=True` e devolve erro claro sem salvar lixo.
+- Validacoes: `py_compile` passou; `git diff --check` passou; suite focada
+  passou com 100 testes e 1 aviso de config `timeout` desconhecida.
+- Git/deploy: commit funcional `eab7d90`; marker `dcecdfa`; Render confirmou
+  `eab7d90` via `wait_deploy.sh`, `check_deploy.sh` e `/api/health`.
+- Smoke oficial: GPT-5 Nano em `corrigir`, task `task_a591421ab84b`, completou.
+  Run `tool_056e2e1f7179` criou JSON parseavel `42dc1fcd758e913b` via
+  `create_document` e PDF `cd72e7233ee061ad` via `execute_python_code`.
+  Nao houve PDF extra via `create_document`.
+- Tokens/custo do run: 16.081 entrada, 3.470 saida, 19.551 total, custo estimado
+  `US$ 0.002192` para `openai/gpt-5-nano`.
+- Custos live apos smoke: `/api/custos/status` retornou `runs_precificados=5`,
+  `runs_bloqueados=489`, com bloqueios `token_split_missing=166` e
+  `provider_model_missing=323`.
+- Novo achado: `/api/custos/resumo` lista o JSON e o PDF do mesmo
+  `cost_run_id=tool_056e2e1f7179`, ambos com o mesmo custo. O proximo ciclo deve
+  auditar se o resumo soma por documento ou por run, para nao duplicar custo.
+
 ## Riscos Abertos
 
 1. Creditos Anthropic insuficientes ainda bloqueiam validacao Haiku.
 2. Schema drift pode fazer modelos gerarem formatos diferentes.
-3. Artefatos extras ainda podem poluir a lista de documentos, como PDF criado por
-   `create_document` alem do PDF obrigatorio via `execute_python_code`.
-4. Falhas sem documento final ainda nao entram no resumo de custos; precisamos
+3. Schema minimo ainda nao esta validado para todas as etapas; JSON parseavel e
+   necessario, mas nao prova qualidade pedagogica.
+4. O resumo de custos pode estar duplicando custo quando um run gera JSON e PDF.
+5. Falhas sem documento final ainda nao entram no resumo de custos; precisamos
    de registro proprio de run/custo para erro sem artefato.
-5. Rio 3 nao deve voltar ao fluxo ativo sem nova decisao e nova chave segura.
+6. Rio 3 nao deve voltar ao fluxo ativo sem nova decisao e nova chave segura.

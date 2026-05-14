@@ -5,18 +5,19 @@
 **Commits aplicados/observados:** `a632883`, `5737611`, `50935ea`, `479b77d`,
 `b12be9a`, `301eba6`, `f67055c`, `462ea1d`, `b4d7ee6`, `99483d1`,
 `f505be6`, `d75b05a`, `97a7c79`, `ec95193`, `ff7b92a`, `68ebe51`,
-`c75af88`, `45d543a`, `39aa50a`, `3ddf6c5`
+`c75af88`, `45d543a`, `39aa50a`, `3ddf6c5`, `b24f03e`, `6ed31a4`,
+`eab7d90`, `dcecdfa`
 
 ## Status Oficial De Deploy
 
 - GitHub `origin/main` pode conter commits documentais posteriores; o ultimo
-  marker funcional publicado e `3ddf6c5`, e o marcador HTML aponta para o commit
-  funcional `39aa50a`.
-- Render live confirmou `39aa50a` por `wait_deploy.sh`, `check_deploy.sh` e
+  marker funcional publicado e `dcecdfa`, e o marcador HTML aponta para o commit
+  funcional `eab7d90`.
+- Render live confirmou `eab7d90` por `wait_deploy.sh`, `check_deploy.sh` e
   `/api/health`.
 - Docs antigos registram que auto-deploy Git nao funciona de forma confiavel; o
   ciclo usou deploy via API Render com token local seguro, sem imprimir segredo.
-- Os smokes live de 2026-05-15 abaixo sao oficiais para o estado `39aa50a`.
+- Os smokes live de 2026-05-15 abaixo sao oficiais para o estado `eab7d90`.
 
 ## Legenda
 
@@ -92,6 +93,14 @@
   `execute_python_code` `3e0d534238dc0067`, tokens 20.127/6.817 e custo
   `US$ 0.003733`. Observacao: criou tambem PDF extra via `create_document`
   (`29d20245529f26a7`), a restringir em ciclo futuro.
+- Depois do deploy `b24f03e`, GPT-5 Nano em `corrigir` falhou sem falso sucesso
+  na task `task_c460627779fc`, mas o erro ficou cru demais:
+  `tools: 'str' object has no attribute 'get'`. Causa: payload malformado em
+  `documents` dentro de `create_document`.
+- Depois do deploy `eab7d90`, GPT-5 Nano completou `corrigir`
+  (`task_a591421ab84b`) com JSON parseavel `42dc1fcd758e913b`, PDF via
+  `execute_python_code` `cd72e7233ee061ad`, tokens 16.081/3.470 e custo
+  `US$ 0.002192`. Nao houve PDF extra via `create_document`.
 
 **Gemini 3 Flash:** tambem validado em 2 testes historicos de chat (mensagem unica + multi-turn). Ver [teste_chat_gemini.md](arquivo_2026_04_17/teste_chat_gemini.md).
 - Teste 1: 662 tokens, 1930ms, resposta em PT correta
@@ -157,10 +166,11 @@ antes de voltar a "pipeline completa confirmada".
 inicial do Nano nao era conexao/API key; era pipeline/tool-use/schema.
 
 **Smoke live de `corrigir` em 2026-05-15:** depois dos patches `ff7b92a`,
-`c75af88` e `39aa50a`, a task `task_1a7857360267` completou com JSON parseavel,
-PDF obrigatorio via `execute_python_code`, provider/modelo/tokens/custo no
-storage. Ainda nao esta pipeline-ready porque faltam `analisar_habilidades`,
-`gerar_relatorio` e pelo menos uma execucao sem artefato extra.
+`c75af88`, `39aa50a`, `b24f03e` e `eab7d90`, a task `task_a591421ab84b`
+completou com JSON parseavel, PDF obrigatorio via `execute_python_code`,
+provider/modelo/tokens/custo no storage e sem PDF extra via `create_document`.
+Ainda nao esta pipeline-ready porque faltam `analisar_habilidades`,
+`gerar_relatorio`, schema minimo por etapa e auditoria de custo por run.
 
 **Testado em 2 caminhos com resultados muito diferentes:**
 
@@ -187,6 +197,10 @@ Ver [teste_gpt5nano_pipeline_completo.md](arquivo_2026_04_17/teste_gpt5nano_pipe
 3. `.json` salvo por `create_document` precisa parsear antes de entrar no
    storage; dual-output exige `.json` por `create_document` e `.pdf` por
    `execute_python_code` (`39aa50a`).
+4. Em etapa de pipeline, `create_document` nao pode salvar PDF/artefato nao-JSON;
+   esses arquivos pertencem a `execute_python_code` (`b24f03e`).
+5. Payload `documents` malformado vira erro estruturado da tool, nao excecao
+   Python crua (`eab7d90`).
 
 ---
 
@@ -216,7 +230,9 @@ Ver [teste_gpt5nano_pipeline_completo.md](arquivo_2026_04_17/teste_gpt5nano_pipe
       custo/metadata
 - [ ] Registrar custo de falhas sem documento final, como o GPT-5 Nano que falha
       antes de criar artefato
-- [ ] Restringir ou marcar como erro artefato extra `create_document` nao-JSON em
+- [ ] Auditar se `/api/custos/resumo` soma por documento em vez de por
+      `cost_run_id`
+- [x] Restringir ou marcar como erro artefato extra `create_document` nao-JSON em
       etapas dual-output
 - [ ] Investigar por que `/executar/etapa` nao persiste documento (gap ou by-design?)
 
@@ -237,8 +253,8 @@ Ver [teste_gpt5nano_pipeline_completo.md](arquivo_2026_04_17/teste_gpt5nano_pipe
 - ⚠️ **Gemini 3 Flash:** chat simples live OK e `corrigir` pos-fix OK com
   custo; ainda falta validar `analisar_habilidades` e `gerar_relatorio`.
 - ⚠️ **GPT-5 Nano via `pipeline-completo`:** `corrigir` pos-fix OK com JSON
-  parseavel, PDF via `execute_python_code` e custo; ainda falta pipeline
-  completa e limpeza de artefato extra.
+  parseavel, PDF via `execute_python_code`, custo e sem artefato extra; ainda
+  falta pipeline completa, schema minimo e auditoria de custo por run.
 - ⏸️ **Claude Haiku 4.5:** Aguardando creditos.
 - 📊 **Confiabilidade Gemini 3 Flash:** 50% de sucesso na primeira tentativa (1 em 2 testes). Precisa mais amostras.
 
