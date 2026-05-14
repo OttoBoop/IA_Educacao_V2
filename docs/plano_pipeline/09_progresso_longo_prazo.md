@@ -5,7 +5,9 @@
 **Status geral:** Render oficial confirmou o marker `f0dae61`, que aponta para
 o commit funcional `4f27dae`. Gemini passou no site oficial em `corrigir`,
 `analisar_habilidades` e `gerar_relatorio`, todos com custo medido; GPT-5 Nano
-agora tambem passou em `corrigir` no site oficial com JSON parseavel, PDF
+passou em `corrigir`, mas falhou alto em `analisar_habilidades` por nao gerar
+PDF obrigatorio, com custo da falha visivel. GPT-5 Nano em `corrigir` teve JSON
+parseavel, PDF
 via `execute_python_code`, tokens splitados e custo medido, sem PDF extra via
 `create_document`. O resumo de custos agora agrega por `cost_run_id`, entao
 JSON+PDF do mesmo run contam uma vez. Falhas tool-use sem documento final agora
@@ -51,7 +53,7 @@ Estabilizar o NOVO CR para que a pipeline:
 | Frente | Estado | Proximo passo |
 |--------|--------|---------------|
 | Docs e plano | Sprint 0 concluida | Manter este painel como fonte oficial e anexos fora do fluxo diario |
-| Pipeline | Gemini 3 Flash validado oficialmente em `corrigir`, `analisar_habilidades` e `gerar_relatorio`; GPT-5 Nano validado em `corrigir` | Expandir GPT-5 Nano para `analisar_habilidades` e `gerar_relatorio`; validar schema minimo por etapa |
+| Pipeline | Gemini 3 Flash validado oficialmente em `corrigir`, `analisar_habilidades` e `gerar_relatorio`; GPT-5 Nano validado em `corrigir` e falhando alto em `analisar_habilidades` | Corrigir/diagnosticar Nano em `analisar_habilidades`; depois testar `gerar_relatorio`; validar schema minimo por etapa |
 | Schema e avisos | Sprint 2 concluida localmente | Manter schema oficial, defaults e visualizador cobertos por testes |
 | Custos/tokens | Metadata de documento, endpoints live, resumo por `cost_run_id`, `TokenUsageRecord` local, migration Supabase dedicada `b2dc88b` e diagnostico live no deploy `4f27dae` | Aplicar `backend/migrations/002_create_token_usage.sql` no Supabase; validar uma falha real sem documento em producao |
 | UI de erros | Pendente | Mostrar falha por aluno/etapa sem depender de terminal |
@@ -673,6 +675,30 @@ Critério de pronto: lista de limpeza segura e revisada.
   remove o bloqueio de custo duravel.
 - Proximo alvo: rodar GPT-5 Nano em `analisar_habilidades` e
   `gerar_relatorio`, esperando erro alto se schema/output quebrar.
+
+### 2026-05-15 -- Provider smoke: GPT-5 Nano `analisar_habilidades`
+
+- Alvo: verificar se GPT-5 Nano avanca alem de `corrigir` nas etapas finais do
+  aluno.
+- Status: falhou corretamente no Render live `4f27dae`; sem fallback.
+- Task: `task_43d48d9deea2`, status `failed`, etapa
+  `analisar_habilidades=failed`.
+- Erro exposto: "Saida obrigatoria incompleta: PDF persistido via
+  execute_python_code. Nenhum PDF/JSON sera inventado por fallback automatico".
+  Detalhes da task: `create_document` com erro em multiplas chamadas e
+  `execute_python_code` rodou sem arquivo gerado.
+- Artefatos parciais: JSONs `3648e6629e7d6b04` e `a67c0f394f0133e7`, ambos
+  `status=erro`, provider/modelo `openai/gpt-5-nano`, tokens `25237/8024`,
+  custo `US$ 0.004471`, `cost_run_id=tool_58b8188d8fad`.
+- Problema novo: os artefatos de erro usam nome generico
+  `analise_habilidades_student123.json_1db5.json`, sinal de placeholder do
+  modelo ou prompt insuficiente. Isso nao pode virar sucesso pedagogico.
+- Interpretacao: custo de falha com documento parcial esta visivel; como houve
+  documento parcial em erro, `token_usage_analisados` continua `0`. O bloqueio
+  de Supabase `token_usage` ainda vale para falhas sem documento algum.
+- Proximo alvo: diagnosticar o contrato/prompt/tool-use de
+  `analisar_habilidades` com GPT-5 Nano para exigir PDF real e nomes/contexto
+  corretos, sem aceitar JSON parcial como conclusao.
 
 ## Riscos Abertos
 

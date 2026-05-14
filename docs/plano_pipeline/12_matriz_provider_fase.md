@@ -41,7 +41,7 @@
 |-----------------|:---:|:---:|:---:|:---:|:---:|:---:|
 | **Claude Haiku 4.5** (`588f3efe7975`) | ⏸️ | ⏸️ | ⏸️ | 🚫 | 🚫 | 🚫 |
 | **Gemini 3 Flash** (`gem3flash001`) | ⏸️ | ⏸️ | ⏸️ | ✅ | ✅ | ✅ |
-| **GPT-5 Nano** (`gpt5nano001`) | ⏸️ | ⏸️ | ⏸️ | ✅ | ⏸️ | ⏸️ |
+| **GPT-5 Nano** (`gpt5nano001`) | ⏸️ | ⏸️ | ⏸️ | ✅ | ❌ | ⏸️ |
 | **GPT-4o** (`180b8298a279`) — referencia | ✅ | ✅ | ✅ | ⚠️ | ⚠️ | ⚠️ |
 
 ### Categoria 2: Relatorios de Desempenho (3 niveis)
@@ -130,6 +130,12 @@
   `245970da4cc42c02`, 15.993/3.874 tokens, `US$ 0.009447`; a segunda gerou
   JSON `fe6ad549481a0ed9` e PDF `b815d1faa5aeab77`, 9.215/2.796 tokens,
   `US$ 0.006120`.
+- GPT-5 Nano falhou alto em `analisar_habilidades` (`task_43d48d9deea2`):
+  nao gerou PDF obrigatorio via `execute_python_code`; o erro ficou visivel na
+  task e nao houve fallback. Dois JSONs parciais foram marcados `status=erro`
+  (`3648e6629e7d6b04`, `a67c0f394f0133e7`) com tokens 25.237/8.024,
+  custo `US$ 0.004471`, `cost_run_id=tool_58b8188d8fad`. Problema novo:
+  nome/conteudo generico `student123`.
 
 **Gemini 3 Flash:** tambem validado em 2 testes historicos de chat (mensagem unica + multi-turn). Ver [teste_chat_gemini.md](arquivo_2026_04_17/teste_chat_gemini.md).
 - Teste 1: 662 tokens, 1930ms, resposta em PT correta
@@ -202,6 +208,12 @@ provider/modelo/tokens/custo no storage e sem PDF extra via `create_document`.
 Ainda nao esta pipeline-ready porque faltam `analisar_habilidades`,
 `gerar_relatorio`, schema minimo por etapa e custo de falhas sem documento final.
 
+**Smoke live de `analisar_habilidades` em 2026-05-15:** task
+`task_43d48d9deea2` falhou alto: PDF obrigatorio nao foi produzido por
+`execute_python_code`. O sistema nao inventou PDF nem marcou sucesso. Dois JSONs
+parciais ficaram `status=erro`, com custo medido, mas usam placeholder
+`student123`; isso e bug de prompt/schema/qualidade.
+
 **Testado em 2 caminhos com resultados muito diferentes:**
 
 #### Via `/executar/etapa` — ⚠️ PARCIAL
@@ -271,7 +283,9 @@ Ver [teste_gpt5nano_pipeline_completo.md](arquivo_2026_04_17/teste_gpt5nano_pipe
 
 ### Prioridade MEDIA
 - [x] Validar `corrigir` com GPT-5 Nano para 1 aluno no site oficial
-- [ ] Validar `analisar_habilidades` e `gerar_relatorio` com GPT-5 Nano
+- [ ] Corrigir GPT-5 Nano em `analisar_habilidades`; hoje falha alto por PDF
+      obrigatorio ausente e placeholder `student123`
+- [ ] Validar `gerar_relatorio` com GPT-5 Nano apos `analisar_habilidades`
 - [ ] Testar Haiku 4.5 (bloqueado ate creditos recarregarem)
 
 ### Prioridade BAIXA
@@ -287,8 +301,10 @@ Ver [teste_gpt5nano_pipeline_completo.md](arquivo_2026_04_17/teste_gpt5nano_pipe
   `analisar_habilidades` e `gerar_relatorio` pos-fix OK com custo/metadata.
   Faltam as etapas de extracao.
 - ⚠️ **GPT-5 Nano via `pipeline-completo`:** `corrigir` pos-fix OK com JSON
-  parseavel, PDF via `execute_python_code`, custo e sem artefato extra; ainda
-  falta pipeline completa, schema minimo e custo de falhas sem documento final.
+  parseavel, PDF via `execute_python_code`, custo e sem artefato extra;
+  `analisar_habilidades` falhou alto com custo parcial medido, sem fallback.
+  Ainda falta pipeline completa, schema minimo e custo de falhas sem documento
+  final.
 - ⏸️ **Claude Haiku 4.5:** Aguardando creditos.
 - 📊 **Confiabilidade Gemini 3 Flash:** 50% de sucesso na primeira tentativa (1 em 2 testes). Precisa mais amostras.
 
@@ -304,7 +320,8 @@ visiveis.
 
 **Proximos passos:**
 1. Manter deploy oficial confirmado por marker antes de cada smoke novo.
-2. Revalidar GPT-5 Nano nas etapas seguintes com custo/metadata.
+2. Corrigir GPT-5 Nano em `analisar_habilidades` antes de tentar
+   `gerar_relatorio`.
 3. Criar registro de custo para falhas sem documento final.
 4. Quando creditos Anthropic forem recarregados, validar Haiku 4.5 via
    `pipeline-completo`.
