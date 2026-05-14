@@ -2,9 +2,9 @@
 
 **Atualizado:** 2026-05-15
 **Responsavel operacional:** Paulo
-**Status geral:** commits P4/P5/P6/Sprint2/Sprint3 publicados no GitHub; Render
-oficial ainda bloqueado/stale; Sprint 3b de metadata/custos iniciada e testada
-localmente.
+**Status geral:** fixes de pipeline/custos publicados no GitHub; Render oficial
+ainda bloqueado/stale; Sprint 3b de metadata/custos testada localmente e ainda
+nao visivel no site.
 
 Este e o ponto de entrada do plano. O objetivo deste arquivo e dizer, em poucas
 linhas, onde estamos, qual e a proxima fila e quais frentes estao pausadas.
@@ -51,9 +51,12 @@ Estabilizar o NOVO CR para que a pipeline:
 
 ## Estado Git/Deploy Oficial
 
-- Local funcional validado: `b12be9a`.
-- GitHub `origin/main`: `301eba6` (`chore: mark deploy b12be9a`) apos push.
-- Render live observado: ainda `2e1098f` durante o polling.
+- Local funcional anterior validado: `b12be9a`.
+- Commit funcional de custos/docs: `f67055c`.
+- GitHub `origin/main`: `462ea1d` (`chore: mark deploy f67055c`) apos push.
+- Render live observado: ainda `2e1098f` apos polling de 900s e check direto.
+- `/api/custos/status` no Render: HTTP 404, confirmando que o site ainda nao tem
+  os endpoints de custo do commit `f67055c`.
 - GitHub Actions: sem runs recentes observaveis.
 - GitHub webhooks/deployments via `gh api`: sem entradas visiveis.
 - Render MCP: bloqueado por workspace nao selecionado.
@@ -246,11 +249,12 @@ Critério de pronto: lista de limpeza segura e revisada.
   custo medido consultavel.
 - Status: GitHub atualizado; Render ainda bloqueado/stale; codigo de custos
   validado localmente.
-- Git: `b12be9a` foi empurrado para `origin/main`; marcador `301eba6` aponta o
-  HTML para `b12be9a`.
-- Deploy: `wait_deploy.sh b12be9a` continuou vendo `2e1098f`; sem Actions,
-  webhooks ou deployments GitHub visiveis; Render MCP sem workspace. Isto e
-  bloqueio real de deploy oficial, nao sucesso local.
+- Git: `b12be9a` foi empurrado; depois `f67055c` adicionou custos/metadata; o
+  marcador `462ea1d` aponta o HTML para `f67055c`.
+- Deploy: `wait_deploy.sh b12be9a` deu timeout apos 900s e checks diretos para
+  `f67055c` continuaram vendo `2e1098f`; sem Actions, webhooks ou deployments
+  GitHub visiveis; Render MCP sem workspace. Isto e bloqueio real de deploy
+  oficial, nao sucesso local.
 - Arquivos tocados: `backend/storage.py`, `backend/executor.py`,
   `backend/tool_handlers.py`, `backend/tools.py`, `backend/model_catalog.py`,
   `backend/cost_tracking.py`, `backend/routes_costs.py`, `backend/main_v2.py`,

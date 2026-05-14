@@ -3,12 +3,14 @@
 **Atualizado:** 2026-05-15
 **Atividade de teste:** Lista0 — Algebra Linear Avancada (`126e8b5ad7dd6d59`)
 **Commits aplicados/observados:** `a632883`, `5737611`, `50935ea`, `479b77d`,
-`b12be9a`, `301eba6`
+`b12be9a`, `301eba6`, `f67055c`, `462ea1d`
 
 ## Status Oficial De Deploy
 
-- GitHub `origin/main` esta em `301eba6`, com marcador apontando para `b12be9a`.
-- Render live ainda retornou marcador `2e1098f` durante o polling deste ciclo.
+- GitHub `origin/main` chegou a `462ea1d`, com marcador apontando para
+  `f67055c`.
+- Render live ainda retornou marcador `2e1098f`; `/api/custos/status` retornou
+  HTTP 404.
 - Portanto, qualquer teste abaixo anterior a `b12be9a` continua sendo evidencia
   historica. Provider so vira confirmado pos-fix quando o site oficial estiver no
   hash esperado e o smoke rodar novamente.
