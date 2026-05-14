@@ -1156,11 +1156,6 @@ class ChatClient:
             elif stop_reason == "tool_use":
                 # Extract tool calls
                 tool_calls = self._extract_tool_calls(content_blocks)
-                all_tool_calls.extend([{
-                    "id": tc.id,
-                    "name": tc.name,
-                    "input": tc.input
-                } for tc in tool_calls])
 
                 # Execute each tool
                 tool_results = []
@@ -1171,6 +1166,13 @@ class ChatClient:
                         tool_use_id=tool_call.id,
                         context=context
                     )
+                    all_tool_calls.append({
+                        "id": tool_call.id,
+                        "name": tool_call.name,
+                        "input": tool_call.input,
+                        "is_error": result.is_error,
+                        "files_generated": self._summarize_generated_files(result.files_generated),
+                    })
                     tool_results.append(result.to_anthropic_format())
 
                 # Add assistant message with tool use blocks
@@ -1240,6 +1242,18 @@ class ChatClient:
                 }
             })
         return openai_tools
+
+    def _summarize_generated_files(self, files_generated: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+        """Return generated-file metadata without echoing file bytes/base64."""
+        summarized = []
+        for file_info in files_generated or []:
+            if not isinstance(file_info, dict):
+                continue
+            item = {k: v for k, v in file_info.items() if k != "content_base64"}
+            if "content_base64" in file_info:
+                item["content_base64_redacted"] = True
+            summarized.append(item)
+        return summarized
 
     async def _chat_openai_with_tools(
         self,
@@ -1327,18 +1341,19 @@ class ChatClient:
                     tool_name = func["name"]
                     tool_input = json.loads(func["arguments"])
 
-                    all_tool_calls.append({
-                        "id": tc_id,
-                        "name": tool_name,
-                        "input": tool_input
-                    })
-
                     result = await tool_registry.execute(
                         tool_name=tool_name,
                         tool_input=tool_input,
                         tool_use_id=tc_id,
                         context=context
                     )
+                    all_tool_calls.append({
+                        "id": tc_id,
+                        "name": tool_name,
+                        "input": tool_input,
+                        "is_error": result.is_error,
+                        "files_generated": self._summarize_generated_files(result.files_generated),
+                    })
 
                     tool_results_messages.append({
                         "role": "tool",
@@ -1476,18 +1491,19 @@ class ChatClient:
                 tool_input = fc.get("args", {})
                 tool_use_id = f"google_call_{iteration}_{i}"
 
-                all_tool_calls.append({
-                    "id": tool_use_id,
-                    "name": tool_name,
-                    "input": tool_input
-                })
-
                 result = await tool_registry.execute(
                     tool_name=tool_name,
                     tool_input=tool_input,
                     tool_use_id=tool_use_id,
                     context=context
                 )
+                all_tool_calls.append({
+                    "id": tool_use_id,
+                    "name": tool_name,
+                    "input": tool_input,
+                    "is_error": result.is_error,
+                    "files_generated": self._summarize_generated_files(result.files_generated),
+                })
 
                 result_content = result.content if isinstance(result.content, str) else json.dumps(result.content)
                 function_response_parts.append({

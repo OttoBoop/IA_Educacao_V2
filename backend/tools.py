@@ -234,7 +234,10 @@ EXECUTE_PYTHON_CODE = ToolDefinition(
 The code runs in isolation with these allowed libraries:
 pandas, numpy, matplotlib, openpyxl, reportlab, Pillow, scipy
 
-Important: Always save outputs to files (e.g., 'output.xlsx', 'chart.png').""",
+Important: Always save outputs to files (e.g., 'output.xlsx', 'chart.png').
+For PDF reports, set output_files to an explicit .pdf filename and write/save
+that exact file from the code. A successful tool call without a generated file
+is not considered a completed pipeline artifact.""",
     parameters=[
         ToolParameter(
             name="code",

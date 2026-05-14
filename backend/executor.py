@@ -2488,6 +2488,8 @@ class PipelineExecutor:
                 prompt_id=prompt_id,
                 cost_run_id=f"tool_{uuid.uuid4().hex[:12]}",
             )
+            if not isinstance(getattr(context, "created_document_ids", None), list):
+                context.created_document_ids = []
             
             # Default system prompt para pipeline
             if not system_prompt:
@@ -2532,14 +2534,6 @@ Seja preciso, educativo e construtivo em suas análises."""
             def _forced_openai_tool(tool_name: str) -> Dict[str, Any]:
                 return {"type": "function", "function": {"name": tool_name}}
 
-            def _combined_tool_names(responses: List[Dict[str, Any]]) -> set:
-                return {
-                    tc.get("name")
-                    for response in responses
-                    for tc in response.get("tool_calls", [])
-                    if tc.get("name")
-                }
-
             def _combined_tool_calls(responses: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
                 calls = []
                 for response in responses:
@@ -2554,6 +2548,126 @@ Seja preciso, educativo e construtivo em suas análises."""
                     except (TypeError, ValueError):
                         pass
                 return total
+
+            def _created_docs_by_tool() -> Dict[str, List[Any]]:
+                docs_by_tool = {"create_document": [], "execute_python_code": []}
+                for doc_id in dict.fromkeys(context.created_document_ids):
+                    try:
+                        doc = self.storage.get_documento(doc_id)
+                    except Exception:
+                        doc = None
+                    if not doc:
+                        continue
+
+                    metadata = getattr(doc, "metadata", {}) if isinstance(getattr(doc, "metadata", {}), dict) else {}
+                    tool_name = metadata.get("tool")
+                    if not tool_name:
+                        criado_por = getattr(doc, "criado_por", "") or ""
+                        if "execute_python_code" in criado_por:
+                            tool_name = "execute_python_code"
+                        elif "create_document" in criado_por:
+                            tool_name = "create_document"
+
+                    if tool_name in docs_by_tool:
+                        docs_by_tool[tool_name].append(doc)
+                return docs_by_tool
+
+            def _dual_output_state(responses: List[Dict[str, Any]]) -> Dict[str, Any]:
+                calls = _combined_tool_calls(responses)
+                has_runtime_metadata = any(
+                    "is_error" in tc or "files_generated" in tc
+                    for tc in calls
+                )
+                docs_by_tool = _created_docs_by_tool()
+                has_persisted_docs = bool(context.created_document_ids)
+
+                if has_persisted_docs or has_runtime_metadata:
+                    has_json = bool(docs_by_tool["create_document"])
+                    has_pdf = bool(docs_by_tool["execute_python_code"])
+                else:
+                    has_json = any(
+                        tc.get("name") == "create_document" and not tc.get("is_error", False)
+                        for tc in calls
+                    )
+                    has_pdf = any(
+                        tc.get("name") == "execute_python_code"
+                        and not tc.get("is_error", False)
+                        and ("files_generated" not in tc or bool(tc.get("files_generated")))
+                        for tc in calls
+                    )
+
+                missing = []
+                if not has_json:
+                    missing.append(
+                        "JSON persistido via create_document"
+                        if has_persisted_docs or has_runtime_metadata
+                        else "JSON via create_document"
+                    )
+                if not has_pdf:
+                    missing.append(
+                        "PDF persistido via execute_python_code"
+                        if has_persisted_docs or has_runtime_metadata
+                        else "PDF via execute_python_code"
+                    )
+
+                errored_tools = [
+                    tc.get("name")
+                    for tc in calls
+                    if tc.get("name") and tc.get("is_error", False)
+                ]
+                pdf_calls_without_file = [
+                    tc.get("id") or tc.get("name")
+                    for tc in calls
+                    if tc.get("name") == "execute_python_code"
+                    and not tc.get("is_error", False)
+                    and "files_generated" in tc
+                    and not tc.get("files_generated")
+                ]
+
+                return {
+                    "complete": not missing,
+                    "missing": missing,
+                    "has_json": has_json,
+                    "has_pdf": has_pdf,
+                    "has_runtime_metadata": has_runtime_metadata,
+                    "docs_by_tool": docs_by_tool,
+                    "errored_tools": errored_tools,
+                    "pdf_calls_without_file": pdf_calls_without_file,
+                }
+
+            def _retry_message_for_state(state: Dict[str, Any]) -> str:
+                missing_json = not state["has_json"]
+                missing_pdf = not state["has_pdf"]
+                pdf_filename = f"{expected_document_type.value if expected_document_type else 'relatorio'}.pdf"
+
+                if missing_pdf and not missing_json:
+                    return (
+                        "O JSON foi salvo, mas o PDF obrigatório não foi persistido. "
+                        "Chame execute_python_code agora, preencha output_files com "
+                        f"['{pdf_filename}'], e use reportlab para salvar exatamente esse arquivo. "
+                        "Não responda em texto simples."
+                    )
+                if missing_json and not missing_pdf:
+                    return (
+                        "O PDF foi gerado, mas o JSON obrigatório não foi persistido. "
+                        "Chame create_document agora para salvar o JSON estruturado. "
+                        "Não responda em texto simples."
+                    )
+                return (
+                    "Esta etapa exige dois artefatos persistidos: JSON via create_document "
+                    "e PDF via execute_python_code. Chame as ferramentas agora; para o PDF, "
+                    f"preencha output_files com ['{pdf_filename}'] e salve esse arquivo com reportlab. "
+                    "Não responda em texto simples."
+                )
+
+            def _retry_tool_choice_for_state(state: Dict[str, Any]) -> Optional[Any]:
+                if not is_openai_provider:
+                    return None
+                if not state["has_pdf"] and state["has_json"]:
+                    return _forced_openai_tool("execute_python_code")
+                if not state["has_json"] and state["has_pdf"]:
+                    return _forced_openai_tool("create_document")
+                return "required"
 
             initial_tool_choice = (
                 "required"
@@ -2577,25 +2691,11 @@ Seja preciso, educativo e construtivo em suas análises."""
             respostas_tool = [resposta]
 
             if dual_output_expected:
-                tool_names_used = _combined_tool_names(respostas_tool)
-                has_json = "create_document" in tool_names_used
-                has_pdf = "execute_python_code" in tool_names_used
-
-                if not (has_json and has_pdf):
+                state = _dual_output_state(respostas_tool)
+                if not state["complete"]:
                     # Partial/missing output — one explicit retry on the same model.
-                    if has_json and not has_pdf:
-                        retry_msg = "Você criou o documento JSON mas não gerou o PDF. Por favor, use execute_python_code para criar o PDF agora."
-                        retry_tool_choice = _forced_openai_tool("execute_python_code") if is_openai_provider else None
-                    elif has_pdf and not has_json:
-                        retry_msg = "Você executou código Python mas não criou o documento JSON. Por favor, use create_document para salvar o documento agora."
-                        retry_tool_choice = _forced_openai_tool("create_document") if is_openai_provider else None
-                    else:
-                        retry_msg = (
-                            "Você não chamou nenhuma ferramenta. Esta etapa exige os dois artefatos: "
-                            "use create_document para salvar o JSON e execute_python_code para gerar o PDF. "
-                            "Responda usando as ferramentas, não texto simples."
-                        )
-                        retry_tool_choice = "required" if is_openai_provider else None
+                    retry_msg = _retry_message_for_state(state)
+                    retry_tool_choice = _retry_tool_choice_for_state(state)
 
                     resposta = await client.chat_with_tools(
                         mensagem=retry_msg,
@@ -2609,12 +2709,15 @@ Seja preciso, educativo e construtivo em suas análises."""
                     tentativas = 2
 
                     # Check again after retry
-                    all_tool_names = _combined_tool_names(respostas_tool)
-                    if not ("create_document" in all_tool_names and "execute_python_code" in all_tool_names):
-                        missing = "PDF (execute_python_code)" if "execute_python_code" not in all_tool_names else "JSON (create_document)"
+                    state = _dual_output_state(respostas_tool)
+                    if not state["complete"]:
                         alertas.append({
                             "tipo": "aviso",
-                            "mensagem": f"Saída incompleta: {missing} ausente após retry. A etapa falhará sem fallback automático."
+                            "mensagem": (
+                                "Saída incompleta após retry: "
+                                + ", ".join(state["missing"])
+                                + ". A etapa falhará sem fallback automático."
+                            )
                         })
 
             tempo_ms = (time.time() - inicio) * 1000
@@ -2664,23 +2767,23 @@ Seja preciso, educativo e construtivo em suas análises."""
                 raw_content = ""
 
             pdf_fallback_used = False
-            all_tool_names_final = {tc.get("name") for tc in tool_calls}
+            final_state = _dual_output_state(respostas_tool) if dual_output_expected else {"complete": True}
 
-            has_create_doc = "create_document" in all_tool_names_final
-            has_exec_code = "execute_python_code" in all_tool_names_final
+            if dual_output_expected and not final_state["complete"]:
+                detalhes = []
+                if final_state.get("errored_tools"):
+                    detalhes.append("tools com erro: " + ", ".join(final_state["errored_tools"]))
+                if final_state.get("pdf_calls_without_file"):
+                    detalhes.append("execute_python_code rodou sem arquivo gerado")
 
-            if dual_output_expected and not (has_create_doc and has_exec_code):
-                missing = []
-                if not has_create_doc:
-                    missing.append("JSON via create_document")
-                if not has_exec_code:
-                    missing.append("PDF via execute_python_code")
                 erro_msg = (
                     "Saída obrigatória incompleta: "
-                    + ", ".join(missing)
+                    + ", ".join(final_state["missing"])
                     + ". Nenhum PDF/JSON será inventado por fallback automático; "
                     + "o modelo solicitado deve produzir os artefatos exigidos ou a etapa falha."
                 )
+                if detalhes:
+                    erro_msg += " Detalhes: " + "; ".join(detalhes) + "."
                 for doc_id in context.created_document_ids:
                     self.storage.atualizar_documento_processamento(
                         doc_id,
