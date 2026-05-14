@@ -13,6 +13,8 @@
 - Render live ainda confirma marcador `97a7c79`; `/api/health` e
   `/api/custos/status` responderam HTTP 200, mas no codigo anterior ao patch
   OpenAI/Nano.
+- Docs antigos registram que auto-deploy Git nao funciona; deploy novo depende
+  de workspace Render no MCP ou Dashboard/hook rotacionado seguro.
 - Portanto, os smokes live de 2026-05-15 abaixo sao oficiais para o estado
   `97a7c79`; `ff7b92a` ainda exige deploy antes de smoke oficial.
 

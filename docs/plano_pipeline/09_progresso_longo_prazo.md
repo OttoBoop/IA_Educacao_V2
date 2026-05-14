@@ -67,9 +67,12 @@ Estabilizar o NOVO CR para que a pipeline:
 - GitHub Actions: sem runs recentes observaveis.
 - GitHub webhooks/deployments via `gh api`: sem entradas visiveis.
 - Render MCP: bloqueado por workspace nao selecionado ("no workspace set").
-- Inferencia operacional: deploy automatico esta indisponivel ou preso para o
-  commit `68ebe51`; nao rodar smoke oficial do Nano enquanto o HTML live nao
-  mostrar `ff7b92a`.
+- Evidencia documental adicional: Doc 11 e o tutorial arquivado registram que o
+  auto-deploy do Git nao funciona porque o Render foi conectado via URL publica,
+  nao GitHub OAuth; o canal oficial era deploy hook, que precisa estar rotacionado
+  antes de qualquer uso.
+- Inferencia operacional: o deploy nao vai sair apenas por push; nao rodar smoke
+  oficial do Nano enquanto o HTML live nao mostrar `ff7b92a`.
 
 ## Loop Operacional
 
@@ -395,7 +398,8 @@ Critério de pronto: lista de limpeza segura e revisada.
   `GET /api/health` segue healthy/Supabase true, mas no codigo antigo.
 - Evidencia do bloqueio: `gh run list` sem runs; `gh api deployments` e
   `gh api hooks` retornaram listas vazias; Render MCP respondeu "no workspace
-  set" e nao permitiu listar/acessar o servico `prova-ai`.
+  set" e nao permitiu listar/acessar o servico `prova-ai`; docs antigos dizem
+  que auto-deploy Git nao funciona e que o hook seguro precisa estar rotacionado.
 - Proximo alvo: desbloquear deploy Render por Dashboard/workspace/hook seguro.
   Nao rodar smoke GPT-5 Nano como oficial ate o marker live mostrar `ff7b92a`.
 

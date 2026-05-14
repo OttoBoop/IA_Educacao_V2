@@ -951,7 +951,7 @@ Mapa dos commits publicados ou preparados:
 | `97a7c79` | Sprint 4c docs parciais em erro | Publicado e confirmado no Render. |
 | `ec95193` | Marcador `novocr-deploy` para `97a7c79` | Publicado; `check_deploy.sh 97a7c79` passou. |
 | `ff7b92a` | OpenAI tool-choice para dual-output/GPT-5 Nano + catalogo OpenAI atualizado | Publicado no GitHub; validado localmente; ainda nao confirmado no Render. |
-| `68ebe51` | Marcador `novocr-deploy` para `ff7b92a` | Publicado; `check_deploy.sh ff7b92a` falhou porque o live ainda mostra `97a7c79`. |
+| `68ebe51` | Marcador `novocr-deploy` para `ff7b92a` | Publicado; `check_deploy.sh ff7b92a` falhou porque o live ainda mostra `97a7c79`. Docs antigos explicam que auto-deploy Git nao funciona e que precisa hook rotacionado/manual seguro. |
 
 Estado do worktree no momento desta auditoria:
 
@@ -967,6 +967,8 @@ O que ainda falta:
 - Acionar deploy oficial por hook rotacionado/manual seguro.
 - Provar em producao que `ff7b92a` chegou ao site; no momento Render esta stale
   em `97a7c79`, apesar de `origin/main=68ebe51`.
+- Selecionar workspace Render no MCP ou usar Dashboard/hook rotacionado; nao ha
+  Actions, deployments ou webhooks GitHub visiveis para automatizar daqui.
 - Confirmar custo real por etapa/aluno/atividade no site oficial.
 - Popular metadata de documento (`tokens_usados`, `ia_modelo`, `ia_provider`) de
   forma confiavel.
