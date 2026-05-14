@@ -53,7 +53,8 @@ Estabilizar o NOVO CR para que a pipeline:
 
 - Local funcional anterior validado: `b12be9a`.
 - Commit funcional de custos/docs: `f67055c`.
-- GitHub `origin/main`: `462ea1d` (`chore: mark deploy f67055c`) apos push.
+- GitHub `origin/main`: contem `462ea1d` (`chore: mark deploy f67055c`) e
+  commits posteriores de registro documental.
 - Render live observado: ainda `2e1098f` apos polling de 900s e check direto.
 - `/api/custos/status` no Render: HTTP 404, confirmando que o site ainda nao tem
   os endpoints de custo do commit `f67055c`.
@@ -250,7 +251,8 @@ Critério de pronto: lista de limpeza segura e revisada.
 - Status: GitHub atualizado; Render ainda bloqueado/stale; codigo de custos
   validado localmente.
 - Git: `b12be9a` foi empurrado; depois `f67055c` adicionou custos/metadata; o
-  marcador `462ea1d` aponta o HTML para `f67055c`.
+  marcador `462ea1d` aponta o HTML para `f67055c`; registros documentais podem
+  estar acima dele sem mudar o marcador.
 - Deploy: `wait_deploy.sh b12be9a` deu timeout apos 900s e checks diretos para
   `f67055c` continuaram vendo `2e1098f`; sem Actions, webhooks ou deployments
   GitHub visiveis; Render MCP sem workspace. Isto e bloqueio real de deploy

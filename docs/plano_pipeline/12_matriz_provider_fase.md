@@ -7,8 +7,8 @@
 
 ## Status Oficial De Deploy
 
-- GitHub `origin/main` chegou a `462ea1d`, com marcador apontando para
-  `f67055c`.
+- GitHub `origin/main` contem `462ea1d`, com marcador apontando para `f67055c`,
+  e pode ter registros documentais posteriores.
 - Render live ainda retornou marcador `2e1098f`; `/api/custos/status` retornou
   HTTP 404.
 - Portanto, qualquer teste abaixo anterior a `b12be9a` continua sendo evidencia
