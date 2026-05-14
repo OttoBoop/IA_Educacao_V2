@@ -7,14 +7,12 @@
 
 ## Status Oficial De Deploy
 
-- GitHub `origin/main` contem `99483d1`, com marcador apontando para `b4d7ee6`.
-- Render live passou a retornar marcador `b12be9a`, nao `b4d7ee6`; o backend ja
-  responde `/api/custos/status` com HTTP 200.
-- `check_deploy.sh b4d7ee6` ainda encontra `b12be9a`; o patch de erro visivel
-  nao esta confirmado no site oficial.
-- Portanto, qualquer teste abaixo anterior a `b12be9a` continua sendo evidencia
-  historica. Provider so vira confirmado pos-fix quando o site oficial estiver no
-  hash esperado e o smoke rodar novamente.
+- GitHub `origin/main` contem `99483d1` e registros documentais posteriores; o
+  marcador HTML aponta para `b4d7ee6`.
+- Render live confirma marcador `b4d7ee6`; `/api/health` e `/api/custos/status`
+  responderam HTTP 200.
+- Portanto, os smokes live de 2026-05-15 abaixo sao oficiais para o estado
+  `b4d7ee6`.
 
 ## Legenda
 
@@ -67,6 +65,10 @@
   com `corrigir=failed`. A resposta de `/api/task-progress/{task_id}` nao
   trazia `error`, entao a causa ficou invisivel no site. Resultado: Gemini
   continua OK em chat, mas nao esta confirmado para pipeline pos-fix.
+- Depois do deploy `b4d7ee6`, o mesmo smoke gerou task `task_08d4648d7053` e
+  falhou de novo em `corrigir`, agora com causa visivel: Google API 503
+  `UNAVAILABLE`, alta demanda temporaria do modelo. Resultado: o erro nao esta
+  mais silencioso; Gemini segue nao confirmado para pipeline.
 
 **Gemini 3 Flash:** tambem validado em 2 testes historicos de chat (mensagem unica + multi-turn). Ver [teste_chat_gemini.md](arquivo_2026_04_17/teste_chat_gemini.md).
 - Teste 1: 662 tokens, 1930ms, resposta em PT correta
@@ -92,9 +94,10 @@
 ### Gemini 3 Flash Preview — ❌ PIPELINE POS-FIX FALHOU NO CORRIGIR
 
 **Smoke live pos-fix:** `pipeline-completo` com apenas `corrigir` falhou em
-2026-05-15. A task nao expôs `error`, o que tornou a falha invisivel para o
-usuario. Antes de promover Gemini como confirmado, e necessario deployar o patch
-de erro visivel, repetir a etapa e registrar a causa real.
+2026-05-15. Antes do patch, a task nao expôs `error`; depois do deploy
+`b4d7ee6`, a causa apareceu: Google API 503 `UNAVAILABLE` por alta demanda.
+Antes de promover Gemini como confirmado, e necessario repetir a etapa quando o
+provider sair de overload ou implementar retry visivel no caminho tool-use.
 
 **Historico positivo via `pipeline-completo`** para Eric Manoel antes dos commits
 `b12be9a`/Sprint 3b (ver [teste_gemini_pipeline_completo.md](arquivo_2026_04_17/teste_gemini_pipeline_completo.md)).
@@ -170,8 +173,8 @@ Ver [teste_gpt5nano_pipeline_completo.md](arquivo_2026_04_17/teste_gpt5nano_pipe
 ## Testes Pendentes (para fechar Marco 1)
 
 ### Prioridade ALTA
-- [ ] Deployar patch de `task.error` e repetir `pipeline-completo` com Gemini 3
-      Flash para capturar a causa real da falha em `corrigir`
+- [ ] Repetir `pipeline-completo` com Gemini 3 Flash quando 503 passar, ou
+      corrigir retry visivel para 429/5xx no tool-use antes da repeticao
 - [ ] Investigar por que `_avisos_*` nao aparece com GPT-5 Nano mesmo com injecao ativa
 - [ ] Investigar por que `/executar/etapa` nao persiste documento (gap ou by-design?)
 
@@ -189,8 +192,8 @@ Ver [teste_gpt5nano_pipeline_completo.md](arquivo_2026_04_17/teste_gpt5nano_pipe
 
 **Estado atual:**
 - ⚠️ **Gemini 3 Flash:** chat simples live OK; pipeline historica teve sucesso,
-  mas o smoke pos-fix de `corrigir` falhou e nao mostrou causa. Nao esta
-  confirmado para pipeline oficial.
+  mas o smoke pos-fix de `corrigir` falhou por Google 503 `UNAVAILABLE`. Nao
+  esta confirmado para pipeline oficial.
 - ❌ **GPT-5 Nano via `pipeline-completo`:** QUEBRADO — tool-use path produz documentos lixo. Fix necessario no loop de tool-use.
 - ⏸️ **Claude Haiku 4.5:** Aguardando creditos.
 - 📊 **Confiabilidade Gemini 3 Flash:** 50% de sucesso na primeira tentativa (1 em 2 testes). Precisa mais amostras.
@@ -208,8 +211,8 @@ visiveis.
 **Proximos passos:**
 1. Desbloquear deploy oficial; sem Render no hash esperado, a matriz continua
    historica.
-2. Deployar erro visivel em task-progress, repetir Gemini 3 Flash via
-   `pipeline-completo` no site oficial e confirmar causa, metadata/custos.
+2. Corrigir/classificar retry visivel para Google 503/429 em tool-use, ou
+   repetir Gemini 3 Flash quando a sobrecarga passar.
 3. Revalidar GPT-5 Nano esperando falha alta quando dual-output estiver
    incompleto; nao aceitar JSON/PDF lixo como sucesso.
 4. Quando creditos Anthropic forem recarregados, validar Haiku 4.5 via

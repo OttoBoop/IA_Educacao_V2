@@ -2,9 +2,9 @@
 
 **Atualizado:** 2026-05-15
 **Responsavel operacional:** Paulo
-**Status geral:** fixes de pipeline/custos/erro visivel publicados no GitHub;
-Render avancou parcialmente; APIs novas estao visiveis, mas o marcador HTML do
-site oficial ainda esta atrasado em `b12be9a`.
+**Status geral:** fixes de pipeline/custos/erro visivel publicados no GitHub e
+confirmados no Render; smoke `corrigir` com Gemini falhou alto por 503 Google
+UNAVAILABLE, com causa agora visivel em `/api/task-progress`.
 
 Este e o ponto de entrada do plano. O objetivo deste arquivo e dizer, em poucas
 linhas, onde estamos, qual e a proxima fila e quais frentes estao pausadas.
@@ -55,17 +55,16 @@ Estabilizar o NOVO CR para que a pipeline:
 - Commit funcional de custos/docs: `f67055c`.
 - Commit funcional de erro visivel: `b4d7ee6`.
 - Marker atual de deploy: `99483d1` (`chore: mark deploy b4d7ee6`).
-- GitHub `origin/main`: `99483d1`.
-- Render live observado: saiu de `2e1098f` e passou a mostrar marcador
-  `b12be9a`; ainda nao mostra `b4d7ee6`.
+- GitHub `origin/main`: contem `99483d1` e registros documentais posteriores.
+- Render live observado: saiu de `2e1098f` para `b12be9a` e depois confirmou
+  marcador `b4d7ee6`.
 - `/api/custos/status` no Render: HTTP 200, confirmando que o backend ja tem os
   endpoints de custo, embora o marcador HTML esteja atrasado.
 - GitHub Actions: sem runs recentes observaveis.
 - GitHub webhooks/deployments via `gh api`: sem entradas visiveis.
 - Render MCP: bloqueado por workspace nao selecionado.
-- Inferencia operacional: auto-deploy e lento ou inconsistente. O backend ja
-  mostra parte dos commits novos, mas `check_deploy.sh b4d7ee6` ainda falha com
-  HTML em `b12be9a`.
+- Inferencia operacional: auto-deploy e lento, mas funcionou neste ciclo; marker
+  apareceu apos cerca de 140s de espera.
 
 ## Loop Operacional
 
@@ -305,13 +304,19 @@ Critério de pronto: lista de limpeza segura e revisada.
   encerra a task como erro, em vez de deixa-la silenciosa.
 - Git: commit funcional `b4d7ee6`; marker `99483d1`; ambos publicados em
   `origin/main`.
-- Deploy: `check_deploy.sh b4d7ee6` ainda falha porque o HTML live mostra
-  `b12be9a`; `wait_deploy.sh b4d7ee6` esta em andamento.
+- Deploy: `wait_deploy.sh b4d7ee6` encontrou o marker apos cerca de 140s;
+  `check_deploy.sh b4d7ee6` passou; `/api/health` retornou healthy/Supabase true;
+  `/api/custos/status` retornou HTTP 200.
+- Smoke oficial: `pipeline-completo` com Gemini 3 Flash, aluno Eric,
+  `selected_steps=["corrigir"]`, task `task_08d4648d7053`, falhou alto em
+  `corrigir` com `error` exposto: Google API 503 `UNAVAILABLE`, modelo em alta
+  demanda temporaria.
 - Validacoes: `py_compile` dos arquivos Python tocados passou; `git diff --check`
   passou; suite focada de executor/task/progresso/UI/custo passou com 88 testes
   e 1 aviso de config `timeout` desconhecida.
-- Proximo alvo: confirmar Render em `b4d7ee6` e repetir o smoke `corrigir` no
-  site oficial para obter a causa real da falha Gemini.
+- Proximo alvo: corrigir/classificar retry visivel para 429/5xx no caminho
+  tool-use ou repetir smoke quando a sobrecarga Gemini passar; nao promover
+  Gemini pipeline enquanto `corrigir` falhar.
 
 ## Riscos Abertos
 
@@ -319,6 +324,6 @@ Critério de pronto: lista de limpeza segura e revisada.
 2. Schema drift pode fazer modelos gerarem formatos diferentes.
 3. Metadata de tokens/modelo foi corrigida localmente para documentos de IA e
    tools, mas ainda precisa deploy/smoke oficial.
-4. UI de tarefas passa a mostrar `task.error` localmente, mas ainda precisa
-   deploy/smoke oficial para provar que o professor ve a causa no site.
+4. UI de tarefas ja mostra `task.error` no site oficial; falta melhorar a
+   apresentacao de erro provider e retry para 503/429 no tool-use.
 5. Rio 3 nao deve voltar ao fluxo ativo sem nova decisao e nova chave segura.
