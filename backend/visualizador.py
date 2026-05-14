@@ -113,6 +113,16 @@ class VisaoAluno:
 
     # GERAR_RELATORIO lineage (which upstream stages were consumed)
     fontes_utilizadas: Optional[List[str]] = None
+
+    def _serializar_aviso(self, aviso: Dict[str, Any]) -> Dict[str, Any]:
+        aviso_publico = dict(aviso)
+        stage = aviso_publico.pop("_avisos_stage", None) or self._avisos_stage
+        if stage and "etapa" not in aviso_publico:
+            aviso_publico["etapa"] = stage
+        return {
+            **aviso_publico,
+            "severidade": get_warning_severity(stage, aviso_publico.get("codigo", "")),
+        }
     
     def to_dict(self) -> Dict[str, Any]:
         return {
@@ -136,14 +146,8 @@ class VisaoAluno:
             "corrigido_em": self.corrigido_em.isoformat() if self.corrigido_em else None,
             "corrigido_por_ia": self.corrigido_por_ia,
             "dados_incompletos": self.dados_incompletos,
-            "avisos_documento": [
-                {**w, "severidade": get_warning_severity(self._avisos_stage, w.get("codigo", ""))}
-                for w in self.avisos_documento
-            ],
-            "avisos_questao": [
-                {**w, "severidade": get_warning_severity(self._avisos_stage, w.get("codigo", ""))}
-                for w in self.avisos_questao
-            ],
+            "avisos_documento": [self._serializar_aviso(w) for w in self.avisos_documento],
+            "avisos_questao": [self._serializar_aviso(w) for w in self.avisos_questao],
             "fontes_utilizadas": self.fontes_utilizadas,
             **({"erro_pipeline": self.erro_pipeline} if self.erro_pipeline else {})
         }
@@ -225,6 +229,11 @@ class VisualizadorResultados:
             (d for d in analise_docs if d.nome_arquivo and d.nome_arquivo.endswith('.json')),
             next(iter(analise_docs), None)
         )
+        relatorio_docs = [d for d in documentos if d.tipo == TipoDocumento.RELATORIO_FINAL]
+        relatorio_doc = next(
+            (d for d in relatorio_docs if d.nome_arquivo and d.nome_arquivo.endswith('.json')),
+            next(iter(relatorio_docs), None)
+        )
         
         if not correcao_doc:
             self.storage._log_hot_endpoint_profile(
@@ -238,7 +247,8 @@ class VisualizadorResultados:
         # Ler dados da correção
         correcao_data = self._ler_json(correcao_doc)
         analise_data = self._ler_json(analise_doc) if analise_doc else {}
-        json_reads = 1 + (1 if analise_doc else 0)
+        relatorio_data = self._ler_json(relatorio_doc) if relatorio_doc else {}
+        json_reads = 1 + (1 if analise_doc else 0) + (1 if relatorio_doc else 0)
         
         # Montar visão
         visao = VisaoAluno(
@@ -268,6 +278,9 @@ class VisualizadorResultados:
         # Processar análise de habilidades
         self._processar_analise(visao, analise_data)
 
+        # Processar metadados do relatório final
+        self._processar_relatorio(visao, relatorio_data)
+
         self.storage._log_hot_endpoint_profile(
             "/api/resultados/{atividade_id}/{aluno_id}",
             started_at,
@@ -276,6 +289,21 @@ class VisualizadorResultados:
         )
 
         return visao
+
+    def _avisos_com_stage(self, data: Dict[str, Any], stage: str, campo: str) -> List[Dict[str, Any]]:
+        avisos = data.get(campo, [])
+        if not isinstance(avisos, list):
+            return []
+
+        stage_origem = data.get("_avisos_stage") or stage
+        normalizados = []
+        for aviso in avisos:
+            if not isinstance(aviso, dict):
+                continue
+            aviso_normalizado = dict(aviso)
+            aviso_normalizado.setdefault("_avisos_stage", stage_origem)
+            normalizados.append(aviso_normalizado)
+        return normalizados
     
     def _ler_json(self, documento: Documento) -> Dict[str, Any]:
         """Lê conteúdo JSON de um documento"""
@@ -421,8 +449,8 @@ class VisualizadorResultados:
             visao.dados_incompletos = True
 
         # Read warning/aviso fields (present in all formats, added by _avisos schema)
-        visao.avisos_documento = data.get("_avisos_documento", [])
-        visao.avisos_questao = data.get("_avisos_questao", [])
+        visao.avisos_documento = self._avisos_com_stage(data, "CORRIGIR", "_avisos_documento")
+        visao.avisos_questao = self._avisos_com_stage(data, "CORRIGIR", "_avisos_questao")
         visao._avisos_stage = data.get("_avisos_stage", "CORRIGIR")
 
     def _processar_analise(self, visao: VisaoAluno, data: Dict[str, Any]):
@@ -466,6 +494,29 @@ class VisualizadorResultados:
         # Feedback geral
         if not visao.feedback_geral:
             visao.feedback_geral = data.get("resumo_desempenho", "")
+
+        visao.avisos_documento.extend(
+            self._avisos_com_stage(data, "ANALISAR_HABILIDADES", "_avisos_documento")
+        )
+        visao.avisos_questao.extend(
+            self._avisos_com_stage(data, "ANALISAR_HABILIDADES", "_avisos_questao")
+        )
+
+    def _processar_relatorio(self, visao: VisaoAluno, data: Dict[str, Any]):
+        """Processa metadados do relatório final para a visão."""
+        if not data:
+            return
+
+        visao.avisos_documento.extend(
+            self._avisos_com_stage(data, "GERAR_RELATORIO", "_avisos_documento")
+        )
+        visao.avisos_questao.extend(
+            self._avisos_com_stage(data, "GERAR_RELATORIO", "_avisos_questao")
+        )
+
+        fontes = data.get("_fontes_utilizadas")
+        if isinstance(fontes, list):
+            visao.fontes_utilizadas = fontes
     
     def get_comparativo_questao(
         self, 

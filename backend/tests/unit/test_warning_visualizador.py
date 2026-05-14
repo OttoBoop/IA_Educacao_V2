@@ -134,6 +134,29 @@ class TestVisaoAlunoAvisosFields:
         assert d["avisos_documento"][0]["severidade"] == "orange"  # ILLEGIBLE_DOCUMENT
         assert d["avisos_documento"][1]["severidade"] == "yellow"  # MISSING_CONTENT in CORRIGIR
 
+    def test_severity_uses_warning_origin_stage(self):
+        """Merged warnings from different stages keep their own severity context."""
+        warnings = [
+            {
+                "codigo": "MISSING_CONTENT",
+                "explicacao": "enunciado incompleto",
+                "_avisos_stage": "EXTRAIR_QUESTOES",
+            },
+            {
+                "codigo": "MISSING_CONTENT",
+                "explicacao": "dados upstream incompletos",
+                "_avisos_stage": "GERAR_RELATORIO",
+            },
+        ]
+        visao = self._make_visao(avisos_documento=warnings, _avisos_stage="CORRIGIR")
+
+        d = visao.to_dict()
+
+        assert d["avisos_documento"][0]["severidade"] == "orange"
+        assert d["avisos_documento"][0]["etapa"] == "EXTRAIR_QUESTOES"
+        assert d["avisos_documento"][1]["severidade"] == "yellow"
+        assert d["avisos_documento"][1]["etapa"] == "GERAR_RELATORIO"
+
 
 class TestVisaoAlunoReadsAvisosFromJson:
     """F3-T1: _processar_correcao reads _avisos from JSON into VisaoAluno."""
@@ -199,6 +222,69 @@ class TestVisaoAlunoReadsAvisosFromJson:
 
         assert visao.avisos_documento == [], "Should be empty list for old JSON"
         assert visao.avisos_questao == [], "Should be empty list for old JSON"
+
+    def test_processar_analise_reads_avisos(self):
+        """_processar_analise must append warnings from ANALISAR_HABILIDADES JSON."""
+        from visualizador import VisualizadorResultados, VisaoAluno
+
+        viz = VisualizadorResultados()
+        visao = VisaoAluno(
+            aluno_id="a1", aluno_nome="Test",
+            atividade_id="at1", atividade_nome="Prova",
+            nota_final=0, nota_maxima=10, percentual=0,
+            total_questoes=0, questoes_corretas=0,
+            questoes_parciais=0, questoes_incorretas=0, questoes_branco=0,
+        )
+
+        data = {
+            "habilidades": [],
+            "recomendacoes": [],
+            "_avisos_documento": [
+                {"codigo": "MISSING_CONTENT", "explicacao": "Correções incompletas"}
+            ],
+            "_avisos_questao": [
+                {"codigo": "LOW_CONFIDENCE", "questao": 2, "explicacao": "Evidência fraca"}
+            ],
+        }
+
+        viz._processar_analise(visao, data)
+        resultado = visao.to_dict()
+
+        assert len(resultado["avisos_documento"]) == 1
+        assert resultado["avisos_documento"][0]["etapa"] == "ANALISAR_HABILIDADES"
+        assert resultado["avisos_documento"][0]["severidade"] == "yellow"
+        assert len(resultado["avisos_questao"]) == 1
+        assert resultado["avisos_questao"][0]["etapa"] == "ANALISAR_HABILIDADES"
+
+    def test_processar_relatorio_reads_avisos_and_fontes(self):
+        """_processar_relatorio must append warnings and preserve lineage."""
+        from visualizador import VisualizadorResultados, VisaoAluno
+
+        viz = VisualizadorResultados()
+        visao = VisaoAluno(
+            aluno_id="a1", aluno_nome="Test",
+            atividade_id="at1", atividade_nome="Prova",
+            nota_final=0, nota_maxima=10, percentual=0,
+            total_questoes=0, questoes_corretas=0,
+            questoes_parciais=0, questoes_incorretas=0, questoes_branco=0,
+        )
+
+        data = {
+            "_avisos_documento": [
+                {"codigo": "LOW_CONFIDENCE", "explicacao": "Relatório gerado com pouca evidência"}
+            ],
+            "_avisos_questao": [],
+            "_fontes_utilizadas": ["EXTRAIR_QUESTOES", "CORRIGIR", "ANALISAR_HABILIDADES"],
+        }
+
+        viz._processar_relatorio(visao, data)
+        resultado = visao.to_dict()
+
+        assert len(resultado["avisos_documento"]) == 1
+        assert resultado["avisos_documento"][0]["etapa"] == "GERAR_RELATORIO"
+        assert resultado["fontes_utilizadas"] == [
+            "EXTRAIR_QUESTOES", "CORRIGIR", "ANALISAR_HABILIDADES"
+        ]
 
 
 # ============================================================

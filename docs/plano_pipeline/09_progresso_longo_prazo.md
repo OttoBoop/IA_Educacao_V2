@@ -1,8 +1,8 @@
 # Painel Vivo Paulo -- NOVO CR
 
-**Atualizado:** 2026-05-13
+**Atualizado:** 2026-05-14
 **Responsavel operacional:** Paulo
-**Status geral:** Sprint 0 de saneamento documental concluida
+**Status geral:** Sprint 2 de schema e avisos concluida localmente
 
 Este e o ponto de entrada do plano. O objetivo deste arquivo e dizer, em poucas
 linhas, onde estamos, qual e a proxima fila e quais frentes estao pausadas.
@@ -40,9 +40,9 @@ Estabilizar o NOVO CR para que a pipeline:
 | Frente | Estado | Proximo passo |
 |--------|--------|---------------|
 | Docs e plano | Sprint 0 concluida | Manter este painel como fonte oficial e anexos fora do fluxo diario |
-| Pipeline | Sprint 1 concluida localmente | Entrar na Sprint 2 antes de novas comparacoes amplas |
-| Schema e avisos | Proxima sprint | Alinhar schema, defaults `_avisos_*` e visualizador |
-| Custos/tokens | Nao iniciada | Corrigir `input_tokens`/`output_tokens` antes de persistir custo |
+| Pipeline | Sprint 2 concluida localmente | Entrar na Sprint 3 antes de novas comparacoes amplas |
+| Schema e avisos | Sprint 2 concluida localmente | Manter schema oficial, defaults e visualizador cobertos por testes |
+| Custos/tokens | Proxima sprint | Corrigir `input_tokens`/`output_tokens` antes de persistir custo |
 | UI de erros | Pendente | Mostrar falha por aluno/etapa sem depender de terminal |
 | Limpeza de dados | Pendente | Reclassificar "fantasmas" antes de qualquer delecao |
 | Rio 3 | Pausada | Nao pedir chave, nao rodar smoke, nao deployar Rio sem nova decisao |
@@ -88,9 +88,9 @@ Critério de pronto: falha clara e rastreavel, sem output silencioso ruim.
 
 Prioridade: P1, P2 e P3.
 
-- P1: unificar schemas `PROMPTS_PADRAO` vs `STAGE_TOOL_INSTRUCTIONS`.
-- P2: garantir defaults `_avisos_*` no handler `create_document`.
-- P3: fazer o visualizador ler avisos de ANALISAR/GERAR.
+- P1: unificar schemas `PROMPTS_PADRAO` vs `STAGE_TOOL_INSTRUCTIONS`. **Concluido em 2026-05-14.**
+- P2: garantir defaults `_avisos_*` no handler `create_document`. **Concluido em 2026-05-14.**
+- P3: fazer o visualizador ler avisos de ANALISAR/GERAR. **Concluido em 2026-05-14.**
 
 Critério de pronto: documentos gerados ficam consistentes e legiveis.
 
@@ -185,6 +185,23 @@ Critério de pronto: lista de limpeza segura e revisada.
   `git diff --check`; `PYTHONPATH=backend /home/otavio/Documents/vscode/.venv/bin/python -m pytest backend/tests/unit/test_erro_pipeline.py -q`
   passou com 41 testes e 1 aviso de config `timeout` desconhecida.
 - Proximo alvo: Sprint 2, schema e avisos.
+
+### 2026-05-14 -- Sprint 2/P1-P3: schema e avisos
+
+- Alvo: alinhar o schema oficial da pipeline aos formatos reais de prompt/tool-use
+  e garantir que avisos entrem no visualizador de forma consistente.
+- Status: concluido localmente.
+- Arquivos tocados: `backend/pipeline_validation.py`,
+  `backend/visualizador.py`, `backend/tests/unit/test_pipeline_validation.py`,
+  `backend/tests/unit/test_warning_system.py`,
+  `backend/tests/unit/test_warning_visualizador.py`.
+- Comportamento: schemas oficiais agora incluem `_avisos_*`, aceitam os formatos
+  tool-use de CORRIGIR/ANALISAR/GERAR e expõem `_fontes_utilizadas`; o
+  visualizador acumula avisos vindos de correção, análise e relatório, preservando
+  a etapa de origem para severidade.
+- Validacoes: `PYTHONPATH=backend /home/otavio/Documents/vscode/.venv/bin/python -m pytest backend/tests/unit/test_pipeline_validation.py backend/tests/unit/test_schemas_narrativos.py backend/tests/unit/test_warning_system.py backend/tests/unit/test_warning_visualizador.py backend/tests/unit/test_warning_badge_ui.py -q`
+  passou com 130 testes, 3 skipped e 1 aviso de config `timeout` desconhecida.
+- Proximo alvo: Sprint 3, custos/tokens.
 
 ## Riscos Abertos
 

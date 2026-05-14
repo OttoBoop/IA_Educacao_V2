@@ -5,7 +5,7 @@ Pydantic models for validating JSON outputs from each pipeline stage.
 These models ensure AI models produce correctly structured responses.
 """
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 from typing import List, Dict, Any, Optional, Union
 from enum import Enum
 
@@ -41,6 +41,32 @@ class NivelHabilidade(str, Enum):
 # MODELS FOR EACH PIPELINE STAGE
 # ============================================================
 
+class PipelineModel(BaseModel):
+    """Base permissiva para outputs de IA com metadados de aviso.
+
+    Os prompts e o handler create_document usam chaves com underscore
+    (`_avisos_*`). Pydantic trata atributos iniciados com underscore como
+    privados, então usamos aliases para manter o contrato JSON público.
+    """
+
+    model_config = ConfigDict(populate_by_name=True, extra="allow")
+
+    avisos_documento: List[Dict[str, Any]] = Field(
+        default_factory=list,
+        alias="_avisos_documento",
+        description="Avisos sobre o documento inteiro",
+    )
+    avisos_questao: List[Dict[str, Any]] = Field(
+        default_factory=list,
+        alias="_avisos_questao",
+        description="Avisos por questao",
+    )
+    avisos_stage: Optional[str] = Field(
+        default=None,
+        alias="_avisos_stage",
+        description="Etapa usada para calcular severidade dos avisos",
+    )
+
 class ItemQuestao(BaseModel):
     """Item de uma questão de múltipla escolha"""
     letra: str = Field(..., description="Letra do item (a, b, c, d, etc.)", min_length=1, max_length=2)
@@ -58,7 +84,7 @@ class Questao(BaseModel):
     tipo_raciocinio: Optional[str] = Field(None, description="Tipo de raciocínio exigido: memória, aplicação, análise, síntese, avaliação")
 
 
-class ExtracaoQuestoes(BaseModel):
+class ExtracaoQuestoes(PipelineModel):
     """Saída da etapa EXTRAIR_QUESTOES"""
     questoes: List[Questao] = Field(..., description="Lista de questões extraídas")
     total_questoes: int = Field(..., description="Total de questões encontradas", ge=0)
@@ -80,7 +106,7 @@ class RespostaGabarito(BaseModel):
     conceito_central: Optional[str] = Field(None, description="Conceito pedagógico principal testado pela questão")
 
 
-class ExtracaoGabarito(BaseModel):
+class ExtracaoGabarito(PipelineModel):
     """Saída da etapa EXTRAIR_GABARITO"""
     respostas: List[RespostaGabarito] = Field(..., description="Lista de respostas corretas")
 
@@ -95,7 +121,7 @@ class RespostaAluno(BaseModel):
     raciocinio_parcial: Optional[str] = Field(None, description="Raciocínio parcial do aluno identificado — sinais de entendimento mesmo em respostas erradas")
 
 
-class ExtracaoRespostas(BaseModel):
+class ExtracaoRespostas(PipelineModel):
     """Saída da etapa EXTRAIR_RESPOSTAS"""
     aluno: str = Field(..., description="Nome do aluno", min_length=1)
     respostas: List[RespostaAluno] = Field(..., description="Lista de respostas do aluno")
@@ -103,7 +129,7 @@ class ExtracaoRespostas(BaseModel):
     questoes_em_branco: int = Field(..., description="Número de questões em branco", ge=0)
 
 
-class CorrecaoQuestao(BaseModel):
+class CorrecaoQuestao(PipelineModel):
     """Resultado da correção de uma questão individual"""
     nota: float = Field(..., description="Nota atribuída", ge=0)
     nota_maxima: float = Field(..., description="Nota máxima da questão", gt=0)
@@ -118,29 +144,82 @@ class CorrecaoQuestao(BaseModel):
     narrativa_correcao: Optional[str] = Field(None, description="Análise pedagógica narrativa: raciocínio do aluno, tipo de erro, potencial")
 
 
-class AnaliseHabilidades(BaseModel):
+class CorrecaoPipeline(PipelineModel):
+    """Saida aceita para CORRIGIR.
+
+    A pipeline ainda suporta o formato legado de questao unica
+    (`nota`, `status`, `feedback`) e o formato de tool-use atual
+    (`nota_final`, `questoes`, `feedback_geral`).
+    """
+
+    nota_final: Optional[float] = Field(None, description="Nota final agregada")
+    questoes: List[Dict[str, Any]] = Field(
+        default_factory=list,
+        description="Correcoes por questao no formato agregado",
+    )
+    total_acertos: Optional[int] = Field(None, description="Total de questoes corretas")
+    total_erros: Optional[int] = Field(None, description="Total de questoes incorretas")
+    feedback_geral: str = Field(default="", description="Feedback geral da correcao")
+
+    nota: Optional[float] = Field(None, description="Nota atribuida a uma questao unica", ge=0)
+    nota_maxima: Optional[float] = Field(None, description="Nota maxima da questao", gt=0)
+    percentual: Optional[int] = Field(None, description="Percentual de acerto", ge=0, le=100)
+    status: Optional[StatusCorrecao] = Field(None, description="Status da correcao")
+    feedback: str = Field(default="", description="Feedback detalhado")
+    pontos_positivos: List[str] = Field(default_factory=list, description="Pontos positivos")
+    pontos_melhorar: List[str] = Field(default_factory=list, description="Pontos a melhorar")
+    erros_conceituais: List[str] = Field(default_factory=list, description="Erros conceituais")
+    habilidades_demonstradas: List[str] = Field(default_factory=list, description="Habilidades demonstradas")
+    habilidades_faltantes: List[str] = Field(default_factory=list, description="Habilidades faltantes")
+    narrativa_correcao: Optional[str] = Field(None, description="Narrativa pedagogica da correcao")
+
+    @model_validator(mode="after")
+    def _validar_formato_minimo(self):
+        if self.questoes or self.nota_final is not None or self.nota is not None:
+            return self
+        raise ValueError(
+            "CORRIGIR precisa ter formato agregado (nota_final/questoes) "
+            "ou formato de questao unica (nota)"
+        )
+
+
+class AnaliseHabilidades(PipelineModel):
     """Saída da etapa ANALISAR_HABILIDADES"""
-    aluno: str = Field(..., description="Nome do aluno", min_length=1)
-    resumo_desempenho: str = Field(..., description="Resumo geral do desempenho", min_length=1)
-    nota_final: float = Field(..., description="Nota final do aluno", ge=0)
-    nota_maxima: float = Field(..., description="Nota máxima possível", gt=0)
-    percentual_acerto: int = Field(..., description="Percentual geral de acerto (0-100)", ge=0, le=100)
-    habilidades: Dict[str, List[Dict[str, str]]] = Field(..., description="Análise de habilidades por categoria")
-    recomendacoes: List[str] = Field(default_factory=list, description="Recomendações de estudo")
+    aluno: str = Field(default="", description="Nome do aluno")
+    resumo_desempenho: str = Field(default="", description="Resumo geral do desempenho")
+    nota_final: Optional[float] = Field(None, description="Nota final do aluno", ge=0)
+    nota_maxima: Optional[float] = Field(None, description="Nota máxima possível", gt=0)
+    percentual_acerto: Optional[int] = Field(None, description="Percentual geral de acerto (0-100)", ge=0, le=100)
+    habilidades: Union[Dict[str, List[Dict[str, Any]]], List[Dict[str, Any]]] = Field(
+        default_factory=dict,
+        description="Análise de habilidades por categoria ou lista plana do tool-use",
+    )
+    indicadores: Dict[str, Any] = Field(default_factory=dict, description="Indicadores agregados do tool-use")
+    recomendacoes: List[Union[str, Dict[str, Any]]] = Field(default_factory=list, description="Recomendações de estudo")
     pontos_fortes: List[str] = Field(default_factory=list, description="Pontos fortes do aluno")
     areas_atencao: List[str] = Field(default_factory=list, description="Áreas que precisam de atenção")
     narrativa_habilidades: Optional[str] = Field(None, description="Síntese narrativa de padrões de aprendizado: consistência, esforço vs. conhecimento, transferência de conceitos")
 
 
-class RelatorioFinal(BaseModel):
+class RelatorioFinal(PipelineModel):
     """Saída da etapa GERAR_RELATORIO"""
-    conteudo: str = Field(..., description="Conteúdo do relatório em Markdown", min_length=1)
+    conteudo: str = Field(default="", description="Conteúdo do relatório em Markdown")
     resumo_executivo: str = Field(default="", description="Resumo executivo breve")
-    nota_final: str = Field(..., description="Nota final formatada")
-    aluno: str = Field(..., description="Nome do aluno", min_length=1)
-    materia: str = Field(..., description="Matéria da prova", min_length=1)
-    atividade: str = Field(..., description="Nome/título da atividade", min_length=1)
+    nota_final: Union[str, float] = Field(..., description="Nota final formatada")
+    aluno: str = Field(default="", description="Nome do aluno")
+    materia: str = Field(default="", description="Matéria da prova")
+    atividade: str = Field(default="", description="Nome/título da atividade")
+    resumo_geral: str = Field(default="", description="Resumo geral no formato tool-use")
+    pontos_fortes: List[str] = Field(default_factory=list, description="Pontos fortes")
+    areas_melhoria: List[str] = Field(default_factory=list, description="Áreas de melhoria")
+    recomendacoes: List[Union[str, Dict[str, Any]]] = Field(default_factory=list, description="Recomendações")
+    detalhamento: str = Field(default="", description="Detalhamento do relatório")
     relatorio_narrativo: Optional[str] = Field(None, description="Narrativa holística: visão geral do aluno, combinando nota, habilidades e análise numa leitura fluida")
+    fontes_utilizadas: List[str] = Field(
+        default_factory=list,
+        alias="_fontes_utilizadas",
+        description="Etapas upstream usadas para gerar o relatorio",
+    )
 
 
 # ============================================================
@@ -162,7 +241,7 @@ def validar_json_pipeline(etapa: str, dados: Dict[str, Any]) -> Union[BaseModel,
         'extrair_questoes': ExtracaoQuestoes,
         'extrair_gabarito': ExtracaoGabarito,
         'extrair_respostas': ExtracaoRespostas,
-        'corrigir': CorrecaoQuestao,
+        'corrigir': CorrecaoPipeline,
         'analisar_habilidades': AnaliseHabilidades,
         'gerar_relatorio': RelatorioFinal
     }
@@ -202,12 +281,12 @@ def obter_schema_json(etapa: str):
         'extrair_questoes': ExtracaoQuestoes,
         'extrair_gabarito': ExtracaoGabarito,
         'extrair_respostas': ExtracaoRespostas,
-        'corrigir': CorrecaoQuestao,
+        'corrigir': CorrecaoPipeline,
         'analisar_habilidades': AnaliseHabilidades,
         'gerar_relatorio': RelatorioFinal
     }
 
     modelo = modelos.get(etapa.lower().replace(' ', '_'))
     if modelo:
-        return modelo.schema()
+        return modelo.model_json_schema(by_alias=True)
     return None

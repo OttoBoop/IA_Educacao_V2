@@ -5,7 +5,7 @@ Testes para os modelos de validação do pipeline
 import pytest
 from pipeline_validation import (
     ExtracaoQuestoes, ExtracaoGabarito, ExtracaoRespostas,
-    CorrecaoQuestao, AnaliseHabilidades, RelatorioFinal,
+    CorrecaoQuestao, CorrecaoPipeline, AnaliseHabilidades, RelatorioFinal,
     validar_json_pipeline, obter_schema_json
 )
 
@@ -166,6 +166,39 @@ class TestCorrecaoQuestao:
         assert correcao.percentual == 100
 
 
+class TestCorrecaoPipeline:
+    """Testes para o schema de correção usado pela pipeline."""
+
+    def test_correcao_agregada_tool_use_valida(self):
+        """CORRIGIR aceita o formato agregado descrito em STAGE_TOOL_INSTRUCTIONS."""
+        dados = {
+            "nota_final": 8.0,
+            "questoes": [
+                {"numero": 1, "nota": 4.0, "nota_maxima": 5.0, "acerto": True, "feedback": "ok"},
+                {"numero": 2, "nota": 4.0, "nota_maxima": 5.0, "acerto": False, "feedback": "parcial"},
+            ],
+            "total_acertos": 1,
+            "total_erros": 1,
+            "feedback_geral": "Bom desempenho",
+            "_avisos_documento": [
+                {"codigo": "LOW_CONFIDENCE", "explicacao": "Leitura parcial"}
+            ],
+            "_avisos_questao": [],
+        }
+
+        resultado = validar_json_pipeline("corrigir", dados)
+        assert isinstance(resultado, CorrecaoPipeline)
+        assert resultado.nota_final == 8.0
+        assert len(resultado.questoes) == 2
+        assert resultado.avisos_documento[0]["codigo"] == "LOW_CONFIDENCE"
+
+    def test_correcao_sem_nota_ou_questoes_falha(self):
+        """CORRIGIR não deve aceitar JSON vazio como correção válida."""
+        resultado = validar_json_pipeline("corrigir", {"feedback_geral": "sem dados"})
+        assert isinstance(resultado, dict)
+        assert resultado.get("_error") == "validacao_falhou"
+
+
 class TestAnaliseHabilidades:
     """Testes para validação de análise de habilidades"""
 
@@ -195,6 +228,29 @@ class TestAnaliseHabilidades:
         assert analise.aluno == "João Silva"
         assert analise.nota_final == 8.5
         assert "dominadas" in analise.habilidades
+
+    def test_analise_tool_use_valida(self):
+        """ANALISAR_HABILIDADES aceita o formato de lista plana do tool-use."""
+        dados = {
+            "habilidades": [
+                {"nome": "Interpretação", "nivel": "em_desenvolvimento", "nota": 6.0}
+            ],
+            "indicadores": {
+                "proficiencia_geral": 6.0,
+                "areas_destaque": [],
+                "areas_atencao": ["Interpretação"],
+            },
+            "recomendacoes": [
+                {"tipo": "estudo", "descricao": "Revisar gráficos", "prioridade": "alta"}
+            ],
+            "_avisos_documento": [],
+            "_avisos_questao": [],
+        }
+
+        resultado = validar_json_pipeline("analisar_habilidades", dados)
+        assert isinstance(resultado, AnaliseHabilidades)
+        assert isinstance(resultado.habilidades, list)
+        assert resultado.indicadores["proficiencia_geral"] == 6.0
 
     @pytest.mark.skip(reason="Validation logic relaxed - models no longer enforce strict habilidade keys")
     def test_habilidades_invalidas(self):
@@ -235,6 +291,29 @@ class TestRelatorioFinal:
         assert relatorio.aluno == "João Silva"
         assert relatorio.materia == "Geografia"
         assert "# Relatório" in relatorio.conteudo
+
+    def test_relatorio_tool_use_valido(self):
+        """GERAR_RELATORIO aceita o formato de tool-use sem perder linhagem."""
+        dados = {
+            "resumo_geral": "Aluno com bom raciocínio e lacunas pontuais.",
+            "pontos_fortes": ["Organização"],
+            "areas_melhoria": ["Justificativas"],
+            "recomendacoes": [
+                {"tipo": "pratica", "descricao": "Refazer Q2", "prioridade": "media"}
+            ],
+            "nota_final": 7.5,
+            "detalhamento": "Detalhes por questão.",
+            "_fontes_utilizadas": ["EXTRAIR_QUESTOES", "CORRIGIR", "ANALISAR_HABILIDADES"],
+            "_avisos_documento": [],
+            "_avisos_questao": [],
+        }
+
+        resultado = validar_json_pipeline("gerar_relatorio", dados)
+        assert isinstance(resultado, RelatorioFinal)
+        assert resultado.resumo_geral.startswith("Aluno")
+        assert resultado.fontes_utilizadas == [
+            "EXTRAIR_QUESTOES", "CORRIGIR", "ANALISAR_HABILIDADES"
+        ]
 
 
 class TestValidacaoPipeline:
@@ -295,6 +374,25 @@ class TestSchemaJson:
         """Testa schema inexistente"""
         schema = obter_schema_json("etapa_inexistente")
         assert schema is None
+
+    @pytest.mark.parametrize("etapa", [
+        "extrair_questoes",
+        "extrair_gabarito",
+        "extrair_respostas",
+        "corrigir",
+        "analisar_habilidades",
+        "gerar_relatorio",
+    ])
+    def test_schema_inclui_avisos_aliases(self, etapa):
+        """Schemas oficiais expõem os aliases JSON _avisos_* usados na pipeline."""
+        schema = obter_schema_json(etapa)
+        assert "_avisos_documento" in schema["properties"]
+        assert "_avisos_questao" in schema["properties"]
+
+    def test_schema_relatorio_inclui_fontes_utilizadas_alias(self):
+        """Schema oficial do relatório expõe a linhagem usada pelo visualizador."""
+        schema = obter_schema_json("gerar_relatorio")
+        assert "_fontes_utilizadas" in schema["properties"]
 
 
 if __name__ == "__main__":

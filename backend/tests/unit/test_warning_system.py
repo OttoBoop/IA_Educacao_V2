@@ -207,3 +207,52 @@ class TestFontesUtilizadasSchema:
         assert "_fontes_utilizadas" in text, (
             "GERAR_RELATORIO STAGE_TOOL_INSTRUCTIONS missing '_fontes_utilizadas' field"
         )
+
+
+# ============================================================
+# P2: create_document default _avisos injection
+# ============================================================
+
+class TestCreateDocumentAvisosDefaults:
+    """JSON saved through create_document must get default aviso metadata."""
+
+    def test_inject_default_avisos_adds_missing_fields(self, tmp_path):
+        """Missing _avisos_* fields are added before the JSON enters storage."""
+        import json
+        from models import TipoDocumento
+        from tool_handlers import _inject_default_avisos
+
+        arquivo = tmp_path / "correcao.json"
+        arquivo.write_text(json.dumps({"nota_final": 8.5, "questoes": []}), encoding="utf-8")
+
+        _inject_default_avisos(str(arquivo), TipoDocumento.CORRECAO)
+
+        data = json.loads(arquivo.read_text(encoding="utf-8"))
+        assert data["_avisos_documento"] == []
+        assert data["_avisos_questao"] == []
+        assert data["_avisos_stage"] == "CORRIGIR"
+
+    def test_inject_default_avisos_preserves_existing_fields(self, tmp_path):
+        """Existing aviso lists are not overwritten by the default injector."""
+        import json
+        from models import TipoDocumento
+        from tool_handlers import _inject_default_avisos
+
+        aviso = {"codigo": "LOW_CONFIDENCE", "explicacao": "leitura parcial"}
+        arquivo = tmp_path / "relatorio.json"
+        arquivo.write_text(
+            json.dumps({
+                "nota_final": 7.0,
+                "_avisos_documento": [aviso],
+                "_avisos_questao": [],
+                "_avisos_stage": "GERAR_RELATORIO",
+            }),
+            encoding="utf-8",
+        )
+
+        _inject_default_avisos(str(arquivo), TipoDocumento.RELATORIO_FINAL)
+
+        data = json.loads(arquivo.read_text(encoding="utf-8"))
+        assert data["_avisos_documento"] == [aviso]
+        assert data["_avisos_questao"] == []
+        assert data["_avisos_stage"] == "GERAR_RELATORIO"
