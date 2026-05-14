@@ -2,14 +2,14 @@
 
 **Atualizado:** 2026-05-15
 **Responsavel operacional:** Paulo
-**Status geral:** Render oficial confirmou o marker `45c6f97`, que aponta para
-o commit funcional `839968e`. Gemini `corrigir` passou com custo medido; GPT-5
+**Status geral:** Render oficial confirmou o marker `9823afb`, que aponta para
+o commit funcional `55e168a`. Gemini `corrigir` passou com custo medido; GPT-5
 Nano agora tambem passou em `corrigir` no site oficial com JSON parseavel, PDF
 via `execute_python_code`, tokens splitados e custo medido, sem PDF extra via
 `create_document`. O resumo de custos agora agrega por `cost_run_id`, entao
 JSON+PDF do mesmo run contam uma vez. Falhas tool-use sem documento final agora
-tem `TokenUsageRecord` local mensal, mas ainda falta migrar esse registro para
-Supabase/tabela oficial. Ainda nao ha pipeline completa validada para Nano.
+tem `TokenUsageRecord` local mensal e codigo preparado para Supabase quando a
+tabela `token_usage` existir. Ainda nao ha pipeline completa validada para Nano.
 
 Este e o ponto de entrada do plano. O objetivo deste arquivo e dizer, em poucas
 linhas, onde estamos, qual e a proxima fila e quais frentes estao pausadas.
@@ -49,7 +49,7 @@ Estabilizar o NOVO CR para que a pipeline:
 | Docs e plano | Sprint 0 concluida | Manter este painel como fonte oficial e anexos fora do fluxo diario |
 | Pipeline | `corrigir` validado oficialmente para Gemini 3 Flash e GPT-5 Nano com JSON/PDF/custo | Expandir para `analisar_habilidades` e `gerar_relatorio`; validar schema minimo por etapa |
 | Schema e avisos | Sprint 2 concluida localmente | Manter schema oficial, defaults e visualizador cobertos por testes |
-| Custos/tokens | Metadata de documento, endpoints live, resumo por `cost_run_id` e `TokenUsageRecord` local para falha sem documento no deploy `839968e` | Migrar `TokenUsageRecord` para Supabase; validar uma falha real sem documento em producao |
+| Custos/tokens | Metadata de documento, endpoints live, resumo por `cost_run_id`, `TokenUsageRecord` local e migration Supabase no deploy `55e168a` | Aplicar/verificar tabela `token_usage` no Supabase; validar uma falha real sem documento em producao |
 | UI de erros | Pendente | Mostrar falha por aluno/etapa sem depender de terminal |
 | Limpeza de dados | Pendente | Reclassificar "fantasmas" antes de qualquer delecao |
 | Rio 3 | Pausada | Nao pedir chave, nao rodar smoke, nao deployar Rio sem nova decisao |
@@ -68,14 +68,15 @@ Estabilizar o NOVO CR para que a pipeline:
 - Commit funcional de payload malformado em `create_document`: `eab7d90`.
 - Commit funcional de resumo de custos por run: `7ed8b8b`.
 - Commit funcional de `TokenUsageRecord` para falhas sem documento: `839968e`.
-- Marker mais novo publicado: `45c6f97` (`chore: mark deploy 839968e`).
-- Marker atual visto no Render: `45c6f97`, HTML com `novocr-deploy=839968e`.
+- Commit funcional de preparo Supabase `token_usage`: `55e168a`.
+- Marker mais novo publicado: `9823afb` (`chore: mark deploy 55e168a`).
+- Marker atual visto no Render: `9823afb`, HTML com `novocr-deploy=55e168a`.
 - GitHub `origin/main`: pode conter commits documentais posteriores; o ultimo
-  marker funcional publicado e `45c6f97`, e Render live esta confirmado em
-  `839968e`.
+  marker funcional publicado e `9823afb`, e Render live esta confirmado em
+  `55e168a`.
 - Render live observado: saiu de `2e1098f` para `b12be9a` e depois confirmou
   marcadores `b4d7ee6`, `f505be6`, `97a7c79`, `c75af88`, `39aa50a`,
-  `b24f03e`, `eab7d90`, `7ed8b8b` e `839968e`.
+  `b24f03e`, `eab7d90`, `7ed8b8b`, `839968e` e `55e168a`.
 - `/api/custos/status` no Render: HTTP 200, confirmando endpoints de custo live.
 - GitHub Actions: sem runs recentes observaveis.
 - GitHub webhooks/deployments via `gh api`: sem entradas visiveis.
@@ -578,12 +579,36 @@ Critério de pronto: lista de limpeza segura e revisada.
   historico duravel em producao, o proximo passo e tabela Supabase `token_usage`
   ou mecanismo persistente equivalente.
 
+### 2026-05-15 -- Sprint 3e: preparo Supabase para `token_usage`
+
+- Alvo: deixar o registro de falha sem documento pronto para persistencia duravel
+  quando a tabela Supabase existir, sem quebrar o fallback local.
+- Status: publicado, deployado e smokeado; migration criada, aplicacao live da
+  tabela ainda nao confirmada.
+- Arquivos tocados: `backend/token_usage.py`,
+  `backend/migrations/001_create_tables.sql`,
+  `backend/tests/unit/test_cost_tracking.py`.
+- Comportamento: `TokenUsageStore` tenta inserir/listar em Supabase
+  `token_usage`; se a tabela nao existir ou o insert falhar, grava no JSON local
+  mensal. A migration declara `token_usage` com `cost_run_id`, provider/modelo,
+  tokens, status, erro, retry, tentativas, tempo e metadata.
+- Validacoes locais: `py_compile` passou; `git diff --check` passou;
+  `test_cost_tracking.py` passou com 12 testes e 1 aviso conhecido de config
+  `timeout` desconhecida.
+- Git/deploy: commit funcional `55e168a`; marker `9823afb`; Render confirmou
+  `55e168a` via `wait_deploy.sh` e `check_deploy.sh`; `/api/health` healthy.
+- Smoke oficial de custos: `/api/custos/status?limit=500` retornou
+  `token_usage_analisados=0`, `runs_analisados=492`, `runs_precificados=5`,
+  `runs_bloqueados=487`, `alertas=[]`.
+- Proximo alvo: aplicar/verificar a tabela Supabase `token_usage` ou seguir para
+  revalidacao de `analisar_habilidades`/`gerar_relatorio` por provider.
+
 ## Riscos Abertos
 
 1. Creditos Anthropic insuficientes ainda bloqueiam validacao Haiku.
 2. Schema drift pode fazer modelos gerarem formatos diferentes.
 3. Schema minimo ainda nao esta validado para todas as etapas; JSON parseavel e
    necessario, mas nao prova qualidade pedagogica.
-4. `TokenUsageRecord` de falha sem documento ainda usa arquivo local mensal; isso
-   nao e persistencia duravel entre deploys no Render.
+4. A tabela Supabase `token_usage` esta descrita na migration, mas a aplicacao
+   live dessa migration ainda nao foi confirmada.
 5. Rio 3 nao deve voltar ao fluxo ativo sem nova decisao e nova chave segura.

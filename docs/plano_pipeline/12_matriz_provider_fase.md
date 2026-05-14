@@ -6,18 +6,19 @@
 `b12be9a`, `301eba6`, `f67055c`, `462ea1d`, `b4d7ee6`, `99483d1`,
 `f505be6`, `d75b05a`, `97a7c79`, `ec95193`, `ff7b92a`, `68ebe51`,
 `c75af88`, `45d543a`, `39aa50a`, `3ddf6c5`, `b24f03e`, `6ed31a4`,
-`eab7d90`, `dcecdfa`, `7ed8b8b`, `9e1aee5`, `839968e`, `45c6f97`
+`eab7d90`, `dcecdfa`, `7ed8b8b`, `9e1aee5`, `839968e`, `45c6f97`,
+`55e168a`, `9823afb`
 
 ## Status Oficial De Deploy
 
 - GitHub `origin/main` pode conter commits documentais posteriores; o ultimo
-  marker funcional publicado e `45c6f97`, e o marcador HTML aponta para o commit
-  funcional `839968e`.
-- Render live confirmou `839968e` por `wait_deploy.sh`, `check_deploy.sh` e
+  marker funcional publicado e `9823afb`, e o marcador HTML aponta para o commit
+  funcional `55e168a`.
+- Render live confirmou `55e168a` por `wait_deploy.sh`, `check_deploy.sh` e
   `/api/health`.
 - Docs antigos registram que auto-deploy Git nao funciona de forma confiavel; o
   ciclo usou deploy via API Render com token local seguro, sem imprimir segredo.
-- Os smokes live de 2026-05-15 abaixo sao oficiais para o estado `839968e`.
+- Os smokes live de 2026-05-15 abaixo sao oficiais para o estado `55e168a`.
 
 ## Legenda
 
@@ -108,6 +109,10 @@
   `token_usage_analisados`; o live retornou `0`, como esperado enquanto nenhuma
   nova falha sem documento ocorrer. O caminho e local mensal
   `data/token_usage/YYYY-MM.json`, ainda nao Supabase.
+- Depois do deploy `55e168a`, o codigo ficou preparado para Supabase
+  `token_usage` e a migration declara a tabela. O live segue retornando
+  `token_usage_analisados=0`; a aplicacao da migration no banco ainda nao foi
+  confirmada.
 
 **Gemini 3 Flash:** tambem validado em 2 testes historicos de chat (mensagem unica + multi-turn). Ver [teste_chat_gemini.md](arquivo_2026_04_17/teste_chat_gemini.md).
 - Teste 1: 662 tokens, 1930ms, resposta em PT correta
@@ -235,8 +240,9 @@ Ver [teste_gpt5nano_pipeline_completo.md](arquivo_2026_04_17/teste_gpt5nano_pipe
 ### Prioridade ALTA
 - [ ] Rodar Gemini 3 Flash em `analisar_habilidades` e `gerar_relatorio` com
       custo/metadata
-- [ ] Migrar `TokenUsageRecord` de falhas sem documento para persistencia duravel
-      Supabase ou equivalente
+- [ ] Aplicar/verificar migration Supabase `token_usage`
+- [x] Preparar codigo para persistir `TokenUsageRecord` em Supabase quando a
+      tabela existir
 - [x] Criar registro local mensal de custo de falhas sem documento final
 - [x] Auditar se `/api/custos/resumo` soma por documento em vez de por
       `cost_run_id`
