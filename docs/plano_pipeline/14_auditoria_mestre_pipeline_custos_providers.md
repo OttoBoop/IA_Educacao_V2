@@ -158,8 +158,8 @@ detalhar e auditar estas linhas.
    por tool-use, alem de relatorios agregados.
 3. O Doc 02 mostrou que o maior risco arquitetural esta no Path 2: schemas
    conflitantes, JSON opaco, avisos/metadata/tokens incompletos e tools parciais.
-4. Os fixes principais ja chegaram ao site oficial: Render confirmou `eab7d90`
-   via marker `dcecdfa`, com `/api/health` e `/api/custos/*` respondendo.
+4. Os fixes principais ja chegaram ao site oficial: Render confirmou `7ed8b8b`
+   via marker `9e1aee5`, com `/api/health` e `/api/custos/*` respondendo.
 5. P4 ja esta no codigo publicado: `EXTRAIR_RESPOSTAS` nao deve rodar sem
    `prova_respondida` valida; falta apenas smoke dedicado se esse bug voltar a
    ser alvo.
@@ -168,23 +168,23 @@ detalhar e auditar estas linhas.
 7. Sprint 2 melhorou schema/defaults/visualizador, mas nao fechou o contrato do
    Doc 02 porque Path 2 ainda precisa validar schema antes de sucesso.
 8. Sprint 3 separou `input_tokens`/`output_tokens`; Sprint 3b/4h confirmaram
-   metadata/custo em documentos reais no site para Gemini e GPT-5 Nano.
+   metadata/custo em documentos reais; Sprint 3c agrupou custo por `cost_run_id`.
 9. Gemini 3 Flash e GPT-5 Nano estao confirmados para `corrigir`; Haiku segue
    bloqueado por creditos; Rio 3 esta pausado.
-10. O proximo eixo correto e auditar custo por `cost_run_id`, ampliar a
-    revalidacao por etapa/provider e endurecer o contrato contra schema ruim e
-    custo de falhas.
+10. O proximo eixo correto e registrar custo de falhas sem documento final,
+    ampliar a revalidacao por etapa/provider e endurecer o contrato contra
+    schema ruim.
 
 ### O Que Temos
 
 | Frente | Temos hoje | Limite da afirmacao |
 |---|---|---|
 | Documentacao | Doc 09 como painel curto; Doc 14 como auditoria mestre; Doc 05/12 com notas de status | Manter Doc 09 curto e Doc 14 detalhado; registrar novos ciclos sem criar doc extra. |
-| Git/GitHub | Commits ate `eab7d90` publicados; marcador funcional `dcecdfa`; pode haver docs acima do marker em `origin/main` | Usar marker HTML antes de aceitar qualquer smoke como oficial. |
+| Git/GitHub | Commits ate `7ed8b8b` publicados; marcador funcional `9e1aee5`; pode haver docs acima do marker em `origin/main` | Usar marker HTML antes de aceitar qualquer smoke como oficial. |
 | Pipeline P4 | Bloqueio de extracao de respostas sem prova valida esta no codigo publicado | Precisa smoke dedicado apenas se P4 voltar a ser alvo. |
 | Pipeline P5/P6 | Contencao de nota e preservacao de `_documentos_faltantes` | `N/A` ainda e fallback proibido como estado final. |
 | Schema/avisos | Defaults `_avisos_*`, visualizador melhorado e schemas mais permissivos | Permissividade nao e contrato forte; pode aceitar legado demais. |
-| Tokens/custos | Split input/output; metadata de documento; endpoints `/api/custos/status` e `/api/custos/resumo` respondendo live; Gemini e Nano geraram runs custeaveis | Auditar se resumo duplica custo por documento; falta persistir falhas sem documento final. |
+| Tokens/custos | Split input/output; metadata de documento; endpoints `/api/custos/status` e `/api/custos/resumo` respondendo live; resumo agrega por `cost_run_id`; Gemini e Nano geraram runs custeaveis | Falta persistir falhas sem documento final. |
 | Providers | Gemini e GPT-5 Nano passaram em chat simples live e em `corrigir`; Haiku bloqueado por credito | `corrigir` nao prova pipeline completa. |
 | Seguranca Rio | Regra de nao usar chave em chat e Rio pausado | Arquivos Rio/untracked continuam fora do ciclo ativo. |
 
@@ -206,7 +206,7 @@ detalhar e auditar estas linhas.
 
 | Item | Estado | Acao correta |
 |---|---|---|
-| Render/site oficial | Confirmado em `eab7d90` pelo marker `dcecdfa` | Continuar usando marker/check_deploy antes de smoke oficial. |
+| Render/site oficial | Confirmado em `7ed8b8b` pelo marker `9e1aee5` | Continuar usando marker/check_deploy antes de smoke oficial. |
 | Anthropic Haiku | Bloqueado por creditos | Testar apenas quando houver credito; erro deve aparecer claro. |
 | Rio 3 | Pausado | Nao pedir chave, nao rodar smoke, nao misturar no ciclo atual. |
 | `.pytest_tmp` e assets soltos | Muito ruido no worktree | Nao stagear por acidente; nunca usar `git add .`. |
@@ -302,7 +302,7 @@ fila de tarefas. Cada item abaixo deve ser entendido como contrato herdado.
 | D02-3 | Resolver conflito `PROMPTS_PADRAO` vs `STAGE_TOOL_INSTRUCTIONS` | Aberto | Validacao aceita formatos, mas prompt legado ainda pode orientar modelo ao schema errado | Teste: prompt ativo de Path 2 contem apenas contrato esperado ou marca legado como fora do caminho ativo. |
 | D02-4 | `_avisos_documento`, `_avisos_questao`, `_avisos_stage` devem ser confiaveis | Parcial | Defaults foram injetados; visualizador melhorou; ainda falta distinguir default de output real do modelo | Teste: ausencia de `_avisos_*` em JSON de IA gera alerta de schema/default, nao sucesso silencioso. |
 | D02-5 | Tokens do Path 2 precisam de input/output separados | Feito live para smokes recentes | Gemini e Nano em `corrigir` registraram `tokens_entrada`/`tokens_saida`; manter cobertura | Revalidar nas etapas `analisar_habilidades` e `gerar_relatorio`. |
-| D02-6 | Tokens precisam virar custo persistido por contexto educacional | Parcial | Endpoints `/api/custos/*` respondem e precificam runs com split; falta auditar dedupe por `cost_run_id` e falhas sem documento | Teste: uma etapa dual-output conta custo uma vez por run, mesmo com JSON+PDF. |
+| D02-6 | Tokens precisam virar custo persistido por contexto educacional | Parcial | Endpoints `/api/custos/*` respondem, precificam runs com split e agrupam JSON+PDF por `cost_run_id`; falta falha sem documento | Teste: falha depois de consumir tokens cria registro de custo/erro sem documento final. |
 | D02-7 | Metadata dos documentos deve ter provider/modelo/tokens/tempo | Parcial live | Documentos recentes de Gemini/Nano carregam provider/modelo/tokens/custo; falta cobrir todas as etapas e falhas | Teste: documento gerado por IA tem `ia_provider`, `ia_modelo`, `tokens_usados`, `tempo_processamento_ms` em cada etapa. |
 | D02-8 | Provider sem tools nao pode cair em chat simples | Parcialmente fechado | `chat_service.py` agora falha explicitamente; manter contrato | Teste: provider sem function calling em etapa tool-use falha antes de criar artefato. |
 | D02-9 | PDF obrigatorio ausente nao pode virar sucesso enganoso | Aberto P0 | PDF auto-fallback ainda pode salvar PDF e retornar `sucesso=True` | Teste: modelo que nao chama `execute_python_code` falha ou retorna parcial bloqueante, nunca verde. |
@@ -2430,7 +2430,7 @@ Fila minima para custo real:
 | Provider/modelo | Estado atual | Evidencia | O que falta |
 |---|---|---|---|
 | Gemini 3 Flash | Chat OK; `corrigir` pos-fix OK com custo | Task `task_8f53987c57c4`; JSON `6396c4feb3d5b92b`; PDF `6c62faa4ce6df137`; custo `US$ 0.007931` | Validar `analisar_habilidades` e `gerar_relatorio` com custo/metadata. |
-| GPT-5 Nano | Chat OK; `corrigir` pos-fix OK com custo | Task `task_a591421ab84b`; JSON parseavel `42dc1fcd758e913b`; PDF execute `cd72e7233ee061ad`; custo `US$ 0.002192`; sem PDF extra via `create_document` | Validar etapas seguintes, schema minimo e custo por `cost_run_id`. |
+| GPT-5 Nano | Chat OK; `corrigir` pos-fix OK com custo | Task `task_a591421ab84b`; JSON parseavel `42dc1fcd758e913b`; PDF execute `cd72e7233ee061ad`; custo `US$ 0.002192`; sem PDF extra via `create_document` | Validar etapas seguintes, schema minimo e custo de falhas sem documento final. |
 | Claude Haiku 4.5 | Bloqueado | Creditos Anthropic insuficientes | Recarregar creditos e testar sem trocar provider. |
 | GPT-4o | Parcial/referencia historica | Gerou 3 etapas, mas schema antigo e sem avisos | Revalidar como modelo explicito, nao fallback. |
 | Gemini 2.5 Flash/Lite | Incerto | Catalogo/flags historicamente inconsistentes | Validar capabilities antes de pipeline. |
@@ -2456,7 +2456,7 @@ Erros conhecidos por provider/rota:
 | GPT-5 Nano | `pipeline-completo` pos-fix `corrigir` | Task `task_edb822810ddc` completou com PDF, mas JSON invalido | Corrigido por `39aa50a`; JSON invalido nao deve entrar no storage. |
 | GPT-5 Nano | `pipeline-completo` pos-fix `corrigir` | Task `task_1a7857360267` completou com JSON parseavel, PDF via execute e custo | Confirmado para `corrigir`; nao para pipeline completa. |
 | GPT-5 Nano | `pipeline-completo` pos-fix `corrigir` | Task `task_c460627779fc` falhou com `tools: 'str' object has no attribute 'get'` | Corrigido por `eab7d90`; payload malformado vira erro estruturado. |
-| GPT-5 Nano | `pipeline-completo` pos-fix `corrigir` | Task `task_a591421ab84b` completou com JSON parseavel, PDF via execute, custo e sem artefato extra | Confirmado para `corrigir`; proximo alvo e custo por run e etapas seguintes. |
+| GPT-5 Nano | `pipeline-completo` pos-fix `corrigir` | Task `task_a591421ab84b` completou com JSON parseavel, PDF via execute, custo e sem artefato extra | Confirmado para `corrigir`; proximo alvo e custo de falhas e etapas seguintes. |
 | Claude Haiku 4.5 | `pipeline-completo` | Creditos Anthropic insuficientes; wrapper mascarou causa como modelo invalido | Bloqueado por credito; erro deve ser exposto com causa real. |
 | GPT-4o | referencia historica | Outputs em schema antigo e sem `_avisos_*` | Revalidar explicitamente; nao usar como fallback. |
 
@@ -2515,7 +2515,7 @@ Esta e a leitura curta para retomar o longo prazo sem se perder:
 | P4 confiabilidade | Falha antes de extrair respostas sem prova valida | Smoke especifico de P4 se esse bug voltar a ser alvo | Codigo ja esta no deploy oficial, mas nao foi o smoke principal de 2026-05-15. |
 | P5/P6 relatorio | Preserva faltantes e evita template literal | Converter `N/A`/nota ausente em erro alto | Contencao pode parecer sucesso se nao for removida. |
 | Sprint 2 schema/avisos | Testes locais de schema e visualizador | Revalidar providers pos-fix | GPT-5 Nano ainda tem historico de schema ruim. |
-| Sprint 3/3b custos | `input_tokens`/`output_tokens`; metadata de documentos; endpoints `/api/custos/*` live; runs Gemini/Nano custeaveis | Auditar dedupe por `cost_run_id`; criar registro de custo para falhas sem documento final | Historico antigo bloqueia custo por falta de split/provider; runs dual-output podem duplicar custo se agregados por documento. |
+| Sprint 3/3b/3c custos | `input_tokens`/`output_tokens`; metadata de documentos; endpoints `/api/custos/*` live; runs Gemini/Nano custeaveis; amostras agrupadas por `cost_run_id` | Criar registro de custo para falhas sem documento final | Historico antigo bloqueia custo por falta de split/provider; falhas sem artefato ainda podem sumir do custo. |
 | Docs parciais de run falho | Patch marca `created_document_ids` como ERRO quando provider falha depois das tools | Novo caso falho em producao para provar quando ocorrer | Ja existem dois docs antigos com token split faltante do run anterior. |
 | Providers | Gemini `corrigir` OK; Nano `corrigir` OK; Haiku bloqueado; GPT-4o historico | Smoke matrix pos-fixes por provider/rota/pipeline | Credito Anthropic, etapas restantes e custo de falhas sem documento. |
 | UI de erro | `task.error` agora aparece no site oficial para falha de etapa | Melhorar apresentacao e retry de erros provider | Mensagem ainda e bruta e longa. |
@@ -2563,7 +2563,7 @@ Aceite:
 - `tokens_usados`, `ia_provider`, `ia_modelo`, `tempo_processamento_ms` populados.
 - `/api/custos/status` e `/api/custos/resumo` respondem no site oficial.
 - O resumo agrega custo por `cost_run_id`, nao por documento salvo, quando JSON e
-  PDF pertencem ao mesmo run.
+  PDF pertencem ao mesmo run. **Fechado em `7ed8b8b`.**
 - Falhas que consomem tokens ficam registradas com status/erro, sem parecer
   sucesso.
 
@@ -2576,7 +2576,7 @@ Aceite:
 - Gemini 3 Flash: seguir para `analisar_habilidades` e `gerar_relatorio`, depois
   exigir 2 execucoes completas sem trocar modelo, com custo/metadata.
 - GPT-5 Nano: seguir para `analisar_habilidades`/`gerar_relatorio`, mas nao
-  promover pipeline completa ate schema minimo e custo por run passarem.
+  promover pipeline completa ate schema minimo e custo de falhas passarem.
 - Haiku: testar somente quando credito Anthropic existir.
 - GPT-4o: testar explicitamente, nunca como fallback automatico.
 

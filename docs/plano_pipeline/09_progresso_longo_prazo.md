@@ -2,13 +2,13 @@
 
 **Atualizado:** 2026-05-15
 **Responsavel operacional:** Paulo
-**Status geral:** Render oficial confirmou o marker `dcecdfa`, que aponta para
-o commit funcional `eab7d90`. Gemini `corrigir` passou com custo medido; GPT-5
+**Status geral:** Render oficial confirmou o marker `9e1aee5`, que aponta para
+o commit funcional `7ed8b8b`. Gemini `corrigir` passou com custo medido; GPT-5
 Nano agora tambem passou em `corrigir` no site oficial com JSON parseavel, PDF
 via `execute_python_code`, tokens splitados e custo medido, sem PDF extra via
-`create_document`. Ainda nao ha pipeline completa validada para Nano. O proximo
-bloqueador real e auditar custo por `cost_run_id`, porque o resumo live mostra
-dois documentos do mesmo run com o mesmo custo.
+`create_document`. O resumo de custos agora agrega por `cost_run_id`, entao
+JSON+PDF do mesmo run contam uma vez. Ainda nao ha pipeline completa validada
+para Nano.
 
 Este e o ponto de entrada do plano. O objetivo deste arquivo e dizer, em poucas
 linhas, onde estamos, qual e a proxima fila e quais frentes estao pausadas.
@@ -48,7 +48,7 @@ Estabilizar o NOVO CR para que a pipeline:
 | Docs e plano | Sprint 0 concluida | Manter este painel como fonte oficial e anexos fora do fluxo diario |
 | Pipeline | `corrigir` validado oficialmente para Gemini 3 Flash e GPT-5 Nano com JSON/PDF/custo | Expandir para `analisar_habilidades` e `gerar_relatorio`; validar schema minimo por etapa |
 | Schema e avisos | Sprint 2 concluida localmente | Manter schema oficial, defaults e visualizador cobertos por testes |
-| Custos/tokens | Metadata de documento e endpoints de custo live no deploy `eab7d90` | Auditar agregacao por `cost_run_id`; registrar tambem falhas sem documento final |
+| Custos/tokens | Metadata de documento e endpoints de custo live no deploy `7ed8b8b`; resumo agrega por `cost_run_id` | Registrar falhas sem documento final; avançar custo por contexto educacional |
 | UI de erros | Pendente | Mostrar falha por aluno/etapa sem depender de terminal |
 | Limpeza de dados | Pendente | Reclassificar "fantasmas" antes de qualquer delecao |
 | Rio 3 | Pausada | Nao pedir chave, nao rodar smoke, nao deployar Rio sem nova decisao |
@@ -65,14 +65,15 @@ Estabilizar o NOVO CR para que a pipeline:
 - Commit funcional de JSON valido/artefato por extensao: `39aa50a`.
 - Commit funcional de restricao de artefato por tool: `b24f03e`.
 - Commit funcional de payload malformado em `create_document`: `eab7d90`.
-- Marker mais novo publicado: `dcecdfa` (`chore: mark deploy eab7d90`).
-- Marker atual visto no Render: `dcecdfa`, HTML com `novocr-deploy=eab7d90`.
+- Commit funcional de resumo de custos por run: `7ed8b8b`.
+- Marker mais novo publicado: `9e1aee5` (`chore: mark deploy 7ed8b8b`).
+- Marker atual visto no Render: `9e1aee5`, HTML com `novocr-deploy=7ed8b8b`.
 - GitHub `origin/main`: pode conter commits documentais posteriores; o ultimo
-  marker funcional publicado e `dcecdfa`, e Render live esta confirmado em
-  `eab7d90`.
+  marker funcional publicado e `9e1aee5`, e Render live esta confirmado em
+  `7ed8b8b`.
 - Render live observado: saiu de `2e1098f` para `b12be9a` e depois confirmou
   marcadores `b4d7ee6`, `f505be6`, `97a7c79`, `c75af88`, `39aa50a`,
-  `b24f03e` e `eab7d90`.
+  `b24f03e`, `eab7d90` e `7ed8b8b`.
 - `/api/custos/status` no Render: HTTP 200, confirmando endpoints de custo live.
 - GitHub Actions: sem runs recentes observaveis.
 - GitHub webhooks/deployments via `gh api`: sem entradas visiveis.
@@ -514,13 +515,40 @@ Critério de pronto: lista de limpeza segura e revisada.
   `cost_run_id=tool_056e2e1f7179`, ambos com o mesmo custo. O proximo ciclo deve
   auditar se o resumo soma por documento ou por run, para nao duplicar custo.
 
+### 2026-05-15 -- Sprint 3c: custo agrupado por `cost_run_id`
+
+- Alvo: impedir que o resumo de custos exponha JSON e PDF do mesmo run como se
+  fossem duas execucoes separadas.
+- Status: publicado, deployado e smokeado.
+- Arquivos tocados: `backend/cost_tracking.py`, `backend/routes_costs.py`,
+  `backend/tests/unit/test_cost_tracking.py`.
+- Comportamento: `build_cost_summary()` agrupa documentos por `cost_run_id`;
+  JSON+PDF de um run contam uma vez; `amostras` agora trazem `documentos_ids`,
+  `documentos_contagem` e um custo por run; conflitos de metadata no mesmo run
+  viram bloqueio `run_metadata_conflict`.
+- Validacoes locais: `py_compile` passou; `git diff --check` passou;
+  `test_cost_tracking.py` passou com 9 testes e 1 aviso de config `timeout`
+  desconhecida.
+- Git/deploy: commit funcional `7ed8b8b`; marker `9e1aee5`; Render confirmou
+  `7ed8b8b` via `wait_deploy.sh` e `check_deploy.sh`; `/api/health` healthy.
+- Smoke oficial de custos: `/api/custos/status?limit=500` retornou
+  `runs_analisados=492`, `runs_precificados=5`, `runs_bloqueados=487` e
+  `alertas=[]`.
+- Smoke oficial de resumo: `/api/custos/resumo?limit=500` retornou
+  `documentos_analisados=500`, `runs_analisados=492`, `tokens_entrada=86252`,
+  `tokens_saida=19786` e `custo_usd=0.018347`.
+- Evidencia do ultimo Nano: `cost_run_id=tool_056e2e1f7179` aparece uma vez com
+  `documentos_contagem=2`, documentos `cd72e7233ee061ad` e
+  `42dc1fcd758e913b`, custo `US$ 0.002192`.
+- Proximo alvo: registrar custos de falhas sem documento final e/ou avançar
+  revalidacao de `analisar_habilidades`/`gerar_relatorio` por provider.
+
 ## Riscos Abertos
 
 1. Creditos Anthropic insuficientes ainda bloqueiam validacao Haiku.
 2. Schema drift pode fazer modelos gerarem formatos diferentes.
 3. Schema minimo ainda nao esta validado para todas as etapas; JSON parseavel e
    necessario, mas nao prova qualidade pedagogica.
-4. O resumo de custos pode estar duplicando custo quando um run gera JSON e PDF.
-5. Falhas sem documento final ainda nao entram no resumo de custos; precisamos
+4. Falhas sem documento final ainda nao entram no resumo de custos; precisamos
    de registro proprio de run/custo para erro sem artefato.
-6. Rio 3 nao deve voltar ao fluxo ativo sem nova decisao e nova chave segura.
+5. Rio 3 nao deve voltar ao fluxo ativo sem nova decisao e nova chave segura.

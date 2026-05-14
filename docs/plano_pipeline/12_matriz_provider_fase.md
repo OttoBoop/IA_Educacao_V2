@@ -6,18 +6,18 @@
 `b12be9a`, `301eba6`, `f67055c`, `462ea1d`, `b4d7ee6`, `99483d1`,
 `f505be6`, `d75b05a`, `97a7c79`, `ec95193`, `ff7b92a`, `68ebe51`,
 `c75af88`, `45d543a`, `39aa50a`, `3ddf6c5`, `b24f03e`, `6ed31a4`,
-`eab7d90`, `dcecdfa`
+`eab7d90`, `dcecdfa`, `7ed8b8b`, `9e1aee5`
 
 ## Status Oficial De Deploy
 
 - GitHub `origin/main` pode conter commits documentais posteriores; o ultimo
-  marker funcional publicado e `dcecdfa`, e o marcador HTML aponta para o commit
-  funcional `eab7d90`.
-- Render live confirmou `eab7d90` por `wait_deploy.sh`, `check_deploy.sh` e
+  marker funcional publicado e `9e1aee5`, e o marcador HTML aponta para o commit
+  funcional `7ed8b8b`.
+- Render live confirmou `7ed8b8b` por `wait_deploy.sh`, `check_deploy.sh` e
   `/api/health`.
 - Docs antigos registram que auto-deploy Git nao funciona de forma confiavel; o
   ciclo usou deploy via API Render com token local seguro, sem imprimir segredo.
-- Os smokes live de 2026-05-15 abaixo sao oficiais para o estado `eab7d90`.
+- Os smokes live de 2026-05-15 abaixo sao oficiais para o estado `7ed8b8b`.
 
 ## Legenda
 
@@ -101,6 +101,9 @@
   (`task_a591421ab84b`) com JSON parseavel `42dc1fcd758e913b`, PDF via
   `execute_python_code` `cd72e7233ee061ad`, tokens 16.081/3.470 e custo
   `US$ 0.002192`. Nao houve PDF extra via `create_document`.
+- Depois do deploy `7ed8b8b`, `/api/custos/resumo` passou a agrupar amostras por
+  `cost_run_id`. O ultimo run Nano `tool_056e2e1f7179` aparece uma vez, com
+  `documentos_contagem=2`, documentos JSON+PDF e custo unico `US$ 0.002192`.
 
 **Gemini 3 Flash:** tambem validado em 2 testes historicos de chat (mensagem unica + multi-turn). Ver [teste_chat_gemini.md](arquivo_2026_04_17/teste_chat_gemini.md).
 - Teste 1: 662 tokens, 1930ms, resposta em PT correta
@@ -170,7 +173,7 @@ inicial do Nano nao era conexao/API key; era pipeline/tool-use/schema.
 completou com JSON parseavel, PDF obrigatorio via `execute_python_code`,
 provider/modelo/tokens/custo no storage e sem PDF extra via `create_document`.
 Ainda nao esta pipeline-ready porque faltam `analisar_habilidades`,
-`gerar_relatorio`, schema minimo por etapa e auditoria de custo por run.
+`gerar_relatorio`, schema minimo por etapa e custo de falhas sem documento final.
 
 **Testado em 2 caminhos com resultados muito diferentes:**
 
@@ -230,7 +233,7 @@ Ver [teste_gpt5nano_pipeline_completo.md](arquivo_2026_04_17/teste_gpt5nano_pipe
       custo/metadata
 - [ ] Registrar custo de falhas sem documento final, como o GPT-5 Nano que falha
       antes de criar artefato
-- [ ] Auditar se `/api/custos/resumo` soma por documento em vez de por
+- [x] Auditar se `/api/custos/resumo` soma por documento em vez de por
       `cost_run_id`
 - [x] Restringir ou marcar como erro artefato extra `create_document` nao-JSON em
       etapas dual-output
@@ -254,7 +257,7 @@ Ver [teste_gpt5nano_pipeline_completo.md](arquivo_2026_04_17/teste_gpt5nano_pipe
   custo; ainda falta validar `analisar_habilidades` e `gerar_relatorio`.
 - ⚠️ **GPT-5 Nano via `pipeline-completo`:** `corrigir` pos-fix OK com JSON
   parseavel, PDF via `execute_python_code`, custo e sem artefato extra; ainda
-  falta pipeline completa, schema minimo e auditoria de custo por run.
+  falta pipeline completa, schema minimo e custo de falhas sem documento final.
 - ⏸️ **Claude Haiku 4.5:** Aguardando creditos.
 - 📊 **Confiabilidade Gemini 3 Flash:** 50% de sucesso na primeira tentativa (1 em 2 testes). Precisa mais amostras.
 
