@@ -338,6 +338,25 @@ Critério de pronto: lista de limpeza segura e revisada.
   aceitar como sucesso somente se a etapa concluir ou se as tentativas visiveis
   terminarem em erro estruturado.
 
+### 2026-05-15 -- Sprint 4c: docs parciais de tool-use em erro
+
+- Alvo: impedir que documentos criados por tools fiquem `concluido` quando uma
+  chamada posterior do provider falha antes da etapa terminar.
+- Evidencia: o smoke anterior gerou documentos `correcao` com provider/modelo,
+  mas `tokens_usados=0`, status `concluido` e custo bloqueado por
+  `token_split_missing`; isso pode acontecer quando tools salvam JSON/PDF e a
+  chamada final do provider falha.
+- Status: concluido localmente, aguardando commit/push/deploy.
+- Arquivos tocados: `backend/executor.py`, `backend/tests/unit/test_cost_tracking.py`.
+- Comportamento: se `ProviderAPIError` acontecer depois de tools criarem
+  documentos, o executor marca cada `created_document_id` como
+  `StatusProcessamento.ERRO` e grava `erro_pipeline`/`cost_run_id` no metadata.
+- Validacoes: `py_compile` passou; `git diff --check` passou; suite focada de
+  executor/task/progresso/UI/custo/Google tool-use passou com 99 testes e 1
+  aviso de config `timeout` desconhecida.
+- Proximo alvo: publicar/deployar e manter a regra: artefato parcial de run
+  falho nao pode parecer documento final confiavel.
+
 ## Riscos Abertos
 
 1. Creditos Anthropic insuficientes ainda bloqueiam validacao Haiku.

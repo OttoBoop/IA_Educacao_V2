@@ -2694,6 +2694,16 @@ Seja preciso, educativo e construtivo em suas análises."""
             )
             
         except ProviderAPIError as e:
+            created_context = locals().get("context")
+            for doc_id in getattr(created_context, "created_document_ids", []) or []:
+                self.storage.atualizar_documento_processamento(
+                    doc_id,
+                    status=StatusProcessamento.ERRO,
+                    metadata_patch={
+                        "erro_pipeline": str(e),
+                        "cost_run_id": getattr(created_context, "cost_run_id", None),
+                    },
+                )
             return ResultadoExecucao(
                 sucesso=False,
                 etapa="tools",

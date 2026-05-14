@@ -924,6 +924,9 @@ O que foi feito localmente:
 - Sprint 4b: erros HTTP de tool-use agora usam `ProviderAPIError`, preservando
   `status_code` e `retryable` para 429/5xx. Isso permite retry no mesmo modelo,
   visivel e rastreavel, sem fallback de provider.
+- Sprint 4c: se tools criarem documentos e uma chamada posterior do provider
+  falhar, esses documentos parciais devem ser marcados `ERRO`, nao `concluido`
+  com tokens zerados.
 
 Mapa dos commits publicados ou preparados:
 
@@ -941,6 +944,7 @@ Mapa dos commits publicados ou preparados:
 | `99483d1` | Marcador `novocr-deploy` para `b4d7ee6` | Publicado; `check_deploy.sh b4d7ee6` passou. |
 | `d24623b` | Registro documental pos-deploy | Publicado no GitHub; nao altera marker funcional. |
 | `pendente` | Sprint 4b retryability em tool-use | Validado localmente; precisa commit, marker, push, deploy e smoke. |
+| `pendente` | Sprint 4c docs parciais em erro | Validado localmente; precisa commit, marker, push e deploy. |
 
 Estado do worktree no momento desta auditoria:
 
@@ -2499,6 +2503,7 @@ Esta e a leitura curta para retomar o longo prazo sem se perder:
 | P5/P6 relatorio | Preserva faltantes e evita template literal | Converter `N/A`/nota ausente em erro alto | Contencao pode parecer sucesso se nao for removida. |
 | Sprint 2 schema/avisos | Testes locais de schema e visualizador | Revalidar providers pos-fix | GPT-5 Nano ainda tem historico de schema ruim. |
 | Sprint 3/3b custos | `input_tokens`/`output_tokens`; metadata de documentos; endpoints `/api/custos/*` live | Smoke oficial de execucao fresca e persistencia de falhas com tokens | Historico antigo bloqueia custo por falta de split/provider. |
+| Docs parciais de run falho | Patch local marca `created_document_ids` como ERRO quando provider falha depois das tools | Deploy e novo caso falho para provar em producao | Ja existem dois docs antigos com token split faltante do run anterior. |
 | Providers | Gemini e Nano passam em chat simples live; Gemini falhou no `corrigir` pos-fix por 503; Nano ainda falhou historicamente no pipeline; Haiku bloqueado; GPT-4o historico | Smoke matrix pos-fixes por provider/rota/pipeline | Credito Anthropic e deploy/smoke do retry Gemini. |
 | UI de erro | `task.error` agora aparece no site oficial para falha de etapa | Melhorar apresentacao e retry de erros provider | Mensagem ainda e bruta e longa. |
 | Dados fantasmas | Nota PDF impede delecao por `conteudo=null` | Reclassificar lista antes de qualquer limpeza | Delecao errada de prova respondida PDF. |

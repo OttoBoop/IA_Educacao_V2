@@ -1,4 +1,5 @@
 from types import SimpleNamespace
+from unittest.mock import MagicMock
 
 import pytest
 
@@ -211,6 +212,7 @@ async def test_executar_com_tools_preserva_503_retryable(monkeypatch):
             self.api_key = api_key
 
         async def chat_with_tools(self, **kwargs):
+            kwargs["context"].created_document_ids.extend(["doc-json", "doc-pdf"])
             raise ProviderAPIError(
                 "Google",
                 503,
@@ -220,6 +222,8 @@ async def test_executar_com_tools_preserva_503_retryable(monkeypatch):
     monkeypatch.setattr(chat_service, "ChatClient", DummyClient)
 
     executor = PipelineExecutor()
+    executor.storage.atualizar_documento_processamento = MagicMock()
+
     resultado = await executor.executar_com_tools(
         mensagem="corrija",
         atividade_id="ativ-1",
@@ -234,3 +238,7 @@ async def test_executar_com_tools_preserva_503_retryable(monkeypatch):
     assert resultado.retryable is True
     assert resultado.erro_codigo == 503
     assert "UNAVAILABLE" in resultado.erro
+    assert executor.storage.atualizar_documento_processamento.call_count == 2
+    for call in executor.storage.atualizar_documento_processamento.call_args_list:
+        assert call.kwargs["status"] == StatusProcessamento.ERRO
+        assert "UNAVAILABLE" in call.kwargs["metadata_patch"]["erro_pipeline"]
