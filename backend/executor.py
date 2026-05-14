@@ -2700,6 +2700,57 @@ Seja preciso, educativo e construtivo em suas análises."""
                     return _forced_openai_tool("create_document")
                 return "required"
 
+            def _validate_json_artifacts(state: Dict[str, Any]) -> List[str]:
+                """Fail high on known placeholder/schema leaks in persisted JSON."""
+                if expected_document_type != TipoDocumento.ANALISE_HABILIDADES:
+                    return []
+
+                errors: List[str] = []
+                placeholders = (
+                    "student123",
+                    "aluno_teste",
+                    "nome_do_aluno",
+                    "nome do aluno",
+                    "student_name",
+                    "<nome",
+                    "<str>",
+                )
+
+                for doc in state.get("docs_by_tool", {}).get("create_document", []):
+                    if (getattr(doc, "extensao", "") or "").lower() != ".json":
+                        continue
+
+                    doc_label = getattr(doc, "id", None) or getattr(doc, "nome_arquivo", "json")
+                    filename = (getattr(doc, "nome_arquivo", "") or "").lower()
+                    try:
+                        path = self.storage.resolver_caminho_documento(doc)
+                    except Exception as exc:
+                        errors.append(f"JSON {doc_label} não pôde ser resolvido para validação: {exc}")
+                        continue
+
+                    if not path or not Path(path).exists():
+                        errors.append(f"JSON {doc_label} não pôde ser lido para validação")
+                        continue
+
+                    try:
+                        with open(path, "r", encoding="utf-8") as fh:
+                            data = json.load(fh)
+                    except Exception as exc:
+                        errors.append(f"JSON {doc_label} inválido: {exc}")
+                        continue
+
+                    serialized = json.dumps(data, ensure_ascii=False).lower()
+                    for placeholder in placeholders:
+                        if placeholder in serialized or placeholder in filename:
+                            errors.append(f"JSON {doc_label} contém placeholder proibido: {placeholder}")
+                            break
+
+                    habilidades = data.get("habilidades") if isinstance(data, dict) else None
+                    if not habilidades:
+                        errors.append(f"JSON {doc_label} sem lista/dicionário de habilidades")
+
+                return errors
+
             initial_tool_choice = (
                 "required"
                 if dual_output_expected and is_openai_provider
@@ -2885,6 +2936,51 @@ Seja preciso, educativo e construtivo em suas análises."""
             tokens_entrada = _sum_usage(respostas_tool, "input_tokens") or _sum_usage(respostas_tool, "tokens")
             tokens_saida = _sum_usage(respostas_tool, "output_tokens")
             tokens_total = tokens_entrada + tokens_saida
+
+            validation_errors = _validate_json_artifacts(final_state)
+            if validation_errors:
+                erro_msg = (
+                    "Saída obrigatória inválida: "
+                    + "; ".join(validation_errors)
+                    + ". Nenhum artefato será aceito como sucesso com placeholder "
+                    + "ou schema mínimo ausente."
+                )
+                for doc_id in context.created_document_ids:
+                    self.storage.atualizar_documento_processamento(
+                        doc_id,
+                        ia_provider=model.tipo.value,
+                        ia_modelo=model.modelo,
+                        prompt_usado=prompt_id,
+                        tokens_usados=tokens_total,
+                        tempo_processamento_ms=tempo_ms,
+                        status=StatusProcessamento.ERRO,
+                        metadata_patch={
+                            "erro_pipeline": erro_msg,
+                            "tokens_entrada": tokens_entrada,
+                            "tokens_saida": tokens_saida,
+                            "tokens_total": tokens_total,
+                            "cost_run_id": context.cost_run_id,
+                            "custo_origem": "tool_use_error",
+                        },
+                    )
+                alertas.append({
+                    "tipo": "aviso",
+                    "mensagem": erro_msg,
+                })
+                return ResultadoExecucao(
+                    sucesso=False,
+                    etapa="tools",
+                    resposta_raw=raw_content,
+                    provider=model.tipo.value,
+                    modelo=model.modelo,
+                    tokens_entrada=tokens_entrada,
+                    tokens_saida=tokens_saida,
+                    tempo_ms=tempo_ms,
+                    alertas=alertas,
+                    tentativas=tentativas,
+                    erro=erro_msg,
+                )
+
             for doc_id in context.created_document_ids:
                 self.storage.atualizar_documento_processamento(
                     doc_id,

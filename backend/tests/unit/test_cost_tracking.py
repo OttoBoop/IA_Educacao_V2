@@ -602,6 +602,118 @@ async def test_executar_com_tools_repara_pdf_nao_persistido_com_retry(monkeypatc
 
 
 @pytest.mark.asyncio
+async def test_executar_com_tools_falha_json_placeholder_analisar(monkeypatch, tmp_path):
+    import chat_service
+    from executor import PipelineExecutor
+    from chat_service import ProviderType
+
+    model = SimpleNamespace(
+        id="nano",
+        tipo=ProviderType.OPENAI,
+        modelo="gpt-5-nano",
+        api_key_id=None,
+        suporta_function_calling=True,
+        max_tokens=1024,
+        temperature=0,
+        suporta_temperature=False,
+    )
+
+    monkeypatch.setattr(chat_service.model_manager, "get", lambda model_id: model)
+    monkeypatch.setattr(chat_service.api_key_manager, "get", lambda key_id: None)
+    monkeypatch.setattr(
+        chat_service.api_key_manager,
+        "get_por_empresa",
+        lambda provider: SimpleNamespace(api_key="test-key"),
+    )
+
+    class DummyClient:
+        def __init__(self, model_config, api_key):
+            self.model_config = model_config
+            self.api_key = api_key
+
+        async def chat_with_tools(self, **kwargs):
+            context = kwargs["context"]
+            context.created_document_ids.extend(["doc-json", "doc-pdf"])
+            return {
+                "content": "",
+                "tokens": 20,
+                "input_tokens": 15,
+                "output_tokens": 5,
+                "tool_calls": [
+                    {
+                        "id": "json-1",
+                        "name": "create_document",
+                        "input": {
+                            "documents": [
+                                {
+                                    "filename": "analise_habilidades_student123.json",
+                                    "content": '{"habilidades": [{"nome": "student123"}]}',
+                                }
+                            ]
+                        },
+                        "is_error": False,
+                        "files_generated": [{"filename": "analise_habilidades_student123.json"}],
+                    },
+                    {
+                        "id": "pdf-1",
+                        "name": "execute_python_code",
+                        "input": {"code": "gera pdf"},
+                        "is_error": False,
+                        "files_generated": [{"filename": "analise.pdf", "size_bytes": 128}],
+                    },
+                ],
+            }
+
+    monkeypatch.setattr(chat_service, "ChatClient", DummyClient)
+
+    json_path = tmp_path / "analise_habilidades_student123.json"
+    json_path.write_text(
+        '{"habilidades": [{"nome": "student123", "nivel": "placeholder"}]}',
+        encoding="utf-8",
+    )
+
+    docs = {
+        "doc-json": SimpleNamespace(
+            id="doc-json",
+            nome_arquivo="analise_habilidades_student123.json",
+            extensao=".json",
+            metadata={"tool": "create_document"},
+            criado_por="pipeline_tool",
+        ),
+        "doc-pdf": SimpleNamespace(
+            id="doc-pdf",
+            nome_arquivo="analise.pdf",
+            extensao=".pdf",
+            metadata={"tool": "execute_python_code"},
+            criado_por="ia_execute_python_code",
+        ),
+    }
+
+    executor = PipelineExecutor()
+    executor.storage.get_documento = MagicMock(side_effect=lambda doc_id: docs[doc_id])
+    executor.storage.resolver_caminho_documento = MagicMock(return_value=json_path)
+    executor.storage.atualizar_documento_processamento = MagicMock()
+
+    resultado = await executor.executar_com_tools(
+        mensagem="analise habilidades de Eric",
+        atividade_id="ativ-1",
+        aluno_id="aluno-1",
+        provider_id="nano",
+        tools_to_use=["create_document", "execute_python_code"],
+        expected_document_type=TipoDocumento.ANALISE_HABILIDADES,
+        prompt_id="prompt-1",
+    )
+
+    assert resultado.sucesso is False
+    assert "placeholder proibido" in resultado.erro
+    assert "student123" in resultado.erro
+    assert executor.storage.atualizar_documento_processamento.call_count == 2
+    for call_args in executor.storage.atualizar_documento_processamento.call_args_list:
+        assert call_args.kwargs["status"] == StatusProcessamento.ERRO
+        assert call_args.kwargs["metadata_patch"]["custo_origem"] == "tool_use_error"
+
+
+@pytest.mark.asyncio
 async def test_executar_com_tools_preserva_503_retryable(monkeypatch):
     import chat_service
     from executor import PipelineExecutor
