@@ -9,8 +9,8 @@
 
 - GitHub `origin/main` contem `462ea1d`, com marcador apontando para `f67055c`,
   e pode ter registros documentais posteriores.
-- Render live ainda retornou marcador `2e1098f`; `/api/custos/status` retornou
-  HTTP 404.
+- Render live passou a retornar marcador `b12be9a`, nao `f67055c`; o backend ja
+  responde `/api/custos/status` com HTTP 200.
 - Portanto, qualquer teste abaixo anterior a `b12be9a` continua sendo evidencia
   historica. Provider so vira confirmado pos-fix quando o site oficial estiver no
   hash esperado e o smoke rodar novamente.

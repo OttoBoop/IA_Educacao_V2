@@ -158,9 +158,9 @@ detalhar e auditar estas linhas.
    por tool-use, alem de relatorios agregados.
 3. O Doc 02 mostrou que o maior risco arquitetural esta no Path 2: schemas
    conflitantes, JSON opaco, avisos/metadata/tokens incompletos e tools parciais.
-4. Os fixes foram publicados no GitHub; `origin/main` contem o marcador
-   `462ea1d` para `f67055c`, mas Render live ainda mostrou `2e1098f`, entao o
-   site oficial continua stale.
+4. Os fixes foram publicados no GitHub; Render avancou do marcador `2e1098f`
+   para `b12be9a` e o backend ja responde `/api/custos/*`, mas o HTML ainda nao
+   mostra o marcador `f67055c`.
 5. P4 foi corrigido localmente: `EXTRAIR_RESPOSTAS` nao deve rodar sem
    `prova_respondida` valida.
 6. P5/P6 melhoraram relatorio e documentos faltantes, mas `nota_final=N/A` e
@@ -180,7 +180,7 @@ detalhar e auditar estas linhas.
 | Frente | Temos hoje | Limite da afirmacao |
 |---|---|---|
 | Documentacao | Doc 09 como painel curto; Doc 14 como auditoria mestre; Doc 05/12 com notas de status | Doc 14 ainda precisa revisao humana e commit. |
-| Git/GitHub | Commits `7e4b852`, `3b3291f`, `a695db4`, `76c8467`, `b12be9a`, `f67055c` publicados; marcador `462ea1d` em `origin/main` | Render ainda nao refletiu o hash esperado; docs podem ter commits acima do marcador. |
+| Git/GitHub | Commits `7e4b852`, `3b3291f`, `a695db4`, `76c8467`, `b12be9a`, `f67055c` publicados; marcador `462ea1d` em `origin/main` | Render refletiu API de custos, mas HTML ainda marca `b12be9a`; docs podem ter commits acima do marcador. |
 | Pipeline P4 | Bloqueio local de extracao de respostas sem prova valida | Precisa push/deploy/smoke para virar oficial. |
 | Pipeline P5/P6 | Contencao de nota e preservacao de `_documentos_faltantes` | `N/A` ainda e fallback proibido como estado final. |
 | Schema/avisos | Defaults `_avisos_*`, visualizador melhorado e schemas mais permissivos | Permissividade nao e contrato forte; pode aceitar legado demais. |
@@ -887,10 +887,10 @@ Fatos oficiais observados em 2026-05-15:
 - `origin/main` contem `462ea1d` e registros documentais posteriores.
 - `462ea1d` e apenas marcador de deploy; o hash funcional de custos/docs e
   `f67055c`.
-- Render live continuou mostrando `2e1098f` durante `wait_deploy.sh b12be9a` e
-  `check_deploy.sh f67055c`.
-- `/api/custos/status` no Render retornou HTTP 404, confirmando que o endpoint
-  novo nao esta no site oficial.
+- Render live saiu de `2e1098f` para `b12be9a`, mas `check_deploy.sh f67055c`
+  ainda falha.
+- `/api/custos/status` no Render retornou HTTP 200, confirmando que o endpoint
+  novo esta no backend live.
 - `GET /api/health` no Render respondeu healthy/Supabase true, mas no codigo
   antigo, nao no hash esperado.
 - GitHub Actions nao mostrou runs; GitHub API nao mostrou webhooks/deployments
@@ -920,8 +920,8 @@ Mapa dos commits publicados ou preparados:
 | `76c8467` | Sprint 2: schema e avisos | Publicado; matriz provider precisa revalidacao pos-fix. |
 | `b12be9a` | Sprint 3: split de tokens | Publicado; Render nao confirmou. |
 | `301eba6` | Marcador `novocr-deploy` para `b12be9a` | Publicado; Render continuou stale. |
-| `f67055c` | Sprint 3b metadata/custos | Publicado no GitHub; endpoint ainda 404 no Render stale. |
-| `462ea1d` | Marcador `novocr-deploy` para `f67055c` | Publicado; Render continuou stale. |
+| `f67055c` | Sprint 3b metadata/custos | Publicado no GitHub; `/api/custos/*` ja responde live. |
+| `462ea1d` | Marcador `novocr-deploy` para `f67055c` | Publicado; HTML live ainda mostra `b12be9a`. |
 
 Estado do worktree no momento desta auditoria:
 

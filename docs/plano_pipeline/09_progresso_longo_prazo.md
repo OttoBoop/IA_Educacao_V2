@@ -2,9 +2,9 @@
 
 **Atualizado:** 2026-05-15
 **Responsavel operacional:** Paulo
-**Status geral:** fixes de pipeline/custos publicados no GitHub; Render oficial
-ainda bloqueado/stale; Sprint 3b de metadata/custos testada localmente e ainda
-nao visivel no site.
+**Status geral:** fixes de pipeline/custos publicados no GitHub; Render avancou
+parcialmente; Sprint 3b de metadata/custos esta visivel via API live, mas o
+marcador HTML ainda nao chegou ao hash esperado.
 
 Este e o ponto de entrada do plano. O objetivo deste arquivo e dizer, em poucas
 linhas, onde estamos, qual e a proxima fila e quais frentes estao pausadas.
@@ -55,9 +55,10 @@ Estabilizar o NOVO CR para que a pipeline:
 - Commit funcional de custos/docs: `f67055c`.
 - GitHub `origin/main`: contem `462ea1d` (`chore: mark deploy f67055c`) e
   commits posteriores de registro documental.
-- Render live observado: ainda `2e1098f` apos polling de 900s e check direto.
-- `/api/custos/status` no Render: HTTP 404, confirmando que o site ainda nao tem
-  os endpoints de custo do commit `f67055c`.
+- Render live observado: saiu de `2e1098f` e passou a mostrar marcador
+  `b12be9a`; ainda nao mostra `f67055c`.
+- `/api/custos/status` no Render: HTTP 200, confirmando que o backend ja tem os
+  endpoints de custo, embora o marcador HTML esteja atrasado.
 - GitHub Actions: sem runs recentes observaveis.
 - GitHub webhooks/deployments via `gh api`: sem entradas visiveis.
 - Render MCP: bloqueado por workspace nao selecionado.
@@ -253,10 +254,11 @@ Critério de pronto: lista de limpeza segura e revisada.
 - Git: `b12be9a` foi empurrado; depois `f67055c` adicionou custos/metadata; o
   marcador `462ea1d` aponta o HTML para `f67055c`; registros documentais podem
   estar acima dele sem mudar o marcador.
-- Deploy: `wait_deploy.sh b12be9a` deu timeout apos 900s e checks diretos para
-  `f67055c` continuaram vendo `2e1098f`; sem Actions, webhooks ou deployments
-  GitHub visiveis; Render MCP sem workspace. Isto e bloqueio real de deploy
-  oficial, nao sucesso local.
+- Deploy: `wait_deploy.sh b12be9a` deu timeout apos 900s, mas depois o live
+  avancou para marcador `b12be9a`; checks diretos para `f67055c` ainda falham.
+  O backend ja responde `/api/custos/status`, entao ha deploy parcial/atraso de
+  marcador. Sem Actions, webhooks ou deployments GitHub visiveis; Render MCP sem
+  workspace.
 - Arquivos tocados: `backend/storage.py`, `backend/executor.py`,
   `backend/tool_handlers.py`, `backend/tools.py`, `backend/model_catalog.py`,
   `backend/cost_tracking.py`, `backend/routes_costs.py`, `backend/main_v2.py`,
@@ -273,8 +275,8 @@ Critério de pronto: lista de limpeza segura e revisada.
   testes; suite focada ampliada passou com 171 testes, 5 skipped e 1 aviso de
   config `timeout` desconhecida; TestClient confirmou `/api/custos/status` e
   `/api/custos/resumo` com HTTP 200 local.
-- Proximo alvo: desbloquear deploy oficial via Render hook/manual seguro; depois
-  validar `/api/custos/*`, smoke provider e metadata no site oficial.
+- Proximo alvo: esperar/acionar o marcador `f67055c` e rodar smoke provider que
+  gere documento novo, para confirmar metadata/custo de execucao fresca.
 
 ## Riscos Abertos
 
