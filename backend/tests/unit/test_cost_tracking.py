@@ -247,6 +247,7 @@ async def test_executar_com_tools_falha_quando_execute_code_nao_persiste_pdf(mon
     executor.storage.get_documento = MagicMock(
         return_value=SimpleNamespace(
             id="doc-json",
+            extensao=".json",
             metadata={"tool": "create_document"},
             criado_por="ia_create_document",
         )
@@ -355,11 +356,13 @@ async def test_executar_com_tools_repara_pdf_nao_persistido_com_retry(monkeypatc
     docs = {
         "doc-json": SimpleNamespace(
             id="doc-json",
+            extensao=".json",
             metadata={"tool": "create_document"},
             criado_por="ia_create_document",
         ),
         "doc-pdf": SimpleNamespace(
             id="doc-pdf",
+            extensao=".pdf",
             metadata={"tool": "execute_python_code"},
             criado_por="ia_execute_python_code",
         ),

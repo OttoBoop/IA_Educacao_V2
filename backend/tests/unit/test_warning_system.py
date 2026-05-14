@@ -256,3 +256,30 @@ class TestCreateDocumentAvisosDefaults:
         assert data["_avisos_documento"] == [aviso]
         assert data["_avisos_questao"] == []
         assert data["_avisos_stage"] == "GERAR_RELATORIO"
+
+    @pytest.mark.asyncio
+    async def test_create_document_rejects_invalid_json(self):
+        """A .json artifact must be parseable before it can enter storage."""
+        from tool_handlers import handle_create_document
+        from tools import ToolExecutionContext
+
+        result = await handle_create_document(
+            {
+                "documents": [
+                    {
+                        "filename": "correcao_invalida.json",
+                        "content": '{"nota_final": 7, "feedback": "linha\nquebrada"}',
+                    }
+                ]
+            },
+            ToolExecutionContext(
+                atividade_id="ativ-1",
+                aluno_id="aluno-1",
+                expected_document_type=None,
+                etapa="correcao",
+            ),
+        )
+
+        assert result.is_error is True
+        assert result.files_generated == []
+        assert "Invalid JSON for create_document" in result.content

@@ -731,10 +731,26 @@ async def handle_create_document(
             temp_path = os.path.join(temp_dir, unique_filename)
 
             # Handle different file types
-            if ext in ['.txt', '.md', '.csv', '.json']:
+            if ext == '.json':
+                try:
+                    if isinstance(content, (dict, list)):
+                        parsed_content = content
+                    else:
+                        parsed_content = json.loads(str(content))
+                except (json.JSONDecodeError, TypeError, ValueError) as json_err:
+                    errors.append({
+                        "filename": filename,
+                        "error": f"Invalid JSON for create_document: {json_err}",
+                    })
+                    continue
+
+                with open(temp_path, 'w', encoding='utf-8') as f:
+                    json.dump(parsed_content, f, ensure_ascii=False, indent=2)
+
+            elif ext in ['.txt', '.md', '.csv']:
                 # Plain text files
                 with open(temp_path, 'w', encoding='utf-8') as f:
-                    f.write(content)
+                    f.write(str(content))
 
             elif ext == '.pdf':
                 # Create PDF using reportlab
@@ -898,7 +914,7 @@ async def handle_create_document(
     return ToolResult(
         tool_use_id="",
         content="\n".join(response_parts),
-        is_error=len(errors) > 0 and len(created_docs) == 0,
+        is_error=len(errors) > 0,
         files_generated=files_generated
     )
 

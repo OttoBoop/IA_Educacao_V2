@@ -2582,8 +2582,14 @@ Seja preciso, educativo e construtivo em suas análises."""
                 has_persisted_docs = bool(context.created_document_ids)
 
                 if has_persisted_docs or has_runtime_metadata:
-                    has_json = bool(docs_by_tool["create_document"])
-                    has_pdf = bool(docs_by_tool["execute_python_code"])
+                    has_json = any(
+                        (getattr(doc, "extensao", "") or "").lower() == ".json"
+                        for doc in docs_by_tool["create_document"]
+                    )
+                    has_pdf = any(
+                        (getattr(doc, "extensao", "") or "").lower() == ".pdf"
+                        for doc in docs_by_tool["execute_python_code"]
+                    )
                 else:
                     has_json = any(
                         tc.get("name") == "create_document" and not tc.get("is_error", False)
