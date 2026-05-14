@@ -158,8 +158,8 @@ detalhar e auditar estas linhas.
    por tool-use, alem de relatorios agregados.
 3. O Doc 02 mostrou que o maior risco arquitetural esta no Path 2: schemas
    conflitantes, JSON opaco, avisos/metadata/tokens incompletos e tools parciais.
-4. Os fixes principais ja chegaram ao site oficial: Render confirmou `7ed8b8b`
-   via marker `9e1aee5`, com `/api/health` e `/api/custos/*` respondendo.
+4. Os fixes principais ja chegaram ao site oficial: Render confirmou `839968e`
+   via marker `45c6f97`, com `/api/health` e `/api/custos/*` respondendo.
 5. P4 ja esta no codigo publicado: `EXTRAIR_RESPOSTAS` nao deve rodar sem
    `prova_respondida` valida; falta apenas smoke dedicado se esse bug voltar a
    ser alvo.
@@ -168,10 +168,11 @@ detalhar e auditar estas linhas.
 7. Sprint 2 melhorou schema/defaults/visualizador, mas nao fechou o contrato do
    Doc 02 porque Path 2 ainda precisa validar schema antes de sucesso.
 8. Sprint 3 separou `input_tokens`/`output_tokens`; Sprint 3b/4h confirmaram
-   metadata/custo em documentos reais; Sprint 3c agrupou custo por `cost_run_id`.
+   metadata/custo em documentos reais; Sprint 3c agrupou custo por `cost_run_id`;
+   Sprint 3d criou `TokenUsageRecord` local para falhas sem documento.
 9. Gemini 3 Flash e GPT-5 Nano estao confirmados para `corrigir`; Haiku segue
    bloqueado por creditos; Rio 3 esta pausado.
-10. O proximo eixo correto e registrar custo de falhas sem documento final,
+10. O proximo eixo correto e migrar `TokenUsageRecord` para persistencia duravel,
     ampliar a revalidacao por etapa/provider e endurecer o contrato contra
     schema ruim.
 
@@ -180,11 +181,11 @@ detalhar e auditar estas linhas.
 | Frente | Temos hoje | Limite da afirmacao |
 |---|---|---|
 | Documentacao | Doc 09 como painel curto; Doc 14 como auditoria mestre; Doc 05/12 com notas de status | Manter Doc 09 curto e Doc 14 detalhado; registrar novos ciclos sem criar doc extra. |
-| Git/GitHub | Commits ate `7ed8b8b` publicados; marcador funcional `9e1aee5`; pode haver docs acima do marker em `origin/main` | Usar marker HTML antes de aceitar qualquer smoke como oficial. |
+| Git/GitHub | Commits ate `839968e` publicados; marcador funcional `45c6f97`; pode haver docs acima do marker em `origin/main` | Usar marker HTML antes de aceitar qualquer smoke como oficial. |
 | Pipeline P4 | Bloqueio de extracao de respostas sem prova valida esta no codigo publicado | Precisa smoke dedicado apenas se P4 voltar a ser alvo. |
 | Pipeline P5/P6 | Contencao de nota e preservacao de `_documentos_faltantes` | `N/A` ainda e fallback proibido como estado final. |
 | Schema/avisos | Defaults `_avisos_*`, visualizador melhorado e schemas mais permissivos | Permissividade nao e contrato forte; pode aceitar legado demais. |
-| Tokens/custos | Split input/output; metadata de documento; endpoints `/api/custos/status` e `/api/custos/resumo` respondendo live; resumo agrega por `cost_run_id`; Gemini e Nano geraram runs custeaveis | Falta persistir falhas sem documento final. |
+| Tokens/custos | Split input/output; metadata de documento; endpoints `/api/custos/status` e `/api/custos/resumo` respondendo live; resumo agrega por `cost_run_id`; `TokenUsageRecord` local cobre falha sem documento; Gemini e Nano geraram runs custeaveis | Falta migrar `TokenUsageRecord` para Supabase/persistencia duravel. |
 | Providers | Gemini e GPT-5 Nano passaram em chat simples live e em `corrigir`; Haiku bloqueado por credito | `corrigir` nao prova pipeline completa. |
 | Seguranca Rio | Regra de nao usar chave em chat e Rio pausado | Arquivos Rio/untracked continuam fora do ciclo ativo. |
 
@@ -206,7 +207,7 @@ detalhar e auditar estas linhas.
 
 | Item | Estado | Acao correta |
 |---|---|---|
-| Render/site oficial | Confirmado em `7ed8b8b` pelo marker `9e1aee5` | Continuar usando marker/check_deploy antes de smoke oficial. |
+| Render/site oficial | Confirmado em `839968e` pelo marker `45c6f97` | Continuar usando marker/check_deploy antes de smoke oficial. |
 | Anthropic Haiku | Bloqueado por creditos | Testar apenas quando houver credito; erro deve aparecer claro. |
 | Rio 3 | Pausado | Nao pedir chave, nao rodar smoke, nao misturar no ciclo atual. |
 | `.pytest_tmp` e assets soltos | Muito ruido no worktree | Nao stagear por acidente; nunca usar `git add .`. |
@@ -302,7 +303,7 @@ fila de tarefas. Cada item abaixo deve ser entendido como contrato herdado.
 | D02-3 | Resolver conflito `PROMPTS_PADRAO` vs `STAGE_TOOL_INSTRUCTIONS` | Aberto | Validacao aceita formatos, mas prompt legado ainda pode orientar modelo ao schema errado | Teste: prompt ativo de Path 2 contem apenas contrato esperado ou marca legado como fora do caminho ativo. |
 | D02-4 | `_avisos_documento`, `_avisos_questao`, `_avisos_stage` devem ser confiaveis | Parcial | Defaults foram injetados; visualizador melhorou; ainda falta distinguir default de output real do modelo | Teste: ausencia de `_avisos_*` em JSON de IA gera alerta de schema/default, nao sucesso silencioso. |
 | D02-5 | Tokens do Path 2 precisam de input/output separados | Feito live para smokes recentes | Gemini e Nano em `corrigir` registraram `tokens_entrada`/`tokens_saida`; manter cobertura | Revalidar nas etapas `analisar_habilidades` e `gerar_relatorio`. |
-| D02-6 | Tokens precisam virar custo persistido por contexto educacional | Parcial | Endpoints `/api/custos/*` respondem, precificam runs com split e agrupam JSON+PDF por `cost_run_id`; falta falha sem documento | Teste: falha depois de consumir tokens cria registro de custo/erro sem documento final. |
+| D02-6 | Tokens precisam virar custo persistido por contexto educacional | Parcial | Endpoints `/api/custos/*` respondem, precificam runs com split, agrupam JSON+PDF por `cost_run_id` e leem `TokenUsageRecord` local; falta Supabase | Teste: falha depois de consumir tokens cria registro duravel em tabela/servico persistente. |
 | D02-7 | Metadata dos documentos deve ter provider/modelo/tokens/tempo | Parcial live | Documentos recentes de Gemini/Nano carregam provider/modelo/tokens/custo; falta cobrir todas as etapas e falhas | Teste: documento gerado por IA tem `ia_provider`, `ia_modelo`, `tokens_usados`, `tempo_processamento_ms` em cada etapa. |
 | D02-8 | Provider sem tools nao pode cair em chat simples | Parcialmente fechado | `chat_service.py` agora falha explicitamente; manter contrato | Teste: provider sem function calling em etapa tool-use falha antes de criar artefato. |
 | D02-9 | PDF obrigatorio ausente nao pode virar sucesso enganoso | Aberto P0 | PDF auto-fallback ainda pode salvar PDF e retornar `sucesso=True` | Teste: modelo que nao chama `execute_python_code` falha ou retorna parcial bloqueante, nunca verde. |
@@ -729,14 +730,15 @@ O projeto tem tres camadas que estavam sendo misturadas:
 | Camada | Estado | O que significa |
 |---|---|---|
 | Estimativa | Existe no Doc 05/catalogo | Serve para planejar, nao para auditar gasto real. |
-| Medicao de tokens | Melhorou localmente em `b12be9a` | Permite calcular depois, mas ainda nao e custo persistido. |
-| Persistencia de custo | Ainda falta | Necessaria para responder "quanto custou por materia/turma/aluno". |
+| Medicao de tokens | Confirmada no site para runs recentes | Permite calcular custo por run com split input/output. |
+| Persistencia de custo | Parcial | Documentos carregam custo; falhas sem documento usam `TokenUsageRecord` local; falta Supabase para historico duravel por materia/turma/aluno. |
 
 Leitura geral:
 
-- O projeto esta mais perto de custo real, mas ainda nao chegou nele.
+- O projeto ja tem custo real por run recente, mas ainda nao tem historico
+  duravel completo.
 - `input_tokens`/`output_tokens` separados sao pre-requisito, nao meta final.
-- Sem `TokenUsageRecord`, custo por periodo ainda e projeto futuro.
+- Sem `TokenUsageRecord` em Supabase, custo por periodo ainda e projeto futuro.
 - Sem metadata no documento, auditoria por artefato continua fraca.
 
 ### Nota Geral 5 -- Provider E Matriz, Nao Ranking
@@ -985,7 +987,7 @@ Esta secao fica antes do mapa de documentos porque ela responde a pergunta
 |---|---|---|---|
 | Local diferente de oficial | O workspace tem fixes que `origin/main` e Render ainda nao provaram ter. | `main` local 5 commits a frente de `origin/main`. | Commit/push/deploy em ciclo proprio, com gate. |
 | Fallbacks ainda misturados com robustez | Alguns docs/testes antigos tratam fallback como comportamento bom. | PDF auto-fallback, `nota_final=N/A`, parsing permissivo. | Ciclo anti-fallback antes de custo/dashboard. |
-| Custo nao e persistido | Tokens existem em memoria/resposta, mas nao ha historico consultavel. | Doc 05 e codigo mostram `calculate_cost` sem chamada operacional. | `TokenUsageRecord` + metadata em documento. |
+| Custo parcialmente persistido | Documentos recentes e `TokenUsageRecord` local cobrem parte do problema; historico por periodo ainda nao e duravel. | Deploy `839968e` e endpoints `/api/custos/*`. | Migrar `TokenUsageRecord` para Supabase e validar falha real sem documento. |
 | Provider matrix esta stale | Matriz reflete testes antes dos fixes locais mais recentes. | Doc 12 e testes de abril; commits locais de maio nao revalidados. | Smoke por provider/rota depois de deploy. |
 | UI nao explica falhas suficientes | Usuario pode ver status/documento sem entender falha real. | Riscos do Doc 09 e logs antigos de UI/deploy. | Sprint 4 com mensagens por aluno/etapa/provider. |
 | Dados fantasmas ainda confundem status | JSON de erro e PDF com `/conteudo=null` podem ser interpretados errado. | Doc 07 + nota tecnica PDF + historico de fantasmas. | Reclassificacao segura antes de limpeza. |
@@ -1006,7 +1008,7 @@ ponta. A leitura correta agora e:
 | A LLM nao pode escolher entre dois schemas conflitantes | `pipeline_validation.py` ficou mais permissivo e aceita formatos legados/tool-use; `PROMPTS_PADRAO` de CORRIGIR/ANALISAR/GERAR ainda mantem schema legado sem `_avisos_*`. | Unificar o contrato de prompt/tool-use ou deixar o legado explicitamente fora do caminho ativo. |
 | `_avisos_documento`, `_avisos_questao` e `_avisos_stage` precisam sobreviver | Sprint 2 injeta defaults e melhora visualizador, mas default vazio pode mascarar que o modelo nao produziu aviso esperado. | Diferenciar "modelo declarou sem avisos" de "sistema preencheu default porque faltou campo". |
 | `executar_com_tools()` deve retornar metadados uteis | Token split foi corrigido localmente; `etapa` ainda volta como `"tools"` e `resposta_parsed`/`documento_id` continuam ausentes nesse retorno. | Retornar etapa real, documento principal e JSON parseado/validado no `ResultadoExecucao`. |
-| Tokens do Path 2 precisam virar custo auditavel | `input_tokens`/`output_tokens` existem localmente em memoria. | Persistir `TokenUsageRecord`, custo por etapa/aluno/atividade e custo de falhas. |
+| Tokens do Path 2 precisam virar custo auditavel | `input_tokens`/`output_tokens` existem e custos recentes aparecem nos endpoints. | Persistir `TokenUsageRecord` em Supabase, custo por etapa/aluno/atividade e custo de falhas duravel. |
 | Provider sem tools nao pode cair em chat simples | `chat_service.py` agora falha explicitamente para provider sem tool-use. | Manter teste cobrindo esse contrato e revalidar providers no site oficial. |
 | PDF/artefato faltante nao pode virar sucesso enganoso | `executar_com_tools()` ainda usa PDF auto-fallback e retorna `sucesso=True`. | Converter PDF auto-fallback em erro alto ou sucesso parcial bloqueante com UI vermelha. |
 | Modelos pequenos que geram lixo precisam falhar cedo | GPT-5 Nano historicamente gerou documentos ruins; alguns testes locais cobrem partes. | Schema invalido deve falhar em CORRIGIR, antes de ANALISAR/GERAR descobrir o estrago. |
@@ -1395,7 +1397,7 @@ Leitura correta:
 
 Como orientar o proximo loop:
 
-- Implementar registro real de `TokenUsageRecord`.
+- Migrar o registro local de `TokenUsageRecord` para persistencia duravel.
 - Registrar provider/modelo/tokens/tempo/sucesso por etapa.
 - So depois construir endpoint/dashboard de custo.
 
@@ -2419,8 +2421,9 @@ Regra:
 Fila minima para custo real:
 
 1. Fazer `_salvar_resultado()` e `create_document` carregarem provider/modelo/tokens
-   ate o `Documento` persistido.
+   ate o `Documento` persistido. **Parcialmente fechado para runs recentes.**
 2. Criar `TokenUsageRecord` com materia/turma/atividade/aluno/etapa/provider/modelo.
+   **Primeira versao local em `839968e`; falta Supabase.**
 3. Chamar `ModelCatalogManager.calculate_cost()` no fim de cada etapa validada.
 4. Persistir sucesso e falha; falha tambem custa tokens.
 5. So depois expor endpoint/dashboard por materia, turma, atividade e periodo.
@@ -2515,7 +2518,7 @@ Esta e a leitura curta para retomar o longo prazo sem se perder:
 | P4 confiabilidade | Falha antes de extrair respostas sem prova valida | Smoke especifico de P4 se esse bug voltar a ser alvo | Codigo ja esta no deploy oficial, mas nao foi o smoke principal de 2026-05-15. |
 | P5/P6 relatorio | Preserva faltantes e evita template literal | Converter `N/A`/nota ausente em erro alto | Contencao pode parecer sucesso se nao for removida. |
 | Sprint 2 schema/avisos | Testes locais de schema e visualizador | Revalidar providers pos-fix | GPT-5 Nano ainda tem historico de schema ruim. |
-| Sprint 3/3b/3c custos | `input_tokens`/`output_tokens`; metadata de documentos; endpoints `/api/custos/*` live; runs Gemini/Nano custeaveis; amostras agrupadas por `cost_run_id` | Criar registro de custo para falhas sem documento final | Historico antigo bloqueia custo por falta de split/provider; falhas sem artefato ainda podem sumir do custo. |
+| Sprint 3/3b/3c/3d custos | `input_tokens`/`output_tokens`; metadata de documentos; endpoints `/api/custos/*` live; runs Gemini/Nano custeaveis; amostras agrupadas por `cost_run_id`; registro local para falha sem documento | Migrar `TokenUsageRecord` para Supabase/persistencia duravel | Historico antigo bloqueia custo por falta de split/provider; arquivo local no Render nao e duravel entre deploys. |
 | Docs parciais de run falho | Patch marca `created_document_ids` como ERRO quando provider falha depois das tools | Novo caso falho em producao para provar quando ocorrer | Ja existem dois docs antigos com token split faltante do run anterior. |
 | Providers | Gemini `corrigir` OK; Nano `corrigir` OK; Haiku bloqueado; GPT-4o historico | Smoke matrix pos-fixes por provider/rota/pipeline | Credito Anthropic, etapas restantes e custo de falhas sem documento. |
 | UI de erro | `task.error` agora aparece no site oficial para falha de etapa | Melhorar apresentacao e retry de erros provider | Mensagem ainda e bruta e longa. |
@@ -2564,8 +2567,9 @@ Aceite:
 - `/api/custos/status` e `/api/custos/resumo` respondem no site oficial.
 - O resumo agrega custo por `cost_run_id`, nao por documento salvo, quando JSON e
   PDF pertencem ao mesmo run. **Fechado em `7ed8b8b`.**
-- Falhas que consomem tokens ficam registradas com status/erro, sem parecer
-  sucesso.
+- Falhas que consomem tokens sem documento ficam registradas em
+  `TokenUsageRecord` local, sem parecer sucesso. **Primeira versao em
+  `839968e`; falta persistencia Supabase.**
 
 ### Ciclo D -- Provider Revalidation
 

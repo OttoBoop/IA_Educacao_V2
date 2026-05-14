@@ -2,13 +2,14 @@
 
 **Atualizado:** 2026-05-15
 **Responsavel operacional:** Paulo
-**Status geral:** Render oficial confirmou o marker `9e1aee5`, que aponta para
-o commit funcional `7ed8b8b`. Gemini `corrigir` passou com custo medido; GPT-5
+**Status geral:** Render oficial confirmou o marker `45c6f97`, que aponta para
+o commit funcional `839968e`. Gemini `corrigir` passou com custo medido; GPT-5
 Nano agora tambem passou em `corrigir` no site oficial com JSON parseavel, PDF
 via `execute_python_code`, tokens splitados e custo medido, sem PDF extra via
 `create_document`. O resumo de custos agora agrega por `cost_run_id`, entao
-JSON+PDF do mesmo run contam uma vez. Ainda nao ha pipeline completa validada
-para Nano.
+JSON+PDF do mesmo run contam uma vez. Falhas tool-use sem documento final agora
+tem `TokenUsageRecord` local mensal, mas ainda falta migrar esse registro para
+Supabase/tabela oficial. Ainda nao ha pipeline completa validada para Nano.
 
 Este e o ponto de entrada do plano. O objetivo deste arquivo e dizer, em poucas
 linhas, onde estamos, qual e a proxima fila e quais frentes estao pausadas.
@@ -48,7 +49,7 @@ Estabilizar o NOVO CR para que a pipeline:
 | Docs e plano | Sprint 0 concluida | Manter este painel como fonte oficial e anexos fora do fluxo diario |
 | Pipeline | `corrigir` validado oficialmente para Gemini 3 Flash e GPT-5 Nano com JSON/PDF/custo | Expandir para `analisar_habilidades` e `gerar_relatorio`; validar schema minimo por etapa |
 | Schema e avisos | Sprint 2 concluida localmente | Manter schema oficial, defaults e visualizador cobertos por testes |
-| Custos/tokens | Metadata de documento e endpoints de custo live no deploy `7ed8b8b`; resumo agrega por `cost_run_id` | Registrar falhas sem documento final; avançar custo por contexto educacional |
+| Custos/tokens | Metadata de documento, endpoints live, resumo por `cost_run_id` e `TokenUsageRecord` local para falha sem documento no deploy `839968e` | Migrar `TokenUsageRecord` para Supabase; validar uma falha real sem documento em producao |
 | UI de erros | Pendente | Mostrar falha por aluno/etapa sem depender de terminal |
 | Limpeza de dados | Pendente | Reclassificar "fantasmas" antes de qualquer delecao |
 | Rio 3 | Pausada | Nao pedir chave, nao rodar smoke, nao deployar Rio sem nova decisao |
@@ -66,14 +67,15 @@ Estabilizar o NOVO CR para que a pipeline:
 - Commit funcional de restricao de artefato por tool: `b24f03e`.
 - Commit funcional de payload malformado em `create_document`: `eab7d90`.
 - Commit funcional de resumo de custos por run: `7ed8b8b`.
-- Marker mais novo publicado: `9e1aee5` (`chore: mark deploy 7ed8b8b`).
-- Marker atual visto no Render: `9e1aee5`, HTML com `novocr-deploy=7ed8b8b`.
+- Commit funcional de `TokenUsageRecord` para falhas sem documento: `839968e`.
+- Marker mais novo publicado: `45c6f97` (`chore: mark deploy 839968e`).
+- Marker atual visto no Render: `45c6f97`, HTML com `novocr-deploy=839968e`.
 - GitHub `origin/main`: pode conter commits documentais posteriores; o ultimo
-  marker funcional publicado e `9e1aee5`, e Render live esta confirmado em
-  `7ed8b8b`.
+  marker funcional publicado e `45c6f97`, e Render live esta confirmado em
+  `839968e`.
 - Render live observado: saiu de `2e1098f` para `b12be9a` e depois confirmou
   marcadores `b4d7ee6`, `f505be6`, `97a7c79`, `c75af88`, `39aa50a`,
-  `b24f03e`, `eab7d90` e `7ed8b8b`.
+  `b24f03e`, `eab7d90`, `7ed8b8b` e `839968e`.
 - `/api/custos/status` no Render: HTTP 200, confirmando endpoints de custo live.
 - GitHub Actions: sem runs recentes observaveis.
 - GitHub webhooks/deployments via `gh api`: sem entradas visiveis.
@@ -140,7 +142,8 @@ Prioridade: corrigir medicao antes de criar dashboard.
 
 - `ChatClient` deve retornar `input_tokens` e `output_tokens`. **Concluido em 2026-05-14.**
 - `executar_com_tools` deve preencher `tokens_entrada` e `tokens_saida`. **Concluido em 2026-05-14.**
-- Persistencia `TokenUsageRecord` entra so depois disso. **Proximo subciclo, nao iniciado.**
+- Persistencia `TokenUsageRecord`: primeira versao local mensal concluida em
+  2026-05-15; migracao Supabase/persistencia duravel ainda pendente.
 
 Critério de pronto: custo pode ser calculado com input/output separados.
 
@@ -262,8 +265,8 @@ Critério de pronto: lista de limpeza segura e revisada.
 - Validacoes: `python -m py_compile` dos arquivos Python tocados; `git diff --check`;
   `PYTHONPATH=backend /home/otavio/Documents/vscode/.venv/bin/python -m pytest backend/tests/unit/test_api_keys.py::TestChatClientTokenUsage backend/tests/unit/test_d_t1_openai_tool_use.py backend/tests/unit/test_d_t2_google_tool_use.py backend/tests/unit/test_f2_desempenho_resposta_raw.py -q`
   passou com 24 testes e 1 aviso de config `timeout` desconhecida.
-- Proximo alvo: planejar persistencia `TokenUsageRecord` ou entrar na Sprint 4
-  de UI de erros, conforme risco escolhido no proximo ciclo.
+- Proximo alvo: migrar `TokenUsageRecord` para persistencia duravel ou entrar
+  na Sprint 4 de UI de erros, conforme risco escolhido no proximo ciclo.
 
 ### 2026-05-15 -- Oficializacao parcial + Sprint 3b: metadata/custos
 
@@ -543,12 +546,44 @@ Critério de pronto: lista de limpeza segura e revisada.
 - Proximo alvo: registrar custos de falhas sem documento final e/ou avançar
   revalidacao de `analisar_habilidades`/`gerar_relatorio` por provider.
 
+### 2026-05-15 -- Sprint 3d: `TokenUsageRecord` para falhas sem documento
+
+- Alvo: quando uma chamada tool-use consome tokens e falha antes de salvar
+  qualquer documento, o custo nao pode sumir.
+- Status: publicado, deployado e smokeado em estrutura; ainda sem amostra real
+  de falha sem documento depois do deploy.
+- Arquivos tocados: `backend/token_usage.py`, `backend/cost_tracking.py`,
+  `backend/routes_costs.py`, `backend/executor.py`,
+  `backend/tests/unit/test_cost_tracking.py`.
+- Comportamento: falha dual-output sem documento grava `TokenUsageRecord` mensal
+  em `data/token_usage/YYYY-MM.json`; falha com documento parcial marca o
+  documento como `ERRO` e preenche provider/modelo/tokens/cost_run_id; o resumo
+  de custos inclui registros sem documento e deduplica quando record e documento
+  compartilham `cost_run_id`.
+- Protecao extra: leitura de `documents` malformado no executor nao chama `.get`
+  em string.
+- Validacoes locais: `py_compile` passou; `git diff --check` passou;
+  `test_cost_tracking.py` passou com 12 testes; `test_warning_system.py` passou
+  com 74 testes; `test_erro_pipeline.py` passou com 42 testes. Todos com 1 aviso
+  conhecido de config `timeout` desconhecida.
+- Git/deploy: commit funcional `839968e`; marker `45c6f97`; Render confirmou
+  `839968e` via `wait_deploy.sh` e `check_deploy.sh`; `/api/health` healthy.
+- Smoke oficial de custos: `/api/custos/status?limit=500` retornou
+  `token_usage_analisados=0`, `runs_analisados=492`, `runs_precificados=5`,
+  `runs_bloqueados=487`, `alertas=[]`.
+- Interpretacao: `token_usage_analisados=0` significa que ainda nao houve nova
+  falha sem documento registrada apos o deploy; o caminho esta pronto e coberto
+  por teste local.
+- Limite conhecido: `TokenUsageRecord` ainda e arquivo local mensal. Para custo
+  historico duravel em producao, o proximo passo e tabela Supabase `token_usage`
+  ou mecanismo persistente equivalente.
+
 ## Riscos Abertos
 
 1. Creditos Anthropic insuficientes ainda bloqueiam validacao Haiku.
 2. Schema drift pode fazer modelos gerarem formatos diferentes.
 3. Schema minimo ainda nao esta validado para todas as etapas; JSON parseavel e
    necessario, mas nao prova qualidade pedagogica.
-4. Falhas sem documento final ainda nao entram no resumo de custos; precisamos
-   de registro proprio de run/custo para erro sem artefato.
+4. `TokenUsageRecord` de falha sem documento ainda usa arquivo local mensal; isso
+   nao e persistencia duravel entre deploys no Render.
 5. Rio 3 nao deve voltar ao fluxo ativo sem nova decisao e nova chave segura.

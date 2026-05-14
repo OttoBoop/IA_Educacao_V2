@@ -6,18 +6,18 @@
 `b12be9a`, `301eba6`, `f67055c`, `462ea1d`, `b4d7ee6`, `99483d1`,
 `f505be6`, `d75b05a`, `97a7c79`, `ec95193`, `ff7b92a`, `68ebe51`,
 `c75af88`, `45d543a`, `39aa50a`, `3ddf6c5`, `b24f03e`, `6ed31a4`,
-`eab7d90`, `dcecdfa`, `7ed8b8b`, `9e1aee5`
+`eab7d90`, `dcecdfa`, `7ed8b8b`, `9e1aee5`, `839968e`, `45c6f97`
 
 ## Status Oficial De Deploy
 
 - GitHub `origin/main` pode conter commits documentais posteriores; o ultimo
-  marker funcional publicado e `9e1aee5`, e o marcador HTML aponta para o commit
-  funcional `7ed8b8b`.
-- Render live confirmou `7ed8b8b` por `wait_deploy.sh`, `check_deploy.sh` e
+  marker funcional publicado e `45c6f97`, e o marcador HTML aponta para o commit
+  funcional `839968e`.
+- Render live confirmou `839968e` por `wait_deploy.sh`, `check_deploy.sh` e
   `/api/health`.
 - Docs antigos registram que auto-deploy Git nao funciona de forma confiavel; o
   ciclo usou deploy via API Render com token local seguro, sem imprimir segredo.
-- Os smokes live de 2026-05-15 abaixo sao oficiais para o estado `7ed8b8b`.
+- Os smokes live de 2026-05-15 abaixo sao oficiais para o estado `839968e`.
 
 ## Legenda
 
@@ -104,6 +104,10 @@
 - Depois do deploy `7ed8b8b`, `/api/custos/resumo` passou a agrupar amostras por
   `cost_run_id`. O ultimo run Nano `tool_056e2e1f7179` aparece uma vez, com
   `documentos_contagem=2`, documentos JSON+PDF e custo unico `US$ 0.002192`.
+- Depois do deploy `839968e`, `/api/custos/status` passou a expor
+  `token_usage_analisados`; o live retornou `0`, como esperado enquanto nenhuma
+  nova falha sem documento ocorrer. O caminho e local mensal
+  `data/token_usage/YYYY-MM.json`, ainda nao Supabase.
 
 **Gemini 3 Flash:** tambem validado em 2 testes historicos de chat (mensagem unica + multi-turn). Ver [teste_chat_gemini.md](arquivo_2026_04_17/teste_chat_gemini.md).
 - Teste 1: 662 tokens, 1930ms, resposta em PT correta
@@ -231,8 +235,9 @@ Ver [teste_gpt5nano_pipeline_completo.md](arquivo_2026_04_17/teste_gpt5nano_pipe
 ### Prioridade ALTA
 - [ ] Rodar Gemini 3 Flash em `analisar_habilidades` e `gerar_relatorio` com
       custo/metadata
-- [ ] Registrar custo de falhas sem documento final, como o GPT-5 Nano que falha
-      antes de criar artefato
+- [ ] Migrar `TokenUsageRecord` de falhas sem documento para persistencia duravel
+      Supabase ou equivalente
+- [x] Criar registro local mensal de custo de falhas sem documento final
 - [x] Auditar se `/api/custos/resumo` soma por documento em vez de por
       `cost_run_id`
 - [x] Restringir ou marcar como erro artefato extra `create_document` nao-JSON em
