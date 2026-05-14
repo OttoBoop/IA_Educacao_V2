@@ -21,7 +21,7 @@ import pytest
 import asyncio
 from pathlib import Path
 from typing import Optional
-from unittest.mock import patch, MagicMock
+from unittest.mock import AsyncMock, patch, MagicMock
 
 # Adicionar diretorio pai ao path
 sys.path.insert(0, str(Path(__file__).parent))
@@ -199,6 +199,43 @@ class TestEnvFallback:
 # ============================================================
 # TESTES DE INTEGRACAO
 # ============================================================
+
+class TestChatClientTokenUsage:
+    """Testes de metadata de tokens retornada pelo ChatClient."""
+
+    @pytest.mark.asyncio
+    async def test_openai_chat_returns_split_tokens(self):
+        """ChatClient deve expor input_tokens e output_tokens, além do total."""
+        from chat_service import ChatClient, ModelConfig, ProviderType
+
+        model = ModelConfig(
+            id="gpt-test",
+            nome="GPT Test",
+            tipo=ProviderType.OPENAI,
+            modelo="gpt-4o",
+            max_tokens=100,
+        )
+        client = ChatClient(model, "test-key")
+
+        response_payload = {
+            "choices": [{"message": {"content": "ok"}}],
+            "usage": {"prompt_tokens": 7, "completion_tokens": 5, "total_tokens": 12},
+        }
+
+        with patch("httpx.AsyncClient") as mock_client_cls:
+            mock_client = AsyncMock()
+            mock_client_cls.return_value.__aenter__ = AsyncMock(return_value=mock_client)
+            mock_client_cls.return_value.__aexit__ = AsyncMock(return_value=False)
+
+            mock_response = MagicMock(status_code=200)
+            mock_response.json.return_value = response_payload
+            mock_client.post = AsyncMock(return_value=mock_response)
+
+            result = await client._chat_openai("oi", [], "sistema")
+
+        assert result["tokens"] == 12
+        assert result["input_tokens"] == 7
+        assert result["output_tokens"] == 5
 
 class TestChatServiceIntegration:
     """Testes de integracao do ChatService"""

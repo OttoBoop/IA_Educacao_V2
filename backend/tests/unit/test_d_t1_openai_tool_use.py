@@ -418,6 +418,8 @@ class TestTokenTracking:
 
         # 150 + 280 = 430 total tokens
         assert result["tokens"] == 430
+        assert result["input_tokens"] == 300
+        assert result["output_tokens"] == 130
 
 
 # ============================================================
@@ -452,6 +454,8 @@ class TestResponseStructure:
 
         assert "content" in result
         assert "tokens" in result
+        assert "input_tokens" in result
+        assert "output_tokens" in result
         assert "modelo" in result
         assert "provider" in result
         assert "tool_calls" in result

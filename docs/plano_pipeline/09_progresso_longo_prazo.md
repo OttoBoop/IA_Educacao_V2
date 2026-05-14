@@ -2,7 +2,7 @@
 
 **Atualizado:** 2026-05-14
 **Responsavel operacional:** Paulo
-**Status geral:** Sprint 2 de schema e avisos concluida localmente
+**Status geral:** Sprint 3 de custos/tokens concluida localmente no nivel de medicao
 
 Este e o ponto de entrada do plano. O objetivo deste arquivo e dizer, em poucas
 linhas, onde estamos, qual e a proxima fila e quais frentes estao pausadas.
@@ -40,9 +40,9 @@ Estabilizar o NOVO CR para que a pipeline:
 | Frente | Estado | Proximo passo |
 |--------|--------|---------------|
 | Docs e plano | Sprint 0 concluida | Manter este painel como fonte oficial e anexos fora do fluxo diario |
-| Pipeline | Sprint 2 concluida localmente | Entrar na Sprint 3 antes de novas comparacoes amplas |
+| Pipeline | Sprint 3 medicao concluida localmente | Planejar persistencia de custos antes de dashboard |
 | Schema e avisos | Sprint 2 concluida localmente | Manter schema oficial, defaults e visualizador cobertos por testes |
-| Custos/tokens | Proxima sprint | Corrigir `input_tokens`/`output_tokens` antes de persistir custo |
+| Custos/tokens | Split input/output concluido localmente | Planejar `TokenUsageRecord` e persistencia mensal |
 | UI de erros | Pendente | Mostrar falha por aluno/etapa sem depender de terminal |
 | Limpeza de dados | Pendente | Reclassificar "fantasmas" antes de qualquer delecao |
 | Rio 3 | Pausada | Nao pedir chave, nao rodar smoke, nao deployar Rio sem nova decisao |
@@ -98,9 +98,9 @@ Critério de pronto: documentos gerados ficam consistentes e legiveis.
 
 Prioridade: corrigir medicao antes de criar dashboard.
 
-- `ChatClient` deve retornar `input_tokens` e `output_tokens`.
-- `executar_com_tools` deve preencher `tokens_entrada` e `tokens_saida`.
-- Persistencia `TokenUsageRecord` entra so depois disso.
+- `ChatClient` deve retornar `input_tokens` e `output_tokens`. **Concluido em 2026-05-14.**
+- `executar_com_tools` deve preencher `tokens_entrada` e `tokens_saida`. **Concluido em 2026-05-14.**
+- Persistencia `TokenUsageRecord` entra so depois disso. **Proximo subciclo, nao iniciado.**
 
 Critério de pronto: custo pode ser calculado com input/output separados.
 
@@ -202,6 +202,25 @@ Critério de pronto: lista de limpeza segura e revisada.
 - Validacoes: `PYTHONPATH=backend /home/otavio/Documents/vscode/.venv/bin/python -m pytest backend/tests/unit/test_pipeline_validation.py backend/tests/unit/test_schemas_narrativos.py backend/tests/unit/test_warning_system.py backend/tests/unit/test_warning_visualizador.py backend/tests/unit/test_warning_badge_ui.py -q`
   passou com 130 testes, 3 skipped e 1 aviso de config `timeout` desconhecida.
 - Proximo alvo: Sprint 3, custos/tokens.
+
+### 2026-05-14 -- Sprint 3: tokens input/output
+
+- Alvo: separar tokens de entrada e saida antes de qualquer calculo/persistencia de custo.
+- Status: concluido localmente no nivel de medicao.
+- Arquivos tocados: `backend/chat_service.py`, `backend/executor.py`,
+  `backend/tests/unit/test_api_keys.py`,
+  `backend/tests/unit/test_d_t1_openai_tool_use.py`,
+  `backend/tests/unit/test_d_t2_google_tool_use.py`,
+  `backend/tests/unit/test_f2_desempenho_resposta_raw.py`.
+- Comportamento: `ChatClient` preserva `tokens` total e tambem retorna
+  `input_tokens`/`output_tokens` para OpenAI, Anthropic, Google, Ollama e
+  endpoints OpenAI-compatible; tool-use acumula input/output por iteracao;
+  `executar_com_tools` popula `tokens_entrada` e `tokens_saida`.
+- Validacoes: `python -m py_compile` dos arquivos Python tocados; `git diff --check`;
+  `PYTHONPATH=backend /home/otavio/Documents/vscode/.venv/bin/python -m pytest backend/tests/unit/test_api_keys.py::TestChatClientTokenUsage backend/tests/unit/test_d_t1_openai_tool_use.py backend/tests/unit/test_d_t2_google_tool_use.py backend/tests/unit/test_f2_desempenho_resposta_raw.py -q`
+  passou com 24 testes e 1 aviso de config `timeout` desconhecida.
+- Proximo alvo: planejar persistencia `TokenUsageRecord` ou entrar na Sprint 4
+  de UI de erros, conforme risco escolhido no proximo ciclo.
 
 ## Riscos Abertos
 

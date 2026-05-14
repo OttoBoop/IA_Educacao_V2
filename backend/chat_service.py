@@ -890,6 +890,31 @@ class ChatClient:
                 params[key] = value
 
         return params
+
+    @staticmethod
+    def _token_int(value: Any) -> int:
+        try:
+            return int(value or 0)
+        except (TypeError, ValueError):
+            return 0
+
+    def _usage_payload(
+        self,
+        input_tokens: Any = 0,
+        output_tokens: Any = 0,
+        total_tokens: Any = 0,
+    ) -> Dict[str, int]:
+        """Normaliza uso mantendo `tokens` como total retrocompativel."""
+        input_count = self._token_int(input_tokens)
+        output_count = self._token_int(output_tokens)
+        total_count = self._token_int(total_tokens)
+        if total_count <= 0:
+            total_count = input_count + output_count
+        return {
+            "tokens": total_count,
+            "input_tokens": input_count,
+            "output_tokens": output_count,
+        }
     
     async def _chat_openai(self, mensagem: str, historico: List, system: str) -> Dict:
         """Chat com API OpenAI"""
@@ -938,10 +963,15 @@ class ChatClient:
                 raise Exception(error_msg)
 
             data = response.json()
+            usage = data.get("usage", {})
 
             return {
                 "content": data["choices"][0]["message"]["content"],
-                "tokens": data.get("usage", {}).get("total_tokens", 0),
+                **self._usage_payload(
+                    usage.get("prompt_tokens", usage.get("input_tokens", 0)),
+                    usage.get("completion_tokens", usage.get("output_tokens", 0)),
+                    usage.get("total_tokens", 0),
+                ),
                 "modelo": self.config.modelo,
                 "provider": self.config.tipo.value
             }
@@ -1003,10 +1033,15 @@ class ChatClient:
             for block in data.get("content", []):
                 if block.get("type") == "text":
                     content += block.get("text", "")
+
+            usage = data.get("usage", {})
             
             return {
                 "content": content,
-                "tokens": data.get("usage", {}).get("input_tokens", 0) + data.get("usage", {}).get("output_tokens", 0),
+                **self._usage_payload(
+                    usage.get("input_tokens", 0),
+                    usage.get("output_tokens", 0),
+                ),
                 "modelo": self.config.modelo,
                 "provider": self.config.tipo.value
             }
@@ -1028,6 +1063,8 @@ class ChatClient:
         messages.append({"role": "user", "content": mensagem})
 
         total_tokens = 0
+        total_input_tokens = 0
+        total_output_tokens = 0
         all_tool_calls = []
 
         for iteration in range(max_iterations):
@@ -1059,8 +1096,12 @@ class ChatClient:
                 data = response.json()
 
             # Track tokens
-            total_tokens += data.get("usage", {}).get("input_tokens", 0)
-            total_tokens += data.get("usage", {}).get("output_tokens", 0)
+            usage = data.get("usage", {})
+            input_tokens = self._token_int(usage.get("input_tokens", 0))
+            output_tokens = self._token_int(usage.get("output_tokens", 0))
+            total_input_tokens += input_tokens
+            total_output_tokens += output_tokens
+            total_tokens += input_tokens + output_tokens
 
             stop_reason = data.get("stop_reason")
             content_blocks = data.get("content", [])
@@ -1070,7 +1111,7 @@ class ChatClient:
                 final_text = self._extract_text_from_blocks(content_blocks)
                 return {
                     "content": final_text,
-                    "tokens": total_tokens,
+                    **self._usage_payload(total_input_tokens, total_output_tokens, total_tokens),
                     "modelo": self.config.modelo,
                     "provider": self.config.tipo.value,
                     "tool_calls": all_tool_calls
@@ -1113,7 +1154,7 @@ class ChatClient:
                 final_text = self._extract_text_from_blocks(content_blocks)
                 return {
                     "content": final_text,
-                    "tokens": total_tokens,
+                    **self._usage_payload(total_input_tokens, total_output_tokens, total_tokens),
                     "modelo": self.config.modelo,
                     "provider": self.config.tipo.value,
                     "tool_calls": all_tool_calls,
@@ -1123,7 +1164,7 @@ class ChatClient:
         # Max iterations reached
         return {
             "content": "[Maximum tool iterations reached]",
-            "tokens": total_tokens,
+            **self._usage_payload(total_input_tokens, total_output_tokens, total_tokens),
             "modelo": self.config.modelo,
             "provider": self.config.tipo.value,
             "tool_calls": all_tool_calls,
@@ -1190,6 +1231,8 @@ class ChatClient:
 
         openai_tools = self._convert_tools_to_openai_format(tools)
         total_tokens = 0
+        total_input_tokens = 0
+        total_output_tokens = 0
         all_tool_calls = []
 
         for iteration in range(max_iterations):
@@ -1214,9 +1257,12 @@ class ChatClient:
 
             # Track tokens
             usage = data.get("usage", {})
-            total_tokens += usage.get("total_tokens", 0) or (
-                usage.get("prompt_tokens", 0) + usage.get("completion_tokens", 0)
-            )
+            input_tokens = self._token_int(usage.get("prompt_tokens", usage.get("input_tokens", 0)))
+            output_tokens = self._token_int(usage.get("completion_tokens", usage.get("output_tokens", 0)))
+            request_total = self._token_int(usage.get("total_tokens", 0)) or (input_tokens + output_tokens)
+            total_input_tokens += input_tokens
+            total_output_tokens += output_tokens
+            total_tokens += request_total
 
             choice = data["choices"][0]
             finish_reason = choice.get("finish_reason")
@@ -1225,7 +1271,7 @@ class ChatClient:
             if finish_reason == "stop":
                 return {
                     "content": message.get("content", ""),
-                    "tokens": total_tokens,
+                    **self._usage_payload(total_input_tokens, total_output_tokens, total_tokens),
                     "modelo": self.config.modelo,
                     "provider": self.config.tipo.value,
                     "tool_calls": all_tool_calls
@@ -1275,7 +1321,7 @@ class ChatClient:
                 # Unexpected finish reason (length, content_filter, etc.)
                 return {
                     "content": message.get("content", ""),
-                    "tokens": total_tokens,
+                    **self._usage_payload(total_input_tokens, total_output_tokens, total_tokens),
                     "modelo": self.config.modelo,
                     "provider": self.config.tipo.value,
                     "tool_calls": all_tool_calls,
@@ -1285,7 +1331,7 @@ class ChatClient:
         # Max iterations reached
         return {
             "content": "[Maximum tool iterations reached]",
-            "tokens": total_tokens,
+            **self._usage_payload(total_input_tokens, total_output_tokens, total_tokens),
             "modelo": self.config.modelo,
             "provider": self.config.tipo.value,
             "tool_calls": all_tool_calls,
@@ -1330,6 +1376,8 @@ class ChatClient:
             generation_config["temperature"] = self.config.temperature
 
         total_tokens = 0
+        total_input_tokens = 0
+        total_output_tokens = 0
         all_tool_calls = []
 
         for iteration in range(max_iterations):
@@ -1357,9 +1405,12 @@ class ChatClient:
 
             # Track tokens
             usage = data.get("usageMetadata", {})
-            total_tokens += usage.get("totalTokenCount", 0) or (
-                usage.get("promptTokenCount", 0) + usage.get("candidatesTokenCount", 0)
-            )
+            input_tokens = self._token_int(usage.get("promptTokenCount", 0))
+            output_tokens = self._token_int(usage.get("candidatesTokenCount", 0))
+            request_total = self._token_int(usage.get("totalTokenCount", 0)) or (input_tokens + output_tokens)
+            total_input_tokens += input_tokens
+            total_output_tokens += output_tokens
+            total_tokens += request_total
 
             candidate = data.get("candidates", [{}])[0]
             parts = candidate.get("content", {}).get("parts", [])
@@ -1372,7 +1423,7 @@ class ChatClient:
                 # No function calls — return final text
                 return {
                     "content": "\n".join(text_parts),
-                    "tokens": total_tokens,
+                    **self._usage_payload(total_input_tokens, total_output_tokens, total_tokens),
                     "modelo": self.config.modelo,
                     "provider": self.config.tipo.value,
                     "tool_calls": all_tool_calls
@@ -1416,7 +1467,7 @@ class ChatClient:
         # Max iterations reached
         return {
             "content": "[Maximum tool iterations reached]",
-            "tokens": total_tokens,
+            **self._usage_payload(total_input_tokens, total_output_tokens, total_tokens),
             "modelo": self.config.modelo,
             "provider": self.config.tipo.value,
             "tool_calls": all_tool_calls,
@@ -1487,10 +1538,16 @@ class ChatClient:
                 parts = candidates[0].get("content", {}).get("parts", [])
                 for part in parts:
                     content += part.get("text", "")
+
+            usage = data.get("usageMetadata", {})
             
             return {
                 "content": content,
-                "tokens": data.get("usageMetadata", {}).get("totalTokenCount", 0),
+                **self._usage_payload(
+                    usage.get("promptTokenCount", 0),
+                    usage.get("candidatesTokenCount", 0),
+                    usage.get("totalTokenCount", 0),
+                ),
                 "modelo": self.config.modelo,
                 "provider": self.config.tipo.value
             }
@@ -1527,10 +1584,12 @@ class ChatClient:
                 raise Exception(f"Erro Ollama: {response.status_code} - {response.text}")
             
             data = response.json()
+            input_tokens = data.get("prompt_eval_count", 0)
+            output_tokens = data.get("eval_count", 0)
             
             return {
                 "content": data.get("message", {}).get("content", ""),
-                "tokens": data.get("eval_count", 0),
+                **self._usage_payload(input_tokens, output_tokens),
                 "modelo": self.config.modelo,
                 "provider": self.config.tipo.value
             }
@@ -1566,10 +1625,15 @@ class ChatClient:
                 raise Exception(f"Erro API: {response.status_code} - {response.text}")
             
             data = response.json()
+            usage = data.get("usage", {})
             
             return {
                 "content": data["choices"][0]["message"]["content"],
-                "tokens": data.get("usage", {}).get("total_tokens", 0),
+                **self._usage_payload(
+                    usage.get("prompt_tokens", usage.get("input_tokens", 0)),
+                    usage.get("completion_tokens", usage.get("output_tokens", 0)),
+                    usage.get("total_tokens", 0),
+                ),
                 "modelo": self.config.modelo,
                 "provider": self.config.tipo.value
             }

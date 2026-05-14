@@ -35,7 +35,13 @@ def executor_com_mock():
     return executor
 
 
-def _make_tool_response(content="", tool_calls=None, error=None):
+def _make_tool_response(
+    content="",
+    tool_calls=None,
+    error=None,
+    input_tokens=None,
+    output_tokens=None,
+):
     """Build a mock chat_with_tools response dict."""
     resp = {
         "content": content,
@@ -46,6 +52,10 @@ def _make_tool_response(content="", tool_calls=None, error=None):
     }
     if error:
         resp["error"] = error
+    if input_tokens is not None:
+        resp["input_tokens"] = input_tokens
+    if output_tokens is not None:
+        resp["output_tokens"] = output_tokens
     return resp
 
 
@@ -123,6 +133,46 @@ class TestRespostaRawFromToolCalls:
             "resposta_raw must contain the create_document content. "
             f"Expected 'Ana' in resposta_raw, got: {result.resposta_raw[:200]}"
         )
+
+    @pytest.mark.asyncio
+    async def test_executar_com_tools_preserves_input_and_output_tokens(
+        self, executor_com_mock
+    ):
+        """executar_com_tools must copy split token usage from ChatClient."""
+        mock_response = _make_tool_response(
+            content='{"ok": true}',
+            input_tokens=123,
+            output_tokens=45,
+        )
+
+        mock_model = MagicMock()
+        mock_model.tipo = MagicMock()
+        mock_model.tipo.value = "openai"
+        mock_model.modelo = "test-model"
+        mock_model.api_key_id = None
+        mock_model.suporta_function_calling = True
+
+        mock_client = AsyncMock()
+        mock_client.chat_with_tools = AsyncMock(return_value=mock_response)
+
+        with patch("chat_service.model_manager") as mm, \
+             patch("chat_service.api_key_manager") as akm, \
+             patch("chat_service.ChatClient", return_value=mock_client), \
+             patch("tools.ToolRegistry") as tr, \
+             patch("tool_handlers.TOOL_HANDLERS", {}), \
+             patch("tools.PIPELINE_TOOLS", []):
+            mm.get.return_value = mock_model
+            akm.get_por_empresa.return_value = MagicMock(api_key="test-key")
+
+            result = await executor_com_mock.executar_com_tools(
+                mensagem="Gere o relatório de desempenho",
+                atividade_id="ativ-001",
+                tools_to_use=["create_document"],
+            )
+
+        assert result.sucesso is True
+        assert result.tokens_entrada == 123
+        assert result.tokens_saida == 45
 
     @pytest.mark.asyncio
     async def test_resposta_raw_uses_api_content_when_no_create_document(
