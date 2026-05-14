@@ -150,6 +150,8 @@ class ModelCatalogManager:
 
     def __init__(self, catalog_path: str = "./data/model_catalog.json"):
         self.catalog_path = Path(catalog_path)
+        if not self.catalog_path.exists() and catalog_path == "./data/model_catalog.json":
+            self.catalog_path = Path(__file__).parent / "data" / "model_catalog.json"
         self.providers: Dict[str, ProviderInfo] = {}
         self.version: str = ""
         self.last_updated: str = ""

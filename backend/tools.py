@@ -116,6 +116,12 @@ class ToolExecutionContext:
     session_id: Optional[str] = None
     user_id: Optional[str] = None
     expected_document_type: Optional[Any] = None
+    etapa: Optional[str] = None
+    provider: Optional[str] = None
+    modelo: Optional[str] = None
+    prompt_id: Optional[str] = None
+    cost_run_id: Optional[str] = None
+    created_document_ids: List[str] = field(default_factory=list)
 
 
 class ToolRegistry:

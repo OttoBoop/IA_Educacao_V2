@@ -21,9 +21,13 @@ import re
 import tempfile
 import os
 import math
+import uuid
 import fitz  # PyMuPDF — extract text from binary PDFs (RELATORIO_FINAL)
 
-from models import TipoDocumento, Documento, criar_erro_pipeline, ERRO_DOCUMENTO_FALTANTE, ERRO_QUESTOES_FALTANTES, SeveridadeErro
+from models import (
+    TipoDocumento, Documento, StatusProcessamento, criar_erro_pipeline,
+    ERRO_DOCUMENTO_FALTANTE, ERRO_QUESTOES_FALTANTES, SeveridadeErro,
+)
 from prompts import PromptManager, PromptTemplate, EtapaProcessamento, prompt_manager
 from storage import StorageManager, storage
 from ai_providers import ai_registry, AIResponse
@@ -566,6 +570,8 @@ class PipelineExecutor:
                 response.content, resposta_parsed,
                 provider.name, provider.model, prompt.id,
                 response.tokens_used, tempo_ms,
+                tokens_entrada=response.input_tokens,
+                tokens_saida=response.output_tokens,
                 criar_nova_versao=criar_nova_versao
             )
         
@@ -795,7 +801,10 @@ class PipelineExecutor:
                         resultado.resposta, erro_content,
                         resultado.provider, resultado.modelo, prompt.id,
                         resultado.tokens_entrada + resultado.tokens_saida,
-                        tempo_ms, gerar_formatos_extras=False
+                        tempo_ms,
+                        gerar_formatos_extras=False,
+                        tokens_entrada=resultado.tokens_entrada,
+                        tokens_saida=resultado.tokens_saida,
                     )
                 return ResultadoExecucao(
                     sucesso=False,
@@ -843,6 +852,8 @@ class PipelineExecutor:
                 resultado.resposta, resposta_parsed,
                 resultado.provider, resultado.modelo, prompt.id,
                 resultado.tokens_entrada + resultado.tokens_saida, tempo_ms,
+                tokens_entrada=resultado.tokens_entrada,
+                tokens_saida=resultado.tokens_saida,
                 criar_nova_versao=criar_nova_versao
             )
         
@@ -1261,6 +1272,7 @@ class PipelineExecutor:
             system_prompt=full_system,
             tools_to_use=["create_document", "execute_python_code"],
             expected_document_type=TipoDocumento.CORRECAO,
+            prompt_id=prompt.id,
         )
 
     async def analisar_habilidades(
@@ -1332,6 +1344,7 @@ class PipelineExecutor:
             system_prompt=full_system,
             tools_to_use=["create_document", "execute_python_code"],
             expected_document_type=TipoDocumento.ANALISE_HABILIDADES,
+            prompt_id=prompt.id,
         )
 
     async def gerar_relatorio(
@@ -1439,6 +1452,7 @@ class PipelineExecutor:
             system_prompt=full_system,
             tools_to_use=["create_document", "execute_python_code"],
             expected_document_type=TipoDocumento.RELATORIO_FINAL,
+            prompt_id=prompt.id,
         )
 
     async def chat_com_documentos(
@@ -2052,7 +2066,9 @@ class PipelineExecutor:
         tokens: int,
         tempo_ms: float,
         gerar_formatos_extras: bool = True,  # Gerar PDF/CSV automaticamente
-        criar_nova_versao: bool = False  # Cria nova versão ao invés de sobrescrever
+        criar_nova_versao: bool = False,  # Cria nova versão ao invés de sobrescrever
+        tokens_entrada: int = 0,
+        tokens_saida: int = 0,
     ) -> Optional[str]:
         """Salva o resultado como documento JSON e opcionalmente gera outros formatos"""
         
@@ -2089,6 +2105,13 @@ class PipelineExecutor:
         
         # Criar arquivo temporário com resultado
         conteudo = resposta_parsed if resposta_parsed else {"resposta_raw": resposta_raw}
+        metadata_processamento = {
+            "tokens_entrada": int(tokens_entrada or 0),
+            "tokens_saida": int(tokens_saida or 0),
+            "tokens_total": int(tokens or 0),
+            "custo_origem": "pipeline_executor",
+            "etapa": etapa.value if hasattr(etapa, "value") else str(etapa),
+        }
 
         with tempfile.NamedTemporaryFile(mode='w', suffix='.json', delete=False, encoding='utf-8') as f:
             json.dump(conteudo, f, ensure_ascii=False, indent=2)
@@ -2104,6 +2127,9 @@ class PipelineExecutor:
                 ia_provider=provider,
                 ia_modelo=modelo,
                 prompt_usado=prompt_id,
+                tokens_usados=tokens,
+                tempo_processamento_ms=tempo_ms,
+                metadata=metadata_processamento,
                 criado_por="sistema",
                 versao=versao,
                 documento_origem_id=documento_origem_id
@@ -2329,7 +2355,8 @@ class PipelineExecutor:
         provider_id: Optional[str] = None,
         system_prompt: Optional[str] = None,
         tools_to_use: Optional[List[str]] = None,
-        expected_document_type: Optional['TipoDocumento'] = None
+        expected_document_type: Optional['TipoDocumento'] = None,
+        prompt_id: Optional[str] = None,
     ) -> ResultadoExecucao:
         """
         Executa uma chamada de IA com suporte a tools.
@@ -2448,7 +2475,12 @@ class PipelineExecutor:
                 atividade_id=atividade_id,
                 aluno_id=aluno_id,
                 session_id=f"pipeline_{atividade_id}_{aluno_id or 'base'}",
-                expected_document_type=expected_document_type
+                expected_document_type=expected_document_type,
+                etapa=expected_document_type.value if expected_document_type else "tools",
+                provider=model.tipo.value,
+                modelo=model.modelo,
+                prompt_id=prompt_id,
+                cost_run_id=f"tool_{uuid.uuid4().hex[:12]}",
             )
             
             # Default system prompt para pipeline
@@ -2577,8 +2609,6 @@ Seja preciso, educativo e construtivo em suas análises."""
             if raw_content == "[Maximum tool iterations reached]":
                 raw_content = ""
 
-            # F7-T1: PDF auto-fallback — detect if create_document was called
-            # but execute_python_code was NOT called (LLM skipped PDF generation)
             pdf_fallback_used = False
             all_tool_names_final = {tc.get("name") for tc in tool_calls}
             # Also include first-pass tool names if E-T2 retry happened
@@ -2588,80 +2618,60 @@ Seja preciso, educativo e construtivo em suas análises."""
             has_create_doc = "create_document" in all_tool_names_final
             has_exec_code = "execute_python_code" in all_tool_names_final
 
-            if has_create_doc and not has_exec_code:
-                # LLM produced JSON but no PDF — auto-generate PDF from content
-                try:
-                    from document_generators import narrative_markdown_to_pdf, generate_pdf
-                    import logging
-                    logger = logging.getLogger(__name__)
+            if dual_output_expected and not (has_create_doc and has_exec_code):
+                missing = []
+                if not has_create_doc:
+                    missing.append("JSON via create_document")
+                if not has_exec_code:
+                    missing.append("PDF via execute_python_code")
+                erro_msg = (
+                    "Saída obrigatória incompleta: "
+                    + ", ".join(missing)
+                    + ". Nenhum PDF/JSON será inventado por fallback automático; "
+                    + "o modelo solicitado deve produzir os artefatos exigidos ou a etapa falha."
+                )
+                for doc_id in context.created_document_ids:
+                    self.storage.atualizar_documento_processamento(
+                        doc_id,
+                        status=StatusProcessamento.ERRO,
+                        metadata_patch={
+                            "erro_pipeline": erro_msg,
+                            "cost_run_id": context.cost_run_id,
+                        },
+                    )
+                return ResultadoExecucao(
+                    sucesso=False,
+                    etapa="tools",
+                    resposta_raw=raw_content,
+                    provider=model.tipo.value,
+                    modelo=model.modelo,
+                    tokens_entrada=resposta.get("input_tokens", resposta.get("tokens", 0)),
+                    tokens_saida=resposta.get("output_tokens", 0),
+                    tempo_ms=tempo_ms,
+                    alertas=alertas,
+                    tentativas=tentativas,
+                    erro=erro_msg,
+                )
 
-                    # Extract content from create_document tool calls
-                    fallback_content = raw_content
-                    if not fallback_content.strip():
-                        for tc in tool_calls:
-                            if tc.get("name") == "create_document":
-                                for doc in tc.get("input", {}).get("documents", []):
-                                    if doc.get("content"):
-                                        fallback_content = doc["content"]
-                                        break
-                                if fallback_content.strip():
-                                    break
-
-                    if fallback_content.strip():
-                        # Generate PDF from the content
-                        try:
-                            pdf_bytes = narrative_markdown_to_pdf(
-                                fallback_content,
-                                title="Relatório (PDF gerado automaticamente)"
-                            )
-                        except Exception:
-                            # Fallback to structured PDF generator
-                            pdf_bytes = generate_pdf(
-                                {"conteudo": fallback_content},
-                                title="Relatório (PDF gerado automaticamente)",
-                                doc_type="report"
-                            )
-
-                        # Save PDF to storage if we have context
-                        if pdf_bytes and hasattr(self, 'storage') and self.storage:
-                            import tempfile
-                            import os
-                            with tempfile.NamedTemporaryFile(suffix=".pdf", delete=False) as tmp:
-                                tmp.write(pdf_bytes)
-                                tmp_path = tmp.name
-                            try:
-                                from models import TipoDocumento
-                                self.storage.salvar_documento(
-                                    arquivo_origem=tmp_path,
-                                    tipo=TipoDocumento.RELATORIO_FINAL,
-                                    atividade_id=atividade_id,
-                                    aluno_id=aluno_id,
-                                    display_name="Relatório PDF (fallback automático)"
-                                )
-                            except Exception as save_err:
-                                logger.warning(f"PDF fallback: falha ao salvar PDF: {save_err}")
-                            finally:
-                                try:
-                                    os.unlink(tmp_path)
-                                except OSError:
-                                    pass
-
-                        pdf_fallback_used = True
-                        alertas.append({
-                            "tipo": "pdf_fallback",
-                            "mensagem": "Relatório PDF gerado automaticamente — modelo não produziu PDF via execute_python_code."
-                        })
-                        logger.warning(
-                            "PDF fallback triggered: LLM called create_document but not "
-                            "execute_python_code. Auto-generated PDF from JSON content."
-                        )
-                except Exception as fallback_err:
-                    import logging
-                    logging.getLogger(__name__).error(f"PDF fallback failed: {fallback_err}")
-                    alertas.append({
-                        "tipo": "pdf_fallback",
-                        "mensagem": f"Tentativa de gerar PDF automaticamente falhou: {fallback_err}"
-                    })
+            tokens_entrada = resposta.get("input_tokens", resposta.get("tokens", 0))
+            tokens_saida = resposta.get("output_tokens", 0)
+            tokens_total = tokens_entrada + tokens_saida
+            for doc_id in context.created_document_ids:
+                self.storage.atualizar_documento_processamento(
+                    doc_id,
+                    ia_provider=model.tipo.value,
+                    ia_modelo=model.modelo,
+                    prompt_usado=prompt_id,
+                    tokens_usados=tokens_total,
+                    tempo_processamento_ms=tempo_ms,
+                    metadata_patch={
+                        "tokens_entrada": tokens_entrada,
+                        "tokens_saida": tokens_saida,
+                        "tokens_total": tokens_total,
+                        "cost_run_id": context.cost_run_id,
+                        "custo_origem": "tool_use",
+                    },
+                )
 
             return ResultadoExecucao(
                 sucesso=True,
@@ -2669,8 +2679,8 @@ Seja preciso, educativo e construtivo em suas análises."""
                 resposta_raw=raw_content,
                 provider=model.tipo.value,
                 modelo=model.modelo,
-                tokens_entrada=resposta.get("input_tokens", resposta.get("tokens", 0)),
-                tokens_saida=resposta.get("output_tokens", 0),
+                tokens_entrada=tokens_entrada,
+                tokens_saida=tokens_saida,
                 tempo_ms=tempo_ms,
                 alertas=alertas,
                 tentativas=tentativas,
@@ -2853,6 +2863,7 @@ Crie UM documento separado para cada aluno, nomeando como "relatorio_[nome_aluno
             system_prompt=full_system or None,
             tools_to_use=["create_document", "execute_python_code"],
             expected_document_type=TipoDocumento.RELATORIO_DESEMPENHO_TAREFA,
+            prompt_id=prompt.id,
         )
 
         # Save result
@@ -2868,6 +2879,8 @@ Crie UM documento separado para cada aluno, nomeando como "relatorio_[nome_aluno
                 prompt_id=prompt.id,
                 tokens=resultado.tokens_entrada + (resultado.tokens_saida or 0),
                 tempo_ms=resultado.tempo_ms,
+                tokens_entrada=resultado.tokens_entrada,
+                tokens_saida=resultado.tokens_saida,
             )
 
         return {
@@ -3000,6 +3013,7 @@ Crie UM documento separado para cada aluno, nomeando como "relatorio_[nome_aluno
             system_prompt=full_system or None,
             tools_to_use=["create_document", "execute_python_code"],
             expected_document_type=TipoDocumento.RELATORIO_DESEMPENHO_TURMA,
+            prompt_id=prompt.id,
         )
 
         # Save result
@@ -3015,6 +3029,8 @@ Crie UM documento separado para cada aluno, nomeando como "relatorio_[nome_aluno
                 prompt_id=prompt.id,
                 tokens=resultado.tokens_entrada + (resultado.tokens_saida or 0),
                 tempo_ms=resultado.tempo_ms,
+                tokens_entrada=resultado.tokens_entrada,
+                tokens_saida=resultado.tokens_saida,
             )
 
         return {
@@ -3139,6 +3155,7 @@ Crie UM documento separado para cada aluno, nomeando como "relatorio_[nome_aluno
             system_prompt=full_system or None,
             tools_to_use=["create_document", "execute_python_code"],
             expected_document_type=TipoDocumento.RELATORIO_DESEMPENHO_MATERIA,
+            prompt_id=prompt.id,
         )
 
         # Save result
@@ -3154,6 +3171,8 @@ Crie UM documento separado para cada aluno, nomeando como "relatorio_[nome_aluno
                 prompt_id=prompt.id,
                 tokens=resultado.tokens_entrada + (resultado.tokens_saida or 0),
                 tempo_ms=resultado.tempo_ms,
+                tokens_entrada=resultado.tokens_entrada,
+                tokens_saida=resultado.tokens_saida,
             )
 
         return {

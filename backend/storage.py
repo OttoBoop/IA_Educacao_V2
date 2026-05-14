@@ -1273,6 +1273,10 @@ class StorageManager:
                          ia_provider: str = None,
                          ia_modelo: str = None,
                          prompt_usado: str = None,
+                         tokens_usados: int = 0,
+                         tempo_processamento_ms: float = 0,
+                         status: StatusProcessamento = StatusProcessamento.CONCLUIDO,
+                         metadata: Dict[str, Any] = None,
                          criado_por: str = "usuario",
                          versao: int = 1,
                          documento_origem_id: str = None) -> Optional[Documento]:
@@ -1288,6 +1292,10 @@ class StorageManager:
             ia_provider: Provider da IA (para docs gerados)
             ia_modelo: Modelo da IA (para docs gerados)
             prompt_usado: Prompt utilizado (para docs gerados)
+            tokens_usados: Total de tokens consumidos pela chamada de IA
+            tempo_processamento_ms: Duração da chamada/etapa em ms
+            status: Status do processamento do documento
+            metadata: Metadados estruturados adicionais
             criado_por: Quem criou o documento
             versao: Número da versão (1 = original, 2+ = re-processado)
             documento_origem_id: ID do documento original se for versão > 1
@@ -1351,9 +1359,13 @@ class StorageManager:
             ia_provider=ia_provider,
             ia_modelo=ia_modelo,
             prompt_usado=prompt_usado,
+            tokens_usados=int(tokens_usados or 0),
+            tempo_processamento_ms=float(tempo_processamento_ms or 0),
+            status=status,
             criado_por=criado_por,
             versao=versao,
-            documento_origem_id=documento_origem_id
+            documento_origem_id=documento_origem_id,
+            metadata=metadata or {}
         )
 
         if self.use_postgresql:
@@ -1443,6 +1455,67 @@ class StorageManager:
                 return None
 
             return Documento.from_dict(dict(row))
+
+    def atualizar_documento_processamento(
+        self,
+        documento_id: str,
+        *,
+        ia_provider: Optional[str] = None,
+        ia_modelo: Optional[str] = None,
+        prompt_usado: Optional[str] = None,
+        tokens_usados: Optional[int] = None,
+        tempo_processamento_ms: Optional[float] = None,
+        status: Optional[StatusProcessamento] = None,
+        metadata_patch: Optional[Dict[str, Any]] = None,
+    ) -> Optional[Documento]:
+        """Atualiza metadados de IA/custos de um documento já salvo."""
+        documento = self.get_documento(documento_id)
+        if not documento:
+            return None
+
+        metadata = documento.metadata if isinstance(documento.metadata, dict) else {}
+        if metadata_patch:
+            metadata.update(metadata_patch)
+
+        update_data: Dict[str, Any] = {"metadata": metadata}
+        if ia_provider is not None:
+            update_data["ia_provider"] = ia_provider
+        if ia_modelo is not None:
+            update_data["ia_modelo"] = ia_modelo
+        if prompt_usado is not None:
+            update_data["prompt_usado"] = prompt_usado
+        if tokens_usados is not None:
+            update_data["tokens_usados"] = int(tokens_usados or 0)
+        if tempo_processamento_ms is not None:
+            update_data["tempo_processamento_ms"] = float(tempo_processamento_ms or 0)
+        if status is not None:
+            update_data["status"] = status.value if hasattr(status, "value") else str(status)
+
+        if self.use_postgresql:
+            supabase_db.update("documentos", documento_id, update_data)
+        else:
+            campos = []
+            valores = []
+            for campo, valor in update_data.items():
+                campos.append(f"{campo} = ?")
+                if campo == "metadata":
+                    valores.append(json.dumps(valor))
+                else:
+                    valores.append(valor)
+            campos.append("atualizado_em = ?")
+            valores.append(datetime.now().isoformat())
+            valores.append(documento_id)
+
+            conn = self._get_connection()
+            c = conn.cursor()
+            c.execute(
+                f"UPDATE documentos SET {', '.join(campos)} WHERE id = ?",
+                valores,
+            )
+            conn.commit()
+            conn.close()
+
+        return self.get_documento(documento_id)
 
     def resolver_caminho_documento(self, documento: Documento, force_remote: bool = False) -> Path:
         """
@@ -1565,6 +1638,29 @@ class StorageManager:
             conn.close()
 
             return [Documento.from_dict(dict(row)) for row in rows]
+
+    def listar_todos_documentos(self, limit: Optional[int] = None) -> List[Documento]:
+        """Lista documentos de todas as atividades, mais recentes primeiro."""
+        if self.use_postgresql:
+            rows = self._select_rows(
+                "documentos",
+                order_by="criado_em",
+                order_desc=True,
+                limit=limit,
+            )
+            return [Documento.from_dict(row) for row in rows]
+
+        conn = self._get_connection()
+        c = conn.cursor()
+        query = "SELECT * FROM documentos ORDER BY criado_em DESC"
+        params: List[Any] = []
+        if limit is not None:
+            query += " LIMIT ?"
+            params.append(limit)
+        c.execute(query, params)
+        rows = c.fetchall()
+        conn.close()
+        return [Documento.from_dict(dict(row)) for row in rows]
 
     def deletar_documento(self, documento_id: str) -> bool:
         """Deleta documento do banco e do sistema de arquivos (local e cloud)"""

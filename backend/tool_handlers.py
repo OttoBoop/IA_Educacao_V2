@@ -125,8 +125,17 @@ async def handle_execute_python_code(
                             tipo=tipo,
                             atividade_id=context.atividade_id,
                             aluno_id=context.aluno_id,
+                            ia_provider=context.provider,
+                            ia_modelo=context.modelo,
+                            prompt_usado=context.prompt_id,
+                            metadata={
+                                "cost_run_id": context.cost_run_id,
+                                "etapa": context.etapa,
+                                "tool": "execute_python_code",
+                            },
                             criado_por="ia_execute_python_code",
                         )
+                        context.created_document_ids.append(doc.id)
                         saved_docs.append({
                             "filename": doc.display_name or doc.nome_arquivo,
                             "document_id": doc.id,
@@ -826,9 +835,19 @@ async def handle_create_document(
                         atividade_id=atividade_id,
                         aluno_id=aluno_id,
                         display_name=filename,
+                        ia_provider=context.provider if context else None,
+                        ia_modelo=context.modelo if context else None,
+                        prompt_usado=context.prompt_id if context else None,
+                        metadata={
+                            "cost_run_id": context.cost_run_id if context else None,
+                            "etapa": context.etapa if context else None,
+                            "tool": "create_document",
+                        } if context else None,
                         criado_por="pipeline_tool"
                     )
                     if saved_doc:
+                        if context:
+                            context.created_document_ids.append(saved_doc.id)
                         doc_info["id"] = saved_doc.id
                         doc_info["saved_to_storage"] = True
                     else:

@@ -1,8 +1,17 @@
 # Matriz Provider × Fase — Status Atual
 
-**Atualizado:** 2026-04-28
+**Atualizado:** 2026-05-15
 **Atividade de teste:** Lista0 — Algebra Linear Avancada (`126e8b5ad7dd6d59`)
-**Commits aplicados/observados:** `a632883`, `5737611`, `50935ea`, `479b77d`
+**Commits aplicados/observados:** `a632883`, `5737611`, `50935ea`, `479b77d`,
+`b12be9a`, `301eba6`
+
+## Status Oficial De Deploy
+
+- GitHub `origin/main` esta em `301eba6`, com marcador apontando para `b12be9a`.
+- Render live ainda retornou marcador `2e1098f` durante o polling deste ciclo.
+- Portanto, qualquer teste abaixo anterior a `b12be9a` continua sendo evidencia
+  historica. Provider so vira confirmado pos-fix quando o site oficial estiver no
+  hash esperado e o smoke rodar novamente.
 
 ## Legenda
 
@@ -21,7 +30,7 @@
 | Provider/Modelo | EXTRAIR_QUESTOES | EXTRAIR_GABARITO | EXTRAIR_RESPOSTAS | CORRIGIR | ANALISAR_HABILIDADES | GERAR_RELATORIO |
 |-----------------|:---:|:---:|:---:|:---:|:---:|:---:|
 | **Claude Haiku 4.5** (`588f3efe7975`) | ⏸️ | ⏸️ | ⏸️ | 🚫 | 🚫 | 🚫 |
-| **Gemini 3 Flash** (`gem3flash001`) | ⏸️ | ⏸️ | ⏸️ | ✅ | ✅ | ✅ |
+| **Gemini 3 Flash** (`gem3flash001`) | ⏸️ | ⏸️ | ⏸️ | ⚠️ | ⚠️ | ⚠️ |
 | **GPT-5 Nano** (`gpt5nano001`) | ⏸️ | ⏸️ | ⏸️ | ❌ | ❌ | ❌ |
 | **GPT-4o** (`180b8298a279`) — referencia | ✅ | ✅ | ✅ | ⚠️ | ⚠️ | ⚠️ |
 
@@ -43,7 +52,7 @@
 | **GPT-5 Nano** | ⏸️ |
 | **GPT-4o** | ⏸️ |
 
-**Gemini 3 Flash:** Validado em 2 testes (mensagem única + multi-turn). Ver [teste_chat_gemini.md](arquivo_2026_04_17/teste_chat_gemini.md).
+**Gemini 3 Flash:** Validado em 2 testes historicos de chat (mensagem unica + multi-turn). Ver [teste_chat_gemini.md](arquivo_2026_04_17/teste_chat_gemini.md).
 - Teste 1: 662 tokens, 1930ms, resposta em PT correta
 - Teste 2: 2502 tokens, 14993ms, usou contexto do histórico
 - Sem templates `{{...}}`
@@ -63,9 +72,10 @@
 
 ---
 
-### Gemini 3 Flash Preview — ✅ SUCESSO (com 1 retry)
+### Gemini 3 Flash Preview — ⚠️ SUCESSO HISTORICO, NAO REVALIDADO POS-FIX
 
-**Testado via `pipeline-completo`** para Eric Manoel (ver [teste_gemini_pipeline_completo.md](arquivo_2026_04_17/teste_gemini_pipeline_completo.md))
+**Testado via `pipeline-completo`** para Eric Manoel antes dos commits
+`b12be9a`/Sprint 3b (ver [teste_gemini_pipeline_completo.md](arquivo_2026_04_17/teste_gemini_pipeline_completo.md)).
 
 **Tentativa 1:** Falhou em ~30s (provavelmente 503 transiente)
 **Tentativa 2:** SUCESSO em ~105s, 3 documentos gerados
@@ -76,14 +86,16 @@
 | ANALISAR_HABILIDADES | ✅ | `f6e7fa7ef961bf15` | `085a078eebb5ef93` |
 | GERAR_RELATORIO | ✅ | `26697c8894eca2ad` | `4a00dcef2eed4ea3` |
 
-**Verificacoes que passaram:**
+**Verificacoes que passaram na epoca:**
 - Nota final consistente cross-stage: **7.01**
 - Avisos `MISSING_CONTENT` propagaram corretamente para Q2 e Q4 (questoes em branco)
 - Todos os 3 JSONs tem `_avisos_documento`, `_avisos_questao` (com 2 itens reais!), `_avisos_stage`
 - Conteudo qualitativamente correto (Vandermonde+Julia, decomposicoes matriciais, forward substitution, minimos quadrados)
 
 **Ressalvas:**
-1. `tokens_usados=0` e `ia_modelo=null` no metadata do DB — bug de populamento (nao invalida conteudo)
+1. `tokens_usados=0` e `ia_modelo=null` no metadata do DB foram bugs observados
+   no teste historico; Sprint 3b corrige o preenchimento localmente, mas ainda
+   precisa smoke oficial.
 2. 50% de falha na primeira tentativa (precisa mais amostras para confiar sem retry)
 3. Endpoint `/conteudo` retorna metadata, nao conteudo — usar `/view` (gap de contrato)
 
@@ -163,6 +175,11 @@ Ver [teste_gpt5nano_pipeline_completo.md](arquivo_2026_04_17/teste_gpt5nano_pipe
 4. Sem endpoint de eventos de task (dificulta diagnostico de falhas transientes)
 
 **Proximos passos:**
-1. Investigar por que GPT-5 Nano gera documentos lixo no tool-use (provavelmente loop de iteracoes sem limite + sem validacao de schema do `create_document`)
-2. Quando creditos Anthropic forem recarregados, validar Haiku 4.5 via `pipeline-completo`
-3. Corrigir populamento de metadata de tokens/modelo no DB
+1. Desbloquear deploy oficial; sem Render no hash esperado, a matriz continua
+   historica.
+2. Revalidar Gemini 3 Flash via `pipeline-completo` no site oficial e confirmar
+   metadata/custos.
+3. Revalidar GPT-5 Nano esperando falha alta quando dual-output estiver
+   incompleto; nao aceitar JSON/PDF lixo como sucesso.
+4. Quando creditos Anthropic forem recarregados, validar Haiku 4.5 via
+   `pipeline-completo`.
