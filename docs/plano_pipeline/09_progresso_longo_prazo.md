@@ -10,7 +10,9 @@ via `execute_python_code`, tokens splitados e custo medido, sem PDF extra via
 JSON+PDF do mesmo run contam uma vez. Falhas tool-use sem documento final agora
 tem `TokenUsageRecord` local mensal e codigo preparado para Supabase quando a
 tabela `token_usage` existir; o endpoint live confirmou que essa tabela ainda
-nao existe (`PGRST205`). Ainda nao ha pipeline completa validada para Nano.
+nao existe (`PGRST205`). A migration dedicada `002_create_token_usage.sql` ja
+foi criada e publicada no GitHub em `b2dc88b`, mas ainda nao foi aplicada no
+Supabase. Ainda nao ha pipeline completa validada para Nano.
 
 Este e o ponto de entrada do plano. O objetivo deste arquivo e dizer, em poucas
 linhas, onde estamos, qual e a proxima fila e quais frentes estao pausadas.
@@ -50,7 +52,7 @@ Estabilizar o NOVO CR para que a pipeline:
 | Docs e plano | Sprint 0 concluida | Manter este painel como fonte oficial e anexos fora do fluxo diario |
 | Pipeline | `corrigir` validado oficialmente para Gemini 3 Flash e GPT-5 Nano com JSON/PDF/custo | Expandir para `analisar_habilidades` e `gerar_relatorio`; validar schema minimo por etapa |
 | Schema e avisos | Sprint 2 concluida localmente | Manter schema oficial, defaults e visualizador cobertos por testes |
-| Custos/tokens | Metadata de documento, endpoints live, resumo por `cost_run_id`, `TokenUsageRecord` local, migration Supabase e diagnostico live no deploy `4f27dae` | Aplicar tabela `token_usage` no Supabase; validar uma falha real sem documento em producao |
+| Custos/tokens | Metadata de documento, endpoints live, resumo por `cost_run_id`, `TokenUsageRecord` local, migration Supabase dedicada `b2dc88b` e diagnostico live no deploy `4f27dae` | Aplicar `backend/migrations/002_create_token_usage.sql` no Supabase; validar uma falha real sem documento em producao |
 | UI de erros | Pendente | Mostrar falha por aluno/etapa sem depender de terminal |
 | Limpeza de dados | Pendente | Reclassificar "fantasmas" antes de qualquer delecao |
 | Rio 3 | Pausada | Nao pedir chave, nao rodar smoke, nao deployar Rio sem nova decisao |
@@ -71,11 +73,13 @@ Estabilizar o NOVO CR para que a pipeline:
 - Commit funcional de `TokenUsageRecord` para falhas sem documento: `839968e`.
 - Commit funcional de preparo Supabase `token_usage`: `55e168a`.
 - Commit funcional de diagnostico backend `token_usage`: `4f27dae`.
+- Commit de migration dedicada `token_usage`: `b2dc88b` (GitHub; nao muda o
+  runtime do site ate a SQL ser aplicada no Supabase).
 - Marker mais novo publicado: `f0dae61` (`chore: mark deploy 4f27dae`).
 - Marker atual visto no Render: `f0dae61`, HTML com `novocr-deploy=4f27dae`.
 - GitHub `origin/main`: pode conter commits documentais posteriores; o ultimo
-  marker funcional publicado e `f0dae61`, e Render live esta confirmado em
-  `4f27dae`.
+  marker funcional publicado e `f0dae61`, Render live esta confirmado em
+  `4f27dae`, e a migration dedicada mais nova esta em `b2dc88b`.
 - Render live observado: saiu de `2e1098f` para `b12be9a` e depois confirmou
   marcadores `b4d7ee6`, `f505be6`, `97a7c79`, `c75af88`, `39aa50a`,
   `b24f03e`, `eab7d90`, `7ed8b8b`, `839968e`, `55e168a` e `4f27dae`.
@@ -631,12 +635,29 @@ Critério de pronto: lista de limpeza segura e revisada.
   no Supabase ou criar uma migration dedicada so de `token_usage`, depois
   revalidar o endpoint ate `table_available=true`.
 
+### 2026-05-15 -- Sprint 3g: migration dedicada `token_usage`
+
+- Alvo: separar a SQL minima de `token_usage` para aplicacao segura no Supabase
+  sem depender da migration inicial completa.
+- Status: publicado no GitHub; aplicacao no banco ainda pendente.
+- Arquivo tocado: `backend/migrations/002_create_token_usage.sql`.
+- Git/deploy: commit `b2dc88b`; sem marker novo porque nao houve mudanca de
+  runtime do site. O site oficial continua corretamente confirmado em
+  `4f27dae`.
+- Bloqueio/gate: aplicar SQL em banco de producao e mudanca sensivel. O loop
+  nao deve fingir sucesso: enquanto `/api/custos/status` devolver
+  `token_usage_backend.supabase.table_available=false`, custo de falha sem
+  documento continua nao-duravel em producao.
+- Proximo alvo: aplicar `backend/migrations/002_create_token_usage.sql` por
+  caminho seguro de banco ou, enquanto esse gate nao ocorrer, continuar
+  revalidacao de providers nas etapas `analisar_habilidades` e `gerar_relatorio`.
+
 ## Riscos Abertos
 
 1. Creditos Anthropic insuficientes ainda bloqueiam validacao Haiku.
 2. Schema drift pode fazer modelos gerarem formatos diferentes.
 3. Schema minimo ainda nao esta validado para todas as etapas; JSON parseavel e
    necessario, mas nao prova qualidade pedagogica.
-4. A tabela Supabase `token_usage` esta descrita na migration e o live confirmou
-   que ela ainda nao existe no schema cache (`PGRST205`).
+4. A tabela Supabase `token_usage` tem migration dedicada em `b2dc88b`, mas o
+   live confirmou que ela ainda nao existe no schema cache (`PGRST205`).
 5. Rio 3 nao deve voltar ao fluxo ativo sem nova decisao e nova chave segura.

@@ -7,13 +7,16 @@
 `f505be6`, `d75b05a`, `97a7c79`, `ec95193`, `ff7b92a`, `68ebe51`,
 `c75af88`, `45d543a`, `39aa50a`, `3ddf6c5`, `b24f03e`, `6ed31a4`,
 `eab7d90`, `dcecdfa`, `7ed8b8b`, `9e1aee5`, `839968e`, `45c6f97`,
-`55e168a`, `9823afb`, `4f27dae`, `f0dae61`
+`55e168a`, `9823afb`, `4f27dae`, `f0dae61`, `87bdee2`, `b2dc88b`
 
 ## Status Oficial De Deploy
 
 - GitHub `origin/main` pode conter commits documentais posteriores; o ultimo
   marker funcional publicado e `f0dae61`, e o marcador HTML aponta para o commit
   funcional `4f27dae`.
+- `origin/main` tambem contem a migration dedicada `b2dc88b`
+  (`backend/migrations/002_create_token_usage.sql`), ainda nao aplicada ao
+  Supabase de producao.
 - Render live confirmou `4f27dae` por `wait_deploy.sh`, `check_deploy.sh` e
   `/api/health`.
 - Docs antigos registram que auto-deploy Git nao funciona de forma confiavel; o
@@ -117,6 +120,10 @@
   backend de token usage. Resultado live: Supabase ligado, mas
   `token_usage_backend.supabase.table_available=false`, `durable=false`, erro
   `PGRST205` porque `public.token_usage` nao existe no schema cache.
+- Depois disso, `b2dc88b` criou a migration dedicada
+  `backend/migrations/002_create_token_usage.sql`. Isso e preparo de banco,
+  nao prova de persistencia: a matriz so pode marcar custo de falha como duravel
+  quando o endpoint live retornar `table_available=true`.
 
 **Gemini 3 Flash:** tambem validado em 2 testes historicos de chat (mensagem unica + multi-turn). Ver [teste_chat_gemini.md](arquivo_2026_04_17/teste_chat_gemini.md).
 - Teste 1: 662 tokens, 1930ms, resposta em PT correta
@@ -244,7 +251,7 @@ Ver [teste_gpt5nano_pipeline_completo.md](arquivo_2026_04_17/teste_gpt5nano_pipe
 ### Prioridade ALTA
 - [ ] Rodar Gemini 3 Flash em `analisar_habilidades` e `gerar_relatorio` com
       custo/metadata
-- [ ] Aplicar migration Supabase `token_usage` e revalidar
+- [ ] Aplicar `backend/migrations/002_create_token_usage.sql` no Supabase e revalidar
       `token_usage_backend.supabase.table_available=true`
 - [x] Preparar codigo para persistir `TokenUsageRecord` em Supabase quando a
       tabela existir

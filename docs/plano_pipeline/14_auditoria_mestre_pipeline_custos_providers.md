@@ -171,23 +171,24 @@ detalhar e auditar estas linhas.
    metadata/custo em documentos reais; Sprint 3c agrupou custo por `cost_run_id`;
    Sprint 3d criou `TokenUsageRecord` local para falhas sem documento; Sprint 3e
    preparou Supabase `token_usage`; Sprint 3f confirmou no endpoint live que a
-   tabela ainda nao existe.
+   tabela ainda nao existe; Sprint 3g criou a migration dedicada `b2dc88b`,
+   ainda nao aplicada ao banco.
 9. Gemini 3 Flash e GPT-5 Nano estao confirmados para `corrigir`; Haiku segue
    bloqueado por creditos; Rio 3 esta pausado.
-10. O proximo eixo correto e aplicar a migration `token_usage`,
-    ampliar a revalidacao por etapa/provider e endurecer o contrato contra
-    schema ruim.
+10. O proximo eixo correto e aplicar `backend/migrations/002_create_token_usage.sql`
+    no Supabase, ampliar a revalidacao por etapa/provider e endurecer o contrato
+    contra schema ruim.
 
 ### O Que Temos
 
 | Frente | Temos hoje | Limite da afirmacao |
 |---|---|---|
 | Documentacao | Doc 09 como painel curto; Doc 14 como auditoria mestre; Doc 05/12 com notas de status | Manter Doc 09 curto e Doc 14 detalhado; registrar novos ciclos sem criar doc extra. |
-| Git/GitHub | Commits ate `4f27dae` publicados; marcador funcional `f0dae61`; pode haver docs acima do marker em `origin/main` | Usar marker HTML antes de aceitar qualquer smoke como oficial. |
+| Git/GitHub | Commits ate `4f27dae` publicados; marcador funcional `f0dae61`; `origin/main` tambem contem docs e a migration dedicada `b2dc88b` | Usar marker HTML antes de aceitar smoke de runtime como oficial; nao confundir migration publicada com migration aplicada. |
 | Pipeline P4 | Bloqueio de extracao de respostas sem prova valida esta no codigo publicado | Precisa smoke dedicado apenas se P4 voltar a ser alvo. |
 | Pipeline P5/P6 | Contencao de nota e preservacao de `_documentos_faltantes` | `N/A` ainda e fallback proibido como estado final. |
 | Schema/avisos | Defaults `_avisos_*`, visualizador melhorado e schemas mais permissivos | Permissividade nao e contrato forte; pode aceitar legado demais. |
-| Tokens/custos | Split input/output; metadata de documento; endpoints `/api/custos/status` e `/api/custos/resumo` respondendo live; resumo agrega por `cost_run_id`; `TokenUsageRecord` local cobre falha sem documento; codigo/migration Supabase preparados; diagnostico live mostra `PGRST205`; Gemini e Nano geraram runs custeaveis | Falta aplicar migration `token_usage` no Supabase. |
+| Tokens/custos | Split input/output; metadata de documento; endpoints `/api/custos/status` e `/api/custos/resumo` respondendo live; resumo agrega por `cost_run_id`; `TokenUsageRecord` local cobre falha sem documento; codigo Supabase e migration dedicada `b2dc88b` existem; diagnostico live mostra `PGRST205`; Gemini e Nano geraram runs custeaveis | Falta aplicar `backend/migrations/002_create_token_usage.sql` no Supabase. |
 | Providers | Gemini e GPT-5 Nano passaram em chat simples live e em `corrigir`; Haiku bloqueado por credito | `corrigir` nao prova pipeline completa. |
 | Seguranca Rio | Regra de nao usar chave em chat e Rio pausado | Arquivos Rio/untracked continuam fora do ciclo ativo. |
 
@@ -2426,7 +2427,7 @@ Fila minima para custo real:
    ate o `Documento` persistido. **Parcialmente fechado para runs recentes.**
 2. Criar `TokenUsageRecord` com materia/turma/atividade/aluno/etapa/provider/modelo.
    **Primeira versao local em `839968e`; preparo Supabase em `55e168a`;
-   falta aplicar/verificar a tabela.**
+   migration dedicada em `b2dc88b`; falta aplicar/verificar a tabela.**
 3. Chamar `ModelCatalogManager.calculate_cost()` no fim de cada etapa validada.
 4. Persistir sucesso e falha; falha tambem custa tokens.
 5. So depois expor endpoint/dashboard por materia, turma, atividade e periodo.
@@ -2521,7 +2522,7 @@ Esta e a leitura curta para retomar o longo prazo sem se perder:
 | P4 confiabilidade | Falha antes de extrair respostas sem prova valida | Smoke especifico de P4 se esse bug voltar a ser alvo | Codigo ja esta no deploy oficial, mas nao foi o smoke principal de 2026-05-15. |
 | P5/P6 relatorio | Preserva faltantes e evita template literal | Converter `N/A`/nota ausente em erro alto | Contencao pode parecer sucesso se nao for removida. |
 | Sprint 2 schema/avisos | Testes locais de schema e visualizador | Revalidar providers pos-fix | GPT-5 Nano ainda tem historico de schema ruim. |
-| Sprint 3/3b/3c/3d/3e/3f custos | `input_tokens`/`output_tokens`; metadata de documentos; endpoints `/api/custos/*` live; runs Gemini/Nano custeaveis; amostras agrupadas por `cost_run_id`; registro local para falha sem documento; codigo/migration Supabase preparados; endpoint diagnostica backend | Aplicar tabela Supabase `token_usage` | Historico antigo bloqueia custo por falta de split/provider; live confirmou `PGRST205`, entao fallback local nao e duravel entre deploys. |
+| Sprint 3/3b/3c/3d/3e/3f/3g custos | `input_tokens`/`output_tokens`; metadata de documentos; endpoints `/api/custos/*` live; runs Gemini/Nano custeaveis; amostras agrupadas por `cost_run_id`; registro local para falha sem documento; codigo Supabase preparado; migration dedicada `b2dc88b`; endpoint diagnostica backend | Aplicar tabela Supabase `token_usage` | Historico antigo bloqueia custo por falta de split/provider; live confirmou `PGRST205`, entao persistencia local nao e duravel entre deploys. |
 | Docs parciais de run falho | Patch marca `created_document_ids` como ERRO quando provider falha depois das tools | Novo caso falho em producao para provar quando ocorrer | Ja existem dois docs antigos com token split faltante do run anterior. |
 | Providers | Gemini `corrigir` OK; Nano `corrigir` OK; Haiku bloqueado; GPT-4o historico | Smoke matrix pos-fixes por provider/rota/pipeline | Credito Anthropic, etapas restantes e custo de falhas sem documento. |
 | UI de erro | `task.error` agora aparece no site oficial para falha de etapa | Melhorar apresentacao e retry de erros provider | Mensagem ainda e bruta e longa. |
