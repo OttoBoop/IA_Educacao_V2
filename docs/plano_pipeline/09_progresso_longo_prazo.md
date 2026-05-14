@@ -729,9 +729,11 @@ Critério de pronto: lista de limpeza segura e revisada.
 - Git: commits funcionais `924fd79` e `d653c13`; markers `0dfdbbe` e
   `2947178`; todos publicados em `origin/main`.
 - Bloqueio de deploy/smoke: `curl --max-time 20` para `/` e `/api/health`
-  retornou timeout (`HTTP_STATUS=000`) em duas tentativas; Render MCP falhou com
-  erro de transporte para `https://mcp.render.com/mcp`. Portanto o site oficial
-  continua aceito apenas ate `4f27dae` ate nova confirmacao.
+  retornou timeout (`HTTP_STATUS=000`) em duas tentativas; em seguida, uma
+  janela controlada de 6 tentativas com `curl --max-time 10` para `/api/health`
+  tambem retornou `http=000` em todas. Render MCP falhou com erro de transporte
+  para `https://mcp.render.com/mcp`. Portanto o site oficial continua aceito
+  apenas ate `4f27dae` ate nova confirmacao.
 - Proximo alvo: quando Render responder, rodar `wait_deploy/check_deploy` para
   `d653c13`, `/api/health`, e novo smoke GPT-5 Nano em
   `analisar_habilidades`.
