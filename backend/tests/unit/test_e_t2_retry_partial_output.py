@@ -112,6 +112,7 @@ def _make_chat_service_module(model, chat_with_tools_side_effect):
 
     from chat_service import ProviderType
     mock_module.ProviderType = ProviderType
+    mock_module.ProviderAPIError = Exception
 
     mock_client_instance = MagicMock()
 
@@ -146,7 +147,13 @@ def _make_tools_module():
     mock_module.PIPELINE_TOOLS = []
     mock_module.CREATE_DOCUMENT = MagicMock()
     mock_module.EXECUTE_PYTHON_CODE = MagicMock()
-    mock_module.ToolExecutionContext = MagicMock()
+
+    class FakeToolExecutionContext:
+        def __init__(self, **kwargs):
+            self.__dict__.update(kwargs)
+            self.created_document_ids = []
+
+    mock_module.ToolExecutionContext = FakeToolExecutionContext
     return mock_module
 
 
@@ -326,6 +333,31 @@ class TestOnlyJsonTriggersRetry:
             f"Retry message must mention PDF/código so the model knows what to create. "
             f"Got mensagem_retry={mensagem_retry!r}"
         )
+
+    async def test_only_json_retry_message_preserves_original_context(self):
+        """The PDF repair retry must include the original task context.
+
+        Small reasoning models can otherwise invent placeholders such as
+        student123 when the retry only says "make the missing PDF".
+        """
+        only_json_response = _tool_response(["create_document"])
+        retry_response = _tool_response(["create_document", "execute_python_code"])
+
+        _result, mock_client = await _call_executar_com_tools(
+            chat_side_effect=[only_json_response, retry_response],
+            tools_to_use=["create_document", "execute_python_code"],
+        )
+
+        second_call_kwargs = mock_client.chat_with_tools.call_args_list[1]
+        mensagem_retry = (
+            second_call_kwargs.kwargs.get("mensagem")
+            or (second_call_kwargs.args[0] if second_call_kwargs.args else None)
+        )
+
+        assert "Gere o relatório completo do aluno." in mensagem_retry
+        assert "CONTEXTO ORIGINAL DA ETAPA" in mensagem_retry
+        assert "student123" in mensagem_retry
+        assert "NUNCA use placeholders" in mensagem_retry
 
 
 # ============================================================

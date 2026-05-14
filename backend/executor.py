@@ -223,14 +223,19 @@ Você DEVE usar as ferramentas disponíveis para produzir dois outputs:
    Use _avisos_documento para problemas no documento inteiro.
    Use _avisos_questao para problemas em questões específicas (inclua o número da questão).
    Se não houver avisos, envie listas vazias [].
-   Use extensão .json e nome descritivo.
+   Use extensão .json e nome descritivo com dados reais do contexto.
+   NUNCA use placeholders como "student123", "aluno_teste", "nome_do_aluno",
+   "Aluno", "Student" ou valores fictícios. Se o nome real do aluno estiver
+   ausente, use o aluno_id real do contexto e registre aviso explícito.
 
 2. **execute_python_code** — Gere um PDF estilizado com reportlab contendo:
    - Cabeçalho com identificação do aluno
    - Lista de habilidades com níveis e indicadores visuais
    - Indicadores de proficiência
    - Recomendações pedagógicas priorizadas
-   Use extensão .pdf.
+   Use extensão .pdf. O código DEVE gravar um arquivo .pdf real no disco e
+   preencher output_files com o nome exato desse arquivo. Não basta imprimir,
+   retornar base64 ou descrever o PDF.
 """,
     EtapaProcessamento.GERAR_RELATORIO: """
 INSTRUÇÕES DE TOOL-USE PARA RELATÓRIO FINAL:
@@ -2647,24 +2652,43 @@ Seja preciso, educativo e construtivo em suas análises."""
                 missing_pdf = not state["has_pdf"]
                 pdf_filename = f"{expected_document_type.value if expected_document_type else 'relatorio'}.pdf"
 
+                contexto_original = str(mensagem or "").strip()
+                if len(contexto_original) > 12000:
+                    contexto_original = contexto_original[:12000] + "\n...[contexto truncado para retry]..."
+
+                contexto_retry = (
+                    "\n\nCONTEXTO ORIGINAL DA ETAPA, OBRIGATÓRIO PARA O RETRY:\n"
+                    "Use estes dados reais para nomes, atividade, aluno, matéria, nota e conteúdo. "
+                    "NUNCA use placeholders como student123, aluno_teste, nome_do_aluno, "
+                    "Aluno ou Student. Se algum dado real estiver ausente, registre aviso "
+                    "explícito no artefato em vez de inventar.\n"
+                    "```\n"
+                    f"{contexto_original}\n"
+                    "```"
+                )
+
                 if missing_pdf and not missing_json:
                     return (
                         "O JSON foi salvo, mas o PDF obrigatório não foi persistido. "
                         "Chame execute_python_code agora, preencha output_files com "
                         f"['{pdf_filename}'], e use reportlab para salvar exatamente esse arquivo. "
+                        "O código precisa gravar esse .pdf real no diretório atual. "
                         "Não responda em texto simples."
+                        + contexto_retry
                     )
                 if missing_json and not missing_pdf:
                     return (
                         "O PDF foi gerado, mas o JSON obrigatório não foi persistido. "
                         "Chame create_document agora para salvar o JSON estruturado. "
                         "Não responda em texto simples."
+                        + contexto_retry
                     )
                 return (
                     "Esta etapa exige dois artefatos persistidos: JSON via create_document "
                     "e PDF via execute_python_code. Chame as ferramentas agora; para o PDF, "
                     f"preencha output_files com ['{pdf_filename}'] e salve esse arquivo com reportlab. "
                     "Não responda em texto simples."
+                    + contexto_retry
                 )
 
             def _retry_tool_choice_for_state(state: Dict[str, Any]) -> Optional[Any]:
