@@ -885,11 +885,11 @@ Diferenças importantes:
 
 Fatos oficiais observados em 2026-05-15:
 
-- `origin/main` contem `462ea1d` e registros documentais posteriores.
+- `origin/main` contem `99483d1`.
 - `462ea1d` e apenas marcador de deploy; o hash funcional de custos/docs e
   `f67055c`.
-- Render live saiu de `2e1098f` para `b12be9a`, mas `check_deploy.sh f67055c`
-  ainda falha.
+- Render live saiu de `2e1098f` para `b12be9a`, mas `check_deploy.sh b4d7ee6`
+  ainda falha porque o HTML live continua atrasado.
 - `/api/custos/status` no Render retornou HTTP 200, confirmando que o endpoint
   novo esta no backend live.
 - Smokes live de chat em 2026-05-15: Gemini 3 Flash e GPT-5 Nano responderam
@@ -917,8 +917,9 @@ O que foi feito localmente:
   `/api/custos/status` e `/api/custos/resumo` existem localmente; PDF obrigatorio
   ausente em dual-output falha alto em vez de ser inventado por fallback.
 - Sprint 4a: falha de etapa agora deve popular `task.error`; frontend usa essa
-  mensagem no toast e na arvore de tarefas. Isso ainda precisa deploy e novo
-  smoke para descobrir a causa real da falha Gemini.
+  mensagem no toast e na arvore de tarefas. Commit funcional `b4d7ee6`, marker
+  `99483d1`, publicados no GitHub; ainda precisa deploy e novo smoke para
+  descobrir a causa real da falha Gemini.
 
 Mapa dos commits publicados ou preparados:
 
@@ -932,7 +933,8 @@ Mapa dos commits publicados ou preparados:
 | `301eba6` | Marcador `novocr-deploy` para `b12be9a` | Publicado; Render continuou stale. |
 | `f67055c` | Sprint 3b metadata/custos | Publicado no GitHub; `/api/custos/*` ja responde live. |
 | `462ea1d` | Marcador `novocr-deploy` para `f67055c` | Publicado; HTML live ainda mostra `b12be9a`. |
-| `pendente` | Sprint 4a erro visivel em task-progress | Patch local validado; precisa commit, push, deploy e novo smoke. |
+| `b4d7ee6` | Sprint 4a erro visivel em task-progress | Publicado no GitHub; precisa Render no marker e novo smoke. |
+| `99483d1` | Marcador `novocr-deploy` para `b4d7ee6` | Publicado; `check_deploy.sh b4d7ee6` ainda encontra `b12be9a`. |
 
 Estado do worktree no momento desta auditoria:
 
@@ -2490,7 +2492,7 @@ Esta e a leitura curta para retomar o longo prazo sem se perder:
 | P4 confiabilidade | Falha antes de extrair respostas sem prova valida | Revalidar no site oficial depois de deploy | GitHub tem os commits, mas Render nao atualizou. |
 | P5/P6 relatorio | Preserva faltantes e evita template literal | Converter `N/A`/nota ausente em erro alto | Contencao pode parecer sucesso se nao for removida. |
 | Sprint 2 schema/avisos | Testes locais de schema e visualizador | Revalidar providers pos-fix | GPT-5 Nano ainda tem historico de schema ruim. |
-| Sprint 3/3b custos | `input_tokens`/`output_tokens`; metadata de documentos; endpoints `/api/custos/*` locais | Deploy/smoke oficial e persistencia de falhas com tokens | Render bloqueado/stale. |
+| Sprint 3/3b custos | `input_tokens`/`output_tokens`; metadata de documentos; endpoints `/api/custos/*` live | Smoke oficial de execucao fresca e persistencia de falhas com tokens | Historico antigo bloqueia custo por falta de split/provider. |
 | Providers | Gemini e Nano passam em chat simples live; Gemini falhou no `corrigir` pos-fix; Nano ainda falhou historicamente no pipeline; Haiku bloqueado; GPT-4o historico | Smoke matrix pos-fixes por provider/rota/pipeline | Credito Anthropic, causa de falha Gemini e marcador Render atrasado. |
 | UI de erro | Existem banners/toasts historicos | Mostrar falha por aluno/etapa com causa real | Usuario ainda pode achar que pipeline terminou bem. |
 | Dados fantasmas | Nota PDF impede delecao por `conteudo=null` | Reclassificar lista antes de qualquer limpeza | Delecao errada de prova respondida PDF. |

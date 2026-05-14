@@ -3,14 +3,15 @@
 **Atualizado:** 2026-05-15
 **Atividade de teste:** Lista0 — Algebra Linear Avancada (`126e8b5ad7dd6d59`)
 **Commits aplicados/observados:** `a632883`, `5737611`, `50935ea`, `479b77d`,
-`b12be9a`, `301eba6`, `f67055c`, `462ea1d`
+`b12be9a`, `301eba6`, `f67055c`, `462ea1d`, `b4d7ee6`, `99483d1`
 
 ## Status Oficial De Deploy
 
-- GitHub `origin/main` contem `462ea1d`, com marcador apontando para `f67055c`,
-  e pode ter registros documentais posteriores.
-- Render live passou a retornar marcador `b12be9a`, nao `f67055c`; o backend ja
+- GitHub `origin/main` contem `99483d1`, com marcador apontando para `b4d7ee6`.
+- Render live passou a retornar marcador `b12be9a`, nao `b4d7ee6`; o backend ja
   responde `/api/custos/status` com HTTP 200.
+- `check_deploy.sh b4d7ee6` ainda encontra `b12be9a`; o patch de erro visivel
+  nao esta confirmado no site oficial.
 - Portanto, qualquer teste abaixo anterior a `b12be9a` continua sendo evidencia
   historica. Provider so vira confirmado pos-fix quando o site oficial estiver no
   hash esperado e o smoke rodar novamente.

@@ -2,9 +2,9 @@
 
 **Atualizado:** 2026-05-15
 **Responsavel operacional:** Paulo
-**Status geral:** fixes de pipeline/custos publicados no GitHub; Render avancou
-parcialmente; Sprint 3b de metadata/custos esta visivel via API live, mas o
-marcador HTML ainda nao chegou ao hash esperado.
+**Status geral:** fixes de pipeline/custos/erro visivel publicados no GitHub;
+Render avancou parcialmente; APIs novas estao visiveis, mas o marcador HTML do
+site oficial ainda esta atrasado em `b12be9a`.
 
 Este e o ponto de entrada do plano. O objetivo deste arquivo e dizer, em poucas
 linhas, onde estamos, qual e a proxima fila e quais frentes estao pausadas.
@@ -53,18 +53,19 @@ Estabilizar o NOVO CR para que a pipeline:
 
 - Local funcional anterior validado: `b12be9a`.
 - Commit funcional de custos/docs: `f67055c`.
-- GitHub `origin/main`: contem `462ea1d` (`chore: mark deploy f67055c`) e
-  commits posteriores de registro documental.
+- Commit funcional de erro visivel: `b4d7ee6`.
+- Marker atual de deploy: `99483d1` (`chore: mark deploy b4d7ee6`).
+- GitHub `origin/main`: `99483d1`.
 - Render live observado: saiu de `2e1098f` e passou a mostrar marcador
-  `b12be9a`; ainda nao mostra `f67055c`.
+  `b12be9a`; ainda nao mostra `b4d7ee6`.
 - `/api/custos/status` no Render: HTTP 200, confirmando que o backend ja tem os
   endpoints de custo, embora o marcador HTML esteja atrasado.
 - GitHub Actions: sem runs recentes observaveis.
 - GitHub webhooks/deployments via `gh api`: sem entradas visiveis.
 - Render MCP: bloqueado por workspace nao selecionado.
-- Inferencia operacional: auto-deploy nao esta funcionando; docs historicos ja
-  dizem que o caminho oficial era deploy hook/manual. Como o hook foi
-  redigido/precisa rotacao, deploy oficial esta bloqueado ate haver canal seguro.
+- Inferencia operacional: auto-deploy e lento ou inconsistente. O backend ja
+  mostra parte dos commits novos, mas `check_deploy.sh b4d7ee6` ainda falha com
+  HTML em `b12be9a`.
 
 ## Loop Operacional
 
@@ -302,10 +303,14 @@ Critério de pronto: lista de limpeza segura e revisada.
   error=...)`; o toast de pipeline falho usa `data.error`; a arvore de tarefas
   mostra `task.error` em bloco vermelho. Falha ao carregar documentos tambem
   encerra a task como erro, em vez de deixa-la silenciosa.
+- Git: commit funcional `b4d7ee6`; marker `99483d1`; ambos publicados em
+  `origin/main`.
+- Deploy: `check_deploy.sh b4d7ee6` ainda falha porque o HTML live mostra
+  `b12be9a`; `wait_deploy.sh b4d7ee6` esta em andamento.
 - Validacoes: `py_compile` dos arquivos Python tocados passou; `git diff --check`
-  passou; testes focados de orquestracao/notification/render passaram com 15
-  testes e 1 aviso de config `timeout` desconhecida.
-- Proximo alvo: commit/push/deploy deste patch e repetir o smoke `corrigir` no
+  passou; suite focada de executor/task/progresso/UI/custo passou com 88 testes
+  e 1 aviso de config `timeout` desconhecida.
+- Proximo alvo: confirmar Render em `b4d7ee6` e repetir o smoke `corrigir` no
   site oficial para obter a causa real da falha Gemini.
 
 ## Riscos Abertos
