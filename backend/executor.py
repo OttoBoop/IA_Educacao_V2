@@ -2518,7 +2518,49 @@ Seja preciso, educativo e construtivo em suas análises."""
                     modelo=model.modelo,
                     tempo_ms=(time.time() - inicio) * 1000,
                 )
-            
+
+            # E-T2/P0: dual-output stages must use both tools, never an
+            # invented backend fallback. OpenAI gets explicit tool_choice so
+            # small reasoning models do not answer in plain text.
+            dual_output_expected = (
+                "create_document" in tools_to_use
+                and "execute_python_code" in tools_to_use
+            )
+            provider_value = getattr(model.tipo, "value", model.tipo)
+            is_openai_provider = provider_value == ProviderType.OPENAI.value
+
+            def _forced_openai_tool(tool_name: str) -> Dict[str, Any]:
+                return {"type": "function", "function": {"name": tool_name}}
+
+            def _combined_tool_names(responses: List[Dict[str, Any]]) -> set:
+                return {
+                    tc.get("name")
+                    for response in responses
+                    for tc in response.get("tool_calls", [])
+                    if tc.get("name")
+                }
+
+            def _combined_tool_calls(responses: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+                calls = []
+                for response in responses:
+                    calls.extend(response.get("tool_calls", []) or [])
+                return calls
+
+            def _sum_usage(responses: List[Dict[str, Any]], key: str) -> int:
+                total = 0
+                for response in responses:
+                    try:
+                        total += int(response.get(key, 0) or 0)
+                    except (TypeError, ValueError):
+                        pass
+                return total
+
+            initial_tool_choice = (
+                "required"
+                if dual_output_expected and is_openai_provider
+                else None
+            )
+
             # Executar com tools
             client = ChatClient(model, api_key or "")
             resposta = await client.chat_with_tools(
@@ -2526,54 +2568,60 @@ Seja preciso, educativo e construtivo em suas análises."""
                 tools=tools_definitions,
                 tool_registry=registry,
                 system_prompt=system_prompt,
-                context=context
+                context=context,
+                tool_choice=initial_tool_choice,
             )
 
             tentativas = 1
             alertas = []
-
-            # E-T2: Check for partial dual-output and retry once
-            dual_output_expected = (
-                "create_document" in tools_to_use
-                and "execute_python_code" in tools_to_use
-            )
+            respostas_tool = [resposta]
 
             if dual_output_expected:
-                tool_names_used = {tc.get("name") for tc in resposta.get("tool_calls", [])}
+                tool_names_used = _combined_tool_names(respostas_tool)
                 has_json = "create_document" in tool_names_used
                 has_pdf = "execute_python_code" in tool_names_used
 
-                if (has_json or has_pdf) and not (has_json and has_pdf):
-                    # Partial output — one retry
+                if not (has_json and has_pdf):
+                    # Partial/missing output — one explicit retry on the same model.
                     if has_json and not has_pdf:
                         retry_msg = "Você criou o documento JSON mas não gerou o PDF. Por favor, use execute_python_code para criar o PDF agora."
-                    else:
+                        retry_tool_choice = _forced_openai_tool("execute_python_code") if is_openai_provider else None
+                    elif has_pdf and not has_json:
                         retry_msg = "Você executou código Python mas não criou o documento JSON. Por favor, use create_document para salvar o documento agora."
+                        retry_tool_choice = _forced_openai_tool("create_document") if is_openai_provider else None
+                    else:
+                        retry_msg = (
+                            "Você não chamou nenhuma ferramenta. Esta etapa exige os dois artefatos: "
+                            "use create_document para salvar o JSON e execute_python_code para gerar o PDF. "
+                            "Responda usando as ferramentas, não texto simples."
+                        )
+                        retry_tool_choice = "required" if is_openai_provider else None
 
                     resposta = await client.chat_with_tools(
                         mensagem=retry_msg,
                         tools=tools_definitions,
                         tool_registry=registry,
                         system_prompt=system_prompt,
-                        context=context
+                        context=context,
+                        tool_choice=retry_tool_choice,
                     )
+                    respostas_tool.append(resposta)
                     tentativas = 2
 
                     # Check again after retry
-                    retry_tool_names = {tc.get("name") for tc in resposta.get("tool_calls", [])}
-                    all_tool_names = tool_names_used | retry_tool_names
+                    all_tool_names = _combined_tool_names(respostas_tool)
                     if not ("create_document" in all_tool_names and "execute_python_code" in all_tool_names):
                         missing = "PDF (execute_python_code)" if "execute_python_code" not in all_tool_names else "JSON (create_document)"
                         alertas.append({
                             "tipo": "aviso",
-                            "mensagem": f"Saída parcial: {missing} ausente após retry. Resultado incompleto salvo."
+                            "mensagem": f"Saída incompleta: {missing} ausente após retry. A etapa falhará sem fallback automático."
                         })
 
             tempo_ms = (time.time() - inicio) * 1000
 
             # Coletar documentos gerados pelas tools
             documentos_gerados = []
-            tool_calls = resposta.get("tool_calls", [])
+            tool_calls = _combined_tool_calls(respostas_tool)
             for tc in tool_calls:
                 if tc.get("name") == "create_document":
                     docs = tc.get("input", {}).get("documents", [])
@@ -2617,9 +2665,6 @@ Seja preciso, educativo e construtivo em suas análises."""
 
             pdf_fallback_used = False
             all_tool_names_final = {tc.get("name") for tc in tool_calls}
-            # Also include first-pass tool names if E-T2 retry happened
-            if dual_output_expected and tentativas == 2:
-                all_tool_names_final |= tool_names_used
 
             has_create_doc = "create_document" in all_tool_names_final
             has_exec_code = "execute_python_code" in all_tool_names_final
@@ -2651,16 +2696,16 @@ Seja preciso, educativo e construtivo em suas análises."""
                     resposta_raw=raw_content,
                     provider=model.tipo.value,
                     modelo=model.modelo,
-                    tokens_entrada=resposta.get("input_tokens", resposta.get("tokens", 0)),
-                    tokens_saida=resposta.get("output_tokens", 0),
+                    tokens_entrada=_sum_usage(respostas_tool, "input_tokens") or _sum_usage(respostas_tool, "tokens"),
+                    tokens_saida=_sum_usage(respostas_tool, "output_tokens"),
                     tempo_ms=tempo_ms,
                     alertas=alertas,
                     tentativas=tentativas,
                     erro=erro_msg,
                 )
 
-            tokens_entrada = resposta.get("input_tokens", resposta.get("tokens", 0))
-            tokens_saida = resposta.get("output_tokens", 0)
+            tokens_entrada = _sum_usage(respostas_tool, "input_tokens") or _sum_usage(respostas_tool, "tokens")
+            tokens_saida = _sum_usage(respostas_tool, "output_tokens")
             tokens_total = tokens_entrada + tokens_saida
             for doc_id in context.created_document_ids:
                 self.storage.atualizar_documento_processamento(

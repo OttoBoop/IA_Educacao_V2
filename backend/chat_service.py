@@ -90,6 +90,12 @@ DEFAULT_URLS = {
 MODELOS_SUGERIDOS = {
     ProviderType.OPENAI: [
         # GPT-5 Series (Newest)
+        {"id": "gpt-5.5", "nome": "GPT-5.5", "suporta_vision": True, "suporta_tools": True},
+        {"id": "gpt-5.5-pro", "nome": "GPT-5.5 Pro", "suporta_vision": True, "suporta_tools": True},
+        {"id": "gpt-5.4", "nome": "GPT-5.4", "suporta_vision": True, "suporta_tools": True},
+        {"id": "gpt-5.4-mini", "nome": "GPT-5.4 Mini", "suporta_vision": True, "suporta_tools": True},
+        {"id": "gpt-5.4-nano", "nome": "GPT-5.4 Nano", "suporta_vision": True, "suporta_tools": True},
+        {"id": "gpt-5.4-pro", "nome": "GPT-5.4 Pro", "suporta_vision": True, "suporta_tools": True},
         {"id": "gpt-5.2", "nome": "GPT-5.2", "suporta_vision": True, "suporta_tools": True},
         {"id": "gpt-5.2-pro", "nome": "GPT-5.2 Pro", "suporta_vision": True, "suporta_tools": True},
         {"id": "gpt-5", "nome": "GPT-5", "suporta_vision": True, "suporta_tools": True},
@@ -175,7 +181,14 @@ MODELOS_SUGERIDOS = {
 
 # Modelos que usam reasoning_effort ao invés de temperature
 # Deprecated: 'o1', 'o1-pro' (removidos pois estão deprecated)
-REASONING_MODELS = ['o3', 'o3-mini', 'o3-pro', 'o4-mini', 'gpt-5', 'gpt-5-mini', 'gpt-5-nano', 'gpt-5.1', 'gpt-5.2', 'deepseek-reasoner']
+REASONING_MODELS = [
+    'o3', 'o3-mini', 'o3-pro', 'o4-mini',
+    'gpt-5', 'gpt-5-mini', 'gpt-5-nano',
+    'gpt-5.1', 'gpt-5.2',
+    'gpt-5.4', 'gpt-5.4-mini', 'gpt-5.4-nano',
+    'gpt-5.5', 'gpt-5.5-pro',
+    'deepseek-reasoner',
+]
 
 
 # ============================================================
@@ -786,7 +799,8 @@ class ChatClient:
         system_prompt: Optional[str] = None,
         documentos_contexto: List[Dict[str, Any]] = None,
         context: Optional[ToolExecutionContext] = None,
-        max_iterations: int = 10
+        max_iterations: int = 10,
+        tool_choice: Optional[Any] = None,
     ) -> Dict[str, Any]:
         """
         Envia mensagem com suporte a tool use (function calling).
@@ -800,6 +814,7 @@ class ChatClient:
             documentos_contexto: Lista de documentos para incluir no contexto
             context: Contexto de execução para tools (atividade_id, aluno_id, etc.)
             max_iterations: Máximo de iterações do loop de tools
+            tool_choice: Controle OpenAI para exigir/forçar tool call na primeira iteração
 
         Returns:
             {"content": "resposta", "tokens": 123, "modelo": "...", "tool_calls": [...]}
@@ -818,7 +833,8 @@ class ChatClient:
                 tools=tools,
                 tool_registry=tool_registry,
                 context=context,
-                max_iterations=max_iterations
+                max_iterations=max_iterations,
+                tool_choice=tool_choice,
             )
         elif self.config.tipo == ProviderType.OPENAI:
             return await self._chat_openai_with_tools(
@@ -828,7 +844,8 @@ class ChatClient:
                 tools=tools,
                 tool_registry=tool_registry,
                 context=context,
-                max_iterations=max_iterations
+                max_iterations=max_iterations,
+                tool_choice=tool_choice,
             )
         elif self.config.tipo == ProviderType.GOOGLE:
             return await self._chat_google_with_tools(
@@ -1072,7 +1089,8 @@ class ChatClient:
         tools: List[Dict[str, Any]],
         tool_registry: ToolRegistry,
         context: Optional[ToolExecutionContext] = None,
-        max_iterations: int = 10
+        max_iterations: int = 10,
+        tool_choice: Optional[Any] = None,
     ) -> Dict:
         """Chat com API Anthropic/Claude with tool use support"""
         messages = []
@@ -1231,7 +1249,8 @@ class ChatClient:
         tools: List[Dict[str, Any]],
         tool_registry: ToolRegistry,
         context: Optional[ToolExecutionContext] = None,
-        max_iterations: int = 10
+        max_iterations: int = 10,
+        tool_choice: Optional[Any] = None,
     ) -> Dict:
         """Chat com API OpenAI with tool use support"""
         is_reasoning = self._is_reasoning_model()
@@ -1257,6 +1276,8 @@ class ChatClient:
             params = self._build_params()
             params["messages"] = messages
             params["tools"] = openai_tools
+            if tool_choice is not None and iteration == 0:
+                params["tool_choice"] = tool_choice
 
             async with httpx.AsyncClient(timeout=120.0) as client:
                 response = await client.post(

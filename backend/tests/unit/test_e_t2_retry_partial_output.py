@@ -19,8 +19,8 @@ Tests:
    execute_python_code → sucesso=True, tentativas=2.
 
 5. test_retry_fails_partial_saved_with_warning
-   Both calls produce only create_document → result is still sucesso=True (partial
-   is saved) but alertas contains a warning entry.
+   Both calls produce only create_document → result is sucesso=False; partial
+   output is not accepted as completed.
 
 6. test_single_tool_in_tools_to_use_no_dual_check
    When tools_to_use=["create_document"] only (no execute_python_code), the
@@ -161,6 +161,7 @@ async def _call_executar_com_tools(
     chat_side_effect,
     tools_to_use=None,
     provider_id=None,
+    tipo_value="anthropic",
 ):
     """
     Patch lazy-imported modules and call executar_com_tools.
@@ -168,7 +169,7 @@ async def _call_executar_com_tools(
     chat_side_effect: list of dicts (one per chat_with_tools call) OR a single dict.
     Returns: (ResultadoExecucao, mock_client_instance)
     """
-    model = _make_mock_model(suporta_function_calling=True)
+    model = _make_mock_model(suporta_function_calling=True, tipo_value=tipo_value)
     chat_service_mock, mock_client = _make_chat_service_module(model, chat_side_effect)
     tools_mock = _make_tools_module()
     tool_handlers_mock = _make_tool_handlers_module()
@@ -223,6 +224,34 @@ class TestBothOutputsNoRetry:
             f"Both outputs present → chat_with_tools should be called exactly ONCE "
             f"(no retry needed). Got call_count={call_count}."
         )
+
+    async def test_openai_dual_output_starts_with_required_tool_choice(self):
+        """OpenAI dual-output calls should require at least one tool call upfront."""
+        both_response = _tool_response(["create_document", "execute_python_code"])
+        _result, mock_client = await _call_executar_com_tools(
+            chat_side_effect=both_response,
+            tools_to_use=["create_document", "execute_python_code"],
+            tipo_value="openai",
+        )
+
+        first_call = mock_client.chat_with_tools.call_args_list[0]
+        assert first_call.kwargs.get("tool_choice") == "required"
+
+    async def test_openai_no_tools_retries_with_required_tool_choice(self):
+        """If OpenAI still returns plain text, retry must require tools again."""
+        no_tools_response = _tool_response([])
+        retry_response = _tool_response(["create_document", "execute_python_code"])
+
+        result, mock_client = await _call_executar_com_tools(
+            chat_side_effect=[no_tools_response, retry_response],
+            tools_to_use=["create_document", "execute_python_code"],
+            tipo_value="openai",
+        )
+
+        assert result.sucesso is True
+        assert mock_client.chat_with_tools.call_count == 2
+        second_call = mock_client.chat_with_tools.call_args_list[1]
+        assert second_call.kwargs.get("tool_choice") == "required"
 
 
 # ============================================================
@@ -423,15 +452,10 @@ class TestRetrySucceedsBothOutputs:
 
 class TestRetryFailsPartialSavedWithWarning:
     """Both calls produce only create_document (no execute_python_code).
-    Result: sucesso=True (partial is still saved) but alertas contains a warning."""
+    P0 behavior: fail high instead of saving partial output as success."""
 
     async def test_retry_fails_partial_saved_with_warning(self):
-        """Both calls: only create_document. sucesso=True but a warning alert is added.
-
-        Currently FAILS on:
-        - call_count will be 1 (no second call exists)
-        - alertas will not contain a warning (just an info entry)
-        """
+        """Both calls: only create_document. sucesso=False and a warning alert is added."""
         only_json_first = _tool_response(["create_document"])
         only_json_retry = _tool_response(["create_document"])
 
@@ -442,13 +466,12 @@ class TestRetryFailsPartialSavedWithWarning:
 
         assert isinstance(result, ResultadoExecucao)
 
-        # Partial output is still saved (sucesso=True)
-        assert result.sucesso is True, (
-            f"Partial output should still be saved (sucesso=True) even after retry fails. "
+        assert result.sucesso is False, (
+            f"Partial output must fail high after retry fails. "
             f"Got sucesso={result.sucesso}."
         )
+        assert "Saída obrigatória incompleta" in (result.erro or "")
 
-        # A warning alert must be added
         warning_alerts = [
             a for a in result.alertas
             if a.get("tipo") == "aviso" or a.get("tipo") == "warning"
@@ -498,8 +521,8 @@ class TestRetryFailsPartialSavedWithWarning:
         has_partial_ref = any(
             keyword in mensagem_lower
             for keyword in [
-                "parcial", "partial", "incompleto", "incompleta",
-                "pdf", "execute_python_code", "faltando", "ausente",
+                "incompleto", "incompleta", "falhar", "falha",
+                "pdf", "execute_python_code", "faltando", "ausente", "fallback",
             ]
         )
         assert has_partial_ref, (

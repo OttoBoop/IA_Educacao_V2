@@ -1,6 +1,6 @@
 {
-  "version": "2026.01",
-  "last_updated": "2026-01-28",
+  "version": "2026.05",
+  "last_updated": "2026-05-15",
   "providers": {
     "openai": {
       "name": "OpenAI",
@@ -9,6 +9,118 @@
       "auth_prefix": "Bearer",
       "is_local": false,
       "models": [
+        {
+          "id": "gpt-5.5",
+          "display_name": "GPT-5.5",
+          "description": "Modelo flagship atual da OpenAI para reasoning, coding e workflows profissionais",
+          "input_cost": 5.00,
+          "output_cost": 30.00,
+          "cached_input_cost": 0.50,
+          "context_window": 1000000,
+          "max_output": 128000,
+          "supports_vision": true,
+          "supports_tools": true,
+          "supports_json_mode": true,
+          "supports_streaming": true,
+          "supports_reasoning": true,
+          "special_params": {
+            "reasoning_effort": ["none", "low", "medium", "high", "xhigh"]
+          },
+          "requires_temperature": false
+        },
+        {
+          "id": "gpt-5.5-pro",
+          "display_name": "GPT-5.5 Pro",
+          "description": "Versao premium da familia GPT-5.5 para tarefas complexas",
+          "input_cost": 30.00,
+          "output_cost": 180.00,
+          "context_window": 1000000,
+          "max_output": 128000,
+          "supports_vision": true,
+          "supports_tools": true,
+          "supports_json_mode": true,
+          "supports_streaming": true,
+          "supports_reasoning": true,
+          "special_params": {
+            "reasoning_effort": ["none", "low", "medium", "high", "xhigh"]
+          },
+          "requires_temperature": false
+        },
+        {
+          "id": "gpt-5.4",
+          "display_name": "GPT-5.4",
+          "description": "Modelo OpenAI mais acessivel para coding e workflows profissionais",
+          "input_cost": 2.50,
+          "output_cost": 15.00,
+          "cached_input_cost": 0.25,
+          "context_window": 1000000,
+          "max_output": 128000,
+          "supports_vision": true,
+          "supports_tools": true,
+          "supports_json_mode": true,
+          "supports_streaming": true,
+          "supports_reasoning": true,
+          "special_params": {
+            "reasoning_effort": ["none", "low", "medium", "high", "xhigh"]
+          },
+          "requires_temperature": false
+        },
+        {
+          "id": "gpt-5.4-mini",
+          "display_name": "GPT-5.4 Mini",
+          "description": "Mini forte da OpenAI para coding, computer use e subagents",
+          "input_cost": 0.75,
+          "output_cost": 4.50,
+          "cached_input_cost": 0.075,
+          "context_window": 400000,
+          "max_output": 128000,
+          "supports_vision": true,
+          "supports_tools": true,
+          "supports_json_mode": true,
+          "supports_streaming": true,
+          "supports_reasoning": true,
+          "special_params": {
+            "reasoning_effort": ["none", "low", "medium", "high", "xhigh"]
+          },
+          "requires_temperature": false
+        },
+        {
+          "id": "gpt-5.4-nano",
+          "display_name": "GPT-5.4 Nano",
+          "description": "Nano da OpenAI para workloads de menor latencia e menor custo",
+          "input_cost": 0.20,
+          "output_cost": 1.25,
+          "cached_input_cost": 0.02,
+          "context_window": 400000,
+          "max_output": 128000,
+          "supports_vision": true,
+          "supports_tools": true,
+          "supports_json_mode": true,
+          "supports_streaming": true,
+          "supports_reasoning": true,
+          "special_params": {
+            "reasoning_effort": ["none", "low", "medium", "high", "xhigh"]
+          },
+          "requires_temperature": false
+        },
+        {
+          "id": "gpt-5.4-pro",
+          "display_name": "GPT-5.4 Pro",
+          "description": "Versao premium da familia GPT-5.4",
+          "input_cost": 30.00,
+          "output_cost": 180.00,
+          "context_window": 1000000,
+          "max_output": 128000,
+          "supports_vision": true,
+          "supports_tools": true,
+          "supports_json_mode": true,
+          "supports_streaming": true,
+          "supports_reasoning": true,
+          "special_params": {
+            "reasoning_effort": ["none", "low", "medium", "high", "xhigh"]
+          },
+          "requires_temperature": false
+        },
         {
           "id": "gpt-5.2",
           "display_name": "GPT-5.2",

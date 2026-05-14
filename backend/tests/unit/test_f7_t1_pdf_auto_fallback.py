@@ -1,18 +1,16 @@
 """
-F7-T1 RED: PDF auto-fallback when LLM skips execute_python_code.
+F7-T1/P0: no PDF auto-fallback when LLM skips execute_python_code.
 
 Bug: GPT-5 Nano (and potentially other models) call create_document (saving JSON)
 but skip execute_python_code (no PDF generated). The professor gets a JSON report
 but no downloadable PDF.
 
-Expected behavior after F7-T1:
+Expected P0 behavior now:
   - After executar_com_tools() processes all LLM tool calls, detect if
     create_document was called but execute_python_code was NOT called.
-  - Auto-generate PDF from the JSON content using document_generators.py functions.
-  - Return pdf_fallback_used=True in the ResultadoExecucao so frontend can show
-    a loud notification.
-
-These tests MUST FAIL until F7-T1 is implemented.
+  - Retry explicitly on the same model.
+  - If the model still fails to call execute_python_code, return sucesso=False.
+  - Never auto-generate a fake PDF fallback.
 
 Run: cd IA_Educacao_V2/backend && python -m pytest tests/unit/test_f7_t1_pdf_auto_fallback.py -v
 """
@@ -199,44 +197,31 @@ async def _call_executar_com_tools(tool_calls_response, tools_to_use=None):
 
 
 # ============================================================
-# Test 1: pdf_fallback_used field exists and is True when
-#          LLM only calls create_document (no execute_python_code)
+# Test 1: missing execute_python_code fails high
 # ============================================================
 
 
 class TestPdfFallbackFlagSet:
     """F7-T1: When LLM calls create_document but NOT execute_python_code,
-    the result must have pdf_fallback_used=True.
-
-    Current state: ResultadoExecucao has no pdf_fallback_used field.
-    The method returns without generating any PDF fallback.
+    the result must fail high instead of using a PDF fallback.
     """
 
     @pytest.mark.asyncio
     async def test_pdf_fallback_used_true_when_only_create_document(self):
-        """When LLM produces JSON only (create_document without
-        execute_python_code), pdf_fallback_used must be True.
-
-        Current: ResultadoExecucao has no pdf_fallback_used attribute.
-        Expected: result.pdf_fallback_used == True
-        """
+        """JSON-only output must not be accepted as success."""
         response = _response_with_create_document_only()
         result = await _call_executar_com_tools(response)
 
-        assert result.sucesso is True, (
-            "executar_com_tools should still succeed (fallback generates PDF)"
+        assert result.sucesso is False, (
+            "executar_com_tools must fail high when the model does not generate the PDF"
         )
         assert hasattr(result, "pdf_fallback_used"), (
-            "F7-T1: ResultadoExecucao must have a pdf_fallback_used field. "
-            "Currently missing — add pdf_fallback_used: bool = False to the dataclass."
+            "ResultadoExecucao must keep pdf_fallback_used for API compatibility."
         )
-        assert result.pdf_fallback_used is True, (
-            "F7-T1: pdf_fallback_used must be True when LLM called create_document "
-            "but did NOT call execute_python_code. "
-            "\nCurrently: no PDF fallback logic exists in executar_com_tools(). "
-            "\nExpected: detect missing execute_python_code, auto-generate PDF from "
-            "the create_document content, and set pdf_fallback_used=True."
+        assert result.pdf_fallback_used is False, (
+            "PDF fallback is prohibited; the flag must stay False."
         )
+        assert "PDF via execute_python_code" in (result.erro or "")
 
 
 # ============================================================
@@ -271,38 +256,29 @@ class TestPdfFallbackNotTriggeredWhenBothTools:
 
 
 # ============================================================
-# Test 3: Fallback alert is added to alertas list
+# Test 3: no fallback alert is added; failure alert is explicit
 # ============================================================
 
 
 class TestPdfFallbackAlertAdded:
-    """F7-T1: When PDF fallback triggers, an alert must be added to
-    the alertas list so the frontend can show a loud notification.
-    """
+    """P0: missing PDF should produce a blocking warning, not pdf_fallback."""
 
     @pytest.mark.asyncio
     async def test_fallback_alert_in_alertas(self):
-        """When PDF fallback triggers, alertas must contain an entry
-        with tipo='pdf_fallback' and a descriptive message.
-
-        Current: No such alert exists.
-        Expected: alertas contains {'tipo': 'pdf_fallback', 'mensagem': '...'}.
-        """
+        """A JSON-only tool result must not emit pdf_fallback success alert."""
         response = _response_with_create_document_only()
         result = await _call_executar_com_tools(response)
 
-        assert result.sucesso is True
+        assert result.sucesso is False
 
         fallback_alerts = [
             a for a in result.alertas
             if a.get("tipo") == "pdf_fallback"
         ]
-        assert len(fallback_alerts) >= 1, (
-            "F7-T1: When PDF fallback triggers, alertas must contain at least "
-            "one entry with tipo='pdf_fallback'. "
-            "\nCurrently: no pdf_fallback alert exists in the alertas list. "
-            f"\nActual alertas: {result.alertas}"
+        assert fallback_alerts == [], (
+            "No pdf_fallback alert should exist because fallback is prohibited."
         )
+        assert any("fallback" in a.get("mensagem", "").lower() for a in result.alertas)
 
 
 # ============================================================
@@ -311,17 +287,11 @@ class TestPdfFallbackAlertAdded:
 
 
 class TestPdfFallbackInToDict:
-    """F7-T1: The pdf_fallback_used flag must be serialized in to_dict()
-    so the frontend API response includes it.
-    """
+    """F7-T1: The pdf_fallback_used flag remains serialized as False."""
 
     @pytest.mark.asyncio
     async def test_to_dict_includes_pdf_fallback_used(self):
-        """to_dict() must include pdf_fallback_used key.
-
-        Current: to_dict() has no pdf_fallback_used key.
-        Expected: result.to_dict()['pdf_fallback_used'] exists.
-        """
+        """to_dict() must include pdf_fallback_used=False on blocking failure."""
         response = _response_with_create_document_only()
         result = await _call_executar_com_tools(response)
 
@@ -331,7 +301,6 @@ class TestPdfFallbackInToDict:
             "frontend API response contains it for the loud notification. "
             f"\nActual keys: {list(result_dict.keys())}"
         )
-        assert result_dict["pdf_fallback_used"] is True, (
-            "F7-T1: to_dict()['pdf_fallback_used'] must be True when "
-            "the fallback was triggered."
+        assert result_dict["pdf_fallback_used"] is False, (
+            "PDF fallback is prohibited; serialized flag must remain False."
         )

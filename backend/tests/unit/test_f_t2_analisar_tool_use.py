@@ -577,24 +577,17 @@ class TestAnalisarHabilidadesRemovedFromNarrativaPromptMap:
             "The two-pass narrative PDF for ANALISAR_HABILIDADES is replaced by execute_python_code tool-use."
         )
 
-    def test_gerar_relatorio_still_in_narrativa_prompt_map(self):
-        """GERAR_RELATORIO must remain in NARRATIVA_PROMPT_MAP until F-T3 migrates it.
-
-        F-T2 only removes ANALISAR_HABILIDADES. GERAR_RELATORIO stays until F-T3.
-        """
-        assert EtapaProcessamento.GERAR_RELATORIO in PipelineExecutor.NARRATIVA_PROMPT_MAP, (
-            "GERAR_RELATORIO must remain in NARRATIVA_PROMPT_MAP — it is removed by F-T3, not F-T2."
+    def test_gerar_relatorio_removed_from_narrativa_prompt_map_after_f_t3(self):
+        """GERAR_RELATORIO must also be gone after F-T3 migration."""
+        assert EtapaProcessamento.GERAR_RELATORIO not in PipelineExecutor.NARRATIVA_PROMPT_MAP, (
+            "GERAR_RELATORIO must remain removed from NARRATIVA_PROMPT_MAP after F-T3."
         )
 
-    def test_narrativa_prompt_map_has_one_entry(self):
-        """After F-T1+F-T2, only GERAR_RELATORIO remains in NARRATIVA_PROMPT_MAP.
-
-        CORRIGIR was removed in F-T1. ANALISAR_HABILIDADES removed in F-T2.
-        GERAR_RELATORIO remains until F-T3.
-        """
+    def test_narrativa_prompt_map_is_empty_after_f_t3(self):
+        """After F-T1+F-T2+F-T3, no stage should use two-pass narrative."""
         current_map = PipelineExecutor.NARRATIVA_PROMPT_MAP
-        assert len(current_map) == 1, (
-            f"After F-T1+F-T2, NARRATIVA_PROMPT_MAP must have 1 entry. "
+        assert len(current_map) == 0, (
+            f"After F-T1+F-T2+F-T3, NARRATIVA_PROMPT_MAP must be empty. "
             f"Currently has {len(current_map)}: {list(current_map.keys())}"
         )
 

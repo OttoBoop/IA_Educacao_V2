@@ -8,7 +8,7 @@ Este documento lista todos os modelos de IA suportados e seus parâmetros.
 
 ### Modelos REASONING (NÃO suportam temperature)
 Usam `reasoning_effort` (low/medium/high) e `max_completion_tokens`:
-- **OpenAI**: `o3`, `o3-mini`, `o3-pro`, `o4-mini`, `gpt-5`, `gpt-5-mini`, `gpt-5-nano`, `gpt-5.1`, `gpt-5.2`
+- **OpenAI**: `o3`, `o3-mini`, `o3-pro`, `o4-mini`, `gpt-5`, `gpt-5-mini`, `gpt-5-nano`, `gpt-5.1`, `gpt-5.2`, `gpt-5.4`, `gpt-5.4-mini`, `gpt-5.4-nano`, `gpt-5.5`
 - **DeepSeek**: `deepseek-reasoner`
 
 ### Modelos STANDARD (suportam temperature)
@@ -18,10 +18,27 @@ Todos os outros modelos que aceitam o parâmetro `temperature`.
 
 ## OpenAI
 
-### Modelos Standard (suportam temperature)
+Fontes oficiais consultadas:
+- Modelos: https://developers.openai.com/api/docs/models
+- Preços: https://developers.openai.com/api/docs/pricing
+- Function calling/tool choice: https://developers.openai.com/api/docs/guides/function-calling
+- Guia GPT-5.5: https://developers.openai.com/api/docs/guides/latest-model
+
+No NOVO CR, os modelos GPT-5.x de frontier são tratados como reasoning:
+não enviar `temperature`; usar `max_completion_tokens` e `reasoning_effort`.
+Para tool-use em Chat Completions, `tool_choice="required"` força pelo menos
+uma tool call, e uma função específica pode ser forçada no retry de reparo.
+
+### Modelos OpenAI no catálogo
 
 | Modelo | Vision | Tools | Temperature | Max Tokens | Notas |
 |--------|--------|-------|-------------|------------|-------|
+| gpt-5.5 | ✅ | ✅ | ❌ | max_completion_tokens | Flagship atual para reasoning, coding e workflows profissionais |
+| gpt-5.5-pro | ✅ | ✅ | ❌ | max_completion_tokens | Versão premium da família GPT-5.5 |
+| gpt-5.4 | ✅ | ✅ | ❌ | max_completion_tokens | Modelo mais acessível para coding e workflows profissionais |
+| gpt-5.4-mini | ✅ | ✅ | ❌ | max_completion_tokens | Mini forte para coding, computer use e subagents |
+| gpt-5.4-nano | ✅ | ✅ | ❌ | max_completion_tokens | Variante menor para latência/custo |
+| gpt-5.4-pro | ✅ | ✅ | ❌ | max_completion_tokens | Versão premium da família GPT-5.4 |
 | gpt-5.2 | ✅ | ✅ | 0-2 | max_tokens | Best model for coding and agentic tasks across industries |
 | gpt-5.2-pro | ✅ | ✅ | 0-2 | max_tokens | Version of GPT-5.2 that produces smarter and more precise responses |
 | gpt-5 | ✅ | ✅ | 0-2 | max_tokens | Intelligent reasoning model for coding and agentic tasks |
@@ -39,6 +56,11 @@ Todos os outros modelos que aceitam o parâmetro `temperature`.
 
 | Modelo | Tools | Reasoning Effort | Max Tokens | Notas |
 |--------|-------|------------------|------------|-------|
+| gpt-5.5 | ✅ | none/low/medium/high/xhigh | max_completion_tokens | Flagship atual; preferir Responses API em migração futura |
+| gpt-5.5-pro | ✅ | none/low/medium/high/xhigh | max_completion_tokens | Premium atual |
+| gpt-5.4 | ✅ | none/low/medium/high/xhigh | max_completion_tokens | Frontier mais acessível |
+| gpt-5.4-mini | ✅ | none/low/medium/high/xhigh | max_completion_tokens | Mini forte para custo/latência |
+| gpt-5.4-nano | ✅ | none/low/medium/high/xhigh | max_completion_tokens | Nano mais novo |
 | o3 | ✅ | low/medium/high | max_completion_tokens | Reasoning model for complex tasks, succeeded by GPT-5 |
 | o3-mini | ✅ | low/medium/high | max_completion_tokens | Small model alternative to o3 |
 | o3-pro | ✅ | low/medium/high | max_completion_tokens | Version of o3 with more compute for better responses |
@@ -202,7 +224,7 @@ Configuração customizada via `base_url`.
 ```python
 from anexos import is_reasoning_model, REASONING_MODELS
 
-# REASONING_MODELS = ['o3', 'o3-mini', 'o3-pro', 'o4-mini', 'gpt-5', 'gpt-5-mini', 'gpt-5-nano', 'gpt-5.1', 'gpt-5.2', 'deepseek-reasoner']  # Updated to current models
+# REASONING_MODELS inclui o-series, gpt-5.x e deepseek-reasoner
 
 if is_reasoning_model(model_id):
     # Usar max_completion_tokens, reasoning_effort

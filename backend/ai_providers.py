@@ -126,7 +126,13 @@ class OpenAIProvider(AIProvider):
 
     # Modelos de raciocínio que não suportam temperature
     # Deprecated: 'o1', 'o1-mini', 'o1-pro' (removidos pois estão deprecated)
-    REASONING_MODELS = {'o3', 'o3-mini', 'o3-pro', 'o4-mini', 'gpt-5', 'gpt-5-mini', 'gpt-5-nano', 'gpt-5.1', 'gpt-5.2'}
+    REASONING_MODELS = {
+        'o3', 'o3-mini', 'o3-pro', 'o4-mini',
+        'gpt-5', 'gpt-5-mini', 'gpt-5-nano',
+        'gpt-5.1', 'gpt-5.2',
+        'gpt-5.4', 'gpt-5.4-mini', 'gpt-5.4-nano',
+        'gpt-5.5', 'gpt-5.5-pro',
+    }
 
     def __init__(self, api_key: str, model: str = "gpt-4o"):
         super().__init__(api_key, model)

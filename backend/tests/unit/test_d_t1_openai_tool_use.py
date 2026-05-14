@@ -220,6 +220,48 @@ class TestOpenAIToolCallParsing:
         assert result["tool_calls"][0]["name"] == "create_document"
 
     @pytest.mark.asyncio
+    async def test_tool_choice_applies_only_to_first_openai_request(self, openai_client, mock_tool_registry, anthropic_format_tools):
+        """tool_choice should force the first call, then allow the follow-up to stop."""
+        tool_call_response = make_openai_tool_call_response([
+            {"id": "call_123", "name": "create_document", "arguments": {"title": "Test", "content": "Hello"}}
+        ])
+        final_response = make_openai_final_response("Document created!")
+
+        mock_tool_registry.execute = AsyncMock(return_value=ToolResult(
+            tool_use_id="call_123",
+            content="Document created successfully",
+            is_error=False
+        ))
+
+        with patch("httpx.AsyncClient") as mock_client_cls:
+            mock_client = AsyncMock()
+            mock_client_cls.return_value.__aenter__ = AsyncMock(return_value=mock_client)
+            mock_client_cls.return_value.__aexit__ = AsyncMock(return_value=False)
+
+            mock_response_1 = MagicMock(status_code=200)
+            mock_response_1.json.return_value = tool_call_response
+            mock_response_2 = MagicMock(status_code=200)
+            mock_response_2.json.return_value = final_response
+            mock_client.post = AsyncMock(side_effect=[mock_response_1, mock_response_2])
+
+            result = await openai_client._chat_openai_with_tools(
+                mensagem="Create a document",
+                historico=[],
+                system="You are a helper",
+                tools=anthropic_format_tools,
+                tool_registry=mock_tool_registry,
+                max_iterations=10,
+                tool_choice="required",
+            )
+
+        first_payload = mock_client.post.call_args_list[0].kwargs["json"]
+        second_payload = mock_client.post.call_args_list[1].kwargs["json"]
+
+        assert first_payload["tool_choice"] == "required"
+        assert "tool_choice" not in second_payload
+        assert result["content"] == "Document created!"
+
+    @pytest.mark.asyncio
     async def test_parses_multiple_tool_calls_in_one_response(self, openai_client, mock_tool_registry, anthropic_format_tools):
         """Parses multiple tool calls from a single OpenAI response"""
         tool_call_response = make_openai_tool_call_response([
