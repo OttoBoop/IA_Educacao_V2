@@ -21,9 +21,11 @@ async def get_cost_status(limit: int = 500):
         "storage_backend": summary["storage_backend"],
         "persistent_storage": summary["persistent_storage"],
         "catalog_loaded": summary["catalog_loaded"],
+        "runs_analisados": summary["runs_analisados"],
         "runs_precificados": summary["runs_precificados"],
         "runs_bloqueados": summary["runs_bloqueados"],
         "bloqueios": summary["bloqueios"],
+        "alertas": summary["alertas"],
     }
 
 

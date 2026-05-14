@@ -7,7 +7,7 @@ invent input/output splits from legacy total-only token counts.
 
 from __future__ import annotations
 
-from collections import Counter
+from collections import Counter, defaultdict
 from typing import Any, Dict, Iterable, Optional
 
 from model_catalog import model_catalog
@@ -71,31 +71,107 @@ def _cost_for(doc: Documento, metadata: Dict[str, Any]) -> Dict[str, Any]:
     }
 
 
+def _cost_signature(row: Dict[str, Any]) -> tuple:
+    """Fields that must match when multiple documents belong to one AI run."""
+
+    return (
+        row.get("provider"),
+        row.get("modelo"),
+        row.get("model_ref"),
+        row.get("tokens_entrada"),
+        row.get("tokens_saida"),
+        round(float(row.get("custo_usd", 0.0)), 12),
+    )
+
+
+def _documents_for_run(rows: Iterable[Dict[str, Any]]) -> list[Dict[str, Any]]:
+    return [
+        {
+            "documento_id": row["documento_id"],
+            "tipo": row["tipo"],
+            "status": row["status"],
+            "custo_status": row["custo_status"],
+            "erro": row.get("erro"),
+        }
+        for row in rows
+    ]
+
+
+def _sample_for_run(run_id: str, rows: list[Dict[str, Any]], representative: Dict[str, Any]) -> Dict[str, Any]:
+    sample = dict(representative)
+    documents = _documents_for_run(rows)
+    sample["cost_run_id"] = run_id
+    sample["documentos"] = documents
+    sample["documentos_ids"] = [doc["documento_id"] for doc in documents]
+    sample["documentos_contagem"] = len(documents)
+    return sample
+
+
+def _blocked_reason(rows: list[Dict[str, Any]]) -> str:
+    reasons = sorted({row.get("erro") or "unknown" for row in rows})
+    return reasons[0] if len(reasons) == 1 else "mixed_blocked"
+
+
 def build_cost_summary(documentos: Optional[Iterable[Documento]] = None, limit: int = 500) -> Dict[str, Any]:
     docs = list(documentos if documentos is not None else storage.listar_todos_documentos(limit=limit))
     rows = [_cost_for(doc, _metadata(doc)) for doc in docs]
+    rows_by_run: Dict[str, list[Dict[str, Any]]] = defaultdict(list)
+    for row in rows:
+        rows_by_run[row["cost_run_id"]].append(row)
 
-    counted_runs = set()
     total_usd = 0.0
     total_input = 0
     total_output = 0
-    counted_rows = 0
+    counted_runs = 0
     blocked = Counter()
-
     by_provider: Dict[str, Dict[str, Any]] = {}
+    samples: list[Dict[str, Any]] = []
+    alerts: list[Dict[str, Any]] = []
 
-    for row in rows:
-        run_id = row["cost_run_id"]
-        if row["custo_status"] != "ok":
-            blocked[row.get("erro", "unknown")] += 1
+    for run_id, run_rows in rows_by_run.items():
+        ok_rows = [row for row in run_rows if row["custo_status"] == "ok"]
+        if not ok_rows:
+            reason = _blocked_reason(run_rows)
+            blocked[reason] += 1
+            sample = _sample_for_run(run_id, run_rows, run_rows[0])
+            sample["custo_status"] = "blocked"
+            sample["erro"] = reason
+            sample["erros"] = sorted({row.get("erro") or "unknown" for row in run_rows})
+            samples.append(sample)
             continue
-        if run_id in counted_runs:
+
+        signatures = {_cost_signature(row) for row in ok_rows}
+        if len(signatures) != 1:
+            blocked["run_metadata_conflict"] += 1
+            sample = _sample_for_run(run_id, run_rows, ok_rows[0])
+            sample["custo_status"] = "blocked"
+            sample["erro"] = "run_metadata_conflict"
+            samples.append(sample)
+            alerts.append(
+                {
+                    "tipo": "run_metadata_conflict",
+                    "cost_run_id": run_id,
+                    "documentos_ids": sample["documentos_ids"],
+                }
+            )
             continue
-        counted_runs.add(run_id)
-        counted_rows += 1
+
+        row = ok_rows[0]
+        if len(ok_rows) != len(run_rows):
+            alerts.append(
+                {
+                    "tipo": "run_mixed_cost_status",
+                    "cost_run_id": run_id,
+                    "documentos_ids": [item["documento_id"] for item in run_rows],
+                    "erros": sorted({item.get("erro") or "unknown" for item in run_rows if item["custo_status"] != "ok"}),
+                }
+            )
+
+        counted_runs += 1
         total_usd += float(row["custo_usd"])
         total_input += row["tokens_entrada"]
         total_output += row["tokens_saida"]
+        samples.append(_sample_for_run(run_id, run_rows, row))
 
         provider_key = row["provider"] or "unknown"
         provider = by_provider.setdefault(
@@ -115,12 +191,14 @@ def build_cost_summary(documentos: Optional[Iterable[Documento]] = None, limit: 
         "persistent_storage": storage._backend_label() == "postgresql",
         "catalog_loaded": bool(model_catalog.providers),
         "documentos_analisados": len(rows),
-        "runs_precificados": counted_rows,
+        "runs_analisados": len(rows_by_run),
+        "runs_precificados": counted_runs,
         "runs_bloqueados": sum(blocked.values()),
         "bloqueios": dict(blocked),
         "tokens_entrada": total_input,
         "tokens_saida": total_output,
         "custo_usd": round(total_usd, 6),
         "por_provider": sorted(by_provider.values(), key=lambda item: item["provider"]),
-        "amostras": rows[:50],
+        "amostras": samples[:50],
+        "alertas": alerts[:50],
     }

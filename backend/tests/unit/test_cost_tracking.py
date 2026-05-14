@@ -115,6 +115,88 @@ def test_cost_summary_precifica_apenas_split_real(tmp_path):
     assert summary["custo_usd"] > 0
 
 
+def test_cost_summary_conta_um_run_com_json_e_pdf(tmp_path):
+    store, atividade, aluno = _seed_storage(tmp_path)
+    arquivo_json = tmp_path / "correcao.json"
+    arquivo_json.write_text('{"nota_final": 8}', encoding="utf-8")
+    arquivo_pdf = tmp_path / "correcao.pdf"
+    arquivo_pdf.write_bytes(b"%PDF-1.4\n")
+
+    doc_json = store.salvar_documento(
+        arquivo_origem=str(arquivo_json),
+        tipo=TipoDocumento.CORRECAO,
+        atividade_id=atividade.id,
+        aluno_id=aluno.id,
+        ia_provider="openai",
+        ia_modelo="gpt-5-nano",
+        tokens_usados=300,
+        metadata={"tokens_entrada": 200, "tokens_saida": 100, "cost_run_id": "run-dual"},
+    )
+    doc_pdf = store.salvar_documento(
+        arquivo_origem=str(arquivo_pdf),
+        tipo=TipoDocumento.CORRECAO,
+        atividade_id=atividade.id,
+        aluno_id=aluno.id,
+        ia_provider="openai",
+        ia_modelo="gpt-5-nano",
+        tokens_usados=300,
+        metadata={"tokens_entrada": 200, "tokens_saida": 100, "cost_run_id": "run-dual"},
+    )
+
+    summary = build_cost_summary([doc_json, doc_pdf])
+
+    assert summary["documentos_analisados"] == 2
+    assert summary["runs_analisados"] == 1
+    assert summary["runs_precificados"] == 1
+    assert summary["tokens_entrada"] == 200
+    assert summary["tokens_saida"] == 100
+    assert len(summary["amostras"]) == 1
+    assert summary["amostras"][0]["cost_run_id"] == "run-dual"
+    assert summary["amostras"][0]["documentos_contagem"] == 2
+    assert set(summary["amostras"][0]["documentos_ids"]) == {doc_json.id, doc_pdf.id}
+
+
+def test_cost_summary_bloqueia_run_com_metadata_conflitante(tmp_path):
+    store, atividade, aluno = _seed_storage(tmp_path)
+    arquivo_json = tmp_path / "correcao.json"
+    arquivo_json.write_text('{"nota_final": 8}', encoding="utf-8")
+    arquivo_pdf = tmp_path / "correcao.pdf"
+    arquivo_pdf.write_bytes(b"%PDF-1.4\n")
+
+    doc_json = store.salvar_documento(
+        arquivo_origem=str(arquivo_json),
+        tipo=TipoDocumento.CORRECAO,
+        atividade_id=atividade.id,
+        aluno_id=aluno.id,
+        ia_provider="openai",
+        ia_modelo="gpt-5-nano",
+        tokens_usados=300,
+        metadata={"tokens_entrada": 200, "tokens_saida": 100, "cost_run_id": "run-conflict"},
+    )
+    doc_pdf = store.salvar_documento(
+        arquivo_origem=str(arquivo_pdf),
+        tipo=TipoDocumento.CORRECAO,
+        atividade_id=atividade.id,
+        aluno_id=aluno.id,
+        ia_provider="openai",
+        ia_modelo="gpt-5-nano",
+        tokens_usados=310,
+        metadata={"tokens_entrada": 210, "tokens_saida": 100, "cost_run_id": "run-conflict"},
+    )
+
+    summary = build_cost_summary([doc_json, doc_pdf])
+
+    assert summary["runs_analisados"] == 1
+    assert summary["runs_precificados"] == 0
+    assert summary["runs_bloqueados"] == 1
+    assert summary["bloqueios"]["run_metadata_conflict"] == 1
+    assert summary["tokens_entrada"] == 0
+    assert summary["tokens_saida"] == 0
+    assert summary["amostras"][0]["erro"] == "run_metadata_conflict"
+    assert set(summary["amostras"][0]["documentos_ids"]) == {doc_json.id, doc_pdf.id}
+    assert summary["alertas"][0]["tipo"] == "run_metadata_conflict"
+
+
 @pytest.mark.asyncio
 async def test_executar_com_tools_falha_sem_pdf_obrigatorio(monkeypatch):
     import chat_service
