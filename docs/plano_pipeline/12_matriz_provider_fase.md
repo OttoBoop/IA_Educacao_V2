@@ -9,8 +9,9 @@
 
 ## Status Oficial De Deploy
 
-- GitHub `origin/main` contem o marker `3ddf6c5`; o marcador HTML aponta para
-  o commit funcional `39aa50a`.
+- GitHub `origin/main` pode conter commits documentais posteriores; o ultimo
+  marker funcional publicado e `3ddf6c5`, e o marcador HTML aponta para o commit
+  funcional `39aa50a`.
 - Render live confirmou `39aa50a` por `wait_deploy.sh`, `check_deploy.sh` e
   `/api/health`.
 - Docs antigos registram que auto-deploy Git nao funciona de forma confiavel; o

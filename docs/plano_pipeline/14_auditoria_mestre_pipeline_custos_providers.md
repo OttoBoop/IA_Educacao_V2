@@ -178,7 +178,7 @@ detalhar e auditar estas linhas.
 | Frente | Temos hoje | Limite da afirmacao |
 |---|---|---|
 | Documentacao | Doc 09 como painel curto; Doc 14 como auditoria mestre; Doc 05/12 com notas de status | Doc 14 ainda precisa revisao humana e commit. |
-| Git/GitHub | Commits ate `39aa50a` publicados; marcador `3ddf6c5` em `origin/main` | Usar marker HTML antes de aceitar qualquer smoke como oficial. |
+| Git/GitHub | Commits ate `39aa50a` publicados; marcador funcional `3ddf6c5`; pode haver docs acima do marker em `origin/main` | Usar marker HTML antes de aceitar qualquer smoke como oficial. |
 | Pipeline P4 | Bloqueio local de extracao de respostas sem prova valida | Precisa push/deploy/smoke para virar oficial. |
 | Pipeline P5/P6 | Contencao de nota e preservacao de `_documentos_faltantes` | `N/A` ainda e fallback proibido como estado final. |
 | Schema/avisos | Defaults `_avisos_*`, visualizador melhorado e schemas mais permissivos | Permissividade nao e contrato forte; pode aceitar legado demais. |

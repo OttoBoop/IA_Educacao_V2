@@ -64,7 +64,9 @@ Estabilizar o NOVO CR para que a pipeline:
 - Commit funcional de JSON valido/artefato por extensao: `39aa50a`.
 - Marker mais novo publicado: `3ddf6c5` (`chore: mark deploy 39aa50a`).
 - Marker atual visto no Render: `3ddf6c5`, HTML com `novocr-deploy=39aa50a`.
-- GitHub `origin/main`: `3ddf6c5`; Render live confirmado em `39aa50a`.
+- GitHub `origin/main`: pode conter commits documentais posteriores; o ultimo
+  marker funcional publicado e `3ddf6c5`, e Render live esta confirmado em
+  `39aa50a`.
 - Render live observado: saiu de `2e1098f` para `b12be9a` e depois confirmou
   marcadores `b4d7ee6`, `f505be6`, `97a7c79`, `c75af88` e `39aa50a`.
 - `/api/custos/status` no Render: HTTP 200, confirmando endpoints de custo live.
