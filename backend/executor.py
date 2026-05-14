@@ -31,6 +31,7 @@ from models import (
 from prompts import PromptManager, PromptTemplate, EtapaProcessamento, prompt_manager
 from storage import StorageManager, storage
 from ai_providers import ai_registry, AIResponse
+from token_usage import record_token_usage
 
 # Import do sistema multimodal
 try:
@@ -2733,9 +2734,16 @@ Seja preciso, educativo e construtivo em suas análises."""
             tool_calls = _combined_tool_calls(respostas_tool)
             for tc in tool_calls:
                 if tc.get("name") == "create_document":
-                    docs = tc.get("input", {}).get("documents", [])
+                    docs_input = tc.get("input", {}).get("documents", [])
+                    if isinstance(docs_input, dict):
+                        docs = [docs_input]
+                    elif isinstance(docs_input, list):
+                        docs = docs_input
+                    else:
+                        docs = []
                     for doc in docs:
-                        documentos_gerados.append(doc.get("filename", "documento"))
+                        if isinstance(doc, dict):
+                            documentos_gerados.append(doc.get("filename", "documento"))
 
             if documentos_gerados:
                 alertas.append({"tipo": "info", "mensagem": f"Documentos gerados: {documentos_gerados}"})
@@ -2760,8 +2768,15 @@ Seja preciso, educativo e construtivo em suas análises."""
                         doc_content = tc.get("input", {}).get("content", "")
                         # If not there, check inside documents array
                         if not doc_content:
-                            for doc in tc.get("input", {}).get("documents", []):
-                                if doc.get("content"):
+                            docs_input = tc.get("input", {}).get("documents", [])
+                            if isinstance(docs_input, dict):
+                                docs = [docs_input]
+                            elif isinstance(docs_input, list):
+                                docs = docs_input
+                            else:
+                                docs = []
+                            for doc in docs:
+                                if isinstance(doc, dict) and doc.get("content"):
                                     doc_content = doc["content"]
                                     break
                         if doc_content:
@@ -2776,6 +2791,9 @@ Seja preciso, educativo e construtivo em suas análises."""
             final_state = _dual_output_state(respostas_tool) if dual_output_expected else {"complete": True}
 
             if dual_output_expected and not final_state["complete"]:
+                tokens_entrada = _sum_usage(respostas_tool, "input_tokens") or _sum_usage(respostas_tool, "tokens")
+                tokens_saida = _sum_usage(respostas_tool, "output_tokens")
+                tokens_total = tokens_entrada + tokens_saida
                 detalhes = []
                 if final_state.get("errored_tools"):
                     detalhes.append("tools com erro: " + ", ".join(final_state["errored_tools"]))
@@ -2793,11 +2811,38 @@ Seja preciso, educativo e construtivo em suas análises."""
                 for doc_id in context.created_document_ids:
                     self.storage.atualizar_documento_processamento(
                         doc_id,
+                        ia_provider=model.tipo.value,
+                        ia_modelo=model.modelo,
+                        prompt_usado=prompt_id,
+                        tokens_usados=tokens_total,
+                        tempo_processamento_ms=tempo_ms,
                         status=StatusProcessamento.ERRO,
                         metadata_patch={
                             "erro_pipeline": erro_msg,
+                            "tokens_entrada": tokens_entrada,
+                            "tokens_saida": tokens_saida,
+                            "tokens_total": tokens_total,
                             "cost_run_id": context.cost_run_id,
+                            "custo_origem": "tool_use_error",
                         },
+                    )
+                if not context.created_document_ids and tokens_total > 0:
+                    record_token_usage(
+                        cost_run_id=context.cost_run_id,
+                        atividade_id=atividade_id,
+                        aluno_id=aluno_id,
+                        etapa=expected_document_type.value if expected_document_type else "tools",
+                        provider=model.tipo.value,
+                        modelo=model.modelo,
+                        tokens_entrada=tokens_entrada,
+                        tokens_saida=tokens_saida,
+                        status="erro",
+                        erro=erro_msg,
+                        tentativas=tentativas,
+                        tempo_ms=tempo_ms,
+                        prompt_id=prompt_id,
+                        source="executar_com_tools",
+                        metadata={"erro_tipo": "dual_output_incomplete"},
                     )
                 return ResultadoExecucao(
                     sucesso=False,
@@ -2805,8 +2850,8 @@ Seja preciso, educativo e construtivo em suas análises."""
                     resposta_raw=raw_content,
                     provider=model.tipo.value,
                     modelo=model.modelo,
-                    tokens_entrada=_sum_usage(respostas_tool, "input_tokens") or _sum_usage(respostas_tool, "tokens"),
-                    tokens_saida=_sum_usage(respostas_tool, "output_tokens"),
+                    tokens_entrada=tokens_entrada,
+                    tokens_saida=tokens_saida,
                     tempo_ms=tempo_ms,
                     alertas=alertas,
                     tentativas=tentativas,

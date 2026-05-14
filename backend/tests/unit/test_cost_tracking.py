@@ -6,6 +6,7 @@ import pytest
 from cost_tracking import build_cost_summary
 from models import NivelEnsino, StatusProcessamento, TipoDocumento
 from storage import StorageManager
+from token_usage import TokenUsageRecord, TokenUsageStore
 
 
 def _seed_storage(tmp_path):
@@ -197,8 +198,102 @@ def test_cost_summary_bloqueia_run_com_metadata_conflitante(tmp_path):
     assert summary["alertas"][0]["tipo"] == "run_metadata_conflict"
 
 
+def test_cost_summary_inclui_token_usage_sem_documento():
+    usage = TokenUsageRecord(
+        id="usage-1",
+        cost_run_id="run-no-doc",
+        atividade_id="ativ-1",
+        aluno_id="aluno-1",
+        etapa="correcao",
+        provider="openai",
+        modelo="gpt-5-nano",
+        tokens_entrada=300,
+        tokens_saida=50,
+        status="erro",
+        erro="Saída obrigatória incompleta",
+        source="test",
+    )
+
+    summary = build_cost_summary([], token_usage_records=[usage])
+
+    assert summary["documentos_analisados"] == 0
+    assert summary["token_usage_analisados"] == 1
+    assert summary["runs_analisados"] == 1
+    assert summary["runs_precificados"] == 1
+    assert summary["tokens_entrada"] == 300
+    assert summary["tokens_saida"] == 50
+    assert summary["amostras"][0]["cost_run_id"] == "run-no-doc"
+    assert summary["amostras"][0]["documentos_contagem"] == 0
+    assert summary["amostras"][0]["token_usage_ids"] == ["usage-1"]
+
+
+def test_token_usage_store_persiste_json_mensal(tmp_path):
+    store = TokenUsageStore(tmp_path)
+    usage = TokenUsageRecord(
+        id="usage-persist",
+        cost_run_id="run-persist",
+        atividade_id="ativ-1",
+        aluno_id=None,
+        etapa="tools",
+        provider="openai",
+        modelo="gpt-5-nano",
+        tokens_entrada=11,
+        tokens_saida=7,
+        status="erro",
+        criado_em="2026-05-15T12:00:00+00:00",
+    )
+
+    store.add(usage)
+
+    saved_path = tmp_path / "token_usage" / "2026-05.json"
+    assert saved_path.exists()
+    loaded = store.list_records()
+    assert len(loaded) == 1
+    assert loaded[0].id == "usage-persist"
+    assert loaded[0].tokens_total == 18
+
+
+def test_cost_summary_deduplica_documento_e_token_usage_mesmo_run(tmp_path):
+    store, atividade, aluno = _seed_storage(tmp_path)
+    arquivo_json = tmp_path / "correcao.json"
+    arquivo_json.write_text('{"nota_final": 8}', encoding="utf-8")
+    doc = store.salvar_documento(
+        arquivo_origem=str(arquivo_json),
+        tipo=TipoDocumento.CORRECAO,
+        atividade_id=atividade.id,
+        aluno_id=aluno.id,
+        ia_provider="openai",
+        ia_modelo="gpt-5-nano",
+        tokens_usados=350,
+        metadata={"tokens_entrada": 300, "tokens_saida": 50, "cost_run_id": "run-shared"},
+    )
+    usage = TokenUsageRecord(
+        id="usage-shared",
+        cost_run_id="run-shared",
+        atividade_id=atividade.id,
+        aluno_id=aluno.id,
+        etapa="correcao",
+        provider="openai",
+        modelo="gpt-5-nano",
+        tokens_entrada=300,
+        tokens_saida=50,
+        status="erro",
+        source="test",
+    )
+
+    summary = build_cost_summary([doc], token_usage_records=[usage])
+
+    assert summary["runs_analisados"] == 1
+    assert summary["runs_precificados"] == 1
+    assert summary["tokens_entrada"] == 300
+    assert summary["tokens_saida"] == 50
+    assert summary["amostras"][0]["documentos_ids"] == [doc.id]
+    assert summary["amostras"][0]["token_usage_ids"] == ["usage-shared"]
+
+
 @pytest.mark.asyncio
 async def test_executar_com_tools_falha_sem_pdf_obrigatorio(monkeypatch):
+    import executor as executor_module
     import chat_service
     from executor import PipelineExecutor
     from chat_service import ProviderType
@@ -246,6 +341,8 @@ async def test_executar_com_tools_falha_sem_pdf_obrigatorio(monkeypatch):
             }
 
     monkeypatch.setattr(chat_service, "ChatClient", DummyClient)
+    record_usage = MagicMock()
+    monkeypatch.setattr(executor_module, "record_token_usage", record_usage)
 
     executor = PipelineExecutor()
     resultado = await executor.executar_com_tools(
@@ -261,6 +358,10 @@ async def test_executar_com_tools_falha_sem_pdf_obrigatorio(monkeypatch):
     assert resultado.sucesso is False
     assert "Saída obrigatória incompleta" in resultado.erro
     assert "fallback automático" in resultado.erro
+    record_usage.assert_called_once()
+    assert record_usage.call_args.kwargs["status"] == "erro"
+    assert record_usage.call_args.kwargs["tokens_entrada"] == 20
+    assert record_usage.call_args.kwargs["tokens_saida"] == 6
 
 
 @pytest.mark.asyncio
@@ -350,7 +451,13 @@ async def test_executar_com_tools_falha_quando_execute_code_nao_persiste_pdf(mon
     assert resultado.tentativas == 2
     assert "PDF persistido via execute_python_code" in resultado.erro
     assert "sem arquivo gerado" in resultado.erro
-    assert executor.storage.atualizar_documento_processamento.call_args.kwargs["status"] == StatusProcessamento.ERRO
+    update_kwargs = executor.storage.atualizar_documento_processamento.call_args.kwargs
+    assert update_kwargs["status"] == StatusProcessamento.ERRO
+    assert update_kwargs["ia_provider"] == "openai"
+    assert update_kwargs["ia_modelo"] == "gpt-5-nano"
+    assert update_kwargs["tokens_usados"] == 26
+    assert update_kwargs["metadata_patch"]["tokens_entrada"] == 20
+    assert update_kwargs["metadata_patch"]["tokens_saida"] == 6
 
 
 @pytest.mark.asyncio
