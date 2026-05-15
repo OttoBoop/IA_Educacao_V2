@@ -769,13 +769,35 @@ class PipelineExecutor:
                 tempo_ms=(time.time() - inicio) * 1000
             )
 
+        arquivos_envio = list(arquivos)
+        paginas_pdf_renderizadas: List[str] = []
+        temp_dir_paginas_pdf = None
+        if etapa == EtapaProcessamento.EXTRAIR_RESPOSTAS:
+            paginas_pdf_renderizadas, temp_dir_paginas_pdf = (
+                self._renderizar_paginas_pdf_sem_texto_para_anexos(
+                    arquivos,
+                    provider_tipo=config.get("tipo", ""),
+                )
+            )
+            if paginas_pdf_renderizadas:
+                arquivos_envio.extend(paginas_pdf_renderizadas)
+                _logger.info(
+                    "Paginas PDF sem texto renderizadas para EXTRAIR_RESPOSTAS",
+                    quantidade=len(paginas_pdf_renderizadas),
+                    provider=config.get("tipo", "unknown"),
+                )
+
         # Enviar para IA com anexos
-        resultado = await cliente.enviar_com_anexos(
-            mensagem=prompt_renderizado,
-            arquivos=arquivos,
-            system_prompt=prompt_sistema_renderizado,
-            verificar_anexos=True
-        )
+        try:
+            resultado = await cliente.enviar_com_anexos(
+                mensagem=prompt_renderizado,
+                arquivos=arquivos_envio,
+                system_prompt=prompt_sistema_renderizado,
+                verificar_anexos=True
+            )
+        finally:
+            if temp_dir_paginas_pdf is not None:
+                temp_dir_paginas_pdf.cleanup()
         
         tempo_ms = (time.time() - inicio) * 1000
         
@@ -832,6 +854,40 @@ class PipelineExecutor:
                 resposta_raw=resultado.resposta,
                 resposta_parsed=resposta_parsed,
                 erro=erro_parseado,
+                tokens_entrada=resultado.tokens_entrada,
+                tokens_saida=resultado.tokens_saida,
+                anexos_enviados=resultado.anexos_enviados,
+                anexos_confirmados=resultado.anexos_confirmados,
+                tempo_ms=tempo_ms,
+            )
+        erro_scan_suspeito = self._erro_respostas_scan_suspeitas(
+            resposta_parsed,
+            tem_paginas_pdf_renderizadas=bool(paginas_pdf_renderizadas),
+        )
+        if erro_scan_suspeito:
+            self._registrar_custo_resposta_invalida(
+                etapa=etapa,
+                atividade_id=atividade_id,
+                aluno_id=aluno_id,
+                provider=resultado.provider,
+                modelo=resultado.modelo,
+                tokens_entrada=resultado.tokens_entrada,
+                tokens_saida=resultado.tokens_saida,
+                erro=erro_scan_suspeito,
+                tempo_ms=tempo_ms,
+                prompt_id=prompt.id,
+                source="executar_multimodal",
+            )
+            return ResultadoExecucao(
+                sucesso=False,
+                etapa=etapa,
+                prompt_usado=prompt_renderizado,
+                prompt_id=prompt.id,
+                provider=resultado.provider,
+                modelo=resultado.modelo,
+                resposta_raw=resultado.resposta,
+                resposta_parsed=resposta_parsed,
+                erro=erro_scan_suspeito,
                 tokens_entrada=resultado.tokens_entrada,
                 tokens_saida=resultado.tokens_saida,
                 anexos_enviados=resultado.anexos_enviados,
@@ -1900,6 +1956,119 @@ class PipelineExecutor:
                 erro=str(e),
             )
             return ""
+
+    def _pagina_pdf_sem_texto_tem_marcas_visuais(self, pagina: Any) -> bool:
+        """Detecta se uma pagina sem texto contem marcas visuais suficientes."""
+        try:
+            pix = pagina.get_pixmap(matrix=fitz.Matrix(0.25, 0.25), alpha=False)
+        except Exception:
+            return False
+
+        canais = max(1, pix.n)
+        amostras = pix.samples
+        total_pixels = max(1, pix.width * pix.height)
+        pixels_escuros = 0
+        for i in range(0, len(amostras), canais):
+            rgb = amostras[i:i + min(3, canais)]
+            if not rgb:
+                continue
+            media = sum(rgb) / len(rgb)
+            if media < 210 and min(rgb) < 170:
+                pixels_escuros += 1
+
+        minimo = max(20, int(total_pixels * 0.002))
+        return pixels_escuros >= minimo
+
+    def _renderizar_paginas_pdf_sem_texto_para_anexos(
+        self,
+        arquivos: List[str],
+        provider_tipo: str,
+        max_paginas: int = 8,
+        min_text_chars: int = 40,
+    ) -> tuple[List[str], Optional[tempfile.TemporaryDirectory]]:
+        """
+        Para OpenAI/OpenRouter, anexa imagens de paginas escaneadas sem texto.
+
+        A documentacao oficial diz que PDFs podem entrar como arquivo e que imagens
+        tambem podem ser passadas no mesmo content array. Esta etapa torna paginas
+        sem texto extraivel visiveis explicitamente para modelos que nao aproveitaram
+        essas paginas apenas pelo anexo PDF.
+        """
+        if provider_tipo not in {"openai", "openrouter"}:
+            return [], None
+
+        temp_dir = tempfile.TemporaryDirectory(prefix="novocr_pdf_pages_")
+        renderizados: List[str] = []
+        destino = Path(temp_dir.name)
+
+        try:
+            for arquivo_str in arquivos:
+                if len(renderizados) >= max_paginas:
+                    break
+
+                arquivo = Path(arquivo_str)
+                if arquivo.suffix.lower() != ".pdf" or not arquivo.exists():
+                    continue
+
+                with fitz.open(str(arquivo)) as pdf_doc:
+                    for pagina_idx, pagina in enumerate(pdf_doc, start=1):
+                        if len(renderizados) >= max_paginas:
+                            break
+
+                        texto = (pagina.get_text("text") or "").strip()
+                        if len(texto) >= min_text_chars:
+                            continue
+                        if not self._pagina_pdf_sem_texto_tem_marcas_visuais(pagina):
+                            continue
+
+                        nome_base = re.sub(r"[^A-Za-z0-9_.-]+", "_", arquivo.stem)[:80]
+                        out_path = destino / f"{nome_base}_pagina_{pagina_idx:03d}_scan.png"
+                        pix = pagina.get_pixmap(matrix=fitz.Matrix(2.0, 2.0), alpha=False)
+                        pix.save(str(out_path))
+                        renderizados.append(str(out_path))
+        except Exception as e:
+            _logger.warning(
+                "Falha ao renderizar paginas PDF sem texto",
+                erro=str(e),
+            )
+
+        if not renderizados:
+            temp_dir.cleanup()
+            return [], None
+
+        return renderizados, temp_dir
+
+    def _erro_respostas_scan_suspeitas(
+        self,
+        resposta_parsed: Optional[Dict[str, Any]],
+        *,
+        tem_paginas_pdf_renderizadas: bool,
+    ) -> Optional[str]:
+        """Bloqueia sucesso quando scans foram enviados mas quase tudo voltou em branco."""
+        if not tem_paginas_pdf_renderizadas or not isinstance(resposta_parsed, dict):
+            return None
+
+        respostas = resposta_parsed.get("respostas")
+        if not isinstance(respostas, list) or not respostas:
+            return None
+
+        def _sem_conteudo(item: Any) -> bool:
+            if not isinstance(item, dict):
+                return False
+            resposta_aluno = str(item.get("resposta_aluno") or "").strip()
+            return bool(item.get("ilegivel")) or bool(item.get("em_branco")) or not resposta_aluno
+
+        total = len(respostas)
+        sem_conteudo = sum(1 for item in respostas if _sem_conteudo(item))
+        if total >= 3 and sem_conteudo / total >= 0.8:
+            return (
+                f"EXTRAIR_RESPOSTAS marcou {sem_conteudo} de {total} respostas como "
+                "sem conteudo mesmo com paginas escaneadas anexadas como imagem. "
+                "Isso e suspeito demais para concluir a etapa; revise OCR/vision do "
+                "modelo ou use outro provider explicitamente."
+            )
+
+        return None
     
     def _ler_documento_texto(self, documento: Documento, usar_multimodal: bool = False) -> str:
         """

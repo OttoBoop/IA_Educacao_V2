@@ -521,8 +521,18 @@ class ClienteAPIMultimodal:
             elif self.tipo == "google":
                 return await self._enviar_google(mensagem, anexos_preparados, system_prompt, historico)
             else:
-                # Fallback: enviar textos, ignorar binários
-                return await self._enviar_texto_apenas(mensagem, anexos_preparados, system_prompt, historico)
+                return ResultadoEnvio(
+                    sucesso=False,
+                    erro=f"Provider multimodal não suportado: {self.tipo}",
+                    erro_detalhes=(
+                        "Para anexos multimodais, use provider openai/openrouter, "
+                        "anthropic ou google. Providers OpenAI-compatible devem "
+                        "ser configurados com tipo openai/openrouter."
+                    ),
+                    provider=self.tipo,
+                    modelo=self.modelo,
+                    anexos_enviados=[a.to_dict() for a in anexos_preparados],
+                )
 
         # Enviar para API com retry automático
         try:
@@ -562,21 +572,6 @@ class ClienteAPIMultimodal:
         # Check if this is a reasoning model (o1, o3, etc.)
         is_reasoning = is_reasoning_model(self.modelo)
 
-        # Reasoning models don't support vision/image content
-        if is_reasoning:
-            has_images = any(
-                a.tipo_envio == "binario" and a.mime_type.startswith('image/')
-                for a in anexos
-            )
-            if has_images:
-                return ResultadoEnvio(
-                    sucesso=False,
-                    erro=f"Modelo {self.modelo} não suporta análise de imagens",
-                    erro_detalhes="Modelos de reasoning (o1, o3, etc.) não suportam conteúdo visual. Use um modelo com suporte a vision como gpt-4o.",
-                    provider="openai",
-                    modelo=self.modelo
-                )
-
         messages = []
 
         # Reasoning models use "developer" role instead of "system"
@@ -600,6 +595,10 @@ class ClienteAPIMultimodal:
                 if anexo.extensao == '.pdf':
                     # OpenAI suporta PDF nativamente (desde GPT-4o)
                     content.append({
+                        "type": "text",
+                        "text": f"--- PDF ANEXADO: {anexo.nome} ---"
+                    })
+                    content.append({
                         "type": "file",
                         "file": {
                             "filename": anexo.nome,
@@ -607,6 +606,10 @@ class ClienteAPIMultimodal:
                         }
                     })
                 elif anexo.mime_type.startswith('image/'):
+                    content.append({
+                        "type": "text",
+                        "text": f"--- IMAGEM ANEXADA: {anexo.nome} ---"
+                    })
                     content.append({
                         "type": "image_url",
                         "image_url": {

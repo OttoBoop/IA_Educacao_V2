@@ -219,6 +219,123 @@ class TestExtrairRespostasContextoQuestoes:
 
         assert "DOCUMENTO ANEXADO" in variaveis["conteudo_documento"]
 
+    def test_paginas_pdf_sem_texto_sao_renderizadas_como_imagem(self, tmp_path):
+        from executor import PipelineExecutor
+        import fitz
+
+        imagem_doc = fitz.open()
+        imagem_page = imagem_doc.new_page(width=300, height=180)
+        imagem_page.insert_text((24, 60), "Questao 3 resposta manuscrita simulada")
+        png_bytes = imagem_page.get_pixmap(matrix=fitz.Matrix(2, 2), alpha=False).tobytes("png")
+        imagem_doc.close()
+
+        prova_path = tmp_path / "prova_scan.pdf"
+        pdf = fitz.open()
+        page_scan = pdf.new_page(width=300, height=180)
+        page_scan.insert_image(page_scan.rect, stream=png_bytes)
+        page_texto = pdf.new_page(width=300, height=180)
+        page_texto.insert_text((24, 60), "Questao 7 resposta digitada com texto extraivel")
+        pdf.save(str(prova_path))
+        pdf.close()
+
+        executor = PipelineExecutor.__new__(PipelineExecutor)
+        imagens, temp_dir = executor._renderizar_paginas_pdf_sem_texto_para_anexos(
+            [str(prova_path)],
+            provider_tipo="openai",
+        )
+
+        try:
+            assert len(imagens) == 1
+            assert "pagina_001" in Path(imagens[0]).name
+            assert Path(imagens[0]).suffix == ".png"
+            assert Path(imagens[0]).exists()
+        finally:
+            if temp_dir is not None:
+                temp_dir.cleanup()
+
+    def test_extrair_respostas_scan_quase_tudo_branco_falha_alto(self):
+        from executor import PipelineExecutor
+
+        executor = PipelineExecutor.__new__(PipelineExecutor)
+        resposta = {
+            "respostas": [
+                {"questao_numero": 1, "resposta_aluno": "", "em_branco": True},
+                {"questao_numero": 2, "resposta_aluno": "", "em_branco": True},
+                {"questao_numero": 3, "resposta_aluno": "", "em_branco": True},
+                {"questao_numero": 4, "resposta_aluno": "", "em_branco": True},
+                {"questao_numero": 5, "resposta_aluno": "", "em_branco": True},
+                {"questao_numero": 6, "resposta_aluno": "", "em_branco": True},
+                {"questao_numero": 7, "resposta_aluno": "codigo Julia", "em_branco": False},
+            ]
+        }
+
+        erro = executor._erro_respostas_scan_suspeitas(
+            resposta,
+            tem_paginas_pdf_renderizadas=True,
+        )
+
+        assert erro is not None
+        assert "paginas escaneadas anexadas como imagem" in erro
+        assert executor._erro_respostas_scan_suspeitas(
+            resposta,
+            tem_paginas_pdf_renderizadas=False,
+        ) is None
+
+    @pytest.mark.asyncio
+    async def test_openai_reasoning_model_envia_imagem_sem_bloqueio_local(self, monkeypatch):
+        from anexos import ArquivoAnexo, ClienteAPIMultimodal
+
+        captured = {}
+
+        class FakeResponse:
+            status_code = 200
+            headers = {}
+
+            def json(self):
+                return {
+                    "choices": [{"message": {"content": "{\"ok\": true}"}}],
+                    "usage": {"prompt_tokens": 10, "completion_tokens": 2},
+                }
+
+        class FakeClient:
+            def __init__(self, *args, **kwargs):
+                pass
+
+            async def __aenter__(self):
+                return self
+
+            async def __aexit__(self, exc_type, exc, tb):
+                return False
+
+            async def post(self, url, headers, json):
+                captured["payload"] = json
+                return FakeResponse()
+
+        monkeypatch.setattr("anexos.httpx.AsyncClient", FakeClient)
+
+        cliente = ClienteAPIMultimodal({
+            "tipo": "openai",
+            "api_key": "test-key",
+            "modelo": "gpt-5-nano",
+            "max_tokens": 128,
+        })
+        anexo = ArquivoAnexo(
+            nome="pagina_001_scan.png",
+            caminho="/tmp/pagina_001_scan.png",
+            extensao=".png",
+            mime_type="image/png",
+            tamanho_bytes=10,
+            conteudo_base64="aW1hZ2U=",
+            tipo_envio="binario",
+        )
+
+        resultado = await cliente._enviar_openai("Leia a imagem", [anexo], None, None)
+
+        assert resultado.sucesso is True
+        content = captured["payload"]["messages"][-1]["content"]
+        assert any(part.get("type") == "image_url" for part in content)
+        assert any("IMAGEM ANEXADA" in part.get("text", "") for part in content)
+
 
 class TestF2T1_ErrorFramework:
     """F2-T1: Framework de erros estruturados."""
