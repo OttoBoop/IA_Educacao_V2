@@ -1247,6 +1247,29 @@ class ChatClient:
             })
         return openai_tools
 
+    def _convert_tools_to_openai_responses_format(self, anthropic_tools: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+        """Convert Anthropic tool format to OpenAI Responses API format."""
+        response_tools = []
+        for tool in anthropic_tools:
+            response_tools.append({
+                "type": "function",
+                "name": tool["name"],
+                "description": tool.get("description", ""),
+                "parameters": tool.get("input_schema", {}),
+            })
+        return response_tools
+
+    def _convert_tool_choice_to_openai_responses_format(self, tool_choice: Any) -> Any:
+        """Convert Chat Completions tool_choice shape to Responses API shape."""
+        if not isinstance(tool_choice, dict):
+            return tool_choice
+        if tool_choice.get("type") != "function":
+            return tool_choice
+        name = tool_choice.get("name") or (tool_choice.get("function") or {}).get("name")
+        if not name:
+            return tool_choice
+        return {"type": "function", "name": name}
+
     def _summarize_generated_files(self, files_generated: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
         """Return generated-file metadata without echoing file bytes/base64."""
         summarized = []
@@ -1283,6 +1306,18 @@ class ChatClient:
     ) -> Dict:
         """Chat com API OpenAI with tool use support"""
         is_reasoning = self._is_reasoning_model()
+        if is_reasoning:
+            return await self._chat_openai_responses_with_tools(
+                mensagem=mensagem,
+                historico=historico,
+                system=system,
+                tools=tools,
+                tool_registry=tool_registry,
+                context=context,
+                max_iterations=max_iterations,
+                tool_choice=tool_choice,
+            )
+
         system_role = "developer" if is_reasoning else "system"
         messages = [{"role": system_role, "content": system}]
 
@@ -1406,6 +1441,159 @@ class ChatClient:
             "provider": self.config.tipo.value,
             "tool_calls": all_tool_calls,
             "error": "max_iterations_exceeded"
+        }
+
+    def _build_openai_responses_tool_params(
+        self,
+        input_items: List[Dict[str, Any]],
+        system: str,
+        response_tools: List[Dict[str, Any]],
+        tool_choice: Optional[Any] = None,
+    ) -> Dict[str, Any]:
+        """Build Responses API params for OpenAI reasoning models with tools."""
+        params = {
+            "model": self.config.get_model_id(),
+            "instructions": system,
+            "input": input_items,
+            "tools": response_tools,
+            "max_output_tokens": self.config.max_tokens,
+        }
+
+        reasoning_effort = self.config.parametros.get("reasoning_effort")
+        if reasoning_effort:
+            params["reasoning"] = {"effort": reasoning_effort}
+
+        if tool_choice is not None:
+            params["tool_choice"] = self._convert_tool_choice_to_openai_responses_format(tool_choice)
+
+        return params
+
+    def _extract_openai_responses_text(self, data: Dict[str, Any]) -> str:
+        """Extract final text from a Responses API payload."""
+        if data.get("output_text"):
+            return data.get("output_text") or ""
+
+        texts = []
+        for item in data.get("output", []) or []:
+            if item.get("type") != "message":
+                continue
+            for content in item.get("content", []) or []:
+                if content.get("type") in {"output_text", "text"}:
+                    texts.append(content.get("text", ""))
+        return "\n".join(part for part in texts if part)
+
+    async def _chat_openai_responses_with_tools(
+        self,
+        mensagem: str,
+        historico: List,
+        system: str,
+        tools: List[Dict[str, Any]],
+        tool_registry: ToolRegistry,
+        context: Optional[ToolExecutionContext] = None,
+        max_iterations: int = 10,
+        tool_choice: Optional[Any] = None,
+    ) -> Dict:
+        """Use OpenAI Responses API for reasoning models with tool calls."""
+        input_items: List[Dict[str, Any]] = []
+        for msg in historico or []:
+            role = msg.get("role", "user")
+            if role == "system":
+                continue
+            input_items.append({"role": role, "content": msg.get("content", "")})
+        input_items.append({"role": "user", "content": mensagem})
+
+        response_tools = self._convert_tools_to_openai_responses_format(tools)
+        total_tokens = 0
+        total_input_tokens = 0
+        total_output_tokens = 0
+        all_tool_calls = []
+
+        for iteration in range(max_iterations):
+            params = self._build_openai_responses_tool_params(
+                input_items=input_items,
+                system=system,
+                response_tools=response_tools,
+                tool_choice=tool_choice if iteration == 0 else None,
+            )
+
+            async with httpx.AsyncClient(timeout=120.0) as client:
+                response = await client.post(
+                    f"{self.base_url}/responses",
+                    headers={
+                        "Authorization": f"Bearer {self.api_key}",
+                        "Content-Type": "application/json",
+                    },
+                    json=params,
+                )
+
+                if response.status_code != 200:
+                    raise ProviderAPIError("OpenAI", response.status_code, response.text)
+
+                data = response.json()
+
+            usage = data.get("usage", {})
+            input_tokens = self._token_int(usage.get("input_tokens", usage.get("prompt_tokens", 0)))
+            output_tokens = self._token_int(usage.get("output_tokens", usage.get("completion_tokens", 0)))
+            request_total = self._token_int(usage.get("total_tokens", 0)) or (input_tokens + output_tokens)
+            total_input_tokens += input_tokens
+            total_output_tokens += output_tokens
+            total_tokens += request_total
+
+            output_items = data.get("output", []) or []
+            function_calls = [item for item in output_items if item.get("type") == "function_call"]
+
+            if not function_calls:
+                result = {
+                    "content": self._extract_openai_responses_text(data),
+                    **self._usage_payload(total_input_tokens, total_output_tokens, total_tokens),
+                    "modelo": self.config.modelo,
+                    "provider": self.config.tipo.value,
+                    "tool_calls": all_tool_calls,
+                }
+                if data.get("status") and data.get("status") != "completed":
+                    result["stop_reason"] = data.get("status")
+                    if data.get("incomplete_details"):
+                        result["incomplete_details"] = data.get("incomplete_details")
+                return result
+
+            input_items.extend(output_items)
+            for item in function_calls:
+                call_id = item.get("call_id") or item.get("id")
+                tool_name = item.get("name")
+                try:
+                    tool_input = json.loads(item.get("arguments") or "{}")
+                except json.JSONDecodeError:
+                    tool_input = {}
+
+                result = await tool_registry.execute(
+                    tool_name=tool_name,
+                    tool_input=tool_input,
+                    tool_use_id=call_id,
+                    context=context,
+                )
+                all_tool_calls.append({
+                    "id": call_id,
+                    "name": tool_name,
+                    "input": tool_input,
+                    "is_error": result.is_error,
+                    "files_generated": self._summarize_generated_files(result.files_generated),
+                    "error_content": self._summarize_tool_error(result.content) if result.is_error else None,
+                })
+
+                output_content = result.content if isinstance(result.content, str) else json.dumps(result.content)
+                input_items.append({
+                    "type": "function_call_output",
+                    "call_id": call_id,
+                    "output": output_content,
+                })
+
+        return {
+            "content": "[Maximum tool iterations reached]",
+            **self._usage_payload(total_input_tokens, total_output_tokens, total_tokens),
+            "modelo": self.config.modelo,
+            "provider": self.config.tipo.value,
+            "tool_calls": all_tool_calls,
+            "error": "max_iterations_exceeded",
         }
 
     def _convert_tools_to_google_format(self, anthropic_tools: List[Dict[str, Any]]) -> List[Dict[str, Any]]:

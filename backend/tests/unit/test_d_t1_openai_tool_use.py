@@ -126,6 +126,43 @@ def make_openai_final_response(content="Done!", usage=None):
     }
 
 
+def make_openai_responses_tool_call_response(tool_calls, usage=None):
+    """Helper: create a mock OpenAI Responses API payload with function calls."""
+    return {
+        "id": "resp_test",
+        "object": "response",
+        "status": "completed",
+        "output": [
+            {
+                "id": tc["id"],
+                "type": "function_call",
+                "call_id": tc["id"],
+                "name": tc["name"],
+                "arguments": json.dumps(tc["arguments"]),
+            }
+            for tc in tool_calls
+        ],
+        "usage": usage or {"input_tokens": 100, "output_tokens": 50, "total_tokens": 150},
+    }
+
+
+def make_openai_responses_final_response(content="Done!", usage=None):
+    """Helper: create a mock OpenAI Responses API final text payload."""
+    return {
+        "id": "resp_test_final",
+        "object": "response",
+        "status": "completed",
+        "output_text": content,
+        "output": [{
+            "id": "msg_test",
+            "type": "message",
+            "status": "completed",
+            "content": [{"type": "output_text", "text": content}],
+        }],
+        "usage": usage or {"input_tokens": 200, "output_tokens": 100, "total_tokens": 300},
+    }
+
+
 # ============================================================
 # TEST: DISPATCHER ROUTING
 # ============================================================
@@ -462,6 +499,142 @@ class TestTokenTracking:
         assert result["tokens"] == 430
         assert result["input_tokens"] == 300
         assert result["output_tokens"] == 130
+
+
+# ============================================================
+# TEST: RESPONSES API FOR OPENAI REASONING MODELS
+# ============================================================
+
+class TestOpenAIResponsesReasoningTools:
+    """Reasoning OpenAI models use Responses API for tool calls."""
+
+    @pytest.fixture
+    def reasoning_openai_client(self):
+        config = ModelConfig(
+            id="test-gpt54-mini",
+            nome="GPT-5.4 Mini",
+            tipo=ProviderType.OPENAI,
+            modelo="gpt-5.4-mini",
+            max_tokens=4096,
+            temperature=None,
+            parametros={"reasoning_effort": "low"},
+            suporta_temperature=False,
+            suporta_function_calling=True,
+        )
+        return ChatClient(model_config=config, api_key="test-key")
+
+    @pytest.mark.asyncio
+    async def test_reasoning_tools_use_responses_api_payload(
+        self,
+        reasoning_openai_client,
+        mock_tool_registry,
+        anthropic_format_tools,
+    ):
+        """Responses payload uses input/tools/reasoning instead of Chat Completions fields."""
+        final_response = make_openai_responses_final_response("No tools needed")
+
+        with patch("httpx.AsyncClient") as mock_client_cls:
+            mock_client = AsyncMock()
+            mock_client_cls.return_value.__aenter__ = AsyncMock(return_value=mock_client)
+            mock_client_cls.return_value.__aexit__ = AsyncMock(return_value=False)
+
+            mock_resp = MagicMock(status_code=200)
+            mock_resp.json.return_value = final_response
+            mock_client.post = AsyncMock(return_value=mock_resp)
+
+            result = await reasoning_openai_client._chat_openai_with_tools(
+                mensagem="Hello",
+                historico=[],
+                system="Helper",
+                tools=anthropic_format_tools,
+                tool_registry=mock_tool_registry,
+                max_iterations=10,
+                tool_choice={"type": "function", "function": {"name": "create_document"}},
+            )
+
+        call_args = mock_client.post.call_args
+        assert call_args.args[0].endswith("/responses")
+        payload = call_args.kwargs["json"]
+
+        assert payload["model"] == "gpt-5.4-mini"
+        assert payload["instructions"] == "Helper"
+        assert payload["input"] == [{"role": "user", "content": "Hello"}]
+        assert payload["reasoning"] == {"effort": "low"}
+        assert payload["max_output_tokens"] == 4096
+        assert payload["tool_choice"] == {"type": "function", "name": "create_document"}
+        assert "messages" not in payload
+        assert "max_completion_tokens" not in payload
+        assert "reasoning_effort" not in payload
+
+        tool = payload["tools"][0]
+        assert tool["type"] == "function"
+        assert tool["name"] == "create_document"
+        assert "parameters" in tool
+        assert result["content"] == "No tools needed"
+
+    @pytest.mark.asyncio
+    async def test_reasoning_responses_tool_loop_executes_and_returns_output(
+        self,
+        reasoning_openai_client,
+        mock_tool_registry,
+        anthropic_format_tools,
+    ):
+        """Responses function_call items execute tools and append function_call_output."""
+        tool_response = make_openai_responses_tool_call_response(
+            [{"id": "call_123", "name": "create_document", "arguments": {"title": "T", "content": "C"}}],
+            usage={"input_tokens": 100, "output_tokens": 50, "total_tokens": 150},
+        )
+        final_response = make_openai_responses_final_response(
+            "Document created",
+            usage={"input_tokens": 200, "output_tokens": 80, "total_tokens": 280},
+        )
+
+        mock_execute = AsyncMock(return_value=ToolResult(
+            tool_use_id="call_123",
+            content="Document created successfully",
+            is_error=False,
+        ))
+        mock_tool_registry.execute = mock_execute
+
+        with patch("httpx.AsyncClient") as mock_client_cls:
+            mock_client = AsyncMock()
+            mock_client_cls.return_value.__aenter__ = AsyncMock(return_value=mock_client)
+            mock_client_cls.return_value.__aexit__ = AsyncMock(return_value=False)
+
+            mock_response_1 = MagicMock(status_code=200)
+            mock_response_1.json.return_value = tool_response
+            mock_response_2 = MagicMock(status_code=200)
+            mock_response_2.json.return_value = final_response
+            mock_client.post = AsyncMock(side_effect=[mock_response_1, mock_response_2])
+
+            result = await reasoning_openai_client._chat_openai_with_tools(
+                mensagem="Create a document",
+                historico=[],
+                system="Helper",
+                tools=anthropic_format_tools,
+                tool_registry=mock_tool_registry,
+                max_iterations=10,
+            )
+
+        mock_execute.assert_called_once_with(
+            tool_name="create_document",
+            tool_input={"title": "T", "content": "C"},
+            tool_use_id="call_123",
+            context=None,
+        )
+
+        second_payload = mock_client.post.call_args_list[1].kwargs["json"]
+        assert {
+            "type": "function_call_output",
+            "call_id": "call_123",
+            "output": "Document created successfully",
+        } in second_payload["input"]
+
+        assert result["content"] == "Document created"
+        assert result["tokens"] == 430
+        assert result["input_tokens"] == 300
+        assert result["output_tokens"] == 130
+        assert result["tool_calls"][0]["name"] == "create_document"
 
 
 # ============================================================
