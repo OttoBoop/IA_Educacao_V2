@@ -279,6 +279,21 @@ class TestPromptExtrairRespostasReescrito:
             "Deve ter instruções substantivas sobre como identificar raciocinio_parcial."
         )
 
+    def test_prompt_extrair_respostas_proibe_inferir_do_enunciado(self):
+        """EXTRAIR_RESPOSTAS não pode completar lacunas usando questões/gabarito."""
+        from prompts import PROMPTS_PADRAO, EtapaProcessamento
+
+        prompt = PROMPTS_PADRAO[EtapaProcessamento.EXTRAIR_RESPOSTAS]
+        texto_lower = prompt.texto.lower()
+
+        assert "não inventar" in texto_lower or "nao inventar" in texto_lower
+        assert "nunca preencha" in texto_lower
+        assert "enunciado" in texto_lower
+        assert "gabarito" in texto_lower
+        assert "conhecimento externo" in texto_lower
+        assert "em_branco: true" in texto_lower
+        assert "ilegivel: true" in texto_lower
+
     def test_prompt_extrair_respostas_renderiza_sem_vars_soltas(self):
         """Prompt EXTRAIR_RESPOSTAS deve renderizar sem variáveis não substituídas."""
         from prompts import PROMPTS_PADRAO, EtapaProcessamento

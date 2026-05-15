@@ -304,6 +304,15 @@ O campo raciocinio_parcial que você preencherá é evidência crítica para an�
 
 ---
 
+**REGRA P0 — não inventar nem inferir resposta:**
+- Use "Questões da prova" apenas como mapa para numerar e localizar respostas.
+- O campo `resposta_aluno` deve vir somente do que estiver visivelmente escrito na prova respondida, no texto extraído dela ou nos anexos/imagens do aluno.
+- Nunca preencha `resposta_aluno` com o enunciado, com o gabarito, com uma solução esperada, com conhecimento externo ou com um "plano de resolução" que o aluno não escreveu.
+- Se você não encontrar evidência observável de resposta para uma questão, marque `em_branco: true` ou `ilegivel: true`; não complete a lacuna.
+- Se a leitura for incerta, prefira `ilegivel: true` com `LOW_CONFIDENCE` em `_avisos_questao`.
+
+---
+
 **Como preencher `raciocinio_parcial`:**
 
 Registre qualquer sinal de que o aluno tentou raciocinar — mesmo que a resposta esteja errada:
