@@ -158,9 +158,9 @@ detalhar e auditar estas linhas.
    por tool-use, alem de relatorios agregados.
 3. O Doc 02 mostrou que o maior risco arquitetural esta no Path 2: schemas
    conflitantes, JSON opaco, avisos/metadata/tokens incompletos e tools parciais.
-4. Os fixes principais ja chegaram ao site oficial ate `5527e26`: Render MCP
+4. Os fixes principais ja chegaram ao site oficial ate `01fb04c`: Render MCP
    confirma o servico `srv-d5t8gbh4tr6s738fr3s0` com deploy live
-   `dep-d83spamq1p3s73f0ks20`, enquanto o HTML marker segue atrasado em
+   `dep-d83tp2m7r5hc73d7o7d0`, enquanto o HTML marker segue atrasado em
    `e6060e1` por causa de `rootDir=backend`.
 5. P4 ja esta no codigo publicado: `EXTRAIR_RESPOSTAS` nao deve rodar sem
    `prova_respondida` valida; falta apenas smoke dedicado se esse bug voltar a
@@ -181,8 +181,9 @@ detalhar e auditar estas linhas.
    falhou alto por quota Google/Gemini `429`, deixando as etapas finais
    pendentes. GPT-5 Nano esta confirmado em `extrair_questoes`,
    `extrair_gabarito` pos-`5527e26` e nas tres etapas finais; `extrair_respostas`
-   rodou mas foi reclassificada como falha de conteudo por tudo `ilegivel=true`;
-   ainda falta deploy/rerun desse guard e pipeline completa de 6 etapas; Haiku
+   rodou mas foi reclassificada como falha de conteudo por tudo `ilegivel=true`
+   ou vazio; desde `01fb04c`, esse falso sucesso falha alto no executor e nao
+   cria novo documento verde, mas a etapa ainda nao extrai conteudo real; Haiku
    segue bloqueado por creditos; Rio 3 esta pausado.
 10. O proximo eixo correto e aplicar `backend/migrations/002_create_token_usage.sql`
     no Supabase, ampliar a revalidacao por etapa/provider e endurecer o contrato
@@ -193,12 +194,12 @@ detalhar e auditar estas linhas.
 | Frente | Temos hoje | Limite da afirmacao |
 |---|---|---|
 | Documentacao | Doc 09 como painel curto; Doc 14 como auditoria mestre; Doc 05/12 com notas de status | Manter Doc 09 curto e Doc 14 detalhado; registrar novos ciclos sem criar doc extra. |
-| Git/GitHub | Render MCP confirmou runtime `5527e26`; `origin/main` tambem contem marker `2792d89` e docs posteriores | Nao usar somente marker HTML como gate quando Render `rootDir=backend` ignora commits sem backend; combinar MCP/deploy list + comportamento live. |
+| Git/GitHub | Render MCP confirmou runtime `01fb04c`; `origin/main` contem os commits `8dd6c54`, `c1598b9` e `01fb04c` da sequencia anti-respostas-vazias | Nao usar somente marker HTML como gate quando Render `rootDir=backend` ignora commits sem backend; combinar MCP/deploy list + comportamento live. |
 | Pipeline P4 | Bloqueio de extracao de respostas sem prova valida esta no codigo publicado | Precisa smoke dedicado apenas se P4 voltar a ser alvo. |
 | Pipeline P5/P6 | Contencao de nota e preservacao de `_documentos_faltantes` | `N/A` ainda e fallback proibido como estado final. |
 | Schema/avisos | Defaults `_avisos_*`, visualizador melhorado e schemas mais permissivos | Permissividade nao e contrato forte; pode aceitar legado demais. |
-| Tokens/custos | Split input/output; metadata de documento; endpoints `/api/custos/status` e `/api/custos/resumo` respondendo live; resumo agrega por `cost_run_id`; `TokenUsageRecord` local cobre falha sem documento; codigo Supabase e migration dedicada `b2dc88b` existem; diagnostico live mostra `PGRST205`; Gemini e Nano geraram runs custeaveis, incluindo Nano `gerar_relatorio` em `US$ 0.003348` | Falta aplicar `backend/migrations/002_create_token_usage.sql` no Supabase. |
-| Providers | Gemini passou em chat simples live, `extrair_questoes`, `extrair_respostas` e nas tres etapas finais; `extrair_gabarito` Gemini foi reclassificado como invalido por tudo `MISSING_CONTENT`; GPT-5 Nano passou em chat simples live, `extrair_questoes`, `extrair_gabarito` pos-`5527e26` e nas tres etapas finais; `extrair_respostas` Nano foi reclassificado como invalido por tudo `ilegivel`; runner destacado e bloqueio de rotas legadas ja tiveram comportamento observado no backend live | Deployar/rerodar guard anti-respostas-100%-ilegiveis antes de pipeline completa; rerodar `extrair_gabarito` Gemini quando quota/decisao permitir. |
+| Tokens/custos | Split input/output; metadata de documento; endpoints `/api/custos/status` e `/api/custos/resumo` respondendo live; resumo agrega por `cost_run_id`; `TokenUsageRecord` local cobre falha sem documento; codigo Supabase e migration dedicada `b2dc88b` existem; diagnostico live mostra `PGRST205`; depois da falha alta `task_b511641dfa52`, `token_usage_analisados=1`, mas `durable=false` | Falta aplicar `backend/migrations/002_create_token_usage.sql` no Supabase. |
+| Providers | Gemini passou em chat simples live, `extrair_questoes`, `extrair_respostas` e nas tres etapas finais; `extrair_gabarito` Gemini foi reclassificado como invalido por tudo `MISSING_CONTENT`; GPT-5 Nano passou em chat simples live, `extrair_questoes`, `extrair_gabarito` pos-`5527e26` e nas tres etapas finais; `extrair_respostas` Nano foi reclassificado como invalido por tudo `ilegivel`/vazio e agora falha alto desde `01fb04c`; runner destacado e bloqueio de rotas legadas ja tiveram comportamento observado no backend live | Corrigir a qualidade real de `extrair_respostas` antes de pipeline completa; rerodar `extrair_gabarito` Gemini quando quota/decisao permitir. |
 | Seguranca Rio | Regra de nao usar chave em chat e Rio pausado | Arquivos Rio/untracked continuam fora do ciclo ativo. |
 
 ### O Que Falta
@@ -219,9 +220,9 @@ detalhar e auditar estas linhas.
 
 | Item | Estado | Acao correta |
 |---|---|---|
-| Render/site oficial | Render MCP lista `5527e26` como deploy live; HTML marker ainda aponta `e6060e1` | Tratar HTML marker como auxiliar; corrigir verificador em ciclo proprio. |
+| Render/site oficial | Render MCP lista `01fb04c` como deploy live; HTML marker ainda aponta `e6060e1` | Tratar HTML marker como auxiliar; corrigir verificador em ciclo proprio. |
 | Guard `5527e26` | Runtime confirmado por Render MCP; smoke Nano `extrair_gabarito` pos-guard passou com 7 respostas reais | Guard publicado; falta rerodar Gemini. |
-| Respostas tudo ilegivel | Nano e Gemini ja produziram `extrair_respostas` com todas as respostas `ilegivel=true`; o PDF de Eric tem texto extraivel de Q7 | Guard local criado; precisa commit, deploy e rerun. |
+| Respostas tudo ilegivel/vazio | Nano e Gemini ja produziram `extrair_respostas` com todas as respostas sem conteudo; o PDF de Eric tem texto extraivel de Q7 | Desde `01fb04c`, isso falha alto no executor. Agora falta corrigir prompt/entrada/modelo para extrair conteudo real. |
 | Gemini quota | Pipeline sequencial `task_5e97bbee896e` falhou em `corrigir` por `429 RESOURCE_EXHAUSTED`, limite free tier `20` para `gemini-3-flash` | Nao rerodar de imediato; tratar como bloqueio de provider/quota, nao como sucesso nem como falha silenciosa. |
 | Gabarito tudo missing | Gemini e Nano produziram historicamente `extrair_gabarito` com todas as respostas `MISSING_CONTENT`, apesar do PDF base ter texto de "Exercicio 5" extraivel por `pdftotext`; Nano passou pos-`5527e26` | Manter Gemini como falha ate rerun; Nano volta a confirmado nesta amostra. |
 | Anthropic Haiku | Bloqueado por creditos | Testar apenas quando houver credito; erro deve aparecer claro. |
@@ -231,8 +232,9 @@ detalhar e auditar estas linhas.
 
 ### Ordem Correta Agora
 
-1. Deployar o guard anti-respostas-100%-ilegiveis e rerodar
-   `extrair_respostas` Nano no site oficial.
+1. Corrigir a causa de `extrair_respostas` sem conteudo real no GPT-5 Nano
+   (prompt, leitura de PDF/imagem ou validacao central no executor), mantendo a
+   falha alta de `01fb04c` como protecao.
 2. Corrigir o gate de deploy/verificador para suportar Render `rootDir=backend`
    sem depender apenas do marker HTML.
 3. Aplicar a migration `backend/migrations/002_create_token_usage.sql` no
@@ -270,24 +272,29 @@ Desde entao houve progresso local. P4 bloqueou extracao de respostas sem
 template literal de nota, mas a solucao `N/A` ainda e contencao temporaria. A
 Sprint 2 melhorou schemas, defaults de `_avisos_*` e visualizador, mas ainda nao
 fechou o contrato do Doc 02 porque defaults/permissividade nao sao prova de JSON
-correto. A Sprint 3 separou `input_tokens` e `output_tokens` localmente, mas
-custo real persistido ainda nao existe.
+correto. A Sprint 3 separou `input_tokens` e `output_tokens`; o site oficial ja
+expõe endpoints de custo, mas o historico duravel de `TokenUsageRecord` ainda
+nao existe no Supabase.
 
-O estado oficial e mais fraco que o estado local. O `main` local tem commits que
-`origin/main` ainda nao tem, e Render/site oficial nao foram confirmados nesses
-commits. Portanto a palavra "feito" significa, por enquanto, "feito localmente"
-para esses ciclos.
+O estado oficial agora e melhor que estava no inicio desta auditoria: Render MCP
+confirmou `01fb04c` live. A palavra "feito" continua exigindo quatro provas:
+commit em `origin/main`, deploy Render confirmado, smoke oficial e registro nos
+Docs 09/12/14. O marker HTML sozinho nao basta porque segue atrasado em
+`e6060e1`.
 
-Provider por provider: Gemini 3 Flash e o melhor positivo parcial historico,
-mas precisa revalidacao pos-fix; GPT-5 Nano falhou grave no pipeline-completo e
-deve falhar alto ou ser corrigido antes de promocao; Haiku esta bloqueado por
-creditos Anthropic; GPT-4o e referencia historica, nao fallback automatico; Rio
-3 esta pausado e nao deve entrar em ciclo ativo nem receber chave em chat.
+Provider por provider: Gemini 3 Flash e o melhor positivo parcial, mas
+`extrair_gabarito` foi reclassificado como invalido e a pipeline sequencial
+bateu quota `429`; GPT-5 Nano passou em cinco etapas, mas `extrair_respostas`
+continua falhando conteudo e agora falha alto desde `01fb04c`; Haiku esta
+bloqueado por creditos Anthropic; GPT-4o e referencia historica, nao fallback
+automatico; Rio 3 esta pausado e nao deve entrar em ciclo ativo nem receber
+chave em chat.
 
-Custos estao em tres camadas: estimativas no Doc 05/catalogo, medicao local de
-tokens apos `b12be9a`, e custo real persistido ainda ausente. Sem
-`TokenUsageRecord`, metadata confiavel e precificacao aplicada na pipeline, nao
-da para responder "quanto custou esta atividade/turma/aluno".
+Custos estao em tres camadas: estimativas no Doc 05/catalogo, medicao de tokens
+e custo por run em documentos/endpoints recentes, e persistencia duravel ainda
+bloqueada porque `public.token_usage` nao existe no Supabase (`PGRST205`). Sem
+essa tabela aplicada, nao da para responder com confianca historica "quanto
+custou esta atividade/turma/aluno/periodo".
 
 O proximo ciclo tecnico correto e cumprir o Doc 02 no Path 2 e remover fallback
 silencioso: JSON invalido deve falhar na etapa original; PDF auto-fallback nao
@@ -633,9 +640,9 @@ Depois de ler esta auditoria, qualquer IA deve conseguir dizer:
 - o objetivo pedagogico do NOVO CR;
 - como a pipeline de 6 etapas se divide em Path 1 e Path 2;
 - por que o Path 2 e o gargalo central;
-- quais commits locais existem e por que ainda nao sao site oficial;
+- quais commits ja estao no site oficial e qual gate provou isso;
 - quais providers funcionaram, falharam, bloquearam ou estao stale;
-- por que custo real ainda nao existe;
+- por que custo por run existe, mas custo historico duravel ainda nao existe;
 - quais fallbacks sao P0;
 - qual e a ordem correta dos proximos ciclos.
 
@@ -985,15 +992,17 @@ Estado do worktree no momento desta auditoria:
 
 O que ainda falta:
 
-- Acionar deploy oficial por hook rotacionado/manual seguro.
-- Provar em producao que `ff7b92a` chegou ao site; no momento Render esta stale
-  em `97a7c79`, apesar de `origin/main=68ebe51`.
-- Selecionar workspace Render no MCP ou usar Dashboard/hook rotacionado; nao ha
-  Actions, deployments ou webhooks GitHub visiveis para automatizar daqui.
-- Confirmar custo real por etapa/aluno/atividade no site oficial.
+- Corrigir `extrair_respostas` para extrair conteudo real; `01fb04c` ja impede
+  falso sucesso, mas nao resolve a qualidade da extracao.
+- Corrigir o gate de deploy/verificador: Render MCP confirma `01fb04c`, mas o
+  HTML marker segue atrasado em `e6060e1`.
+- Aplicar `backend/migrations/002_create_token_usage.sql` no Supabase para que
+  `token_usage_backend.durable=true`.
+- Confirmar custo duravel por etapa/aluno/atividade no site oficial.
 - Popular metadata de documento (`tokens_usados`, `ia_modelo`, `ia_provider`) de
-  forma confiavel.
-- Revalidar providers depois dos fixes locais.
+  forma confiavel em todas as rotas restantes.
+- Revalidar providers depois dos fixes atuais: Gemini `extrair_gabarito`, Nano
+  `extrair_respostas` corrigido, Haiku quando houver credito.
 - Remover ou converter fallbacks silenciosos restantes em erro alto.
 - Corrigir UI para explicar falhas por aluno/etapa.
 - Reclassificar dados "fantasma" sem deletar PDF valido por `conteudo=null`.
@@ -1005,10 +1014,10 @@ Esta secao fica antes do mapa de documentos porque ela responde a pergunta
 
 | Trava | O que significa | Evidencia | Proximo movimento |
 |---|---|---|---|
-| Local diferente de oficial | O workspace tem fixes que `origin/main` e Render ainda nao provaram ter. | `main` local 5 commits a frente de `origin/main`. | Commit/push/deploy em ciclo proprio, com gate. |
+| Gate oficial confuso | O runtime Render esta em `01fb04c`, mas o HTML marker continua em `e6060e1`. | Render MCP `dep-d83tp2m7r5hc73d7o7d0` live; marker HTML stale por `rootDir=backend`. | Corrigir `check_deploy.sh`/processo de marker para usar Render MCP ou endpoint backend confiavel. |
 | Fallbacks ainda misturados com robustez | Alguns docs/testes antigos tratam fallback como comportamento bom. | PDF auto-fallback, `nota_final=N/A`, parsing permissivo. | Ciclo anti-fallback antes de custo/dashboard. |
 | Custo parcialmente persistido | Documentos recentes e `TokenUsageRecord` local cobrem parte do problema; historico por periodo ainda nao e duravel. | Deploy `4f27dae` e endpoints `/api/custos/*`; `PGRST205` confirma tabela ausente. | Aplicar `token_usage` no Supabase e validar falha real sem documento. |
-| Provider matrix esta stale | Matriz reflete testes antes dos fixes locais mais recentes. | Doc 12 e testes de abril; commits locais de maio nao revalidados. | Smoke por provider/rota depois de deploy. |
+| Provider matrix ainda incompleta | Doc 12 foi atualizado com `01fb04c`, mas nem todos os providers/rotas estao confirmados. | Gemini `extrair_gabarito` invalido; Nano `extrair_respostas` falha alto mas nao extrai; Haiku bloqueado por credito. | Smoke por provider/rota depois de cada fix real, com custo e erro registrados. |
 | UI nao explica falhas suficientes | Usuario pode ver status/documento sem entender falha real. | Riscos do Doc 09 e logs antigos de UI/deploy. | Sprint 4 com mensagens por aluno/etapa/provider. |
 | Dados fantasmas ainda confundem status | JSON de erro e PDF com `/conteudo=null` podem ser interpretados errado. | Doc 07 + nota tecnica PDF + historico de fantasmas. | Reclassificacao segura antes de limpeza. |
 | Rio 3 rouba foco se reabrir agora | Rio nao resolve custo/provider geral nem confiabilidade base. | Doc 13 e `rio3_pausado`. | Manter pausado ate decisao explicita. |
@@ -2454,7 +2463,7 @@ Fila minima para custo real:
 | Provider/modelo | Estado atual | Evidencia | O que falta |
 |---|---|---|---|
 | Gemini 3 Flash | Chat OK; `extrair_questoes`, `extrair_respostas` e etapas finais OK com custo; `extrair_gabarito` reclassificado como invalido; pipeline sequencial pos-runner bloqueada por quota em `corrigir` | `extrair_questoes`: task `task_737c8d45befc`, JSONs `3f1ca7eed14f5d37`/`9d61dcb36e6ca4b5`, custos `US$ 0.002806`/`US$ 0.002801`; `extrair_gabarito`: task `task_094c921eb038`, JSON `36d1fdd0a453e2f5`, custo `US$ 0.020378`, mas tudo `MISSING_CONTENT`; `extrair_respostas`: task `task_7d357943288d`, JSON `59cb3e341515d745`, custo `US$ 0.023273`; `corrigir`: task `task_8f53987c57c4`, custo `US$ 0.007931`; `analisar_habilidades`: task `task_a78369e23e5c`, JSON `7904a6a1aa34131f`, PDF `245970da4cc42c02`, custo `US$ 0.009447`; `gerar_relatorio`: task `task_58fb48fc8324`, JSON `fe6ad549481a0ed9`, PDF `b815d1faa5aeab77`, custo `US$ 0.006120`; sequencial `task_5e97bbee896e`: extracoes `025e065ceca92237`, `9188bd504796f767`, `ea25e7d9d9a0f9a0`, falha `429` em `corrigir` | Rerodar `extrair_gabarito` apos guard; repetir pipeline sequencial completa quando quota/credito permitir, sem trocar modelo e sem retry cego. |
-| GPT-5 Nano | Chat OK; `extrair_questoes`, `extrair_gabarito`, `corrigir`, `analisar_habilidades` e `gerar_relatorio` pos-fix OK com custo; `extrair_respostas` falhou conteudo; falta pipeline completa | `extrair_questoes`: task `task_ae679b5c3fee`, JSON `946e66708fd72643`, custo `US$ 0.004966`; `extrair_gabarito` falho historico: task `task_2da0fb90c3fb`, JSON `61fb077d746c2a55`, custo `US$ 0.005359`, mas tudo `MISSING_CONTENT`; `extrair_gabarito` pos-`5527e26`: task `task_dc719eeea626`, JSON `5f433f9a1bc30842`, 7 respostas reais, custo `US$ 0.007246`; `extrair_respostas`: task `task_a9ff0d69d5e9`, JSON `b968c9539f277deb`, custo `US$ 0.005489`, mas tudo `ilegivel=true`; `corrigir`: task `task_a591421ab84b`, JSON `42dc1fcd758e913b`, PDF `cd72e7233ee061ad`, custo `US$ 0.002192`; `analisar_habilidades`: task `task_020ba25bdb2b`, JSON `ba5dec781e46e665`, PDF `385f6b78018b8c07`, custo `US$ 0.003528`; `gerar_relatorio`: task `task_aec830b85c03`, JSON `200c1b5272ba10f1`, PDF `a629dee567b10274`, custo `US$ 0.003348` | Deployar/rerodar guard anti-respostas-100%-ilegiveis; depois validar schema minimo/pipeline completa. |
+| GPT-5 Nano | Chat OK; `extrair_questoes`, `extrair_gabarito`, `corrigir`, `analisar_habilidades` e `gerar_relatorio` pos-fix OK com custo; `extrair_respostas` falhou conteudo, mas desde `01fb04c` nao vira mais sucesso verde; falta pipeline completa | `extrair_questoes`: task `task_ae679b5c3fee`, JSON `946e66708fd72643`, custo `US$ 0.004966`; `extrair_gabarito` falho historico: task `task_2da0fb90c3fb`, JSON `61fb077d746c2a55`, custo `US$ 0.005359`, mas tudo `MISSING_CONTENT`; `extrair_gabarito` pos-`5527e26`: task `task_dc719eeea626`, JSON `5f433f9a1bc30842`, 7 respostas reais, custo `US$ 0.007246`; `extrair_respostas` falho conteudo: task `task_a9ff0d69d5e9`, JSON `b968c9539f277deb`, custo `US$ 0.005489`, tudo `ilegivel=true`; regressao coberta: task `task_03ae99db3006`, JSON `2a518dfb6b2a03ef`, tudo `em_branco=true`; caminho real bloqueado: task `task_b511641dfa52` falhou alto em `01fb04c` sem documento verde novo; `corrigir`: task `task_a591421ab84b`, JSON `42dc1fcd758e913b`, PDF `cd72e7233ee061ad`, custo `US$ 0.002192`; `analisar_habilidades`: task `task_020ba25bdb2b`, JSON `ba5dec781e46e665`, PDF `385f6b78018b8c07`, custo `US$ 0.003528`; `gerar_relatorio`: task `task_aec830b85c03`, JSON `200c1b5272ba10f1`, PDF `a629dee567b10274`, custo `US$ 0.003348` | Corrigir a extracao real de respostas; depois validar schema minimo/pipeline completa. |
 | Claude Haiku 4.5 | Bloqueado | Creditos Anthropic insuficientes | Recarregar creditos e testar sem trocar provider. |
 | GPT-4o | Parcial/referencia historica | Gerou 3 etapas, mas schema antigo e sem avisos | Revalidar como modelo explicito, nao fallback. |
 | Gemini 2.5 Flash/Lite | Incerto | Catalogo/flags historicamente inconsistentes | Validar capabilities antes de pipeline. |
@@ -2492,7 +2501,10 @@ Erros conhecidos por provider/rota:
 | GPT-5 Nano | `pipeline-completo` pos-fix `extrair_questoes` | Task `task_ae679b5c3fee` completou, JSON `946e66708fd72643` com `questoes`, `total_questoes=7`, `_avisos_*`, tokens `2148/12147` e custo `US$ 0.004966` | Confirmado para `extrair_questoes`; faltam `extrair_gabarito` e `extrair_respostas`. |
 | GPT-5 Nano | `pipeline-completo` pos-fix `extrair_gabarito` | Task `task_2da0fb90c3fb` completou, JSON `61fb077d746c2a55`, tokens `78104/3635`, custo `US$ 0.005359`, mas todas as 7 respostas vieram `MISSING_CONTENT` | Falha historica de conteudo; motivou `5527e26`. |
 | GPT-5 Nano | `pipeline-completo` pos-`5527e26` `extrair_gabarito` | Task `task_dc719eeea626` completou, JSON `5f433f9a1bc30842`, tokens `78104/8353`, custo `US$ 0.007246`, 7 respostas reais e nenhuma `MISSING_CONTENT` | Confirmado para Nano nesta amostra; proximo alvo e `extrair_respostas`. |
-| GPT-5 Nano | `pipeline-completo` pos-`5527e26` `extrair_respostas` | Task `task_a9ff0d69d5e9` completou, JSON `b968c9539f277deb`, tokens `85774/3002`, custo `US$ 0.005489`, mas todas as 7 respostas vieram `ilegivel=true`; PDF `f60d37284d616ca4` tem texto extraivel da questao 7 | Falha de conteudo; guard local deve transformar em erro alto. |
+| GPT-5 Nano | `pipeline-completo` pos-`5527e26` `extrair_respostas` | Task `task_a9ff0d69d5e9` completou, JSON `b968c9539f277deb`, tokens `85774/3002`, custo `US$ 0.005489`, mas todas as 7 respostas vieram `ilegivel=true`; PDF `f60d37284d616ca4` tem texto extraivel da questao 7 | Falha de conteudo; motivou `8dd6c54`. |
+| GPT-5 Nano | `pipeline-completo` pos-`8dd6c54` `extrair_respostas` | Task `task_03ae99db3006` completou, JSON `2a518dfb6b2a03ef`, mas todas as 7 respostas vieram `em_branco=true` e sem `resposta_aluno` | Guard anti-tudo-`ilegivel` foi insuficiente. |
+| GPT-5 Nano | `pipeline-completo` pos-`c1598b9` `extrair_respostas` | Task `task_6772978a20c4` completou, JSON `10d1c1d9741a6273`, ainda sem conteudo real | Validacao central correta no schema nao estava no caminho real do executor multimodal. |
+| GPT-5 Nano | `pipeline-completo` pos-`01fb04c` `extrair_respostas` | Task `task_b511641dfa52` falhou alto com erro explicito de respostas sem conteudo; nenhum novo documento verde apareceu depois de `10d1c1d9741a6273`; `/api/custos/status` mostrou `token_usage_analisados=1`, mas `durable=false` por `PGRST205` | Falso sucesso corrigido. A etapa ainda precisa extrair conteudo real antes da pipeline completa. |
 | Claude Haiku 4.5 | `pipeline-completo` | Creditos Anthropic insuficientes; wrapper mascarou causa como modelo invalido | Bloqueado por credito; erro deve ser exposto com causa real. |
 | GPT-4o | referencia historica | Outputs em schema antigo e sem `_avisos_*` | Revalidar explicitamente; nao usar como fallback. |
 
@@ -2617,8 +2629,9 @@ Aceite:
   sequencial pos-runner falhou por quota `429`, entao aguardar quota/credito
   antes de repetir.
 - GPT-5 Nano: `extrair_questoes`, `extrair_gabarito` pos-`5527e26` e as tres
-  etapas finais passaram; `extrair_respostas` precisa deploy/rerun do guard
-  anti-respostas-100%-ilegiveis antes de pipeline completa.
+  etapas finais passaram; `extrair_respostas` agora falha alto desde `01fb04c`
+  quando nao extrai conteudo, mas ainda precisa ser corrigida antes de pipeline
+  completa.
 - Haiku: testar somente quando credito Anthropic existir.
 - GPT-4o: testar explicitamente, nunca como fallback automatico.
 
@@ -2691,8 +2704,8 @@ claro. O que ainda existe para fazer:
 | Revisar/aprovar lote de docs | Gate humano | O Doc 14 e grande e deve ser lido antes de commit. |
 | Commitar docs explicitamente | Git | Arquivos docs estao modificados/untracked; nao usar `git add .`. |
 | Ciclo anti-fallback | Codigo/testes | PDF auto-fallback, `nota_final=N/A`, regex/Markdown e parciais como sucesso ainda precisam tratamento. |
-| Metadata/custo real | Codigo/testes/deploy | Metadata e endpoints existem localmente; falta deploy oficial e registro persistente de falhas com tokens. |
-| Provider revalidation | Smoke/producao | Matriz Doc 12 esta stale ate push/deploy e testes por provider/rota. |
+| Metadata/custo real | Codigo/testes/deploy | Metadata e endpoints existem no site; `token_usage_analisados=1` ja aparece, mas Supabase `token_usage` segue ausente (`PGRST205`), entao custo de falha sem documento ainda nao e duravel. |
+| Provider revalidation | Smoke/producao | Matriz Doc 12 registra `01fb04c`, mas continua incompleta ate novos smokes por provider/rota. |
 | UI de erros | Produto/frontend | Usuario precisa ver aluno, etapa, provider e causa sem terminal. |
 | Limpeza de dados | Dados | "Fantasmas" precisam reclassificacao; PDF com `/conteudo=null` nao pode ser deletado. |
 

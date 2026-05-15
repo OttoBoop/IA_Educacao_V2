@@ -5,29 +5,31 @@
 **Status geral:** Render MCP confirmou o servico oficial
 `srv-d5t8gbh4tr6s738fr3s0` (`IA_Educacao_V2`, branch `main`, URL
 `https://ia-educacao-v2.onrender.com`) com deploy live do commit funcional
-`5527e26`. O marcador HTML continua mostrando `novocr-deploy=e6060e1` porque o
-servico usa `rootDir=backend` e commits apenas de frontend/docs/marker nao
-garantem novo deploy; portanto, daqui em diante o gate oficial combina Render
-MCP/lista de deploys + comportamento live, e o marker HTML vira sinal auxiliar.
-O patch `5527e26` removeu fallback Markdown de relatorio e adicionou guard para
-gabarito todo `MISSING_CONTENT`. Apos esse deploy, GPT-5 Nano em
-`extrair_gabarito` passou no site oficial: task `task_dc719eeea626`, JSON
-`5f433f9a1bc30842`, 7 respostas reais, tokens `78104/8353`, custo
+`01fb04c` (`dep-d83tp2m7r5hc73d7o7d0`). O marcador HTML continua mostrando
+`novocr-deploy=e6060e1` porque o servico usa `rootDir=backend` e commits apenas
+de frontend/docs/marker nao garantem novo deploy; portanto, o gate oficial e
+Render MCP/lista de deploys + comportamento live, e o marker HTML e apenas
+sinal auxiliar. O patch `5527e26` removeu fallback Markdown de relatorio e
+adicionou guard para gabarito todo `MISSING_CONTENT`; apos esse deploy, GPT-5
+Nano em `extrair_gabarito` passou no site oficial: task `task_dc719eeea626`,
+JSON `5f433f9a1bc30842`, 7 respostas reais, tokens `78104/8353`, custo
 `US$ 0.007246`. A falha antiga de Nano `61fb077d746c2a55` e os gabaritos Gemini
-tudo `MISSING_CONTENT` continuam registrados como evidencias historicas de que
-schema parseavel nao basta. Gemini passou nas tres extracoes dentro de uma
-pipeline sequencial completa, mas a mesma task falhou alto em `corrigir` por
-quota Google/Gemini `429` do free tier; nao houve troca de modelo nem sucesso
-falso. GPT-5 Nano esta confirmado em `extrair_questoes`, `extrair_gabarito`,
-`corrigir`, `analisar_habilidades` e `gerar_relatorio`; o smoke de
-`extrair_respostas` gerou documento/custo, mas foi reclassificado como P0
-porque marcou todas as respostas como `ilegivel=true` apesar de a prova
-respondida ter texto extraivel. Patch local agora rejeita extracao de respostas
-100% ilegivel; falta deploy e rerun. O resumo de custos agrega por `cost_run_id`;
-falhas tool-use sem documento final tem
+tudo `MISSING_CONTENT` continuam como evidencia de que schema parseavel nao
+basta. Gemini passou nas tres extracoes dentro de uma pipeline sequencial
+completa, mas a mesma task falhou alto em `corrigir` por quota Google/Gemini
+`429` do free tier; nao houve troca de modelo nem sucesso falso. GPT-5 Nano
+esta confirmado em `extrair_questoes`, `extrair_gabarito`, `corrigir`,
+`analisar_habilidades` e `gerar_relatorio`; `extrair_respostas` continua ❌
+como qualidade de modelo/etapa, mas agora falha alto no site oficial: depois de
+`8dd6c54` e `c1598b9` ainda salvarem respostas vazias, `01fb04c` bloqueou o
+caminho real do executor e a task `task_b511641dfa52` falhou com erro explicito,
+sem criar novo documento verde depois de `10d1c1d9741a6273`. O resumo de custos
+agrega por `cost_run_id`; falhas tool-use sem documento final tem
 `TokenUsageRecord` local mensal e codigo preparado para Supabase quando a tabela
 `token_usage` existir. O endpoint live ainda confirma que essa tabela nao existe
-(`PGRST205`). Rio 3 segue pausado.
+(`PGRST205`): `/api/custos/status?limit=500` retornou `runs_precificados=24`,
+`runs_bloqueados=463`, `token_usage_analisados=1` e `durable=false`. Rio 3 segue
+pausado.
 
 Este e o ponto de entrada do plano. O objetivo deste arquivo e dizer, em poucas
 linhas, onde estamos, qual e a proxima fila e quais frentes estao pausadas.
@@ -65,9 +67,9 @@ Estabilizar o NOVO CR para que a pipeline:
 | Frente | Estado | Proximo passo |
 |--------|--------|---------------|
 | Docs e plano | Sprint 0 concluida | Manter este painel como fonte oficial e anexos fora do fluxo diario |
-| Pipeline | Gemini 3 Flash validado em `extrair_questoes`, `extrair_respostas` e etapas finais; `extrair_gabarito` Gemini foi reclassificado como invalido porque retornou tudo `MISSING_CONTENT`; pipeline sequencial Gemini avancou pelas tres extracoes e falhou alto em `corrigir` por quota `429`; GPT-5 Nano validado em `extrair_questoes`, `extrair_gabarito`, `corrigir`, `analisar_habilidades` e `gerar_relatorio`; `extrair_respostas` Nano foi reclassificado como invalido porque marcou tudo `ilegivel`; comportamento de `f55e299`/`e6060e1`/`5527e26` confirmado por Render MCP e smoke live, embora HTML marker esteja atrasado | Deployar guard que rejeita respostas 100% ilegiveis e rerodar `extrair_respostas` Nano; depois tentar pipeline completa Nano; rerodar `extrair_gabarito` Gemini apos quota/decisao; schema minimo e UI de erro continuam pendentes |
+| Pipeline | Gemini 3 Flash validado em `extrair_questoes`, `extrair_respostas` e etapas finais; `extrair_gabarito` Gemini foi reclassificado como invalido porque retornou tudo `MISSING_CONTENT`; pipeline sequencial Gemini avancou pelas tres extracoes e falhou alto em `corrigir` por quota `429`; GPT-5 Nano validado em `extrair_questoes`, `extrair_gabarito`, `corrigir`, `analisar_habilidades` e `gerar_relatorio`; `extrair_respostas` Nano foi reclassificado como invalido porque marcou tudo `ilegivel`/vazio, e desde `01fb04c` falha alto sem salvar novo documento verde; comportamento de `f55e299`/`e6060e1`/`5527e26`/`01fb04c` confirmado por Render MCP e smoke live, embora HTML marker esteja atrasado | Corrigir a qualidade/entrada de `extrair_respostas` Nano em vez de aceitar vazio; depois tentar pipeline completa Nano; rerodar `extrair_gabarito` Gemini apos quota/decisao; schema minimo, validacao real no executor e UI de erro continuam pendentes |
 | Schema e avisos | Sprint 2 concluida localmente | Manter schema oficial, defaults e visualizador cobertos por testes |
-| Custos/tokens | Metadata de documento, endpoints live, resumo por `cost_run_id`, `TokenUsageRecord` local, migration Supabase dedicada `b2dc88b`; smoke Nano `gerar_relatorio` adicionou run precificado; diagnostico live ainda acusa `PGRST205` | Aplicar `backend/migrations/002_create_token_usage.sql` no Supabase; validar uma falha real sem documento em producao |
+| Custos/tokens | Metadata de documento, endpoints live, resumo por `cost_run_id`, `TokenUsageRecord` local, migration Supabase dedicada `b2dc88b`; smoke Nano `gerar_relatorio` adicionou run precificado; apos a falha alta de `task_b511641dfa52`, `/api/custos/status?limit=500` mostrou `token_usage_analisados=1`, mas o diagnostico live ainda acusa `PGRST205` e `durable=false` | Aplicar `backend/migrations/002_create_token_usage.sql` no Supabase; revalidar ate `token_usage_backend.durable=true` |
 | UI de erros | Pendente | Mostrar falha por aluno/etapa sem depender de terminal |
 | Limpeza de dados | Pendente | Reclassificar "fantasmas" antes de qualquer delecao |
 | Rio 3 | Pausada | Nao pedir chave, nao rodar smoke, nao deployar Rio sem nova decisao |
@@ -96,16 +98,24 @@ Estabilizar o NOVO CR para que a pipeline:
 - Commit funcional de bloqueio de rotas legadas sincrônicas: `e6060e1`.
 - Commit funcional de guard anti-gabarito-tudo-`MISSING_CONTENT` e remocao do
   fallback Markdown em relatorio: `5527e26`.
+- Commit funcional de guard anti-respostas-tudo-`ilegivel`: `8dd6c54`
+  (insuficiente sozinho; o modelo passou a salvar tudo vazio).
+- Commit funcional de guard anti-respostas-sem-conteudo em
+  `pipeline_validation`: `c1598b9` (insuficiente sozinho; a validacao Pydantic
+  nao cobria o caminho real do executor multimodal).
+- Commit funcional de bloqueio anti-respostas-sem-conteudo no executor:
+  `01fb04c` (Render live e smoke oficial falhando alto).
 - Marker mais novo publicado no GitHub para runtime: `a7dead3`
   (`chore: mark deploy e6060e1`).
 - Marker mais novo publicado no GitHub para o guard: `2792d89`
   (`chore: mark deploy 5527e26`).
 - Render MCP em 2026-05-16: servico oficial `srv-d5t8gbh4tr6s738fr3s0`,
   branch `main`, repo `https://github.com/OttoBoop/IA_Educacao_V2`,
-  `rootDir=backend`, autoDeploy `yes`, deploy `dep-d83spamq1p3s73f0ks20`
-  live em `5527e2651fa47e6258610d0470ca060e2921d663`.
+  `rootDir=backend`, autoDeploy `yes`; deploy `dep-d83tp2m7r5hc73d7o7d0`
+  live em `01fb04c060f1a88c0f8ea4b09f64a9191d43c291`. Deploys anteriores
+  `c1598b9`, `8dd6c54` e `5527e26` aparecem como `deactivated`.
 - Marker HTML atual observado depois do deploy: `novocr-deploy=e6060e1`. Isso
-  nao invalida o runtime `5527e26`, porque commits de marker/frontend/docs podem
+  nao invalida o runtime `01fb04c`, porque commits de marker/frontend/docs podem
   nao disparar deploy num servico com `rootDir=backend`. `check_deploy.sh` deve
   ser corrigido em ciclo proprio ou usado apenas como sinal auxiliar.
 - GitHub `origin/main`: contem `e6060e1`, marker `a7dead3`, `f55e299`,
@@ -113,7 +123,8 @@ Estabilizar o NOVO CR para que a pipeline:
   documentais posteriores.
 - Render live observado: saiu de `2e1098f` para `b12be9a` e depois confirmou
   marcadores `b4d7ee6`, `f505be6`, `97a7c79`, `c75af88`, `39aa50a`,
-  `b24f03e`, `eab7d90`, `7ed8b8b`, `839968e`, `55e168a` e `4f27dae`.
+  `b24f03e`, `eab7d90`, `7ed8b8b`, `839968e`, `55e168a`, `4f27dae`,
+  `5527e26`, `8dd6c54`, `c1598b9` e `01fb04c`.
 - `/api/custos/status` no Render: HTTP 200, confirmando endpoints de custo live.
 - GitHub Actions: sem runs recentes observaveis.
 - GitHub webhooks/deployments via `gh api`: sem entradas visiveis.
@@ -1096,7 +1107,7 @@ Critério de pronto: lista de limpeza segura e revisada.
 - Reclassificacao: `extrair_respostas` Nano fica ❌ nesta amostra, apesar de
   schema/custo/metadata. Gemini tinha produzido o mesmo padrao de tudo ilegivel
   em smokes anteriores; isso tambem deve ser tratado como risco de conteudo.
-- Patch local aplicado: `pipeline_validation.ExtracaoRespostas` agora rejeita
+- Patch `8dd6c54` aplicado: `pipeline_validation.ExtracaoRespostas` agora rejeita
   respostas em que todos os itens tenham `ilegivel=true`; a funcao publica
   `validar_json_pipeline("extrair_respostas", ...)` retorna erro estruturado.
 - Validacoes locais: `python -m py_compile backend/pipeline_validation.py
@@ -1105,9 +1116,79 @@ Critério de pronto: lista de limpeza segura e revisada.
   `3 skipped`) e `pytest backend/tests/unit/test_pipeline_validation.py
   backend/tests/unit/test_erro_pipeline.py -q` (`70 passed`, `3 skipped`) passaram,
   com o aviso conhecido de config `timeout`.
-- Proximo alvo: commit/push/deploy desse guard; depois rerodar
-  `extrair_respostas` Nano. O resultado esperado agora e falhar alto se o modelo
-  repetir "tudo ilegivel", nao salvar documento verde.
+- Status posterior: este guard foi necessario, mas nao suficiente. Em producao,
+  o modelo passou a retornar tudo `em_branco=true`, e depois ficou claro que a
+  validacao Pydantic nao cobria o caminho real do executor.
+
+### 2026-05-16 -- Guard `8dd6c54` insuficiente: tudo vazio ainda passava
+
+- Alvo: confirmar se o guard anti-tudo-`ilegivel` bastava em producao.
+- Deploy: Render MCP marcou `8dd6c541218e0a46f9ad1585004a2cbff46e1f1b`
+  como live no deploy `dep-d83tji77f7vs73da55d0`; depois foi desativado por
+  commits posteriores.
+- Smoke oficial: GPT-5 Nano em `extrair_respostas`, task
+  `task_03ae99db3006`.
+- Resultado: a task terminou verde e salvou JSON `2a518dfb6b2a03ef`; o conteudo
+  veio com todas as 7 respostas `em_branco=true`, `ilegivel=false` e
+  `resposta_aluno` vazia. Isso ainda e falso sucesso.
+- Interpretacao: bloquear apenas "tudo ilegivel" nao basta. O contrato correto
+  para `EXTRAIR_RESPOSTAS` e: se todas as respostas nao tem conteudo extraido
+  por `ilegivel`, `em_branco` ou texto vazio, a etapa deve falhar alto.
+- Proximo alvo: ampliar a regra para todo output sem conteudo.
+
+### 2026-05-16 -- Guard `c1598b9` correto no schema, mas fora do caminho real
+
+- Alvo: rejeitar `EXTRAIR_RESPOSTAS` quando todas as respostas nao tiverem
+  conteudo extraido, independentemente de serem `ilegivel`, `em_branco` ou
+  `resposta_aluno` vazia.
+- Deploy: Render MCP marcou `c1598b9d283c85504c0bd7a1db1a2a7de5f4d708`
+  como live no deploy `dep-d83tm7uq1p3s73f10evg`; depois foi desativado por
+  `01fb04c`.
+- Smoke oficial: GPT-5 Nano em `extrair_respostas`, task
+  `task_6772978a20c4`.
+- Resultado: a task terminou verde e salvou JSON `10d1c1d9741a6273`; todas as
+  respostas continuaram sem conteudo real, com `em_branco=true` e mensagens
+  genericas.
+- Causa descoberta: `pipeline_validation.py` estava correto, mas o caminho real
+  do executor multimodal nao aplicava essa validacao antes de salvar. O flag
+  `HAS_VALIDATION=False` deixava `_parsear_resposta` dependente de validacao
+  que nao era carregada para esse fluxo.
+- Interpretacao: validacao de schema em modulo separado nao pode ser assumida
+  como gate de produto se o executor nao a chama no caminho real.
+- Proximo alvo: bloquear no executor antes de salvar documento verde.
+
+### 2026-05-16 -- Guard `01fb04c`: `extrair_respostas` falha alto no site
+
+- Alvo: bloquear diretamente no executor qualquer `EXTRAIR_RESPOSTAS` em que
+  todas as respostas estejam sem conteudo extraido.
+- Arquivos tocados no commit: `backend/executor.py`,
+  `backend/tests/unit/test_erro_pipeline.py`.
+- Deploy: Render MCP marcou `01fb04c060f1a88c0f8ea4b09f64a9191d43c291` como
+  live no deploy `dep-d83tp2m7r5hc73d7o7d0`.
+- Smoke oficial: GPT-5 Nano em `extrair_respostas`, task
+  `task_b511641dfa52`.
+- Resultado esperado e observado: a task terminou `failed`, com
+  `stages.extrair_respostas=failed` e erro explicito:
+  `EXTRAIR_RESPOSTAS retornou todas as respostas sem conteudo extraido (em branco, ilegiveis ou vazias). Isso nao pode ser tratado como sucesso.`
+- Verificacao de artefato: a listagem de documentos mostrou que o ultimo
+  `extracao_respostas` verde ainda e `10d1c1d9741a6273`, criado antes do
+  `01fb04c`; a task `task_b511641dfa52` nao criou novo documento verde.
+- Custos: `/api/custos/status?limit=500` retornou `runs_precificados=24`,
+  `runs_bloqueados=463`, `token_usage_analisados=1`, mas
+  `token_usage_backend.supabase.table_available=false` e `durable=false`
+  continuam com erro `PGRST205`.
+- Validacoes locais antes do deploy: `python -m py_compile backend/executor.py
+  backend/pipeline_validation.py backend/tests/unit/test_pipeline_validation.py
+  backend/tests/unit/test_erro_pipeline.py`; `git diff --check`;
+  `PYTHONPATH=backend /home/otavio/Documents/vscode/.venv/bin/python -m pytest
+  backend/tests/unit/test_pipeline_validation.py backend/tests/unit/test_erro_pipeline.py -q`
+  (`74 passed`, `3 skipped`, aviso conhecido de config `timeout`).
+- Status: o falso sucesso foi corrigido. A etapa `extrair_respostas` com GPT-5
+  Nano continua ❌ enquanto o modelo/prompt/entrada nao extrairem conteudo real,
+  mas agora a falha aparece para o usuario e bloqueia a conclusao falsa.
+- Proximo alvo tecnico: corrigir a causa da extracao vazia e/ou ativar a
+  validacao central no executor de forma consistente, sem depender de guard
+  ad hoc por etapa.
 
 ## Riscos Abertos
 
@@ -1127,7 +1208,8 @@ Critério de pronto: lista de limpeza segura e revisada.
    respostas viram `MISSING_CONTENT`; Nano passou no smoke pos-`5527e26`, mas
    Gemini ainda precisa rerun antes de voltar a ✅.
 8. `extrair_respostas` parseavel pode ser conteudo invalido quando todas as
-   respostas viram `ilegivel=true`; guard local criado e ainda precisa deploy.
+   respostas ficam sem conteudo; desde `01fb04c`, isso falha alto no executor,
+   mas a qualidade da extracao ainda precisa ser corrigida.
 9. Artefatos com `status=erro` podem ter arquivo/conteudo parcial; UI e docs
    devem ensinar o usuario a obedecer o status, nao o simples fato de existir
    arquivo.
