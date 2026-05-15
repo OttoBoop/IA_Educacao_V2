@@ -118,7 +118,7 @@ class TestExtrairRespostasContextoQuestoes:
     """EXTRAIR_RESPOSTAS deve receber questoes extraidas no prompt, nao so anexo."""
 
     @staticmethod
-    def _doc(tipo, doc_id, path, extensao=".json", criado_em=None):
+    def _doc(tipo, doc_id, path, extensao=".json", criado_em=None, status="concluido", metadata=None):
         doc = MagicMock()
         doc.tipo = tipo
         doc.id = doc_id
@@ -126,6 +126,8 @@ class TestExtrairRespostasContextoQuestoes:
         doc.extensao = extensao
         doc.nome_arquivo = Path(path).name
         doc.criado_em = criado_em or ""
+        doc.status = status
+        doc.metadata = metadata or {}
         return doc
 
     def test_extrair_respostas_carrega_questoes_extraidas_no_contexto(self, tmp_path):
@@ -387,6 +389,140 @@ class TestExtrairRespostasContextoQuestoes:
 
         assert "gabarito_extraido" not in contexto
         assert any("gabarito" in item for item in contexto["_documentos_faltantes"])
+
+    def test_contexto_json_usa_json_da_ultima_execucao_dual_output(self, tmp_path):
+        from executor import EtapaProcessamento, PipelineExecutor
+        from models import TipoDocumento
+
+        questoes_path = tmp_path / "questoes.json"
+        questoes_path.write_text(json.dumps({"questoes": []}), encoding="utf-8")
+        correcao_antiga_path = tmp_path / "correcao_antiga.json"
+        correcao_antiga_path.write_text(json.dumps({"nota_final": 4}), encoding="utf-8")
+        correcao_nova_path = tmp_path / "correcao_nova.json"
+        correcao_nova_path.write_text(json.dumps({"nota_final": 8}), encoding="utf-8")
+        correcao_pdf_path = tmp_path / "correcao_nova.pdf"
+        correcao_pdf_path.write_bytes(b"%PDF-1.4\n")
+
+        docs_base = [
+            self._doc(
+                TipoDocumento.EXTRACAO_QUESTOES,
+                "questoes",
+                questoes_path,
+                criado_em="2026-05-16T19:00:00",
+                metadata={"cost_run_id": "questoes-run"},
+            ),
+        ]
+        docs_aluno = docs_base + [
+            self._doc(
+                TipoDocumento.CORRECAO,
+                "correcao-pdf-nova",
+                correcao_pdf_path,
+                ".pdf",
+                criado_em="2026-05-16T19:02:00",
+                metadata={"cost_run_id": "correcao-run-nova"},
+            ),
+            self._doc(
+                TipoDocumento.CORRECAO,
+                "correcao-json-nova",
+                correcao_nova_path,
+                ".json",
+                criado_em="2026-05-16T19:01:00",
+                metadata={"cost_run_id": "correcao-run-nova"},
+            ),
+            self._doc(
+                TipoDocumento.CORRECAO,
+                "correcao-json-antiga",
+                correcao_antiga_path,
+                ".json",
+                criado_em="2026-05-16T18:00:00",
+                metadata={"cost_run_id": "correcao-run-antiga"},
+            ),
+        ]
+
+        executor = PipelineExecutor.__new__(PipelineExecutor)
+        executor.storage = MagicMock()
+        executor.storage.listar_documentos = MagicMock(
+            side_effect=lambda _atividade_id, aluno_id=None: docs_aluno if aluno_id else docs_base
+        )
+        executor.storage.resolver_caminho_documento = MagicMock(
+            side_effect=lambda doc: Path(doc.caminho_arquivo)
+        )
+
+        contexto = executor._preparar_contexto_json(
+            "ativ_test",
+            "aluno_test",
+            EtapaProcessamento.ANALISAR_HABILIDADES,
+        )
+
+        assert '"nota_final": 8' in contexto["correcoes"]
+        assert '"nota_final": 4' not in contexto["correcoes"]
+
+    def test_contexto_json_nao_usa_analise_antiga_se_ultima_execucao_falhou_sem_json(self, tmp_path):
+        from executor import EtapaProcessamento, PipelineExecutor
+        from models import TipoDocumento
+
+        questoes_path = tmp_path / "questoes.json"
+        questoes_path.write_text(json.dumps({"questoes": []}), encoding="utf-8")
+        correcao_path = tmp_path / "correcao.json"
+        correcao_path.write_text(json.dumps({"nota_final": 8}), encoding="utf-8")
+        analise_antiga_path = tmp_path / "analise_antiga.json"
+        analise_antiga_path.write_text(json.dumps({"habilidades": {"dominadas": []}}), encoding="utf-8")
+        analise_erro_pdf = tmp_path / "analise_erro.pdf"
+        analise_erro_pdf.write_bytes(b"%PDF-1.4\n")
+
+        docs_base = [
+            self._doc(
+                TipoDocumento.EXTRACAO_QUESTOES,
+                "questoes",
+                questoes_path,
+                criado_em="2026-05-16T19:00:00",
+                metadata={"cost_run_id": "questoes-run"},
+            ),
+        ]
+        docs_aluno = docs_base + [
+            self._doc(
+                TipoDocumento.CORRECAO,
+                "correcao",
+                correcao_path,
+                criado_em="2026-05-16T19:01:00",
+                metadata={"cost_run_id": "correcao-run"},
+            ),
+            self._doc(
+                TipoDocumento.ANALISE_HABILIDADES,
+                "analise-erro-pdf",
+                analise_erro_pdf,
+                ".pdf",
+                criado_em="2026-05-16T19:03:00",
+                status="erro",
+                metadata={"cost_run_id": "analise-run-falha"},
+            ),
+            self._doc(
+                TipoDocumento.ANALISE_HABILIDADES,
+                "analise-json-antiga",
+                analise_antiga_path,
+                ".json",
+                criado_em="2026-05-16T18:00:00",
+                metadata={"cost_run_id": "analise-run-antiga"},
+            ),
+        ]
+
+        executor = PipelineExecutor.__new__(PipelineExecutor)
+        executor.storage = MagicMock()
+        executor.storage.listar_documentos = MagicMock(
+            side_effect=lambda _atividade_id, aluno_id=None: docs_aluno if aluno_id else docs_base
+        )
+        executor.storage.resolver_caminho_documento = MagicMock(
+            side_effect=lambda doc: Path(doc.caminho_arquivo)
+        )
+
+        contexto = executor._preparar_contexto_json(
+            "ativ_test",
+            "aluno_test",
+            EtapaProcessamento.GERAR_RELATORIO,
+        )
+
+        assert "analise_habilidades" not in contexto
+        assert "analise_habilidades" in contexto["_documentos_faltantes"]
 
     def test_extrair_respostas_pdf_sem_texto_mantem_placeholder_de_anexo(self, tmp_path):
         from executor import EtapaProcessamento, PipelineExecutor

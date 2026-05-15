@@ -223,7 +223,18 @@ Você DEVE usar as ferramentas disponíveis para produzir dois outputs:
    Use _avisos_documento para problemas no documento inteiro.
    Use _avisos_questao para problemas em questões específicas (inclua o número da questão).
    Se não houver avisos, envie listas vazias [].
-   Use extensão .json e nome descritivo com dados reais do contexto.
+   Use exatamente um arquivo .json em create_document. Exemplo de chamada:
+   {
+     "documents": [
+       {
+         "filename": "analise_habilidades_aluno.json",
+         "document_type": "analysis",
+         "content": "{\"habilidades\": [], \"indicadores\": {}, \"recomendacoes\": [], \"_avisos_documento\": [], \"_avisos_questao\": []}"
+       }
+     ]
+   }
+   O campo content deve ser JSON valido serializado como string, com aspas
+   duplas. Nao crie PDF, Markdown ou texto livre via create_document.
    NUNCA use placeholders como "student123", "aluno_teste", "nome_do_aluno",
    "Aluno", "Student" ou valores fictícios. Se o nome real do aluno estiver
    ausente, use o aluno_id real do contexto e registre aviso explícito.
@@ -233,9 +244,9 @@ Você DEVE usar as ferramentas disponíveis para produzir dois outputs:
    - Lista de habilidades com níveis e indicadores visuais
    - Indicadores de proficiência
    - Recomendações pedagógicas priorizadas
-   Use extensão .pdf. O código DEVE gravar um arquivo .pdf real no disco e
-   preencher output_files com o nome exato desse arquivo. Não basta imprimir,
-   retornar base64 ou descrever o PDF.
+   Use o arquivo "analise_habilidades.pdf". O código DEVE gravar esse .pdf real
+   no disco e preencher output_files com ["analise_habilidades.pdf"]. Não basta
+   imprimir, retornar base64 ou descrever o PDF.
 """,
     EtapaProcessamento.GERAR_RELATORIO: """
 INSTRUÇÕES DE TOOL-USE PARA RELATÓRIO FINAL:
@@ -1031,6 +1042,56 @@ class PipelineExecutor:
             return doc
         return None
 
+    def _status_documento(self, documento: Any) -> str:
+        status = getattr(documento, "status", "")
+        return getattr(status, "value", status) if isinstance(getattr(status, "value", status), str) else ""
+
+    def _cost_run_id_documento(self, documento: Any) -> Optional[str]:
+        metadata = getattr(documento, "metadata", None)
+        if isinstance(metadata, dict):
+            cost_run_id = metadata.get("cost_run_id")
+            if cost_run_id:
+                return str(cost_run_id)
+        return None
+
+    def _documento_em_erro(self, documento: Any) -> bool:
+        return self._status_documento(documento).lower() == StatusProcessamento.ERRO.value
+
+    def _documentos_da_ultima_execucao(
+        self,
+        documentos: List[Any],
+        tipo: TipoDocumento,
+    ) -> List[Any]:
+        docs_tipo = [
+            doc
+            for doc in self._documentos_novos_primeiro(documentos)
+            if doc.tipo == tipo
+        ]
+        if not docs_tipo:
+            return []
+
+        doc_mais_recente = docs_tipo[0]
+        cost_run_id = self._cost_run_id_documento(doc_mais_recente)
+        if not cost_run_id:
+            return [doc_mais_recente]
+
+        return [
+            doc
+            for doc in docs_tipo
+            if self._cost_run_id_documento(doc) == cost_run_id
+        ]
+
+    def _documento_json_da_ultima_execucao(
+        self,
+        documentos: List[Any],
+        tipo: TipoDocumento,
+    ) -> Optional[Any]:
+        """Return the JSON artifact from the latest run, never an older run's JSON."""
+        for doc in self._documentos_da_ultima_execucao(documentos, tipo):
+            if str(getattr(doc, "extensao", "") or "").lower() == ".json":
+                return doc
+        return None
+
     def _coletar_arquivos_para_etapa(
         self,
         etapa: EtapaProcessamento,
@@ -1090,7 +1151,7 @@ class PipelineExecutor:
                 arquivos.append(caminho)
 
         def _adicionar_json_mais_recente(docs, tipo: TipoDocumento) -> None:
-            _adicionar_documento(self._documento_mais_recente(docs, tipo, ".json"))
+            _adicionar_documento(self._documento_json_da_ultima_execucao(docs, tipo))
 
         # Mapa de quais documentos cada etapa precisa
         if etapa == EtapaProcessamento.EXTRAIR_QUESTOES:
@@ -1173,6 +1234,13 @@ class PipelineExecutor:
         # Helper para carregar documento JSON
         def _carregar_json(doc, chave: str) -> bool:
             try:
+                if self._documento_em_erro(doc):
+                    _logger.warning(
+                        f"Documento {chave} pertence a uma execução com erro",
+                        doc_id=doc.id,
+                    )
+                    documentos_faltantes.append(f"{chave} (execução anterior falhou)")
+                    return False
                 # Use resolver_caminho_documento to handle Supabase downloads on Render
                 caminho = self.storage.resolver_caminho_documento(doc)
                 if caminho and caminho.exists():
@@ -1197,7 +1265,7 @@ class PipelineExecutor:
             return False
 
         def _carregar_json_mais_recente(docs, tipo: TipoDocumento, chave: str) -> bool:
-            doc = self._documento_mais_recente(docs, tipo, ".json")
+            doc = self._documento_json_da_ultima_execucao(docs, tipo)
             if not doc:
                 return False
             return _carregar_json(doc, chave)
@@ -3029,6 +3097,13 @@ Seja preciso, educativo e construtivo em suas análises."""
                     for tc in calls
                     if tc.get("name") and tc.get("is_error", False)
                 ]
+                errored_tool_details = []
+                for tc in calls:
+                    if not tc.get("is_error", False) or not tc.get("name"):
+                        continue
+                    detail = tc.get("error_content")
+                    if detail:
+                        errored_tool_details.append(f"{tc.get('name')}: {detail}")
                 pdf_calls_without_file = [
                     tc.get("id") or tc.get("name")
                     for tc in calls
@@ -3046,6 +3121,7 @@ Seja preciso, educativo e construtivo em suas análises."""
                     "has_runtime_metadata": has_runtime_metadata,
                     "docs_by_tool": docs_by_tool,
                     "errored_tools": errored_tools,
+                    "errored_tool_details": errored_tool_details,
                     "pdf_calls_without_file": pdf_calls_without_file,
                 }
 
@@ -3272,7 +3348,9 @@ Seja preciso, educativo e construtivo em suas análises."""
                 tokens_saida = _sum_usage(respostas_tool, "output_tokens")
                 tokens_total = tokens_entrada + tokens_saida
                 detalhes = []
-                if final_state.get("errored_tools"):
+                if final_state.get("errored_tool_details"):
+                    detalhes.append("tools com erro: " + " | ".join(final_state["errored_tool_details"]))
+                elif final_state.get("errored_tools"):
                     detalhes.append("tools com erro: " + ", ".join(final_state["errored_tools"]))
                 if final_state.get("pdf_calls_without_file"):
                     detalhes.append("execute_python_code rodou sem arquivo gerado")

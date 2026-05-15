@@ -1175,6 +1175,7 @@ class ChatClient:
                         "input": tool_call.input,
                         "is_error": result.is_error,
                         "files_generated": self._summarize_generated_files(result.files_generated),
+                        "error_content": self._summarize_tool_error(result.content) if result.is_error else None,
                     })
                     tool_results.append(result.to_anthropic_format())
 
@@ -1257,6 +1258,17 @@ class ChatClient:
                 item["content_base64_redacted"] = True
             summarized.append(item)
         return summarized
+
+    def _summarize_tool_error(self, content: Any) -> str:
+        """Return compact tool error content for diagnostics."""
+        if isinstance(content, str):
+            text = content
+        else:
+            try:
+                text = json.dumps(content, ensure_ascii=False)
+            except TypeError:
+                text = str(content)
+        return text[:600]
 
     async def _chat_openai_with_tools(
         self,
@@ -1356,6 +1368,7 @@ class ChatClient:
                         "input": tool_input,
                         "is_error": result.is_error,
                         "files_generated": self._summarize_generated_files(result.files_generated),
+                        "error_content": self._summarize_tool_error(result.content) if result.is_error else None,
                     })
 
                     tool_results_messages.append({
@@ -1506,6 +1519,7 @@ class ChatClient:
                     "input": tool_input,
                     "is_error": result.is_error,
                     "files_generated": self._summarize_generated_files(result.files_generated),
+                    "error_content": self._summarize_tool_error(result.content) if result.is_error else None,
                 })
 
                 result_content = result.content if isinstance(result.content, str) else json.dumps(result.content)
