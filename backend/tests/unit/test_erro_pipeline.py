@@ -83,6 +83,36 @@ class TestBlockingParsedResponses:
 
         assert erro is None
 
+    def test_extrair_respostas_vazio_sem_flag_bloqueia_sucesso(self):
+        from executor import EtapaProcessamento, PipelineExecutor
+
+        executor = PipelineExecutor.__new__(PipelineExecutor)
+        erro = executor._erro_resposta_parseada(
+            EtapaProcessamento.EXTRAIR_RESPOSTAS,
+            {
+                "aluno": "João Silva",
+                "respostas": [
+                    {
+                        "questao_numero": 1,
+                        "resposta_aluno": "",
+                        "em_branco": False,
+                        "ilegivel": False,
+                    },
+                    {
+                        "questao_numero": 2,
+                        "resposta_aluno": "x = 2",
+                        "em_branco": False,
+                        "ilegivel": False,
+                    },
+                ],
+                "questoes_respondidas": 2,
+                "questoes_em_branco": 0,
+            },
+        )
+
+        assert erro is not None
+        assert "JSON inconsistente" in erro
+
 
 class TestExtrairRespostasContextoQuestoes:
     """EXTRAIR_RESPOSTAS deve receber questoes extraidas no prompt, nao so anexo."""

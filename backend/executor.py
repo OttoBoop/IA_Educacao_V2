@@ -2060,7 +2060,7 @@ class PipelineExecutor:
 
         total = len(respostas)
         sem_conteudo = sum(1 for item in respostas if _sem_conteudo(item))
-        if total >= 3 and sem_conteudo / total >= 0.8:
+        if total >= 3 and sem_conteudo / total >= 0.7:
             return (
                 f"EXTRAIR_RESPOSTAS marcou {sem_conteudo} de {total} respostas como "
                 "sem conteudo mesmo com paginas escaneadas anexadas como imagem. "
@@ -2381,17 +2381,30 @@ class PipelineExecutor:
         if etapa_nome == EtapaProcessamento.EXTRAIR_RESPOSTAS.value:
             respostas = resposta_parsed.get("respostas")
             if isinstance(respostas, list) and respostas:
+                inconsistentes = []
+
                 def _sem_conteudo(item: Any) -> bool:
                     if not isinstance(item, dict):
                         return False
                     resposta_aluno = str(item.get("resposta_aluno") or "").strip()
+                    if not resposta_aluno and not item.get("em_branco") and not item.get("ilegivel"):
+                        inconsistentes.append(item.get("questao_numero", "?"))
                     return (
                         bool(item.get("ilegivel"))
                         or bool(item.get("em_branco"))
                         or not resposta_aluno
                     )
 
-                todas_sem_conteudo = all(_sem_conteudo(item) for item in respostas)
+                marcadores_sem_conteudo = [_sem_conteudo(item) for item in respostas]
+                if inconsistentes:
+                    questoes = ", ".join(str(q) for q in inconsistentes[:5])
+                    return (
+                        "EXTRAIR_RESPOSTAS retornou resposta_aluno vazio sem marcar "
+                        f"em_branco=true ou ilegivel=true nas questoes: {questoes}. "
+                        "Isso e JSON inconsistente e nao pode ser tratado como sucesso."
+                    )
+
+                todas_sem_conteudo = all(marcadores_sem_conteudo)
                 if todas_sem_conteudo:
                     return (
                         "EXTRAIR_RESPOSTAS retornou todas as respostas sem conteudo "
