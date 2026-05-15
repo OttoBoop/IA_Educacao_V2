@@ -11,7 +11,8 @@
 `28cfd6a`, `cacedcd`, `a311ade`, `924fd79`, `0dfdbbe`, `d653c13`,
 `2947178`, `53d0252`, `f55e299`, `5f10651`, `e6060e1`, `a7dead3`,
 `5527e26`, `2792d89`, `23282d7`, `7d0c874`, `8dd6c54`, `c1598b9`,
-`01fb04c`, `6b57ef1`, `3b9eedc`, `b8b8693`, `283e8c6`, `1ce3d23`
+`01fb04c`, `6b57ef1`, `3b9eedc`, `b8b8693`, `283e8c6`, `1ce3d23`,
+`2d72c6b`, `f2211bb`
 
 ## Status Oficial De Deploy
 
@@ -29,6 +30,9 @@
 - Os smokes abaixo devem dizer qual evidencia oficial usam: marker HTML quando
   aplicavel, Render MCP/lista de deploys quando o runtime for confirmado por
   commit backend, e sempre comportamento live por endpoint.
+- O commit `f2211bb` esta live em Render (`dep-d84bsou8bjmc73dgr12g`) e
+  `/api/deploy-info` confirmou `source=RENDER_GIT_COMMIT`; ele corrige selecao
+  de artefatos processados antigos em prompts/anexos.
 - Depois do smoke de `extrair_questoes`, o commit `f55e299` foi publicado para
   destacar tarefas longas do ciclo da requisicao; marker `5f10651` foi publicado
   no GitHub, mas ainda precisa confirmacao Render.
@@ -91,7 +95,7 @@
 |-----------------|:---:|:---:|:---:|:---:|:---:|:---:|
 | **Claude Haiku 4.5** (`588f3efe7975`) | ⏸️ | ⏸️ | ⏸️ | 🚫 | 🚫 | 🚫 |
 | **Gemini 3 Flash** (`gem3flash001`) | ✅ | ❌ | ✅ | ✅ | ✅ | ✅ |
-| **GPT-5 Nano** (`gpt5nano001`) | ✅ | ✅ | ❌ | ✅ | ✅ | ✅ |
+| **GPT-5 Nano** (`gpt5nano001`) | ✅ | ✅ | ❌ | ✅ | ⚠️ | ✅ |
 | **GPT-5.4 Mini** (`gpt54mini001`) | ⏸️ | ⏸️ | ✅ | ⏸️ | ⏸️ | ⏸️ |
 | **GPT-4o** (`180b8298a279`) — referencia | ✅ | ✅ | ✅ | ⚠️ | ⚠️ | ⚠️ |
 
@@ -134,6 +138,21 @@ com conteudo real, Q1/Q2 `MISSING_CONTENT`, Q3 `LOW_CONFIDENCE`, tokens
 Alvaro (`task_19062336eb8b`), criou `4a82ddf1d2118ff0`, 7/7 respostas com
 conteudo real, Q2/Q3 `LOW_CONFIDENCE`, tokens `90588/2813` e custo `US$ 0.0806`.
 Isso valida a etapa nessas amostras, nao pipeline completa.
+
+Nota de pipeline per-phase: antes de `f2211bb`, o smoke
+`task_ea1ac75c9459` falhou alto em `extrair_gabarito` porque Nano retornou tudo
+`MISSING_CONTENT` depois de receber contexto contaminado por muitos JSONs
+historicos. O patch `f2211bb` passou a usar apenas o artefato mais recente por
+tipo. No smoke pos-patch `task_19ee59ac1881`, `extrair_questoes` gerou
+`d50f3b909e6773e7` (`2178/8678`, `US$ 0.003580`), `extrair_gabarito` gerou
+`8dd414ee1617c3a5` (`6918/5497`, `US$ 0.002545`), `extrair_respostas` com
+`gpt54mini001` gerou `1e5db36f3ab9aa0e` (`18176/2081`, `US$ 0.022996`) e
+`corrigir` gerou JSON/PDF `f0302debf41ae58f`/`31794fc784905c00`
+(`19614/4566`, `US$ 0.002807`). A task falhou alto em `analisar_habilidades`,
+com doc parcial `b5f17f2d1a980a3d` marcado `status=erro` (`21193/7884`,
+`US$ 0.004213`), porque Nano nao produziu os artefatos obrigatorios via tools.
+Por isso `analisar_habilidades` de Nano fica ⚠️ em pipeline integrada, embora
+tenha smokes individuais historicos.
 
 ### Categoria 2: Relatorios de Desempenho (3 niveis)
 
@@ -486,6 +505,10 @@ Ver [teste_gpt5nano_pipeline_completo.md](arquivo_2026_04_17/teste_gpt5nano_pipe
       sem retry cego e sem trocar modelo
 - [ ] Aplicar `backend/migrations/002_create_token_usage.sql` no Supabase e revalidar
       `token_usage_backend.supabase.table_available=true`
+- [x] Corrigir contaminacao por artefatos antigos em prompts/anexos; `f2211bb`
+      reduziu tokens e destravou o gabarito no smoke per-phase
+- [ ] Corrigir `analisar_habilidades` em pipeline integrada: `task_19ee59ac1881`
+      falhou alto por tool-use incompleto em GPT-5 Nano
 - [x] Preparar codigo para persistir `TokenUsageRecord` em Supabase quando a
       tabela existir
 - [x] Criar registro local mensal de custo de falhas sem documento final
@@ -529,15 +552,18 @@ Ver [teste_gpt5nano_pipeline_completo.md](arquivo_2026_04_17/teste_gpt5nano_pipe
   Pipeline sequencial completa pos-runner chegou a `corrigir` e falhou alto por
   quota `429`; falta repetir quando quota permitir.
 - ⚠️ **GPT-5 Nano via `pipeline-completo`:** `extrair_questoes`,
-  `extrair_gabarito`, `corrigir`, `analisar_habilidades` e `gerar_relatorio`
-  passaram em smokes oficiais com JSON/PDF quando aplicavel, custo e metadata.
+  `extrair_gabarito`, `corrigir` e `gerar_relatorio` passaram em smokes
+  oficiais com JSON/PDF quando aplicavel, custo e metadata; `analisar_habilidades`
+  tem sucesso individual historico, mas falhou no smoke integrado pos-`f2211bb`
+  por tool-use incompleto, entao fica parcial.
   `extrair_respostas` rodou varias vezes, mas foi reclassificada como falha de
   conteudo por tudo `ilegivel=true`/vazio, por inferencia suspeita do enunciado
   ou por scan majoritariamente sem conteudo. O deploy `1ce3d23` corrigiu o
   falso sucesso final: agora esse caso falha alto, nao cria documento verde e
   registra custo de falha (`usage_52590d55d210459e`). Ainda faltam corrigir a
-  extracao real de respostas, rodar pipeline completa de 6 etapas, schema minimo
-  por etapa e custo duravel de falhas sem documento final.
+  extracao real de respostas, corrigir `analisar_habilidades` no run integrado,
+  rodar pipeline completa de 6 etapas, schema minimo por etapa e custo duravel
+  de falhas sem documento final.
 - ✅ **GPT-5.4 Mini candidato OCR:** `extrair_respostas` passou em uma amostra
   oficial primeiro como cadastro efemero (`task_9c10e3752bcb`, doc
   `a39d26fcc621c7a8`, custo `US$ 0.081492`) e depois como modelo versionado

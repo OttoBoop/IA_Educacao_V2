@@ -48,7 +48,16 @@ tabela nao existe (`PGRST205`) e que o store local nao e duravel entre deploys:
 `/api/custos/status?limit=500` mostrou `local_record_count=0`,
 `token_usage_analisados=0`, `runs_precificados=28`, `runs_bloqueados=458` e
 `durable=false`.
-Rio 3 segue pausado.
+Rio 3 segue pausado. O ciclo posterior `f2211bb` corrigiu contaminacao por
+artefatos antigos: o executor agora usa o documento processado mais recente por
+tipo nos prompts/anexos e nao recua para gabarito original quando a correcao
+exige `EXTRACAO_GABARITO` estruturado. Render confirmou `f2211bb` live; o smoke
+per-phase `task_19ee59ac1881` passou por `extrair_questoes`,
+`extrair_gabarito`, `extrair_respostas` com `gpt54mini001` e `corrigir`, e
+falhou alto em `analisar_habilidades` por tool-use incompleto, sem inventar PDF
+ou JSON. Proximo alvo real: corrigir `analisar_habilidades` em tool-use ou
+trocar explicitamente o modelo dessa fase; nao ha pipeline completa validada
+ainda.
 
 Este e o ponto de entrada do plano. O objetivo deste arquivo e dizer, em poucas
 linhas, onde estamos, qual e a proxima fila e quais frentes estao pausadas.
@@ -86,7 +95,7 @@ Estabilizar o NOVO CR para que a pipeline:
 | Frente | Estado | Proximo passo |
 |--------|--------|---------------|
 | Docs e plano | Sprint 0 concluida | Manter este painel como fonte oficial e anexos fora do fluxo diario |
-| Pipeline | Gemini 3 Flash validado em `extrair_questoes`, `extrair_respostas` e etapas finais; `extrair_gabarito` Gemini foi reclassificado como invalido porque retornou tudo `MISSING_CONTENT`; pipeline sequencial Gemini avancou pelas tres extracoes e falhou alto em `corrigir` por quota `429`; GPT-5 Nano validado em `extrair_questoes`, `extrair_gabarito`, `corrigir`, `analisar_habilidades` e `gerar_relatorio`, mas `extrair_respostas` Nano continua ❌ e falha alto; GPT-5.4 Mini completou `extrair_respostas` em duas amostras com modelo duravel `gpt54mini001` (`fec100a2e41eabcf` e `4a82ddf1d2118ff0`) | Usar `gpt54mini001` como candidato explicito para `extrair_respostas` em pipeline per-phase; manter Nano fora de pipeline completa enquanto essa etapa estiver ❌ |
+| Pipeline | Gemini 3 Flash validado em `extrair_questoes`, `extrair_respostas` e etapas finais; `extrair_gabarito` Gemini foi reclassificado como invalido porque retornou tudo `MISSING_CONTENT`; pipeline sequencial Gemini avancou pelas tres extracoes e falhou alto em `corrigir` por quota `429`; GPT-5 Nano validado em `extrair_questoes`, `extrair_gabarito`, `corrigir` e historicamente em etapas finais, mas `extrair_respostas` Nano continua ❌ e `analisar_habilidades` falhou no smoke per-phase pos-`f2211bb`; GPT-5.4 Mini completou `extrair_respostas` em duas amostras avulsas e no smoke per-phase (`1e5db36f3ab9aa0e`) | Corrigir `analisar_habilidades` tool-use ou selecionar modelo explicito por fase; manter Nano fora de pipeline completa enquanto `extrair_respostas` estiver ❌ e enquanto analise falhar no run integrado |
 | Schema e avisos | Sprint 2 concluida localmente | Manter schema oficial, defaults e visualizador cobertos por testes |
 | Custos/tokens | Metadata de documento, endpoints live, resumo por `cost_run_id`, `TokenUsageRecord` local, migration Supabase dedicada `b2dc88b`; falha alta final de `task_3d5feaf0da71` registrou `usage_52590d55d210459e` sem documento final antes de deploy posterior, tokens `100188/8863`, custo `US$ 0.008555`; GPT-5.4 Mini em `extrair_respostas` registrou documentos `a39d26fcc621c7a8`, `fec100a2e41eabcf` e `4a82ddf1d2118ff0`, custos `US$ 0.081492`, `US$ 0.080570` e `US$ 0.0806`; diagnostico live ainda acusa `PGRST205`, `durable=false` e `local_record_count=0`, provando que o fallback local de `TokenUsageRecord` nao sobrevive deploy | Aplicar `backend/migrations/002_create_token_usage.sql` no Supabase; revalidar ate `token_usage_backend.durable=true` |
 | UI de erros | Pendente | Mostrar falha por aluno/etapa sem depender de terminal |
@@ -1348,6 +1357,61 @@ Critério de pronto: lista de limpeza segura e revisada.
   `check_deploy.sh 2d72c6b` passou; `/api/health` continuou healthy.
 - Proximo alvo tecnico: decidir o proximo ciclo entre aplicar migration Supabase
   de `token_usage` (gate alto) e ampliar smokes `gpt54mini001` por amostra/fase.
+
+### 2026-05-16 -- Higiene de artefatos e smoke per-phase pos-patch
+
+- Alvo: rodar uma pipeline oficial por fase, usando Nano nas etapas estruturais
+  e `gpt54mini001` em `extrair_respostas`, sem Rio 3 e sem fallback silencioso.
+- Smoke antes do patch: `task_ea1ac75c9459`, runtime `2d72c6b`, Pablo
+  (`f2828766a2a91e9a`). `extrair_questoes` concluiu com JSON
+  `153c240d3bb59029` (`2178/7682`, custo `US$ 0.003182`), mas
+  `extrair_gabarito` falhou alto: `EXTRAIR_GABARITO retornou todas as respostas
+  como MISSING_CONTENT`. A falha registrou custo sem documento final em
+  `usage_c1129eb1c465417d` (`89035/3420`, custo `US$ 0.005820`), local e nao
+  duravel porque Supabase `token_usage` ainda nao existe.
+- Diagnostico: `storage.listar_documentos()` retorna documentos em ordem mais
+  recente primeiro, mas `_preparar_variaveis_texto()` sobrescrevia variaveis ao
+  percorrer todos os documentos; o valor final podia ser um JSON antigo. Alem
+  disso, `_coletar_arquivos_para_etapa()` anexava todos os JSONs historicos da
+  atividade, inflando tokens e confundindo o modelo.
+- Patch: `f2211bb` (`fix: use latest pipeline artifacts explicitly`) seleciona
+  o documento mais recente por tipo para JSONs processados, impede recuo para
+  artefatos antigos e remove o uso de gabarito original como substituto de
+  `EXTRACAO_GABARITO` em `corrigir`.
+- Validacoes locais: `python -m py_compile backend/executor.py
+  backend/tests/unit/test_erro_pipeline.py`; `PYTHONPATH=backend
+  /home/otavio/Documents/vscode/.venv/bin/python -m pytest
+  backend/tests/unit/test_erro_pipeline.py -q` (`57 passed`);
+  `PYTHONPATH=backend /home/otavio/Documents/vscode/.venv/bin/python -m pytest
+  backend/tests/unit/test_pipeline_validation.py backend/tests/unit/test_cost_tracking.py -q`
+  (`43 passed`, `3 skipped`); `git diff --check`.
+- Deploy: `f2211bb897dd6d4a3ae0264dd48cf6d7970a64b2` publicado no GitHub;
+  Render MCP confirmou `dep-d84bsou8bjmc73dgr12g` como `live`; `/api/deploy-info`
+  retornou `f2211bb` por `RENDER_GIT_COMMIT`; `/api/health` ficou healthy.
+- Smoke pos-patch: `task_19ee59ac1881`, mesmos providers por fase,
+  `force_rerun=true`.
+- Resultado pos-patch por etapa:
+  - `extrair_questoes`: ✅ JSON `d50f3b909e6773e7`, Nano, `2178/8678`, custo
+    `US$ 0.003580`.
+  - `extrair_gabarito`: ✅ JSON `8dd414ee1617c3a5`, Nano, `6918/5497`, custo
+    `US$ 0.002545`; antes a mesma etapa chegava a `78104/8353` ou falhava com
+    custo alto por contexto contaminado.
+  - `extrair_respostas`: ✅ JSON `1e5db36f3ab9aa0e`, `gpt-5.4-mini`,
+    `18176/2081`, custo `US$ 0.022996`.
+  - `corrigir`: ✅ JSON `f0302debf41ae58f` e PDF `31794fc784905c00`, Nano,
+    `19614/4566`, custo `US$ 0.002807`.
+  - `analisar_habilidades`: ❌ falhou alto; doc parcial `b5f17f2d1a980a3d`
+    ficou `status=erro`, Nano, `21193/7884`, custo `US$ 0.004213`; erro:
+    `Saída obrigatória incompleta: JSON persistido via create_document... tools
+    com erro: create_document, create_document, create_document; execute_python_code
+    rodou sem arquivo gerado.`
+  - `gerar_relatorio`: pendente, nao executou.
+- Status: o patch corrigiu contaminacao de artefatos e reduziu custo/latencia,
+  mas a pipeline oficial ainda nao esta completa. O maior bloqueador reproduzido
+  agora e `analisar_habilidades` com GPT-5 Nano em tool-use integrado.
+- Proximo alvo tecnico: corrigir `analisar_habilidades` para produzir exatamente
+  os artefatos obrigatorios ou configurar modelo per-phase explicito para essa
+  etapa; depois repetir o smoke ate `gerar_relatorio`.
 
 ## Riscos Abertos
 
