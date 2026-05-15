@@ -165,7 +165,11 @@ Todos retornam JSON com campos: `total_usd`, `tokens_entrada`, `tokens_saida`,
 
 ### 1.4 Precificacao por modelo (referencia)
 
-Dados do `model_catalog.json` (versao 2026.01, atualizado 2026-01-28).
+Dados do `model_catalog.json` (versao 2026.05, atualizado 2026-05-15) e
+checagem oficial da documentacao OpenAI em 2026-05-16. A pagina de modelos da
+OpenAI recomenda `gpt-5.5` para raciocinio complexo e cita `gpt-5.4-mini` /
+`gpt-5.4-nano` para workloads de menor custo/latencia; a pagina de precos lista
+os valores abaixo para contexto curto.
 **Precos em USD por 1M tokens.**
 
 #### Modelos recomendados para o pipeline educacional
@@ -177,8 +181,19 @@ Dados do `model_catalog.json` (versao 2026.01, atualizado 2026-01-28).
 | gemini-3-flash-preview | Google | $0.30 | $1.20 | -- | CORRIGIR, ANALISAR (custo/beneficio) |
 | gpt-5-nano | OpenAI | $0.05 | $0.40 | $0.005 | **EXTRAIR** (ultra-economico) |
 | gpt-5-mini | OpenAI | $0.25 | $2.00 | $0.025 | CORRIGIR, ANALISAR |
+| gpt-5.4-nano | OpenAI | $0.20 | $1.25 | $0.02 | EXTRAIR barata quando Nano antigo falhar |
+| gpt-5.4-mini | OpenAI | $0.75 | $4.50 | $0.075 | **EXTRAIR_RESPOSTAS/OCR candidato** |
+| gpt-5.4 | OpenAI | $2.50 | $15.00 | $0.25 | Alternativa forte antes de flagship |
+| gpt-5.5 | OpenAI | $5.00 | $30.00 | $0.50 | Flagship; usar so quando custo/qualidade justificar |
 | claude-sonnet-4-5 | Anthropic | $3.00 | $15.00 | -- | GERAR_RELATORIO (qualidade alta) |
 | gpt-5 | OpenAI | $1.25 | $10.00 | $0.125 | GERAR_RELATORIO (alternativa) |
+
+Evidencia recente: em 2026-05-16, `gpt-5-nano` falhou alto em
+`EXTRAIR_RESPOSTAS` para prova manuscrita, enquanto `gpt-5.4-mini` completou a
+mesma etapa com 4/7 respostas extraidas, 3/7 marcadas explicitamente como
+sem resposta visivel, tokens `97004/1942` e custo `US$ 0.081492`. Isso nao
+promove pipeline completa; promove apenas `gpt-5.4-mini` como candidato melhor
+para OCR/handwriting nessa amostra.
 
 #### Estimativa de custo por prova (30 alunos, 10 questoes)
 
@@ -188,6 +203,7 @@ Supondo ~3000 tokens de entrada e ~1500 de saida por etapa por aluno:
 |---------|----------------|----------------|
 | Ultra-economico | gpt-5-nano em todas etapas | ~$0.04 |
 | Economico | gemini-2.5-flash (extrair) + gemini-3-flash (corrigir/analisar) | ~$0.12 |
+| OCR OpenAI medio | gpt-5.4-mini apenas em `EXTRAIR_RESPOSTAS`, modelos baratos nas demais | medir apos pipeline completa |
 | Equilibrado | haiku-4.5 (extrair) + sonnet-4.5 (corrigir) + haiku-4.5 (relatorio) | ~$0.55 |
 | Premium | gpt-5 (todas etapas) | ~$1.05 |
 
@@ -334,7 +350,7 @@ e desperdicio. Proposta:
 |-------|-------------|-------------------|---------------|
 | EXTRAIR_QUESTOES | Baixa (OCR + lista) | gemini-2.5-flash ou gpt-5-nano | Vision barato, output estruturado simples |
 | EXTRAIR_GABARITO | Baixa (OCR + lista) | gemini-2.5-flash ou gpt-5-nano | Idem |
-| EXTRAIR_RESPOSTAS | Media (OCR + interpretacao) | gemini-3-flash-preview ou haiku-4.5 | Precisa interpretar caligrafia |
+| EXTRAIR_RESPOSTAS | Media (OCR + interpretacao) | gemini-3-flash-preview, haiku-4.5 ou gpt-5.4-mini | Precisa interpretar caligrafia; `gpt-5.4-mini` passou na amostra em que Nano falhou |
 | CORRIGIR | Alta (julgamento + justificativa) | claude-sonnet-4-5 ou gpt-5 | Qualidade do feedback importa |
 | ANALISAR_HABILIDADES | Media (mapeamento BNCC) | haiku-4.5 ou gpt-5-mini | Mapeamento sistematico, nao criativo |
 | GERAR_RELATORIO | Alta (redacao coesa) | claude-sonnet-4-5 ou gpt-5 | Qualidade textual importa para o professor |
@@ -394,9 +410,9 @@ Resumo do que foi verificado em cada arquivo para produzir este documento:
 | `executor.py` L857-858 | Caminho multimodal (`_executar_multimodal`) | Tokens preenchidos de `ResultadoEnvio` |
 | `executor.py` L2449-2460 | Caminho tool-use (`executar_com_tools`) | **GAP:** `tokens_entrada` recebe total, `tokens_saida` fica 0 |
 | `model_catalog.py` | Schema `ModelMetadata` | Campos `input_cost`, `output_cost`, `cached_input_cost` presentes |
-| `data/model_catalog.json` | Precos dos modelos | Versao 2026.01 -- precisa atualizar para modelos lancados apos Jan 2026 |
-| `chat_service.py` | `ChatClient.chat()` e dispatch por provider | `CUSTOM` faz fallback para formato OpenAI |
-| `chat_service.py` | Retorno de tokens nos metodos `_chat_*` | **GAP:** Retorna apenas `"tokens"` (total), nao separa input/output |
+| `data/model_catalog.json` | Precos dos modelos | Versao 2026.05 inclui familia GPT-5.4/5.5; manter sincronizado com docs oficiais e smokes reais |
+| `chat_service.py` | `ChatClient.chat()` e dispatch por provider | `CUSTOM` usa compatibilidade OpenAI; isso deve ser explicito, nao fallback silencioso |
+| `chat_service.py` | Retorno de tokens nos metodos `_chat_*` | Split `input_tokens`/`output_tokens` implementado; continuar validando rotas antigas e tool-use |
 | `anexos.py` | `ClienteAPIMultimodal` -- 3 providers | OpenAI, Anthropic, Google: todos capturam input/output separados corretamente |
 | `ai_providers.py` | `AIResponse` dataclass e providers | `input_tokens`/`output_tokens` preenchidos corretamente em todos os providers |
 | `ai_providers.py` | `AIProviderRegistry` | Sistema legado de registro, funcional mas menos flexivel que `chat_service.py` |

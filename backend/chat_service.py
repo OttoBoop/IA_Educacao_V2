@@ -658,8 +658,12 @@ class ModelManager:
                 capacidades = {
                     "suporta_temperature": m.get("suporta_temperature", True),
                     "suporta_vision": m.get("suporta_vision", False),
+                    "suporta_streaming": m.get("suporta_streaming", True),
+                    "suporta_function_calling": m.get("suporta_tools", m.get("suporta_function_calling", False)),
                 }
                 break
+
+        capacidades.update(kwargs)
         
         config = ModelConfig(
             id=model_id,
@@ -667,8 +671,7 @@ class ModelManager:
             tipo=tipo,
             modelo=modelo,
             api_key_id=api_key_id,
-            **capacidades,
-            **kwargs
+            **capacidades
         )
         
         # Se é o primeiro modelo, torna default

@@ -27,12 +27,17 @@ escaneadas como imagens; `283e8c6` proibiu inferir respostas do enunciado; e
 `1ce3d23` bloqueou JSON inconsistente/majoritariamente vazio em scans. O smoke
 oficial final (`task_3d5feaf0da71`) falhou alto sem criar novo documento verde,
 com custo registrado em `TokenUsageRecord` local `usage_52590d55d210459e`
-(`US$ 0.008555`). O resumo de custos agrega por `cost_run_id`; falhas sem
-documento final tem `TokenUsageRecord` local mensal e codigo preparado para
-Supabase quando a tabela `token_usage` existir. O endpoint live ainda confirma
-que essa tabela nao existe (`PGRST205`): `/api/custos/status?limit=500` retornou
-`runs_precificados=27`, `runs_bloqueados=460`, `token_usage_analisados=1` e
-`durable=false`. Rio 3 segue pausado.
+(`US$ 0.008555`). Em seguida, `gpt-5.4-mini` foi cadastrado explicitamente como
+candidato OpenAI para OCR/handwriting; a conexao respondeu `OK`, e o smoke
+`task_9c10e3752bcb` completou `extrair_respostas` com documento
+`a39d26fcc621c7a8`: 4/7 respostas extraidas, 3/7 marcadas como sem resposta
+visivel, tokens `97004/1942`, custo `US$ 0.081492`. Isso confirma candidato
+para a etapa, nao pipeline completa. O resumo de custos agrega por `cost_run_id`;
+falhas sem documento final tem `TokenUsageRecord` local mensal e codigo
+preparado para Supabase quando a tabela `token_usage` existir. O endpoint live
+ainda confirma que essa tabela nao existe (`PGRST205`): `/api/custos/resumo`
+apos o smoke GPT-5.4 Mini mostrou `token_usage_analisados=1` e `durable=false`.
+Rio 3 segue pausado.
 
 Este e o ponto de entrada do plano. O objetivo deste arquivo e dizer, em poucas
 linhas, onde estamos, qual e a proxima fila e quais frentes estao pausadas.
@@ -70,9 +75,9 @@ Estabilizar o NOVO CR para que a pipeline:
 | Frente | Estado | Proximo passo |
 |--------|--------|---------------|
 | Docs e plano | Sprint 0 concluida | Manter este painel como fonte oficial e anexos fora do fluxo diario |
-| Pipeline | Gemini 3 Flash validado em `extrair_questoes`, `extrair_respostas` e etapas finais; `extrair_gabarito` Gemini foi reclassificado como invalido porque retornou tudo `MISSING_CONTENT`; pipeline sequencial Gemini avancou pelas tres extracoes e falhou alto em `corrigir` por quota `429`; GPT-5 Nano validado em `extrair_questoes`, `extrair_gabarito`, `corrigir`, `analisar_habilidades` e `gerar_relatorio`; `extrair_respostas` Nano continua ❌: o sistema agora envia texto extraido + paginas escaneadas, proibe inferencia do enunciado e falha alto quando o resultado fica majoritariamente sem conteudo (`task_3d5feaf0da71`, commit `1ce3d23`) | Decidir o proximo caminho para `extrair_respostas`: usar provider melhor para OCR/handwriting explicitamente, ajustar prompt/vision de Nano, ou registrar Nano como inadequado para prova manuscrita; depois tentar pipeline completa Nano somente se essa etapa ficar confiavel |
+| Pipeline | Gemini 3 Flash validado em `extrair_questoes`, `extrair_respostas` e etapas finais; `extrair_gabarito` Gemini foi reclassificado como invalido porque retornou tudo `MISSING_CONTENT`; pipeline sequencial Gemini avancou pelas tres extracoes e falhou alto em `corrigir` por quota `429`; GPT-5 Nano validado em `extrair_questoes`, `extrair_gabarito`, `corrigir`, `analisar_habilidades` e `gerar_relatorio`, mas `extrair_respostas` Nano continua ❌ e falha alto; GPT-5.4 Mini completou `extrair_respostas` nessa amostra com conteudo real (`task_9c10e3752bcb`, doc `a39d26fcc621c7a8`) | Usar GPT-5.4 Mini como candidato explicito para `extrair_respostas` em nova pipeline completa ou por mais amostras; corrigir/deployar bug de cadastro de modelo por catalogo/settings; manter Nano fora de pipeline completa enquanto essa etapa estiver ❌ |
 | Schema e avisos | Sprint 2 concluida localmente | Manter schema oficial, defaults e visualizador cobertos por testes |
-| Custos/tokens | Metadata de documento, endpoints live, resumo por `cost_run_id`, `TokenUsageRecord` local, migration Supabase dedicada `b2dc88b`; falha alta final de `task_3d5feaf0da71` registrou `usage_52590d55d210459e` sem documento final, tokens `100188/8863`, custo `US$ 0.008555`; diagnostico live ainda acusa `PGRST205` e `durable=false` | Aplicar `backend/migrations/002_create_token_usage.sql` no Supabase; revalidar ate `token_usage_backend.durable=true` |
+| Custos/tokens | Metadata de documento, endpoints live, resumo por `cost_run_id`, `TokenUsageRecord` local, migration Supabase dedicada `b2dc88b`; falha alta final de `task_3d5feaf0da71` registrou `usage_52590d55d210459e` sem documento final, tokens `100188/8863`, custo `US$ 0.008555`; GPT-5.4 Mini em `extrair_respostas` registrou documento `a39d26fcc621c7a8`, tokens `97004/1942`, custo `US$ 0.081492`; diagnostico live ainda acusa `PGRST205` e `durable=false` | Aplicar `backend/migrations/002_create_token_usage.sql` no Supabase; revalidar ate `token_usage_backend.durable=true` |
 | UI de erros | Pendente | Mostrar falha por aluno/etapa sem depender de terminal |
 | Limpeza de dados | Pendente | Reclassificar "fantasmas" antes de qualquer delecao |
 | Rio 3 | Pausada | Nao pedir chave, nao rodar smoke, nao deployar Rio sem nova decisao |
@@ -1234,6 +1239,42 @@ Critério de pronto: lista de limpeza segura e revisada.
   evidencia por pagina; nao rodar pipeline completa Nano enquanto essa etapa
   estiver ❌.
 
+### 2026-05-16 -- GPT-5.4 Mini candidato para `extrair_respostas`
+
+- Alvo: testar um modelo OpenAI mais forte que Nano para a etapa de prova
+  manuscrita, sem fallback silencioso e sem rodar pipeline completa.
+- Fonte oficial de modelo/preco: docs OpenAI em 2026-05-16 indicam `gpt-5.5`
+  como flagship e `gpt-5.4-mini`/`gpt-5.4-nano` para menor custo/latencia; o
+  catalogo live do site lista `gpt-5.4-mini` com vision/tools/reasoning e preco
+  `US$ 0.75/US$ 4.50` por 1M tokens.
+- Bug de settings descoberto: `POST /api/settings/models/from-catalog` retornou
+  500 ao criar `openai/gpt-5.4-mini`; `POST /api/settings/models` criou o modelo
+  mas ignorou capabilities no create (`tools=false`, `suporta_temperature=true`).
+  Foi necessario corrigir via `PUT` no site oficial antes do smoke.
+- Modelo cadastrado no site: `04b31001cf81`, nome
+  `GPT-5.4 Mini OCR candidato`, `modelo=gpt-5.4-mini`, `reasoning_effort=low`,
+  `suporta_vision=true`, `suporta_function_calling=true`,
+  `suporta_temperature=false`.
+- Teste de conexao: `/api/settings/models/04b31001cf81/testar` retornou
+  `success=true`, resposta `OK`, `tokens=49`.
+- Smoke oficial: `task_9c10e3752bcb`, `selected_steps=["extrair_respostas"]`,
+  `force_rerun=true`.
+- Resultado: task `completed`; documento `a39d26fcc621c7a8`, status
+  `concluido`, provider/modelo `openai/gpt-5.4-mini`, tokens `97004/1942`,
+  custo `US$ 0.081492`, tempo `40546.4ms`.
+- Qualidade observada: 4/7 respostas extraidas com conteudo real; questoes 1, 2
+  e 4 marcadas explicitamente como `MISSING_CONTENT`/sem resposta visivel. Isso
+  e melhor que Nano para esta amostra, mas ainda precisa validacao em mais provas
+  e pipeline completa com per-phase model.
+- Patch local preparado: `ModelManager.adicionar()` passa a mesclar capabilities
+  sem `TypeError`; `ModelCreate` passa a aceitar e preservar
+  `suporta_vision`, `suporta_function_calling`, `suporta_streaming` e
+  `suporta_temperature`. Teste focado: `backend/tests/unit/test_model_manager.py`
+  com `14 passed`.
+- Proximo alvo tecnico: commitar/deployar o patch de settings, confirmar Render,
+  retestar `from-catalog`, e depois rodar pipeline com `gpt-5.4-mini` somente em
+  `EXTRAIR_RESPOSTAS` ou em mais amostras dessa etapa.
+
 ## Riscos Abertos
 
 1. Creditos Anthropic insuficientes ainda bloqueiam validacao Haiku.
@@ -1255,7 +1296,10 @@ Critério de pronto: lista de limpeza segura e revisada.
    ficam sem conteudo, inferidas ou inconsistentes; desde `1ce3d23`, o caso
    final falha alto no executor e registra custo, mas a qualidade da extracao
    ainda precisa ser corrigida.
-9. Artefatos com `status=erro` podem ter arquivo/conteudo parcial; UI e docs
+9. O endpoint live de cadastro por catalogo/settings ainda precisa receber o
+   patch local; enquanto isso, `from-catalog` pode dar 500 e create pode ignorar
+   capabilities, exigindo PUT corretivo.
+10. Artefatos com `status=erro` podem ter arquivo/conteudo parcial; UI e docs
    devem ensinar o usuario a obedecer o status, nao o simples fato de existir
    arquivo.
-10. Rio 3 nao deve voltar ao fluxo ativo sem nova decisao e nova chave segura.
+11. Rio 3 nao deve voltar ao fluxo ativo sem nova decisao e nova chave segura.

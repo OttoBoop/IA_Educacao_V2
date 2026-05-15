@@ -92,6 +92,7 @@
 | **Claude Haiku 4.5** (`588f3efe7975`) | ⏸️ | ⏸️ | ⏸️ | 🚫 | 🚫 | 🚫 |
 | **Gemini 3 Flash** (`gem3flash001`) | ✅ | ❌ | ✅ | ✅ | ✅ | ✅ |
 | **GPT-5 Nano** (`gpt5nano001`) | ✅ | ✅ | ❌ | ✅ | ✅ | ✅ |
+| **GPT-5.4 Mini** (`04b31001cf81`) | ⏸️ | ⏸️ | ✅ | ⏸️ | ⏸️ | ⏸️ |
 | **GPT-4o** (`180b8298a279`) — referencia | ✅ | ✅ | ✅ | ⚠️ | ⚠️ | ⚠️ |
 
 Nota de leitura: os checks da tabela acima sao por etapa individual validada.
@@ -120,6 +121,11 @@ criou `ff0882e8db71e79d`, mais honesto, mas ainda verde inconsistente; por fim
 `EXTRAIR_RESPOSTAS` como ❌ por qualidade de extracao, e o comportamento de
 produto contra falso sucesso esta corrigido para vazio total, inferencia obvia,
 JSON vazio inconsistente e scan majoritariamente sem conteudo.
+Nota de candidato: `gpt-5.4-mini` foi cadastrado em producao como
+`04b31001cf81` apos teste de conexao `OK`. No smoke `task_9c10e3752bcb`,
+`EXTRAIR_RESPOSTAS` completou com documento `a39d26fcc621c7a8`, 4/7 respostas
+com conteudo real, 3/7 marcadas como `MISSING_CONTENT`, tokens `97004/1942` e
+custo `US$ 0.081492`. Isso valida a etapa nessa amostra, nao pipeline completa.
 
 ### Categoria 2: Relatorios de Desempenho (3 niveis)
 
@@ -287,6 +293,12 @@ JSON vazio inconsistente e scan majoritariamente sem conteudo.
   bloquear JSON inconsistente/scan majoritariamente vazio. O smoke final
   `task_3d5feaf0da71` falhou alto, sem novo documento verde, e registrou
   `TokenUsageRecord` `usage_52590d55d210459e` com custo `US$ 0.008555`.
+- GPT-5.4 Mini foi testado como candidato explicito para a mesma etapa:
+  `task_9c10e3752bcb` completou, JSON `a39d26fcc621c7a8`, provider/modelo
+  `openai/gpt-5.4-mini`, tokens `97004/1942`, custo `US$ 0.081492`,
+  4 respostas extraidas e 3 questoes marcadas como sem resposta visivel. Antes
+  do smoke, `from-catalog` retornou 500 e o create basico ignorou capabilities;
+  ha patch local para corrigir settings antes de depender desse fluxo.
 
 **Gemini 3 Flash:** tambem validado em 2 testes historicos de chat (mensagem unica + multi-turn). Ver [teste_chat_gemini.md](arquivo_2026_04_17/teste_chat_gemini.md).
 - Teste 1: 662 tokens, 1930ms, resposta em PT correta
@@ -516,6 +528,9 @@ Ver [teste_gpt5nano_pipeline_completo.md](arquivo_2026_04_17/teste_gpt5nano_pipe
   registra custo de falha (`usage_52590d55d210459e`). Ainda faltam corrigir a
   extracao real de respostas, rodar pipeline completa de 6 etapas, schema minimo
   por etapa e custo duravel de falhas sem documento final.
+- ✅ **GPT-5.4 Mini candidato OCR:** `extrair_respostas` passou em uma amostra
+  oficial (`task_9c10e3752bcb`, doc `a39d26fcc621c7a8`) com custo `US$ 0.081492`.
+  Ainda nao foi testado em pipeline completa nem nas outras etapas.
 - ⏸️ **Claude Haiku 4.5:** Aguardando creditos.
 - 📊 **Confiabilidade Gemini 3 Flash:** etapas individuais OK, mas a primeira
   pipeline sequencial pos-runner bateu quota `429` em `corrigir`. Precisa duas

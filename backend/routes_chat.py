@@ -203,6 +203,10 @@ class ModelCreate(BaseModel):
     parametros: Optional[Dict[str, Any]] = None
     system_prompt: Optional[str] = None
     base_url: Optional[str] = None
+    suporta_function_calling: Optional[bool] = None
+    suporta_vision: Optional[bool] = None
+    suporta_streaming: Optional[bool] = None
+    suporta_temperature: Optional[bool] = None
 
 class ModelUpdate(BaseModel):
     nome: Optional[str] = None
@@ -658,7 +662,17 @@ async def criar_modelo(data: ModelCreate):
         temperature=data.temperature,
         parametros=data.parametros or {},
         system_prompt=data.system_prompt,
-        base_url=data.base_url
+        base_url=data.base_url,
+        **{
+            k: v
+            for k, v in {
+                "suporta_function_calling": data.suporta_function_calling,
+                "suporta_vision": data.suporta_vision,
+                "suporta_streaming": data.suporta_streaming,
+                "suporta_temperature": data.suporta_temperature,
+            }.items()
+            if v is not None
+        }
     )
     
     return {"success": True, "model": model.to_dict()}

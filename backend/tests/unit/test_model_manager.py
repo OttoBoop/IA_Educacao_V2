@@ -187,6 +187,111 @@ class TestDefaultModelUniqueness:
         assert defaults[0].id == model2.id, "Modelo B deveria ser o default"
 
 
+class TestModelCapabilities:
+    """Regressoes para cadastro de modelos por catalogo/settings."""
+
+    def test_adicionar_mescla_capabilities_sem_duplicar_kwargs(self, model_manager_instance):
+        """Caller pode sobrescrever capabilities sugeridas sem TypeError."""
+        from chat_service import ProviderType
+
+        model = model_manager_instance.adicionar(
+            nome="GPT-5.4 Mini OCR candidato",
+            tipo=ProviderType.OPENAI,
+            modelo="gpt-5.4-mini",
+            max_tokens=16384,
+            temperature=None,
+            parametros={"reasoning_effort": "low"},
+            suporta_vision=True,
+            suporta_function_calling=True,
+            suporta_streaming=True,
+            suporta_temperature=False,
+        )
+
+        assert model.modelo == "gpt-5.4-mini"
+        assert model.suporta_vision is True
+        assert model.suporta_function_calling is True
+        assert model.suporta_streaming is True
+        assert model.suporta_temperature is False
+        assert model.temperature is None
+
+    def test_adicionar_usa_tools_do_modelo_sugerido_quando_existir(self, model_manager_instance):
+        """Modelos sugeridos novos carregam tools/vision sem exigir PUT corretivo."""
+        from chat_service import ProviderType
+
+        model = model_manager_instance.adicionar(
+            nome="GPT-5.4 Mini",
+            tipo=ProviderType.OPENAI,
+            modelo="gpt-5.4-mini",
+        )
+
+        assert model.suporta_vision is True
+        assert model.suporta_function_calling is True
+
+
+@pytest.mark.asyncio
+async def test_criar_modelo_preserva_capabilities_no_create(monkeypatch):
+    """POST /api/settings/models deve respeitar flags de capability no create."""
+    import routes_chat
+
+    captured = {}
+
+    class FakeModel:
+        def to_dict(self):
+            return {"id": "fake-model", **captured}
+
+    class FakeManager:
+        def adicionar(self, **kwargs):
+            captured.update(kwargs)
+            return FakeModel()
+
+    monkeypatch.setattr(routes_chat, "model_manager", FakeManager())
+
+    data = routes_chat.ModelCreate(
+        nome="GPT-5.4 Mini OCR candidato",
+        tipo="openai",
+        modelo="gpt-5.4-mini",
+        max_tokens=16384,
+        temperature=None,
+        parametros={"reasoning_effort": "low"},
+        suporta_vision=True,
+        suporta_function_calling=True,
+        suporta_streaming=True,
+        suporta_temperature=False,
+    )
+
+    response = await routes_chat.criar_modelo(data)
+
+    assert response["success"] is True
+    assert captured["suporta_vision"] is True
+    assert captured["suporta_function_calling"] is True
+    assert captured["suporta_streaming"] is True
+    assert captured["suporta_temperature"] is False
+
+
+@pytest.mark.asyncio
+async def test_criar_modelo_do_catalogo_nao_duplica_capabilities(monkeypatch, model_manager_instance):
+    """POST /api/settings/models/from-catalog deve criar modelo sugerido sem 500."""
+    import routes_chat
+
+    monkeypatch.setattr(routes_chat, "model_manager", model_manager_instance)
+
+    data = routes_chat.ModelFromCatalogCreate(
+        catalog_ref="openai/gpt-5.4-mini",
+        nome="GPT-5.4 Mini OCR candidato",
+        max_tokens=16384,
+    )
+
+    response = await routes_chat.criar_modelo_do_catalogo(data)
+    model = response["model"]
+
+    assert response["success"] is True
+    assert model["modelo"] == "gpt-5.4-mini"
+    assert model["catalog_ref"] == "openai/gpt-5.4-mini"
+    assert model["suporta_vision"] is True
+    assert model["suporta_function_calling"] is True
+    assert model["suporta_temperature"] is False
+
+
 # ============================================================
 # TESTES DE MUDANCA DE PADRAO
 # ============================================================
