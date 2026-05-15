@@ -1083,6 +1083,200 @@ class TestF4T1_QuestoesFaltantes:
             "_erro_pipeline.tipo should be QUESTOES_FALTANTES"
 
 
+class TestMultimodalExtractionValidationRetry:
+    """Retry de validação deve usar o mesmo modelo e continuar falhando alto."""
+
+    @staticmethod
+    def _executor():
+        from executor import PipelineExecutor
+
+        executor = PipelineExecutor.__new__(PipelineExecutor)
+        executor.storage = MagicMock()
+        executor.prompt_manager = MagicMock()
+        executor.preparador = MagicMock()
+        executor._preparar_contexto_json = MagicMock(return_value={
+            "_documentos_faltantes": [],
+            "_documentos_carregados": [],
+        })
+        executor._coletar_arquivos_para_etapa = MagicMock(return_value=["fake.pdf"])
+        executor._get_provider_config = MagicMock(return_value={
+            "tipo": "openai",
+            "api_key": "fake",
+            "modelo": "gpt-5.4-mini",
+        })
+        executor._salvar_resultado = AsyncMock(return_value="doc-ok")
+        return executor
+
+    @staticmethod
+    def _prompt():
+        mock_prompt = MagicMock()
+        mock_prompt.id = "prompt-gabarito"
+        mock_prompt.render = MagicMock(return_value="prompt original")
+        mock_prompt.render_sistema = MagicMock(return_value=None)
+        return mock_prompt
+
+    @staticmethod
+    def _response(resposta, tokens_entrada=10, tokens_saida=5):
+        mock_response = MagicMock()
+        mock_response.sucesso = True
+        mock_response.resposta = resposta
+        mock_response.provider = "openai"
+        mock_response.modelo = "gpt-5.4-mini"
+        mock_response.tokens_entrada = tokens_entrada
+        mock_response.tokens_saida = tokens_saida
+        mock_response.anexos_enviados = [{"nome": "fake.pdf"}]
+        mock_response.anexos_confirmados = True
+        mock_response.retryable = False
+        mock_response.retry_after = None
+        mock_response.tentativas = 1
+        return mock_response
+
+    @staticmethod
+    def _gabarito_valido():
+        return json.dumps({
+            "respostas": [
+                {
+                    "questao_numero": 1,
+                    "resposta_correta": "A",
+                    "justificativa": "Resposta indicada no gabarito.",
+                    "conceito_central": "Aplicar definição de subespaço vetorial",
+                    "criterios_parciais": [],
+                }
+            ],
+            "_avisos_documento": [],
+            "_avisos_questao": [],
+        })
+
+    @pytest.mark.asyncio
+    async def test_retry_corrige_json_invalido_e_soma_tokens(self):
+        from executor import EtapaProcessamento
+
+        executor = self._executor()
+        prompt = self._prompt()
+        respostas = [
+            self._response("Aqui está o JSON:\n```json\n{ quebrado", 100, 20),
+            self._response(self._gabarito_valido(), 120, 30),
+        ]
+
+        with patch("executor.ClienteAPIMultimodal") as mock_client_class:
+            mock_client = MagicMock()
+            mock_client.enviar_com_anexos = AsyncMock(side_effect=respostas)
+            mock_client_class.return_value = mock_client
+
+            resultado = await executor._executar_multimodal(
+                etapa=EtapaProcessamento.EXTRAIR_GABARITO,
+                atividade_id="ativ",
+                aluno_id=None,
+                prompt=prompt,
+                materia=MagicMock(),
+                atividade=MagicMock(),
+                provider_id=None,
+                variaveis_extra=None,
+                salvar_resultado=True,
+                inicio=time.time(),
+            )
+
+        assert resultado.sucesso is True
+        assert resultado.tentativas == 2
+        assert resultado.tokens_entrada == 220
+        assert resultado.tokens_saida == 50
+        assert mock_client.enviar_com_anexos.await_count == 2
+        segunda_mensagem = mock_client.enviar_com_anexos.await_args_list[1].kwargs["mensagem"]
+        assert "RETRY EXPLICITO DE VALIDACAO" in segunda_mensagem
+        assert "mesmo provider e modelo" in segunda_mensagem.lower()
+        executor._salvar_resultado.assert_awaited_once()
+        salvar_kwargs = executor._salvar_resultado.await_args.kwargs
+        assert salvar_kwargs["tokens_entrada"] == 220
+        assert salvar_kwargs["tokens_saida"] == 50
+
+    @pytest.mark.asyncio
+    async def test_retry_corrige_gabarito_todo_missing_content(self):
+        from executor import EtapaProcessamento
+
+        executor = self._executor()
+        prompt = self._prompt()
+        todos_missing = json.dumps({
+            "respostas": [
+                {
+                    "questao_numero": 1,
+                    "resposta_correta": "MISSING_CONTENT",
+                    "justificativa": "",
+                    "conceito_central": "MISSING_CONTENT",
+                    "criterios_parciais": [],
+                }
+            ],
+            "_avisos_documento": [],
+            "_avisos_questao": [],
+        })
+        respostas = [
+            self._response(todos_missing, 60, 15),
+            self._response(self._gabarito_valido(), 70, 20),
+        ]
+
+        with patch("executor.ClienteAPIMultimodal") as mock_client_class:
+            mock_client = MagicMock()
+            mock_client.enviar_com_anexos = AsyncMock(side_effect=respostas)
+            mock_client_class.return_value = mock_client
+
+            resultado = await executor._executar_multimodal(
+                etapa=EtapaProcessamento.EXTRAIR_GABARITO,
+                atividade_id="ativ",
+                aluno_id=None,
+                prompt=prompt,
+                materia=MagicMock(),
+                atividade=MagicMock(),
+                provider_id=None,
+                variaveis_extra=None,
+                salvar_resultado=True,
+                inicio=time.time(),
+            )
+
+        assert resultado.sucesso is True
+        assert resultado.tentativas == 2
+        segunda_mensagem = mock_client.enviar_com_anexos.await_args_list[1].kwargs["mensagem"]
+        assert "não marque todas como MISSING_CONTENT" in segunda_mensagem
+
+    @pytest.mark.asyncio
+    async def test_retry_invalido_duas_vezes_registra_custo_e_nao_salva_documento(self):
+        from executor import EtapaProcessamento
+
+        executor = self._executor()
+        prompt = self._prompt()
+        respostas = [
+            self._response("nao e json", 11, 2),
+            self._response("continua sem json", 13, 3),
+        ]
+
+        with patch("executor.ClienteAPIMultimodal") as mock_client_class, \
+                patch("executor.record_token_usage") as record_usage:
+            mock_client = MagicMock()
+            mock_client.enviar_com_anexos = AsyncMock(side_effect=respostas)
+            mock_client_class.return_value = mock_client
+
+            resultado = await executor._executar_multimodal(
+                etapa=EtapaProcessamento.EXTRAIR_GABARITO,
+                atividade_id="ativ",
+                aluno_id=None,
+                prompt=prompt,
+                materia=MagicMock(),
+                atividade=MagicMock(),
+                provider_id=None,
+                variaveis_extra=None,
+                salvar_resultado=True,
+                inicio=time.time(),
+            )
+
+        assert resultado.sucesso is False
+        assert resultado.tentativas == 2
+        assert resultado.tokens_entrada == 24
+        assert resultado.tokens_saida == 5
+        executor._salvar_resultado.assert_not_awaited()
+        record_usage.assert_called_once()
+        assert record_usage.call_args.kwargs["tokens_entrada"] == 24
+        assert record_usage.call_args.kwargs["tokens_saida"] == 5
+        assert record_usage.call_args.kwargs["metadata"]["tentativas_validacao"] == 2
+
+
 # ============================================================
 # F3-T2: Pipeline orchestration marks overall result as ERRO
 # ============================================================

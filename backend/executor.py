@@ -798,19 +798,101 @@ class PipelineExecutor:
                     provider=config.get("tipo", "unknown"),
                 )
 
-        # Enviar para IA com anexos
+        # Enviar para IA com anexos. Para extrações, uma resposta inválida pode
+        # receber uma segunda tentativa explícita no mesmo provider/modelo.
+        max_tentativas_validacao = 2 if etapa in etapas_requerem_arquivo else 1
+        mensagem_tentativa = prompt_renderizado
+        tentativas_validacao = 0
+        tokens_entrada_total = 0
+        tokens_saida_total = 0
+        resultado = None
+        resposta_parsed = None
+        erro_parseado = None
+        erro_scan_suspeito = None
+        erro_validacao = None
+
         try:
-            resultado = await cliente.enviar_com_anexos(
-                mensagem=prompt_renderizado,
-                arquivos=arquivos_envio,
-                system_prompt=prompt_sistema_renderizado,
-                verificar_anexos=True
-            )
+            for indice_tentativa in range(max_tentativas_validacao):
+                tentativas_validacao = indice_tentativa + 1
+                resultado = await cliente.enviar_com_anexos(
+                    mensagem=mensagem_tentativa,
+                    arquivos=arquivos_envio,
+                    system_prompt=prompt_sistema_renderizado,
+                    verificar_anexos=True
+                )
+                tokens_entrada_total += int(getattr(resultado, "tokens_entrada", 0) or 0)
+                tokens_saida_total += int(getattr(resultado, "tokens_saida", 0) or 0)
+
+                if not resultado.sucesso:
+                    break
+
+                # Parsear resposta com contexto para logging
+                resposta_parsed = self._parsear_resposta(
+                    resultado.resposta,
+                    context={
+                        "stage": etapa.value if hasattr(etapa, 'value') else str(etapa),
+                        "provider": resultado.provider,
+                        "model": resultado.modelo,
+                        "atividade_id": atividade_id,
+                        "aluno_id": aluno_id
+                    }
+                )
+                erro_parseado = self._erro_resposta_parseada(etapa, resposta_parsed)
+                erro_scan_suspeito = None
+                erro_questoes_faltantes = None
+
+                if not erro_parseado:
+                    erro_scan_suspeito = self._erro_respostas_scan_suspeitas(
+                        resposta_parsed,
+                        tem_paginas_pdf_renderizadas=bool(paginas_pdf_renderizadas),
+                    )
+
+                if not erro_parseado and not erro_scan_suspeito:
+                    if etapa == EtapaProcessamento.EXTRAIR_QUESTOES and resposta_parsed:
+                        questoes = resposta_parsed.get("questoes", [])
+                        if len(questoes) == 0:
+                            erro_questoes_faltantes = (
+                                "Nenhuma questão foi extraída do documento. "
+                                "Verifique se o arquivo de enunciado está correto e legível."
+                            )
+
+                erro_validacao = erro_parseado or erro_scan_suspeito or erro_questoes_faltantes
+                if not erro_validacao:
+                    break
+
+                if tentativas_validacao >= max_tentativas_validacao:
+                    break
+
+                _logger.warning(
+                    "Retry explicito de validacao multimodal no mesmo modelo",
+                    stage=etapa.value if hasattr(etapa, 'value') else str(etapa),
+                    provider=resultado.provider,
+                    model=resultado.modelo,
+                    erro=erro_validacao,
+                    tentativa=tentativas_validacao,
+                )
+                mensagem_tentativa = self._montar_prompt_retry_validacao_multimodal(
+                    etapa=etapa,
+                    prompt_original=prompt_renderizado,
+                    erro=erro_validacao,
+                    resposta_raw=resultado.resposta,
+                )
         finally:
             if temp_dir_paginas_pdf is not None:
                 temp_dir_paginas_pdf.cleanup()
-        
+
         tempo_ms = (time.time() - inicio) * 1000
+        if resultado is None:
+            return ResultadoExecucao(
+                sucesso=False,
+                etapa=etapa,
+                prompt_usado=prompt_renderizado,
+                prompt_id=prompt.id,
+                provider=config.get("tipo", "unknown"),
+                modelo=config.get("modelo", "unknown"),
+                erro=f"Nenhuma tentativa de envio foi executada para {etapa.value}.",
+                tempo_ms=tempo_ms,
+            )
         
         if not resultado.sucesso:
             return ResultadoExecucao(
@@ -824,23 +906,13 @@ class PipelineExecutor:
                 erro_codigo=getattr(resultado, 'erro_codigo', None),
                 retryable=getattr(resultado, 'retryable', False),
                 retry_after=getattr(resultado, 'retry_after', None),
-                tentativas=getattr(resultado, 'tentativas', 1),
+                tentativas=tentativas_validacao,
                 anexos_enviados=resultado.anexos_enviados,
+                tokens_entrada=tokens_entrada_total,
+                tokens_saida=tokens_saida_total,
                 tempo_ms=tempo_ms
             )
 
-        # Parsear resposta com contexto para logging
-        resposta_parsed = self._parsear_resposta(
-            resultado.resposta,
-            context={
-                "stage": etapa.value if hasattr(etapa, 'value') else str(etapa),
-                "provider": resultado.provider,
-                "model": resultado.modelo,
-                "atividade_id": atividade_id,
-                "aluno_id": aluno_id
-            }
-        )
-        erro_parseado = self._erro_resposta_parseada(etapa, resposta_parsed)
         if erro_parseado:
             self._registrar_custo_resposta_invalida(
                 etapa=etapa,
@@ -848,12 +920,13 @@ class PipelineExecutor:
                 aluno_id=aluno_id,
                 provider=resultado.provider,
                 modelo=resultado.modelo,
-                tokens_entrada=resultado.tokens_entrada,
-                tokens_saida=resultado.tokens_saida,
+                tokens_entrada=tokens_entrada_total,
+                tokens_saida=tokens_saida_total,
                 erro=erro_parseado,
                 tempo_ms=tempo_ms,
                 prompt_id=prompt.id,
                 source="executar_multimodal",
+                tentativas_validacao=tentativas_validacao,
             )
             return ResultadoExecucao(
                 sucesso=False,
@@ -865,16 +938,13 @@ class PipelineExecutor:
                 resposta_raw=resultado.resposta,
                 resposta_parsed=resposta_parsed,
                 erro=erro_parseado,
-                tokens_entrada=resultado.tokens_entrada,
-                tokens_saida=resultado.tokens_saida,
+                tokens_entrada=tokens_entrada_total,
+                tokens_saida=tokens_saida_total,
                 anexos_enviados=resultado.anexos_enviados,
                 anexos_confirmados=resultado.anexos_confirmados,
                 tempo_ms=tempo_ms,
+                tentativas=tentativas_validacao,
             )
-        erro_scan_suspeito = self._erro_respostas_scan_suspeitas(
-            resposta_parsed,
-            tem_paginas_pdf_renderizadas=bool(paginas_pdf_renderizadas),
-        )
         if erro_scan_suspeito:
             self._registrar_custo_resposta_invalida(
                 etapa=etapa,
@@ -882,12 +952,13 @@ class PipelineExecutor:
                 aluno_id=aluno_id,
                 provider=resultado.provider,
                 modelo=resultado.modelo,
-                tokens_entrada=resultado.tokens_entrada,
-                tokens_saida=resultado.tokens_saida,
+                tokens_entrada=tokens_entrada_total,
+                tokens_saida=tokens_saida_total,
                 erro=erro_scan_suspeito,
                 tempo_ms=tempo_ms,
                 prompt_id=prompt.id,
                 source="executar_multimodal",
+                tentativas_validacao=tentativas_validacao,
             )
             return ResultadoExecucao(
                 sucesso=False,
@@ -899,11 +970,12 @@ class PipelineExecutor:
                 resposta_raw=resultado.resposta,
                 resposta_parsed=resposta_parsed,
                 erro=erro_scan_suspeito,
-                tokens_entrada=resultado.tokens_entrada,
-                tokens_saida=resultado.tokens_saida,
+                tokens_entrada=tokens_entrada_total,
+                tokens_saida=tokens_saida_total,
                 anexos_enviados=resultado.anexos_enviados,
                 anexos_confirmados=resultado.anexos_confirmados,
                 tempo_ms=tempo_ms,
+                tentativas=tentativas_validacao,
             )
         alertas = resposta_parsed.get("alertas", []) if resposta_parsed else []
         
@@ -934,11 +1006,11 @@ class PipelineExecutor:
                         etapa, atividade_id, aluno_id,
                         resultado.resposta, erro_content,
                         resultado.provider, resultado.modelo, prompt.id,
-                        resultado.tokens_entrada + resultado.tokens_saida,
+                        tokens_entrada_total + tokens_saida_total,
                         tempo_ms,
                         gerar_formatos_extras=False,
-                        tokens_entrada=resultado.tokens_entrada,
-                        tokens_saida=resultado.tokens_saida,
+                        tokens_entrada=tokens_entrada_total,
+                        tokens_saida=tokens_saida_total,
                     )
                 return ResultadoExecucao(
                     sucesso=False,
@@ -950,9 +1022,12 @@ class PipelineExecutor:
                     resposta_raw=resultado.resposta,
                     resposta_parsed=erro_content,
                     erro=erro_pipeline["mensagem"],
+                    tokens_entrada=tokens_entrada_total,
+                    tokens_saida=tokens_saida_total,
                     anexos_enviados=resultado.anexos_enviados,
                     anexos_confirmados=resultado.anexos_confirmados,
-                    tempo_ms=tempo_ms
+                    tempo_ms=tempo_ms,
+                    tentativas=tentativas_validacao,
                 )
 
         # Validar extração de respostas - detectar falha silenciosa
@@ -985,9 +1060,9 @@ class PipelineExecutor:
                 etapa, atividade_id, aluno_id,
                 resultado.resposta, resposta_parsed,
                 resultado.provider, resultado.modelo, prompt.id,
-                resultado.tokens_entrada + resultado.tokens_saida, tempo_ms,
-                tokens_entrada=resultado.tokens_entrada,
-                tokens_saida=resultado.tokens_saida,
+                tokens_entrada_total + tokens_saida_total, tempo_ms,
+                tokens_entrada=tokens_entrada_total,
+                tokens_saida=tokens_saida_total,
                 criar_nova_versao=criar_nova_versao
             )
         
@@ -1000,14 +1075,73 @@ class PipelineExecutor:
             modelo=resultado.modelo,
             resposta_raw=resultado.resposta,
             resposta_parsed=resposta_parsed,
-            tokens_entrada=resultado.tokens_entrada,
-            tokens_saida=resultado.tokens_saida,
+            tokens_entrada=tokens_entrada_total,
+            tokens_saida=tokens_saida_total,
             tempo_ms=tempo_ms,
             documento_id=documento_id,
             anexos_enviados=resultado.anexos_enviados,
             anexos_confirmados=resultado.anexos_confirmados,
-            alertas=alertas
+            alertas=alertas,
+            tentativas=tentativas_validacao,
         )
+
+    def _montar_prompt_retry_validacao_multimodal(
+        self,
+        *,
+        etapa: EtapaProcessamento,
+        prompt_original: str,
+        erro: str,
+        resposta_raw: str,
+    ) -> str:
+        """Build an explicit same-model retry prompt after invalid extraction output."""
+        etapa_nome = etapa.value if hasattr(etapa, "value") else str(etapa)
+        resposta_anterior = truncate_for_log(resposta_raw or "", 1800)
+        instrucoes_especificas = ""
+
+        if etapa == EtapaProcessamento.EXTRAIR_GABARITO:
+            instrucoes_especificas = """
+Para EXTRAIR_GABARITO:
+- Reanalise o PDF/arquivo de gabarito anexado e as questões já extraídas.
+- Use MISSING_CONTENT apenas para questões individualmente ausentes ou ilegíveis.
+- Se houver respostas legíveis no gabarito, extraia essas respostas; não marque todas como MISSING_CONTENT sem evidência.
+"""
+        elif etapa == EtapaProcessamento.EXTRAIR_QUESTOES:
+            instrucoes_especificas = """
+Para EXTRAIR_QUESTOES:
+- Reanalise o enunciado anexado e extraia todas as questões visíveis.
+- Se uma questão estiver parcialmente ilegível, mantenha a questão e registre aviso específico em _avisos_questao.
+"""
+        elif etapa == EtapaProcessamento.EXTRAIR_RESPOSTAS:
+            instrucoes_especificas = """
+Para EXTRAIR_RESPOSTAS:
+- Reanalise a prova respondida anexada.
+- Não deixe resposta_aluno vazio sem marcar explicitamente em_branco=true ou ilegivel=true.
+- Não marque todas as questões como vazias/ilegíveis sem evidência visual clara.
+"""
+
+        return f"""{prompt_original}
+
+---
+
+RETRY EXPLICITO DE VALIDACAO, NO MESMO PROVIDER E MODELO.
+
+A resposta anterior desta mesma etapa ({etapa_nome}) falhou na validação bloqueante:
+{erro}
+
+Trecho da resposta anterior que falhou:
+```text
+{resposta_anterior}
+```
+
+Isto não é fallback e não troca de modelo. Refaça a extração usando os mesmos anexos originais.
+
+Regras obrigatórias:
+- Retorne APENAS JSON válido.
+- Não use Markdown, comentários, texto antes ou depois do JSON.
+- Use exatamente o schema solicitado no prompt original.
+- Não invente dados; quando algo estiver ausente ou ilegível, use os avisos estruturados do schema.
+{instrucoes_especificas}
+"""
     
     def _valor_data_documento(self, documento: Any) -> str:
         """Return a sortable timestamp string for a document, when available."""
@@ -2501,6 +2635,7 @@ class PipelineExecutor:
         tempo_ms: float,
         prompt_id: Optional[str],
         source: str,
+        tentativas_validacao: int = 1,
     ) -> None:
         tokens_total = int(tokens_entrada or 0) + int(tokens_saida or 0)
         if tokens_total <= 0:
@@ -2520,7 +2655,10 @@ class PipelineExecutor:
                 tempo_ms=tempo_ms,
                 prompt_id=prompt_id,
                 source=source,
-                metadata={"erro_tipo": "parsed_response_invalid"},
+                metadata={
+                    "erro_tipo": "parsed_response_invalid",
+                    "tentativas_validacao": tentativas_validacao,
+                },
             )
         except Exception as exc:
             _logger.warning(
