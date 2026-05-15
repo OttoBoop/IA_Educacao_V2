@@ -62,3 +62,52 @@ class TestHealthEndpoint:
         data = response.json()
         assert data["status"] == "degraded"
         assert data["supabase"] is False
+
+
+class TestDeployInfoEndpoint:
+    """Tests for GET /api/deploy-info."""
+
+    def test_reads_commit_written_during_build(self, client, tmp_path):
+        deploy_file = tmp_path / "deploy_sha.txt"
+        deploy_file.write_text(
+            "be19b7eae80f111ed589f902dfb293b7230312e0\n",
+            encoding="utf-8",
+        )
+
+        with patch("main_v2.DEPLOY_SHA_PATH", deploy_file), patch.dict("os.environ", {}, clear=True):
+            response = client.get("/api/deploy-info")
+
+        assert response.status_code == 200
+        data = response.json()
+        assert data["commit"] == "be19b7e"
+        assert data["full_commit"] == "be19b7eae80f111ed589f902dfb293b7230312e0"
+        assert data["source"] == "deploy_sha_file"
+
+    def test_env_commit_takes_precedence(self, client, tmp_path):
+        deploy_file = tmp_path / "deploy_sha.txt"
+        deploy_file.write_text("1111111\n", encoding="utf-8")
+
+        with patch("main_v2.DEPLOY_SHA_PATH", deploy_file), patch.dict(
+            "os.environ",
+            {"NOVOCR_DEPLOY_SHA": "abcdef1234567890"},
+            clear=True,
+        ):
+            response = client.get("/api/deploy-info")
+
+        assert response.status_code == 200
+        data = response.json()
+        assert data["commit"] == "abcdef1"
+        assert data["full_commit"] == "abcdef1234567890"
+        assert data["source"] == "NOVOCR_DEPLOY_SHA"
+
+    def test_returns_unknown_when_commit_unavailable(self, client, tmp_path):
+        missing_file = tmp_path / "missing-deploy-sha.txt"
+
+        with patch("main_v2.DEPLOY_SHA_PATH", missing_file), patch.dict("os.environ", {}, clear=True):
+            response = client.get("/api/deploy-info")
+
+        assert response.status_code == 200
+        data = response.json()
+        assert data["commit"] == "unknown"
+        assert data["full_commit"] is None
+        assert data["source"] == "unavailable"

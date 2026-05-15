@@ -4,7 +4,7 @@ services:
     name: prova-ai
     runtime: python
     rootDir: backend
-    buildCommand: pip install -r ../requirements.txt
+    buildCommand: (git rev-parse HEAD > deploy_sha.txt 2>/dev/null || printf "unknown\n" > deploy_sha.txt) && pip install -r ../requirements.txt
     startCommand: uvicorn main_v2:app --host 0.0.0.0 --port $PORT
     envVars:
       - key: PYTHON_VERSION

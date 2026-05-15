@@ -1012,6 +1012,46 @@ async def listar_niveis_ensino():
 
 from supabase_db import supabase_db
 
+DEPLOY_SHA_PATH = Path(__file__).parent / "deploy_sha.txt"
+
+
+def _normalizar_sha_deploy(valor: Optional[str]) -> Optional[str]:
+    if not valor:
+        return None
+    sha = valor.strip()
+    if not sha or sha.lower() == "unknown":
+        return None
+    return sha
+
+
+def _obter_sha_deploy() -> Dict[str, Optional[str]]:
+    for env_name in ("NOVOCR_DEPLOY_SHA", "RENDER_GIT_COMMIT"):
+        sha = _normalizar_sha_deploy(os.getenv(env_name))
+        if sha:
+            return {
+                "commit": sha[:7],
+                "full_commit": sha,
+                "source": env_name,
+            }
+
+    try:
+        sha = _normalizar_sha_deploy(DEPLOY_SHA_PATH.read_text(encoding="utf-8"))
+    except OSError:
+        sha = None
+
+    if sha:
+        return {
+            "commit": sha[:7],
+            "full_commit": sha,
+            "source": "deploy_sha_file",
+        }
+
+    return {
+        "commit": "unknown",
+        "full_commit": None,
+        "source": "unavailable",
+    }
+
 @app.get("/api/health", tags=["Health"])
 async def health_check():
     """Check system health — Supabase connectivity."""
@@ -1023,6 +1063,17 @@ async def health_check():
             return {"status": "degraded", "supabase": False, "message": msg}
     except Exception as e:
         return {"status": "degraded", "supabase": False, "message": str(e)}
+
+
+@app.get("/api/deploy-info", tags=["Health"])
+async def deploy_info():
+    """Return the backend runtime commit used by deploy checks."""
+    info = _obter_sha_deploy()
+    info.update({
+        "service": os.getenv("RENDER_SERVICE_NAME") or os.getenv("RENDER_SERVICE_ID"),
+        "environment": os.getenv("RENDER_ENV"),
+    })
+    return info
 
 
 # ============================================================
