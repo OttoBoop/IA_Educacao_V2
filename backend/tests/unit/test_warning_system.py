@@ -330,3 +330,38 @@ class TestCreateDocumentAvisosDefaults:
         assert result.is_error is True
         assert result.files_generated == []
         assert "Invalid document entry" in result.content
+
+    @pytest.mark.asyncio
+    async def test_create_document_pipeline_errors_when_storage_does_not_persist(self, monkeypatch):
+        """Pipeline artifacts are valid only after they are persisted in storage."""
+        from models import TipoDocumento
+        from tool_handlers import handle_create_document
+        from tools import ToolExecutionContext
+        import storage as storage_module
+
+        class DummyStorage:
+            def salvar_documento(self, **_kwargs):
+                return None
+
+        monkeypatch.setattr(storage_module, "storage", DummyStorage())
+
+        result = await handle_create_document(
+            {
+                "documents": [
+                    {
+                        "filename": "analise_habilidades.json",
+                        "content": {"habilidades": [], "indicadores": {}, "recomendacoes": []},
+                    }
+                ]
+            },
+            ToolExecutionContext(
+                atividade_id="ativ-1",
+                aluno_id="aluno-1",
+                expected_document_type=TipoDocumento.ANALISE_HABILIDADES,
+                etapa="analise_habilidades",
+            ),
+        )
+
+        assert result.is_error is True
+        assert result.files_generated == []
+        assert "Storage persistence failed for pipeline artifact" in result.content

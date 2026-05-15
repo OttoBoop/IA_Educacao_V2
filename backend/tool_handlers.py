@@ -694,6 +694,7 @@ async def handle_create_document(
     aluno_id = input_data.get("aluno_id") or (context.aluno_id if context else None)
     atividade_id = input_data.get("atividade_id") or (context.atividade_id if context else None)
     turma_id = input_data.get("turma_id")
+    pipeline_requires_storage = bool(context and context.expected_document_type)
 
     if not documents:
         return ToolResult(
@@ -904,6 +905,16 @@ async def handle_create_document(
             else:
                 doc_info["saved_to_storage"] = False
                 doc_info["note"] = "No atividade_id provided - document created but not registered"
+
+            if pipeline_requires_storage and not doc_info.get("saved_to_storage"):
+                errors.append({
+                    "filename": filename,
+                    "error": (
+                        "Storage persistence failed for pipeline artifact: "
+                        f"{doc_info.get('storage_error') or doc_info.get('note') or 'unknown error'}"
+                    ),
+                })
+                continue
 
             created_docs.append(doc_info)
 
