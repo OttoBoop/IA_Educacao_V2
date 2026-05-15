@@ -19,7 +19,12 @@ cancela execucao no servidor, e retry cego pode duplicar documentos. O patch
 thread daemon, fora do ciclo de vida da requisicao. O patch `e6060e1` bloqueia
 rotas legadas sincrônicas com `410 Gone`, para que chamadas antigas falhem alto
 em vez de travar o worker. O marker mais novo e `a7dead3`; esses patches estao
-no GitHub, mas ainda nao estao confirmados no Render. O resumo de custos agora
+no GitHub, mas ainda nao estao confirmados por marker no Render, embora o
+backend live ja tenha respondido `410` nas rotas legadas. Gemini passou nas
+tres extracoes dentro de uma pipeline sequencial completa, mas a mesma task
+falhou alto em `corrigir` por quota Google/Gemini `429` do free tier; nao houve
+troca de modelo nem sucesso falso, e as etapas finais ficaram pendentes. O
+resumo de custos agora
 agrega por `cost_run_id`, entao
 JSON+PDF do mesmo run contam uma vez. Falhas tool-use sem documento final agora
 tem `TokenUsageRecord` local mensal e codigo preparado para Supabase quando a
@@ -64,7 +69,7 @@ Estabilizar o NOVO CR para que a pipeline:
 | Frente | Estado | Proximo passo |
 |--------|--------|---------------|
 | Docs e plano | Sprint 0 concluida | Manter este painel como fonte oficial e anexos fora do fluxo diario |
-| Pipeline | Gemini 3 Flash validado oficialmente nas 6 etapas individuais do aluno; GPT-5 Nano validado em `corrigir`, `analisar_habilidades` e `gerar_relatorio`; comportamento de `f55e299`/`e6060e1` observado no backend live, mas HTML marker ainda atrasado | Confirmar marker `a7dead3` ou registrar divergencia marker/backend; depois rodar pipeline completa sequencial, schema minimo e UI de erro |
+| Pipeline | Gemini 3 Flash validado oficialmente nas 6 etapas individuais do aluno; pipeline sequencial Gemini avancou pelas tres extracoes e falhou alto em `corrigir` por quota `429`; GPT-5 Nano validado em `corrigir`, `analisar_habilidades` e `gerar_relatorio`; comportamento de `f55e299`/`e6060e1` observado no backend live, mas HTML marker ainda atrasado | Nao rerodar Gemini imediatamente enquanto a quota estiver quente; confirmar marker `a7dead3`; testar extracoes Nano ou retomar Gemini completa quando a quota permitir; schema minimo e UI de erro continuam pendentes |
 | Schema e avisos | Sprint 2 concluida localmente | Manter schema oficial, defaults e visualizador cobertos por testes |
 | Custos/tokens | Metadata de documento, endpoints live, resumo por `cost_run_id`, `TokenUsageRecord` local, migration Supabase dedicada `b2dc88b`; smoke Nano `gerar_relatorio` adicionou run precificado; diagnostico live ainda acusa `PGRST205` | Aplicar `backend/migrations/002_create_token_usage.sql` no Supabase; validar uma falha real sem documento em producao |
 | UI de erros | Pendente | Mostrar falha por aluno/etapa sem depender de terminal |
@@ -921,6 +926,40 @@ Critério de pronto: lista de limpeza segura e revisada.
   registrar bloqueio de marcador/deploy parcial e seguir para `extrair_respostas`
   apenas pelo fluxo `pipeline-completo`.
 
+### 2026-05-16 -- Provider smoke: Gemini pipeline sequencial completa
+
+- Alvo: confirmar se Gemini 3 Flash aguenta a pipeline do aluno em uma unica
+  task sequencial, agora com runner destacado e rotas legadas bloqueadas.
+- Status: falhou corretamente, alto e visivel, sem fallback. A falha nao foi na
+  resposta inicial nem na saude do site: a chamada retornou `task_id` em `1.06s`
+  e `/api/health` permaneceu healthy durante a execucao.
+- Task: `task_5e97bbee896e`, status final `failed`.
+- Etapas: `extrair_questoes=completed`, `extrair_gabarito=completed`,
+  `extrair_respostas=completed`, `corrigir=failed`,
+  `analisar_habilidades=pending`, `gerar_relatorio=pending`.
+- Causa registrada pela API: Google/Gemini `429 RESOURCE_EXHAUSTED`, quota do
+  free tier excedida para `generate_content_free_tier_requests`, limite `20`,
+  modelo `gemini-3-flash`, com `retry-after` em segundos. O erro apareceu em
+  `/api/task-progress/{task_id}`; nao ficou silencioso.
+- Artefatos bons da task: `extracao_questoes` JSON `025e065ceca92237` com
+  tokens `1602/1944`; `extracao_gabarito` JSON `9188bd504796f767` com tokens
+  `67192/730`; `extracao_respostas` JSON `ea25e7d9d9a0f9a0` com tokens
+  `72588/1290`. Todos ficaram `status=concluido`, provider/modelo
+  `google/gemini-3-flash-preview`, metadata splitada e custo calculavel.
+- Artefatos de erro: a etapa `corrigir` deixou documentos `12cd14c89e21177d`,
+  `bb2c700482505e5e` e `6ee1ce82fdeb68de` com `status=erro`, provider/modelo
+  Gemini, `tokens_usados=0` e `metadata.erro_pipeline` com a quota `429`. Dois
+  JSONs contem conteudo de correcao, mas por contrato devem ser tratados como
+  erro, nao como resultado pedagogico aproveitavel.
+- Custo live depois do ciclo: `/api/custos/status?limit=500` retornou
+  `runs_precificados=17`, `runs_bloqueados=469`, `token_usage_analisados=0`.
+  `/api/custos/resumo?limit=20` mostrou as tres extracoes da pipeline como
+  custos OK e as correcoes de erro bloqueadas por `token_split_missing`.
+- Interpretacao: Gemini nao esta reprovado em conteudo; esta bloqueado por
+  quota na pipeline sequencial completa. Nao rerodar Gemini imediatamente para
+  evitar duplicacao/ruido. O proximo smoke sem segredo deve mirar outro provider
+  configurado, como GPT-5 Nano nas extracoes, ou esperar janela/credito Gemini.
+
 ## Riscos Abertos
 
 1. Creditos Anthropic insuficientes ainda bloqueiam validacao Haiku.
@@ -932,4 +971,10 @@ Critério de pronto: lista de limpeza segura e revisada.
 5. Render/site oficial ja executa comportamento de `e6060e1`, mas o HTML marker
    ainda aponta `f55e299`; nao aceitar marker `a7dead3` como confirmado ate
    `check_deploy.sh e6060e1` passar.
-6. Rio 3 nao deve voltar ao fluxo ativo sem nova decisao e nova chave segura.
+6. Gemini 3 Flash bateu quota `429` em pipeline sequencial completa; nao tratar
+   isso como bug silencioso da pipeline, mas tambem nao chamar de pipeline
+   completa validada.
+7. Artefatos com `status=erro` podem ter arquivo/conteudo parcial; UI e docs
+   devem ensinar o usuario a obedecer o status, nao o simples fato de existir
+   arquivo.
+8. Rio 3 nao deve voltar ao fluxo ativo sem nova decisao e nova chave segura.

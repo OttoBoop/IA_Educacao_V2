@@ -34,6 +34,11 @@
   comportamento backend de `e6060e1`; porem o HTML marker ainda foi observado em
   `f55e299`, entao a confirmacao por marker segue pendente. `wait_deploy.sh
   e6060e1` deu timeout apos 600s.
+- Tambem em producao, uma pipeline sequencial completa Gemini (`task_5e97bbee896e`)
+  confirmou que o runner destacado nao prende a resposta inicial e mantem
+  `/api/health` saudavel, mas falhou alto em `corrigir` por quota Google/Gemini
+  `429`. As tres extracoes dessa mesma task passaram com custo/metadata; as
+  etapas finais ficaram pendentes.
 - `origin/main` tambem contem a migration dedicada `b2dc88b`
   (`backend/migrations/002_create_token_usage.sql`), ainda nao aplicada ao
   Supabase de producao.
@@ -64,6 +69,11 @@
 | **Gemini 3 Flash** (`gem3flash001`) | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | **GPT-5 Nano** (`gpt5nano001`) | ⏸️ | ⏸️ | ⏸️ | ✅ | ✅ | ✅ |
 | **GPT-4o** (`180b8298a279`) — referencia | ✅ | ✅ | ✅ | ⚠️ | ⚠️ | ⚠️ |
+
+Nota de leitura: os checks da tabela acima sao por etapa individual validada.
+Eles nao significam que a pipeline completa de 6 etapas passou em uma unica
+task. Em 2026-05-16, Gemini completou as tres extracoes em uma task sequencial,
+mas parou em `corrigir` por quota `429`.
 
 ### Categoria 2: Relatorios de Desempenho (3 niveis)
 
@@ -224,7 +234,10 @@ em `analisar_habilidades` e `gerar_relatorio`, com custo medido. Depois do
 marker `924fd79`, `extrair_questoes` tambem passou com custo medido. Depois do
 runner destacado, `extrair_gabarito` e `extrair_respostas` passaram com custo
 medido e health saudavel. As 6 etapas individuais do aluno estao validadas para
-Gemini; falta uma pipeline sequencial completa em uma unica chamada.
+Gemini. A primeira pipeline sequencial completa pos-runner (`task_5e97bbee896e`)
+passou por `extrair_questoes`, `extrair_gabarito` e `extrair_respostas`, mas
+falhou alto em `corrigir` por quota Google/Gemini `429`, sem troca silenciosa de
+modelo e sem marcar as etapas finais como sucesso.
 
 **Historico positivo via `pipeline-completo`** para Eric Manoel antes dos commits
 `b12be9a`/Sprint 3b (ver [teste_gemini_pipeline_completo.md](arquivo_2026_04_17/teste_gemini_pipeline_completo.md)).
@@ -344,6 +357,11 @@ Ver [teste_gpt5nano_pipeline_completo.md](arquivo_2026_04_17/teste_gpt5nano_pipe
       imediata do `pipeline-completo`
 - [x] Confirmar que `e6060e1` faz rotas legadas sincrônicas retornarem `410`
       rapidamente em producao
+- [x] Rodar primeira pipeline sequencial completa Gemini pos-runner e registrar
+      o bloqueio real: quota Google/Gemini `429` em `corrigir`, nao falha de
+      health nem timeout de requisicao
+- [ ] Repetir pipeline sequencial completa Gemini quando quota/credito permitir,
+      sem retry cego e sem trocar modelo
 - [ ] Aplicar `backend/migrations/002_create_token_usage.sql` no Supabase e revalidar
       `token_usage_backend.supabase.table_available=true`
 - [x] Preparar codigo para persistir `TokenUsageRecord` em Supabase quando a
@@ -377,18 +395,21 @@ Ver [teste_gpt5nano_pipeline_completo.md](arquivo_2026_04_17/teste_gpt5nano_pipe
 - ✅ **Gemini 3 Flash:** chat simples live OK; `corrigir`,
   `analisar_habilidades`, `gerar_relatorio`, `extrair_questoes`,
   `extrair_gabarito` e `extrair_respostas` pos-fix OK com custo/metadata.
-  Falta uma pipeline sequencial completa em uma unica chamada.
+  Pipeline sequencial completa pos-runner chegou a `corrigir` e falhou alto por
+  quota `429`; falta repetir quando quota permitir.
 - ✅ **GPT-5 Nano via `pipeline-completo`:** as tres etapas finais do aluno
   (`corrigir`, `analisar_habilidades`, `gerar_relatorio`) passaram em smokes
   oficiais com JSON/PDF, custo e metadata. Ainda falta pipeline completa de 6
   etapas, schema minimo por etapa, deploy do guard `d653c13` e custo duravel de
   falhas sem documento final.
 - ⏸️ **Claude Haiku 4.5:** Aguardando creditos.
-- 📊 **Confiabilidade Gemini 3 Flash:** 50% de sucesso na primeira tentativa (1 em 2 testes). Precisa mais amostras.
+- 📊 **Confiabilidade Gemini 3 Flash:** etapas individuais OK, mas a primeira
+  pipeline sequencial pos-runner bateu quota `429` em `corrigir`. Precisa duas
+  execucoes completas quando quota/credito permitir.
 
-**Marco 1 ainda nao atingido oficialmente:** chat e historico positivo ajudam,
-mas o site oficial precisa passar pipeline pos-fix com erro/custo/metadata
-visiveis.
+**Marco 1 ainda nao atingido oficialmente:** chat, etapas individuais e a
+pipeline sequencial parcial ajudam, mas o site oficial precisa completar uma
+pipeline de 6 etapas com erro/custo/metadata visiveis.
 
 **Bugs criticos descobertos nesta sessao:**
 1. GPT-5 Nano tool-use historico: multiplas chamadas `create_document`, nomes alucinados, sem validacao de schema
