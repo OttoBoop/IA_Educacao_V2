@@ -141,10 +141,18 @@ class ExtracaoRespostas(PipelineModel):
     questoes_em_branco: int = Field(..., description="Número de questões em branco", ge=0)
 
     @model_validator(mode="after")
-    def nao_aceita_respostas_todas_ilegiveis(self):
-        if self.respostas and all(resposta.ilegivel for resposta in self.respostas):
+    def nao_aceita_respostas_sem_conteudo_extraido(self):
+        def _sem_conteudo(resposta: RespostaAluno) -> bool:
+            return (
+                resposta.ilegivel
+                or resposta.em_branco
+                or not (resposta.resposta_aluno or "").strip()
+            )
+
+        if self.respostas and all(_sem_conteudo(resposta) for resposta in self.respostas):
             raise ValueError(
-                "extrair_respostas retornou todas as respostas como ilegiveis; "
+                "extrair_respostas retornou todas as respostas sem conteudo extraido "
+                "(em branco, ilegiveis ou vazias); "
                 "isso nao pode ser tratado como sucesso"
             )
         return self

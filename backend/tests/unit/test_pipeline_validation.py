@@ -185,10 +185,60 @@ class TestExtracaoRespostas:
             "questoes_em_branco": 0
         }
 
-        with pytest.raises(ValueError, match="todas as respostas como ilegiveis"):
+        with pytest.raises(ValueError, match="sem conteudo extraido"):
             ExtracaoRespostas(**dados)
 
-    def test_validar_json_pipeline_rejeita_respostas_todas_ilegiveis(self):
+    def test_respostas_todas_em_branco_falha_alto(self):
+        """Extração que marca todas as respostas como em branco não pode ser sucesso verde."""
+        dados = {
+            "aluno": "João Silva",
+            "respostas": [
+                {
+                    "questao_numero": 1,
+                    "resposta_aluno": "",
+                    "em_branco": True,
+                    "ilegivel": False,
+                },
+                {
+                    "questao_numero": 2,
+                    "resposta_aluno": "",
+                    "em_branco": True,
+                    "ilegivel": False,
+                },
+            ],
+            "questoes_respondidas": 0,
+            "questoes_em_branco": 2
+        }
+
+        with pytest.raises(ValueError, match="sem conteudo extraido"):
+            ExtracaoRespostas(**dados)
+
+    def test_respostas_com_algum_conteudo_passam(self):
+        """A validação bloqueia apenas o caso em que nada foi extraído."""
+        dados = {
+            "aluno": "João Silva",
+            "respostas": [
+                {
+                    "questao_numero": 1,
+                    "resposta_aluno": "",
+                    "em_branco": True,
+                    "ilegivel": False,
+                },
+                {
+                    "questao_numero": 2,
+                    "resposta_aluno": "x = 2",
+                    "em_branco": False,
+                    "ilegivel": False,
+                },
+            ],
+            "questoes_respondidas": 1,
+            "questoes_em_branco": 1
+        }
+
+        respostas = ExtracaoRespostas(**dados)
+        assert respostas.respostas[1].resposta_aluno == "x = 2"
+
+    def test_validar_json_pipeline_rejeita_respostas_sem_conteudo(self):
         """A função pública de validação deve transformar o caso em erro estruturado."""
         dados = {
             "aluno": "João Silva",
