@@ -161,6 +161,53 @@ class TestExtracaoRespostas:
         assert respostas.aluno == "João Silva"
         assert len(respostas.respostas) == 1
 
+    def test_respostas_todas_ilegiveis_falha_alto(self):
+        """Extração que marca todas as respostas como ilegíveis não pode ser sucesso."""
+        dados = {
+            "aluno": "João Silva",
+            "respostas": [
+                {
+                    "questao_numero": 1,
+                    "resposta_aluno": None,
+                    "em_branco": False,
+                    "ilegivel": True,
+                    "observacoes": "ilegivel"
+                },
+                {
+                    "questao_numero": 2,
+                    "resposta_aluno": None,
+                    "em_branco": False,
+                    "ilegivel": True,
+                    "observacoes": "ilegivel"
+                },
+            ],
+            "questoes_respondidas": 2,
+            "questoes_em_branco": 0
+        }
+
+        with pytest.raises(ValueError, match="todas as respostas como ilegiveis"):
+            ExtracaoRespostas(**dados)
+
+    def test_validar_json_pipeline_rejeita_respostas_todas_ilegiveis(self):
+        """A função pública de validação deve transformar o caso em erro estruturado."""
+        dados = {
+            "aluno": "João Silva",
+            "respostas": [
+                {
+                    "questao_numero": 1,
+                    "resposta_aluno": None,
+                    "em_branco": False,
+                    "ilegivel": True,
+                }
+            ],
+            "questoes_respondidas": 1,
+            "questoes_em_branco": 0
+        }
+
+        resultado = validar_json_pipeline("extrair_respostas", dados)
+        assert isinstance(resultado, dict)
+        assert resultado.get("_error") == "validacao_falhou"
+
     @pytest.mark.skip(reason="Validation logic relaxed - models no longer enforce count consistency")
     def test_contagem_inconsistente(self):
         """Testa validação de contagens inconsistentes"""

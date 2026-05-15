@@ -140,6 +140,15 @@ class ExtracaoRespostas(PipelineModel):
     questoes_respondidas: int = Field(..., description="Número de questões respondidas", ge=0)
     questoes_em_branco: int = Field(..., description="Número de questões em branco", ge=0)
 
+    @model_validator(mode="after")
+    def nao_aceita_respostas_todas_ilegiveis(self):
+        if self.respostas and all(resposta.ilegivel for resposta in self.respostas):
+            raise ValueError(
+                "extrair_respostas retornou todas as respostas como ilegiveis; "
+                "isso nao pode ser tratado como sucesso"
+            )
+        return self
+
 
 class CorrecaoQuestao(PipelineModel):
     """Resultado da correção de uma questão individual"""

@@ -2,41 +2,32 @@
 
 **Atualizado:** 2026-05-16
 **Responsavel operacional:** Paulo
-**Status geral:** Render oficial confirmou o marker `f0dae61`, que aponta para
-o commit funcional `4f27dae`. Gemini passou no site oficial em `corrigir`,
-`analisar_habilidades` e `gerar_relatorio`, todos com custo medido. GPT-5 Nano
-passou em `corrigir`, depois falhou alto em `analisar_habilidades` no marker
-`4f27dae`, e em seguida passou em `analisar_habilidades` e `gerar_relatorio` no
-Render live `924fd79`, com JSON/PDF reais, tokens splitados e custo medido. O
-patch `924fd79` reforca o retry do PDF mantendo o contexto original e proibindo
-placeholders; esse patch esta live. O patch `d653c13` adiciona uma trava extra:
-JSON de `ANALISAR_HABILIDADES` com placeholder proibido, como `student123`,
-falha alto mesmo se houver PDF; esse patch esta no GitHub, mas ainda nao esta
-confirmado no Render. Gemini tambem passou em `extrair_questoes` no marker
-`924fd79`, mas o smoke revelou um bug operacional: timeout do cliente nao
-cancela execucao no servidor, e retry cego pode duplicar documentos. O patch
-`f55e299` troca tarefas longas do `routes_prompts.py` para runner destacado em
-thread daemon, fora do ciclo de vida da requisicao. O patch `e6060e1` bloqueia
-rotas legadas sincrônicas com `410 Gone`, para que chamadas antigas falhem alto
-em vez de travar o worker. O marker mais novo e `a7dead3`; esses patches estao
-no GitHub, mas ainda nao estao confirmados por marker no Render, embora o
-backend live ja tenha respondido `410` nas rotas legadas. Gemini passou nas
-tres extracoes dentro de uma pipeline sequencial completa, mas a mesma task
-falhou alto em `corrigir` por quota Google/Gemini `429` do free tier; nao houve
-troca de modelo nem sucesso falso, e as etapas finais ficaram pendentes. O
-GPT-5 Nano tambem passou em `extrair_questoes` no site oficial, com JSON
-estruturado, `_avisos_*`, tokens splitados e custo medido. Na sequencia,
-GPT-5 Nano em `extrair_gabarito` expos um erro mais antigo: tanto Nano quanto
-Gemini retornaram todas as respostas do gabarito como `MISSING_CONTENT`, apesar
-do PDF base ter texto extraivel de "Exercicio 5". Isso reclassifica
-`extrair_gabarito` como invalido ate o novo guard ser publicado. O resumo de custos agora
-agrega por `cost_run_id`, entao
-JSON+PDF do mesmo run contam uma vez. Falhas tool-use sem documento final agora
-tem `TokenUsageRecord` local mensal e codigo preparado para Supabase quando a
-tabela `token_usage` existir; o endpoint live confirmou que essa tabela ainda
-nao existe (`PGRST205`). A migration dedicada `002_create_token_usage.sql` ja
-foi criada e publicada no GitHub em `b2dc88b`, mas ainda nao foi aplicada no
-Supabase. Ainda nao ha pipeline completa de 6 etapas validada para Nano.
+**Status geral:** Render MCP confirmou o servico oficial
+`srv-d5t8gbh4tr6s738fr3s0` (`IA_Educacao_V2`, branch `main`, URL
+`https://ia-educacao-v2.onrender.com`) com deploy live do commit funcional
+`5527e26`. O marcador HTML continua mostrando `novocr-deploy=e6060e1` porque o
+servico usa `rootDir=backend` e commits apenas de frontend/docs/marker nao
+garantem novo deploy; portanto, daqui em diante o gate oficial combina Render
+MCP/lista de deploys + comportamento live, e o marker HTML vira sinal auxiliar.
+O patch `5527e26` removeu fallback Markdown de relatorio e adicionou guard para
+gabarito todo `MISSING_CONTENT`. Apos esse deploy, GPT-5 Nano em
+`extrair_gabarito` passou no site oficial: task `task_dc719eeea626`, JSON
+`5f433f9a1bc30842`, 7 respostas reais, tokens `78104/8353`, custo
+`US$ 0.007246`. A falha antiga de Nano `61fb077d746c2a55` e os gabaritos Gemini
+tudo `MISSING_CONTENT` continuam registrados como evidencias historicas de que
+schema parseavel nao basta. Gemini passou nas tres extracoes dentro de uma
+pipeline sequencial completa, mas a mesma task falhou alto em `corrigir` por
+quota Google/Gemini `429` do free tier; nao houve troca de modelo nem sucesso
+falso. GPT-5 Nano esta confirmado em `extrair_questoes`, `extrair_gabarito`,
+`corrigir`, `analisar_habilidades` e `gerar_relatorio`; o smoke de
+`extrair_respostas` gerou documento/custo, mas foi reclassificado como P0
+porque marcou todas as respostas como `ilegivel=true` apesar de a prova
+respondida ter texto extraivel. Patch local agora rejeita extracao de respostas
+100% ilegivel; falta deploy e rerun. O resumo de custos agrega por `cost_run_id`;
+falhas tool-use sem documento final tem
+`TokenUsageRecord` local mensal e codigo preparado para Supabase quando a tabela
+`token_usage` existir. O endpoint live ainda confirma que essa tabela nao existe
+(`PGRST205`). Rio 3 segue pausado.
 
 Este e o ponto de entrada do plano. O objetivo deste arquivo e dizer, em poucas
 linhas, onde estamos, qual e a proxima fila e quais frentes estao pausadas.
@@ -74,7 +65,7 @@ Estabilizar o NOVO CR para que a pipeline:
 | Frente | Estado | Proximo passo |
 |--------|--------|---------------|
 | Docs e plano | Sprint 0 concluida | Manter este painel como fonte oficial e anexos fora do fluxo diario |
-| Pipeline | Gemini 3 Flash validado em `extrair_questoes`, `extrair_respostas` e etapas finais; `extrair_gabarito` foi reclassificado como invalido porque retornou tudo `MISSING_CONTENT`; pipeline sequencial Gemini avancou pelas tres extracoes e falhou alto em `corrigir` por quota `429`; GPT-5 Nano validado em `extrair_questoes`, `corrigir`, `analisar_habilidades` e `gerar_relatorio`, mas `extrair_gabarito` tambem falhou por tudo `MISSING_CONTENT`; comportamento de `f55e299`/`e6060e1` observado no backend live, mas HTML marker ainda atrasado | Publicar guard que rejeita gabarito todo `MISSING_CONTENT`; depois rerodar `extrair_gabarito`; seguir `extrair_respostas` Nano; confirmar marker `a7dead3`; schema minimo e UI de erro continuam pendentes |
+| Pipeline | Gemini 3 Flash validado em `extrair_questoes`, `extrair_respostas` e etapas finais; `extrair_gabarito` Gemini foi reclassificado como invalido porque retornou tudo `MISSING_CONTENT`; pipeline sequencial Gemini avancou pelas tres extracoes e falhou alto em `corrigir` por quota `429`; GPT-5 Nano validado em `extrair_questoes`, `extrair_gabarito`, `corrigir`, `analisar_habilidades` e `gerar_relatorio`; `extrair_respostas` Nano foi reclassificado como invalido porque marcou tudo `ilegivel`; comportamento de `f55e299`/`e6060e1`/`5527e26` confirmado por Render MCP e smoke live, embora HTML marker esteja atrasado | Deployar guard que rejeita respostas 100% ilegiveis e rerodar `extrair_respostas` Nano; depois tentar pipeline completa Nano; rerodar `extrair_gabarito` Gemini apos quota/decisao; schema minimo e UI de erro continuam pendentes |
 | Schema e avisos | Sprint 2 concluida localmente | Manter schema oficial, defaults e visualizador cobertos por testes |
 | Custos/tokens | Metadata de documento, endpoints live, resumo por `cost_run_id`, `TokenUsageRecord` local, migration Supabase dedicada `b2dc88b`; smoke Nano `gerar_relatorio` adicionou run precificado; diagnostico live ainda acusa `PGRST205` | Aplicar `backend/migrations/002_create_token_usage.sql` no Supabase; validar uma falha real sem documento em producao |
 | UI de erros | Pendente | Mostrar falha por aluno/etapa sem depender de terminal |
@@ -109,26 +100,30 @@ Estabilizar o NOVO CR para que a pipeline:
   (`chore: mark deploy e6060e1`).
 - Marker mais novo publicado no GitHub para o guard: `2792d89`
   (`chore: mark deploy 5527e26`).
-- Marker atual observado no Render depois do catch-up: HTML ainda aponta
-  `novocr-deploy=e6060e1`; o backend ja respondeu como `e6060e1` nas rotas
-  legadas (`410 Gone`), mas ainda nao confirmou `5527e26`.
+- Render MCP em 2026-05-16: servico oficial `srv-d5t8gbh4tr6s738fr3s0`,
+  branch `main`, repo `https://github.com/OttoBoop/IA_Educacao_V2`,
+  `rootDir=backend`, autoDeploy `yes`, deploy `dep-d83spamq1p3s73f0ks20`
+  live em `5527e2651fa47e6258610d0470ca060e2921d663`.
+- Marker HTML atual observado depois do deploy: `novocr-deploy=e6060e1`. Isso
+  nao invalida o runtime `5527e26`, porque commits de marker/frontend/docs podem
+  nao disparar deploy num servico com `rootDir=backend`. `check_deploy.sh` deve
+  ser corrigido em ciclo proprio ou usado apenas como sinal auxiliar.
 - GitHub `origin/main`: contem `e6060e1`, marker `a7dead3`, `f55e299`,
-  `d653c13`, marker `2947178` e commits documentais posteriores. O ultimo
-  marker confirmado no Render e `0dfdbbe`.
+  `d653c13`, marker `2947178`, `5527e26`, marker `2792d89` e commits
+  documentais posteriores.
 - Render live observado: saiu de `2e1098f` para `b12be9a` e depois confirmou
   marcadores `b4d7ee6`, `f505be6`, `97a7c79`, `c75af88`, `39aa50a`,
   `b24f03e`, `eab7d90`, `7ed8b8b`, `839968e`, `55e168a` e `4f27dae`.
 - `/api/custos/status` no Render: HTTP 200, confirmando endpoints de custo live.
 - GitHub Actions: sem runs recentes observaveis.
 - GitHub webhooks/deployments via `gh api`: sem entradas visiveis.
-- Render MCP: bloqueado por workspace nao selecionado ("no workspace set").
-- Evidencia documental adicional: Doc 11 e o tutorial arquivado registram que o
-  auto-deploy do Git nao funciona porque o Render foi conectado via URL publica,
-  nao GitHub OAuth; o canal oficial era deploy hook, que precisa estar rotacionado
-  antes de qualquer uso.
-- Inferencia operacional: o deploy nao sai de forma confiavel apenas por push;
-  usar deploy API/Dashboard e so aceitar smoke oficial quando o HTML live
-  mostrar o marker funcional esperado.
+- Render MCP: workspace `tea-d5ruvqu3jp1c73dudl7g` selecionado e lista de
+  servicos disponivel. As ferramentas atuais listam deploys e servicos; nao ha
+  ferramenta explicita de "trigger deploy".
+- Inferencia operacional atualizada: push para `main` dispara deploy de commits
+  com impacto em `backend`, mas marker HTML pode ficar atrasado. Aceitar smoke
+  oficial somente com deploy Render MCP ou comportamento live equivalente, nao
+  apenas com HTML marker.
 
 ## Loop Operacional
 
@@ -1044,6 +1039,76 @@ Critério de pronto: lista de limpeza segura e revisada.
 - Proximo alvo: continuar monitorando `check_deploy.sh 5527e26`; se Render
   permanecer travado, usar canal seguro de deploy manual/API e registrar o gate.
 
+### 2026-05-16 -- Render MCP confirmou `5527e26` e Nano gabarito passou
+
+- Alvo: reconectar o loop depois de interrupcao e diferenciar deploy real de
+  marker HTML atrasado.
+- Render MCP: `list_services` encontrou o servico oficial
+  `srv-d5t8gbh4tr6s738fr3s0` (`IA_Educacao_V2`), branch `main`,
+  `rootDir=backend`, URL `https://ia-educacao-v2.onrender.com`. `list_deploys`
+  marcou `5527e2651fa47e6258610d0470ca060e2921d663` como `live`, deploy
+  `dep-d83spamq1p3s73f0ks20`.
+- Correcao de interpretacao: `check_deploy.sh 5527e26` falha porque o HTML
+  ainda contem `novocr-deploy=e6060e1`; isso e stale marker, nao prova de
+  backend antigo. Como o Render usa `rootDir=backend`, commits de marker em
+  frontend/docs podem nao disparar novo deploy.
+- Smoke oficial: `pipeline-completo`, aluno Eric
+  (`660e9421b246ad3f`), atividade Lista0 (`126e8b5ad7dd6d59`), modelo
+  `gpt5nano001`, `selected_steps=["extrair_gabarito"]`, `force_rerun=true`.
+- Task: `task_dc719eeea626` terminou `completed` e marcou
+  `extrair_gabarito=completed`.
+- Artefato: JSON `5f433f9a1bc30842`, tipo `extracao_gabarito`,
+  `status=concluido`, provider/modelo `openai/gpt-5-nano`, tokens
+  `78104/8353`, total `86457`, custo `/api/custos/resumo?limit=30`
+  `US$ 0.007246`.
+- Conteudo: 7 respostas reais; nenhuma resposta veio `MISSING_CONTENT`. O smoke
+  nao prova qualidade matematica fina de cada justificativa, mas prova que o
+  erro P0 "tudo missing com status verde" nao ocorreu nesta execucao.
+- Observacao operacional: durante a task, logs Render registraram timeout do
+  Supabase em `resolver_caminho` e "Arquivo nao encontrado", mas o documento
+  final foi salvo e lido via `/api/documentos/{id}/conteudo`. Isso fica como
+  ruido/risco de storage a acompanhar, nao bloqueio deste smoke.
+- Custo live apos o smoke: `/api/custos/status` retornou
+  `runs_precificados=20`, `runs_bloqueados=466`, `token_usage_analisados=0`.
+- Status: GPT-5 Nano `extrair_gabarito` volta a ✅ para este exemplo oficial.
+  Gemini `extrair_gabarito` continua ❌ ate rerun pos-guard/quota.
+- Proximo alvo: rodar `extrair_respostas` Nano no site oficial; se passar,
+  tentar pipeline Nano completa de 6 etapas. Em paralelo, abrir ciclo pequeno
+  para corrigir o mecanismo de deploy marker/verificador.
+
+### 2026-05-16 -- Bug P0: `extrair_respostas` aceitava tudo ilegivel
+
+- Alvo: validar `extrair_respostas` com GPT-5 Nano no site oficial apos o
+  gabarito Nano passar.
+- Smoke oficial: `pipeline-completo`, aluno Eric
+  (`660e9421b246ad3f`), atividade Lista0 (`126e8b5ad7dd6d59`), modelo
+  `gpt5nano001`, `selected_steps=["extrair_respostas"]`, `force_rerun=true`.
+- Task: `task_a9ff0d69d5e9` terminou `completed` e marcou
+  `extrair_respostas=completed`.
+- Artefato: JSON `b968c9539f277deb`, provider/modelo `openai/gpt-5-nano`,
+  tokens `85774/3002`, custo `US$ 0.005489`, `status=concluido`.
+- Problema: o JSON marcou as 7 respostas com `ilegivel=true`, `em_branco=false`
+  e `resposta_aluno=null`.
+- Evidencia contra o status verde: a prova respondida `f60d37284d616ca4`
+  (`Eric Manoel Ribeiro de Sousa - ALA-Lista0.pdf_16e6.pdf`) tem texto extraivel
+  via `pdftotext`, incluindo "Questao 7 - Lista 0" e codigo Julia/resposta da
+  questao 7. Portanto, "tudo ilegivel" nao pode ser aceito como sucesso.
+- Reclassificacao: `extrair_respostas` Nano fica ❌ nesta amostra, apesar de
+  schema/custo/metadata. Gemini tinha produzido o mesmo padrao de tudo ilegivel
+  em smokes anteriores; isso tambem deve ser tratado como risco de conteudo.
+- Patch local aplicado: `pipeline_validation.ExtracaoRespostas` agora rejeita
+  respostas em que todos os itens tenham `ilegivel=true`; a funcao publica
+  `validar_json_pipeline("extrair_respostas", ...)` retorna erro estruturado.
+- Validacoes locais: `python -m py_compile backend/pipeline_validation.py
+  backend/tests/unit/test_pipeline_validation.py`, `git diff --check`,
+  `pytest backend/tests/unit/test_pipeline_validation.py -q` (`27 passed`,
+  `3 skipped`) e `pytest backend/tests/unit/test_pipeline_validation.py
+  backend/tests/unit/test_erro_pipeline.py -q` (`70 passed`, `3 skipped`) passaram,
+  com o aviso conhecido de config `timeout`.
+- Proximo alvo: commit/push/deploy desse guard; depois rerodar
+  `extrair_respostas` Nano. O resultado esperado agora e falhar alto se o modelo
+  repetir "tudo ilegivel", nao salvar documento verde.
+
 ## Riscos Abertos
 
 1. Creditos Anthropic insuficientes ainda bloqueiam validacao Haiku.
@@ -1052,16 +1117,18 @@ Critério de pronto: lista de limpeza segura e revisada.
    necessario, mas nao prova qualidade pedagogica.
 4. A tabela Supabase `token_usage` tem migration dedicada em `b2dc88b`, mas o
    live confirmou que ela ainda nao existe no schema cache (`PGRST205`).
-5. Render/site oficial ja executa comportamento de `e6060e1`, mas o HTML marker
-   ainda aponta `f55e299`; nao aceitar marker `a7dead3` como confirmado ate
-   `check_deploy.sh e6060e1` passar.
+5. Render MCP confirma runtime `5527e26`, mas o HTML marker ainda aponta
+   `e6060e1`; `check_deploy.sh` baseado apenas no HTML e insuficiente para
+   servico `rootDir=backend`.
 6. Gemini 3 Flash bateu quota `429` em pipeline sequencial completa; nao tratar
    isso como bug silencioso da pipeline, mas tambem nao chamar de pipeline
    completa validada.
 7. `extrair_gabarito` parseavel pode ser conteudo invalido quando todas as
-   respostas viram `MISSING_CONTENT`; o novo guard local precisa deploy e smoke
-   oficial.
-8. Artefatos com `status=erro` podem ter arquivo/conteudo parcial; UI e docs
+   respostas viram `MISSING_CONTENT`; Nano passou no smoke pos-`5527e26`, mas
+   Gemini ainda precisa rerun antes de voltar a ✅.
+8. `extrair_respostas` parseavel pode ser conteudo invalido quando todas as
+   respostas viram `ilegivel=true`; guard local criado e ainda precisa deploy.
+9. Artefatos com `status=erro` podem ter arquivo/conteudo parcial; UI e docs
    devem ensinar o usuario a obedecer o status, nao o simples fato de existir
    arquivo.
-9. Rio 3 nao deve voltar ao fluxo ativo sem nova decisao e nova chave segura.
+10. Rio 3 nao deve voltar ao fluxo ativo sem nova decisao e nova chave segura.

@@ -9,21 +9,23 @@
 `eab7d90`, `dcecdfa`, `7ed8b8b`, `9e1aee5`, `839968e`, `45c6f97`,
 `55e168a`, `9823afb`, `4f27dae`, `f0dae61`, `87bdee2`, `b2dc88b`,
 `28cfd6a`, `cacedcd`, `a311ade`, `924fd79`, `0dfdbbe`, `d653c13`,
-`2947178`, `53d0252`, `f55e299`, `5f10651`, `e6060e1`, `a7dead3`
+`2947178`, `53d0252`, `f55e299`, `5f10651`, `e6060e1`, `a7dead3`,
+`5527e26`, `2792d89`, `23282d7`, `7d0c874`
 
 ## Status Oficial De Deploy
 
-- GitHub `origin/main` contem commits posteriores ao runtime live. O ultimo
-  marker confirmado no Render e `0dfdbbe`, e o marcador HTML aponta para o
-  commit funcional `924fd79`.
-- O patch `924fd79` e marker `0dfdbbe` estao confirmados no Render. O patch
-  `d653c13` e marker `2947178` estao no GitHub, mas ainda nao foram confirmados
-  no Render. Em 2026-05-15, chamadas com timeout de 20s para `/` e
-  `/api/health` chegaram a retornar `HTTP_STATUS=000`; depois o site voltou em
-  `924fd79`. O Render MCP voltou, mas sem workspace selecionado.
-- Em 2026-05-16, `check_deploy.sh 924fd79` passou e `check_deploy.sh d653c13`
-  falhou encontrando `924fd79`. Os smokes Nano de `analisar_habilidades` e
-  `gerar_relatorio` abaixo sao oficiais para `924fd79`, nao para `d653c13`.
+- Render MCP confirmou em 2026-05-16 o servico oficial
+  `srv-d5t8gbh4tr6s738fr3s0` (`IA_Educacao_V2`), branch `main`,
+  `rootDir=backend`, URL `https://ia-educacao-v2.onrender.com`.
+- `list_deploys` marcou o deploy `dep-d83spamq1p3s73f0ks20` como `live`,
+  apontando para o commit funcional
+  `5527e2651fa47e6258610d0470ca060e2921d663`.
+- O HTML live ainda aponta `novocr-deploy=e6060e1`. Isso e marker stale, nao
+  prova de runtime antigo: commits de frontend/docs/marker podem nao disparar
+  deploy quando o servico Render usa `rootDir=backend`.
+- Os smokes abaixo devem dizer qual evidencia oficial usam: marker HTML quando
+  aplicavel, Render MCP/lista de deploys quando o runtime for confirmado por
+  commit backend, e sempre comportamento live por endpoint.
 - Depois do smoke de `extrair_questoes`, o commit `f55e299` foi publicado para
   destacar tarefas longas do ciclo da requisicao; marker `5f10651` foi publicado
   no GitHub, mas ainda precisa confirmacao Render.
@@ -36,8 +38,8 @@
   e6060e1` deu timeout apos 600s.
 - O commit `5527e26` adiciona o guard anti-gabarito-tudo-`MISSING_CONTENT` e
   remove o fallback Markdown de relatorio; marker `2792d89` aponta o HTML para
-  `5527e26`. Ambos estao no GitHub, mas `wait_deploy.sh 5527e26` deu timeout
-  apos 600s. O HTML live avancou ate `e6060e1`, nao ate `5527e26`.
+  `5527e26`, mas o HTML nao atualizou. Render MCP confirmou o runtime
+  `5527e26` como live.
 - Tambem em producao, uma pipeline sequencial completa Gemini (`task_5e97bbee896e`)
   confirmou que o runner destacado nao prende a resposta inicial e mantem
   `/api/health` saudavel, mas falhou alto em `corrigir` por quota Google/Gemini
@@ -46,8 +48,8 @@
 - `origin/main` tambem contem a migration dedicada `b2dc88b`
   (`backend/migrations/002_create_token_usage.sql`), ainda nao aplicada ao
   Supabase de producao.
-- Render live chegou a `f55e299` pelo marker HTML; comportamento backend de
-  `e6060e1` ja foi observado, mas o marker `a7dead3` segue pendente.
+- Render live chegou a `5527e26` pela lista de deploys do Render MCP; o marker
+  HTML segue atrasado em `e6060e1`.
 - Docs antigos registram que auto-deploy Git nao funciona de forma confiavel; o
   ciclo usou deploy via API Render com token local seguro, sem imprimir segredo.
 - Smokes live anteriores continuam citados com seus markers; smokes de
@@ -71,17 +73,23 @@
 |-----------------|:---:|:---:|:---:|:---:|:---:|:---:|
 | **Claude Haiku 4.5** (`588f3efe7975`) | ⏸️ | ⏸️ | ⏸️ | 🚫 | 🚫 | 🚫 |
 | **Gemini 3 Flash** (`gem3flash001`) | ✅ | ❌ | ✅ | ✅ | ✅ | ✅ |
-| **GPT-5 Nano** (`gpt5nano001`) | ✅ | ❌ | ⏸️ | ✅ | ✅ | ✅ |
+| **GPT-5 Nano** (`gpt5nano001`) | ✅ | ✅ | ❌ | ✅ | ✅ | ✅ |
 | **GPT-4o** (`180b8298a279`) — referencia | ✅ | ✅ | ✅ | ⚠️ | ⚠️ | ⚠️ |
 
 Nota de leitura: os checks da tabela acima sao por etapa individual validada.
 Eles nao significam que a pipeline completa de 6 etapas passou em uma unica
 task. Em 2026-05-16, Gemini completou as tres extracoes em uma task sequencial,
 mas parou em `corrigir` por quota `429`.
-Nota P0: `extrair_gabarito` foi reclassificado para ❌ em Gemini e Nano porque
-os outputs retornaram todas as respostas como `MISSING_CONTENT`, embora o PDF
-base tenha texto extraivel de "Exercicio 5". Schema parseavel e custo medido nao
-bastam.
+Nota P0: `extrair_gabarito` Gemini continua ❌ porque o output retornou todas
+as respostas como `MISSING_CONTENT`, embora o PDF base tenha texto extraivel de
+"Exercicio 5". Nano tinha a mesma falha historica em `task_2da0fb90c3fb`, mas
+foi revalidado apos `5527e26` na task `task_dc719eeea626`, com JSON
+`5f433f9a1bc30842` e 7 respostas reais. Schema parseavel e custo medido nao
+bastam; conteudo precisa fazer sentido.
+Nota P0 adicional: `extrair_respostas` Nano rodou em
+`task_a9ff0d69d5e9`, mas o JSON `b968c9539f277deb` marcou todas as 7 respostas
+como `ilegivel=true`, embora o PDF `f60d37284d616ca4` tenha texto extraivel da
+questao 7. Isso e falha de conteudo, nao validacao.
 
 ### Categoria 2: Relatorios de Desempenho (3 niveis)
 
@@ -143,6 +151,10 @@ bastam.
   `61fb077d746c2a55`, tokens `78104/3635`, custo `US$ 0.005359`, mas marcou
   todas as 7 respostas como `MISSING_CONTENT`; reclassificado como falha de
   conteudo.
+- Depois do deploy Render MCP `5527e26`, GPT-5 Nano em `extrair_gabarito`
+  (`task_dc719eeea626`) completou com JSON `5f433f9a1bc30842`, 7 respostas
+  reais, tokens `78104/8353` e custo `US$ 0.007246`. A etapa volta a ✅ para
+  Nano neste exemplo; ainda falta `extrair_respostas` e pipeline completa.
 - Depois do deploy `b24f03e`, GPT-5 Nano em `corrigir` falhou sem falso sucesso
   na task `task_c460627779fc`, mas o erro ficou cru demais:
   `tools: 'str' object has no attribute 'get'`. Causa: payload malformado em
@@ -218,6 +230,16 @@ bastam.
   `cost_run_id=tool_9ce5bf31c005`. O JSON traz `nota_final=1.43`,
   `resumo_geral`, `recomendacoes`, `_avisos_*` e fontes usadas; o PDF resolve
   em disco pelo debug endpoint.
+- No deploy live `5527e26` confirmado por Render MCP, GPT-5 Nano passou em
+  `extrair_gabarito` (`task_dc719eeea626`): JSON `5f433f9a1bc30842`,
+  `status=concluido`, provider/modelo `openai/gpt-5-nano`, tokens
+  `78104/8353`, custo `US$ 0.007246`, e 7 respostas reais sem
+  `MISSING_CONTENT`.
+- No mesmo runtime, GPT-5 Nano em `extrair_respostas`
+  (`task_a9ff0d69d5e9`) completou com JSON `b968c9539f277deb`, tokens
+  `85774/3002` e custo `US$ 0.005489`, mas marcou todas as 7 respostas como
+  `ilegivel=true`. Como o PDF da prova tem texto extraivel de Q7, a etapa foi
+  reclassificada como ❌ e ganhou guard local para falhar alto.
 
 **Gemini 3 Flash:** tambem validado em 2 testes historicos de chat (mensagem unica + multi-turn). Ver [teste_chat_gemini.md](arquivo_2026_04_17/teste_chat_gemini.md).
 - Teste 1: 662 tokens, 1930ms, resposta em PT correta
@@ -371,8 +393,9 @@ Ver [teste_gpt5nano_pipeline_completo.md](arquivo_2026_04_17/teste_gpt5nano_pipe
 - [ ] Rerodar Gemini 3 Flash em `extrair_gabarito` apos guard anti-tudo-
       `MISSING_CONTENT`; execucao anterior foi reclassificada como conteudo
       invalido
-- [ ] Confirmar deploy `5527e26` antes de rerodar `extrair_gabarito`; o marker
-      live ainda estava em `e6060e1` apos timeout
+- [x] Confirmar deploy `5527e26`: Render MCP mostrou deploy live
+      `dep-d83spamq1p3s73f0ks20` em `5527e265...`; o marker HTML segue
+      atrasado em `e6060e1`
 - [x] Rodar Gemini 3 Flash em `extrair_respostas` com custo/metadata e health
       responsivo durante a execucao
 - [x] Validar que `f55e299` elimina timeout/indisponibilidade na resposta
@@ -399,17 +422,19 @@ Ver [teste_gpt5nano_pipeline_completo.md](arquivo_2026_04_17/teste_gpt5nano_pipe
 - [x] Validar `corrigir` com GPT-5 Nano para 1 aluno no site oficial
 - [x] Corrigir/validar GPT-5 Nano em `analisar_habilidades` no marker
       `924fd79`, com JSON+PDF e custo
-- [ ] Confirmar deploy `d653c13` e rerodar smoke especifico do guard
-      anti-placeholder
+- [x] Confirmar runtime com `d653c13` incluido: deploy live `5527e26` e
+      descendente de `d653c13`
+- [ ] Rerodar smoke especifico do guard anti-placeholder se esse risco voltar a
+      aparecer
 - [x] Validar `gerar_relatorio` com GPT-5 Nano apos `analisar_habilidades`
 - [ ] Testar Haiku 4.5 (bloqueado ate creditos recarregarem)
 
 ### Prioridade BAIXA
-- [ ] Testar GPT-5 Nano nas 6 etapas (as tres etapas finais ja passaram; as
-      etapas `extrair_questoes`, `corrigir`, `analisar_habilidades` e
-      `gerar_relatorio` ja passaram; `extrair_gabarito` rodou mas falhou
-      conteudo; faltam rerodar `extrair_gabarito`,
-      `extrair_respostas` e pipeline completa)
+- [ ] Testar GPT-5 Nano nas 6 etapas (as etapas `extrair_questoes`,
+      `extrair_gabarito`, `corrigir`, `analisar_habilidades` e
+      `gerar_relatorio` ja passaram; `extrair_respostas` rodou mas foi
+      reclassificada como conteudo invalido por tudo `ilegivel`; falta deploy
+      do guard, rerun de `extrair_respostas` e pipeline completa)
 - [ ] Comparar qualidade dos outputs entre os 3 modelos-alvo
 
 ---
@@ -424,13 +449,13 @@ Ver [teste_gpt5nano_pipeline_completo.md](arquivo_2026_04_17/teste_gpt5nano_pipe
   `MISSING_CONTENT`.
   Pipeline sequencial completa pos-runner chegou a `corrigir` e falhou alto por
   quota `429`; falta repetir quando quota permitir.
-- ✅ **GPT-5 Nano via `pipeline-completo`:** as tres etapas finais do aluno
-  (`corrigir`, `analisar_habilidades`, `gerar_relatorio`) e `extrair_questoes`
+- ⚠️ **GPT-5 Nano via `pipeline-completo`:** `extrair_questoes`,
+  `extrair_gabarito`, `corrigir`, `analisar_habilidades` e `gerar_relatorio`
   passaram em smokes oficiais com JSON/PDF quando aplicavel, custo e metadata.
-  `extrair_gabarito` rodou mas falhou conteudo por tudo `MISSING_CONTENT`.
-  Ainda faltam rerodar `extrair_gabarito`, `extrair_respostas`, pipeline completa de 6
-  etapas, schema minimo por etapa, deploy do guard `d653c13` e custo duravel de
-  falhas sem documento final.
+  `extrair_respostas` rodou, mas foi reclassificada como falha de conteudo por
+  tudo `ilegivel=true`. Ainda faltam deploy/rerun do guard, pipeline completa
+  de 6 etapas, schema minimo por etapa e custo duravel de falhas sem documento
+  final.
 - ⏸️ **Claude Haiku 4.5:** Aguardando creditos.
 - 📊 **Confiabilidade Gemini 3 Flash:** etapas individuais OK, mas a primeira
   pipeline sequencial pos-runner bateu quota `429` em `corrigir`. Precisa duas
@@ -447,11 +472,13 @@ pipeline de 6 etapas com erro/custo/metadata visiveis.
 4. Sem endpoint de eventos de task (dificulta diagnostico de falhas transientes)
 
 **Proximos passos:**
-1. Manter deploy oficial confirmado por marker antes de cada smoke novo.
-2. Confirmar marker `a7dead3` ou registrar divergencia marker/backend; o
-   comportamento 410 ja foi observado.
-3. Confirmar deploy `d653c13` ou registrar bloqueio Render definitivo.
+1. Manter deploy oficial confirmado por Render MCP/lista de deploys ou marker
+   confiavel antes de cada smoke novo.
+2. Corrigir `check_deploy.sh` para nao depender apenas do marker HTML quando o
+   Render usa `rootDir=backend`.
+3. Deployar o guard anti-respostas-100%-ilegiveis e rerodar `extrair_respostas`
+   com GPT-5 Nano no site oficial.
 4. Aplicar `backend/migrations/002_create_token_usage.sql` no Supabase para
    tornar duravel o custo de falhas sem documento.
-4. Quando creditos Anthropic forem recarregados, validar Haiku 4.5 via
+5. Quando creditos Anthropic forem recarregados, validar Haiku 4.5 via
    `pipeline-completo`.
