@@ -1277,6 +1277,91 @@ class TestMultimodalExtractionValidationRetry:
         assert record_usage.call_args.kwargs["metadata"]["tentativas_validacao"] == 2
 
 
+class TestCorrigirUsesStructuredExtractionContext:
+    """CORRIGIR deve preferir JSON extraído aos textos crus dos uploads."""
+
+    def test_aliases_corrigir_sobrescrevem_contexto_cru(self):
+        from executor import PipelineExecutor
+
+        executor = PipelineExecutor.__new__(PipelineExecutor)
+        variaveis = {
+            "questao": "RAW ENUNCIADO",
+            "resposta_esperada": "RAW GABARITO",
+            "resposta_aluno": "RAW PROVA RESPONDIDA",
+        }
+        contexto = {
+            "questoes_extraidas": '{"questoes":[{"numero":1}]}',
+            "gabarito_extraido": '{"respostas":[{"questao_numero":1,"resposta_correta":"A"}]}',
+            "respostas_aluno": '{"respostas":[{"questao_numero":1,"resposta_aluno":"x=2"}]}',
+        }
+
+        executor._aplicar_aliases_contexto_corrigir(variaveis, contexto)
+
+        assert variaveis["questao"] == contexto["questoes_extraidas"]
+        assert variaveis["resposta_esperada"] == contexto["gabarito_extraido"]
+        assert variaveis["resposta_aluno"] == contexto["respostas_aluno"]
+
+    @pytest.mark.asyncio
+    async def test_corrigir_renderiza_prompt_com_respostas_extraidas(self):
+        from executor import EtapaProcessamento, PipelineExecutor, ResultadoExecucao
+        from prompts import PROMPTS_PADRAO
+
+        executor = PipelineExecutor.__new__(PipelineExecutor)
+
+        atividade = MagicMock()
+        atividade.turma_id = "turma-1"
+        atividade.nome = "Lista0"
+        atividade.nota_maxima = 10
+        turma = MagicMock()
+        turma.materia_id = "materia-1"
+        materia = MagicMock()
+        materia.id = "materia-1"
+        materia.nome = "Álgebra Linear"
+
+        executor.storage = MagicMock()
+        executor.storage.get_atividade = MagicMock(return_value=atividade)
+        executor.storage.get_turma = MagicMock(return_value=turma)
+        executor.storage.get_materia = MagicMock(return_value=materia)
+        executor.prompt_manager = MagicMock()
+        executor.prompt_manager.get_prompt_padrao = MagicMock(
+            return_value=PROMPTS_PADRAO[EtapaProcessamento.CORRIGIR]
+        )
+        executor._preparar_variaveis_texto = MagicMock(return_value={
+            "materia": "Álgebra Linear",
+            "atividade": "Lista0",
+            "nota_maxima": "10",
+            "questao": "RAW ENUNCIADO",
+            "resposta_esperada": "RAW GABARITO",
+            "resposta_aluno": "RAW PROVA RESPONDIDA",
+            "criterios": "(Nenhum critério específico fornecido)",
+        })
+        executor._preparar_contexto_json = MagicMock(return_value={
+            "questoes_extraidas": '{"questoes":[{"numero":1,"enunciado":"Q estruturada"}]}',
+            "gabarito_extraido": '{"respostas":[{"questao_numero":1,"resposta_correta":"A"}]}',
+            "respostas_aluno": '{"respostas":[{"questao_numero":1,"resposta_aluno":"x=2"}]}',
+            "_documentos_faltantes": [],
+            "_documentos_carregados": [
+                "questoes_extraidas",
+                "gabarito_extraido",
+                "respostas_aluno",
+            ],
+        })
+        executor.executar_com_tools = AsyncMock(return_value=ResultadoExecucao(
+            sucesso=True,
+            etapa=EtapaProcessamento.CORRIGIR,
+        ))
+
+        await executor.corrigir("ativ-1", "aluno-1", provider_id="gpt5nano001")
+
+        mensagem = executor.executar_com_tools.await_args.kwargs["mensagem"]
+        assert '"resposta_aluno":"x=2"' in mensagem
+        assert '"resposta_correta":"A"' in mensagem
+        assert '"enunciado":"Q estruturada"' in mensagem
+        assert "RAW PROVA RESPONDIDA" not in mensagem
+        assert "RAW GABARITO" not in mensagem
+        assert "RAW ENUNCIADO" not in mensagem
+
+
 # ============================================================
 # F3-T2: Pipeline orchestration marks overall result as ERRO
 # ============================================================

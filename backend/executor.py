@@ -1589,6 +1589,7 @@ Regras obrigatórias:
             )
 
         variaveis.update(contexto_json)
+        self._aplicar_aliases_contexto_corrigir(variaveis, contexto_json)
 
         # Render prompt
         prompt_renderizado = prompt.render(**variaveis)
@@ -1610,6 +1611,24 @@ Regras obrigatórias:
             expected_document_type=TipoDocumento.CORRECAO,
             prompt_id=prompt.id,
         )
+
+    def _aplicar_aliases_contexto_corrigir(
+        self,
+        variaveis: Dict[str, str],
+        contexto_json: Dict[str, str],
+    ) -> None:
+        """Ensure CORRIGIR uses structured extraction JSON, not raw uploaded text."""
+        if "questoes_extraidas" in contexto_json:
+            variaveis["questoes_extraidas"] = contexto_json["questoes_extraidas"]
+            variaveis["questao"] = contexto_json["questoes_extraidas"]
+
+        if "gabarito_extraido" in contexto_json:
+            variaveis["gabarito_extraido"] = contexto_json["gabarito_extraido"]
+            variaveis["resposta_esperada"] = contexto_json["gabarito_extraido"]
+
+        if "respostas_aluno" in contexto_json:
+            variaveis["respostas_aluno"] = contexto_json["respostas_aluno"]
+            variaveis["resposta_aluno"] = contexto_json["respostas_aluno"]
 
     async def analisar_habilidades(
         self,
