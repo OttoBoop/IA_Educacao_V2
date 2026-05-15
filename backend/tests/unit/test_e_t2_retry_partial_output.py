@@ -336,7 +336,7 @@ class TestBothOutputsNoRetry:
         )
 
         assert {"type": "object"} in content_schema["anyOf"]
-        assert {"type": "array"} in content_schema["anyOf"]
+        assert {"type": "array", "items": {}} in content_schema["anyOf"]
         assert {"type": "string"} in content_schema["anyOf"]
         assert "prefer passing an object" in content_schema["description"].lower()
 

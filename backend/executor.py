@@ -3205,7 +3205,7 @@ Regras obrigatórias:
                                 ),
                                 "anyOf": [
                                     {"type": "object"},
-                                    {"type": "array"},
+                                    {"type": "array", "items": {}},
                                     {"type": "string"},
                                 ],
                             })
