@@ -194,7 +194,7 @@ detalhar e auditar estas linhas.
 | Pipeline P5/P6 | Contencao de nota e preservacao de `_documentos_faltantes` | `N/A` ainda e fallback proibido como estado final. |
 | Schema/avisos | Defaults `_avisos_*`, visualizador melhorado e schemas mais permissivos | Permissividade nao e contrato forte; pode aceitar legado demais. |
 | Tokens/custos | Split input/output; metadata de documento; endpoints `/api/custos/status` e `/api/custos/resumo` respondendo live; resumo agrega por `cost_run_id`; `TokenUsageRecord` local cobre falha sem documento; codigo Supabase e migration dedicada `b2dc88b` existem; diagnostico live mostra `PGRST205`; Gemini e Nano geraram runs custeaveis, incluindo Nano `gerar_relatorio` em `US$ 0.003348` | Falta aplicar `backend/migrations/002_create_token_usage.sql` no Supabase. |
-| Providers | Gemini passou em chat simples live, `extrair_questoes`, `extrair_gabarito` e nas tres etapas finais do aluno; GPT-5 Nano passou em chat simples live e nas tres etapas finais do aluno; runner destacado e bloqueio de rotas legadas ja tiveram comportamento observado no backend live | Gemini ainda precisa `extrair_respostas`; Nano ainda precisa extracoes; o marker HTML `a7dead3` segue pendente apesar do comportamento backend de `e6060e1` ja observado. |
+| Providers | Gemini passou em chat simples live e nas 6 etapas individuais do aluno; GPT-5 Nano passou em chat simples live e nas tres etapas finais do aluno; runner destacado e bloqueio de rotas legadas ja tiveram comportamento observado no backend live | Gemini ainda precisa pipeline sequencial completa em uma unica chamada; Nano ainda precisa extracoes; o marker HTML `a7dead3` segue pendente apesar do comportamento backend de `e6060e1` ja observado. |
 | Seguranca Rio | Regra de nao usar chave em chat e Rio pausado | Arquivos Rio/untracked continuam fora do ciclo ativo. |
 
 ### O Que Falta
@@ -2445,7 +2445,7 @@ Fila minima para custo real:
 
 | Provider/modelo | Estado atual | Evidencia | O que falta |
 |---|---|---|---|
-| Gemini 3 Flash | Chat OK; `extrair_questoes`, `extrair_gabarito`, `corrigir`, `analisar_habilidades` e `gerar_relatorio` pos-fix OK com custo | `extrair_questoes`: task `task_737c8d45befc`, JSONs `3f1ca7eed14f5d37`/`9d61dcb36e6ca4b5`, custos `US$ 0.002806`/`US$ 0.002801`; `extrair_gabarito`: task `task_094c921eb038`, JSON `36d1fdd0a453e2f5`, custo `US$ 0.020378`; `corrigir`: task `task_8f53987c57c4`, custo `US$ 0.007931`; `analisar_habilidades`: task `task_a78369e23e5c`, JSON `7904a6a1aa34131f`, PDF `245970da4cc42c02`, custo `US$ 0.009447`; `gerar_relatorio`: task `task_58fb48fc8324`, JSON `fe6ad549481a0ed9`, PDF `b815d1faa5aeab77`, custo `US$ 0.006120` | Validar `extrair_respostas` e repetir amostras sem trocar modelo. |
+| Gemini 3 Flash | Chat OK; 6 etapas individuais do aluno pos-fix OK com custo | `extrair_questoes`: task `task_737c8d45befc`, JSONs `3f1ca7eed14f5d37`/`9d61dcb36e6ca4b5`, custos `US$ 0.002806`/`US$ 0.002801`; `extrair_gabarito`: task `task_094c921eb038`, JSON `36d1fdd0a453e2f5`, custo `US$ 0.020378`; `extrair_respostas`: task `task_7d357943288d`, JSON `59cb3e341515d745`, custo `US$ 0.023273`; `corrigir`: task `task_8f53987c57c4`, custo `US$ 0.007931`; `analisar_habilidades`: task `task_a78369e23e5c`, JSON `7904a6a1aa34131f`, PDF `245970da4cc42c02`, custo `US$ 0.009447`; `gerar_relatorio`: task `task_58fb48fc8324`, JSON `fe6ad549481a0ed9`, PDF `b815d1faa5aeab77`, custo `US$ 0.006120` | Validar pipeline sequencial completa e repetir amostras sem trocar modelo. |
 | GPT-5 Nano | Chat OK; `corrigir`, `analisar_habilidades` e `gerar_relatorio` pos-fix OK com custo no marker `924fd79`; `d653c13` pendente | `corrigir`: task `task_a591421ab84b`, JSON `42dc1fcd758e913b`, PDF `cd72e7233ee061ad`, custo `US$ 0.002192`; `analisar_habilidades`: task `task_020ba25bdb2b`, JSON `ba5dec781e46e665`, PDF `385f6b78018b8c07`, custo `US$ 0.003528`; `gerar_relatorio`: task `task_aec830b85c03`, JSON `200c1b5272ba10f1`, PDF `a629dee567b10274`, custo `US$ 0.003348` | Confirmar deploy `d653c13`, testar extracoes e validar schema minimo/pipeline completa. |
 | Claude Haiku 4.5 | Bloqueado | Creditos Anthropic insuficientes | Recarregar creditos e testar sem trocar provider. |
 | GPT-4o | Parcial/referencia historica | Gerou 3 etapas, mas schema antigo e sem avisos | Revalidar como modelo explicito, nao fallback. |
@@ -2470,7 +2470,8 @@ Erros conhecidos por provider/rota:
 | Gemini 3 Flash | `pipeline-completo` pos-fix `corrigir` | Depois de 503 retryability, task `task_8f53987c57c4` completou com JSON/PDF e custo | Confirmado para `corrigir`; extracoes ainda pendentes. |
 | Gemini 3 Flash | `pipeline-completo` pos-fix etapas finais | Tasks `task_a78369e23e5c` e `task_58fb48fc8324` completaram com JSON/PDF e custo | Confirmado para `analisar_habilidades` e `gerar_relatorio`; nao valida extracoes. |
 | Gemini 3 Flash | `pipeline-completo` pos-fix `extrair_questoes` | Task `task_737c8d45befc` completou, mas timeout de cliente e retry operacional geraram dois documentos de extracao | Confirmado para conteudo/custo de `extrair_questoes`; bug operacional corrigido por `f55e299` e endurecido por `e6060e1`; marker HTML ainda atrasado. |
-| Gemini 3 Flash | `pipeline-completo` pos-fix `extrair_gabarito` | Task `task_094c921eb038` completou; resposta inicial retornou `task_id` em 1.155s e `/api/health` ficou saudavel nos 20 polls | Confirmado para conteudo/custo de `extrair_gabarito`; resta `extrair_respostas`. |
+| Gemini 3 Flash | `pipeline-completo` pos-fix `extrair_gabarito` | Task `task_094c921eb038` completou; resposta inicial retornou `task_id` em 1.155s e `/api/health` ficou saudavel nos 20 polls | Confirmado para conteudo/custo de `extrair_gabarito`. |
+| Gemini 3 Flash | `pipeline-completo` pos-fix `extrair_respostas` | Task `task_7d357943288d` completou; resposta inicial retornou `task_id` em 1.002s e `/api/health` ficou saudavel | Confirmado para conteudo/custo de `extrair_respostas`; as 6 etapas individuais estao OK. |
 | GPT-5 Nano | `pipeline-completo` pos-fix `corrigir` | Task `task_49b7ada546d4` falhou alto por saida obrigatoria incompleta | Falha correta, sem fallback. |
 | GPT-5 Nano | `pipeline-completo` pos-fix `corrigir` | Task `task_edb822810ddc` completou com PDF, mas JSON invalido | Corrigido por `39aa50a`; JSON invalido nao deve entrar no storage. |
 | GPT-5 Nano | `pipeline-completo` pos-fix `corrigir` | Task `task_1a7857360267` completou com JSON parseavel, PDF via execute e custo | Confirmado para `corrigir`; nao para pipeline completa. |
@@ -2539,7 +2540,7 @@ Esta e a leitura curta para retomar o longo prazo sem se perder:
 | Sprint 2 schema/avisos | Testes locais de schema e visualizador | Revalidar providers pos-fix | GPT-5 Nano ainda tem historico de schema ruim. |
 | Sprint 3/3b/3c/3d/3e/3f/3g custos | `input_tokens`/`output_tokens`; metadata de documentos; endpoints `/api/custos/*` live; runs Gemini/Nano custeaveis; amostras agrupadas por `cost_run_id`; registro local para falha sem documento; codigo Supabase preparado; migration dedicada `b2dc88b`; endpoint diagnostica backend | Aplicar tabela Supabase `token_usage` | Historico antigo bloqueia custo por falta de split/provider; live confirmou `PGRST205`, entao persistencia local nao e duravel entre deploys. |
 | Docs parciais de run falho | Patch marca `created_document_ids` como ERRO quando provider falha depois das tools | Novo caso falho em producao para provar quando ocorrer | Ja existem dois docs antigos com token split faltante do run anterior. |
-| Providers | Gemini `extrair_questoes`/`extrair_gabarito`/`corrigir`/`analisar_habilidades`/`gerar_relatorio` OK; Nano `corrigir`/`analisar_habilidades`/`gerar_relatorio` OK; rotas legadas retornam 410; Haiku bloqueado; GPT-4o historico | Smoke matrix pos-fixes por provider/rota/pipeline, principalmente `extrair_respostas` e pipeline completa | Render sem workspace MCP, credito Anthropic, `extrair_respostas`, marker `a7dead3` pendente e custo duravel de falhas sem documento. |
+| Providers | Gemini 6 etapas individuais OK; Nano `corrigir`/`analisar_habilidades`/`gerar_relatorio` OK; rotas legadas retornam 410; Haiku bloqueado; GPT-4o historico | Smoke matrix pos-fixes por provider/rota/pipeline, principalmente pipeline completa Gemini e extracoes Nano | Render sem workspace MCP, credito Anthropic, marker `a7dead3` pendente e custo duravel de falhas sem documento. |
 | UI de erro | `task.error` agora aparece no site oficial para falha de etapa | Melhorar apresentacao e retry de erros provider | Mensagem ainda e bruta e longa. |
 | Dados fantasmas | Nota PDF impede delecao por `conteudo=null` | Reclassificar lista antes de qualquer limpeza | Delecao errada de prova respondida PDF. |
 | Rio 3 | Congelado e separado | Nada neste ciclo | Qualquer chave em chat e exposta. |
@@ -2597,9 +2598,8 @@ Objetivo: revalidar providers pos-fixes locais.
 
 Aceite:
 
-- Gemini 3 Flash: `extrair_questoes` e `extrair_gabarito` ja passaram; validar
-  `extrair_respostas`, depois exigir 2 execucoes completas sem trocar modelo,
-  com custo/metadata.
+- Gemini 3 Flash: as 6 etapas individuais ja passaram; exigir 2 execucoes
+  completas sem trocar modelo, com custo/metadata.
 - GPT-5 Nano: as tres etapas finais passaram no marker `924fd79`; confirmar
   deploy `d653c13`, testar extracoes e depois uma pipeline completa de 6 etapas.
 - Haiku: testar somente quando credito Anthropic existir.

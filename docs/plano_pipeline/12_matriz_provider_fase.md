@@ -61,7 +61,7 @@
 | Provider/Modelo | EXTRAIR_QUESTOES | EXTRAIR_GABARITO | EXTRAIR_RESPOSTAS | CORRIGIR | ANALISAR_HABILIDADES | GERAR_RELATORIO |
 |-----------------|:---:|:---:|:---:|:---:|:---:|:---:|
 | **Claude Haiku 4.5** (`588f3efe7975`) | ⏸️ | ⏸️ | ⏸️ | 🚫 | 🚫 | 🚫 |
-| **Gemini 3 Flash** (`gem3flash001`) | ✅ | ✅ | ⏸️ | ✅ | ✅ | ✅ |
+| **Gemini 3 Flash** (`gem3flash001`) | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | **GPT-5 Nano** (`gpt5nano001`) | ⏸️ | ⏸️ | ⏸️ | ✅ | ✅ | ✅ |
 | **GPT-4o** (`180b8298a279`) — referencia | ✅ | ✅ | ✅ | ⚠️ | ⚠️ | ⚠️ |
 
@@ -164,6 +164,10 @@
   `36d1fdd0a453e2f5` registrou tokens `65018/727`, custo `US$ 0.020378`,
   `respostas` e avisos `MISSING_CONTENT` para questoes ausentes no gabarito de
   origem.
+- Gemini 3 Flash tambem passou em `extrair_respostas`
+  (`task_7d357943288d`): resposta inicial em `1.002s`, health saudavel, JSON
+  `59cb3e341515d745`, tokens `70414/1791`, custo `US$ 0.023273`, aluno real e
+  questoes ausentes marcadas como `em_branco=true` sem inventar resposta.
 - GPT-5 Nano falhou alto em `analisar_habilidades` (`task_43d48d9deea2`):
   nao gerou PDF obrigatorio via `execute_python_code`; o erro ficou visivel na
   task e nao houve fallback. Dois JSONs parciais foram marcados `status=erro`
@@ -218,8 +222,9 @@ Depois do deploy `f505be6`, a repeticao `task_8f53987c57c4` completou em
 `corrigir`, com custo medido. Depois do deploy `4f27dae`, Gemini tambem passou
 em `analisar_habilidades` e `gerar_relatorio`, com custo medido. Depois do
 marker `924fd79`, `extrair_questoes` tambem passou com custo medido. Depois do
-runner destacado, `extrair_gabarito` passou com custo medido e health saudavel.
-A etapa `extrair_respostas` continua nao revalidada pos-fix.
+runner destacado, `extrair_gabarito` e `extrair_respostas` passaram com custo
+medido e health saudavel. As 6 etapas individuais do aluno estao validadas para
+Gemini; falta uma pipeline sequencial completa em uma unica chamada.
 
 **Historico positivo via `pipeline-completo`** para Eric Manoel antes dos commits
 `b12be9a`/Sprint 3b (ver [teste_gemini_pipeline_completo.md](arquivo_2026_04_17/teste_gemini_pipeline_completo.md)).
@@ -333,6 +338,8 @@ Ver [teste_gpt5nano_pipeline_completo.md](arquivo_2026_04_17/teste_gpt5nano_pipe
 - [x] Rodar Gemini 3 Flash em `extrair_questoes` com custo/metadata
 - [x] Rodar Gemini 3 Flash em `extrair_gabarito` com custo/metadata e health
       responsivo durante a execucao
+- [x] Rodar Gemini 3 Flash em `extrair_respostas` com custo/metadata e health
+      responsivo durante a execucao
 - [x] Validar que `f55e299` elimina timeout/indisponibilidade na resposta
       imediata do `pipeline-completo`
 - [x] Confirmar que `e6060e1` faz rotas legadas sincrônicas retornarem `410`
@@ -368,8 +375,9 @@ Ver [teste_gpt5nano_pipeline_completo.md](arquivo_2026_04_17/teste_gpt5nano_pipe
 
 **Estado atual:**
 - ✅ **Gemini 3 Flash:** chat simples live OK; `corrigir`,
-  `analisar_habilidades`, `gerar_relatorio`, `extrair_questoes` e
-  `extrair_gabarito` pos-fix OK com custo/metadata. Falta `extrair_respostas`.
+  `analisar_habilidades`, `gerar_relatorio`, `extrair_questoes`,
+  `extrair_gabarito` e `extrair_respostas` pos-fix OK com custo/metadata.
+  Falta uma pipeline sequencial completa em uma unica chamada.
 - ✅ **GPT-5 Nano via `pipeline-completo`:** as tres etapas finais do aluno
   (`corrigir`, `analisar_habilidades`, `gerar_relatorio`) passaram em smokes
   oficiais com JSON/PDF, custo e metadata. Ainda falta pipeline completa de 6

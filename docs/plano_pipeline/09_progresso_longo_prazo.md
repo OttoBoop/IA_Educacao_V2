@@ -64,7 +64,7 @@ Estabilizar o NOVO CR para que a pipeline:
 | Frente | Estado | Proximo passo |
 |--------|--------|---------------|
 | Docs e plano | Sprint 0 concluida | Manter este painel como fonte oficial e anexos fora do fluxo diario |
-| Pipeline | Gemini 3 Flash validado oficialmente em `extrair_questoes`, `extrair_gabarito`, `corrigir`, `analisar_habilidades` e `gerar_relatorio`; GPT-5 Nano validado em `corrigir`, `analisar_habilidades` e `gerar_relatorio`; comportamento de `f55e299`/`e6060e1` observado no backend live, mas HTML marker ainda atrasado | Confirmar marker `a7dead3` ou registrar divergencia marker/backend; depois ampliar smoke para `extrair_respostas`, schema minimo e UI de erro |
+| Pipeline | Gemini 3 Flash validado oficialmente nas 6 etapas individuais do aluno; GPT-5 Nano validado em `corrigir`, `analisar_habilidades` e `gerar_relatorio`; comportamento de `f55e299`/`e6060e1` observado no backend live, mas HTML marker ainda atrasado | Confirmar marker `a7dead3` ou registrar divergencia marker/backend; depois rodar pipeline completa sequencial, schema minimo e UI de erro |
 | Schema e avisos | Sprint 2 concluida localmente | Manter schema oficial, defaults e visualizador cobertos por testes |
 | Custos/tokens | Metadata de documento, endpoints live, resumo por `cost_run_id`, `TokenUsageRecord` local, migration Supabase dedicada `b2dc88b`; smoke Nano `gerar_relatorio` adicionou run precificado; diagnostico live ainda acusa `PGRST205` | Aplicar `backend/migrations/002_create_token_usage.sql` no Supabase; validar uma falha real sem documento em producao |
 | UI de erros | Pendente | Mostrar falha por aluno/etapa sem depender de terminal |
@@ -882,6 +882,26 @@ Critério de pronto: lista de limpeza segura e revisada.
 - Interpretacao: Gemini esta confirmado em `extrair_questoes` e
   `extrair_gabarito`. Falta `extrair_respostas` para fechar as tres extracoes
   com Gemini.
+
+### 2026-05-16 -- Provider smoke: Gemini `extrair_respostas`
+
+- Alvo: fechar a terceira etapa de extracao com Gemini 3 Flash no site oficial.
+- Status: smoke oficial passou. A chamada de `pipeline-completo` retornou
+  `task_id` em `1.002s`; `/api/health` respondeu saudavel durante a execucao.
+- Task: `task_7d357943288d`, status `completed`, etapa
+  `extrair_respostas=completed`.
+- Artefato: JSON `59cb3e341515d745`, status `concluido`, provider/modelo
+  `google/gemini-3-flash-preview`, tokens `70414/1791`, custo
+  `US$ 0.023273`.
+- Conteudo: JSON parseado com `aluno`, `respostas`, `questoes_em_branco`,
+  `questoes_respondidas`, `_avisos_documento` e `_avisos_questao`. O documento
+  marca questoes ausentes como `em_branco=true` em vez de inventar resposta.
+- Custo live: `/api/custos/status?limit=500` subiu para
+  `runs_precificados=14`, `runs_bloqueados=473`; `token_usage` duravel segue
+  bloqueado por `PGRST205`.
+- Interpretacao: Gemini 3 Flash agora esta validado nas 6 etapas individuais do
+  aluno no site oficial. Isso ainda nao e o mesmo que uma pipeline sequencial
+  completa em uma unica chamada, que fica como proximo marco.
 
 ### 2026-05-16 -- Smoke de rotas legadas bloqueadas
 
