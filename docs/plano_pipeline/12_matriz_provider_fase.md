@@ -95,8 +95,8 @@
 |-----------------|:---:|:---:|:---:|:---:|:---:|:---:|
 | **Claude Haiku 4.5** (`588f3efe7975`) | ⏸️ | ⏸️ | ⏸️ | 🚫 | 🚫 | 🚫 |
 | **Gemini 3 Flash** (`gem3flash001`) | ✅ | ❌ | ✅ | ✅ | ✅ | ✅ |
-| **GPT-5 Nano** (`gpt5nano001`) | ✅ | ✅ | ❌ | ✅ | ⚠️ | ✅ |
-| **GPT-5.4 Mini** (`gpt54mini001`) | ⏸️ | ⏸️ | ✅ | ⏸️ | ⏸️ | ⏸️ |
+| **GPT-5 Nano** (`gpt5nano001`) | ✅ | ✅ | ❌ | ⚠️ | ⚠️ | ⚠️ |
+| **GPT-5.4 Mini** (`gpt54mini001`) | ⏸️ | ⚠️ | ✅ | ⏸️ | ⏸️ | ⏸️ |
 | **GPT-4o** (`180b8298a279`) — referencia | ✅ | ✅ | ✅ | ⚠️ | ⚠️ | ⚠️ |
 
 Nota de leitura: os checks da tabela acima sao por etapa individual validada.
@@ -153,6 +153,24 @@ com doc parcial `b5f17f2d1a980a3d` marcado `status=erro` (`21193/7884`,
 `US$ 0.004213`), porque Nano nao produziu os artefatos obrigatorios via tools.
 Por isso `analisar_habilidades` de Nano fica ⚠️ em pipeline integrada, embora
 tenha smokes individuais historicos.
+
+Nota pos-`3a7dfea`: o smoke full `task_bc6cc84d10ef` completou as 6 etapas com
+Nano+`gpt54mini001`, mas nao valida pipeline completa. A inspeção do conteúdo
+mostrou que `extrair_gabarito` com `gpt54mini001` gerou JSON
+`17573f1218bd6c39` com resposta real apenas para Q5 e avisos
+`MISSING_CONTENT` para Q1, Q2, Q3, Q4, Q6 e Q7. O `CORRIGIR` posterior chegou a
+gerar nota, mas isso foi reclassificado como falso sucesso porque não havia
+gabarito completo. O patch `3a7dfea` mudou o comportamento esperado: no smoke
+`task_5894e6d5858e`, `corrigir` falhou alto antes de chamar IA e não criou novo
+documento verde. Portanto:
+
+- `gpt54mini001` em `EXTRAIR_GABARITO` fica ⚠️: a etapa gera estrutura, mas este
+  gabarito da Lista0 está incompleto e não serve para correção integral.
+- `gpt5nano001` em `CORRIGIR` fica ⚠️: com gabarito completo pode corrigir, mas
+  agora deve bloquear quando o gabarito estruturado está incompleto.
+- `ANALISAR_HABILIDADES` e `GERAR_RELATORIO` de Nano ficam ⚠️ para pipeline
+  integrada, porque qualquer sucesso baseado numa correção invalidada não conta
+  como validação de produto.
 
 ### Categoria 2: Relatorios de Desempenho (3 niveis)
 
@@ -553,9 +571,12 @@ Ver [teste_gpt5nano_pipeline_completo.md](arquivo_2026_04_17/teste_gpt5nano_pipe
   quota `429`; falta repetir quando quota permitir.
 - ⚠️ **GPT-5 Nano via `pipeline-completo`:** `extrair_questoes`,
   `extrair_gabarito`, `corrigir` e `gerar_relatorio` passaram em smokes
-  oficiais com JSON/PDF quando aplicavel, custo e metadata; `analisar_habilidades`
-  tem sucesso individual historico, mas falhou no smoke integrado pos-`f2211bb`
-  por tool-use incompleto, entao fica parcial.
+  oficiais com JSON/PDF quando aplicavel, custo e metadata, mas o smoke full
+  `task_bc6cc84d10ef` mostrou que uma task completa ainda pode ser semanticamente
+  invalida se o gabarito estiver incompleto. Desde `3a7dfea`, `corrigir` falha
+  alto antes de chamar IA quando `gabarito_extraido` tem `MISSING_CONTENT`
+  bloqueante. `analisar_habilidades` tem sucesso individual historico, mas
+  qualquer análise baseada em correção invalidada nao conta como validação.
   `extrair_respostas` rodou varias vezes, mas foi reclassificada como falha de
   conteudo por tudo `ilegivel=true`/vazio, por inferencia suspeita do enunciado
   ou por scan majoritariamente sem conteudo. O deploy `1ce3d23` corrigiu o
@@ -569,16 +590,20 @@ Ver [teste_gpt5nano_pipeline_completo.md](arquivo_2026_04_17/teste_gpt5nano_pipe
   `a39d26fcc621c7a8`, custo `US$ 0.081492`) e depois como modelo versionado
   `gpt54mini001` (`task_706931a94555`, doc `fec100a2e41eabcf`, custo
   `US$ 0.080570`; `task_19062336eb8b`, doc `4a82ddf1d2118ff0`, custo
-  `US$ 0.0806`). Ainda nao foi testado em pipeline completa nem nas outras
-  etapas.
+  `US$ 0.0806`). No smoke full `task_bc6cc84d10ef`, `gpt54mini001` tambem
+  completou `extrair_respostas` (`f10a6ef8a8ca0897`) e gerou gabarito
+  estruturado (`17573f1218bd6c39`), mas o gabarito da Lista0 estava incompleto;
+  portanto ele fica confirmado em `extrair_respostas` e parcial em
+  `extrair_gabarito`.
 - ⏸️ **Claude Haiku 4.5:** Aguardando creditos.
 - 📊 **Confiabilidade Gemini 3 Flash:** etapas individuais OK, mas a primeira
   pipeline sequencial pos-runner bateu quota `429` em `corrigir`. Precisa duas
   execucoes completas quando quota/credito permitir.
 
-**Marco 1 ainda nao atingido oficialmente:** chat, etapas individuais e a
-pipeline sequencial parcial ajudam, mas o site oficial precisa completar uma
-pipeline de 6 etapas com erro/custo/metadata visiveis.
+**Marco 1 ainda nao atingido oficialmente:** chat, etapas individuais e uma task
+full com status `completed` ajudam, mas o site oficial precisa completar 6
+etapas com gabarito completo, correção semanticamente valida, custo/metadata e
+erro alto quando faltar insumo.
 
 **Bugs criticos descobertos nesta sessao:**
 1. GPT-5 Nano tool-use historico: multiplas chamadas `create_document`, nomes alucinados, sem validacao de schema
@@ -592,9 +617,11 @@ pipeline de 6 etapas com erro/custo/metadata visiveis.
    esse gate com `check_deploy.sh 2d72c6b`.
 2. Aplicar/validar a migration Supabase `token_usage` antes de chamar custo de
    falha sem documento de duravel.
-3. Revalidar `extrair_respostas` com provider/modelo mais forte em OCR/handwriting
-   ou melhorar o caminho OpenAI por pagina; GPT-5 Nano permanece ❌ nessa fase.
-4. Aplicar `backend/migrations/002_create_token_usage.sql` no Supabase para
+3. Obter ou reextrair gabarito completo para a Lista0, depois rerodar
+   `corrigir` -> `analisar_habilidades` -> `gerar_relatorio`.
+4. Revalidar `extrair_respostas` com provider/modelo mais forte em OCR/handwriting
+   em mais amostras; GPT-5 Nano permanece ❌ nessa fase.
+5. Aplicar `backend/migrations/002_create_token_usage.sql` no Supabase para
    tornar duravel o custo de falhas sem documento.
-5. Quando creditos Anthropic forem recarregados, validar Haiku 4.5 via
+6. Quando creditos Anthropic forem recarregados, validar Haiku 4.5 via
    `pipeline-completo`.

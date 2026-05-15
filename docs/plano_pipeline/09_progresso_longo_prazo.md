@@ -55,9 +55,11 @@ exige `EXTRACAO_GABARITO` estruturado. Render confirmou `f2211bb` live; o smoke
 per-phase `task_19ee59ac1881` passou por `extrair_questoes`,
 `extrair_gabarito`, `extrair_respostas` com `gpt54mini001` e `corrigir`, e
 falhou alto em `analisar_habilidades` por tool-use incompleto, sem inventar PDF
-ou JSON. Proximo alvo real: corrigir `analisar_habilidades` em tool-use ou
-trocar explicitamente o modelo dessa fase; nao ha pipeline completa validada
-ainda.
+ou JSON. O ciclo `6b20d43`/`d4bb2bd`/`3a7dfea` depois disso rodou um smoke full
+(`task_bc6cc84d10ef`) que completou 6 etapas, mas a inspeção invalidou a
+correção porque o gabarito extraído estava incompleto; agora `corrigir` falha
+alto nesse caso (`task_5894e6d5858e`). Proximo alvo real: obter/reextrair
+gabarito completo antes de tentar validar a pipeline inteira.
 
 Este e o ponto de entrada do plano. O objetivo deste arquivo e dizer, em poucas
 linhas, onde estamos, qual e a proxima fila e quais frentes estao pausadas.
@@ -95,7 +97,7 @@ Estabilizar o NOVO CR para que a pipeline:
 | Frente | Estado | Proximo passo |
 |--------|--------|---------------|
 | Docs e plano | Sprint 0 concluida | Manter este painel como fonte oficial e anexos fora do fluxo diario |
-| Pipeline | Gemini 3 Flash validado em `extrair_questoes`, `extrair_respostas` e etapas finais; `extrair_gabarito` Gemini foi reclassificado como invalido porque retornou tudo `MISSING_CONTENT`; pipeline sequencial Gemini avancou pelas tres extracoes e falhou alto em `corrigir` por quota `429`; GPT-5 Nano validado em `extrair_questoes`, `extrair_gabarito`, `corrigir` e historicamente em etapas finais, mas `extrair_respostas` Nano continua ❌ e `analisar_habilidades` falhou no smoke per-phase pos-`f2211bb`; GPT-5.4 Mini completou `extrair_respostas` em duas amostras avulsas e no smoke per-phase (`1e5db36f3ab9aa0e`) | Corrigir `analisar_habilidades` tool-use ou selecionar modelo explicito por fase; manter Nano fora de pipeline completa enquanto `extrair_respostas` estiver ❌ e enquanto analise falhar no run integrado |
+| Pipeline | Gemini 3 Flash validado em `extrair_questoes`, `extrair_respostas` e etapas finais; `extrair_gabarito` Gemini foi reclassificado como invalido porque retornou tudo `MISSING_CONTENT`; pipeline sequencial Gemini avancou pelas tres extracoes e falhou alto em `corrigir` por quota `429`; GPT-5 Nano validado em `extrair_questoes`, `extrair_gabarito` e smokes historicos de etapas finais, mas `extrair_respostas` Nano continua ❌; GPT-5.4 Mini completou `extrair_respostas` em duas amostras avulsas e no smoke per-phase (`1e5db36f3ab9aa0e`); `task_bc6cc84d10ef` completou 6 etapas com Nano+Mini, mas inspeção semantica invalidou a correcao porque o gabarito extraido estava incompleto; desde `3a7dfea`, `corrigir` falha alto quando o gabarito tem `MISSING_CONTENT` bloqueante | Obter/reextrair gabarito completo para a Lista0 e rerodar `corrigir` -> `analisar_habilidades` -> `gerar_relatorio`; nao aceitar `completed` sem inspeção minima de conteudo |
 | Schema e avisos | Sprint 2 concluida localmente | Manter schema oficial, defaults e visualizador cobertos por testes |
 | Custos/tokens | Metadata de documento, endpoints live, resumo por `cost_run_id`, `TokenUsageRecord` local, migration Supabase dedicada `b2dc88b`; falha alta final de `task_3d5feaf0da71` registrou `usage_52590d55d210459e` sem documento final antes de deploy posterior, tokens `100188/8863`, custo `US$ 0.008555`; GPT-5.4 Mini em `extrair_respostas` registrou documentos `a39d26fcc621c7a8`, `fec100a2e41eabcf` e `4a82ddf1d2118ff0`, custos `US$ 0.081492`, `US$ 0.080570` e `US$ 0.0806`; diagnostico live ainda acusa `PGRST205`, `durable=false` e `local_record_count=0`, provando que o fallback local de `TokenUsageRecord` nao sobrevive deploy | Aplicar `backend/migrations/002_create_token_usage.sql` no Supabase; revalidar ate `token_usage_backend.durable=true` |
 | UI de erros | Pendente | Mostrar falha por aluno/etapa sem depender de terminal |
@@ -1413,6 +1415,61 @@ Critério de pronto: lista de limpeza segura e revisada.
   os artefatos obrigatorios ou configurar modelo per-phase explicito para essa
   etapa; depois repetir o smoke ate `gerar_relatorio`.
 
+### 2026-05-16 -- Retry multimodal, full smoke e bloqueio de gabarito incompleto
+
+- Alvo: continuar o loop de provider/pipeline depois de `f2211bb`, sem Rio 3,
+  testando o maior bloqueador reproduzido no site oficial.
+- Patch `6b20d43` (`fix: retry invalid multimodal extractions`): adicionou
+  retry explicito de validação multimodal no mesmo provider/modelo para
+  extrações com JSON inválido, tudo `MISSING_CONTENT`, respostas vazias ou
+  questões vazias. Isso nao e fallback: se a segunda tentativa falhar, a etapa
+  continua falhando alto e registra tokens somados.
+- Validações locais de `6b20d43`: `py_compile` de `backend/executor.py` e
+  `backend/tests/unit/test_erro_pipeline.py`; `test_erro_pipeline.py`
+  (`62 passed`); `test_cost_tracking.py` + `test_pipeline_validation.py`
+  (`43 passed`, `3 skipped`); `git diff --check`.
+- Deploy: Render publicou `6b20d43` (`dep-d84cg4b7uimc7381srog`) e
+  `/api/deploy-info` confirmou o hash. Durante o gate foi descoberto que
+  `deploy-info` podia ser servido de cache; o commit `3406f8a` ajustou
+  `check_deploy.sh` e `wait_deploy.sh` para usar `Cache-Control: no-cache` e
+  cache buster.
+- Smoke full oficial: `task_bc6cc84d10ef`, Pablo, `force_rerun=true`, Nano em
+  `extrair_questoes`, `corrigir`, `analisar_habilidades`, `gerar_relatorio` e
+  `gpt54mini001` em `extrair_gabarito`/`extrair_respostas`. A task ficou
+  `completed` nas 6 etapas.
+- Evidência por etapa do smoke full:
+  - `extrair_questoes`: JSON `136f58a9fa213ea4`, Nano, `2178/11152`, custo
+    `US$ 0.004570`.
+  - `extrair_gabarito`: JSON `17573f1218bd6c39`, `gpt-5.4-mini`, `6496/1070`,
+    custo `US$ 0.009687`; conteudo indicou apenas Q5 com resposta real e
+    avisos `MISSING_CONTENT` para Q1, Q2, Q3, Q4, Q6 e Q7.
+  - `extrair_respostas`: JSON `f10a6ef8a8ca0897`, `gpt-5.4-mini`,
+    `17787/1836`, custo `US$ 0.021602`; 7/7 respostas reais, com
+    `LOW_CONFIDENCE` na Q3.
+  - `corrigir`: primeira versão pós-`d4bb2bd` usou o JSON estruturado e melhorou
+    a correção, mas ainda gerou nota `3.5` apesar do gabarito incompleto. Isso
+    foi reclassificado como falso sucesso.
+  - `analisar_habilidades` e `gerar_relatorio`: completaram, mas ficaram
+    invalidados como prova de pipeline porque dependeram de correção sem
+    gabarito completo.
+- Patch `d4bb2bd` (`fix: use structured answers in correction prompt`): fez
+  `CORRIGIR` preferir os JSONs `questoes_extraidas`, `gabarito_extraido` e
+  `respostas_aluno` aos textos crus dos uploads.
+- Patch `3a7dfea` (`fix: block correction with incomplete answer key`): bloqueia
+  `CORRIGIR` antes de chamar IA quando `gabarito_extraido` tem
+  `MISSING_CONTENT`/`ILLEGIBLE_*` bloqueante. O smoke isolado
+  `task_5894e6d5858e` falhou alto em `corrigir` com a mensagem correta e nao
+  criou novo documento verde.
+- Custos: o smoke full antes do bloqueio registrou custo medido por documento/run
+  de aproximadamente `US$ 0.045389` para as 6 etapas. O smoke bloqueado por
+  gabarito incompleto nao chamou IA e, corretamente, nao criou custo novo.
+  `token_usage_backend.supabase.table_available=false` (`PGRST205`) continua
+  bloqueando durabilidade de falhas sem documento.
+- Status: a pipeline com esses arquivos da Lista0 nao deve ser chamada de
+  validada; ela agora falha no ponto certo porque o gabarito da atividade esta
+  incompleto. Proximo alvo: fornecer/reextrair gabarito completo ou escolher
+  outra atividade com gabarito completo para validar a pipeline inteira.
+
 ## Riscos Abertos
 
 1. Creditos Anthropic insuficientes ainda bloqueiam validacao Haiku.
@@ -1441,3 +1498,7 @@ Critério de pronto: lista de limpeza segura e revisada.
    devem ensinar o usuario a obedecer o status, nao o simples fato de existir
    arquivo.
 11. Rio 3 nao deve voltar ao fluxo ativo sem nova decisao e nova chave segura.
+12. Status `completed` da task nao basta; a correção precisa ser semanticamente
+    compativel com `extracao_respostas` e `gabarito_extraido`. O caso
+    `task_bc6cc84d10ef` provou que uma pipeline pode completar e ainda estar
+    invalida se o gabarito estiver incompleto.

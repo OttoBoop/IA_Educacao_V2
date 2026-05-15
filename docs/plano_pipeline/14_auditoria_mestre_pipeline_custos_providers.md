@@ -2710,6 +2710,70 @@ Resultado observado nesta rodada:
   ciclo. Os unicos ajustes fora do Doc 14 foram o resumo P0 no Doc 09 e a nota
   de status de custos no Doc 05, alem da nota de stale no Doc 12.
 
+## Atualizacao 2026-05-16 -- Loop Real Pos-`f2211bb`
+
+Esta auditoria ganhou uma evidencia importante depois do ciclo de docs:
+`completed` nao e sinonimo de pipeline valida.
+
+Sequencia factual:
+
+1. `f2211bb` removeu contaminacao por artefatos antigos e reduziu contexto/custo
+   do smoke per-phase. O gabarito deixou de falhar por tudo `MISSING_CONTENT`,
+   mas a task ainda parou em `analisar_habilidades`.
+2. `6b20d43` adicionou retry explicito de validacao multimodal no mesmo
+   provider/modelo para extrações inválidas. Isso corrigiu o caso em que
+   `gpt54mini001` falhava em `extrair_gabarito` com JSON invalido; nao houve
+   troca de modelo.
+3. `task_bc6cc84d10ef` completou as 6 etapas no site oficial com Nano nas
+   etapas de texto/tool-use e `gpt54mini001` em `extrair_gabarito` e
+   `extrair_respostas`.
+4. A inspeção dos documentos mostrou falso sucesso semântico: `extracao_respostas`
+   (`f10a6ef8a8ca0897`) tinha 7/7 respostas reais, mas a primeira correção
+   (`2b7dce2e84108fdc`) dizia que não havia respostas. Isso expôs que
+   `CORRIGIR` usava texto cru/alias antigo em vez do JSON `respostas_aluno`.
+5. `d4bb2bd` corrigiu o alias: `CORRIGIR` passa a renderizar
+   `questoes_extraidas`, `gabarito_extraido` e `respostas_aluno` estruturados.
+   O smoke isolado seguinte melhorou a correção (`964f132d5d6eaad8`), mas ainda
+   gerou nota com gabarito incompleto.
+6. A segunda inspeção mostrou outro P0: `gabarito_extraido`
+   (`17573f1218bd6c39`) só tinha resposta real para Q5 e avisos
+   `MISSING_CONTENT` para Q1, Q2, Q3, Q4, Q6 e Q7. Corrigir com esse gabarito
+   inventa confiança.
+7. `3a7dfea` bloqueou `CORRIGIR` quando o gabarito estruturado tem
+   `MISSING_CONTENT`/`ILLEGIBLE_*` bloqueante. O smoke `task_5894e6d5858e`
+   falhou alto em `corrigir`, sem chamar IA e sem criar documento verde.
+
+Custos observados:
+
+- Smoke full `task_bc6cc84d10ef`: custo medido aproximado `US$ 0.045389`.
+- Por etapa principal: `extrair_questoes` `US$ 0.004570`,
+  `extrair_gabarito` `US$ 0.009687`, `extrair_respostas` `US$ 0.021602`,
+  `corrigir` `US$ 0.001731`, `analisar_habilidades` `US$ 0.003039`,
+  `gerar_relatorio` `US$ 0.004760`.
+- O smoke bloqueado `task_5894e6d5858e` nao gerou custo novo porque falhou antes
+  da chamada de IA.
+- `token_usage_backend.supabase.table_available=false` (`PGRST205`) continua:
+  falhas sem documento ainda nao sao duraveis ate aplicar
+  `backend/migrations/002_create_token_usage.sql`.
+
+Novo criterio de aceite:
+
+- Uma pipeline so pode ser chamada validada se a task terminal, os documentos
+  obrigatorios, a matriz provider/modelo, os custos e a inspeção minima de
+  conteudo concordarem.
+- Correção nao pode rodar com gabarito incompleto. Deve falhar alto e pedir
+  gabarito completo/reextração.
+- Relatorio e análise gerados sobre correção invalidada nao contam como sucesso
+  de produto.
+
+Proximo movimento correto:
+
+1. Usar uma atividade com gabarito completo ou corrigir o gabarito da Lista0.
+2. Rerodar `extrair_gabarito` e confirmar ausencia de `MISSING_CONTENT`
+   bloqueante.
+3. Rerodar `corrigir`, `analisar_habilidades` e `gerar_relatorio`.
+4. So depois chamar a pipeline Nano+`gpt54mini001` de validada para esse caso.
+
 ## Trabalho Aberto Desta Auditoria
 
 Esta auditoria nao encerra o loop tecnico. Ela deixa o proximo trabalho mais
@@ -2721,6 +2785,7 @@ claro. O que ainda existe para fazer:
 | Settings de modelos | Codigo/testes/deploy | `from-catalog` deu 500 e create ignorou capabilities no site live; patch `b16e051` ja foi deployado e retestado; cadastro por API sumiu no deploy, mas o modelo versionado `gpt54mini001` apareceu no site em `be19b7e` e passou teste de conexao. |
 | Metadata/custo real | Codigo/testes/deploy | Metadata e endpoints existem no site; custos por documento recentes aparecem, mas Supabase `token_usage` segue ausente (`PGRST205`), `local_record_count=0` depois de deploy e custo de falha sem documento ainda nao e duravel. |
 | Provider revalidation | Smoke/producao | Matriz Doc 12 registra `1ce3d23`, mas continua incompleta ate novos smokes por provider/rota. |
+| Gabarito incompleto bloqueia correção | Codigo/testes/deploy/smoke | `3a7dfea` bloqueia `CORRIGIR` com `MISSING_CONTENT` no gabarito; falta rodar a pipeline com gabarito completo para validar a correção real. |
 | UI de erros | Produto/frontend | Usuario precisa ver aluno, etapa, provider e causa sem terminal. |
 | Limpeza de dados | Dados | "Fantasmas" precisam reclassificacao; PDF com `/conteudo=null` nao pode ser deletado. |
 
