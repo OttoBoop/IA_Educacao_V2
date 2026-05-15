@@ -121,6 +121,16 @@ async def executar_etapa(data: ExecutarEtapaRequest):
     - Race conditions when executing multiple students simultaneously
     - Resource exhaustion from parallel processing
     """
+    raise HTTPException(
+        status_code=410,
+        detail=(
+            "Endpoint legado desativado: execucao de IA sincrona pode bloquear "
+            "o worker e duplicar documentos apos timeout de cliente. Use "
+            "/api/executar/pipeline-completo com selected_steps e acompanhe "
+            "/api/task-progress/{task_id}."
+        ),
+    )
+
     from executor import pipeline_executor
     
     etapa = data.etapa.lower()
@@ -504,6 +514,14 @@ async def executar_com_tools(data: ExecutarComToolsRequest):
     - create_document: Criar um ou múltiplos documentos
     - execute_python_code: Executar código Python
     """
+    raise HTTPException(
+        status_code=410,
+        detail=(
+            "Endpoint legado desativado: tool-use sincrono pode bloquear o "
+            "worker. Use as rotas assíncronas de pipeline com task_id."
+        ),
+    )
+
     from executor import pipeline_executor
     
     try:
