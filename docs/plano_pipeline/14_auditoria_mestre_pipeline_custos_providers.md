@@ -178,8 +178,9 @@ detalhar e auditar estas linhas.
 9. Gemini 3 Flash esta confirmado nas 6 etapas individuais do aluno e ja rodou
    uma pipeline sequencial pos-runner ate `corrigir`; essa task falhou alto por
    quota Google/Gemini `429`, deixando as etapas finais pendentes. GPT-5 Nano
-   esta confirmado nas tres etapas finais no marker live `924fd79`, mas ainda
-   nao para as tres extracoes nem para pipeline completa de 6 etapas; Haiku
+   esta confirmado em `extrair_questoes` e nas tres etapas finais, mas ainda
+   nao para `extrair_gabarito`, `extrair_respostas` nem para pipeline completa
+   de 6 etapas; Haiku
    segue bloqueado por creditos; Rio 3 esta pausado.
 10. O proximo eixo correto e aplicar `backend/migrations/002_create_token_usage.sql`
     no Supabase, ampliar a revalidacao por etapa/provider e endurecer o contrato
@@ -195,7 +196,7 @@ detalhar e auditar estas linhas.
 | Pipeline P5/P6 | Contencao de nota e preservacao de `_documentos_faltantes` | `N/A` ainda e fallback proibido como estado final. |
 | Schema/avisos | Defaults `_avisos_*`, visualizador melhorado e schemas mais permissivos | Permissividade nao e contrato forte; pode aceitar legado demais. |
 | Tokens/custos | Split input/output; metadata de documento; endpoints `/api/custos/status` e `/api/custos/resumo` respondendo live; resumo agrega por `cost_run_id`; `TokenUsageRecord` local cobre falha sem documento; codigo Supabase e migration dedicada `b2dc88b` existem; diagnostico live mostra `PGRST205`; Gemini e Nano geraram runs custeaveis, incluindo Nano `gerar_relatorio` em `US$ 0.003348` | Falta aplicar `backend/migrations/002_create_token_usage.sql` no Supabase. |
-| Providers | Gemini passou em chat simples live e nas 6 etapas individuais do aluno; a primeira pipeline sequencial completa pos-runner avancou pelas tres extracoes e falhou alto em `corrigir` por quota `429`; GPT-5 Nano passou em chat simples live e nas tres etapas finais do aluno; runner destacado e bloqueio de rotas legadas ja tiveram comportamento observado no backend live | Gemini ainda precisa completar a pipeline sequencial quando quota permitir; Nano ainda precisa extracoes; o marker HTML `a7dead3` segue pendente apesar do comportamento backend de `e6060e1` ja observado. |
+| Providers | Gemini passou em chat simples live e nas 6 etapas individuais do aluno; a primeira pipeline sequencial completa pos-runner avancou pelas tres extracoes e falhou alto em `corrigir` por quota `429`; GPT-5 Nano passou em chat simples live, `extrair_questoes` e nas tres etapas finais do aluno; runner destacado e bloqueio de rotas legadas ja tiveram comportamento observado no backend live | Gemini ainda precisa completar a pipeline sequencial quando quota permitir; Nano ainda precisa `extrair_gabarito` e `extrair_respostas`; o marker HTML `a7dead3` segue pendente apesar do comportamento backend de `e6060e1` ja observado. |
 | Seguranca Rio | Regra de nao usar chave em chat e Rio pausado | Arquivos Rio/untracked continuam fora do ciclo ativo. |
 
 ### O Que Falta
@@ -230,8 +231,9 @@ detalhar e auditar estas linhas.
 2. Confirmar deploy de `d653c13` ou registrar bloqueio Render definitivo.
 3. Aplicar a migration `backend/migrations/002_create_token_usage.sql` no
    Supabase e revalidar `/api/custos/status` ate `durable=true`.
-4. Revalidar providers nas etapas restantes: Nano nas extracoes sem trocar
-   modelo; Gemini pipeline completa somente quando quota/credito permitir.
+4. Revalidar providers nas etapas restantes: Nano em `extrair_gabarito` e
+   `extrair_respostas` sem trocar modelo; Gemini pipeline completa somente
+   quando quota/credito permitir.
 5. Rodar ciclo anti-fallback/Doc 02 no Path 2, com schema minimo por etapa.
 6. Melhorar UI de erros.
 7. Reclassificar dados "fantasma".
@@ -2448,7 +2450,7 @@ Fila minima para custo real:
 | Provider/modelo | Estado atual | Evidencia | O que falta |
 |---|---|---|---|
 | Gemini 3 Flash | Chat OK; 6 etapas individuais do aluno pos-fix OK com custo; pipeline sequencial pos-runner bloqueada por quota em `corrigir` | `extrair_questoes`: task `task_737c8d45befc`, JSONs `3f1ca7eed14f5d37`/`9d61dcb36e6ca4b5`, custos `US$ 0.002806`/`US$ 0.002801`; `extrair_gabarito`: task `task_094c921eb038`, JSON `36d1fdd0a453e2f5`, custo `US$ 0.020378`; `extrair_respostas`: task `task_7d357943288d`, JSON `59cb3e341515d745`, custo `US$ 0.023273`; `corrigir`: task `task_8f53987c57c4`, custo `US$ 0.007931`; `analisar_habilidades`: task `task_a78369e23e5c`, JSON `7904a6a1aa34131f`, PDF `245970da4cc42c02`, custo `US$ 0.009447`; `gerar_relatorio`: task `task_58fb48fc8324`, JSON `fe6ad549481a0ed9`, PDF `b815d1faa5aeab77`, custo `US$ 0.006120`; sequencial `task_5e97bbee896e`: extracoes `025e065ceca92237`, `9188bd504796f767`, `ea25e7d9d9a0f9a0`, falha `429` em `corrigir` | Repetir pipeline sequencial completa quando quota/credito permitir, sem trocar modelo e sem retry cego. |
-| GPT-5 Nano | Chat OK; `corrigir`, `analisar_habilidades` e `gerar_relatorio` pos-fix OK com custo no marker `924fd79`; `d653c13` pendente | `corrigir`: task `task_a591421ab84b`, JSON `42dc1fcd758e913b`, PDF `cd72e7233ee061ad`, custo `US$ 0.002192`; `analisar_habilidades`: task `task_020ba25bdb2b`, JSON `ba5dec781e46e665`, PDF `385f6b78018b8c07`, custo `US$ 0.003528`; `gerar_relatorio`: task `task_aec830b85c03`, JSON `200c1b5272ba10f1`, PDF `a629dee567b10274`, custo `US$ 0.003348` | Confirmar deploy `d653c13`, testar extracoes e validar schema minimo/pipeline completa. |
+| GPT-5 Nano | Chat OK; `extrair_questoes`, `corrigir`, `analisar_habilidades` e `gerar_relatorio` pos-fix OK com custo; `d653c13` pendente | `extrair_questoes`: task `task_ae679b5c3fee`, JSON `946e66708fd72643`, custo `US$ 0.004966`; `corrigir`: task `task_a591421ab84b`, JSON `42dc1fcd758e913b`, PDF `cd72e7233ee061ad`, custo `US$ 0.002192`; `analisar_habilidades`: task `task_020ba25bdb2b`, JSON `ba5dec781e46e665`, PDF `385f6b78018b8c07`, custo `US$ 0.003528`; `gerar_relatorio`: task `task_aec830b85c03`, JSON `200c1b5272ba10f1`, PDF `a629dee567b10274`, custo `US$ 0.003348` | Confirmar deploy `d653c13`, testar `extrair_gabarito`/`extrair_respostas` e validar schema minimo/pipeline completa. |
 | Claude Haiku 4.5 | Bloqueado | Creditos Anthropic insuficientes | Recarregar creditos e testar sem trocar provider. |
 | GPT-4o | Parcial/referencia historica | Gerou 3 etapas, mas schema antigo e sem avisos | Revalidar como modelo explicito, nao fallback. |
 | Gemini 2.5 Flash/Lite | Incerto | Catalogo/flags historicamente inconsistentes | Validar capabilities antes de pipeline. |
@@ -2483,6 +2485,7 @@ Erros conhecidos por provider/rota:
 | GPT-5 Nano | patches `924fd79`/`d653c13` | Retry de PDF/JSON agora inclui contexto original e instrucao anti-placeholder; JSON de analise com placeholder proibido falha alto; testes locais passaram | `924fd79` esta live; `d653c13` ainda aguarda marker live. |
 | GPT-5 Nano | `pipeline-completo` pos-fix `corrigir` | Task `task_a591421ab84b` completou com JSON parseavel, PDF via execute, custo e sem artefato extra | Confirmado para `corrigir`; proximo alvo e custo de falhas e etapas seguintes. |
 | GPT-5 Nano | `pipeline-completo` pos-fix etapas finais no marker `924fd79` | Task `task_020ba25bdb2b` completou `analisar_habilidades` e task `task_aec830b85c03` completou `gerar_relatorio`, ambas com JSON+PDF, tokens splitados, custo e sem placeholders proibidos nos JSONs novos | Confirmado para as tres etapas finais; ainda nao confirma extracoes, pipeline completa de 6 etapas nem deploy do guard `d653c13`. |
+| GPT-5 Nano | `pipeline-completo` pos-fix `extrair_questoes` | Task `task_ae679b5c3fee` completou, JSON `946e66708fd72643` com `questoes`, `total_questoes=7`, `_avisos_*`, tokens `2148/12147` e custo `US$ 0.004966` | Confirmado para `extrair_questoes`; faltam `extrair_gabarito` e `extrair_respostas`. |
 | Claude Haiku 4.5 | `pipeline-completo` | Creditos Anthropic insuficientes; wrapper mascarou causa como modelo invalido | Bloqueado por credito; erro deve ser exposto com causa real. |
 | GPT-4o | referencia historica | Outputs em schema antigo e sem `_avisos_*` | Revalidar explicitamente; nao usar como fallback. |
 
@@ -2606,7 +2609,9 @@ Aceite:
   sequencial pos-runner falhou por quota `429`, entao aguardar quota/credito
   antes de repetir.
 - GPT-5 Nano: as tres etapas finais passaram no marker `924fd79`; confirmar
-  deploy `d653c13`, testar extracoes e depois uma pipeline completa de 6 etapas.
+  deploy `d653c13`; `extrair_questoes` tambem passou; testar
+  `extrair_gabarito` e `extrair_respostas`, depois uma pipeline completa de 6
+  etapas.
 - Haiku: testar somente quando credito Anthropic existir.
 - GPT-4o: testar explicitamente, nunca como fallback automatico.
 

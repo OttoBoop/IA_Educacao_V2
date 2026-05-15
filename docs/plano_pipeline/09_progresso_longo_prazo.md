@@ -24,7 +24,8 @@ backend live ja tenha respondido `410` nas rotas legadas. Gemini passou nas
 tres extracoes dentro de uma pipeline sequencial completa, mas a mesma task
 falhou alto em `corrigir` por quota Google/Gemini `429` do free tier; nao houve
 troca de modelo nem sucesso falso, e as etapas finais ficaram pendentes. O
-resumo de custos agora
+GPT-5 Nano tambem passou em `extrair_questoes` no site oficial, com JSON
+estruturado, `_avisos_*`, tokens splitados e custo medido. O resumo de custos agora
 agrega por `cost_run_id`, entao
 JSON+PDF do mesmo run contam uma vez. Falhas tool-use sem documento final agora
 tem `TokenUsageRecord` local mensal e codigo preparado para Supabase quando a
@@ -69,7 +70,7 @@ Estabilizar o NOVO CR para que a pipeline:
 | Frente | Estado | Proximo passo |
 |--------|--------|---------------|
 | Docs e plano | Sprint 0 concluida | Manter este painel como fonte oficial e anexos fora do fluxo diario |
-| Pipeline | Gemini 3 Flash validado oficialmente nas 6 etapas individuais do aluno; pipeline sequencial Gemini avancou pelas tres extracoes e falhou alto em `corrigir` por quota `429`; GPT-5 Nano validado em `corrigir`, `analisar_habilidades` e `gerar_relatorio`; comportamento de `f55e299`/`e6060e1` observado no backend live, mas HTML marker ainda atrasado | Nao rerodar Gemini imediatamente enquanto a quota estiver quente; confirmar marker `a7dead3`; testar extracoes Nano ou retomar Gemini completa quando a quota permitir; schema minimo e UI de erro continuam pendentes |
+| Pipeline | Gemini 3 Flash validado oficialmente nas 6 etapas individuais do aluno; pipeline sequencial Gemini avancou pelas tres extracoes e falhou alto em `corrigir` por quota `429`; GPT-5 Nano validado em `extrair_questoes`, `corrigir`, `analisar_habilidades` e `gerar_relatorio`; comportamento de `f55e299`/`e6060e1` observado no backend live, mas HTML marker ainda atrasado | Nao rerodar Gemini imediatamente enquanto a quota estiver quente; seguir Nano em `extrair_gabarito`/`extrair_respostas`; confirmar marker `a7dead3`; schema minimo e UI de erro continuam pendentes |
 | Schema e avisos | Sprint 2 concluida localmente | Manter schema oficial, defaults e visualizador cobertos por testes |
 | Custos/tokens | Metadata de documento, endpoints live, resumo por `cost_run_id`, `TokenUsageRecord` local, migration Supabase dedicada `b2dc88b`; smoke Nano `gerar_relatorio` adicionou run precificado; diagnostico live ainda acusa `PGRST205` | Aplicar `backend/migrations/002_create_token_usage.sql` no Supabase; validar uma falha real sem documento em producao |
 | UI de erros | Pendente | Mostrar falha por aluno/etapa sem depender de terminal |
@@ -959,6 +960,25 @@ Critério de pronto: lista de limpeza segura e revisada.
   quota na pipeline sequencial completa. Nao rerodar Gemini imediatamente para
   evitar duplicacao/ruido. O proximo smoke sem segredo deve mirar outro provider
   configurado, como GPT-5 Nano nas extracoes, ou esperar janela/credito Gemini.
+
+### 2026-05-16 -- Provider smoke: GPT-5 Nano `extrair_questoes`
+
+- Alvo: com Gemini bloqueado por quota, comecar a revalidacao de extracoes do
+  GPT-5 Nano sem trocar de modelo.
+- Status: smoke oficial passou. A task `task_ae679b5c3fee` terminou
+  `completed`; `/api/health` permaneceu healthy durante a execucao.
+- Artefato: JSON `946e66708fd72643`, tipo `extracao_questoes`,
+  `status=concluido`, provider/modelo `openai/gpt-5-nano`, tokens
+  `2148/12147`, custo `US$ 0.004966`.
+- Conteudo: JSON parseado com `questoes`, `total_questoes=7`,
+  `pontuacao_total=7.0`, `_avisos_documento` e `_avisos_questao`. As primeiras
+  questoes vieram com enunciado, itens, tipo, pontuacao, habilidades e
+  `tipo_raciocinio`.
+- Custo live: `/api/custos/status?limit=500` subiu para
+  `runs_precificados=18`, `runs_bloqueados=468`, `token_usage_analisados=0`.
+- Interpretacao: GPT-5 Nano sai de nao testado em `extrair_questoes` para
+  validado nessa etapa. Ainda faltam `extrair_gabarito` e `extrair_respostas`
+  antes de tentar pipeline completa de 6 etapas com Nano.
 
 ## Riscos Abertos
 

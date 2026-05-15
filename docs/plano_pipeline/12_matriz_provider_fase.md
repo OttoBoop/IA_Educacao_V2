@@ -67,7 +67,7 @@
 |-----------------|:---:|:---:|:---:|:---:|:---:|:---:|
 | **Claude Haiku 4.5** (`588f3efe7975`) | ⏸️ | ⏸️ | ⏸️ | 🚫 | 🚫 | 🚫 |
 | **Gemini 3 Flash** (`gem3flash001`) | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
-| **GPT-5 Nano** (`gpt5nano001`) | ⏸️ | ⏸️ | ⏸️ | ✅ | ✅ | ✅ |
+| **GPT-5 Nano** (`gpt5nano001`) | ✅ | ⏸️ | ⏸️ | ✅ | ✅ | ✅ |
 | **GPT-4o** (`180b8298a279`) — referencia | ✅ | ✅ | ✅ | ⚠️ | ⚠️ | ⚠️ |
 
 Nota de leitura: os checks da tabela acima sao por etapa individual validada.
@@ -128,6 +128,9 @@ mas parou em `corrigir` por quota `429`.
   `execute_python_code` `3e0d534238dc0067`, tokens 20.127/6.817 e custo
   `US$ 0.003733`. Observacao: criou tambem PDF extra via `create_document`
   (`29d20245529f26a7`), a restringir em ciclo futuro.
+- Em 2026-05-16, GPT-5 Nano passou em `extrair_questoes` na task
+  `task_ae679b5c3fee`, gerando JSON `946e66708fd72643` com 7 questoes,
+  `_avisos_*`, tokens `2148/12147` e custo `US$ 0.004966`.
 - Depois do deploy `b24f03e`, GPT-5 Nano em `corrigir` falhou sem falso sucesso
   na task `task_c460627779fc`, mas o erro ficou cru demais:
   `tools: 'str' object has no attribute 'get'`. Causa: payload malformado em
@@ -384,7 +387,9 @@ Ver [teste_gpt5nano_pipeline_completo.md](arquivo_2026_04_17/teste_gpt5nano_pipe
 
 ### Prioridade BAIXA
 - [ ] Testar GPT-5 Nano nas 6 etapas (as tres etapas finais ja passaram; as
-      tres extracoes continuam nao revalidadas)
+      etapas `extrair_questoes`, `corrigir`, `analisar_habilidades` e
+      `gerar_relatorio` ja passaram; faltam `extrair_gabarito`,
+      `extrair_respostas` e pipeline completa)
 - [ ] Comparar qualidade dos outputs entre os 3 modelos-alvo
 
 ---
@@ -398,8 +403,9 @@ Ver [teste_gpt5nano_pipeline_completo.md](arquivo_2026_04_17/teste_gpt5nano_pipe
   Pipeline sequencial completa pos-runner chegou a `corrigir` e falhou alto por
   quota `429`; falta repetir quando quota permitir.
 - ✅ **GPT-5 Nano via `pipeline-completo`:** as tres etapas finais do aluno
-  (`corrigir`, `analisar_habilidades`, `gerar_relatorio`) passaram em smokes
-  oficiais com JSON/PDF, custo e metadata. Ainda falta pipeline completa de 6
+  (`corrigir`, `analisar_habilidades`, `gerar_relatorio`) e `extrair_questoes`
+  passaram em smokes oficiais com JSON/PDF quando aplicavel, custo e metadata.
+  Ainda faltam `extrair_gabarito`, `extrair_respostas`, pipeline completa de 6
   etapas, schema minimo por etapa, deploy do guard `d653c13` e custo duravel de
   falhas sem documento final.
 - ⏸️ **Claude Haiku 4.5:** Aguardando creditos.
