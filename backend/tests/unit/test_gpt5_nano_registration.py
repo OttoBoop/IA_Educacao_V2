@@ -49,3 +49,23 @@ class TestGPT5NanoRegistration:
         """Model must be active"""
         model = find_model(models, "gpt-5-nano")
         assert model["ativo"] is True
+
+
+class TestGPT54MiniRegistration:
+    def test_gpt54mini_exists_as_ocr_candidate(self, models):
+        """gpt-5.4-mini candidate must survive deploys via models.json."""
+        model = find_model(models, "gpt-5.4-mini")
+        assert model is not None, "gpt-5.4-mini not found in models.json"
+        assert model["id"] == "gpt54mini001"
+        assert model["tipo"] == "openai"
+        assert model["catalog_ref"] == "openai/gpt-5.4-mini"
+
+    def test_gpt54mini_capabilities_match_smoke_candidate(self, models):
+        """Candidate needs vision/tools and no temperature for reasoning calls."""
+        model = find_model(models, "gpt-5.4-mini")
+        assert model["suporta_vision"] is True
+        assert model["suporta_function_calling"] is True
+        assert model["suporta_temperature"] is False
+        assert model["temperature"] is None
+        assert model["parametros"]["reasoning_effort"] == "low"
+        assert model["ativo"] is True

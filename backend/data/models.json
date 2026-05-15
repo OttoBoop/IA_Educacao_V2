@@ -122,6 +122,31 @@
       "criado_em": "2026-03-07T12:00:00"
     },
     {
+      "id": "gpt54mini001",
+      "nome": "GPT-5.4 Mini OCR candidato",
+      "tipo": "openai",
+      "modelo": "gpt-5.4-mini",
+      "api_key_id": null,
+      "max_tokens": 16384,
+      "temperature": null,
+      "parametros": {
+        "reasoning_effort": "low"
+      },
+      "system_prompt": null,
+      "suporta_temperature": false,
+      "suporta_vision": true,
+      "suporta_streaming": true,
+      "suporta_function_calling": true,
+      "base_url": null,
+      "custom_model_id": null,
+      "api_version": null,
+      "extra_headers": {},
+      "catalog_ref": "openai/gpt-5.4-mini",
+      "ativo": true,
+      "is_default": false,
+      "criado_em": "2026-05-16T07:40:00"
+    },
+    {
       "id": "588f3efe7975",
       "nome": "Claude Haiku 4.5",
       "tipo": "anthropic",

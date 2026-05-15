@@ -75,7 +75,7 @@ Estabilizar o NOVO CR para que a pipeline:
 | Frente | Estado | Proximo passo |
 |--------|--------|---------------|
 | Docs e plano | Sprint 0 concluida | Manter este painel como fonte oficial e anexos fora do fluxo diario |
-| Pipeline | Gemini 3 Flash validado em `extrair_questoes`, `extrair_respostas` e etapas finais; `extrair_gabarito` Gemini foi reclassificado como invalido porque retornou tudo `MISSING_CONTENT`; pipeline sequencial Gemini avancou pelas tres extracoes e falhou alto em `corrigir` por quota `429`; GPT-5 Nano validado em `extrair_questoes`, `extrair_gabarito`, `corrigir`, `analisar_habilidades` e `gerar_relatorio`, mas `extrair_respostas` Nano continua ❌ e falha alto; GPT-5.4 Mini completou `extrair_respostas` nessa amostra com conteudo real (`task_9c10e3752bcb`, doc `a39d26fcc621c7a8`) | Usar GPT-5.4 Mini como candidato explicito para `extrair_respostas` em nova pipeline completa ou por mais amostras; corrigir/deployar bug de cadastro de modelo por catalogo/settings; manter Nano fora de pipeline completa enquanto essa etapa estiver ❌ |
+| Pipeline | Gemini 3 Flash validado em `extrair_questoes`, `extrair_respostas` e etapas finais; `extrair_gabarito` Gemini foi reclassificado como invalido porque retornou tudo `MISSING_CONTENT`; pipeline sequencial Gemini avancou pelas tres extracoes e falhou alto em `corrigir` por quota `429`; GPT-5 Nano validado em `extrair_questoes`, `extrair_gabarito`, `corrigir`, `analisar_habilidades` e `gerar_relatorio`, mas `extrair_respostas` Nano continua ❌ e falha alto; GPT-5.4 Mini completou `extrair_respostas` nessa amostra com conteudo real (`task_9c10e3752bcb`, doc `a39d26fcc621c7a8`) | Versionar GPT-5.4 Mini como `gpt54mini001` em `models.json`, confirmar deploy, e depois usar esse modelo como candidato explicito para `extrair_respostas` em nova pipeline completa/per-phase ou mais amostras; manter Nano fora de pipeline completa enquanto essa etapa estiver ❌ |
 | Schema e avisos | Sprint 2 concluida localmente | Manter schema oficial, defaults e visualizador cobertos por testes |
 | Custos/tokens | Metadata de documento, endpoints live, resumo por `cost_run_id`, `TokenUsageRecord` local, migration Supabase dedicada `b2dc88b`; falha alta final de `task_3d5feaf0da71` registrou `usage_52590d55d210459e` sem documento final, tokens `100188/8863`, custo `US$ 0.008555`; GPT-5.4 Mini em `extrair_respostas` registrou documento `a39d26fcc621c7a8`, tokens `97004/1942`, custo `US$ 0.081492`; diagnostico live ainda acusa `PGRST205` e `durable=false` | Aplicar `backend/migrations/002_create_token_usage.sql` no Supabase; revalidar ate `token_usage_backend.durable=true` |
 | UI de erros | Pendente | Mostrar falha por aluno/etapa sem depender de terminal |
@@ -1247,16 +1247,21 @@ Critério de pronto: lista de limpeza segura e revisada.
   como flagship e `gpt-5.4-mini`/`gpt-5.4-nano` para menor custo/latencia; o
   catalogo live do site lista `gpt-5.4-mini` com vision/tools/reasoning e preco
   `US$ 0.75/US$ 4.50` por 1M tokens.
-- Bug de settings descoberto: `POST /api/settings/models/from-catalog` retornou
-  500 ao criar `openai/gpt-5.4-mini`; `POST /api/settings/models` criou o modelo
-  mas ignorou capabilities no create (`tools=false`, `suporta_temperature=true`).
-  Foi necessario corrigir via `PUT` no site oficial antes do smoke.
-- Modelo cadastrado no site: `04b31001cf81`, nome
-  `GPT-5.4 Mini OCR candidato`, `modelo=gpt-5.4-mini`, `reasoning_effort=low`,
-  `suporta_vision=true`, `suporta_function_calling=true`,
-  `suporta_temperature=false`.
-- Teste de conexao: `/api/settings/models/04b31001cf81/testar` retornou
-  `success=true`, resposta `OK`, `tokens=49`.
+- Bug de settings descoberto antes do patch: `POST /api/settings/models/from-catalog`
+  retornou 500 ao criar `openai/gpt-5.4-mini`; `POST /api/settings/models`
+  criou o modelo mas ignorou capabilities no create (`tools=false`,
+  `suporta_temperature=true`). Foi necessario corrigir via `PUT` no site oficial
+  antes do smoke.
+- Patch de settings: commit `b16e051` fez `ModelManager.adicionar()` mesclar
+  capabilities sem `TypeError` e `ModelCreate` preservar
+  `suporta_vision`/`suporta_function_calling`/`suporta_streaming`/
+  `suporta_temperature`; Render `dep-d841ruu8bjmc73dbn030` confirmou esse patch
+  live, e `from-catalog` passou depois do deploy.
+- Durabilidade de modelo: o modelo criado por API antes do deploy (`04b31001cf81`)
+  sumiu apos o deploy, provando que settings em disco do Render nao bastam para
+  modelos oficiais. `from-catalog` pos-deploy criou `d1e2d1851836` e o teste de
+  conexao retornou `OK`, mas o candidato duravel deve ser versionado como
+  `gpt54mini001` em `backend/data/models.json`.
 - Smoke oficial: `task_9c10e3752bcb`, `selected_steps=["extrair_respostas"]`,
   `force_rerun=true`.
 - Resultado: task `completed`; documento `a39d26fcc621c7a8`, status
@@ -1266,14 +1271,11 @@ Critério de pronto: lista de limpeza segura e revisada.
   e 4 marcadas explicitamente como `MISSING_CONTENT`/sem resposta visivel. Isso
   e melhor que Nano para esta amostra, mas ainda precisa validacao em mais provas
   e pipeline completa com per-phase model.
-- Patch local preparado: `ModelManager.adicionar()` passa a mesclar capabilities
-  sem `TypeError`; `ModelCreate` passa a aceitar e preservar
-  `suporta_vision`, `suporta_function_calling`, `suporta_streaming` e
-  `suporta_temperature`. Teste focado: `backend/tests/unit/test_model_manager.py`
+- Teste focado do patch de settings: `backend/tests/unit/test_model_manager.py`
   com `14 passed`.
-- Proximo alvo tecnico: commitar/deployar o patch de settings, confirmar Render,
-  retestar `from-catalog`, e depois rodar pipeline com `gpt-5.4-mini` somente em
-  `EXTRAIR_RESPOSTAS` ou em mais amostras dessa etapa.
+- Proximo alvo tecnico: commitar/deployar `gpt54mini001` em `models.json`,
+  confirmar que aparece no site apos deploy, e depois rodar pipeline com
+  `gpt-5.4-mini` somente em `EXTRAIR_RESPOSTAS` ou em mais amostras dessa etapa.
 
 ## Riscos Abertos
 
@@ -1296,9 +1298,9 @@ Critério de pronto: lista de limpeza segura e revisada.
    ficam sem conteudo, inferidas ou inconsistentes; desde `1ce3d23`, o caso
    final falha alto no executor e registra custo, mas a qualidade da extracao
    ainda precisa ser corrigida.
-9. O endpoint live de cadastro por catalogo/settings ainda precisa receber o
-   patch local; enquanto isso, `from-catalog` pode dar 500 e create pode ignorar
-   capabilities, exigindo PUT corretivo.
+9. Cadastro via settings no Render pode nao sobreviver deploy; modelos oficiais
+   precisam estar versionados em `backend/data/models.json` ou em storage
+   duravel real.
 10. Artefatos com `status=erro` podem ter arquivo/conteudo parcial; UI e docs
    devem ensinar o usuario a obedecer o status, nao o simples fato de existir
    arquivo.

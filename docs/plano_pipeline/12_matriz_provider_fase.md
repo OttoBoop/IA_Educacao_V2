@@ -92,7 +92,7 @@
 | **Claude Haiku 4.5** (`588f3efe7975`) | ⏸️ | ⏸️ | ⏸️ | 🚫 | 🚫 | 🚫 |
 | **Gemini 3 Flash** (`gem3flash001`) | ✅ | ❌ | ✅ | ✅ | ✅ | ✅ |
 | **GPT-5 Nano** (`gpt5nano001`) | ✅ | ✅ | ❌ | ✅ | ✅ | ✅ |
-| **GPT-5.4 Mini** (`04b31001cf81`) | ⏸️ | ⏸️ | ✅ | ⏸️ | ⏸️ | ⏸️ |
+| **GPT-5.4 Mini** (`gpt54mini001`) | ⏸️ | ⏸️ | ✅ | ⏸️ | ⏸️ | ⏸️ |
 | **GPT-4o** (`180b8298a279`) — referencia | ✅ | ✅ | ✅ | ⚠️ | ⚠️ | ⚠️ |
 
 Nota de leitura: os checks da tabela acima sao por etapa individual validada.
@@ -121,8 +121,10 @@ criou `ff0882e8db71e79d`, mais honesto, mas ainda verde inconsistente; por fim
 `EXTRAIR_RESPOSTAS` como ❌ por qualidade de extracao, e o comportamento de
 produto contra falso sucesso esta corrigido para vazio total, inferencia obvia,
 JSON vazio inconsistente e scan majoritariamente sem conteudo.
-Nota de candidato: `gpt-5.4-mini` foi cadastrado em producao como
-`04b31001cf81` apos teste de conexao `OK`. No smoke `task_9c10e3752bcb`,
+Nota de candidato: `gpt-5.4-mini` passou no smoke como cadastro efemero
+`04b31001cf81` antes do deploy seguinte; depois ficou claro que modelos criados
+via settings em disco Render nao sobrevivem deploy. O candidato duravel passa a
+ser `gpt54mini001` em `backend/data/models.json`. No smoke `task_9c10e3752bcb`,
 `EXTRAIR_RESPOSTAS` completou com documento `a39d26fcc621c7a8`, 4/7 respostas
 com conteudo real, 3/7 marcadas como `MISSING_CONTENT`, tokens `97004/1942` e
 custo `US$ 0.081492`. Isso valida a etapa nessa amostra, nao pipeline completa.
@@ -298,7 +300,9 @@ custo `US$ 0.081492`. Isso valida a etapa nessa amostra, nao pipeline completa.
   `openai/gpt-5.4-mini`, tokens `97004/1942`, custo `US$ 0.081492`,
   4 respostas extraidas e 3 questoes marcadas como sem resposta visivel. Antes
   do smoke, `from-catalog` retornou 500 e o create basico ignorou capabilities;
-  ha patch local para corrigir settings antes de depender desse fluxo.
+  o patch `b16e051` corrigiu settings e o reteste pos-deploy criou
+  `d1e2d1851836` com capabilities corretas. Como o cadastro por API sumiu apos
+  deploy, o candidato precisa ficar versionado como `gpt54mini001`.
 
 **Gemini 3 Flash:** tambem validado em 2 testes historicos de chat (mensagem unica + multi-turn). Ver [teste_chat_gemini.md](arquivo_2026_04_17/teste_chat_gemini.md).
 - Teste 1: 662 tokens, 1930ms, resposta em PT correta
