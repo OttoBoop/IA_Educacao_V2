@@ -220,6 +220,7 @@ detalhar e auditar estas linhas.
 | Item | Estado | Acao correta |
 |---|---|---|
 | Render/site oficial | Backend ja respondeu como `e6060e1` nas rotas legadas, mas HTML marker ainda aponta `f55e299`; `wait_deploy.sh e6060e1` deu timeout apos 600s | Continuar usando marker/check_deploy antes de smoke oficial e registrar divergencias marker/backend. |
+| Guard `5527e26` | Commit funcional e marker `2792d89` estao no GitHub, mas `wait_deploy.sh 5527e26` deu timeout; HTML live avancou para `e6060e1`, nao para `5527e26` | Nao rerodar `extrair_gabarito` como validacao oficial ate confirmar marker/comportamento do guard. |
 | Gemini quota | Pipeline sequencial `task_5e97bbee896e` falhou em `corrigir` por `429 RESOURCE_EXHAUSTED`, limite free tier `20` para `gemini-3-flash` | Nao rerodar de imediato; tratar como bloqueio de provider/quota, nao como sucesso nem como falha silenciosa. |
 | Gabarito tudo missing | Gemini e Nano produziram `extrair_gabarito` com todas as respostas `MISSING_CONTENT`, apesar do PDF base ter texto de "Exercicio 5" extraivel por `pdftotext` | Guard local criado; precisa commit, deploy e smoke para virar comportamento oficial. |
 | Anthropic Haiku | Bloqueado por creditos | Testar apenas quando houver credito; erro deve aparecer claro. |
@@ -234,8 +235,8 @@ detalhar e auditar estas linhas.
 2. Confirmar deploy de `d653c13` ou registrar bloqueio Render definitivo.
 3. Aplicar a migration `backend/migrations/002_create_token_usage.sql` no
    Supabase e revalidar `/api/custos/status` ate `durable=true`.
-4. Publicar e validar o guard anti-gabarito-tudo-`MISSING_CONTENT`; depois
-   rerodar `extrair_gabarito` em Gemini/Nano e testar `extrair_respostas` Nano.
+4. Confirmar deploy `5527e26` ou acionar deploy por canal seguro; depois rerodar
+   `extrair_gabarito` em Gemini/Nano e testar `extrair_respostas` Nano.
 5. Rodar ciclo anti-fallback/Doc 02 no Path 2, com schema minimo por etapa.
 6. Melhorar UI de erros.
 7. Reclassificar dados "fantasma".

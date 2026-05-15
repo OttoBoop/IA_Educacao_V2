@@ -103,11 +103,15 @@ Estabilizar o NOVO CR para que a pipeline:
 - Commit funcional de rejeicao de placeholder em analise Nano: `d653c13`.
 - Commit funcional de tarefa longa destacada da requisicao: `f55e299`.
 - Commit funcional de bloqueio de rotas legadas sincrônicas: `e6060e1`.
+- Commit funcional de guard anti-gabarito-tudo-`MISSING_CONTENT` e remocao do
+  fallback Markdown em relatorio: `5527e26`.
 - Marker mais novo publicado no GitHub para runtime: `a7dead3`
   (`chore: mark deploy e6060e1`).
+- Marker mais novo publicado no GitHub para o guard: `2792d89`
+  (`chore: mark deploy 5527e26`).
 - Marker atual observado no Render depois do catch-up: HTML ainda aponta
-  `novocr-deploy=f55e299`, mas o backend ja respondeu como `e6060e1` nas rotas
-  legadas (`410 Gone`).
+  `novocr-deploy=e6060e1`; o backend ja respondeu como `e6060e1` nas rotas
+  legadas (`410 Gone`), mas ainda nao confirmou `5527e26`.
 - GitHub `origin/main`: contem `e6060e1`, marker `a7dead3`, `f55e299`,
   `d653c13`, marker `2947178` e commits documentais posteriores. O ultimo
   marker confirmado no Render e `0dfdbbe`.
@@ -1015,6 +1019,25 @@ Critério de pronto: lista de limpeza segura e revisada.
   `3 skipped`, aviso conhecido de `timeout`).
 - Proximo alvo: commitar/pushar o guard, criar marker de deploy, esperar Render
   e rerodar `extrair_gabarito`. So depois a etapa pode voltar a ✅.
+
+### 2026-05-16 -- Deploy gate do guard `5527e26`
+
+- Alvo: publicar oficialmente o guard anti-gabarito-tudo-`MISSING_CONTENT` antes
+  de qualquer novo smoke de `extrair_gabarito`.
+- GitHub: commit funcional `5527e26` e marker `2792d89` publicados em
+  `origin/main`.
+- Validacoes locais do commit funcional: `py_compile`, `git diff --check` e
+  `pytest backend/tests/unit/test_pipeline_validation.py
+  backend/tests/unit/test_erro_pipeline.py -q` passaram (`68 passed`,
+  `3 skipped`, aviso conhecido de `timeout`).
+- Render: `wait_deploy.sh 5527e26` deu timeout apos 600s. Durante o gate o HTML
+  avancou de `f55e299` para `e6060e1`, mas nao chegou em `5527e26`; polls
+  adicionais mantiveram `e6060e1`.
+- Status: guard publicado no GitHub, nao confirmado no site oficial. Nao rerodar
+  `extrair_gabarito` como validacao oficial enquanto o marker live nao mostrar
+  `5527e26` ou comportamento equivalente for comprovado com seguranca.
+- Proximo alvo: continuar monitorando `check_deploy.sh 5527e26`; se Render
+  permanecer travado, usar canal seguro de deploy manual/API e registrar o gate.
 
 ## Riscos Abertos
 

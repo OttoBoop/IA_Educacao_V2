@@ -34,6 +34,10 @@
   comportamento backend de `e6060e1`; porem o HTML marker ainda foi observado em
   `f55e299`, entao a confirmacao por marker segue pendente. `wait_deploy.sh
   e6060e1` deu timeout apos 600s.
+- O commit `5527e26` adiciona o guard anti-gabarito-tudo-`MISSING_CONTENT` e
+  remove o fallback Markdown de relatorio; marker `2792d89` aponta o HTML para
+  `5527e26`. Ambos estao no GitHub, mas `wait_deploy.sh 5527e26` deu timeout
+  apos 600s. O HTML live avancou ate `e6060e1`, nao ate `5527e26`.
 - Tambem em producao, uma pipeline sequencial completa Gemini (`task_5e97bbee896e`)
   confirmou que o runner destacado nao prende a resposta inicial e mantem
   `/api/health` saudavel, mas falhou alto em `corrigir` por quota Google/Gemini
@@ -367,6 +371,8 @@ Ver [teste_gpt5nano_pipeline_completo.md](arquivo_2026_04_17/teste_gpt5nano_pipe
 - [ ] Rerodar Gemini 3 Flash em `extrair_gabarito` apos guard anti-tudo-
       `MISSING_CONTENT`; execucao anterior foi reclassificada como conteudo
       invalido
+- [ ] Confirmar deploy `5527e26` antes de rerodar `extrair_gabarito`; o marker
+      live ainda estava em `e6060e1` apos timeout
 - [x] Rodar Gemini 3 Flash em `extrair_respostas` com custo/metadata e health
       responsivo durante a execucao
 - [x] Validar que `f55e299` elimina timeout/indisponibilidade na resposta
