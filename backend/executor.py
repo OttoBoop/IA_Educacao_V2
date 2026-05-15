@@ -3247,6 +3247,9 @@ Seja preciso, educativo e construtivo em suas análises."""
             provider_value = getattr(model.tipo, "value", model.tipo)
             is_openai_provider = provider_value == ProviderType.OPENAI.value
 
+            def _forced_openai_tool(tool_name: str) -> Dict[str, Any]:
+                return {"type": "function", "function": {"name": tool_name}}
+
             def _combined_tool_calls(responses: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
                 calls = []
                 for response in responses:
@@ -3511,7 +3514,7 @@ Seja preciso, educativo e construtivo em suas análises."""
                 return errors
 
             initial_tool_choice = (
-                "required"
+                _forced_openai_tool("create_document")
                 if dual_output_expected and is_openai_provider
                 else None
             )
@@ -3541,7 +3544,7 @@ Seja preciso, educativo e construtivo em suas análises."""
                             tool_registry=registry,
                             system_prompt=system_prompt,
                             context=context,
-                            tool_choice="required",
+                            tool_choice=_forced_openai_tool("create_document"),
                         )
                         respostas_tool.append(resposta)
                         tentativas += 1
@@ -3554,7 +3557,7 @@ Seja preciso, educativo e construtivo em suas análises."""
                             tool_registry=registry,
                             system_prompt=system_prompt,
                             context=context,
-                            tool_choice="required",
+                            tool_choice=_forced_openai_tool("execute_python_code"),
                         )
                         respostas_tool.append(resposta)
                         tentativas += 1

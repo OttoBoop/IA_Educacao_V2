@@ -258,8 +258,8 @@ class TestBothOutputsNoRetry:
             f"(no retry needed). Got call_count={call_count}."
         )
 
-    async def test_openai_dual_output_starts_with_required_tool_choice(self):
-        """OpenAI dual-output calls should require at least one tool call upfront."""
+    async def test_openai_dual_output_starts_with_forced_json_tool_choice(self):
+        """OpenAI dual-output calls should force create_document upfront."""
         both_response = _tool_response(["create_document", "execute_python_code"])
         _result, mock_client = await _call_executar_com_tools(
             chat_side_effect=both_response,
@@ -268,7 +268,10 @@ class TestBothOutputsNoRetry:
         )
 
         first_call = mock_client.chat_with_tools.call_args_list[0]
-        assert first_call.kwargs.get("tool_choice") == "required"
+        assert first_call.kwargs.get("tool_choice") == {
+            "type": "function",
+            "function": {"name": "create_document"},
+        }
         first_tool_names = [tool["name"] for tool in first_call.kwargs["tools"]]
         assert first_tool_names == ["create_document"]
 
@@ -294,8 +297,8 @@ class TestBothOutputsNoRetry:
         assert "do not use create_document for pdf" in description
         assert ".json" in docs_description
 
-    async def test_openai_no_tools_retries_with_required_tool_choice(self):
-        """If OpenAI still returns plain text, retry must require tools again."""
+    async def test_openai_no_tools_retries_with_forced_json_tool_choice(self):
+        """If OpenAI still returns plain text, retry must force create_document again."""
         no_tools_response = _tool_response([])
         retry_response = _tool_response(["create_document", "execute_python_code"])
 
@@ -308,7 +311,10 @@ class TestBothOutputsNoRetry:
         assert result.sucesso is True
         assert mock_client.chat_with_tools.call_count == 2
         second_call = mock_client.chat_with_tools.call_args_list[1]
-        assert second_call.kwargs.get("tool_choice") == "required"
+        assert second_call.kwargs.get("tool_choice") == {
+            "type": "function",
+            "function": {"name": "create_document"},
+        }
         second_tool_names = [tool["name"] for tool in second_call.kwargs["tools"]]
         assert second_tool_names == ["create_document"]
 
@@ -337,6 +343,14 @@ class TestBothOutputsNoRetry:
         ]
         assert second_tool_names == ["create_document"]
         assert third_tool_names == ["execute_python_code"]
+        assert mock_client.chat_with_tools.call_args_list[1].kwargs["tool_choice"] == {
+            "type": "function",
+            "function": {"name": "create_document"},
+        }
+        assert mock_client.chat_with_tools.call_args_list[2].kwargs["tool_choice"] == {
+            "type": "function",
+            "function": {"name": "execute_python_code"},
+        }
 
     async def test_openai_only_json_retry_exposes_only_pdf_tool(self):
         """When JSON exists, the repair call should expose only execute_python_code."""
@@ -353,7 +367,10 @@ class TestBothOutputsNoRetry:
         second_call = mock_client.chat_with_tools.call_args_list[1]
         tool_names = [tool["name"] for tool in second_call.kwargs["tools"]]
         assert tool_names == ["execute_python_code"]
-        assert second_call.kwargs.get("tool_choice") == "required"
+        assert second_call.kwargs.get("tool_choice") == {
+            "type": "function",
+            "function": {"name": "execute_python_code"},
+        }
 
     async def test_openai_only_pdf_retry_exposes_only_json_tool(self):
         """When PDF exists, the repair call should expose only create_document."""
@@ -370,7 +387,10 @@ class TestBothOutputsNoRetry:
         second_call = mock_client.chat_with_tools.call_args_list[1]
         tool_names = [tool["name"] for tool in second_call.kwargs["tools"]]
         assert tool_names == ["create_document"]
-        assert second_call.kwargs.get("tool_choice") == "required"
+        assert second_call.kwargs.get("tool_choice") == {
+            "type": "function",
+            "function": {"name": "create_document"},
+        }
 
 
 # ============================================================
