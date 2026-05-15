@@ -3169,7 +3169,27 @@ Regras obrigatórias:
                     if handler:
                         tool.handler = handler
                     registry.register(tool)
-                    tools_definitions.append(tool.to_anthropic_format())
+                    tool_definition = tool.to_anthropic_format()
+                    if tool.name == "create_document" and expected_document_type:
+                        tool_definition["description"] = (
+                            "Create and save the required structured JSON artifact for this "
+                            "pipeline stage. In pipeline stages this tool accepts ONLY .json "
+                            "filenames with valid JSON content. Do not use create_document "
+                            "for PDF, DOCX, Markdown, text, or narrative files; use "
+                            "execute_python_code for PDF generation."
+                        )
+                        documents_schema = (
+                            tool_definition
+                            .get("input_schema", {})
+                            .get("properties", {})
+                            .get("documents", {})
+                        )
+                        documents_schema["description"] = (
+                            "Array with JSON document objects only. Each filename must end "
+                            "with .json and content must be valid JSON serialized as a string "
+                            "or passed as an object."
+                        )
+                    tools_definitions.append(tool_definition)
             
             # Criar contexto de execução
             from tools import ToolExecutionContext

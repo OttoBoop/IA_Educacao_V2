@@ -43,6 +43,7 @@ from unittest.mock import MagicMock, AsyncMock, patch, call
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
 from executor import PipelineExecutor, ResultadoExecucao
+from models import TipoDocumento
 
 
 # ============================================================
@@ -151,10 +152,17 @@ def _make_tools_module():
             self.handler = None
 
         def to_anthropic_format(self):
+            properties = {}
+            if self.name == "create_document":
+                properties["documents"] = {
+                    "type": "array",
+                    "description": "Fake documents",
+                    "items": {"type": "object"},
+                }
             return {
                 "name": self.name,
                 "description": f"Fake {self.name}",
-                "input_schema": {"type": "object", "properties": {}, "required": []},
+                "input_schema": {"type": "object", "properties": properties, "required": []},
             }
 
     create_document = FakeTool("create_document")
@@ -185,6 +193,7 @@ async def _call_executar_com_tools(
     tools_to_use=None,
     provider_id=None,
     tipo_value="anthropic",
+    expected_document_type=None,
 ):
     """
     Patch lazy-imported modules and call executar_com_tools.
@@ -212,6 +221,7 @@ async def _call_executar_com_tools(
             aluno_id="aluno_test_et2",
             provider_id=provider_id,
             tools_to_use=tools_to_use,
+            expected_document_type=expected_document_type,
         )
 
     return result, mock_client
@@ -261,6 +271,28 @@ class TestBothOutputsNoRetry:
         assert first_call.kwargs.get("tool_choice") == "required"
         first_tool_names = [tool["name"] for tool in first_call.kwargs["tools"]]
         assert first_tool_names == ["create_document"]
+
+    async def test_pipeline_create_document_description_restricts_to_json(self):
+        """Pipeline create_document schema must not advertise PDF creation."""
+        both_response = _tool_response(["create_document", "execute_python_code"])
+        _result, mock_client = await _call_executar_com_tools(
+            chat_side_effect=both_response,
+            tools_to_use=["create_document", "execute_python_code"],
+            tipo_value="openai",
+            expected_document_type=TipoDocumento.CORRECAO,
+        )
+
+        first_call = mock_client.chat_with_tools.call_args_list[0]
+        create_doc_tool = first_call.kwargs["tools"][0]
+        description = create_doc_tool["description"].lower()
+        docs_description = (
+            create_doc_tool["input_schema"]["properties"]["documents"]["description"].lower()
+        )
+
+        assert ".json" in description
+        assert "only" in description
+        assert "do not use create_document for pdf" in description
+        assert ".json" in docs_description
 
     async def test_openai_no_tools_retries_with_required_tool_choice(self):
         """If OpenAI still returns plain text, retry must require tools again."""
