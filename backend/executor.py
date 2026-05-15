@@ -1590,6 +1590,15 @@ Regras obrigatórias:
 
         variaveis.update(contexto_json)
         self._aplicar_aliases_contexto_corrigir(variaveis, contexto_json)
+        erro_gabarito = self._erro_gabarito_incompleto_para_correcao(
+            contexto_json.get("gabarito_extraido")
+        )
+        if erro_gabarito:
+            return self._erro(
+                EtapaProcessamento.CORRIGIR,
+                erro_gabarito,
+                provider=provider_id,
+            )
 
         # Render prompt
         prompt_renderizado = prompt.render(**variaveis)
@@ -1629,6 +1638,60 @@ Regras obrigatórias:
         if "respostas_aluno" in contexto_json:
             variaveis["respostas_aluno"] = contexto_json["respostas_aluno"]
             variaveis["resposta_aluno"] = contexto_json["respostas_aluno"]
+
+    def _erro_gabarito_incompleto_para_correcao(
+        self,
+        gabarito_extraido: Optional[str],
+    ) -> Optional[str]:
+        """Block grading when the extracted answer key cannot support a grade."""
+        if not gabarito_extraido:
+            return "Gabarito extraido ausente; nao e seguro corrigir sem resposta esperada estruturada."
+
+        try:
+            dados = json.loads(gabarito_extraido)
+        except json.JSONDecodeError:
+            return "Gabarito extraido nao e JSON valido; nao e seguro corrigir."
+
+        if not isinstance(dados, dict):
+            return "Gabarito extraido nao tem estrutura de objeto JSON; nao e seguro corrigir."
+
+        avisos_documento = dados.get("_avisos_documento") or []
+        avisos_questao = dados.get("_avisos_questao") or []
+        respostas = dados.get("respostas") or []
+
+        codigos_bloqueantes_doc = {"MISSING_CONTENT", "ILLEGIBLE_DOCUMENT"}
+        codigos_bloqueantes_questao = {"MISSING_CONTENT", "ILLEGIBLE_QUESTION"}
+
+        doc_bloqueado = [
+            aviso
+            for aviso in avisos_documento
+            if isinstance(aviso, dict)
+            and str(aviso.get("codigo", "")).upper() in codigos_bloqueantes_doc
+        ]
+        questoes_bloqueadas = [
+            aviso.get("questao", "?")
+            for aviso in avisos_questao
+            if isinstance(aviso, dict)
+            and str(aviso.get("codigo", "")).upper() in codigos_bloqueantes_questao
+        ]
+        respostas_missing = [
+            resposta.get("questao_numero", "?")
+            for resposta in respostas
+            if isinstance(resposta, dict)
+            and str(resposta.get("resposta_correta", "")).strip().upper() == "MISSING_CONTENT"
+        ]
+
+        if doc_bloqueado or questoes_bloqueadas or respostas_missing:
+            questoes = sorted({str(q) for q in [*questoes_bloqueadas, *respostas_missing]})
+            questoes_txt = ", ".join(questoes[:10]) if questoes else "documento inteiro"
+            return (
+                "Gabarito extraido incompleto para correcao: questoes "
+                f"{questoes_txt}. A etapa CORRIGIR nao pode atribuir nota ou "
+                "gerar feedback como se houvesse resposta esperada completa. "
+                "Reenvie um gabarito completo ou corrija a etapa EXTRAIR_GABARITO."
+            )
+
+        return None
 
     async def analisar_habilidades(
         self,

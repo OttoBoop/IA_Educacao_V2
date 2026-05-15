@@ -1301,6 +1301,43 @@ class TestCorrigirUsesStructuredExtractionContext:
         assert variaveis["resposta_esperada"] == contexto["gabarito_extraido"]
         assert variaveis["resposta_aluno"] == contexto["respostas_aluno"]
 
+    def test_gabarito_incompleto_bloqueia_correcao(self):
+        from executor import PipelineExecutor
+
+        executor = PipelineExecutor.__new__(PipelineExecutor)
+        gabarito = json.dumps({
+            "respostas": [
+                {
+                    "questao_numero": 1,
+                    "resposta_correta": "A",
+                    "justificativa": "",
+                    "conceito_central": "Conceito",
+                    "criterios_parciais": [],
+                },
+                {
+                    "questao_numero": 2,
+                    "resposta_correta": "MISSING_CONTENT",
+                    "justificativa": "",
+                    "conceito_central": "Conceito",
+                    "criterios_parciais": [],
+                },
+            ],
+            "_avisos_documento": [],
+            "_avisos_questao": [
+                {
+                    "codigo": "MISSING_CONTENT",
+                    "questao": 2,
+                    "explicacao": "Resposta da questão 2 ausente.",
+                }
+            ],
+        })
+
+        erro = executor._erro_gabarito_incompleto_para_correcao(gabarito)
+
+        assert erro is not None
+        assert "Gabarito extraido incompleto" in erro
+        assert "2" in erro
+
     @pytest.mark.asyncio
     async def test_corrigir_renderiza_prompt_com_respostas_extraidas(self):
         from executor import EtapaProcessamento, PipelineExecutor, ResultadoExecucao
@@ -1360,6 +1397,65 @@ class TestCorrigirUsesStructuredExtractionContext:
         assert "RAW PROVA RESPONDIDA" not in mensagem
         assert "RAW GABARITO" not in mensagem
         assert "RAW ENUNCIADO" not in mensagem
+
+    @pytest.mark.asyncio
+    async def test_corrigir_nao_chama_modelo_com_gabarito_incompleto(self):
+        from executor import EtapaProcessamento, PipelineExecutor
+        from prompts import PROMPTS_PADRAO
+
+        executor = PipelineExecutor.__new__(PipelineExecutor)
+
+        atividade = MagicMock()
+        atividade.turma_id = "turma-1"
+        atividade.nome = "Lista0"
+        atividade.nota_maxima = 10
+        turma = MagicMock()
+        turma.materia_id = "materia-1"
+        materia = MagicMock()
+        materia.id = "materia-1"
+        materia.nome = "Álgebra Linear"
+
+        executor.storage = MagicMock()
+        executor.storage.get_atividade = MagicMock(return_value=atividade)
+        executor.storage.get_turma = MagicMock(return_value=turma)
+        executor.storage.get_materia = MagicMock(return_value=materia)
+        executor.prompt_manager = MagicMock()
+        executor.prompt_manager.get_prompt_padrao = MagicMock(
+            return_value=PROMPTS_PADRAO[EtapaProcessamento.CORRIGIR]
+        )
+        executor._preparar_variaveis_texto = MagicMock(return_value={
+            "materia": "Álgebra Linear",
+            "atividade": "Lista0",
+            "nota_maxima": "10",
+            "criterios": "(Nenhum critério específico fornecido)",
+        })
+        executor._preparar_contexto_json = MagicMock(return_value={
+            "questoes_extraidas": '{"questoes":[{"numero":1},{"numero":2}]}',
+            "gabarito_extraido": json.dumps({
+                "respostas": [
+                    {"questao_numero": 1, "resposta_correta": "A"},
+                    {"questao_numero": 2, "resposta_correta": "MISSING_CONTENT"},
+                ],
+                "_avisos_documento": [],
+                "_avisos_questao": [
+                    {"codigo": "MISSING_CONTENT", "questao": 2}
+                ],
+            }),
+            "respostas_aluno": '{"respostas":[{"questao_numero":1,"resposta_aluno":"x=2"}]}',
+            "_documentos_faltantes": [],
+            "_documentos_carregados": [
+                "questoes_extraidas",
+                "gabarito_extraido",
+                "respostas_aluno",
+            ],
+        })
+        executor.executar_com_tools = AsyncMock()
+
+        resultado = await executor.corrigir("ativ-1", "aluno-1", provider_id="gpt5nano001")
+
+        assert resultado.sucesso is False
+        assert "Gabarito extraido incompleto" in resultado.erro
+        executor.executar_com_tools.assert_not_awaited()
 
 
 # ============================================================
