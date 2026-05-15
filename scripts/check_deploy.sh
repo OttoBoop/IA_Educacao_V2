@@ -16,6 +16,7 @@
 set -euo pipefail
 
 SITE_URL="${NOVOCR_URL:-https://ia-educacao-v2.onrender.com}"
+CACHE_BUSTER="$(date +%s)-$$"
 
 echo "Checking deploy at $SITE_URL ..."
 
@@ -26,7 +27,7 @@ json_field() {
     python3 -c 'import json,sys; data=json.load(sys.stdin); value=data.get(sys.argv[1]); print(value or "")' "$field" 2>/dev/null
 }
 
-DEPLOY_INFO=$(curl -fsS "$SITE_URL/api/deploy-info" 2>/dev/null || true)
+DEPLOY_INFO=$(curl -fsS -H 'Cache-Control: no-cache' "$SITE_URL/api/deploy-info?t=$CACHE_BUSTER" 2>/dev/null || true)
 if [ -n "$DEPLOY_INFO" ]; then
     DEPLOYED=$(printf '%s' "$DEPLOY_INFO" | json_field commit)
     DEPLOYED_FULL=$(printf '%s' "$DEPLOY_INFO" | json_field full_commit)
@@ -59,7 +60,7 @@ fi
 
 echo "WARN: /api/deploy-info unavailable or unknown; falling back to HTML marker"
 
-DEPLOYED=$(curl -s "$SITE_URL/" | grep -oP 'novocr-deploy.*?content="\K[^"]+' || echo "NOT_FOUND")
+DEPLOYED=$(curl -s -H 'Cache-Control: no-cache' "$SITE_URL/?t=$CACHE_BUSTER" | grep -oP 'novocr-deploy.*?content="\K[^"]+' || echo "NOT_FOUND")
 
 if [ "$DEPLOYED" = "NOT_FOUND" ] || [ "$DEPLOYED" = "PENDING" ]; then
     echo "FAIL: No deploy version found in HTML (missing or PENDING meta tag)"
@@ -90,6 +91,6 @@ else
     git log --oneline -5
     echo ""
     echo "Debug:"
-    curl -sI "$SITE_URL/" 2>/dev/null | grep -iE "last-modified|server" || true
+    curl -sI -H 'Cache-Control: no-cache' "$SITE_URL/?t=$CACHE_BUSTER" 2>/dev/null | grep -iE "last-modified|server" || true
     exit 1
 fi
