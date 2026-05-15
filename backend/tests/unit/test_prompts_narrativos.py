@@ -190,6 +190,18 @@ class TestPromptAnalisarHabilidadesReescrito:
             "Um prompt pedagógico completo deve ter instruções substantivas."
         )
 
+    def test_prompt_analisar_habilidades_nao_pede_json_solto_no_chat(self):
+        """Prompt principal deve apontar para tools, nao para JSON solto em texto livre."""
+        from prompts import PROMPTS_PADRAO, EtapaProcessamento
+
+        prompt = PROMPTS_PADRAO[EtapaProcessamento.ANALISAR_HABILIDADES]
+        texto_lower = prompt.texto.lower()
+
+        assert "retorne apenas json" not in texto_lower
+        assert "create_document" in texto_lower
+        assert "execute_python_code" in texto_lower
+        assert "texto livre" in texto_lower
+
 
 # ============================================================
 # F5-T2 — GERAR_RELATORIO: prompt reescrito com narrativa holística

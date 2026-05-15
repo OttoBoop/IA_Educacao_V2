@@ -3462,6 +3462,26 @@ Seja preciso, educativo e construtivo em suas análises."""
                     "```"
                 )
 
+            def _initial_message_for_provider() -> str:
+                if not (dual_output_expected and is_openai_provider):
+                    return mensagem
+
+                contexto_original = str(mensagem or "").strip()
+                if len(contexto_original) > 12000:
+                    contexto_original = contexto_original[:12000] + "\n...[contexto truncado para primeira chamada]..."
+
+                return (
+                    "PRIMEIRA CHAMADA DE ETAPA DUAL-OUTPUT.\n"
+                    "Nesta chamada inicial, a unica ferramenta disponivel e create_document. "
+                    "Chame create_document agora com exatamente um arquivo .json e content "
+                    "como JSON valido. Nao gere PDF, Markdown, narrativa ou texto livre nesta "
+                    "chamada; o PDF sera produzido depois em chamada separada via "
+                    "execute_python_code. Nao responda em texto simples.\n\n"
+                    "PROMPT ORIGINAL DA ETAPA:\n```\n"
+                    f"{contexto_original}\n"
+                    "```"
+                )
+
             def _validate_json_artifacts(state: Dict[str, Any]) -> List[str]:
                 """Fail high on known placeholder/schema leaks in persisted JSON."""
                 if expected_document_type != TipoDocumento.ANALISE_HABILIDADES:
@@ -3522,7 +3542,7 @@ Seja preciso, educativo e construtivo em suas análises."""
             # Executar com tools
             client = ChatClient(model, api_key or "")
             resposta = await client.chat_with_tools(
-                mensagem=mensagem,
+                mensagem=_initial_message_for_provider(),
                 tools=_initial_tools_for_provider(),
                 tool_registry=registry,
                 system_prompt=system_prompt,

@@ -451,7 +451,7 @@ Princípios fundamentais:
 
 Produza uma análise estruturada de habilidades para o professor.
 
-**INSTRUÇÃO CRÍTICA:** Retorne APENAS JSON válido, sem texto adicional antes ou depois.
+**INSTRUÇÃO CRÍTICA:** A execução oficial desta etapa usa ferramentas. Salve a análise JSON pela ferramenta `create_document` e gere o PDF pela ferramenta `execute_python_code`. Não entregue a análise em texto livre na resposta do chat; a saída válida da etapa é o artefato persistido pela ferramenta.
 
 ```json
 {
