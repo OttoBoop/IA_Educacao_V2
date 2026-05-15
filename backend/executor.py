@@ -2147,6 +2147,27 @@ class PipelineExecutor:
                         "MISSING_CONTENT. Isso nao pode ser tratado como sucesso."
                     )
 
+        if etapa_nome == EtapaProcessamento.EXTRAIR_RESPOSTAS.value:
+            respostas = resposta_parsed.get("respostas")
+            if isinstance(respostas, list) and respostas:
+                def _sem_conteudo(item: Any) -> bool:
+                    if not isinstance(item, dict):
+                        return False
+                    resposta_aluno = str(item.get("resposta_aluno") or "").strip()
+                    return (
+                        bool(item.get("ilegivel"))
+                        or bool(item.get("em_branco"))
+                        or not resposta_aluno
+                    )
+
+                todas_sem_conteudo = all(_sem_conteudo(item) for item in respostas)
+                if todas_sem_conteudo:
+                    return (
+                        "EXTRAIR_RESPOSTAS retornou todas as respostas sem conteudo "
+                        "extraido (em branco, ilegiveis ou vazias). Isso nao pode "
+                        "ser tratado como sucesso."
+                    )
+
         return None
 
     def _registrar_custo_resposta_invalida(

@@ -21,6 +21,69 @@ from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock, patch, ANY
 
 
+class TestBlockingParsedResponses:
+    """Outputs parseáveis mas sem conteúdo obrigatório devem falhar alto."""
+
+    def test_extrair_respostas_tudo_em_branco_bloqueia_sucesso(self):
+        from executor import EtapaProcessamento, PipelineExecutor
+
+        executor = PipelineExecutor.__new__(PipelineExecutor)
+        erro = executor._erro_resposta_parseada(
+            EtapaProcessamento.EXTRAIR_RESPOSTAS,
+            {
+                "aluno": "João Silva",
+                "respostas": [
+                    {
+                        "questao_numero": 1,
+                        "resposta_aluno": "",
+                        "em_branco": True,
+                        "ilegivel": False,
+                    },
+                    {
+                        "questao_numero": 2,
+                        "resposta_aluno": "",
+                        "em_branco": True,
+                        "ilegivel": False,
+                    },
+                ],
+                "questoes_respondidas": 0,
+                "questoes_em_branco": 2,
+            },
+        )
+
+        assert erro is not None
+        assert "sem conteudo extraido" in erro
+
+    def test_extrair_respostas_com_algum_conteudo_nao_bloqueia(self):
+        from executor import EtapaProcessamento, PipelineExecutor
+
+        executor = PipelineExecutor.__new__(PipelineExecutor)
+        erro = executor._erro_resposta_parseada(
+            EtapaProcessamento.EXTRAIR_RESPOSTAS,
+            {
+                "aluno": "João Silva",
+                "respostas": [
+                    {
+                        "questao_numero": 1,
+                        "resposta_aluno": "",
+                        "em_branco": True,
+                        "ilegivel": False,
+                    },
+                    {
+                        "questao_numero": 2,
+                        "resposta_aluno": "x = 2",
+                        "em_branco": False,
+                        "ilegivel": False,
+                    },
+                ],
+                "questoes_respondidas": 1,
+                "questoes_em_branco": 1,
+            },
+        )
+
+        assert erro is None
+
+
 class TestF2T1_ErrorFramework:
     """F2-T1: Framework de erros estruturados."""
 
