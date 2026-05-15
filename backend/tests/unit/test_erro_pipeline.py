@@ -94,6 +94,7 @@ class TestExtrairRespostasContextoQuestoes:
         doc.id = doc_id
         doc.caminho_arquivo = str(path)
         doc.extensao = extensao
+        doc.nome_arquivo = Path(path).name
         return doc
 
     def test_extrair_respostas_carrega_questoes_extraidas_no_contexto(self, tmp_path):
@@ -144,6 +145,79 @@ class TestExtrairRespostasContextoQuestoes:
 
         assert "questoes_extraidas" not in contexto
         assert "questoes_extraidas" in contexto["_documentos_faltantes"][0]
+
+    def test_extrair_respostas_inclui_texto_extraido_da_prova_pdf(self, tmp_path):
+        from executor import EtapaProcessamento, PipelineExecutor
+        from models import TipoDocumento
+        import fitz
+
+        prova_path = tmp_path / "prova_respondida.pdf"
+        pdf = fitz.open()
+        page = pdf.new_page()
+        page.insert_text((72, 72), "Questao 1\nResposta do aluno: x = 2")
+        pdf.save(str(prova_path))
+        pdf.close()
+
+        prova_doc = self._doc(
+            TipoDocumento.PROVA_RESPONDIDA,
+            "prova-1",
+            prova_path,
+            ".pdf",
+        )
+
+        executor = PipelineExecutor.__new__(PipelineExecutor)
+        executor.storage = MagicMock()
+        executor.storage.listar_documentos = MagicMock(return_value=[prova_doc])
+        executor.storage.resolver_caminho_documento = MagicMock(return_value=prova_path)
+        executor.storage.get_aluno = MagicMock(return_value=MagicMock(nome="Aluno PDF"))
+
+        variaveis = executor._preparar_variaveis_texto(
+            EtapaProcessamento.EXTRAIR_RESPOSTAS,
+            "ativ_test",
+            "aluno_test",
+            materia=MagicMock(nome="Matematica"),
+            atividade=MagicMock(nome="Lista", nota_maxima=10),
+            usar_multimodal=True,
+        )
+
+        assert "TEXTO EXTRAIDO DO PDF" in variaveis["conteudo_documento"]
+        assert "Resposta do aluno: x = 2" in variaveis["conteudo_documento"]
+        assert variaveis["prova_aluno"] == variaveis["conteudo_documento"]
+
+    def test_extrair_respostas_pdf_sem_texto_mantem_placeholder_de_anexo(self, tmp_path):
+        from executor import EtapaProcessamento, PipelineExecutor
+        from models import TipoDocumento
+        import fitz
+
+        prova_path = tmp_path / "prova_sem_texto.pdf"
+        pdf = fitz.open()
+        pdf.new_page()
+        pdf.save(str(prova_path))
+        pdf.close()
+
+        prova_doc = self._doc(
+            TipoDocumento.PROVA_RESPONDIDA,
+            "prova-sem-texto",
+            prova_path,
+            ".pdf",
+        )
+
+        executor = PipelineExecutor.__new__(PipelineExecutor)
+        executor.storage = MagicMock()
+        executor.storage.listar_documentos = MagicMock(return_value=[prova_doc])
+        executor.storage.resolver_caminho_documento = MagicMock(return_value=prova_path)
+        executor.storage.get_aluno = MagicMock(return_value=MagicMock(nome="Aluno PDF"))
+
+        variaveis = executor._preparar_variaveis_texto(
+            EtapaProcessamento.EXTRAIR_RESPOSTAS,
+            "ativ_test",
+            "aluno_test",
+            materia=MagicMock(nome="Matematica"),
+            atividade=MagicMock(nome="Lista", nota_maxima=10),
+            usar_multimodal=True,
+        )
+
+        assert "DOCUMENTO ANEXADO" in variaveis["conteudo_documento"]
 
 
 class TestF2T1_ErrorFramework:

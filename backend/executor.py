@@ -1765,9 +1765,12 @@ class PipelineExecutor:
         
         for doc in documentos:
             if usar_multimodal and doc.tipo in [TipoDocumento.ENUNCIADO, TipoDocumento.GABARITO, TipoDocumento.PROVA_RESPONDIDA]:
-                # Em modo multimodal, não incluir conteúdo de PDFs/imagens no prompt
-                # Eles serão enviados como anexos
-                conteudo = ""
+                if etapa == EtapaProcessamento.EXTRAIR_RESPOSTAS and doc.tipo == TipoDocumento.PROVA_RESPONDIDA:
+                    conteudo = self._extrair_texto_pdf_para_prompt(doc)
+                    if not conteudo:
+                        conteudo = self._ler_documento_texto(doc, usar_multimodal=True)
+                else:
+                    conteudo = self._ler_documento_texto(doc, usar_multimodal=True)
             else:
                 conteudo = self._ler_documento_texto(doc, usar_multimodal)
             
@@ -1851,6 +1854,52 @@ class PipelineExecutor:
             variaveis["nota_final"] = "N/A"
 
         return variaveis
+
+    def _extrair_texto_pdf_para_prompt(self, documento: Documento, limite_chars: int = 60000) -> str:
+        """Extrai texto de PDF para compor o prompt sem substituir o anexo original."""
+        try:
+            arquivo = self.storage.resolver_caminho_documento(documento)
+            if not arquivo or not Path(arquivo).exists():
+                return ""
+
+            if getattr(documento, "extensao", "").lower() != ".pdf":
+                return ""
+
+            partes = []
+            total_chars = 0
+            with fitz.open(str(arquivo)) as pdf_doc:
+                for pagina_idx, pagina in enumerate(pdf_doc, start=1):
+                    texto = (pagina.get_text("text") or "").strip()
+                    if not texto:
+                        continue
+                    trecho = f"--- pagina {pagina_idx} ---\n{texto}"
+                    partes.append(trecho)
+                    total_chars += len(trecho)
+                    if total_chars >= limite_chars:
+                        break
+
+            texto_extraido = "\n\n".join(partes).strip()
+            if not texto_extraido:
+                return ""
+
+            truncado = len(texto_extraido) > limite_chars
+            texto_extraido = texto_extraido[:limite_chars]
+            sufixo = "\n\n[Texto truncado para caber no prompt. Consulte tambem o PDF anexado.]" if truncado else ""
+            nome = getattr(documento, "nome_arquivo", None) or getattr(documento, "id", "documento.pdf")
+            return (
+                f"[TEXTO EXTRAIDO DO PDF: {nome}]\n"
+                f"{texto_extraido}"
+                f"{sufixo}\n"
+                "[O PDF original tambem esta anexado; use o anexo para conferir layout, rasuras e imagens.]"
+            )
+        except Exception as e:
+            nome = getattr(documento, "nome_arquivo", None) or getattr(documento, "id", "documento.pdf")
+            _logger.warning(
+                "Falha ao extrair texto de PDF para prompt",
+                documento=nome,
+                erro=str(e),
+            )
+            return ""
     
     def _ler_documento_texto(self, documento: Documento, usar_multimodal: bool = False) -> str:
         """
