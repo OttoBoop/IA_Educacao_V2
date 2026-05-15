@@ -12,7 +12,13 @@ patch `924fd79` reforca o retry do PDF mantendo o contexto original e proibindo
 placeholders; esse patch esta live. O patch `d653c13` adiciona uma trava extra:
 JSON de `ANALISAR_HABILIDADES` com placeholder proibido, como `student123`,
 falha alto mesmo se houver PDF; esse patch esta no GitHub, mas ainda nao esta
-confirmado no Render. O resumo de custos agora agrega por `cost_run_id`, entao
+confirmado no Render. Gemini tambem passou em `extrair_questoes` no marker
+`924fd79`, mas o smoke revelou um bug operacional: timeout do cliente nao
+cancela execucao no servidor, e retry cego pode duplicar documentos. O patch
+`f55e299` troca tarefas longas do `routes_prompts.py` para runner destacado em
+thread daemon, fora do ciclo de vida da requisicao; esse patch esta no GitHub e
+tem marker `5f10651`, mas ainda nao esta confirmado no Render. O resumo de
+custos agora agrega por `cost_run_id`, entao
 JSON+PDF do mesmo run contam uma vez. Falhas tool-use sem documento final agora
 tem `TokenUsageRecord` local mensal e codigo preparado para Supabase quando a
 tabela `token_usage` existir; o endpoint live confirmou que essa tabela ainda
@@ -56,7 +62,7 @@ Estabilizar o NOVO CR para que a pipeline:
 | Frente | Estado | Proximo passo |
 |--------|--------|---------------|
 | Docs e plano | Sprint 0 concluida | Manter este painel como fonte oficial e anexos fora do fluxo diario |
-| Pipeline | Gemini 3 Flash validado oficialmente em `corrigir`, `analisar_habilidades` e `gerar_relatorio`; GPT-5 Nano validado em `corrigir`, `analisar_habilidades` e `gerar_relatorio` no marker `924fd79`; patch anti-placeholder `d653c13` ainda pendente de deploy | Confirmar deploy `d653c13`; depois ampliar smoke para extracoes/schema minimo/UI de erro |
+| Pipeline | Gemini 3 Flash validado oficialmente em `extrair_questoes`, `corrigir`, `analisar_habilidades` e `gerar_relatorio`; GPT-5 Nano validado em `corrigir`, `analisar_habilidades` e `gerar_relatorio` no marker `924fd79`; patches `d653c13` e `f55e299` ainda pendentes de deploy | Confirmar deploy `f55e299`; depois ampliar smoke para `extrair_gabarito`, `extrair_respostas`, schema minimo e UI de erro |
 | Schema e avisos | Sprint 2 concluida localmente | Manter schema oficial, defaults e visualizador cobertos por testes |
 | Custos/tokens | Metadata de documento, endpoints live, resumo por `cost_run_id`, `TokenUsageRecord` local, migration Supabase dedicada `b2dc88b`; smoke Nano `gerar_relatorio` adicionou run precificado; diagnostico live ainda acusa `PGRST205` | Aplicar `backend/migrations/002_create_token_usage.sql` no Supabase; validar uma falha real sem documento em producao |
 | UI de erros | Pendente | Mostrar falha por aluno/etapa sem depender de terminal |
@@ -83,13 +89,14 @@ Estabilizar o NOVO CR para que a pipeline:
   runtime do site ate a SQL ser aplicada no Supabase).
 - Commit funcional de retry/contexto Nano: `924fd79`.
 - Commit funcional de rejeicao de placeholder em analise Nano: `d653c13`.
-- Marker mais novo publicado no GitHub para runtime: `2947178`
-  (`chore: mark deploy d653c13`).
+- Commit funcional de tarefa longa destacada da requisicao: `f55e299`.
+- Marker mais novo publicado no GitHub para runtime: `5f10651`
+  (`chore: mark deploy f55e299`).
 - Marker atual confirmado no Render: `0dfdbbe`, HTML com
   `novocr-deploy=924fd79`.
-- GitHub `origin/main`: `59b1698` antes deste ciclo documental; contem
-  `d653c13`, marker `2947178` e commits documentais posteriores. O ultimo
-  marker confirmado no Render e `0dfdbbe`.
+- GitHub `origin/main`: contem `f55e299`, marker `5f10651`, `d653c13`, marker
+  `2947178` e commits documentais posteriores. O ultimo marker confirmado no
+  Render e `0dfdbbe`.
 - Render live observado: saiu de `2e1098f` para `b12be9a` e depois confirmou
   marcadores `b4d7ee6`, `f505be6`, `97a7c79`, `c75af88`, `39aa50a`,
   `b24f03e`, `eab7d90`, `7ed8b8b`, `839968e`, `55e168a` e `4f27dae`.
@@ -783,6 +790,54 @@ Critério de pronto: lista de limpeza segura e revisada.
   sem workspace/hook, seguir para smoke das etapas de extracao e/ou ciclo de UI
   de erro sem aceitar progresso local como oficial.
 
+### 2026-05-16 -- Provider smoke: Gemini `extrair_questoes` e bug de request longa
+
+- Alvo: comecar a fechar a lacuna das tres etapas de extracao no site oficial.
+- Status do smoke: Gemini 3 Flash passou em `extrair_questoes` no Render live
+  `924fd79`, mas o fluxo de requisicao mostrou bug operacional.
+- Observacao critica: a chamada inicial de `pipeline-completo` nao devolveu
+  `task_id` antes do timeout de cliente; uma tentativa alternativa pela rota
+  legada `/api/pipeline/executar` tambem deu timeout. Mesmo assim, o servidor
+  continuou processando, o site ficou sem `/api/health` por cerca de 90s, e
+  depois apareceu a task `task_737c8d45befc` concluida.
+- Artefatos: foram criados dois documentos `extracao_questoes` com Gemini,
+  `3f1ca7eed14f5d37` e `9d61dcb36e6ca4b5`. A duplicacao veio do retry
+  operacional antes de provar que a primeira requisicao tinha sido aceita; regra
+  nova: timeout de cliente nao significa cancelamento no servidor.
+- Conteudo: ambos trazem JSON parseado com `questoes`, `total_questoes`,
+  `pontuacao_total`, `_avisos_documento` e `_avisos_questao`.
+- Custos: documentos novos registraram provider/modelo e tokens splitados:
+  `1602/1938` e `1602/1934`. `/api/custos/resumo?limit=20` mostrou custos
+  `US$ 0.002806` e `US$ 0.002801` como runs separados.
+- Bloqueio persistente: `token_usage` Supabase segue ausente (`PGRST205`).
+- Interpretacao: Gemini esta confirmado em `extrair_questoes`, mas o executor
+  HTTP ainda precisava separar execucao longa do ciclo da requisicao para evitar
+  timeout, site indisponivel e retry duplicado.
+
+### 2026-05-16 -- Sprint 4e: tarefas longas destacadas da requisicao
+
+- Alvo: corrigir o bloqueio operacional reproduzido no smoke de
+  `extrair_questoes`.
+- Status: publicado no GitHub; deploy oficial pendente.
+- Arquivos tocados: `backend/routes_prompts.py`,
+  `backend/tests/unit/test_backend_async_pipeline.py`,
+  `backend/tests/unit/test_backend_async_turma.py`,
+  `backend/tests/unit/test_executor_stage_progress.py`.
+- Mudanca: endpoints longos de `routes_prompts.py` mantem o registro sincrono
+  do `task_id`, mas iniciam o trabalho pesado com `_start_detached_task()` em
+  thread daemon, fora do ciclo de vida da requisicao. Se o worker destacado
+  levanta excecao e houver `task_id`, a task e marcada como `failed`.
+- Validacoes locais: `py_compile` passou; `git diff --check` passou;
+  `test_backend_async_pipeline.py`, `test_backend_async_turma.py` e
+  `test_executor_stage_progress.py` passaram com 25 testes e 1 aviso conhecido
+  de `pytest.ini` (`timeout` desconhecido).
+- Git/deploy: commit funcional `f55e299`; marker `5f10651`; ambos publicados
+  em `origin/main`. Monitor `wait_deploy.sh f55e299` iniciado, mas ainda nao
+  confirmado no Render neste registro.
+- Proximo alvo: quando `f55e299` estiver live, repetir uma etapa curta com
+  `pipeline-completo` e exigir resposta imediata com `task_id`, `/api/health`
+  responsivo durante execucao e sem documento duplicado.
+
 ## Riscos Abertos
 
 1. Creditos Anthropic insuficientes ainda bloqueiam validacao Haiku.
@@ -791,6 +846,6 @@ Critério de pronto: lista de limpeza segura e revisada.
    necessario, mas nao prova qualidade pedagogica.
 4. A tabela Supabase `token_usage` tem migration dedicada em `b2dc88b`, mas o
    live confirmou que ela ainda nao existe no schema cache (`PGRST205`).
-5. Render/site oficial voltou e esta em `924fd79`; nao aceitar `d653c13`
-   como live ate o marker `novocr-deploy=d653c13` aparecer.
+5. Render/site oficial voltou e esta em `924fd79`; nao aceitar `d653c13` ou
+   `f55e299` como live ate o marker correspondente aparecer.
 6. Rio 3 nao deve voltar ao fluxo ativo sem nova decisao e nova chave segura.

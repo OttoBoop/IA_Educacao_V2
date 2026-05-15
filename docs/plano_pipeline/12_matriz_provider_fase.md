@@ -9,13 +9,13 @@
 `eab7d90`, `dcecdfa`, `7ed8b8b`, `9e1aee5`, `839968e`, `45c6f97`,
 `55e168a`, `9823afb`, `4f27dae`, `f0dae61`, `87bdee2`, `b2dc88b`,
 `28cfd6a`, `cacedcd`, `a311ade`, `924fd79`, `0dfdbbe`, `d653c13`,
-`2947178`
+`2947178`, `53d0252`, `f55e299`, `5f10651`
 
 ## Status Oficial De Deploy
 
-- GitHub `origin/main` pode conter commits documentais posteriores; o ultimo
-  marker funcional publicado e `f0dae61`, e o marcador HTML aponta para o commit
-  funcional `4f27dae`.
+- GitHub `origin/main` contem commits posteriores ao runtime live. O ultimo
+  marker confirmado no Render e `0dfdbbe`, e o marcador HTML aponta para o
+  commit funcional `924fd79`.
 - O patch `924fd79` e marker `0dfdbbe` estao confirmados no Render. O patch
   `d653c13` e marker `2947178` estao no GitHub, mas ainda nao foram confirmados
   no Render. Em 2026-05-15, chamadas com timeout de 20s para `/` e
@@ -24,14 +24,18 @@
 - Em 2026-05-16, `check_deploy.sh 924fd79` passou e `check_deploy.sh d653c13`
   falhou encontrando `924fd79`. Os smokes Nano de `analisar_habilidades` e
   `gerar_relatorio` abaixo sao oficiais para `924fd79`, nao para `d653c13`.
+- Depois do smoke de `extrair_questoes`, o commit `f55e299` foi publicado para
+  destacar tarefas longas do ciclo da requisicao; marker `5f10651` foi publicado
+  no GitHub, mas ainda precisa confirmacao Render.
 - `origin/main` tambem contem a migration dedicada `b2dc88b`
   (`backend/migrations/002_create_token_usage.sql`), ainda nao aplicada ao
   Supabase de producao.
-- Render live confirmou `4f27dae` por `wait_deploy.sh`, `check_deploy.sh` e
-  `/api/health`.
+- Render live confirmou `924fd79` por `check_deploy.sh`; `d653c13` e `f55e299`
+  continuam pendentes de confirmacao live.
 - Docs antigos registram que auto-deploy Git nao funciona de forma confiavel; o
   ciclo usou deploy via API Render com token local seguro, sem imprimir segredo.
-- Os smokes live de 2026-05-15 abaixo sao oficiais para o estado `4f27dae`.
+- Smokes live anteriores continuam citados com seus markers; smokes de
+  2026-05-16 sao oficiais para `924fd79`.
 
 ## Legenda
 
@@ -50,7 +54,7 @@
 | Provider/Modelo | EXTRAIR_QUESTOES | EXTRAIR_GABARITO | EXTRAIR_RESPOSTAS | CORRIGIR | ANALISAR_HABILIDADES | GERAR_RELATORIO |
 |-----------------|:---:|:---:|:---:|:---:|:---:|:---:|
 | **Claude Haiku 4.5** (`588f3efe7975`) | ⏸️ | ⏸️ | ⏸️ | 🚫 | 🚫 | 🚫 |
-| **Gemini 3 Flash** (`gem3flash001`) | ⏸️ | ⏸️ | ⏸️ | ✅ | ✅ | ✅ |
+| **Gemini 3 Flash** (`gem3flash001`) | ✅ | ⏸️ | ⏸️ | ✅ | ✅ | ✅ |
 | **GPT-5 Nano** (`gpt5nano001`) | ⏸️ | ⏸️ | ⏸️ | ✅ | ✅ | ✅ |
 | **GPT-4o** (`180b8298a279`) — referencia | ✅ | ✅ | ✅ | ⚠️ | ⚠️ | ⚠️ |
 
@@ -140,6 +144,13 @@
   `245970da4cc42c02`, 15.993/3.874 tokens, `US$ 0.009447`; a segunda gerou
   JSON `fe6ad549481a0ed9` e PDF `b815d1faa5aeab77`, 9.215/2.796 tokens,
   `US$ 0.006120`.
+- No marker live `924fd79`, Gemini 3 Flash passou em `extrair_questoes`
+  (`task_737c8d45befc`), com JSONs `3f1ca7eed14f5d37` e
+  `9d61dcb36e6ca4b5`, ambos parseados e com `questoes`,
+  `total_questoes`, `pontuacao_total` e `_avisos_*`. Tokens/custos:
+  `1602/1938`, `US$ 0.002806`, e `1602/1934`, `US$ 0.002801`. A duplicacao
+  veio de retry operacional apos timeout de cliente; nao deve ser repetida como
+  comportamento normal.
 - GPT-5 Nano falhou alto em `analisar_habilidades` (`task_43d48d9deea2`):
   nao gerou PDF obrigatorio via `execute_python_code`; o erro ficou visivel na
   task e nao houve fallback. Dois JSONs parciais foram marcados `status=erro`
@@ -192,8 +203,9 @@
 `b4d7ee6`, a causa apareceu: Google API 503 `UNAVAILABLE` por alta demanda.
 Depois do deploy `f505be6`, a repeticao `task_8f53987c57c4` completou em
 `corrigir`, com custo medido. Depois do deploy `4f27dae`, Gemini tambem passou
-em `analisar_habilidades` e `gerar_relatorio`, com custo medido. As tres etapas
-de extracao continuam nao revalidadas pos-fix.
+em `analisar_habilidades` e `gerar_relatorio`, com custo medido. Depois do
+marker `924fd79`, `extrair_questoes` tambem passou com custo medido. As etapas
+`extrair_gabarito` e `extrair_respostas` continuam nao revalidadas pos-fix.
 
 **Historico positivo via `pipeline-completo`** para Eric Manoel antes dos commits
 `b12be9a`/Sprint 3b (ver [teste_gemini_pipeline_completo.md](arquivo_2026_04_17/teste_gemini_pipeline_completo.md)).
@@ -304,6 +316,9 @@ Ver [teste_gpt5nano_pipeline_completo.md](arquivo_2026_04_17/teste_gpt5nano_pipe
 ### Prioridade ALTA
 - [x] Rodar Gemini 3 Flash em `analisar_habilidades` e `gerar_relatorio` com
       custo/metadata
+- [x] Rodar Gemini 3 Flash em `extrair_questoes` com custo/metadata
+- [ ] Validar que `f55e299` elimina timeout/indisponibilidade na resposta
+      imediata do `pipeline-completo`
 - [ ] Aplicar `backend/migrations/002_create_token_usage.sql` no Supabase e revalidar
       `token_usage_backend.supabase.table_available=true`
 - [x] Preparar codigo para persistir `TokenUsageRecord` em Supabase quando a
@@ -335,8 +350,8 @@ Ver [teste_gpt5nano_pipeline_completo.md](arquivo_2026_04_17/teste_gpt5nano_pipe
 
 **Estado atual:**
 - ✅ **Gemini 3 Flash:** chat simples live OK; `corrigir`,
-  `analisar_habilidades` e `gerar_relatorio` pos-fix OK com custo/metadata.
-  Faltam as etapas de extracao.
+  `analisar_habilidades`, `gerar_relatorio` e `extrair_questoes` pos-fix OK
+  com custo/metadata. Faltam `extrair_gabarito` e `extrair_respostas`.
 - ✅ **GPT-5 Nano via `pipeline-completo`:** as tres etapas finais do aluno
   (`corrigir`, `analisar_habilidades`, `gerar_relatorio`) passaram em smokes
   oficiais com JSON/PDF, custo e metadata. Ainda falta pipeline completa de 6
@@ -357,8 +372,9 @@ visiveis.
 
 **Proximos passos:**
 1. Manter deploy oficial confirmado por marker antes de cada smoke novo.
-2. Confirmar deploy `d653c13` ou registrar bloqueio Render definitivo.
-3. Aplicar `backend/migrations/002_create_token_usage.sql` no Supabase para
+2. Confirmar deploy `f55e299` e testar resposta imediata sem duplicar docs.
+3. Confirmar deploy `d653c13` ou registrar bloqueio Render definitivo.
+4. Aplicar `backend/migrations/002_create_token_usage.sql` no Supabase para
    tornar duravel o custo de falhas sem documento.
 4. Quando creditos Anthropic forem recarregados, validar Haiku 4.5 via
    `pipeline-completo`.
