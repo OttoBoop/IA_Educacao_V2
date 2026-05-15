@@ -1,27 +1,24 @@
 # Painel Vivo Paulo -- NOVO CR
 
-**Atualizado:** 2026-05-15
+**Atualizado:** 2026-05-16
 **Responsavel operacional:** Paulo
 **Status geral:** Render oficial confirmou o marker `f0dae61`, que aponta para
 o commit funcional `4f27dae`. Gemini passou no site oficial em `corrigir`,
-`analisar_habilidades` e `gerar_relatorio`, todos com custo medido; GPT-5 Nano
-passou em `corrigir`, mas falhou alto em `analisar_habilidades` por nao gerar
-PDF obrigatorio, com custo da falha visivel. O patch `924fd79` reforca o retry
-do PDF mantendo o contexto original e proibindo placeholders, mas ainda nao foi
-confirmado no Render inicialmente porque o site e o MCP Render deram timeout.
-Depois o site voltou, mas apenas no marker `924fd79`. O patch `d653c13`
-adiciona uma trava extra: JSON de `ANALISAR_HABILIDADES` com
-placeholder proibido, como `student123`, falha alto mesmo se houver PDF. GPT-5 Nano em
-`corrigir` teve JSON
-parseavel, PDF
-via `execute_python_code`, tokens splitados e custo medido, sem PDF extra via
-`create_document`. O resumo de custos agora agrega por `cost_run_id`, entao
+`analisar_habilidades` e `gerar_relatorio`, todos com custo medido. GPT-5 Nano
+passou em `corrigir`, depois falhou alto em `analisar_habilidades` no marker
+`4f27dae`, e em seguida passou em `analisar_habilidades` e `gerar_relatorio` no
+Render live `924fd79`, com JSON/PDF reais, tokens splitados e custo medido. O
+patch `924fd79` reforca o retry do PDF mantendo o contexto original e proibindo
+placeholders; esse patch esta live. O patch `d653c13` adiciona uma trava extra:
+JSON de `ANALISAR_HABILIDADES` com placeholder proibido, como `student123`,
+falha alto mesmo se houver PDF; esse patch esta no GitHub, mas ainda nao esta
+confirmado no Render. O resumo de custos agora agrega por `cost_run_id`, entao
 JSON+PDF do mesmo run contam uma vez. Falhas tool-use sem documento final agora
 tem `TokenUsageRecord` local mensal e codigo preparado para Supabase quando a
 tabela `token_usage` existir; o endpoint live confirmou que essa tabela ainda
 nao existe (`PGRST205`). A migration dedicada `002_create_token_usage.sql` ja
 foi criada e publicada no GitHub em `b2dc88b`, mas ainda nao foi aplicada no
-Supabase. Ainda nao ha pipeline completa validada para Nano.
+Supabase. Ainda nao ha pipeline completa de 6 etapas validada para Nano.
 
 Este e o ponto de entrada do plano. O objetivo deste arquivo e dizer, em poucas
 linhas, onde estamos, qual e a proxima fila e quais frentes estao pausadas.
@@ -59,9 +56,9 @@ Estabilizar o NOVO CR para que a pipeline:
 | Frente | Estado | Proximo passo |
 |--------|--------|---------------|
 | Docs e plano | Sprint 0 concluida | Manter este painel como fonte oficial e anexos fora do fluxo diario |
-| Pipeline | Gemini 3 Flash validado oficialmente em `corrigir`, `analisar_habilidades` e `gerar_relatorio`; GPT-5 Nano validado em `corrigir` e falhando alto em `analisar_habilidades`; patches `924fd79`/`d653c13` publicados para retry/contexto e placeholder | Confirmar deploy `d653c13`; rerodar Nano em `analisar_habilidades`; depois testar `gerar_relatorio`; validar schema minimo por etapa |
+| Pipeline | Gemini 3 Flash validado oficialmente em `corrigir`, `analisar_habilidades` e `gerar_relatorio`; GPT-5 Nano validado em `corrigir`, `analisar_habilidades` e `gerar_relatorio` no marker `924fd79`; patch anti-placeholder `d653c13` ainda pendente de deploy | Confirmar deploy `d653c13`; depois ampliar smoke para extracoes/schema minimo/UI de erro |
 | Schema e avisos | Sprint 2 concluida localmente | Manter schema oficial, defaults e visualizador cobertos por testes |
-| Custos/tokens | Metadata de documento, endpoints live, resumo por `cost_run_id`, `TokenUsageRecord` local, migration Supabase dedicada `b2dc88b` e diagnostico live no deploy `4f27dae` | Aplicar `backend/migrations/002_create_token_usage.sql` no Supabase; validar uma falha real sem documento em producao |
+| Custos/tokens | Metadata de documento, endpoints live, resumo por `cost_run_id`, `TokenUsageRecord` local, migration Supabase dedicada `b2dc88b`; smoke Nano `gerar_relatorio` adicionou run precificado; diagnostico live ainda acusa `PGRST205` | Aplicar `backend/migrations/002_create_token_usage.sql` no Supabase; validar uma falha real sem documento em producao |
 | UI de erros | Pendente | Mostrar falha por aluno/etapa sem depender de terminal |
 | Limpeza de dados | Pendente | Reclassificar "fantasmas" antes de qualquer delecao |
 | Rio 3 | Pausada | Nao pedir chave, nao rodar smoke, nao deployar Rio sem nova decisao |
@@ -86,12 +83,13 @@ Estabilizar o NOVO CR para que a pipeline:
   runtime do site ate a SQL ser aplicada no Supabase).
 - Commit funcional de retry/contexto Nano: `924fd79`.
 - Commit funcional de rejeicao de placeholder em analise Nano: `d653c13`.
-- Marker mais novo publicado no GitHub: `2947178` (`chore: mark deploy d653c13`).
+- Marker mais novo publicado no GitHub para runtime: `2947178`
+  (`chore: mark deploy d653c13`).
 - Marker atual confirmado no Render: `0dfdbbe`, HTML com
   `novocr-deploy=924fd79`.
-- GitHub `origin/main`: pode conter commits documentais posteriores; o ultimo
-  marker confirmado no Render e `0dfdbbe`; `origin/main` contem `d653c13` e o
-  marker `2947178`, ainda sem deploy confirmado.
+- GitHub `origin/main`: `59b1698` antes deste ciclo documental; contem
+  `d653c13`, marker `2947178` e commits documentais posteriores. O ultimo
+  marker confirmado no Render e `0dfdbbe`.
 - Render live observado: saiu de `2e1098f` para `b12be9a` e depois confirmou
   marcadores `b4d7ee6`, `f505be6`, `97a7c79`, `c75af88`, `39aa50a`,
   `b24f03e`, `eab7d90`, `7ed8b8b`, `839968e`, `55e168a` e `4f27dae`.
@@ -745,6 +743,46 @@ Critério de pronto: lista de limpeza segura e revisada.
   `d653c13`, `/api/health`, e novo smoke GPT-5 Nano em
   `analisar_habilidades`.
 
+### 2026-05-16 -- Provider smoke: GPT-5 Nano etapas finais no marker `924fd79`
+
+- Alvo: verificar se o patch live `924fd79` destravou GPT-5 Nano em
+  `analisar_habilidades` e `gerar_relatorio`, sem aceitar placeholder ou
+  artefato falso.
+- Status: smoke oficial passou no Render live `924fd79`; `d653c13` segue
+  pendente de deploy e nao deve ser tratado como live.
+- Deploy/saude: `check_deploy.sh 924fd79` passou; `check_deploy.sh d653c13`
+  falhou encontrando `924fd79`; `/api/health` retornou
+  `{"status":"healthy","supabase":true}`.
+- `analisar_habilidades`: task `task_020ba25bdb2b`, status `completed`.
+  Gerou JSON `ba5dec781e46e665` e PDF `385f6b78018b8c07`,
+  provider/modelo `openai/gpt-5-nano`, tokens `22817/5969`, custo
+  `US$ 0.003528`, `cost_run_id=tool_8948b7aa5731`.
+- Verificacao de qualidade da analise: JSON novo usa aluno real
+  "Eric Manoel Ribeiro de Sousa", nao contem `student123`, `aluno_teste`,
+  `nome_do_aluno`, `<str>` ou `student_name`, e traz `habilidades` estruturado.
+- `gerar_relatorio`: task `task_aec830b85c03`, status `completed`.
+  Gerou JSON `200c1b5272ba10f1` e PDF `a629dee567b10274`,
+  provider/modelo `openai/gpt-5-nano`, tokens `24520/5305`, custo
+  `US$ 0.003348`, `cost_run_id=tool_9ce5bf31c005`.
+- Verificacao de qualidade do relatorio: JSON novo nao contem placeholders
+  proibidos; traz `nota_final=1.43`, `resumo_geral`, `recomendacoes`,
+  `_avisos_documento`, `_avisos_questao`, `_avisos_stage` e fontes usadas.
+- Verificacao de arquivo: debug do PDF `a629dee567b10274` retornou
+  `resolver_caminho.sucesso=true` e arquivo existente em disco.
+- Custos live: `/api/custos/status?limit=500` retornou
+  `runs_precificados=10`, `runs_bloqueados=477`; `/api/custos/resumo?limit=20`
+  agregou o novo run uma vez, com `documentos_contagem=2`.
+- Bloqueio persistente: `token_usage_backend.supabase.table_available=false`,
+  `durable=false`, erro `PGRST205`; custo de falha sem documento ainda nao e
+  duravel em producao.
+- Interpretacao: Nano esta confirmado nas tres etapas finais do aluno no marker
+  `924fd79`, mas ainda nao esta pipeline-ready porque faltam as tres etapas de
+  extracao, schema minimo por etapa, UI de erro e persistencia duravel de
+  `token_usage`.
+- Proximo alvo: resolver o deploy pendente de `d653c13` ou, se Render continuar
+  sem workspace/hook, seguir para smoke das etapas de extracao e/ou ciclo de UI
+  de erro sem aceitar progresso local como oficial.
+
 ## Riscos Abertos
 
 1. Creditos Anthropic insuficientes ainda bloqueiam validacao Haiku.
@@ -753,6 +791,6 @@ Critério de pronto: lista de limpeza segura e revisada.
    necessario, mas nao prova qualidade pedagogica.
 4. A tabela Supabase `token_usage` tem migration dedicada em `b2dc88b`, mas o
    live confirmou que ela ainda nao existe no schema cache (`PGRST205`).
-5. Render/site oficial voltou, mas esta em `924fd79`; nao aceitar `d653c13`
+5. Render/site oficial voltou e esta em `924fd79`; nao aceitar `d653c13`
    como live ate o marker `novocr-deploy=d653c13` aparecer.
 6. Rio 3 nao deve voltar ao fluxo ativo sem nova decisao e nova chave segura.

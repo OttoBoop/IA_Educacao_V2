@@ -1,6 +1,6 @@
 # Matriz Provider × Fase — Status Atual
 
-**Atualizado:** 2026-05-15
+**Atualizado:** 2026-05-16
 **Atividade de teste:** Lista0 — Algebra Linear Avancada (`126e8b5ad7dd6d59`)
 **Commits aplicados/observados:** `a632883`, `5737611`, `50935ea`, `479b77d`,
 `b12be9a`, `301eba6`, `f67055c`, `462ea1d`, `b4d7ee6`, `99483d1`,
@@ -21,6 +21,9 @@
   no Render. Em 2026-05-15, chamadas com timeout de 20s para `/` e
   `/api/health` chegaram a retornar `HTTP_STATUS=000`; depois o site voltou em
   `924fd79`. O Render MCP voltou, mas sem workspace selecionado.
+- Em 2026-05-16, `check_deploy.sh 924fd79` passou e `check_deploy.sh d653c13`
+  falhou encontrando `924fd79`. Os smokes Nano de `analisar_habilidades` e
+  `gerar_relatorio` abaixo sao oficiais para `924fd79`, nao para `d653c13`.
 - `origin/main` tambem contem a migration dedicada `b2dc88b`
   (`backend/migrations/002_create_token_usage.sql`), ainda nao aplicada ao
   Supabase de producao.
@@ -48,7 +51,7 @@
 |-----------------|:---:|:---:|:---:|:---:|:---:|:---:|
 | **Claude Haiku 4.5** (`588f3efe7975`) | ⏸️ | ⏸️ | ⏸️ | 🚫 | 🚫 | 🚫 |
 | **Gemini 3 Flash** (`gem3flash001`) | ⏸️ | ⏸️ | ⏸️ | ✅ | ✅ | ✅ |
-| **GPT-5 Nano** (`gpt5nano001`) | ⏸️ | ⏸️ | ⏸️ | ✅ | ❌ | ⏸️ |
+| **GPT-5 Nano** (`gpt5nano001`) | ⏸️ | ⏸️ | ⏸️ | ✅ | ✅ | ✅ |
 | **GPT-4o** (`180b8298a279`) — referencia | ✅ | ✅ | ✅ | ⚠️ | ⚠️ | ⚠️ |
 
 ### Categoria 2: Relatorios de Desempenho (3 niveis)
@@ -144,9 +147,22 @@
   custo `US$ 0.004471`, `cost_run_id=tool_58b8188d8fad`. Problema novo:
   nome/conteudo generico `student123`.
 - Patch `924fd79` reforca o retry de PDF/JSON mantendo o contexto original da
-  etapa e proibindo placeholders; esta live, mas ainda aguarda novo smoke Nano.
+  etapa e proibindo placeholders; esta live e o smoke Nano de 2026-05-16 passou.
 - Patch `d653c13` faz JSON de `ANALISAR_HABILIDADES` com placeholder proibido
-  falhar alto mesmo quando JSON+PDF existem; ainda aguarda deploy e smoke.
+  falhar alto mesmo quando JSON+PDF existem; ainda aguarda deploy e smoke
+  especifico desse guard.
+- No marker live `924fd79`, GPT-5 Nano passou em `analisar_habilidades`
+  (`task_020ba25bdb2b`): JSON `ba5dec781e46e665`, PDF
+  `385f6b78018b8c07`, tokens `22817/5969`, custo `US$ 0.003528`,
+  `cost_run_id=tool_8948b7aa5731`. O JSON usa aluno real e nao contem
+  placeholders proibidos (`student123`, `aluno_teste`, `nome_do_aluno`, `<str>`,
+  `student_name`).
+- No mesmo marker, GPT-5 Nano passou em `gerar_relatorio`
+  (`task_aec830b85c03`): JSON `200c1b5272ba10f1`, PDF
+  `a629dee567b10274`, tokens `24520/5305`, custo `US$ 0.003348`,
+  `cost_run_id=tool_9ce5bf31c005`. O JSON traz `nota_final=1.43`,
+  `resumo_geral`, `recomendacoes`, `_avisos_*` e fontes usadas; o PDF resolve
+  em disco pelo debug endpoint.
 
 **Gemini 3 Flash:** tambem validado em 2 testes historicos de chat (mensagem unica + multi-turn). Ver [teste_chat_gemini.md](arquivo_2026_04_17/teste_chat_gemini.md).
 - Teste 1: 662 tokens, 1930ms, resposta em PT correta
@@ -206,7 +222,7 @@ de extracao continuam nao revalidadas pos-fix.
 
 ---
 
-### GPT-5 Nano — ✅ CHAT SIMPLES, ✅ CORRIGIR POS-FIX VALIDADO
+### GPT-5 Nano — ✅ CHAT SIMPLES, ✅ ETAPAS FINAIS POS-FIX VALIDADAS
 
 **Smoke live de chat em 2026-05-15:** respondeu JSON simples corretamente via
 `POST /api/chat` com `model_id=gpt5nano001` e 526 tokens. Portanto o bloqueio
@@ -216,14 +232,21 @@ inicial do Nano nao era conexao/API key; era pipeline/tool-use/schema.
 `c75af88`, `39aa50a`, `b24f03e` e `eab7d90`, a task `task_a591421ab84b`
 completou com JSON parseavel, PDF obrigatorio via `execute_python_code`,
 provider/modelo/tokens/custo no storage e sem PDF extra via `create_document`.
-Ainda nao esta pipeline-ready porque faltam `analisar_habilidades`,
-`gerar_relatorio`, schema minimo por etapa e custo de falhas sem documento final.
+Ainda nao estava pipeline-ready porque faltavam as etapas seguintes e schema
+minimo por etapa.
 
 **Smoke live de `analisar_habilidades` em 2026-05-15:** task
 `task_43d48d9deea2` falhou alto: PDF obrigatorio nao foi produzido por
 `execute_python_code`. O sistema nao inventou PDF nem marcou sucesso. Dois JSONs
 parciais ficaram `status=erro`, com custo medido, mas usam placeholder
 `student123`; isso e bug de prompt/schema/qualidade.
+
+**Smokes live em 2026-05-16 no marker `924fd79`:** `analisar_habilidades`
+passou na task `task_020ba25bdb2b` e `gerar_relatorio` passou na task
+`task_aec830b85c03`, ambos com JSON+PDF, provider/modelo, tokens splitados,
+custo por `cost_run_id` e sem placeholders proibidos nos JSONs novos. O patch
+anti-placeholder `d653c13` ainda precisa deploy confirmado para transformar esse
+comportamento em guard de runtime caso o modelo volte a gerar lixo.
 
 **Testado em 2 caminhos com resultados muito diferentes:**
 
@@ -294,14 +317,16 @@ Ver [teste_gpt5nano_pipeline_completo.md](arquivo_2026_04_17/teste_gpt5nano_pipe
 
 ### Prioridade MEDIA
 - [x] Validar `corrigir` com GPT-5 Nano para 1 aluno no site oficial
-- [ ] Corrigir GPT-5 Nano em `analisar_habilidades`; hoje falha alto por PDF
-      obrigatorio ausente e placeholder `student123`
-- [ ] Confirmar deploy `d653c13` e rerodar GPT-5 Nano em `analisar_habilidades`
-- [ ] Validar `gerar_relatorio` com GPT-5 Nano apos `analisar_habilidades`
+- [x] Corrigir/validar GPT-5 Nano em `analisar_habilidades` no marker
+      `924fd79`, com JSON+PDF e custo
+- [ ] Confirmar deploy `d653c13` e rerodar smoke especifico do guard
+      anti-placeholder
+- [x] Validar `gerar_relatorio` com GPT-5 Nano apos `analisar_habilidades`
 - [ ] Testar Haiku 4.5 (bloqueado ate creditos recarregarem)
 
 ### Prioridade BAIXA
-- [ ] Testar GPT-5 Nano nas 6 etapas (atualmente so testado em CORRIGIR)
+- [ ] Testar GPT-5 Nano nas 6 etapas (as tres etapas finais ja passaram; as
+      tres extracoes continuam nao revalidadas)
 - [ ] Comparar qualidade dos outputs entre os 3 modelos-alvo
 
 ---
@@ -312,11 +337,11 @@ Ver [teste_gpt5nano_pipeline_completo.md](arquivo_2026_04_17/teste_gpt5nano_pipe
 - ✅ **Gemini 3 Flash:** chat simples live OK; `corrigir`,
   `analisar_habilidades` e `gerar_relatorio` pos-fix OK com custo/metadata.
   Faltam as etapas de extracao.
-- ⚠️ **GPT-5 Nano via `pipeline-completo`:** `corrigir` pos-fix OK com JSON
-  parseavel, PDF via `execute_python_code`, custo e sem artefato extra;
-  `analisar_habilidades` falhou alto com custo parcial medido, sem fallback.
-  Ainda falta pipeline completa, schema minimo e custo de falhas sem documento
-  final.
+- ✅ **GPT-5 Nano via `pipeline-completo`:** as tres etapas finais do aluno
+  (`corrigir`, `analisar_habilidades`, `gerar_relatorio`) passaram em smokes
+  oficiais com JSON/PDF, custo e metadata. Ainda falta pipeline completa de 6
+  etapas, schema minimo por etapa, deploy do guard `d653c13` e custo duravel de
+  falhas sem documento final.
 - ⏸️ **Claude Haiku 4.5:** Aguardando creditos.
 - 📊 **Confiabilidade Gemini 3 Flash:** 50% de sucesso na primeira tentativa (1 em 2 testes). Precisa mais amostras.
 
@@ -332,8 +357,8 @@ visiveis.
 
 **Proximos passos:**
 1. Manter deploy oficial confirmado por marker antes de cada smoke novo.
-2. Corrigir GPT-5 Nano em `analisar_habilidades` antes de tentar
-   `gerar_relatorio`.
-3. Criar registro de custo para falhas sem documento final.
+2. Confirmar deploy `d653c13` ou registrar bloqueio Render definitivo.
+3. Aplicar `backend/migrations/002_create_token_usage.sql` no Supabase para
+   tornar duravel o custo de falhas sem documento.
 4. Quando creditos Anthropic forem recarregados, validar Haiku 4.5 via
    `pipeline-completo`.
