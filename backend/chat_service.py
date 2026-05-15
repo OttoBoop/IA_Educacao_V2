@@ -1543,12 +1543,21 @@ class ChatClient:
             function_calls = [item for item in output_items if item.get("type") == "function_call"]
 
             if not function_calls:
+                text_content = self._extract_openai_responses_text(data)
                 result = {
-                    "content": self._extract_openai_responses_text(data),
+                    "content": text_content,
                     **self._usage_payload(total_input_tokens, total_output_tokens, total_tokens),
                     "modelo": self.config.modelo,
                     "provider": self.config.tipo.value,
                     "tool_calls": all_tool_calls,
+                    "response_id": data.get("id"),
+                    "response_status": data.get("status"),
+                    "output_item_types": [
+                        item.get("type")
+                        for item in output_items
+                        if isinstance(item, dict)
+                    ],
+                    "content_preview": text_content[:600] if text_content else "",
                 }
                 if data.get("status") and data.get("status") != "completed":
                     result["stop_reason"] = data.get("status")

@@ -157,7 +157,13 @@ def _make_tools_module():
                 properties["documents"] = {
                     "type": "array",
                     "description": "Fake documents",
-                    "items": {"type": "object"},
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "filename": {"type": "string"},
+                            "content": {"type": "string"},
+                        },
+                    },
                 }
             return {
                 "name": self.name,
@@ -312,6 +318,27 @@ class TestBothOutputsNoRetry:
         assert "only" in description
         assert "do not use create_document for pdf" in description
         assert ".json" in docs_description
+
+    async def test_pipeline_create_document_content_schema_accepts_json_object(self):
+        """Pipeline JSON artifacts should not force nested JSON content into a string."""
+        both_response = _tool_response(["create_document", "execute_python_code"])
+        _result, mock_client = await _call_executar_com_tools(
+            chat_side_effect=both_response,
+            tools_to_use=["create_document", "execute_python_code"],
+            tipo_value="openai",
+            expected_document_type=TipoDocumento.ANALISE_HABILIDADES,
+        )
+
+        create_doc_tool = mock_client.chat_with_tools.call_args_list[0].kwargs["tools"][0]
+        content_schema = (
+            create_doc_tool["input_schema"]["properties"]["documents"]["items"]
+            ["properties"]["content"]
+        )
+
+        assert {"type": "object"} in content_schema["anyOf"]
+        assert {"type": "array"} in content_schema["anyOf"]
+        assert {"type": "string"} in content_schema["anyOf"]
+        assert "prefer passing an object" in content_schema["description"].lower()
 
     async def test_openai_no_tools_retries_with_forced_json_tool_choice(self):
         """If OpenAI still returns plain text, retry must force create_document again."""

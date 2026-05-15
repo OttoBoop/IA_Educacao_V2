@@ -3189,6 +3189,26 @@ Regras obrigatórias:
                             "with .json and content must be valid JSON serialized as a string "
                             "or passed as an object."
                         )
+                        content_schema = (
+                            documents_schema
+                            .get("items", {})
+                            .get("properties", {})
+                            .get("content")
+                        )
+                        if isinstance(content_schema, dict):
+                            content_schema.clear()
+                            content_schema.update({
+                                "description": (
+                                    "Valid JSON content for the artifact. Prefer passing an "
+                                    "object or array directly; a JSON-serialized string is also "
+                                    "accepted."
+                                ),
+                                "anyOf": [
+                                    {"type": "object"},
+                                    {"type": "array"},
+                                    {"type": "string"},
+                                ],
+                            })
                     tools_definitions.append(tool_definition)
             
             # Criar contexto de execução
@@ -3264,6 +3284,32 @@ Seja preciso, educativo e construtivo em suas análises."""
                     except (TypeError, ValueError):
                         pass
                 return total
+
+            def _safe_response_debug(responses: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+                debug: List[Dict[str, Any]] = []
+                for idx, response in enumerate(responses, start=1):
+                    if not isinstance(response, dict):
+                        continue
+                    item: Dict[str, Any] = {"tentativa": idx}
+                    if response.get("response_status"):
+                        item["response_status"] = response.get("response_status")
+                    if response.get("stop_reason"):
+                        item["stop_reason"] = response.get("stop_reason")
+                    if response.get("output_item_types"):
+                        item["output_item_types"] = response.get("output_item_types")
+                    tool_names = [
+                        tc.get("name")
+                        for tc in response.get("tool_calls", []) or []
+                        if isinstance(tc, dict) and tc.get("name")
+                    ]
+                    if tool_names:
+                        item["tool_calls"] = tool_names
+                    preview = response.get("content_preview") or response.get("content") or ""
+                    if isinstance(preview, str) and preview.strip():
+                        item["content_preview"] = preview.strip()[:300]
+                    if len(item) > 1:
+                        debug.append(item)
+                return debug
 
             def _created_docs_by_tool() -> Dict[str, List[Any]]:
                 docs_by_tool = {"create_document": [], "execute_python_code": []}
@@ -3695,6 +3741,10 @@ Seja preciso, educativo e construtivo em suas análises."""
                     detalhes.append("tools com erro: " + ", ".join(final_state["errored_tools"]))
                 if final_state.get("pdf_calls_without_file"):
                     detalhes.append("execute_python_code rodou sem arquivo gerado")
+                response_debug = _safe_response_debug(respostas_tool)
+                if response_debug:
+                    debug_preview = json.dumps(response_debug, ensure_ascii=False)[:700]
+                    detalhes.append("diagnostico_modelo=" + debug_preview)
 
                 erro_msg = (
                     "Saída obrigatória incompleta: "
@@ -3738,7 +3788,10 @@ Seja preciso, educativo e construtivo em suas análises."""
                         tempo_ms=tempo_ms,
                         prompt_id=prompt_id,
                         source="executar_com_tools",
-                        metadata={"erro_tipo": "dual_output_incomplete"},
+                        metadata={
+                            "erro_tipo": "dual_output_incomplete",
+                            "response_debug": response_debug,
+                        },
                     )
                 return ResultadoExecucao(
                     sucesso=False,
