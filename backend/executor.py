@@ -998,6 +998,39 @@ class PipelineExecutor:
             alertas=alertas
         )
     
+    def _valor_data_documento(self, documento: Any) -> str:
+        """Return a sortable timestamp string for a document, when available."""
+        valor = getattr(documento, "criado_em", None) or getattr(documento, "atualizado_em", None)
+        if isinstance(valor, datetime):
+            return valor.isoformat()
+        if isinstance(valor, str):
+            return valor
+        return ""
+
+    def _documentos_novos_primeiro(self, documentos: List[Any]) -> List[Any]:
+        """Sort documents by creation date, keeping existing order when dates are absent."""
+        return sorted(
+            list(documentos or []),
+            key=self._valor_data_documento,
+            reverse=True,
+        )
+
+    def _documento_mais_recente(
+        self,
+        documentos: List[Any],
+        tipo: TipoDocumento,
+        extensao: Optional[str] = None,
+    ) -> Optional[Any]:
+        """Select the newest document for a type, without falling back to older artifacts."""
+        extensao_normalizada = extensao.lower() if extensao else None
+        for doc in self._documentos_novos_primeiro(documentos):
+            if doc.tipo != tipo:
+                continue
+            if extensao_normalizada and str(doc.extensao or "").lower() != extensao_normalizada:
+                continue
+            return doc
+        return None
+
     def _coletar_arquivos_para_etapa(
         self,
         etapa: EtapaProcessamento,
@@ -1011,10 +1044,14 @@ class PipelineExecutor:
         arquivos = []
 
         # Documentos base da atividade
-        docs_base = self.storage.listar_documentos(atividade_id)
+        docs_base = self._documentos_novos_primeiro(self.storage.listar_documentos(atividade_id))
 
         # Documentos do aluno (se aplicável)
-        docs_aluno = self.storage.listar_documentos(atividade_id, aluno_id) if aluno_id else []
+        docs_aluno = (
+            self._documentos_novos_primeiro(self.storage.listar_documentos(atividade_id, aluno_id))
+            if aluno_id
+            else []
+        )
 
         logger.info(f"Coletando arquivos para {etapa.value}: docs_base={len(docs_base)}, docs_aluno={len(docs_aluno)}")
 
@@ -1045,98 +1082,62 @@ class PipelineExecutor:
                 logger.error(f"  Doc {doc.id} ({doc.tipo.value}): ERRO ao resolver caminho: {e}")
                 return None
 
+        def _adicionar_documento(doc) -> None:
+            if not doc:
+                return
+            caminho = _normalizar_e_verificar(doc)
+            if caminho:
+                arquivos.append(caminho)
+
+        def _adicionar_json_mais_recente(docs, tipo: TipoDocumento) -> None:
+            _adicionar_documento(self._documento_mais_recente(docs, tipo, ".json"))
+
         # Mapa de quais documentos cada etapa precisa
         if etapa == EtapaProcessamento.EXTRAIR_QUESTOES:
             # Precisa do enunciado original
             for doc in docs_base:
                 if doc.tipo == TipoDocumento.ENUNCIADO:
-                    caminho = _normalizar_e_verificar(doc)
-                    if caminho:
-                        arquivos.append(caminho)
+                    _adicionar_documento(doc)
 
         elif etapa == EtapaProcessamento.EXTRAIR_GABARITO:
             # Precisa do gabarito original + questões extraídas (JSON)
             for doc in docs_base:
                 if doc.tipo == TipoDocumento.GABARITO:
-                    caminho = _normalizar_e_verificar(doc)
-                    if caminho:
-                        arquivos.append(caminho)
-            # Incluir questões extraídas para referência
-            for doc in docs_base:
-                if doc.tipo == TipoDocumento.EXTRACAO_QUESTOES and doc.extensao.lower() == '.json':
-                    caminho = _normalizar_e_verificar(doc)
-                    if caminho:
-                        arquivos.append(caminho)
+                    _adicionar_documento(doc)
+            _adicionar_json_mais_recente(docs_base, TipoDocumento.EXTRACAO_QUESTOES)
 
         elif etapa == EtapaProcessamento.EXTRAIR_RESPOSTAS:
             # Precisa da prova respondida + questões extraídas (JSON)
             for doc in docs_aluno:
                 if doc.tipo == TipoDocumento.PROVA_RESPONDIDA:
-                    caminho = _normalizar_e_verificar(doc)
-                    if caminho:
-                        arquivos.append(caminho)
-            # Incluir questões extraídas para referência
-            for doc in docs_base:
-                if doc.tipo == TipoDocumento.EXTRACAO_QUESTOES and doc.extensao.lower() == '.json':
-                    caminho = _normalizar_e_verificar(doc)
-                    if caminho:
-                        arquivos.append(caminho)
+                    _adicionar_documento(doc)
+            _adicionar_json_mais_recente(docs_base, TipoDocumento.EXTRACAO_QUESTOES)
 
         elif etapa == EtapaProcessamento.CORRIGIR:
             # Arquivos originais para referência visual
             for doc in docs_aluno:
                 if doc.tipo == TipoDocumento.PROVA_RESPONDIDA:
-                    caminho = _normalizar_e_verificar(doc)
-                    if caminho:
-                        arquivos.append(caminho)
+                    _adicionar_documento(doc)
             for doc in docs_base:
                 if doc.tipo == TipoDocumento.GABARITO:
-                    caminho = _normalizar_e_verificar(doc)
-                    if caminho:
-                        arquivos.append(caminho)
-            # JSONs processados (questões, gabarito extraído, respostas)
-            for doc in docs_base:
-                if doc.tipo in [TipoDocumento.EXTRACAO_QUESTOES, TipoDocumento.EXTRACAO_GABARITO] and doc.extensao.lower() == '.json':
-                    caminho = _normalizar_e_verificar(doc)
-                    if caminho:
-                        arquivos.append(caminho)
-            for doc in docs_aluno:
-                if doc.tipo == TipoDocumento.EXTRACAO_RESPOSTAS and doc.extensao.lower() == '.json':
-                    caminho = _normalizar_e_verificar(doc)
-                    if caminho:
-                        arquivos.append(caminho)
+                    _adicionar_documento(doc)
+            _adicionar_json_mais_recente(docs_base, TipoDocumento.EXTRACAO_QUESTOES)
+            _adicionar_json_mais_recente(docs_base, TipoDocumento.EXTRACAO_GABARITO)
+            _adicionar_json_mais_recente(docs_aluno, TipoDocumento.EXTRACAO_RESPOSTAS)
 
         elif etapa == EtapaProcessamento.ANALISAR_HABILIDADES:
             # Prova do aluno para referência visual
             for doc in docs_aluno:
                 if doc.tipo == TipoDocumento.PROVA_RESPONDIDA:
-                    caminho = _normalizar_e_verificar(doc)
-                    if caminho:
-                        arquivos.append(caminho)
-            # JSONs processados (questões, respostas, correção)
-            for doc in docs_base:
-                if doc.tipo == TipoDocumento.EXTRACAO_QUESTOES and doc.extensao.lower() == '.json':
-                    caminho = _normalizar_e_verificar(doc)
-                    if caminho:
-                        arquivos.append(caminho)
-            for doc in docs_aluno:
-                if doc.tipo in [TipoDocumento.EXTRACAO_RESPOSTAS, TipoDocumento.CORRECAO] and doc.extensao.lower() == '.json':
-                    caminho = _normalizar_e_verificar(doc)
-                    if caminho:
-                        arquivos.append(caminho)
+                    _adicionar_documento(doc)
+            _adicionar_json_mais_recente(docs_base, TipoDocumento.EXTRACAO_QUESTOES)
+            _adicionar_json_mais_recente(docs_aluno, TipoDocumento.EXTRACAO_RESPOSTAS)
+            _adicionar_json_mais_recente(docs_aluno, TipoDocumento.CORRECAO)
 
         elif etapa == EtapaProcessamento.GERAR_RELATORIO:
-            # JSONs processados (correção, análise de habilidades)
-            for doc in docs_base:
-                if doc.tipo == TipoDocumento.EXTRACAO_QUESTOES and doc.extensao.lower() == '.json':
-                    caminho = _normalizar_e_verificar(doc)
-                    if caminho:
-                        arquivos.append(caminho)
-            for doc in docs_aluno:
-                if doc.tipo in [TipoDocumento.CORRECAO, TipoDocumento.ANALISE_HABILIDADES] and doc.extensao.lower() == '.json':
-                    caminho = _normalizar_e_verificar(doc)
-                    if caminho:
-                        arquivos.append(caminho)
+            _adicionar_json_mais_recente(docs_base, TipoDocumento.EXTRACAO_QUESTOES)
+            _adicionar_json_mais_recente(docs_aluno, TipoDocumento.CORRECAO)
+            _adicionar_json_mais_recente(docs_aluno, TipoDocumento.ANALISE_HABILIDADES)
 
         logger.info(f"Arquivos coletados para {etapa.value}: {len(arquivos)} - tipos: {[Path(a).suffix for a in arquivos]}")
         if not arquivos:
@@ -1162,8 +1163,12 @@ class PipelineExecutor:
         documentos_faltantes = []
         documentos_carregados = []
 
-        docs_base = self.storage.listar_documentos(atividade_id)
-        docs_aluno = self.storage.listar_documentos(atividade_id, aluno_id) if aluno_id else []
+        docs_base = self._documentos_novos_primeiro(self.storage.listar_documentos(atividade_id))
+        docs_aluno = (
+            self._documentos_novos_primeiro(self.storage.listar_documentos(atividade_id, aluno_id))
+            if aluno_id
+            else []
+        )
 
         # Helper para carregar documento JSON
         def _carregar_json(doc, chave: str) -> bool:
@@ -1191,76 +1196,69 @@ class PipelineExecutor:
                 _logger.warning(f"Erro ao carregar {chave}: {e}")
             return False
 
+        def _carregar_json_mais_recente(docs, tipo: TipoDocumento, chave: str) -> bool:
+            doc = self._documento_mais_recente(docs, tipo, ".json")
+            if not doc:
+                return False
+            return _carregar_json(doc, chave)
+
         # EXTRAIR_RESPOSTAS precisa das questoes extraidas no corpo do prompt.
         # Anexar o JSON sozinho nao basta: modelos pequenos podem ignorar ou
         # subutilizar anexos quando a variavel {{questoes_extraidas}} fica vazia.
         if etapa == EtapaProcessamento.EXTRAIR_RESPOSTAS:
-            encontrou_questoes = False
-            for doc in docs_base:
-                if doc.tipo == TipoDocumento.EXTRACAO_QUESTOES and doc.extensao.lower() == '.json':
-                    if _carregar_json(doc, "questoes_extraidas"):
-                        encontrou_questoes = True
-                        break
+            encontrou_questoes = _carregar_json_mais_recente(
+                docs_base,
+                TipoDocumento.EXTRACAO_QUESTOES,
+                "questoes_extraidas",
+            )
             if not encontrou_questoes:
                 documentos_faltantes.append("questoes_extraidas (execute 'extrair_questoes' primeiro)")
 
         # Para correção, incluir questões extraídas, gabarito e respostas
         if etapa in [EtapaProcessamento.CORRIGIR, EtapaProcessamento.ANALISAR_HABILIDADES, EtapaProcessamento.GERAR_RELATORIO]:
-            encontrou_questoes = False
-            for doc in docs_base:
-                if doc.tipo == TipoDocumento.EXTRACAO_QUESTOES and doc.extensao.lower() == '.json':
-                    if _carregar_json(doc, "questoes_extraidas"):
-                        encontrou_questoes = True
-                        break
+            encontrou_questoes = _carregar_json_mais_recente(
+                docs_base,
+                TipoDocumento.EXTRACAO_QUESTOES,
+                "questoes_extraidas",
+            )
             if not encontrou_questoes and etapa in [EtapaProcessamento.CORRIGIR, EtapaProcessamento.ANALISAR_HABILIDADES]:
                 documentos_faltantes.append("questoes_extraidas (execute 'extrair_questoes' primeiro)")
 
             # Verificar gabarito extraído para correção
             if etapa == EtapaProcessamento.CORRIGIR:
-                encontrou_gabarito = False
-                for doc in docs_base:
-                    if doc.tipo == TipoDocumento.EXTRACAO_GABARITO and doc.extensao.lower() == '.json':
-                        if _carregar_json(doc, "gabarito_extraido"):
-                            encontrou_gabarito = True
-                            break
-                if not encontrou_gabarito:
-                    # Tentar carregar gabarito original como fallback
-                    for doc in docs_base:
-                        if doc.tipo == TipoDocumento.GABARITO:
-                            _logger.warning("Gabarito extraído não encontrado, usando gabarito original")
-                            encontrou_gabarito = True
-                            break
+                encontrou_gabarito = _carregar_json_mais_recente(
+                    docs_base,
+                    TipoDocumento.EXTRACAO_GABARITO,
+                    "gabarito_extraido",
+                )
                 if not encontrou_gabarito:
                     documentos_faltantes.append("gabarito (faça upload do gabarito ou execute 'extrair_gabarito')")
 
-            encontrou_respostas = False
-            for doc in docs_aluno:
-                if doc.tipo == TipoDocumento.EXTRACAO_RESPOSTAS and doc.extensao.lower() == '.json':
-                    if _carregar_json(doc, "respostas_aluno"):
-                        encontrou_respostas = True
-                        break
+            encontrou_respostas = _carregar_json_mais_recente(
+                docs_aluno,
+                TipoDocumento.EXTRACAO_RESPOSTAS,
+                "respostas_aluno",
+            )
             if not encontrou_respostas and etapa == EtapaProcessamento.CORRIGIR:
                 documentos_faltantes.append("respostas_aluno (execute 'extrair_respostas' primeiro)")
 
         # Para análise de habilidades e relatório, incluir correção
         if etapa in [EtapaProcessamento.ANALISAR_HABILIDADES, EtapaProcessamento.GERAR_RELATORIO]:
-            encontrou_correcoes = False
-            for doc in docs_aluno:
-                if doc.tipo == TipoDocumento.CORRECAO and doc.extensao.lower() == '.json':
-                    if _carregar_json(doc, "correcoes"):
-                        encontrou_correcoes = True
-                        break
+            encontrou_correcoes = _carregar_json_mais_recente(
+                docs_aluno,
+                TipoDocumento.CORRECAO,
+                "correcoes",
+            )
             if not encontrou_correcoes:
                 documentos_faltantes.append("correcoes")
 
         # Para relatório, incluir análise de habilidades
         if etapa == EtapaProcessamento.GERAR_RELATORIO:
-            encontrou_analise = False
-            for doc in docs_aluno:
-                if doc.tipo == TipoDocumento.ANALISE_HABILIDADES and doc.extensao.lower() == '.json':
-                    if _carregar_json(doc, "analise_habilidades"):
-                        encontrou_analise = True
-                        break
+            encontrou_analise = _carregar_json_mais_recente(
+                docs_aluno,
+                TipoDocumento.ANALISE_HABILIDADES,
+                "analise_habilidades",
+            )
             if not encontrou_analise:
                 documentos_faltantes.append("analise_habilidades")
 
@@ -1817,7 +1815,13 @@ class PipelineExecutor:
         }
         
         # Buscar documentos relevantes
-        documentos = self.storage.listar_documentos(atividade_id, aluno_id)
+        documentos = self._documentos_novos_primeiro(
+            self.storage.listar_documentos(atividade_id, aluno_id)
+        )
+
+        def _definir_variavel(chave: str, valor: str) -> None:
+            if chave not in variaveis or not str(variaveis[chave]).strip():
+                variaveis[chave] = valor
         
         for doc in documentos:
             if usar_multimodal and doc.tipo in [TipoDocumento.ENUNCIADO, TipoDocumento.GABARITO, TipoDocumento.PROVA_RESPONDIDA]:
@@ -1831,37 +1835,37 @@ class PipelineExecutor:
                 conteudo = self._ler_documento_texto(doc, usar_multimodal)
             
             if doc.tipo == TipoDocumento.ENUNCIADO:
-                variaveis["conteudo_documento"] = conteudo
-                variaveis["enunciado"] = conteudo
+                _definir_variavel("conteudo_documento", conteudo)
+                _definir_variavel("enunciado", conteudo)
             
             elif doc.tipo == TipoDocumento.GABARITO:
-                variaveis["gabarito"] = conteudo
-                variaveis["resposta_esperada"] = conteudo
+                _definir_variavel("gabarito", conteudo)
+                _definir_variavel("resposta_esperada", conteudo)
             
             elif doc.tipo == TipoDocumento.CRITERIOS_CORRECAO:
-                variaveis["criterios"] = conteudo
+                _definir_variavel("criterios", conteudo)
             
             elif doc.tipo == TipoDocumento.PROVA_RESPONDIDA:
-                variaveis["prova_aluno"] = conteudo
-                variaveis["resposta_aluno"] = conteudo
+                _definir_variavel("prova_aluno", conteudo)
+                _definir_variavel("resposta_aluno", conteudo)
             
             elif doc.tipo == TipoDocumento.EXTRACAO_QUESTOES:
-                variaveis["questoes_extraidas"] = conteudo
+                _definir_variavel("questoes_extraidas", conteudo)
 
             elif doc.tipo == TipoDocumento.EXTRACAO_GABARITO:
-                variaveis["gabarito_extraido"] = conteudo
-                # Usar como resposta_esperada se não houver outra (or if empty from multimodal)
+                _definir_variavel("gabarito_extraido", conteudo)
+                # Usar como resposta_esperada se não houver outra (ou se estiver vazia no multimodal)
                 if not variaveis.get("resposta_esperada"):
                     variaveis["resposta_esperada"] = conteudo
 
             elif doc.tipo == TipoDocumento.EXTRACAO_RESPOSTAS:
-                variaveis["respostas_aluno"] = conteudo
+                _definir_variavel("respostas_aluno", conteudo)
 
             elif doc.tipo == TipoDocumento.CORRECAO:
-                variaveis["correcoes"] = conteudo
+                _definir_variavel("correcoes", conteudo)
 
             elif doc.tipo == TipoDocumento.ANALISE_HABILIDADES:
-                variaveis["analise_habilidades"] = conteudo
+                _definir_variavel("analise_habilidades", conteudo)
         
         # Info do aluno
         if aluno_id:
@@ -1886,7 +1890,8 @@ class PipelineExecutor:
         # (empty happens in multimodal mode where raw GABARITO content is skipped)
         if "gabarito_extraido" in variaveis and not variaveis.get("resposta_esperada"):
             variaveis["resposta_esperada"] = variaveis["gabarito_extraido"]
-        # Fallback: usar gabarito original se não houver extraído
+        # Compatibilidade de template: se a etapa usa resposta_esperada e só ha
+        # gabarito original no contexto textual, exponha explicitamente esse valor.
         if "gabarito" in variaveis and not variaveis.get("resposta_esperada"):
             variaveis["resposta_esperada"] = variaveis["gabarito"]
 
@@ -1905,7 +1910,7 @@ class PipelineExecutor:
                 variaveis["correcoes"]
             )
 
-        # Fallback: garantir que nota_final sempre existe para evitar {{nota_final}} literal no output
+        # Campo obrigatório do template; N/A deixa a ausência visível no texto.
         if "nota_final" not in variaveis:
             variaveis["nota_final"] = "N/A"
 

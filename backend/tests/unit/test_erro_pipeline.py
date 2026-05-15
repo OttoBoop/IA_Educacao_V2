@@ -118,13 +118,14 @@ class TestExtrairRespostasContextoQuestoes:
     """EXTRAIR_RESPOSTAS deve receber questoes extraidas no prompt, nao so anexo."""
 
     @staticmethod
-    def _doc(tipo, doc_id, path, extensao=".json"):
+    def _doc(tipo, doc_id, path, extensao=".json", criado_em=None):
         doc = MagicMock()
         doc.tipo = tipo
         doc.id = doc_id
         doc.caminho_arquivo = str(path)
         doc.extensao = extensao
         doc.nome_arquivo = Path(path).name
+        doc.criado_em = criado_em or ""
         return doc
 
     def test_extrair_respostas_carrega_questoes_extraidas_no_contexto(self, tmp_path):
@@ -213,6 +214,179 @@ class TestExtrairRespostasContextoQuestoes:
         assert "TEXTO EXTRAIDO DO PDF" in variaveis["conteudo_documento"]
         assert "Resposta do aluno: x = 2" in variaveis["conteudo_documento"]
         assert variaveis["prova_aluno"] == variaveis["conteudo_documento"]
+
+    def test_preparar_variaveis_texto_usa_documento_processado_mais_recente(self, tmp_path):
+        from executor import EtapaProcessamento, PipelineExecutor
+        from models import TipoDocumento
+
+        antigo_path = tmp_path / "questoes_antigas.json"
+        antigo_path.write_text(
+            json.dumps({"questoes": [{"numero": 1, "enunciado": "VERSAO ANTIGA"}]}),
+            encoding="utf-8",
+        )
+        novo_path = tmp_path / "questoes_novas.json"
+        novo_path.write_text(
+            json.dumps({"questoes": [{"numero": 1, "enunciado": "VERSAO NOVA"}]}),
+            encoding="utf-8",
+        )
+        docs = [
+            self._doc(
+                TipoDocumento.EXTRACAO_QUESTOES,
+                "questoes-novas",
+                novo_path,
+                criado_em="2026-05-16T18:52:16",
+            ),
+            self._doc(
+                TipoDocumento.EXTRACAO_QUESTOES,
+                "questoes-antigas",
+                antigo_path,
+                criado_em="2026-05-16T01:11:01",
+            ),
+        ]
+
+        executor = PipelineExecutor.__new__(PipelineExecutor)
+        executor.storage = MagicMock()
+        executor.storage.listar_documentos = MagicMock(return_value=docs)
+        executor.storage.resolver_caminho_documento = MagicMock(
+            side_effect=lambda doc: Path(doc.caminho_arquivo)
+        )
+
+        variaveis = executor._preparar_variaveis_texto(
+            EtapaProcessamento.EXTRAIR_GABARITO,
+            "ativ_test",
+            None,
+            materia=MagicMock(nome="Matematica"),
+            atividade=MagicMock(nome="Lista", nota_maxima=10),
+            usar_multimodal=True,
+        )
+
+        assert "VERSAO NOVA" in variaveis["questoes_extraidas"]
+        assert "VERSAO ANTIGA" not in variaveis["questoes_extraidas"]
+
+    def test_coletar_arquivos_para_gabarito_anexa_apenas_questoes_mais_recentes(self, tmp_path):
+        from executor import EtapaProcessamento, PipelineExecutor
+        from models import TipoDocumento
+
+        gabarito_path = tmp_path / "gabarito.pdf"
+        gabarito_path.write_bytes(b"%PDF-1.4\n")
+        antigo_path = tmp_path / "questoes_antigas.json"
+        antigo_path.write_text("{}", encoding="utf-8")
+        novo_path = tmp_path / "questoes_novas.json"
+        novo_path.write_text("{}", encoding="utf-8")
+
+        docs = [
+            self._doc(TipoDocumento.GABARITO, "gabarito", gabarito_path, ".pdf"),
+            self._doc(
+                TipoDocumento.EXTRACAO_QUESTOES,
+                "questoes-novas",
+                novo_path,
+                criado_em="2026-05-16T18:52:16",
+            ),
+            self._doc(
+                TipoDocumento.EXTRACAO_QUESTOES,
+                "questoes-antigas",
+                antigo_path,
+                criado_em="2026-05-16T01:11:01",
+            ),
+        ]
+
+        executor = PipelineExecutor.__new__(PipelineExecutor)
+        executor.storage = MagicMock()
+        executor.storage.listar_documentos = MagicMock(return_value=docs)
+        executor.storage.resolver_caminho_documento = MagicMock(
+            side_effect=lambda doc: Path(doc.caminho_arquivo)
+        )
+
+        arquivos = executor._coletar_arquivos_para_etapa(
+            EtapaProcessamento.EXTRAIR_GABARITO,
+            "ativ_test",
+            None,
+        )
+
+        assert str(gabarito_path) in arquivos
+        assert str(novo_path) in arquivos
+        assert str(antigo_path) not in arquivos
+
+    def test_contexto_json_nao_recua_para_json_antigo_quando_mais_recente_tem_erro(self, tmp_path):
+        from executor import EtapaProcessamento, PipelineExecutor
+        from models import TipoDocumento
+
+        erro_path = tmp_path / "questoes_erro.json"
+        erro_path.write_text(json.dumps({"_error": "parse_failed"}), encoding="utf-8")
+        antigo_path = tmp_path / "questoes_antigas.json"
+        antigo_path.write_text(
+            json.dumps({"questoes": [{"numero": 1, "enunciado": "ANTIGA"}]}),
+            encoding="utf-8",
+        )
+        docs = [
+            self._doc(
+                TipoDocumento.EXTRACAO_QUESTOES,
+                "questoes-erro",
+                erro_path,
+                criado_em="2026-05-16T18:52:16",
+            ),
+            self._doc(
+                TipoDocumento.EXTRACAO_QUESTOES,
+                "questoes-antigas",
+                antigo_path,
+                criado_em="2026-05-16T01:11:01",
+            ),
+        ]
+
+        executor = PipelineExecutor.__new__(PipelineExecutor)
+        executor.storage = MagicMock()
+        executor.storage.listar_documentos = MagicMock(
+            side_effect=lambda _atividade_id, aluno_id=None: [] if aluno_id else docs
+        )
+        executor.storage.resolver_caminho_documento = MagicMock(
+            side_effect=lambda doc: Path(doc.caminho_arquivo)
+        )
+
+        contexto = executor._preparar_contexto_json(
+            "ativ_test",
+            "aluno_test",
+            EtapaProcessamento.EXTRAIR_RESPOSTAS,
+        )
+
+        assert "questoes_extraidas" not in contexto
+        assert any("questoes_extraidas" in item for item in contexto["_documentos_faltantes"])
+
+    def test_corrigir_exige_gabarito_extraido_sem_usar_gabarito_original(self, tmp_path):
+        from executor import EtapaProcessamento, PipelineExecutor
+        from models import TipoDocumento
+
+        questoes_path = tmp_path / "questoes.json"
+        questoes_path.write_text(json.dumps({"questoes": []}), encoding="utf-8")
+        gabarito_original_path = tmp_path / "gabarito.pdf"
+        gabarito_original_path.write_bytes(b"%PDF-1.4\n")
+        respostas_path = tmp_path / "respostas.json"
+        respostas_path.write_text(json.dumps({"respostas": []}), encoding="utf-8")
+
+        docs_base = [
+            self._doc(TipoDocumento.EXTRACAO_QUESTOES, "questoes", questoes_path),
+            self._doc(TipoDocumento.GABARITO, "gabarito-original", gabarito_original_path, ".pdf"),
+        ]
+        docs_aluno = docs_base + [
+            self._doc(TipoDocumento.EXTRACAO_RESPOSTAS, "respostas", respostas_path),
+        ]
+
+        executor = PipelineExecutor.__new__(PipelineExecutor)
+        executor.storage = MagicMock()
+        executor.storage.listar_documentos = MagicMock(
+            side_effect=lambda _atividade_id, aluno_id=None: docs_aluno if aluno_id else docs_base
+        )
+        executor.storage.resolver_caminho_documento = MagicMock(
+            side_effect=lambda doc: Path(doc.caminho_arquivo)
+        )
+
+        contexto = executor._preparar_contexto_json(
+            "ativ_test",
+            "aluno_test",
+            EtapaProcessamento.CORRIGIR,
+        )
+
+        assert "gabarito_extraido" not in contexto
+        assert any("gabarito" in item for item in contexto["_documentos_faltantes"])
 
     def test_extrair_respostas_pdf_sem_texto_mantem_placeholder_de_anexo(self, tmp_path):
         from executor import EtapaProcessamento, PipelineExecutor
