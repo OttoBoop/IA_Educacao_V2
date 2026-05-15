@@ -1033,6 +1033,11 @@ Critério de pronto: lista de limpeza segura e revisada.
 - Render: `wait_deploy.sh 5527e26` deu timeout apos 600s. Durante o gate o HTML
   avancou de `f55e299` para `e6060e1`, mas nao chegou em `5527e26`; polls
   adicionais mantiveram `e6060e1`.
+- Render MCP: apos `list_workspaces`, um unico workspace foi selecionado
+  automaticamente (`tea-d5ruvqu3jp1c73dudl7g`), mas as ferramentas disponiveis
+  nesta sessao nao listam servicos nem disparam deploy. `list_deploys` com
+  `serviceId=prova-ai` retornou 404, entao o service id real ainda nao foi
+  descoberto por MCP.
 - Status: guard publicado no GitHub, nao confirmado no site oficial. Nao rerodar
   `extrair_gabarito` como validacao oficial enquanto o marker live nao mostrar
   `5527e26` ou comportamento equivalente for comprovado com seguranca.
