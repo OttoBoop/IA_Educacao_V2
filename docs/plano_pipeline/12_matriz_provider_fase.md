@@ -9,7 +9,7 @@
 `eab7d90`, `dcecdfa`, `7ed8b8b`, `9e1aee5`, `839968e`, `45c6f97`,
 `55e168a`, `9823afb`, `4f27dae`, `f0dae61`, `87bdee2`, `b2dc88b`,
 `28cfd6a`, `cacedcd`, `a311ade`, `924fd79`, `0dfdbbe`, `d653c13`,
-`2947178`, `53d0252`, `f55e299`, `5f10651`
+`2947178`, `53d0252`, `f55e299`, `5f10651`, `e6060e1`, `a7dead3`
 
 ## Status Oficial De Deploy
 
@@ -27,6 +27,9 @@
 - Depois do smoke de `extrair_questoes`, o commit `f55e299` foi publicado para
   destacar tarefas longas do ciclo da requisicao; marker `5f10651` foi publicado
   no GitHub, mas ainda precisa confirmacao Render.
+- O commit `e6060e1` bloqueia as rotas legadas sincrônicas
+  `/api/pipeline/executar` e `/api/pipeline/executar-com-tools` com `410 Gone`;
+  marker `a7dead3` foi publicado no GitHub, mas ainda precisa confirmacao Render.
 - `origin/main` tambem contem a migration dedicada `b2dc88b`
   (`backend/migrations/002_create_token_usage.sql`), ainda nao aplicada ao
   Supabase de producao.
@@ -319,6 +322,8 @@ Ver [teste_gpt5nano_pipeline_completo.md](arquivo_2026_04_17/teste_gpt5nano_pipe
 - [x] Rodar Gemini 3 Flash em `extrair_questoes` com custo/metadata
 - [ ] Validar que `f55e299` elimina timeout/indisponibilidade na resposta
       imediata do `pipeline-completo`
+- [ ] Confirmar que `e6060e1` faz rotas legadas sincrônicas retornarem `410`
+      rapidamente em producao
 - [ ] Aplicar `backend/migrations/002_create_token_usage.sql` no Supabase e revalidar
       `token_usage_backend.supabase.table_available=true`
 - [x] Preparar codigo para persistir `TokenUsageRecord` em Supabase quando a
@@ -372,7 +377,7 @@ visiveis.
 
 **Proximos passos:**
 1. Manter deploy oficial confirmado por marker antes de cada smoke novo.
-2. Confirmar deploy `f55e299` e testar resposta imediata sem duplicar docs.
+2. Confirmar deploy `e6060e1` e testar resposta imediata/410 sem duplicar docs.
 3. Confirmar deploy `d653c13` ou registrar bloqueio Render definitivo.
 4. Aplicar `backend/migrations/002_create_token_usage.sql` no Supabase para
    tornar duravel o custo de falhas sem documento.

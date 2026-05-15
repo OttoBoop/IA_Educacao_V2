@@ -16,9 +16,11 @@ confirmado no Render. Gemini tambem passou em `extrair_questoes` no marker
 `924fd79`, mas o smoke revelou um bug operacional: timeout do cliente nao
 cancela execucao no servidor, e retry cego pode duplicar documentos. O patch
 `f55e299` troca tarefas longas do `routes_prompts.py` para runner destacado em
-thread daemon, fora do ciclo de vida da requisicao; esse patch esta no GitHub e
-tem marker `5f10651`, mas ainda nao esta confirmado no Render. O resumo de
-custos agora agrega por `cost_run_id`, entao
+thread daemon, fora do ciclo de vida da requisicao. O patch `e6060e1` bloqueia
+rotas legadas sincrônicas com `410 Gone`, para que chamadas antigas falhem alto
+em vez de travar o worker. O marker mais novo e `a7dead3`; esses patches estao
+no GitHub, mas ainda nao estao confirmados no Render. O resumo de custos agora
+agrega por `cost_run_id`, entao
 JSON+PDF do mesmo run contam uma vez. Falhas tool-use sem documento final agora
 tem `TokenUsageRecord` local mensal e codigo preparado para Supabase quando a
 tabela `token_usage` existir; o endpoint live confirmou que essa tabela ainda
@@ -62,7 +64,7 @@ Estabilizar o NOVO CR para que a pipeline:
 | Frente | Estado | Proximo passo |
 |--------|--------|---------------|
 | Docs e plano | Sprint 0 concluida | Manter este painel como fonte oficial e anexos fora do fluxo diario |
-| Pipeline | Gemini 3 Flash validado oficialmente em `extrair_questoes`, `corrigir`, `analisar_habilidades` e `gerar_relatorio`; GPT-5 Nano validado em `corrigir`, `analisar_habilidades` e `gerar_relatorio` no marker `924fd79`; patches `d653c13` e `f55e299` ainda pendentes de deploy | Confirmar deploy `f55e299`; depois ampliar smoke para `extrair_gabarito`, `extrair_respostas`, schema minimo e UI de erro |
+| Pipeline | Gemini 3 Flash validado oficialmente em `extrair_questoes`, `corrigir`, `analisar_habilidades` e `gerar_relatorio`; GPT-5 Nano validado em `corrigir`, `analisar_habilidades` e `gerar_relatorio` no marker `924fd79`; patches `d653c13`, `f55e299` e `e6060e1` ainda pendentes de deploy | Confirmar deploy `e6060e1`; depois ampliar smoke para `extrair_gabarito`, `extrair_respostas`, schema minimo e UI de erro |
 | Schema e avisos | Sprint 2 concluida localmente | Manter schema oficial, defaults e visualizador cobertos por testes |
 | Custos/tokens | Metadata de documento, endpoints live, resumo por `cost_run_id`, `TokenUsageRecord` local, migration Supabase dedicada `b2dc88b`; smoke Nano `gerar_relatorio` adicionou run precificado; diagnostico live ainda acusa `PGRST205` | Aplicar `backend/migrations/002_create_token_usage.sql` no Supabase; validar uma falha real sem documento em producao |
 | UI de erros | Pendente | Mostrar falha por aluno/etapa sem depender de terminal |
@@ -90,13 +92,14 @@ Estabilizar o NOVO CR para que a pipeline:
 - Commit funcional de retry/contexto Nano: `924fd79`.
 - Commit funcional de rejeicao de placeholder em analise Nano: `d653c13`.
 - Commit funcional de tarefa longa destacada da requisicao: `f55e299`.
-- Marker mais novo publicado no GitHub para runtime: `5f10651`
-  (`chore: mark deploy f55e299`).
+- Commit funcional de bloqueio de rotas legadas sincrônicas: `e6060e1`.
+- Marker mais novo publicado no GitHub para runtime: `a7dead3`
+  (`chore: mark deploy e6060e1`).
 - Marker atual confirmado no Render: `0dfdbbe`, HTML com
   `novocr-deploy=924fd79`.
-- GitHub `origin/main`: contem `f55e299`, marker `5f10651`, `d653c13`, marker
-  `2947178` e commits documentais posteriores. O ultimo marker confirmado no
-  Render e `0dfdbbe`.
+- GitHub `origin/main`: contem `e6060e1`, marker `a7dead3`, `f55e299`,
+  `d653c13`, marker `2947178` e commits documentais posteriores. O ultimo
+  marker confirmado no Render e `0dfdbbe`.
 - Render live observado: saiu de `2e1098f` para `b12be9a` e depois confirmou
   marcadores `b4d7ee6`, `f505be6`, `97a7c79`, `c75af88`, `39aa50a`,
   `b24f03e`, `eab7d90`, `7ed8b8b`, `839968e`, `55e168a` e `4f27dae`.
@@ -832,11 +835,31 @@ Critério de pronto: lista de limpeza segura e revisada.
   `test_executor_stage_progress.py` passaram com 25 testes e 1 aviso conhecido
   de `pytest.ini` (`timeout` desconhecido).
 - Git/deploy: commit funcional `f55e299`; marker `5f10651`; ambos publicados
-  em `origin/main`. Monitor `wait_deploy.sh f55e299` iniciado, mas ainda nao
-  confirmado no Render neste registro.
-- Proximo alvo: quando `f55e299` estiver live, repetir uma etapa curta com
+  em `origin/main`. Depois o alvo de runtime foi supersedido por `e6060e1`.
+- Proximo alvo: quando o patch de execucao longa estiver live, repetir uma etapa curta com
   `pipeline-completo` e exigir resposta imediata com `task_id`, `/api/health`
   responsivo durante execucao e sem documento duplicado.
+
+### 2026-05-16 -- Sprint 4f: bloquear rotas legadas sincrônicas
+
+- Alvo: impedir que endpoints antigos de IA, fora do fluxo com `task_id`,
+  bloqueiem o worker e incentivem retry duplicado.
+- Status: publicado no GitHub; deploy oficial pendente.
+- Arquivos tocados: `backend/routes_pipeline.py`,
+  `backend/tests/unit/test_legacy_pipeline_routes.py`.
+- Mudanca: `/api/pipeline/executar` e `/api/pipeline/executar-com-tools`
+  agora retornam `410 Gone` com mensagem explicita apontando para o fluxo
+  assíncrono com `pipeline-completo` e `/api/task-progress/{task_id}`.
+- Validacoes locais: `py_compile` passou; `git diff --check` passou; suite
+  focada de 27 testes passou (`test_legacy_pipeline_routes.py`,
+  `test_backend_async_pipeline.py`, `test_backend_async_turma.py`,
+  `test_executor_stage_progress.py`) com o aviso conhecido de `pytest.ini`.
+- Git/deploy: commit funcional `e6060e1`; marker `a7dead3`; ambos publicados
+  em `origin/main`. Monitor `wait_deploy.sh e6060e1` iniciado, mas ainda nao
+  confirmado no Render neste registro.
+- Proximo alvo: quando `e6060e1` estiver live, confirmar que a rota legada
+  retorna 410 rapidamente e que `pipeline-completo` devolve `task_id` sem
+  derrubar `/api/health`.
 
 ## Riscos Abertos
 
@@ -846,6 +869,6 @@ Critério de pronto: lista de limpeza segura e revisada.
    necessario, mas nao prova qualidade pedagogica.
 4. A tabela Supabase `token_usage` tem migration dedicada em `b2dc88b`, mas o
    live confirmou que ela ainda nao existe no schema cache (`PGRST205`).
-5. Render/site oficial voltou e esta em `924fd79`; nao aceitar `d653c13` ou
-   `f55e299` como live ate o marker correspondente aparecer.
+5. Render/site oficial voltou e esta em `924fd79`; nao aceitar `d653c13`,
+   `f55e299` ou `e6060e1` como live ate o marker correspondente aparecer.
 6. Rio 3 nao deve voltar ao fluxo ativo sem nova decisao e nova chave segura.
