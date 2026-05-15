@@ -15,12 +15,18 @@ from pydantic import BaseModel
 from typing import Optional, List, Dict, Any
 from datetime import datetime
 from pathlib import Path
+import asyncio
+import inspect
 import json
+import logging
+import threading
 
 from prompts import PromptManager, PromptTemplate, EtapaProcessamento, prompt_manager
 from storage import storage
 from models import TipoDocumento, Documento
 from routes_tasks import register_pipeline_task, complete_pipeline_task
+
+logger = logging.getLogger(__name__)
 
 
 def _resolve_names_from_atividade(atividade_id):
@@ -52,6 +58,36 @@ def _resolve_student_names(aluno_ids):
         aluno = storage.get_aluno(aluno_id)
         result[aluno_id] = aluno.nome if aluno else ""
     return result
+
+
+def _start_detached_task(func, *args, **kwargs):
+    """Run long pipeline work outside the request lifecycle.
+
+    FastAPI BackgroundTasks still execute in the server process after the
+    response is prepared. The pipeline contains blocking provider/storage work,
+    so running it there can keep the Render worker unresponsive. A daemon thread
+    gives the HTTP response a clean break: task progress is tracked through
+    task_registry, not through the request connection.
+    """
+
+    def _runner():
+        task_id = kwargs.get("task_id")
+        try:
+            result = func(*args, **kwargs)
+            if inspect.isawaitable(result):
+                asyncio.run(result)
+        except Exception as exc:
+            logger.exception("Detached pipeline task failed")
+            if task_id:
+                complete_pipeline_task(task_id, "failed", error=str(exc))
+
+    thread = threading.Thread(
+        target=_runner,
+        name=f"novocr-task-{kwargs.get('task_id', 'detached')}",
+        daemon=True,
+    )
+    thread.start()
+    return thread
 
 # Importar novo sistema de chat/models
 try:
@@ -828,8 +864,8 @@ async def executar_pipeline_completo(
         **names,
     )
 
-    # Run pipeline execution in the background — endpoint returns task_id immediately.
-    background_tasks.add_task(
+    # Run pipeline execution detached from the request — endpoint returns task_id immediately.
+    _start_detached_task(
         executor.executar_pipeline_completo,
         task_id=task_id,
         atividade_id=atividade_id,
@@ -1125,8 +1161,8 @@ async def executar_pipeline_todos_os_alunos(
         **names,
     )
 
-    # Run the student loop in the background — endpoint returns task_id immediately.
-    background_tasks.add_task(
+    # Run the student loop detached from the request — endpoint returns task_id immediately.
+    _start_detached_task(
         _executar_pipeline_todos_os_alunos_background,
         task_id=task_id,
         alunos_para_processar=alunos_para_processar,
@@ -1191,7 +1227,7 @@ async def executar_pipeline_desempenho_tarefa(
         **names,
     )
 
-    background_tasks.add_task(
+    _start_detached_task(
         _executar_desempenho_tarefa_background,
         task_id=task_id,
         atividade_id=atividade_id,
@@ -1258,7 +1294,7 @@ async def executar_pipeline_desempenho_turma(
         materia_nome=materia.nome if materia else None,
     )
 
-    background_tasks.add_task(
+    _start_detached_task(
         _executar_desempenho_turma_background,
         task_id=task_id,
         turma_id=turma_id,
@@ -1322,7 +1358,7 @@ async def executar_pipeline_desempenho_materia(
         materia_nome=materia.nome,
     )
 
-    background_tasks.add_task(
+    _start_detached_task(
         _executar_desempenho_materia_background,
         task_id=task_id,
         materia_id=materia_id,
@@ -1409,4 +1445,3 @@ async def executar_desempenho_materia_sync(
         materia_id=materia_id, provider_id=provider_id,
     )
     return resultado
-

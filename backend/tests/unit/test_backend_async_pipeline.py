@@ -4,7 +4,7 @@ Backend static tests for async pipeline conversion (F3-T1).
 Tests verify that routes_prompts.py:
 - Imports BackgroundTasks and register_pipeline_task
 - The executar_pipeline_completo endpoint accepts a BackgroundTasks parameter
-- Uses background_tasks.add_task() instead of awaiting the executor directly
+- Uses the detached task runner instead of awaiting the executor directly
 - Calls register_pipeline_task() before starting the background task
 - Returns { task_id, status: "started" } immediately
 
@@ -49,8 +49,8 @@ class TestBackgroundTaskConversion:
         """FastAPI BackgroundTasks must be imported in routes_prompts.py.
 
         Without BackgroundTasks, the pipeline cannot be run asynchronously.
-        The endpoint must accept BackgroundTasks as a parameter and call
-        background_tasks.add_task(executor.executar_pipeline_completo, ...)
+        The endpoint must accept BackgroundTasks as a parameter and start
+        executor.executar_pipeline_completo outside the request lifecycle
         instead of awaiting it directly (which blocks for minutes).
         """
         assert "BackgroundTasks" in routes_prompts_content, (
@@ -75,21 +75,21 @@ class TestBackgroundTaskConversion:
             "This is a FastAPI dependency injection — FastAPI provides the runner automatically."
         )
 
-    def test_endpoint_uses_add_task(self, routes_prompts_content):
-        """Endpoint must use background_tasks.add_task() to run pipeline asynchronously.
+    def test_endpoint_uses_detached_task_runner(self, routes_prompts_content):
+        """Endpoint must use _start_detached_task() to run pipeline asynchronously.
 
-        background_tasks.add_task(executor.executar_pipeline_completo, ...)
-        runs the pipeline after the HTTP response is returned — so the professor
-        sees task_id immediately instead of waiting several minutes for completion.
+        The detached runner starts the pipeline outside the request lifecycle so
+        the professor sees task_id immediately instead of waiting several minutes
+        for completion.
         """
         func_body = _get_function_body(
             routes_prompts_content, "async def executar_pipeline_completo"
         )
-        assert "add_task" in func_body, (
-            "The endpoint must call background_tasks.add_task(executor.executar_pipeline_completo, ...) "
+        assert "_start_detached_task" in func_body, (
+            "The endpoint must call _start_detached_task(executor.executar_pipeline_completo, ...) "
             "instead of directly awaiting it. "
             "Currently: 'resultados = await executor.executar_pipeline_completo(...)' — this blocks. "
-            "After fix: 'background_tasks.add_task(executor.executar_pipeline_completo, ...)' — returns immediately."
+            "After fix: '_start_detached_task(executor.executar_pipeline_completo, ...)' — returns immediately."
         )
 
     def test_endpoint_does_not_await_full_pipeline(self, routes_prompts_content):
@@ -106,7 +106,7 @@ class TestBackgroundTaskConversion:
             "executar_pipeline_completo endpoint must NOT directly await "
             "executor.executar_pipeline_completo(). "
             "This blocks the HTTP request for minutes. "
-            "Move the call to background_tasks.add_task() instead."
+            "Move the call to _start_detached_task() instead."
         )
 
 

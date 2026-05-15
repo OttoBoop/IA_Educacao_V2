@@ -3,7 +3,7 @@ Backend static tests for async pipeline-todos-os-alunos conversion (F3-T2).
 
 Tests verify that routes_prompts.py for executar_pipeline_todos_os_alunos:
 - The executar_pipeline_todos_os_alunos endpoint accepts a BackgroundTasks parameter
-- Uses background_tasks.add_task() instead of awaiting the executor directly in a loop
+- Uses the detached task runner instead of awaiting the executor directly in a loop
 - Calls register_pipeline_task() before starting the background task
 - Returns { task_id, status: "started" } immediately
 
@@ -60,20 +60,20 @@ class TestTurmaBackgroundTaskConversion:
             "FastAPI injects the runner automatically via dependency injection."
         )
 
-    def test_turma_endpoint_uses_add_task(self, routes_prompts_content):
-        """Endpoint must use background_tasks.add_task() to run pipeline asynchronously.
+    def test_turma_endpoint_uses_detached_task_runner(self, routes_prompts_content):
+        """Endpoint must use _start_detached_task() to run pipeline asynchronously.
 
-        background_tasks.add_task(some_helper, alunos, ...) runs the multi-student
-        pipeline after the HTTP response is returned — so the professor sees task_id
+        _start_detached_task(some_helper, alunos, ...) runs the multi-student
+        pipeline outside the request lifecycle — so the professor sees task_id
         immediately instead of waiting several minutes × N students.
         """
         func_body = _get_function_body(
             routes_prompts_content, "async def executar_pipeline_todos_os_alunos"
         )
-        assert "add_task" in func_body, (
-            "The todos-os-alunos endpoint must call background_tasks.add_task(...) "
+        assert "_start_detached_task" in func_body, (
+            "The todos-os-alunos endpoint must call _start_detached_task(...) "
             "instead of directly awaiting executor.executar_pipeline_completo() in a for loop. "
-            "Move the student loop to a background helper function."
+            "Move the student loop to a detached background helper function."
         )
 
     def test_turma_endpoint_does_not_await_pipeline_in_loop(self, routes_prompts_content):

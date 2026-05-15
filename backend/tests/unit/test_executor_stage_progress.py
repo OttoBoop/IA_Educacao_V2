@@ -8,7 +8,7 @@ Tests verify that executor.py executar_pipeline_completo:
 - Checks cancel_requested flag between stages
 
 And that routes_prompts.py correctly passes task_id to the executor:
-- executar_pipeline_completo endpoint passes task_id via background_tasks.add_task
+- executar_pipeline_completo endpoint passes task_id via _start_detached_task
 - _executar_pipeline_todos_os_alunos_background helper accepts and forwards task_id
 
 F3-T3 from PLAN_Task_Panel_Integration_Fix.md — RED PHASE
@@ -123,16 +123,16 @@ class TestRoutesPipelineWiring:
     def test_pipeline_completo_route_passes_task_id_to_executor(self, routes_prompts_content):
         """The executar_pipeline_completo route must pass task_id=task_id to the executor.
 
-        background_tasks.add_task(executor.executar_pipeline_completo, task_id=task_id, ...)
+        _start_detached_task(executor.executar_pipeline_completo, task_id=task_id, ...)
         Without passing task_id, the executor receives task_id=None and cannot call
         update_stage_progress() — progress tracking is silently disabled.
         """
         func_body = _get_function_body(routes_prompts_content, "async def executar_pipeline_completo")
-        add_task_pos = func_body.find("add_task")
-        assert add_task_pos > 0, "add_task() call not found in executar_pipeline_completo"
-        add_task_block = func_body[add_task_pos : add_task_pos + 500]
-        assert "task_id=task_id" in add_task_block, (
-            "background_tasks.add_task(executor.executar_pipeline_completo, ...) must include "
+        start_task_pos = func_body.find("_start_detached_task")
+        assert start_task_pos > 0, "_start_detached_task() call not found in executar_pipeline_completo"
+        start_task_block = func_body[start_task_pos : start_task_pos + 500]
+        assert "task_id=task_id" in start_task_block, (
+            "_start_detached_task(executor.executar_pipeline_completo, ...) must include "
             "task_id=task_id so the executor can call update_stage_progress(). "
             "Currently task_id is registered but not forwarded to the executor."
         )
@@ -149,7 +149,7 @@ class TestRoutesPipelineWiring:
         )
         assert "task_id" in func_start, (
             "_executar_pipeline_todos_os_alunos_background must declare task_id as a parameter. "
-            "The endpoint passes task_id when calling background_tasks.add_task(helper, task_id=task_id, ...). "
+            "The endpoint passes task_id when calling _start_detached_task(helper, task_id=task_id, ...). "
             "The helper then passes task_id to each executor.executar_pipeline_completo() call."
         )
 
@@ -160,11 +160,11 @@ class TestRoutesPipelineWiring:
         and cannot call update_stage_progress() for any student. All stages stay pending.
         """
         func_body = _get_function_body(routes_prompts_content, "async def executar_pipeline_todos_os_alunos")
-        add_task_pos = func_body.find("add_task")
-        assert add_task_pos > 0, "add_task() call not found in executar_pipeline_todos_os_alunos"
-        add_task_block = func_body[add_task_pos : add_task_pos + 500]
-        assert "task_id=task_id" in add_task_block, (
-            "background_tasks.add_task(_executar_pipeline_todos_os_alunos_background, ...) must include "
+        start_task_pos = func_body.find("_start_detached_task")
+        assert start_task_pos > 0, "_start_detached_task() call not found in executar_pipeline_todos_os_alunos"
+        start_task_block = func_body[start_task_pos : start_task_pos + 500]
+        assert "task_id=task_id" in start_task_block, (
+            "_start_detached_task(_executar_pipeline_todos_os_alunos_background, ...) must include "
             "task_id=task_id so the helper can track progress for each student. "
             "Currently task_id is registered but not forwarded to the background helper."
         )
