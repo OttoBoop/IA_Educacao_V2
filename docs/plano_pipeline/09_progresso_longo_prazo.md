@@ -37,8 +37,11 @@ visivel, tokens `97004/1942`, custo `US$ 0.081492`. Depois o modelo duravel
 `gpt54mini001` entrou em `backend/data/models.json`, sobreviveu deploy e o smoke
 versionado `task_706931a94555` gerou `fec100a2e41eabcf`: 5/7 respostas
 extraidas, Q1/Q2 `MISSING_CONTENT`, Q3 `LOW_CONFIDENCE`, tokens `97004/1737`,
-custo `US$ 0.080570`. Isso confirma candidato para a etapa, nao pipeline
-completa. O resumo de custos agrega por `cost_run_id`; falhas sem documento
+custo `US$ 0.080570`. A segunda amostra versionada, Alvaro
+(`task_19062336eb8b`), gerou `4a82ddf1d2118ff0`: 7/7 respostas extraidas,
+Q2/Q3 `LOW_CONFIDENCE`, tokens `90588/2813`, custo `US$ 0.0806`. Isso confirma
+candidato forte para a etapa em mais de uma amostra, nao pipeline completa. O
+resumo de custos agrega por `cost_run_id`; falhas sem documento
 final tem `TokenUsageRecord` local mensal e codigo preparado para Supabase
 quando a tabela `token_usage` existir. O endpoint live ainda confirma que essa
 tabela nao existe (`PGRST205`) e que o store local nao e duravel entre deploys:
@@ -83,9 +86,9 @@ Estabilizar o NOVO CR para que a pipeline:
 | Frente | Estado | Proximo passo |
 |--------|--------|---------------|
 | Docs e plano | Sprint 0 concluida | Manter este painel como fonte oficial e anexos fora do fluxo diario |
-| Pipeline | Gemini 3 Flash validado em `extrair_questoes`, `extrair_respostas` e etapas finais; `extrair_gabarito` Gemini foi reclassificado como invalido porque retornou tudo `MISSING_CONTENT`; pipeline sequencial Gemini avancou pelas tres extracoes e falhou alto em `corrigir` por quota `429`; GPT-5 Nano validado em `extrair_questoes`, `extrair_gabarito`, `corrigir`, `analisar_habilidades` e `gerar_relatorio`, mas `extrair_respostas` Nano continua ❌ e falha alto; GPT-5.4 Mini completou `extrair_respostas` em duas rodadas da mesma amostra, incluindo o modelo duravel `gpt54mini001` (`task_706931a94555`, doc `fec100a2e41eabcf`) | Usar `gpt54mini001` como candidato explicito para `extrair_respostas` em mais amostras e/ou pipeline per-phase; manter Nano fora de pipeline completa enquanto essa etapa estiver ❌ |
+| Pipeline | Gemini 3 Flash validado em `extrair_questoes`, `extrair_respostas` e etapas finais; `extrair_gabarito` Gemini foi reclassificado como invalido porque retornou tudo `MISSING_CONTENT`; pipeline sequencial Gemini avancou pelas tres extracoes e falhou alto em `corrigir` por quota `429`; GPT-5 Nano validado em `extrair_questoes`, `extrair_gabarito`, `corrigir`, `analisar_habilidades` e `gerar_relatorio`, mas `extrair_respostas` Nano continua ❌ e falha alto; GPT-5.4 Mini completou `extrair_respostas` em duas amostras com modelo duravel `gpt54mini001` (`fec100a2e41eabcf` e `4a82ddf1d2118ff0`) | Usar `gpt54mini001` como candidato explicito para `extrair_respostas` em pipeline per-phase; manter Nano fora de pipeline completa enquanto essa etapa estiver ❌ |
 | Schema e avisos | Sprint 2 concluida localmente | Manter schema oficial, defaults e visualizador cobertos por testes |
-| Custos/tokens | Metadata de documento, endpoints live, resumo por `cost_run_id`, `TokenUsageRecord` local, migration Supabase dedicada `b2dc88b`; falha alta final de `task_3d5feaf0da71` registrou `usage_52590d55d210459e` sem documento final antes de deploy posterior, tokens `100188/8863`, custo `US$ 0.008555`; GPT-5.4 Mini em `extrair_respostas` registrou documentos `a39d26fcc621c7a8` e `fec100a2e41eabcf`, custos `US$ 0.081492` e `US$ 0.080570`; diagnostico live ainda acusa `PGRST205`, `durable=false` e `local_record_count=0`, provando que o fallback local de `TokenUsageRecord` nao sobrevive deploy | Aplicar `backend/migrations/002_create_token_usage.sql` no Supabase; revalidar ate `token_usage_backend.durable=true` |
+| Custos/tokens | Metadata de documento, endpoints live, resumo por `cost_run_id`, `TokenUsageRecord` local, migration Supabase dedicada `b2dc88b`; falha alta final de `task_3d5feaf0da71` registrou `usage_52590d55d210459e` sem documento final antes de deploy posterior, tokens `100188/8863`, custo `US$ 0.008555`; GPT-5.4 Mini em `extrair_respostas` registrou documentos `a39d26fcc621c7a8`, `fec100a2e41eabcf` e `4a82ddf1d2118ff0`, custos `US$ 0.081492`, `US$ 0.080570` e `US$ 0.0806`; diagnostico live ainda acusa `PGRST205`, `durable=false` e `local_record_count=0`, provando que o fallback local de `TokenUsageRecord` nao sobrevive deploy | Aplicar `backend/migrations/002_create_token_usage.sql` no Supabase; revalidar ate `token_usage_backend.durable=true` |
 | UI de erros | Pendente | Mostrar falha por aluno/etapa sem depender de terminal |
 | Limpeza de dados | Pendente | Reclassificar "fantasmas" antes de qualquer delecao |
 | Rio 3 | Pausada | Nao pedir chave, nao rodar smoke, nao deployar Rio sem nova decisao |
@@ -1307,6 +1310,16 @@ Critério de pronto: lista de limpeza segura e revisada.
   conter uma observacao mais honesta de possivel mistura com questao 5. Isso
   reforca GPT-5.4 Mini como candidato melhor que Nano para handwriting/OCR, mas
   ainda nao valida pipeline completa nem todas as materias.
+- Segunda amostra oficial: Alvaro, `task_19062336eb8b`,
+  `selected_steps=["extrair_respostas"]`, `force_rerun=true`.
+- Resultado da segunda amostra: task `completed`; documento `4a82ddf1d2118ff0`,
+  status `concluido`, provider/modelo `openai/gpt-5.4-mini`, tokens
+  `90588/2813`, custo `US$ 0.0806`, tempo `46109ms`.
+- Qualidade da segunda amostra: 7/7 respostas extraidas com conteudo real,
+  `questoes_em_branco=0`, avisos `LOW_CONFIDENCE` em Q2 e Q3. A resposta
+  inclui conteudo matematico extenso e sinais de leitura de codigo/figuras na
+  Q7. Ainda precisa revisao humana de fidelidade, mas nao parece o falso sucesso
+  vazio/inferido que ocorria no Nano.
 - Custos/durabilidade: `/api/custos/status?limit=500` retornou
   `runs_precificados=28`, `runs_bloqueados=458`, `token_usage_analisados=0`,
   `token_usage_backend.supabase.table_available=false`, erro `PGRST205`,

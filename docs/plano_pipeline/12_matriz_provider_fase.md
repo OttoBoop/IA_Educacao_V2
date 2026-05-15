@@ -130,8 +130,10 @@ com conteudo real, 3/7 marcadas como `MISSING_CONTENT`, tokens `97004/1942` e
 custo `US$ 0.081492`. Depois do deploy do modelo versionado, o smoke
 `task_706931a94555` com `gpt54mini001` criou `fec100a2e41eabcf`, 5/7 respostas
 com conteudo real, Q1/Q2 `MISSING_CONTENT`, Q3 `LOW_CONFIDENCE`, tokens
-`97004/1737` e custo `US$ 0.080570`. Isso valida a etapa nessa amostra, nao
-pipeline completa.
+`97004/1737` e custo `US$ 0.080570`. A segunda amostra com `gpt54mini001`,
+Alvaro (`task_19062336eb8b`), criou `4a82ddf1d2118ff0`, 7/7 respostas com
+conteudo real, Q2/Q3 `LOW_CONFIDENCE`, tokens `90588/2813` e custo `US$ 0.0806`.
+Isso valida a etapa nessas amostras, nao pipeline completa.
 
 ### Categoria 2: Relatorios de Desempenho (3 niveis)
 
@@ -540,7 +542,8 @@ Ver [teste_gpt5nano_pipeline_completo.md](arquivo_2026_04_17/teste_gpt5nano_pipe
   oficial primeiro como cadastro efemero (`task_9c10e3752bcb`, doc
   `a39d26fcc621c7a8`, custo `US$ 0.081492`) e depois como modelo versionado
   `gpt54mini001` (`task_706931a94555`, doc `fec100a2e41eabcf`, custo
-  `US$ 0.080570`). Ainda nao foi testado em pipeline completa nem nas outras
+  `US$ 0.080570`; `task_19062336eb8b`, doc `4a82ddf1d2118ff0`, custo
+  `US$ 0.0806`). Ainda nao foi testado em pipeline completa nem nas outras
   etapas.
 - ⏸️ **Claude Haiku 4.5:** Aguardando creditos.
 - 📊 **Confiabilidade Gemini 3 Flash:** etapas individuais OK, mas a primeira
