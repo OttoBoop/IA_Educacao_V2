@@ -5,11 +5,13 @@
 **Status geral:** Render MCP confirmou o servico oficial
 `srv-d5t8gbh4tr6s738fr3s0` (`IA_Educacao_V2`, branch `main`, URL
 `https://ia-educacao-v2.onrender.com`) com deploy live do commit funcional
-`1ce3d23` (`dep-d841f437uimc73fs60lg`). O marcador HTML continua mostrando
-`novocr-deploy=e6060e1` porque o servico usa `rootDir=backend` e commits apenas
-de frontend/docs/marker nao garantem novo deploy; portanto, o gate oficial e
-Render MCP/lista de deploys + comportamento live, e o marker HTML e apenas
-sinal auxiliar. O patch `5527e26` removeu fallback Markdown de relatorio e
+`2d72c6b` (`dep-d84bjopo3t8c73fbshug`), confirmado por Render MCP e por
+`/api/deploy-info` com `source=RENDER_GIT_COMMIT`. O marcador HTML continua
+mostrando `novocr-deploy=5527e26`
+porque o servico usa `rootDir=backend` e commits apenas de frontend/docs/marker
+nao garantem novo deploy; portanto, o gate oficial e Render MCP/lista de
+deploys + comportamento live, e o marker HTML virou apenas sinal auxiliar. O
+patch `5527e26` removeu fallback Markdown de relatorio e
 adicionou guard para gabarito todo `MISSING_CONTENT`; apos esse deploy, GPT-5
 Nano em `extrair_gabarito` passou no site oficial: task `task_dc719eeea626`,
 JSON `5f433f9a1bc30842`, 7 respostas reais, tokens `78104/8353`, custo
@@ -31,12 +33,18 @@ com custo registrado em `TokenUsageRecord` local `usage_52590d55d210459e`
 candidato OpenAI para OCR/handwriting; a conexao respondeu `OK`, e o smoke
 `task_9c10e3752bcb` completou `extrair_respostas` com documento
 `a39d26fcc621c7a8`: 4/7 respostas extraidas, 3/7 marcadas como sem resposta
-visivel, tokens `97004/1942`, custo `US$ 0.081492`. Isso confirma candidato
-para a etapa, nao pipeline completa. O resumo de custos agrega por `cost_run_id`;
-falhas sem documento final tem `TokenUsageRecord` local mensal e codigo
-preparado para Supabase quando a tabela `token_usage` existir. O endpoint live
-ainda confirma que essa tabela nao existe (`PGRST205`): `/api/custos/resumo`
-apos o smoke GPT-5.4 Mini mostrou `token_usage_analisados=1` e `durable=false`.
+visivel, tokens `97004/1942`, custo `US$ 0.081492`. Depois o modelo duravel
+`gpt54mini001` entrou em `backend/data/models.json`, sobreviveu deploy e o smoke
+versionado `task_706931a94555` gerou `fec100a2e41eabcf`: 5/7 respostas
+extraidas, Q1/Q2 `MISSING_CONTENT`, Q3 `LOW_CONFIDENCE`, tokens `97004/1737`,
+custo `US$ 0.080570`. Isso confirma candidato para a etapa, nao pipeline
+completa. O resumo de custos agrega por `cost_run_id`; falhas sem documento
+final tem `TokenUsageRecord` local mensal e codigo preparado para Supabase
+quando a tabela `token_usage` existir. O endpoint live ainda confirma que essa
+tabela nao existe (`PGRST205`) e que o store local nao e duravel entre deploys:
+`/api/custos/status?limit=500` mostrou `local_record_count=0`,
+`token_usage_analisados=0`, `runs_precificados=28`, `runs_bloqueados=458` e
+`durable=false`.
 Rio 3 segue pausado.
 
 Este e o ponto de entrada do plano. O objetivo deste arquivo e dizer, em poucas
@@ -75,9 +83,9 @@ Estabilizar o NOVO CR para que a pipeline:
 | Frente | Estado | Proximo passo |
 |--------|--------|---------------|
 | Docs e plano | Sprint 0 concluida | Manter este painel como fonte oficial e anexos fora do fluxo diario |
-| Pipeline | Gemini 3 Flash validado em `extrair_questoes`, `extrair_respostas` e etapas finais; `extrair_gabarito` Gemini foi reclassificado como invalido porque retornou tudo `MISSING_CONTENT`; pipeline sequencial Gemini avancou pelas tres extracoes e falhou alto em `corrigir` por quota `429`; GPT-5 Nano validado em `extrair_questoes`, `extrair_gabarito`, `corrigir`, `analisar_habilidades` e `gerar_relatorio`, mas `extrair_respostas` Nano continua ❌ e falha alto; GPT-5.4 Mini completou `extrair_respostas` nessa amostra com conteudo real (`task_9c10e3752bcb`, doc `a39d26fcc621c7a8`) | Versionar GPT-5.4 Mini como `gpt54mini001` em `models.json`, confirmar deploy, e depois usar esse modelo como candidato explicito para `extrair_respostas` em nova pipeline completa/per-phase ou mais amostras; manter Nano fora de pipeline completa enquanto essa etapa estiver ❌ |
+| Pipeline | Gemini 3 Flash validado em `extrair_questoes`, `extrair_respostas` e etapas finais; `extrair_gabarito` Gemini foi reclassificado como invalido porque retornou tudo `MISSING_CONTENT`; pipeline sequencial Gemini avancou pelas tres extracoes e falhou alto em `corrigir` por quota `429`; GPT-5 Nano validado em `extrair_questoes`, `extrair_gabarito`, `corrigir`, `analisar_habilidades` e `gerar_relatorio`, mas `extrair_respostas` Nano continua ❌ e falha alto; GPT-5.4 Mini completou `extrair_respostas` em duas rodadas da mesma amostra, incluindo o modelo duravel `gpt54mini001` (`task_706931a94555`, doc `fec100a2e41eabcf`) | Usar `gpt54mini001` como candidato explicito para `extrair_respostas` em mais amostras e/ou pipeline per-phase; manter Nano fora de pipeline completa enquanto essa etapa estiver ❌ |
 | Schema e avisos | Sprint 2 concluida localmente | Manter schema oficial, defaults e visualizador cobertos por testes |
-| Custos/tokens | Metadata de documento, endpoints live, resumo por `cost_run_id`, `TokenUsageRecord` local, migration Supabase dedicada `b2dc88b`; falha alta final de `task_3d5feaf0da71` registrou `usage_52590d55d210459e` sem documento final, tokens `100188/8863`, custo `US$ 0.008555`; GPT-5.4 Mini em `extrair_respostas` registrou documento `a39d26fcc621c7a8`, tokens `97004/1942`, custo `US$ 0.081492`; diagnostico live ainda acusa `PGRST205` e `durable=false` | Aplicar `backend/migrations/002_create_token_usage.sql` no Supabase; revalidar ate `token_usage_backend.durable=true` |
+| Custos/tokens | Metadata de documento, endpoints live, resumo por `cost_run_id`, `TokenUsageRecord` local, migration Supabase dedicada `b2dc88b`; falha alta final de `task_3d5feaf0da71` registrou `usage_52590d55d210459e` sem documento final antes de deploy posterior, tokens `100188/8863`, custo `US$ 0.008555`; GPT-5.4 Mini em `extrair_respostas` registrou documentos `a39d26fcc621c7a8` e `fec100a2e41eabcf`, custos `US$ 0.081492` e `US$ 0.080570`; diagnostico live ainda acusa `PGRST205`, `durable=false` e `local_record_count=0`, provando que o fallback local de `TokenUsageRecord` nao sobrevive deploy | Aplicar `backend/migrations/002_create_token_usage.sql` no Supabase; revalidar ate `token_usage_backend.durable=true` |
 | UI de erros | Pendente | Mostrar falha por aluno/etapa sem depender de terminal |
 | Limpeza de dados | Pendente | Reclassificar "fantasmas" antes de qualquer delecao |
 | Rio 3 | Pausada | Nao pedir chave, nao rodar smoke, nao deployar Rio sem nova decisao |
@@ -1276,6 +1284,57 @@ Critério de pronto: lista de limpeza segura e revisada.
 - Proximo alvo tecnico: commitar/deployar `gpt54mini001` em `models.json`,
   confirmar que aparece no site apos deploy, e depois rodar pipeline com
   `gpt-5.4-mini` somente em `EXTRAIR_RESPOSTAS` ou em mais amostras dessa etapa.
+
+### 2026-05-16 -- `gpt54mini001` versionado e gate de deploy por backend
+
+- Alvo: confirmar que o candidato GPT-5.4 Mini sobrevive deploy como modelo
+  versionado, registrar o smoke oficial e corrigir o gate de deploy que dependia
+  demais do marker HTML stale.
+- Git/deploy observado antes do novo gate: commit `be19b7e` live no Render como
+  `dep-d84359favr4c73beqb0g`; `/api/health` healthy; `/api/settings/models/gpt54mini001`
+  retornou o modelo com `suporta_vision=true`, `suporta_function_calling=true`,
+  `suporta_streaming=true`, `suporta_temperature=false` e
+  `catalog_ref=openai/gpt-5.4-mini`.
+- Teste de conexao: `/api/settings/models/gpt54mini001/testar` retornou
+  `success=true`, `resposta=OK`, modelo `gpt-5.4-mini`, `tokens=44`.
+- Smoke oficial versionado: `task_706931a94555`,
+  `selected_steps=["extrair_respostas"]`, `force_rerun=true`.
+- Resultado: task `completed`; documento `fec100a2e41eabcf`, status
+  `concluido`, provider/modelo `openai/gpt-5.4-mini`, tokens `97004/1737`,
+  custo `US$ 0.080570`, tempo `53469.7ms`.
+- Qualidade observada: 5/7 respostas extraidas com conteudo real; Q1 e Q2 foram
+  marcadas como `MISSING_CONTENT`; Q3 recebeu `LOW_CONFIDENCE`; Q4 passou a
+  conter uma observacao mais honesta de possivel mistura com questao 5. Isso
+  reforca GPT-5.4 Mini como candidato melhor que Nano para handwriting/OCR, mas
+  ainda nao valida pipeline completa nem todas as materias.
+- Custos/durabilidade: `/api/custos/status?limit=500` retornou
+  `runs_precificados=28`, `runs_bloqueados=458`, `token_usage_analisados=0`,
+  `token_usage_backend.supabase.table_available=false`, erro `PGRST205`,
+  `local_record_count=0` e `durable=false`. Interpretacao: custos de documento
+  seguem medidos; custo de falha sem documento nao e duravel entre deploys ate
+  a migration `002_create_token_usage.sql` ser aplicada no Supabase.
+- Gate de deploy: commit `2d72c6b` adicionou `/api/deploy-info`, testes unitarios
+  e `check_deploy.sh` priorizando o endpoint backend antes do HTML marker; em
+  `render.yaml`, foi registrada a tentativa de gravar `deploy_sha.txt`, mas o
+  servico real no Dashboard ainda mostra build command proprio. O endpoint deve
+  funcionar se o Render expuser `RENDER_GIT_COMMIT`; se voltar `unknown`, o
+  proximo patch deve usar marker versionado dentro de `backend/`, nao
+  `frontend/index_v2.html`.
+- Validacoes locais do gate: `python -m py_compile backend/main_v2.py
+  backend/tests/unit/test_health_endpoint.py`; `bash -n scripts/check_deploy.sh`;
+  `git diff --check`; `PYTHONPATH=backend
+  /home/otavio/Documents/vscode/.venv/bin/python -m pytest
+  backend/tests/unit/test_health_endpoint.py -q` (`6 passed`); testes de custo
+  `backend/tests/unit/test_cost_tracking.py` (`14 passed`); testes de settings
+  `backend/tests/unit/test_model_manager.py
+  backend/tests/unit/test_gpt5_nano_registration.py` (`21 passed`).
+- Status do deploy do gate: `2d72c6b` publicado no GitHub; Render MCP confirmou
+  `dep-d84bjopo3t8c73fbshug` como `live`, finalizado em
+  `2026-05-16T18:42:15Z`; `/api/deploy-info` retornou commit
+  `2d72c6bf2c8d3eda1a4c5219603d5c2e58527127`, `source=RENDER_GIT_COMMIT`;
+  `check_deploy.sh 2d72c6b` passou; `/api/health` continuou healthy.
+- Proximo alvo tecnico: decidir o proximo ciclo entre aplicar migration Supabase
+  de `token_usage` (gate alto) e ampliar smokes `gpt54mini001` por amostra/fase.
 
 ## Riscos Abertos
 

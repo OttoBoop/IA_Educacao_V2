@@ -127,7 +127,11 @@ via settings em disco Render nao sobrevivem deploy. O candidato duravel passa a
 ser `gpt54mini001` em `backend/data/models.json`. No smoke `task_9c10e3752bcb`,
 `EXTRAIR_RESPOSTAS` completou com documento `a39d26fcc621c7a8`, 4/7 respostas
 com conteudo real, 3/7 marcadas como `MISSING_CONTENT`, tokens `97004/1942` e
-custo `US$ 0.081492`. Isso valida a etapa nessa amostra, nao pipeline completa.
+custo `US$ 0.081492`. Depois do deploy do modelo versionado, o smoke
+`task_706931a94555` com `gpt54mini001` criou `fec100a2e41eabcf`, 5/7 respostas
+com conteudo real, Q1/Q2 `MISSING_CONTENT`, Q3 `LOW_CONFIDENCE`, tokens
+`97004/1737` e custo `US$ 0.080570`. Isso valida a etapa nessa amostra, nao
+pipeline completa.
 
 ### Categoria 2: Relatorios de Desempenho (3 niveis)
 
@@ -533,8 +537,11 @@ Ver [teste_gpt5nano_pipeline_completo.md](arquivo_2026_04_17/teste_gpt5nano_pipe
   extracao real de respostas, rodar pipeline completa de 6 etapas, schema minimo
   por etapa e custo duravel de falhas sem documento final.
 - ✅ **GPT-5.4 Mini candidato OCR:** `extrair_respostas` passou em uma amostra
-  oficial (`task_9c10e3752bcb`, doc `a39d26fcc621c7a8`) com custo `US$ 0.081492`.
-  Ainda nao foi testado em pipeline completa nem nas outras etapas.
+  oficial primeiro como cadastro efemero (`task_9c10e3752bcb`, doc
+  `a39d26fcc621c7a8`, custo `US$ 0.081492`) e depois como modelo versionado
+  `gpt54mini001` (`task_706931a94555`, doc `fec100a2e41eabcf`, custo
+  `US$ 0.080570`). Ainda nao foi testado em pipeline completa nem nas outras
+  etapas.
 - ⏸️ **Claude Haiku 4.5:** Aguardando creditos.
 - 📊 **Confiabilidade Gemini 3 Flash:** etapas individuais OK, mas a primeira
   pipeline sequencial pos-runner bateu quota `429` em `corrigir`. Precisa duas
@@ -551,10 +558,11 @@ pipeline de 6 etapas com erro/custo/metadata visiveis.
 4. Sem endpoint de eventos de task (dificulta diagnostico de falhas transientes)
 
 **Proximos passos:**
-1. Manter deploy oficial confirmado por Render MCP/lista de deploys ou marker
-   confiavel antes de cada smoke novo.
-2. Corrigir `check_deploy.sh` para nao depender apenas do marker HTML quando o
-   Render usa `rootDir=backend`.
+1. Manter deploy oficial confirmado por Render MCP/lista de deploys ou
+   `/api/deploy-info` antes de cada smoke novo; commit `2d72c6b` ja confirmou
+   esse gate com `check_deploy.sh 2d72c6b`.
+2. Aplicar/validar a migration Supabase `token_usage` antes de chamar custo de
+   falha sem documento de duravel.
 3. Revalidar `extrair_respostas` com provider/modelo mais forte em OCR/handwriting
    ou melhorar o caminho OpenAI por pagina; GPT-5 Nano permanece ❌ nessa fase.
 4. Aplicar `backend/migrations/002_create_token_usage.sql` no Supabase para
