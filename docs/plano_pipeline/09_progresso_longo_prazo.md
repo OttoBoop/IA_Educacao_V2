@@ -5,7 +5,7 @@
 **Status geral:** Render MCP confirmou o servico oficial
 `srv-d5t8gbh4tr6s738fr3s0` (`IA_Educacao_V2`, branch `main`, URL
 `https://ia-educacao-v2.onrender.com`) com deploy live do commit funcional
-`01fb04c` (`dep-d83tp2m7r5hc73d7o7d0`). O marcador HTML continua mostrando
+`1ce3d23` (`dep-d841f437uimc73fs60lg`). O marcador HTML continua mostrando
 `novocr-deploy=e6060e1` porque o servico usa `rootDir=backend` e commits apenas
 de frontend/docs/marker nao garantem novo deploy; portanto, o gate oficial e
 Render MCP/lista de deploys + comportamento live, e o marker HTML e apenas
@@ -20,16 +20,19 @@ completa, mas a mesma task falhou alto em `corrigir` por quota Google/Gemini
 `429` do free tier; nao houve troca de modelo nem sucesso falso. GPT-5 Nano
 esta confirmado em `extrair_questoes`, `extrair_gabarito`, `corrigir`,
 `analisar_habilidades` e `gerar_relatorio`; `extrair_respostas` continua ❌
-como qualidade de modelo/etapa, mas agora falha alto no site oficial: depois de
-`8dd6c54` e `c1598b9` ainda salvarem respostas vazias, `01fb04c` bloqueou o
-caminho real do executor e a task `task_b511641dfa52` falhou com erro explicito,
-sem criar novo documento verde depois de `10d1c1d9741a6273`. O resumo de custos
-agrega por `cost_run_id`; falhas tool-use sem documento final tem
-`TokenUsageRecord` local mensal e codigo preparado para Supabase quando a tabela
-`token_usage` existir. O endpoint live ainda confirma que essa tabela nao existe
-(`PGRST205`): `/api/custos/status?limit=500` retornou `runs_precificados=24`,
-`runs_bloqueados=463`, `token_usage_analisados=1` e `durable=false`. Rio 3 segue
-pausado.
+como qualidade de modelo/etapa. A sequencia recente foi: `01fb04c` passou a
+falhar alto quando tudo vinha vazio; `6b57ef1` colocou `questoes_extraidas` no
+prompt; `3b9eedc` colocou texto extraido do PDF; `b8b8693` anexou paginas
+escaneadas como imagens; `283e8c6` proibiu inferir respostas do enunciado; e
+`1ce3d23` bloqueou JSON inconsistente/majoritariamente vazio em scans. O smoke
+oficial final (`task_3d5feaf0da71`) falhou alto sem criar novo documento verde,
+com custo registrado em `TokenUsageRecord` local `usage_52590d55d210459e`
+(`US$ 0.008555`). O resumo de custos agrega por `cost_run_id`; falhas sem
+documento final tem `TokenUsageRecord` local mensal e codigo preparado para
+Supabase quando a tabela `token_usage` existir. O endpoint live ainda confirma
+que essa tabela nao existe (`PGRST205`): `/api/custos/status?limit=500` retornou
+`runs_precificados=27`, `runs_bloqueados=460`, `token_usage_analisados=1` e
+`durable=false`. Rio 3 segue pausado.
 
 Este e o ponto de entrada do plano. O objetivo deste arquivo e dizer, em poucas
 linhas, onde estamos, qual e a proxima fila e quais frentes estao pausadas.
@@ -67,9 +70,9 @@ Estabilizar o NOVO CR para que a pipeline:
 | Frente | Estado | Proximo passo |
 |--------|--------|---------------|
 | Docs e plano | Sprint 0 concluida | Manter este painel como fonte oficial e anexos fora do fluxo diario |
-| Pipeline | Gemini 3 Flash validado em `extrair_questoes`, `extrair_respostas` e etapas finais; `extrair_gabarito` Gemini foi reclassificado como invalido porque retornou tudo `MISSING_CONTENT`; pipeline sequencial Gemini avancou pelas tres extracoes e falhou alto em `corrigir` por quota `429`; GPT-5 Nano validado em `extrair_questoes`, `extrair_gabarito`, `corrigir`, `analisar_habilidades` e `gerar_relatorio`; `extrair_respostas` Nano foi reclassificado como invalido porque marcou tudo `ilegivel`/vazio, e desde `01fb04c` falha alto sem salvar novo documento verde; comportamento de `f55e299`/`e6060e1`/`5527e26`/`01fb04c` confirmado por Render MCP e smoke live, embora HTML marker esteja atrasado | Corrigir a qualidade/entrada de `extrair_respostas` Nano em vez de aceitar vazio; depois tentar pipeline completa Nano; rerodar `extrair_gabarito` Gemini apos quota/decisao; schema minimo, validacao real no executor e UI de erro continuam pendentes |
+| Pipeline | Gemini 3 Flash validado em `extrair_questoes`, `extrair_respostas` e etapas finais; `extrair_gabarito` Gemini foi reclassificado como invalido porque retornou tudo `MISSING_CONTENT`; pipeline sequencial Gemini avancou pelas tres extracoes e falhou alto em `corrigir` por quota `429`; GPT-5 Nano validado em `extrair_questoes`, `extrair_gabarito`, `corrigir`, `analisar_habilidades` e `gerar_relatorio`; `extrair_respostas` Nano continua ❌: o sistema agora envia texto extraido + paginas escaneadas, proibe inferencia do enunciado e falha alto quando o resultado fica majoritariamente sem conteudo (`task_3d5feaf0da71`, commit `1ce3d23`) | Decidir o proximo caminho para `extrair_respostas`: usar provider melhor para OCR/handwriting explicitamente, ajustar prompt/vision de Nano, ou registrar Nano como inadequado para prova manuscrita; depois tentar pipeline completa Nano somente se essa etapa ficar confiavel |
 | Schema e avisos | Sprint 2 concluida localmente | Manter schema oficial, defaults e visualizador cobertos por testes |
-| Custos/tokens | Metadata de documento, endpoints live, resumo por `cost_run_id`, `TokenUsageRecord` local, migration Supabase dedicada `b2dc88b`; smoke Nano `gerar_relatorio` adicionou run precificado; apos a falha alta de `task_b511641dfa52`, `/api/custos/status?limit=500` mostrou `token_usage_analisados=1`, mas o diagnostico live ainda acusa `PGRST205` e `durable=false` | Aplicar `backend/migrations/002_create_token_usage.sql` no Supabase; revalidar ate `token_usage_backend.durable=true` |
+| Custos/tokens | Metadata de documento, endpoints live, resumo por `cost_run_id`, `TokenUsageRecord` local, migration Supabase dedicada `b2dc88b`; falha alta final de `task_3d5feaf0da71` registrou `usage_52590d55d210459e` sem documento final, tokens `100188/8863`, custo `US$ 0.008555`; diagnostico live ainda acusa `PGRST205` e `durable=false` | Aplicar `backend/migrations/002_create_token_usage.sql` no Supabase; revalidar ate `token_usage_backend.durable=true` |
 | UI de erros | Pendente | Mostrar falha por aluno/etapa sem depender de terminal |
 | Limpeza de dados | Pendente | Reclassificar "fantasmas" antes de qualquer delecao |
 | Rio 3 | Pausada | Nao pedir chave, nao rodar smoke, nao deployar Rio sem nova decisao |
@@ -1190,6 +1193,47 @@ Critério de pronto: lista de limpeza segura e revisada.
   validacao central no executor de forma consistente, sem depender de guard
   ad hoc por etapa.
 
+### 2026-05-16 -- `extrair_respostas` Nano: scans visiveis, inferencia proibida, falha alta final
+
+- Alvo: continuar o loop real depois de `01fb04c`; corrigir a causa de
+  `extrair_respostas` vazia sem voltar a aceitar documento verde ruim.
+- Commits/deploys oficiais:
+  - `6b57ef1` (`dep-d83u02j7uimc73fqps80`): colocou `questoes_extraidas` no
+    prompt de `EXTRAIR_RESPOSTAS`; smoke `task_8b1664516042` ainda falhou alto.
+  - `3b9eedc` (`dep-d8411cnavr4c73bdv9j0`): colocou texto extraido do PDF no
+    prompt; smoke `task_71ac163c7f13` completou e criou JSON `6b28875e8a9fdc73`,
+    mas so extraiu conteudo real da questao 7.
+  - `b8b8693` (`dep-d8417kpo3t8c73f6k51g`): removeu bloqueio local de imagens
+    para GPT-5 Nano/OpenAI, anexou paginas PDF sem texto como PNG e rejeitou scan
+    majoritariamente vazio; smoke `task_fd9d2beaefac` completou e criou JSON
+    `893987838fd275bd` com 7/7 respostas preenchidas, mas algumas pareciam
+    inferidas do enunciado.
+  - `283e8c6` (`dep-d841b2po3t8c73f6lllg`): prompt proibiu inferir resposta do
+    enunciado/gabarito/conhecimento externo; smoke `task_96691474acdd` criou
+    JSON `ff0882e8db71e79d`, mais honesto, mas ainda verde com campos vazios
+    inconsistentes e maioria sem conteudo.
+  - `1ce3d23` (`dep-d841f437uimc73fs60lg`): executor passou a rejeitar
+    `resposta_aluno` vazia sem `em_branco=true`/`ilegivel=true` e scans com 70%
+    ou mais de respostas sem conteudo.
+- Smoke oficial final: `task_3d5feaf0da71`, `gpt5nano001`,
+  `selected_steps=["extrair_respostas"]`, `force_rerun=true`.
+- Resultado final: `status=failed`, `extrair_respostas=failed`, erro explicito:
+  `EXTRAIR_RESPOSTAS marcou 6 de 7 respostas como sem conteudo mesmo com paginas escaneadas anexadas como imagem. Isso e suspeito demais para concluir a etapa; revise OCR/vision do modelo ou use outro provider explicitamente.`
+- Verificacao de artefato: a listagem de `extracao_respostas` mostra que o ultimo
+  documento verde continua `ff0882e8db71e79d` de `2026-05-16T07:04:27`; a task
+  final `task_3d5feaf0da71` nao criou novo documento verde.
+- Custos: `/api/custos/resumo?limit=60` mostrou `TokenUsageRecord`
+  `usage_52590d55d210459e`, `cost_run_id=validation_c1e429bc06ee`,
+  provider/modelo `openai/gpt-5-nano`, tokens `100188/8863`, custo
+  `US$ 0.008555`, `status=erro`, `source=executar_multimodal`.
+- Status: produto protegido contra falso sucesso nesta amostra. A qualidade real
+  de `extrair_respostas` com GPT-5 Nano em prova manuscrita continua nao
+  confirmada; Doc 12 deve manter Nano ❌ nessa fase.
+- Proximo alvo tecnico: revalidar `extrair_respostas` com provider/modelo mais
+  forte em OCR/handwriting ou melhorar o caminho OpenAI para preservar melhor
+  evidencia por pagina; nao rodar pipeline completa Nano enquanto essa etapa
+  estiver ❌.
+
 ## Riscos Abertos
 
 1. Creditos Anthropic insuficientes ainda bloqueiam validacao Haiku.
@@ -1198,7 +1242,7 @@ Critério de pronto: lista de limpeza segura e revisada.
    necessario, mas nao prova qualidade pedagogica.
 4. A tabela Supabase `token_usage` tem migration dedicada em `b2dc88b`, mas o
    live confirmou que ela ainda nao existe no schema cache (`PGRST205`).
-5. Render MCP confirma runtime `5527e26`, mas o HTML marker ainda aponta
+5. Render MCP confirma runtime `1ce3d23`, mas o HTML marker ainda aponta
    `e6060e1`; `check_deploy.sh` baseado apenas no HTML e insuficiente para
    servico `rootDir=backend`.
 6. Gemini 3 Flash bateu quota `429` em pipeline sequencial completa; nao tratar
@@ -1207,9 +1251,10 @@ Critério de pronto: lista de limpeza segura e revisada.
 7. `extrair_gabarito` parseavel pode ser conteudo invalido quando todas as
    respostas viram `MISSING_CONTENT`; Nano passou no smoke pos-`5527e26`, mas
    Gemini ainda precisa rerun antes de voltar a ✅.
-8. `extrair_respostas` parseavel pode ser conteudo invalido quando todas as
-   respostas ficam sem conteudo; desde `01fb04c`, isso falha alto no executor,
-   mas a qualidade da extracao ainda precisa ser corrigida.
+8. `extrair_respostas` parseavel pode ser conteudo invalido quando as respostas
+   ficam sem conteudo, inferidas ou inconsistentes; desde `1ce3d23`, o caso
+   final falha alto no executor e registra custo, mas a qualidade da extracao
+   ainda precisa ser corrigida.
 9. Artefatos com `status=erro` podem ter arquivo/conteudo parcial; UI e docs
    devem ensinar o usuario a obedecer o status, nao o simples fato de existir
    arquivo.
