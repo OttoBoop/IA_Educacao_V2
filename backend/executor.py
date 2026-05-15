@@ -3435,6 +3435,30 @@ Seja preciso, educativo e construtivo em suas análises."""
                     ]
                 return tools_definitions
 
+            def _tools_by_names(names: List[str]) -> List[Dict[str, Any]]:
+                allowed = set(names)
+                return [
+                    tool
+                    for tool in tools_definitions
+                    if tool.get("name") in allowed
+                ]
+
+            def _retry_create_document_message() -> str:
+                contexto_original = str(mensagem or "").strip()
+                if len(contexto_original) > 12000:
+                    contexto_original = contexto_original[:12000] + "\n...[contexto truncado para retry]..."
+                return (
+                    "A etapa ainda NAO salvou o JSON obrigatorio. Nesta chamada, "
+                    "a unica ferramenta disponivel e create_document. Chame "
+                    "create_document agora com exatamente um arquivo .json e content "
+                    "como JSON valido. Nao gere PDF, Markdown ou texto livre nesta "
+                    "chamada; PDF sera uma chamada separada via execute_python_code. "
+                    "Nao responda em texto simples.\n\n"
+                    "CONTEXTO ORIGINAL DA ETAPA:\n```\n"
+                    f"{contexto_original}\n"
+                    "```"
+                )
+
             def _validate_json_artifacts(state: Dict[str, Any]) -> List[str]:
                 """Fail high on known placeholder/schema leaks in persisted JSON."""
                 if expected_document_type != TipoDocumento.ANALISE_HABILIDADES:
@@ -3509,7 +3533,43 @@ Seja preciso, educativo e construtivo em suas análises."""
 
             if dual_output_expected:
                 state = _dual_output_state(respostas_tool)
-                if not state["complete"]:
+                if is_openai_provider:
+                    if not state["has_json"]:
+                        resposta = await client.chat_with_tools(
+                            mensagem=_retry_create_document_message(),
+                            tools=_tools_by_names(["create_document"]),
+                            tool_registry=registry,
+                            system_prompt=system_prompt,
+                            context=context,
+                            tool_choice="required",
+                        )
+                        respostas_tool.append(resposta)
+                        tentativas += 1
+                        state = _dual_output_state(respostas_tool)
+
+                    if state["has_json"] and not state["has_pdf"]:
+                        resposta = await client.chat_with_tools(
+                            mensagem=_retry_message_for_state(state),
+                            tools=_tools_by_names(["execute_python_code"]),
+                            tool_registry=registry,
+                            system_prompt=system_prompt,
+                            context=context,
+                            tool_choice="required",
+                        )
+                        respostas_tool.append(resposta)
+                        tentativas += 1
+                        state = _dual_output_state(respostas_tool)
+
+                    if not state["complete"]:
+                        alertas.append({
+                            "tipo": "aviso",
+                            "mensagem": (
+                                "Saída incompleta após retry: "
+                                + ", ".join(state["missing"])
+                                + ". A etapa falhará sem fallback automático."
+                            )
+                        })
+                elif not state["complete"]:
                     # Partial/missing output — one explicit retry on the same model.
                     retry_msg = _retry_message_for_state(state)
                     retry_tools_definitions = _retry_tools_for_state(state)
@@ -3524,7 +3584,7 @@ Seja preciso, educativo e construtivo em suas análises."""
                         tool_choice=retry_tool_choice,
                     )
                     respostas_tool.append(resposta)
-                    tentativas = 2
+                    tentativas += 1
 
                     # Check again after retry
                     state = _dual_output_state(respostas_tool)

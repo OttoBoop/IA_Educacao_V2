@@ -309,6 +309,34 @@ class TestBothOutputsNoRetry:
         assert mock_client.chat_with_tools.call_count == 2
         second_call = mock_client.chat_with_tools.call_args_list[1]
         assert second_call.kwargs.get("tool_choice") == "required"
+        second_tool_names = [tool["name"] for tool in second_call.kwargs["tools"]]
+        assert second_tool_names == ["create_document"]
+
+    async def test_openai_no_tools_can_retry_json_then_pdf(self):
+        """OpenAI may need a JSON repair call before the PDF call."""
+        no_tools_response = _tool_response([])
+        json_response = _tool_response(["create_document"])
+        pdf_response = _tool_response(["execute_python_code"])
+
+        result, mock_client = await _call_executar_com_tools(
+            chat_side_effect=[no_tools_response, json_response, pdf_response],
+            tools_to_use=["create_document", "execute_python_code"],
+            tipo_value="openai",
+        )
+
+        assert result.sucesso is True
+        assert result.tentativas == 3
+        assert mock_client.chat_with_tools.call_count == 3
+        second_tool_names = [
+            tool["name"]
+            for tool in mock_client.chat_with_tools.call_args_list[1].kwargs["tools"]
+        ]
+        third_tool_names = [
+            tool["name"]
+            for tool in mock_client.chat_with_tools.call_args_list[2].kwargs["tools"]
+        ]
+        assert second_tool_names == ["create_document"]
+        assert third_tool_names == ["execute_python_code"]
 
     async def test_openai_only_json_retry_exposes_only_pdf_tool(self):
         """When JSON exists, the repair call should expose only execute_python_code."""
