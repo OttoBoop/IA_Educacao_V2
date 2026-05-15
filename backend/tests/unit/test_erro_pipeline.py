@@ -84,6 +84,68 @@ class TestBlockingParsedResponses:
         assert erro is None
 
 
+class TestExtrairRespostasContextoQuestoes:
+    """EXTRAIR_RESPOSTAS deve receber questoes extraidas no prompt, nao so anexo."""
+
+    @staticmethod
+    def _doc(tipo, doc_id, path, extensao=".json"):
+        doc = MagicMock()
+        doc.tipo = tipo
+        doc.id = doc_id
+        doc.caminho_arquivo = str(path)
+        doc.extensao = extensao
+        return doc
+
+    def test_extrair_respostas_carrega_questoes_extraidas_no_contexto(self, tmp_path):
+        from executor import EtapaProcessamento, PipelineExecutor
+        from models import TipoDocumento
+
+        questoes_path = tmp_path / "extracao_questoes.json"
+        questoes_path.write_text(
+            json.dumps({"questoes": [{"numero": 1, "enunciado": "Calcule A+B"}]}),
+            encoding="utf-8",
+        )
+        doc_questoes = self._doc(
+            TipoDocumento.EXTRACAO_QUESTOES,
+            "questoes-1",
+            questoes_path,
+        )
+
+        executor = PipelineExecutor.__new__(PipelineExecutor)
+        executor.storage = MagicMock()
+        executor.storage.listar_documentos = MagicMock(
+            side_effect=lambda _atividade_id, aluno_id=None: [] if aluno_id else [doc_questoes]
+        )
+        executor.storage.resolver_caminho_documento = MagicMock(return_value=questoes_path)
+
+        contexto = executor._preparar_contexto_json(
+            "ativ_test",
+            "aluno_test",
+            EtapaProcessamento.EXTRAIR_RESPOSTAS,
+        )
+
+        assert "questoes_extraidas" in contexto
+        assert "Calcule A+B" in contexto["questoes_extraidas"]
+        assert contexto["_documentos_carregados"] == ["questoes_extraidas"]
+        assert "_documentos_faltantes" not in contexto
+
+    def test_extrair_respostas_falha_sem_questoes_extraidas(self):
+        from executor import EtapaProcessamento, PipelineExecutor
+
+        executor = PipelineExecutor.__new__(PipelineExecutor)
+        executor.storage = MagicMock()
+        executor.storage.listar_documentos = MagicMock(return_value=[])
+
+        contexto = executor._preparar_contexto_json(
+            "ativ_test",
+            "aluno_test",
+            EtapaProcessamento.EXTRAIR_RESPOSTAS,
+        )
+
+        assert "questoes_extraidas" not in contexto
+        assert "questoes_extraidas" in contexto["_documentos_faltantes"][0]
+
+
 class TestF2T1_ErrorFramework:
     """F2-T1: Framework de erros estruturados."""
 

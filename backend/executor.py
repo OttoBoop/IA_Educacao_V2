@@ -1135,6 +1135,19 @@ class PipelineExecutor:
                 _logger.warning(f"Erro ao carregar {chave}: {e}")
             return False
 
+        # EXTRAIR_RESPOSTAS precisa das questoes extraidas no corpo do prompt.
+        # Anexar o JSON sozinho nao basta: modelos pequenos podem ignorar ou
+        # subutilizar anexos quando a variavel {{questoes_extraidas}} fica vazia.
+        if etapa == EtapaProcessamento.EXTRAIR_RESPOSTAS:
+            encontrou_questoes = False
+            for doc in docs_base:
+                if doc.tipo == TipoDocumento.EXTRACAO_QUESTOES and doc.extensao.lower() == '.json':
+                    if _carregar_json(doc, "questoes_extraidas"):
+                        encontrou_questoes = True
+                        break
+            if not encontrou_questoes:
+                documentos_faltantes.append("questoes_extraidas (execute 'extrair_questoes' primeiro)")
+
         # Para correção, incluir questões extraídas, gabarito e respostas
         if etapa in [EtapaProcessamento.CORRIGIR, EtapaProcessamento.ANALISAR_HABILIDADES, EtapaProcessamento.GERAR_RELATORIO]:
             encontrou_questoes = False
