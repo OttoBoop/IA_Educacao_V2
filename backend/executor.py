@@ -3227,9 +3227,6 @@ Seja preciso, educativo e construtivo em suas análises."""
             provider_value = getattr(model.tipo, "value", model.tipo)
             is_openai_provider = provider_value == ProviderType.OPENAI.value
 
-            def _forced_openai_tool(tool_name: str) -> Dict[str, Any]:
-                return {"type": "function", "function": {"name": tool_name}}
-
             def _combined_tool_calls(responses: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
                 calls = []
                 for response in responses:
@@ -3389,13 +3386,24 @@ Seja preciso, educativo e construtivo em suas análises."""
                     + contexto_retry
                 )
 
+            def _retry_tools_for_state(state: Dict[str, Any]) -> List[Dict[str, Any]]:
+                missing_names = []
+                if not state["has_json"]:
+                    missing_names.append("create_document")
+                if not state["has_pdf"]:
+                    missing_names.append("execute_python_code")
+                if not missing_names:
+                    return tools_definitions
+                allowed = set(missing_names)
+                return [
+                    tool
+                    for tool in tools_definitions
+                    if tool.get("name") in allowed
+                ]
+
             def _retry_tool_choice_for_state(state: Dict[str, Any]) -> Optional[Any]:
                 if not is_openai_provider:
                     return None
-                if not state["has_pdf"] and state["has_json"]:
-                    return _forced_openai_tool("execute_python_code")
-                if not state["has_json"] and state["has_pdf"]:
-                    return _forced_openai_tool("create_document")
                 return "required"
 
             def _validate_json_artifacts(state: Dict[str, Any]) -> List[str]:
@@ -3475,11 +3483,12 @@ Seja preciso, educativo e construtivo em suas análises."""
                 if not state["complete"]:
                     # Partial/missing output — one explicit retry on the same model.
                     retry_msg = _retry_message_for_state(state)
+                    retry_tools_definitions = _retry_tools_for_state(state)
                     retry_tool_choice = _retry_tool_choice_for_state(state)
 
                     resposta = await client.chat_with_tools(
                         mensagem=retry_msg,
-                        tools=tools_definitions,
+                        tools=retry_tools_definitions,
                         tool_registry=registry,
                         system_prompt=system_prompt,
                         context=context,

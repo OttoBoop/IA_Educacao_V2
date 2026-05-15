@@ -144,9 +144,25 @@ def _make_tools_module():
     """Build a minimal tools module mock."""
     mock_module = MagicMock()
     mock_module.ToolRegistry = MagicMock(return_value=MagicMock())
-    mock_module.PIPELINE_TOOLS = []
-    mock_module.CREATE_DOCUMENT = MagicMock()
-    mock_module.EXECUTE_PYTHON_CODE = MagicMock()
+
+    class FakeTool:
+        def __init__(self, name):
+            self.name = name
+            self.handler = None
+
+        def to_anthropic_format(self):
+            return {
+                "name": self.name,
+                "description": f"Fake {self.name}",
+                "input_schema": {"type": "object", "properties": {}, "required": []},
+            }
+
+    create_document = FakeTool("create_document")
+    execute_python_code = FakeTool("execute_python_code")
+
+    mock_module.PIPELINE_TOOLS = [create_document, execute_python_code]
+    mock_module.CREATE_DOCUMENT = create_document
+    mock_module.EXECUTE_PYTHON_CODE = execute_python_code
 
     class FakeToolExecutionContext:
         def __init__(self, **kwargs):
@@ -258,6 +274,40 @@ class TestBothOutputsNoRetry:
         assert result.sucesso is True
         assert mock_client.chat_with_tools.call_count == 2
         second_call = mock_client.chat_with_tools.call_args_list[1]
+        assert second_call.kwargs.get("tool_choice") == "required"
+
+    async def test_openai_only_json_retry_exposes_only_pdf_tool(self):
+        """When JSON exists, the repair call should expose only execute_python_code."""
+        only_json_response = _tool_response(["create_document"])
+        retry_response = _tool_response(["create_document", "execute_python_code"])
+
+        result, mock_client = await _call_executar_com_tools(
+            chat_side_effect=[only_json_response, retry_response],
+            tools_to_use=["create_document", "execute_python_code"],
+            tipo_value="openai",
+        )
+
+        assert result.sucesso is True
+        second_call = mock_client.chat_with_tools.call_args_list[1]
+        tool_names = [tool["name"] for tool in second_call.kwargs["tools"]]
+        assert tool_names == ["execute_python_code"]
+        assert second_call.kwargs.get("tool_choice") == "required"
+
+    async def test_openai_only_pdf_retry_exposes_only_json_tool(self):
+        """When PDF exists, the repair call should expose only create_document."""
+        only_pdf_response = _tool_response(["execute_python_code"])
+        retry_response = _tool_response(["create_document", "execute_python_code"])
+
+        result, mock_client = await _call_executar_com_tools(
+            chat_side_effect=[only_pdf_response, retry_response],
+            tools_to_use=["create_document", "execute_python_code"],
+            tipo_value="openai",
+        )
+
+        assert result.sucesso is True
+        second_call = mock_client.chat_with_tools.call_args_list[1]
+        tool_names = [tool["name"] for tool in second_call.kwargs["tools"]]
+        assert tool_names == ["create_document"]
         assert second_call.kwargs.get("tool_choice") == "required"
 
 
