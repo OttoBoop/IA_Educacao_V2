@@ -3406,6 +3406,15 @@ Seja preciso, educativo e construtivo em suas análises."""
                     return None
                 return "required"
 
+            def _initial_tools_for_provider() -> List[Dict[str, Any]]:
+                if dual_output_expected and is_openai_provider:
+                    return [
+                        tool
+                        for tool in tools_definitions
+                        if tool.get("name") == "create_document"
+                    ]
+                return tools_definitions
+
             def _validate_json_artifacts(state: Dict[str, Any]) -> List[str]:
                 """Fail high on known placeholder/schema leaks in persisted JSON."""
                 if expected_document_type != TipoDocumento.ANALISE_HABILIDADES:
@@ -3467,7 +3476,7 @@ Seja preciso, educativo e construtivo em suas análises."""
             client = ChatClient(model, api_key or "")
             resposta = await client.chat_with_tools(
                 mensagem=mensagem,
-                tools=tools_definitions,
+                tools=_initial_tools_for_provider(),
                 tool_registry=registry,
                 system_prompt=system_prompt,
                 context=context,

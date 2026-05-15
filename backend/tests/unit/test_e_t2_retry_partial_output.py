@@ -259,6 +259,8 @@ class TestBothOutputsNoRetry:
 
         first_call = mock_client.chat_with_tools.call_args_list[0]
         assert first_call.kwargs.get("tool_choice") == "required"
+        first_tool_names = [tool["name"] for tool in first_call.kwargs["tools"]]
+        assert first_tool_names == ["create_document"]
 
     async def test_openai_no_tools_retries_with_required_tool_choice(self):
         """If OpenAI still returns plain text, retry must require tools again."""
