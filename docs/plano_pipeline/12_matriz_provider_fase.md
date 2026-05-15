@@ -30,11 +30,15 @@
 - O commit `e6060e1` bloqueia as rotas legadas sincrônicas
   `/api/pipeline/executar` e `/api/pipeline/executar-com-tools` com `410 Gone`;
   marker `a7dead3` foi publicado no GitHub, mas ainda precisa confirmacao Render.
+- Em producao, as duas rotas legadas ja retornaram `410`, provando
+  comportamento backend de `e6060e1`; porem o HTML marker ainda foi observado em
+  `f55e299`, entao a confirmacao por marker segue pendente. `wait_deploy.sh
+  e6060e1` deu timeout apos 600s.
 - `origin/main` tambem contem a migration dedicada `b2dc88b`
   (`backend/migrations/002_create_token_usage.sql`), ainda nao aplicada ao
   Supabase de producao.
-- Render live confirmou `924fd79` por `check_deploy.sh`; `d653c13` e `f55e299`
-  continuam pendentes de confirmacao live.
+- Render live chegou a `f55e299` pelo marker HTML; comportamento backend de
+  `e6060e1` ja foi observado, mas o marker `a7dead3` segue pendente.
 - Docs antigos registram que auto-deploy Git nao funciona de forma confiavel; o
   ciclo usou deploy via API Render com token local seguro, sem imprimir segredo.
 - Smokes live anteriores continuam citados com seus markers; smokes de
@@ -57,7 +61,7 @@
 | Provider/Modelo | EXTRAIR_QUESTOES | EXTRAIR_GABARITO | EXTRAIR_RESPOSTAS | CORRIGIR | ANALISAR_HABILIDADES | GERAR_RELATORIO |
 |-----------------|:---:|:---:|:---:|:---:|:---:|:---:|
 | **Claude Haiku 4.5** (`588f3efe7975`) | ⏸️ | ⏸️ | ⏸️ | 🚫 | 🚫 | 🚫 |
-| **Gemini 3 Flash** (`gem3flash001`) | ✅ | ⏸️ | ⏸️ | ✅ | ✅ | ✅ |
+| **Gemini 3 Flash** (`gem3flash001`) | ✅ | ✅ | ⏸️ | ✅ | ✅ | ✅ |
 | **GPT-5 Nano** (`gpt5nano001`) | ⏸️ | ⏸️ | ⏸️ | ✅ | ✅ | ✅ |
 | **GPT-4o** (`180b8298a279`) — referencia | ✅ | ✅ | ✅ | ⚠️ | ⚠️ | ⚠️ |
 
@@ -154,6 +158,12 @@
   `1602/1938`, `US$ 0.002806`, e `1602/1934`, `US$ 0.002801`. A duplicacao
   veio de retry operacional apos timeout de cliente; nao deve ser repetida como
   comportamento normal.
+- Depois do deploy do runner destacado, Gemini 3 Flash passou em
+  `extrair_gabarito` (`task_094c921eb038`): a resposta inicial voltou em
+  `1.155s` com `task_id`, `/api/health` ficou saudavel em 20 polls, e o JSON
+  `36d1fdd0a453e2f5` registrou tokens `65018/727`, custo `US$ 0.020378`,
+  `respostas` e avisos `MISSING_CONTENT` para questoes ausentes no gabarito de
+  origem.
 - GPT-5 Nano falhou alto em `analisar_habilidades` (`task_43d48d9deea2`):
   nao gerou PDF obrigatorio via `execute_python_code`; o erro ficou visivel na
   task e nao houve fallback. Dois JSONs parciais foram marcados `status=erro`
@@ -207,8 +217,9 @@
 Depois do deploy `f505be6`, a repeticao `task_8f53987c57c4` completou em
 `corrigir`, com custo medido. Depois do deploy `4f27dae`, Gemini tambem passou
 em `analisar_habilidades` e `gerar_relatorio`, com custo medido. Depois do
-marker `924fd79`, `extrair_questoes` tambem passou com custo medido. As etapas
-`extrair_gabarito` e `extrair_respostas` continuam nao revalidadas pos-fix.
+marker `924fd79`, `extrair_questoes` tambem passou com custo medido. Depois do
+runner destacado, `extrair_gabarito` passou com custo medido e health saudavel.
+A etapa `extrair_respostas` continua nao revalidada pos-fix.
 
 **Historico positivo via `pipeline-completo`** para Eric Manoel antes dos commits
 `b12be9a`/Sprint 3b (ver [teste_gemini_pipeline_completo.md](arquivo_2026_04_17/teste_gemini_pipeline_completo.md)).
@@ -320,9 +331,11 @@ Ver [teste_gpt5nano_pipeline_completo.md](arquivo_2026_04_17/teste_gpt5nano_pipe
 - [x] Rodar Gemini 3 Flash em `analisar_habilidades` e `gerar_relatorio` com
       custo/metadata
 - [x] Rodar Gemini 3 Flash em `extrair_questoes` com custo/metadata
-- [ ] Validar que `f55e299` elimina timeout/indisponibilidade na resposta
+- [x] Rodar Gemini 3 Flash em `extrair_gabarito` com custo/metadata e health
+      responsivo durante a execucao
+- [x] Validar que `f55e299` elimina timeout/indisponibilidade na resposta
       imediata do `pipeline-completo`
-- [ ] Confirmar que `e6060e1` faz rotas legadas sincrônicas retornarem `410`
+- [x] Confirmar que `e6060e1` faz rotas legadas sincrônicas retornarem `410`
       rapidamente em producao
 - [ ] Aplicar `backend/migrations/002_create_token_usage.sql` no Supabase e revalidar
       `token_usage_backend.supabase.table_available=true`
@@ -355,8 +368,8 @@ Ver [teste_gpt5nano_pipeline_completo.md](arquivo_2026_04_17/teste_gpt5nano_pipe
 
 **Estado atual:**
 - ✅ **Gemini 3 Flash:** chat simples live OK; `corrigir`,
-  `analisar_habilidades`, `gerar_relatorio` e `extrair_questoes` pos-fix OK
-  com custo/metadata. Faltam `extrair_gabarito` e `extrair_respostas`.
+  `analisar_habilidades`, `gerar_relatorio`, `extrair_questoes` e
+  `extrair_gabarito` pos-fix OK com custo/metadata. Falta `extrair_respostas`.
 - ✅ **GPT-5 Nano via `pipeline-completo`:** as tres etapas finais do aluno
   (`corrigir`, `analisar_habilidades`, `gerar_relatorio`) passaram em smokes
   oficiais com JSON/PDF, custo e metadata. Ainda falta pipeline completa de 6
@@ -377,7 +390,8 @@ visiveis.
 
 **Proximos passos:**
 1. Manter deploy oficial confirmado por marker antes de cada smoke novo.
-2. Confirmar deploy `e6060e1` e testar resposta imediata/410 sem duplicar docs.
+2. Confirmar marker `a7dead3` ou registrar divergencia marker/backend; o
+   comportamento 410 ja foi observado.
 3. Confirmar deploy `d653c13` ou registrar bloqueio Render definitivo.
 4. Aplicar `backend/migrations/002_create_token_usage.sql` no Supabase para
    tornar duravel o custo de falhas sem documento.

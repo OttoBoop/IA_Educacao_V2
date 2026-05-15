@@ -64,7 +64,7 @@ Estabilizar o NOVO CR para que a pipeline:
 | Frente | Estado | Proximo passo |
 |--------|--------|---------------|
 | Docs e plano | Sprint 0 concluida | Manter este painel como fonte oficial e anexos fora do fluxo diario |
-| Pipeline | Gemini 3 Flash validado oficialmente em `extrair_questoes`, `corrigir`, `analisar_habilidades` e `gerar_relatorio`; GPT-5 Nano validado em `corrigir`, `analisar_habilidades` e `gerar_relatorio` no marker `924fd79`; patches `d653c13`, `f55e299` e `e6060e1` ainda pendentes de deploy | Confirmar deploy `e6060e1`; depois ampliar smoke para `extrair_gabarito`, `extrair_respostas`, schema minimo e UI de erro |
+| Pipeline | Gemini 3 Flash validado oficialmente em `extrair_questoes`, `extrair_gabarito`, `corrigir`, `analisar_habilidades` e `gerar_relatorio`; GPT-5 Nano validado em `corrigir`, `analisar_habilidades` e `gerar_relatorio`; comportamento de `f55e299`/`e6060e1` observado no backend live, mas HTML marker ainda atrasado | Confirmar marker `a7dead3` ou registrar divergencia marker/backend; depois ampliar smoke para `extrair_respostas`, schema minimo e UI de erro |
 | Schema e avisos | Sprint 2 concluida localmente | Manter schema oficial, defaults e visualizador cobertos por testes |
 | Custos/tokens | Metadata de documento, endpoints live, resumo por `cost_run_id`, `TokenUsageRecord` local, migration Supabase dedicada `b2dc88b`; smoke Nano `gerar_relatorio` adicionou run precificado; diagnostico live ainda acusa `PGRST205` | Aplicar `backend/migrations/002_create_token_usage.sql` no Supabase; validar uma falha real sem documento em producao |
 | UI de erros | Pendente | Mostrar falha por aluno/etapa sem depender de terminal |
@@ -95,8 +95,9 @@ Estabilizar o NOVO CR para que a pipeline:
 - Commit funcional de bloqueio de rotas legadas sincrônicas: `e6060e1`.
 - Marker mais novo publicado no GitHub para runtime: `a7dead3`
   (`chore: mark deploy e6060e1`).
-- Marker atual confirmado no Render: `0dfdbbe`, HTML com
-  `novocr-deploy=924fd79`.
+- Marker atual observado no Render depois do catch-up: HTML ainda aponta
+  `novocr-deploy=f55e299`, mas o backend ja respondeu como `e6060e1` nas rotas
+  legadas (`410 Gone`).
 - GitHub `origin/main`: contem `e6060e1`, marker `a7dead3`, `f55e299`,
   `d653c13`, marker `2947178` e commits documentais posteriores. O ultimo
   marker confirmado no Render e `0dfdbbe`.
@@ -857,9 +858,48 @@ Critério de pronto: lista de limpeza segura e revisada.
 - Git/deploy: commit funcional `e6060e1`; marker `a7dead3`; ambos publicados
   em `origin/main`. Monitor `wait_deploy.sh e6060e1` iniciado, mas ainda nao
   confirmado no Render neste registro.
-- Proximo alvo: quando `e6060e1` estiver live, confirmar que a rota legada
-  retorna 410 rapidamente e que `pipeline-completo` devolve `task_id` sem
-  derrubar `/api/health`.
+- Proximo alvo: confirmar o comportamento em producao e depois resolver a
+  divergencia do marker HTML.
+
+### 2026-05-16 -- Provider smoke: Gemini `extrair_gabarito` com runner destacado
+
+- Alvo: validar a segunda etapa de extracao e provar que `f55e299` evita
+  timeout/indisponibilidade durante uma etapa longa.
+- Status: smoke oficial passou. A chamada de `pipeline-completo` retornou
+  `task_id` em `1.155s`; `/api/health` respondeu 20 vezes durante a execucao.
+- Task: `task_094c921eb038`, status `completed`, etapa
+  `extrair_gabarito=completed`.
+- Artefato: JSON `36d1fdd0a453e2f5`, status `concluido`, provider/modelo
+  `google/gemini-3-flash-preview`, tokens `65018/727`, custo
+  `US$ 0.020378`.
+- Conteudo: JSON parseado com `respostas`, `_avisos_documento` e
+  `_avisos_questao`. Como o gabarito de origem continha apenas a questao 5, o
+  modelo registrou `MISSING_CONTENT` para as demais questoes em vez de inventar
+  respostas.
+- Custo live: `/api/custos/status?limit=500` subiu para
+  `runs_precificados=13`, `runs_bloqueados=474`; `token_usage` duravel segue
+  bloqueado por `PGRST205`.
+- Interpretacao: Gemini esta confirmado em `extrair_questoes` e
+  `extrair_gabarito`. Falta `extrair_respostas` para fechar as tres extracoes
+  com Gemini.
+
+### 2026-05-16 -- Smoke de rotas legadas bloqueadas
+
+- Alvo: confirmar em producao o comportamento de `e6060e1`, mesmo antes do
+  marker HTML `a7dead3` aparecer.
+- Status: comportamento backend confirmado; marker HTML ainda atrasado.
+- `/api/pipeline/executar`: retornou HTTP `410` com mensagem explicita
+  direcionando para `/api/executar/pipeline-completo` e
+  `/api/task-progress/{task_id}`.
+- `/api/pipeline/executar-com-tools`: retornou HTTP `410` com mensagem
+  explicita indicando que tool-use sincrono foi desativado.
+- Deploy: `check_deploy.sh e6060e1` ainda falha porque o HTML marker encontrado
+  e `f55e299`; isso e divergencia de marcador, nao ausencia do comportamento
+  backend observado. `wait_deploy.sh e6060e1` deu timeout apos 600s e
+  `/api/health` permaneceu healthy.
+- Proximo alvo: continuar monitorando o marker `a7dead3`; se ele nao entrar,
+  registrar bloqueio de marcador/deploy parcial e seguir para `extrair_respostas`
+  apenas pelo fluxo `pipeline-completo`.
 
 ## Riscos Abertos
 
@@ -869,6 +909,7 @@ Critério de pronto: lista de limpeza segura e revisada.
    necessario, mas nao prova qualidade pedagogica.
 4. A tabela Supabase `token_usage` tem migration dedicada em `b2dc88b`, mas o
    live confirmou que ela ainda nao existe no schema cache (`PGRST205`).
-5. Render/site oficial voltou e esta em `924fd79`; nao aceitar `d653c13`,
-   `f55e299` ou `e6060e1` como live ate o marker correspondente aparecer.
+5. Render/site oficial ja executa comportamento de `e6060e1`, mas o HTML marker
+   ainda aponta `f55e299`; nao aceitar marker `a7dead3` como confirmado ate
+   `check_deploy.sh e6060e1` passar.
 6. Rio 3 nao deve voltar ao fluxo ativo sem nova decisao e nova chave segura.
