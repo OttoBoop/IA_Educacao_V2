@@ -97,6 +97,45 @@ class TestExtracaoGabarito:
         assert len(gabarito.respostas) == 1
         assert gabarito.respostas[0].resposta_correta == "b"
 
+    def test_gabarito_todo_missing_content_falha_alto(self):
+        """Gabarito com todas as respostas MISSING_CONTENT não pode ser sucesso."""
+        dados = {
+            "respostas": [
+                {
+                    "questao_numero": 1,
+                    "resposta_correta": "MISSING_CONTENT",
+                    "justificativa": "nao encontrado",
+                    "criterios_parciais": []
+                },
+                {
+                    "questao_numero": 2,
+                    "resposta_correta": "MISSING_CONTENT",
+                    "justificativa": "nao encontrado",
+                    "criterios_parciais": []
+                },
+            ]
+        }
+
+        with pytest.raises(ValueError, match="todas as respostas como MISSING_CONTENT"):
+            ExtracaoGabarito(**dados)
+
+    def test_validar_json_pipeline_rejeita_gabarito_todo_missing_content(self):
+        """A função pública de validação deve retornar erro estruturado."""
+        dados = {
+            "respostas": [
+                {
+                    "questao_numero": 1,
+                    "resposta_correta": "MISSING_CONTENT",
+                    "justificativa": "nao encontrado",
+                    "criterios_parciais": []
+                }
+            ]
+        }
+
+        resultado = validar_json_pipeline("extrair_gabarito", dados)
+        assert isinstance(resultado, dict)
+        assert resultado.get("_error") == "validacao_falhou"
+
 
 class TestExtracaoRespostas:
     """Testes para validação de extração de respostas do aluno"""

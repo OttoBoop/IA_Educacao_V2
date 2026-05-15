@@ -567,6 +567,36 @@ class PipelineExecutor:
         )
         
         tempo_ms = (time.time() - inicio) * 1000
+
+        erro_parseado = self._erro_resposta_parseada(etapa, resposta_parsed)
+        if erro_parseado:
+            self._registrar_custo_resposta_invalida(
+                etapa=etapa,
+                atividade_id=atividade_id,
+                aluno_id=aluno_id,
+                provider=provider.name,
+                modelo=provider.model,
+                tokens_entrada=response.input_tokens,
+                tokens_saida=response.output_tokens or response.tokens_used,
+                erro=erro_parseado,
+                tempo_ms=tempo_ms,
+                prompt_id=prompt.id,
+                source="executar_texto",
+            )
+            return ResultadoExecucao(
+                sucesso=False,
+                etapa=etapa,
+                prompt_usado=prompt_renderizado,
+                prompt_id=prompt.id,
+                provider=provider.name,
+                modelo=provider.model,
+                resposta_raw=response.content,
+                resposta_parsed=resposta_parsed,
+                erro=erro_parseado,
+                tokens_entrada=response.input_tokens,
+                tokens_saida=response.output_tokens or response.tokens_used,
+                tempo_ms=tempo_ms,
+            )
         
         # Salvar resultado se solicitado
         documento_id = None
@@ -777,6 +807,37 @@ class PipelineExecutor:
                 "aluno_id": aluno_id
             }
         )
+        erro_parseado = self._erro_resposta_parseada(etapa, resposta_parsed)
+        if erro_parseado:
+            self._registrar_custo_resposta_invalida(
+                etapa=etapa,
+                atividade_id=atividade_id,
+                aluno_id=aluno_id,
+                provider=resultado.provider,
+                modelo=resultado.modelo,
+                tokens_entrada=resultado.tokens_entrada,
+                tokens_saida=resultado.tokens_saida,
+                erro=erro_parseado,
+                tempo_ms=tempo_ms,
+                prompt_id=prompt.id,
+                source="executar_multimodal",
+            )
+            return ResultadoExecucao(
+                sucesso=False,
+                etapa=etapa,
+                prompt_usado=prompt_renderizado,
+                prompt_id=prompt.id,
+                provider=resultado.provider,
+                modelo=resultado.modelo,
+                resposta_raw=resultado.resposta,
+                resposta_parsed=resposta_parsed,
+                erro=erro_parseado,
+                tokens_entrada=resultado.tokens_entrada,
+                tokens_saida=resultado.tokens_saida,
+                anexos_enviados=resultado.anexos_enviados,
+                anexos_confirmados=resultado.anexos_confirmados,
+                tempo_ms=tempo_ms,
+            )
         alertas = resposta_parsed.get("alertas", []) if resposta_parsed else []
         
         # Verificar se anexo foi processado
@@ -2029,21 +2090,6 @@ class PipelineExecutor:
                 except json.JSONDecodeError:
                     continue
 
-        # Tentativa 4: Para relatórios, aceitar Markdown como válido
-        if ctx.get("stage") == "gerar_relatorio":
-            # Se parece ser Markdown (tem # ou - ou *), aceitar como válido
-            if any(char in resposta for char in ['#', '-', '*']) and len(resposta.strip()) > 50:
-                _logger.info(
-                    "Aceitando resposta Markdown para relatório",
-                    stage=ctx.get("stage")
-                )
-                return {
-                    "conteudo": resposta.strip(),
-                    "formato": "markdown",
-                    "aluno_nome": ctx.get("aluno_nome", "Desconhecido"),
-                    "atividade_id": ctx.get("atividade_id", "Desconhecido")
-                }
-        
         # Todas as tentativas falharam
         _logger.error(
             "Não foi possível extrair JSON da resposta",
@@ -2058,6 +2104,92 @@ class PipelineExecutor:
             "_raw": resposta[:1000],  # Limitar tamanho
             "_attempts": ["direct", "code_block", "regex"]
         }
+
+    def _erro_resposta_parseada(
+        self,
+        etapa: EtapaProcessamento,
+        resposta_parsed: Optional[Dict[str, Any]],
+    ) -> Optional[str]:
+        """Return a blocking error when parsed AI output must not be accepted."""
+        if not resposta_parsed:
+            return "Resposta da IA nao gerou JSON parseavel."
+
+        if not isinstance(resposta_parsed, dict):
+            return None
+
+        if resposta_parsed.get("_error"):
+            return resposta_parsed.get("_message") or resposta_parsed.get("_error")
+
+        if resposta_parsed.get("_validation_warning"):
+            return (
+                "JSON nao corresponde ao schema esperado: "
+                f"{resposta_parsed.get('_validation_warning')}"
+            )
+
+        if resposta_parsed.get("_validation_error"):
+            return (
+                "Erro ao validar JSON retornado pela IA: "
+                f"{resposta_parsed.get('_validation_error')}"
+            )
+
+        etapa_nome = etapa.value if hasattr(etapa, "value") else str(etapa)
+        if etapa_nome == EtapaProcessamento.EXTRAIR_GABARITO.value:
+            respostas = resposta_parsed.get("respostas")
+            if isinstance(respostas, list) and respostas:
+                todas_missing = all(
+                    isinstance(item, dict)
+                    and str(item.get("resposta_correta") or "").strip().upper() == "MISSING_CONTENT"
+                    for item in respostas
+                )
+                if todas_missing:
+                    return (
+                        "EXTRAIR_GABARITO retornou todas as respostas como "
+                        "MISSING_CONTENT. Isso nao pode ser tratado como sucesso."
+                    )
+
+        return None
+
+    def _registrar_custo_resposta_invalida(
+        self,
+        *,
+        etapa: EtapaProcessamento,
+        atividade_id: str,
+        aluno_id: Optional[str],
+        provider: str,
+        modelo: str,
+        tokens_entrada: int,
+        tokens_saida: int,
+        erro: str,
+        tempo_ms: float,
+        prompt_id: Optional[str],
+        source: str,
+    ) -> None:
+        tokens_total = int(tokens_entrada or 0) + int(tokens_saida or 0)
+        if tokens_total <= 0:
+            return
+        try:
+            record_token_usage(
+                cost_run_id=f"validation_{uuid.uuid4().hex[:12]}",
+                atividade_id=atividade_id,
+                aluno_id=aluno_id,
+                etapa=etapa.value if hasattr(etapa, "value") else str(etapa),
+                provider=provider,
+                modelo=modelo,
+                tokens_entrada=tokens_entrada,
+                tokens_saida=tokens_saida,
+                status="erro",
+                erro=erro,
+                tempo_ms=tempo_ms,
+                prompt_id=prompt_id,
+                source=source,
+                metadata={"erro_tipo": "parsed_response_invalid"},
+            )
+        except Exception as exc:
+            _logger.warning(
+                "Falha ao registrar custo de resposta invalida",
+                stage=etapa.value if hasattr(etapa, "value") else str(etapa),
+                erro=str(exc),
+            )
     
     async def _salvar_resultado(
         self,

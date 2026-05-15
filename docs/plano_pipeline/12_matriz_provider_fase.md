@@ -66,14 +66,18 @@
 | Provider/Modelo | EXTRAIR_QUESTOES | EXTRAIR_GABARITO | EXTRAIR_RESPOSTAS | CORRIGIR | ANALISAR_HABILIDADES | GERAR_RELATORIO |
 |-----------------|:---:|:---:|:---:|:---:|:---:|:---:|
 | **Claude Haiku 4.5** (`588f3efe7975`) | ⏸️ | ⏸️ | ⏸️ | 🚫 | 🚫 | 🚫 |
-| **Gemini 3 Flash** (`gem3flash001`) | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
-| **GPT-5 Nano** (`gpt5nano001`) | ✅ | ⏸️ | ⏸️ | ✅ | ✅ | ✅ |
+| **Gemini 3 Flash** (`gem3flash001`) | ✅ | ❌ | ✅ | ✅ | ✅ | ✅ |
+| **GPT-5 Nano** (`gpt5nano001`) | ✅ | ❌ | ⏸️ | ✅ | ✅ | ✅ |
 | **GPT-4o** (`180b8298a279`) — referencia | ✅ | ✅ | ✅ | ⚠️ | ⚠️ | ⚠️ |
 
 Nota de leitura: os checks da tabela acima sao por etapa individual validada.
 Eles nao significam que a pipeline completa de 6 etapas passou em uma unica
 task. Em 2026-05-16, Gemini completou as tres extracoes em uma task sequencial,
 mas parou em `corrigir` por quota `429`.
+Nota P0: `extrair_gabarito` foi reclassificado para ❌ em Gemini e Nano porque
+os outputs retornaram todas as respostas como `MISSING_CONTENT`, embora o PDF
+base tenha texto extraivel de "Exercicio 5". Schema parseavel e custo medido nao
+bastam.
 
 ### Categoria 2: Relatorios de Desempenho (3 niveis)
 
@@ -131,6 +135,10 @@ mas parou em `corrigir` por quota `429`.
 - Em 2026-05-16, GPT-5 Nano passou em `extrair_questoes` na task
   `task_ae679b5c3fee`, gerando JSON `946e66708fd72643` com 7 questoes,
   `_avisos_*`, tokens `2148/12147` e custo `US$ 0.004966`.
+- Em seguida, GPT-5 Nano em `extrair_gabarito` (`task_2da0fb90c3fb`) gerou JSON
+  `61fb077d746c2a55`, tokens `78104/3635`, custo `US$ 0.005359`, mas marcou
+  todas as 7 respostas como `MISSING_CONTENT`; reclassificado como falha de
+  conteudo.
 - Depois do deploy `b24f03e`, GPT-5 Nano em `corrigir` falhou sem falso sucesso
   na task `task_c460627779fc`, mas o erro ficou cru demais:
   `tools: 'str' object has no attribute 'get'`. Causa: payload malformado em
@@ -176,7 +184,9 @@ mas parou em `corrigir` por quota `429`.
   `1.155s` com `task_id`, `/api/health` ficou saudavel em 20 polls, e o JSON
   `36d1fdd0a453e2f5` registrou tokens `65018/727`, custo `US$ 0.020378`,
   `respostas` e avisos `MISSING_CONTENT` para questoes ausentes no gabarito de
-  origem.
+  origem. Reclassificacao posterior: o PDF base continha texto de Q5, mas esse
+  output marcou todas as questoes como `MISSING_CONTENT`; portanto nao e
+  validacao de conteudo, apenas prova de execucao/schema/custo.
 - Gemini 3 Flash tambem passou em `extrair_respostas`
   (`task_7d357943288d`): resposta inicial em `1.002s`, health saudavel, JSON
   `59cb3e341515d745`, tokens `70414/1791`, custo `US$ 0.023273`, aluno real e
@@ -354,6 +364,9 @@ Ver [teste_gpt5nano_pipeline_completo.md](arquivo_2026_04_17/teste_gpt5nano_pipe
 - [x] Rodar Gemini 3 Flash em `extrair_questoes` com custo/metadata
 - [x] Rodar Gemini 3 Flash em `extrair_gabarito` com custo/metadata e health
       responsivo durante a execucao
+- [ ] Rerodar Gemini 3 Flash em `extrair_gabarito` apos guard anti-tudo-
+      `MISSING_CONTENT`; execucao anterior foi reclassificada como conteudo
+      invalido
 - [x] Rodar Gemini 3 Flash em `extrair_respostas` com custo/metadata e health
       responsivo durante a execucao
 - [x] Validar que `f55e299` elimina timeout/indisponibilidade na resposta
@@ -388,7 +401,8 @@ Ver [teste_gpt5nano_pipeline_completo.md](arquivo_2026_04_17/teste_gpt5nano_pipe
 ### Prioridade BAIXA
 - [ ] Testar GPT-5 Nano nas 6 etapas (as tres etapas finais ja passaram; as
       etapas `extrair_questoes`, `corrigir`, `analisar_habilidades` e
-      `gerar_relatorio` ja passaram; faltam `extrair_gabarito`,
+      `gerar_relatorio` ja passaram; `extrair_gabarito` rodou mas falhou
+      conteudo; faltam rerodar `extrair_gabarito`,
       `extrair_respostas` e pipeline completa)
 - [ ] Comparar qualidade dos outputs entre os 3 modelos-alvo
 
@@ -397,15 +411,18 @@ Ver [teste_gpt5nano_pipeline_completo.md](arquivo_2026_04_17/teste_gpt5nano_pipe
 ## Resumo Executivo (atualizado)
 
 **Estado atual:**
-- ✅ **Gemini 3 Flash:** chat simples live OK; `corrigir`,
+- ⚠️ **Gemini 3 Flash:** chat simples live OK; `corrigir`,
   `analisar_habilidades`, `gerar_relatorio`, `extrair_questoes`,
-  `extrair_gabarito` e `extrair_respostas` pos-fix OK com custo/metadata.
+  e `extrair_respostas` pos-fix OK com custo/metadata. `extrair_gabarito`
+  rodou, mas foi reclassificado como invalido porque retornou tudo
+  `MISSING_CONTENT`.
   Pipeline sequencial completa pos-runner chegou a `corrigir` e falhou alto por
   quota `429`; falta repetir quando quota permitir.
 - ✅ **GPT-5 Nano via `pipeline-completo`:** as tres etapas finais do aluno
   (`corrigir`, `analisar_habilidades`, `gerar_relatorio`) e `extrair_questoes`
   passaram em smokes oficiais com JSON/PDF quando aplicavel, custo e metadata.
-  Ainda faltam `extrair_gabarito`, `extrair_respostas`, pipeline completa de 6
+  `extrair_gabarito` rodou mas falhou conteudo por tudo `MISSING_CONTENT`.
+  Ainda faltam rerodar `extrair_gabarito`, `extrair_respostas`, pipeline completa de 6
   etapas, schema minimo por etapa, deploy do guard `d653c13` e custo duravel de
   falhas sem documento final.
 - ⏸️ **Claude Haiku 4.5:** Aguardando creditos.

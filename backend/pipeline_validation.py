@@ -110,6 +110,18 @@ class ExtracaoGabarito(PipelineModel):
     """Saída da etapa EXTRAIR_GABARITO"""
     respostas: List[RespostaGabarito] = Field(..., description="Lista de respostas corretas")
 
+    @model_validator(mode="after")
+    def nao_aceita_gabarito_todo_missing_content(self):
+        if self.respostas and all(
+            (resposta.resposta_correta or "").strip().upper() == "MISSING_CONTENT"
+            for resposta in self.respostas
+        ):
+            raise ValueError(
+                "extrair_gabarito retornou todas as respostas como MISSING_CONTENT; "
+                "isso nao pode ser tratado como sucesso"
+            )
+        return self
+
 
 class RespostaAluno(BaseModel):
     """Resposta extraída da prova do aluno"""

@@ -25,7 +25,11 @@ tres extracoes dentro de uma pipeline sequencial completa, mas a mesma task
 falhou alto em `corrigir` por quota Google/Gemini `429` do free tier; nao houve
 troca de modelo nem sucesso falso, e as etapas finais ficaram pendentes. O
 GPT-5 Nano tambem passou em `extrair_questoes` no site oficial, com JSON
-estruturado, `_avisos_*`, tokens splitados e custo medido. O resumo de custos agora
+estruturado, `_avisos_*`, tokens splitados e custo medido. Na sequencia,
+GPT-5 Nano em `extrair_gabarito` expos um erro mais antigo: tanto Nano quanto
+Gemini retornaram todas as respostas do gabarito como `MISSING_CONTENT`, apesar
+do PDF base ter texto extraivel de "Exercicio 5". Isso reclassifica
+`extrair_gabarito` como invalido ate o novo guard ser publicado. O resumo de custos agora
 agrega por `cost_run_id`, entao
 JSON+PDF do mesmo run contam uma vez. Falhas tool-use sem documento final agora
 tem `TokenUsageRecord` local mensal e codigo preparado para Supabase quando a
@@ -70,7 +74,7 @@ Estabilizar o NOVO CR para que a pipeline:
 | Frente | Estado | Proximo passo |
 |--------|--------|---------------|
 | Docs e plano | Sprint 0 concluida | Manter este painel como fonte oficial e anexos fora do fluxo diario |
-| Pipeline | Gemini 3 Flash validado oficialmente nas 6 etapas individuais do aluno; pipeline sequencial Gemini avancou pelas tres extracoes e falhou alto em `corrigir` por quota `429`; GPT-5 Nano validado em `extrair_questoes`, `corrigir`, `analisar_habilidades` e `gerar_relatorio`; comportamento de `f55e299`/`e6060e1` observado no backend live, mas HTML marker ainda atrasado | Nao rerodar Gemini imediatamente enquanto a quota estiver quente; seguir Nano em `extrair_gabarito`/`extrair_respostas`; confirmar marker `a7dead3`; schema minimo e UI de erro continuam pendentes |
+| Pipeline | Gemini 3 Flash validado em `extrair_questoes`, `extrair_respostas` e etapas finais; `extrair_gabarito` foi reclassificado como invalido porque retornou tudo `MISSING_CONTENT`; pipeline sequencial Gemini avancou pelas tres extracoes e falhou alto em `corrigir` por quota `429`; GPT-5 Nano validado em `extrair_questoes`, `corrigir`, `analisar_habilidades` e `gerar_relatorio`, mas `extrair_gabarito` tambem falhou por tudo `MISSING_CONTENT`; comportamento de `f55e299`/`e6060e1` observado no backend live, mas HTML marker ainda atrasado | Publicar guard que rejeita gabarito todo `MISSING_CONTENT`; depois rerodar `extrair_gabarito`; seguir `extrair_respostas` Nano; confirmar marker `a7dead3`; schema minimo e UI de erro continuam pendentes |
 | Schema e avisos | Sprint 2 concluida localmente | Manter schema oficial, defaults e visualizador cobertos por testes |
 | Custos/tokens | Metadata de documento, endpoints live, resumo por `cost_run_id`, `TokenUsageRecord` local, migration Supabase dedicada `b2dc88b`; smoke Nano `gerar_relatorio` adicionou run precificado; diagnostico live ainda acusa `PGRST205` | Aplicar `backend/migrations/002_create_token_usage.sql` no Supabase; validar uma falha real sem documento em producao |
 | UI de erros | Pendente | Mostrar falha por aluno/etapa sem depender de terminal |
@@ -879,15 +883,14 @@ Critério de pronto: lista de limpeza segura e revisada.
   `google/gemini-3-flash-preview`, tokens `65018/727`, custo
   `US$ 0.020378`.
 - Conteudo: JSON parseado com `respostas`, `_avisos_documento` e
-  `_avisos_questao`. Como o gabarito de origem continha apenas a questao 5, o
-  modelo registrou `MISSING_CONTENT` para as demais questoes em vez de inventar
-  respostas.
+  `_avisos_questao`; reclassificacao posterior mostrou que todas as respostas
+  ficaram `MISSING_CONTENT`, apesar de o PDF base ter texto extraivel de Q5.
 - Custo live: `/api/custos/status?limit=500` subiu para
   `runs_precificados=13`, `runs_bloqueados=474`; `token_usage` duravel segue
   bloqueado por `PGRST205`.
-- Interpretacao: Gemini esta confirmado em `extrair_questoes` e
-  `extrair_gabarito`. Falta `extrair_respostas` para fechar as tres extracoes
-  com Gemini.
+- Interpretacao atualizada: essa execucao prova runner destacado, health e
+  custo, mas nao valida conteudo de `extrair_gabarito`. A etapa precisa rerun
+  apos o guard anti-tudo-`MISSING_CONTENT`.
 
 ### 2026-05-16 -- Provider smoke: Gemini `extrair_respostas`
 
@@ -905,9 +908,11 @@ Critério de pronto: lista de limpeza segura e revisada.
 - Custo live: `/api/custos/status?limit=500` subiu para
   `runs_precificados=14`, `runs_bloqueados=473`; `token_usage` duravel segue
   bloqueado por `PGRST205`.
-- Interpretacao: Gemini 3 Flash agora esta validado nas 6 etapas individuais do
-  aluno no site oficial. Isso ainda nao e o mesmo que uma pipeline sequencial
-  completa em uma unica chamada, que fica como proximo marco.
+- Interpretacao atualizada: Gemini 3 Flash esta validado em
+  `extrair_questoes`, `extrair_respostas` e nas tres etapas finais; a etapa
+  `extrair_gabarito` foi reclassificada como invalida por tudo
+  `MISSING_CONTENT`. Isso ainda nao e o mesmo que uma pipeline sequencial
+  completa em uma unica chamada.
 
 ### 2026-05-16 -- Smoke de rotas legadas bloqueadas
 
@@ -980,6 +985,37 @@ Critério de pronto: lista de limpeza segura e revisada.
   validado nessa etapa. Ainda faltam `extrair_gabarito` e `extrair_respostas`
   antes de tentar pipeline completa de 6 etapas com Nano.
 
+### 2026-05-16 -- Bug P0: `extrair_gabarito` aceitava tudo `MISSING_CONTENT`
+
+- Alvo: continuar Nano nas extracoes, agora em `extrair_gabarito`, e checar se
+  o status verde correspondia a conteudo real.
+- Status do smoke Nano: a task `task_2da0fb90c3fb` terminou `completed`, gerou
+  JSON `61fb077d746c2a55`, provider/modelo `openai/gpt-5-nano`, tokens
+  `78104/3635`, custo `US$ 0.005359`, e health permaneceu saudavel.
+- Problema: o JSON veio com 7 respostas, mas todas tinham
+  `resposta_correta=MISSING_CONTENT`.
+- Evidencia contra o status verde: o PDF base `dbfe3a77a631489f` foi baixado e
+  `pdftotext` extraiu texto real: "Gabarito -- Lista 0, Exercicio 5" e a
+  solucao do sistema homogeneo. Portanto, "todas missing" nao e uma extracao
+  aceitavel.
+- Reclassificacao: os smokes Gemini de `extrair_gabarito` tambem tinham todas
+  as respostas `MISSING_CONTENT`; logo a matriz anterior estava otimista. A
+  etapa tinha schema parseavel e custo, mas conteudo invalido.
+- Patch local aplicado: `pipeline_validation.ExtracaoGabarito` agora rejeita
+  gabarito em que todas as respostas sao `MISSING_CONTENT`; `executor.py`
+  transforma `_validation_warning`, `_validation_error` e `_error` de parse em
+  falha bloqueante antes de salvar documento verde, e registra custo de resposta
+  invalida via `TokenUsageRecord` quando houver tokens. O fallback antigo que
+  aceitava Markdown como `gerar_relatorio` valido quando JSON falhava tambem foi
+  removido.
+- Validacoes locais: `python -m py_compile backend/executor.py
+  backend/pipeline_validation.py backend/tests/unit/test_pipeline_validation.py`,
+  `git diff --check` e `pytest backend/tests/unit/test_pipeline_validation.py
+  backend/tests/unit/test_erro_pipeline.py -q` passaram (`68 passed`,
+  `3 skipped`, aviso conhecido de `timeout`).
+- Proximo alvo: commitar/pushar o guard, criar marker de deploy, esperar Render
+  e rerodar `extrair_gabarito`. So depois a etapa pode voltar a ✅.
+
 ## Riscos Abertos
 
 1. Creditos Anthropic insuficientes ainda bloqueiam validacao Haiku.
@@ -994,7 +1030,10 @@ Critério de pronto: lista de limpeza segura e revisada.
 6. Gemini 3 Flash bateu quota `429` em pipeline sequencial completa; nao tratar
    isso como bug silencioso da pipeline, mas tambem nao chamar de pipeline
    completa validada.
-7. Artefatos com `status=erro` podem ter arquivo/conteudo parcial; UI e docs
+7. `extrair_gabarito` parseavel pode ser conteudo invalido quando todas as
+   respostas viram `MISSING_CONTENT`; o novo guard local precisa deploy e smoke
+   oficial.
+8. Artefatos com `status=erro` podem ter arquivo/conteudo parcial; UI e docs
    devem ensinar o usuario a obedecer o status, nao o simples fato de existir
    arquivo.
-8. Rio 3 nao deve voltar ao fluxo ativo sem nova decisao e nova chave segura.
+9. Rio 3 nao deve voltar ao fluxo ativo sem nova decisao e nova chave segura.

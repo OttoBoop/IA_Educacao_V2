@@ -80,6 +80,18 @@ class TestF2T1_ErrorFramework:
         # Should not raise
         datetime.fromisoformat(result["timestamp"])
 
+    def test_parsear_resposta_rejeita_markdown_relatorio_sem_json(self):
+        """Relatorio em Markdown nao deve ser aceito como fallback silencioso."""
+        from executor import PipelineExecutor
+
+        executor = PipelineExecutor.__new__(PipelineExecutor)
+        parsed = executor._parsear_resposta(
+            "# Relatorio\n\n- Texto longo sem JSON estruturado para a etapa final.",
+            context={"stage": "gerar_relatorio", "provider": "teste"},
+        )
+
+        assert parsed["_error"] == "parse_failed"
+
     def test_criar_erro_pipeline_severidade_accepts_string(self):
         """criar_erro_pipeline() works when severidade is passed as string too."""
         from models import criar_erro_pipeline
