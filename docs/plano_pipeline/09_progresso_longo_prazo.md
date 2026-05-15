@@ -8,8 +8,9 @@ o commit funcional `4f27dae`. Gemini passou no site oficial em `corrigir`,
 passou em `corrigir`, mas falhou alto em `analisar_habilidades` por nao gerar
 PDF obrigatorio, com custo da falha visivel. O patch `924fd79` reforca o retry
 do PDF mantendo o contexto original e proibindo placeholders, mas ainda nao foi
-confirmado no Render porque o site e o MCP Render deram timeout. O patch
-`d653c13` adiciona uma trava extra: JSON de `ANALISAR_HABILIDADES` com
+confirmado no Render inicialmente porque o site e o MCP Render deram timeout.
+Depois o site voltou, mas apenas no marker `924fd79`. O patch `d653c13`
+adiciona uma trava extra: JSON de `ANALISAR_HABILIDADES` com
 placeholder proibido, como `student123`, falha alto mesmo se houver PDF. GPT-5 Nano em
 `corrigir` teve JSON
 parseavel, PDF
@@ -86,11 +87,11 @@ Estabilizar o NOVO CR para que a pipeline:
 - Commit funcional de retry/contexto Nano: `924fd79`.
 - Commit funcional de rejeicao de placeholder em analise Nano: `d653c13`.
 - Marker mais novo publicado no GitHub: `2947178` (`chore: mark deploy d653c13`).
-- Marker atual confirmado no Render: `f0dae61`, HTML com `novocr-deploy=4f27dae`.
+- Marker atual confirmado no Render: `0dfdbbe`, HTML com
+  `novocr-deploy=924fd79`.
 - GitHub `origin/main`: pode conter commits documentais posteriores; o ultimo
-  marker confirmado no Render e `f0dae61`; `origin/main` contem `924fd79` e o
-  marker `0dfdbbe`, alem de `d653c13` e o marker `2947178`, ainda sem deploy
-  confirmado.
+  marker confirmado no Render e `0dfdbbe`; `origin/main` contem `d653c13` e o
+  marker `2947178`, ainda sem deploy confirmado.
 - Render live observado: saiu de `2e1098f` para `b12be9a` e depois confirmou
   marcadores `b4d7ee6`, `f505be6`, `97a7c79`, `c75af88`, `39aa50a`,
   `b24f03e`, `eab7d90`, `7ed8b8b`, `839968e`, `55e168a` e `4f27dae`.
@@ -734,6 +735,12 @@ Critério de pronto: lista de limpeza segura e revisada.
   tambem retornou `http=000` em todas. Render MCP falhou com erro de transporte
   para `https://mcp.render.com/mcp`. Portanto o site oficial continua aceito
   apenas ate `4f27dae` ate nova confirmacao.
+- Retomada posterior: site voltou com `/api/health` healthy e marker live
+  `novocr-deploy=924fd79`; `check_deploy.sh 924fd79` passou, mas
+  `check_deploy.sh d653c13` falhou porque encontrou `924fd79`. Cinco leituras
+  consecutivas do HTML mantiveram `924fd79`. Render MCP voltou a responder, mas
+  sem workspace selecionado ("no workspace set"), entao nao foi possivel listar
+  ou acionar deploy por MCP sem gate do usuario.
 - Proximo alvo: quando Render responder, rodar `wait_deploy/check_deploy` para
   `d653c13`, `/api/health`, e novo smoke GPT-5 Nano em
   `analisar_habilidades`.
@@ -746,6 +753,6 @@ Critério de pronto: lista de limpeza segura e revisada.
    necessario, mas nao prova qualidade pedagogica.
 4. A tabela Supabase `token_usage` tem migration dedicada em `b2dc88b`, mas o
    live confirmou que ela ainda nao existe no schema cache (`PGRST205`).
-5. Render/site oficial esta temporariamente inacessivel por timeout; nao aceitar
-   `d653c13` como live ate o marker `novocr-deploy=d653c13` aparecer.
+5. Render/site oficial voltou, mas esta em `924fd79`; nao aceitar `d653c13`
+   como live ate o marker `novocr-deploy=d653c13` aparecer.
 6. Rio 3 nao deve voltar ao fluxo ativo sem nova decisao e nova chave segura.

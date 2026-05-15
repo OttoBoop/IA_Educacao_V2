@@ -186,12 +186,12 @@ detalhar e auditar estas linhas.
 | Frente | Temos hoje | Limite da afirmacao |
 |---|---|---|
 | Documentacao | Doc 09 como painel curto; Doc 14 como auditoria mestre; Doc 05/12 com notas de status | Manter Doc 09 curto e Doc 14 detalhado; registrar novos ciclos sem criar doc extra. |
-| Git/GitHub | Commits ate `4f27dae` confirmados no Render; `origin/main` tambem contem docs, migration dedicada `b2dc88b`, patches `924fd79`/`d653c13` e marker `2947178` | Usar marker HTML antes de aceitar smoke de runtime como oficial; nao confundir commit publicado com deploy confirmado. |
+| Git/GitHub | Commits ate `924fd79` confirmados no Render; `origin/main` tambem contem docs, migration dedicada `b2dc88b`, patch `d653c13` e marker `2947178` | Usar marker HTML antes de aceitar smoke de runtime como oficial; nao confundir commit publicado com deploy confirmado. |
 | Pipeline P4 | Bloqueio de extracao de respostas sem prova valida esta no codigo publicado | Precisa smoke dedicado apenas se P4 voltar a ser alvo. |
 | Pipeline P5/P6 | Contencao de nota e preservacao de `_documentos_faltantes` | `N/A` ainda e fallback proibido como estado final. |
 | Schema/avisos | Defaults `_avisos_*`, visualizador melhorado e schemas mais permissivos | Permissividade nao e contrato forte; pode aceitar legado demais. |
 | Tokens/custos | Split input/output; metadata de documento; endpoints `/api/custos/status` e `/api/custos/resumo` respondendo live; resumo agrega por `cost_run_id`; `TokenUsageRecord` local cobre falha sem documento; codigo Supabase e migration dedicada `b2dc88b` existem; diagnostico live mostra `PGRST205`; Gemini e Nano geraram runs custeaveis | Falta aplicar `backend/migrations/002_create_token_usage.sql` no Supabase. |
-| Providers | Gemini passou em chat simples live e nas tres etapas finais do aluno; GPT-5 Nano passou em chat simples live e em `corrigir`, mas falhou alto em `analisar_habilidades`; patches `924fd79`/`d653c13` aguardam deploy | Gemini ainda nao revalidou extracoes; GPT-5 Nano precisa confirmar o patch live antes de `gerar_relatorio`. |
+| Providers | Gemini passou em chat simples live e nas tres etapas finais do aluno; GPT-5 Nano passou em chat simples live e em `corrigir`, mas falhou alto em `analisar_habilidades`; patch `924fd79` esta live e `d653c13` aguarda deploy | Gemini ainda nao revalidou extracoes; GPT-5 Nano precisa novo smoke e depois confirmar o patch anti-placeholder live antes de `gerar_relatorio`. |
 | Seguranca Rio | Regra de nao usar chave em chat e Rio pausado | Arquivos Rio/untracked continuam fora do ciclo ativo. |
 
 ### O Que Falta
@@ -2439,7 +2439,7 @@ Fila minima para custo real:
 | Provider/modelo | Estado atual | Evidencia | O que falta |
 |---|---|---|---|
 | Gemini 3 Flash | Chat OK; `corrigir`, `analisar_habilidades` e `gerar_relatorio` pos-fix OK com custo | `corrigir`: task `task_8f53987c57c4`, custo `US$ 0.007931`; `analisar_habilidades`: task `task_a78369e23e5c`, JSON `7904a6a1aa34131f`, PDF `245970da4cc42c02`, custo `US$ 0.009447`; `gerar_relatorio`: task `task_58fb48fc8324`, JSON `fe6ad549481a0ed9`, PDF `b815d1faa5aeab77`, custo `US$ 0.006120` | Validar etapas de extracao e repetir amostras sem trocar modelo. |
-| GPT-5 Nano | Chat OK; `corrigir` pos-fix OK com custo; `analisar_habilidades` falha alto; patches `924fd79`/`d653c13` publicados | `corrigir`: task `task_a591421ab84b`, JSON `42dc1fcd758e913b`, PDF `cd72e7233ee061ad`, custo `US$ 0.002192`; `analisar_habilidades`: task `task_43d48d9deea2`, JSONs parciais `status=erro`, custo `US$ 0.004471`, sem PDF obrigatorio | Confirmar deploy `d653c13`, rerodar smoke e verificar se PDF real/sem placeholder passa. |
+| GPT-5 Nano | Chat OK; `corrigir` pos-fix OK com custo; `analisar_habilidades` falha alto; `924fd79` live; `d653c13` pendente | `corrigir`: task `task_a591421ab84b`, JSON `42dc1fcd758e913b`, PDF `cd72e7233ee061ad`, custo `US$ 0.002192`; `analisar_habilidades`: task `task_43d48d9deea2`, JSONs parciais `status=erro`, custo `US$ 0.004471`, sem PDF obrigatorio | Rerodar smoke no `924fd79`; confirmar deploy `d653c13` para garantir erro alto se placeholder persistir. |
 | Claude Haiku 4.5 | Bloqueado | Creditos Anthropic insuficientes | Recarregar creditos e testar sem trocar provider. |
 | GPT-4o | Parcial/referencia historica | Gerou 3 etapas, mas schema antigo e sem avisos | Revalidar como modelo explicito, nao fallback. |
 | Gemini 2.5 Flash/Lite | Incerto | Catalogo/flags historicamente inconsistentes | Validar capabilities antes de pipeline. |

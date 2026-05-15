@@ -16,10 +16,11 @@
 - GitHub `origin/main` pode conter commits documentais posteriores; o ultimo
   marker funcional publicado e `f0dae61`, e o marcador HTML aponta para o commit
   funcional `4f27dae`.
-- Os patches `924fd79`/`d653c13` e markers `0dfdbbe`/`2947178` estao no GitHub,
-  mas ainda nao foram confirmados no Render. Em 2026-05-15, chamadas com
-  timeout de 20s para `/` e `/api/health` retornaram `HTTP_STATUS=000`, e o
-  Render MCP falhou por erro de transporte.
+- O patch `924fd79` e marker `0dfdbbe` estao confirmados no Render. O patch
+  `d653c13` e marker `2947178` estao no GitHub, mas ainda nao foram confirmados
+  no Render. Em 2026-05-15, chamadas com timeout de 20s para `/` e
+  `/api/health` chegaram a retornar `HTTP_STATUS=000`; depois o site voltou em
+  `924fd79`. O Render MCP voltou, mas sem workspace selecionado.
 - `origin/main` tambem contem a migration dedicada `b2dc88b`
   (`backend/migrations/002_create_token_usage.sql`), ainda nao aplicada ao
   Supabase de producao.
@@ -143,7 +144,7 @@
   custo `US$ 0.004471`, `cost_run_id=tool_58b8188d8fad`. Problema novo:
   nome/conteudo generico `student123`.
 - Patch `924fd79` reforca o retry de PDF/JSON mantendo o contexto original da
-  etapa e proibindo placeholders; ainda aguarda deploy e smoke oficial.
+  etapa e proibindo placeholders; esta live, mas ainda aguarda novo smoke Nano.
 - Patch `d653c13` faz JSON de `ANALISAR_HABILIDADES` com placeholder proibido
   falhar alto mesmo quando JSON+PDF existem; ainda aguarda deploy e smoke.
 
