@@ -4073,6 +4073,22 @@ Seja preciso, educativo e construtivo em suas análises."""
                     except ValueError:
                         return None
 
+                def _simple_literal_for_blocking(value: Any) -> Optional[str]:
+                    normalized = _normalize_answer(value)
+                    if not normalized or _single_numeric(value) is not None:
+                        return None
+                    if re.fullmatch(r"[a-z]", normalized):
+                        return normalized
+                    if normalized in {"verdadeiro", "falso", "true", "false", "sim", "nao"}:
+                        return normalized
+                    if (
+                        len(normalized) <= 12
+                        and re.fullmatch(r"[a-z]+", normalized)
+                        and len(str(value or "").split()) <= 2
+                    ):
+                        return normalized
+                    return None
+
                 if expected_document_type == TipoDocumento.CORRECAO:
                     if not _numeric(data.get("nota_final")):
                         errors.append(f"JSON {doc_label} sem nota_final numérica")
@@ -4156,6 +4172,35 @@ Seja preciso, educativo e construtivo em suas análises."""
                                         f"JSON {doc_label} questão {questao_label} recebeu nota máxima "
                                         "apesar de resposta_aluno numérica divergir do gabarito"
                                     )
+                            elif resposta_aluno_num is None and resposta_correta_num is None:
+                                resposta_aluno_literal = _simple_literal_for_blocking(
+                                    item.get("resposta_aluno")
+                                )
+                                resposta_correta_literal = _simple_literal_for_blocking(
+                                    item.get("resposta_correta")
+                                )
+                                if (
+                                    resposta_aluno_literal is not None
+                                    and resposta_correta_literal is not None
+                                    and resposta_aluno_literal != resposta_correta_literal
+                                ):
+                                    nota = self._nota_como_float(item.get("nota"))
+                                    nota_maxima = self._nota_como_float(item.get("nota_maxima"))
+                                    if item.get("acerto") is True:
+                                        errors.append(
+                                            f"JSON {doc_label} questão {questao_label} marcada acerto=true "
+                                            "apesar de resposta_aluno literal divergir do gabarito"
+                                        )
+                                    if (
+                                        nota is not None
+                                        and nota_maxima is not None
+                                        and nota_maxima > 0
+                                        and nota >= nota_maxima - 0.001
+                                    ):
+                                        errors.append(
+                                            f"JSON {doc_label} questão {questao_label} recebeu nota máxima "
+                                            "apesar de resposta_aluno literal divergir do gabarito"
+                                        )
 
                 if expected_document_type == TipoDocumento.ANALISE_HABILIDADES:
                     habilidades = data.get("habilidades")
