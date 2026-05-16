@@ -6,9 +6,9 @@
 `srv-d5t8gbh4tr6s738fr3s0` (`IA_Educacao_V2`, branch `main`, URL
 `https://ia-educacao-v2.onrender.com`) esta em runtime backend `11a396b`,
 confirmado por `/api/deploy-info`, `/api/health` e
-`./scripts/check_deploy.sh 11a396b`. O `origin/main` esta em `d799165`, commit
+`./scripts/check_deploy.sh 11a396b`. O `origin/main` esta em `8c77cc4`, commit
 de documentacao posterior ao deploy de codigo; portanto o site oficial roda o
-codigo `11a396b` e o GitHub registra ate `d799165`. O ultimo ciclo de codigo
+codigo `11a396b` e o GitHub registra ate `8c77cc4`. O ultimo ciclo de codigo
 corrigiu falso negativo do guard PDF/JSON em `CORRIGIR`: PDFs coerentes com
 rotulos `Comentário pedagógico geral` e `Feedback geral da avaliação` deixam de
 gerar retry artificial. Smoke oficial `task_92c4b74494f7` com GPT-4.1 confirmou
@@ -19,6 +19,18 @@ GPT-5.4 Mini e GPT-4o seguem referencias confirmadas nessa fixture. Google esta
 limitado por quota `429` nos smokes recentes, Anthropic segue bloqueado por
 credito, e Supabase `token_usage` continua ausente (`PGRST205`), deixando custo
 duravel como gate real.
+
+Atualizacao Lista0 de 2026-05-17: a atividade real `Lista0`
+(`126e8b5ad7dd6d59`) tem documentos base cadastrados e 63 alunos
+(`38` com prova, `34` com correcao), mas a inspeção dos PDFs mostrou um bloqueio
+de dado para smoke integral honesto. O enunciado `5dc75513e958c25b` lista os
+exercicios 1 a 7; o gabarito `dbfe3a77a631489f` e explicitamente
+`Gabarito -- Lista 0, Exercicio 5` e contem apenas a solucao do exercicio 5.
+Conclusao operacional: a Lista0 so pode ser usada como caso de correcao se o
+escopo for declarado como exercicio 5; para validar a pipeline integral da
+atividade inteira, falta gabarito completo ou reextracao/cadastro correto. Nenhuma
+chamada de IA foi feita neste ciclo; o objetivo foi evitar gasto em smoke que
+nasceria invalidado pelo dado.
 
 Atualizacao chat/providers de 2026-05-17 no runtime `c53fae6`: o smoke oficial
 `POST /api/chat` com GPT-5.4 Mini (`gpt54mini001`) retornou HTTP 200, JSON

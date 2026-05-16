@@ -11,8 +11,16 @@ guiar os proximos ciclos.
 
 Atualizacao de controle de 2026-05-17: o site oficial esta em runtime backend
 `11a396b` por `/api/deploy-info`, `/api/health` e `check_deploy.sh 11a396b`;
-`origin/main` ja avancou para commits documentais posteriores, entao o codigo
-live correto continua sendo `11a396b`. O runtime historico `0f84552` adicionou
+`origin/main` ja avancou para `8c77cc4` com commits documentais posteriores,
+entao o codigo live correto continua sendo `11a396b`. A auditoria da Lista0
+tambem foi rechecada no site oficial: a atividade `126e8b5ad7dd6d59` possui 63
+alunos, 38 com prova e 34 corrigidos, mas o gabarito base
+`dbfe3a77a631489f` cobre somente `Lista 0, Exercicio 5`, enquanto o enunciado
+`5dc75513e958c25b` lista exercicios 1 a 7. Assim, a Lista0 nao pode ser tratada
+como fixture integral de provider sem gabarito completo ou sem declarar o escopo
+de correcao como exercicio 5. Nenhuma chamada de IA foi feita para essa
+constatacao; ela serve para evitar custo e falso verde sobre dado invalido. O
+runtime historico `0f84552` adicionou
 retry explicito, no mesmo modelo, para erro de codigo em `execute_python_code`
 quando o JSON ja foi persistido e o PDF ainda falta. O
 smoke Gemini 2.5 Flash Lite `task_124bf0e8d7bf` falhou alto por JSON invalido
@@ -2936,6 +2944,15 @@ Proximo movimento daquele ciclo:
    bloqueante.
 3. Rerodar `corrigir`, `analisar_habilidades` e `gerar_relatorio`.
 4. So depois chamar a pipeline Nano+`gpt54mini001` de validada para esse caso.
+
+Atualizacao de 2026-05-17 sobre a propria Lista0: a reauditoria baixou e leu os
+PDFs base. O enunciado `5dc75513e958c25b` tem uma folha com sete exercicios; o
+gabarito `dbfe3a77a631489f` tem duas paginas e o titulo `Gabarito -- Lista 0,
+Exercicio 5`. Portanto o bloqueio nao e apenas inferencia de um JSON extraido
+por modelo: e fato do arquivo base. O proximo ciclo de provider deve escolher
+uma destas duas rotas antes de gastar IA: usar a fixture simples Diana para
+comparar modelos, ou tratar Lista0 como exercicio 5 explicitamente. Rodar
+correcao integral da Lista0 com esse gabarito continua proibido pela regra P0.
 
 ## Atualizacao 2026-05-16 -- Full Smoke GPT-5.4 Mini Pos-`2cad38a`
 

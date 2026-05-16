@@ -4,8 +4,9 @@
 **Atividades de teste principais:** Lista0 — Algebra Linear Avancada
 (`126e8b5ad7dd6d59`) e smoke simples oficial `Smoke Paulo Pipeline 2026-05-16`
 (`f68d57a9a339081f`)
-**Runtime oficial atual:** backend Render em `11a396b`; `origin/main` em commit
-documental posterior. Use `/api/deploy-info` como gate de codigo live.
+**Runtime oficial atual:** backend Render em `11a396b`; `origin/main` em
+`8c77cc4`, commit documental posterior. Use `/api/deploy-info` como gate de
+codigo live.
 **Commits aplicados/observados:** `a632883`, `5737611`, `50935ea`, `479b77d`,
 `b12be9a`, `301eba6`, `f67055c`, `462ea1d`, `b4d7ee6`, `99483d1`,
 `f505be6`, `d75b05a`, `97a7c79`, `ec95193`, `ff7b92a`, `68ebe51`,
@@ -21,7 +22,7 @@ documental posterior. Use `/api/deploy-info` como gate de codigo live.
 `854cec7`, `b07472f`, `dc5884f`, `0d5ab9d`, `c870ed4`, `45f5cf8`,
 `4094bda`, `4d8f73d`, `f40acf3`, `700b088`, `1307909`, `bed0c08`, `feaf5d0`,
 `d47d748`, `c53fae6`, `9ab53df`, `1454e68`, `3fce335`, `33fb7d5`, `0f84552`,
-`974f040`, `11a396b`, `d799165`, `6b43016`
+`974f040`, `11a396b`, `c094fba`, `d799165`, `6b43016`, `8c77cc4`
 
 ## Status Oficial De Deploy
 
@@ -30,6 +31,8 @@ documental posterior. Use `/api/deploy-info` como gate de codigo live.
   `rootDir=backend`, URL `https://ia-educacao-v2.onrender.com`.
 - `/api/deploy-info` confirmou o runtime backend `11a396b` com
   `source=RENDER_GIT_COMMIT`; esse e o gate primario atual para codigo live.
+- `origin/main` avancou para `8c77cc4` apenas com documentacao; isso nao muda o
+  codigo Render live nem a matriz de comportamento do backend.
 - O HTML marker pode ficar stale e nao prova runtime antigo: commits de
   frontend/docs/marker podem nao disparar deploy quando o servico Render usa
   `rootDir=backend`.
@@ -142,6 +145,13 @@ Nota de leitura: os checks da tabela acima sao por etapa individual validada.
 Eles nao significam que a pipeline completa de 6 etapas passou em uma unica
 task. Em 2026-05-16, Gemini completou as tres extracoes em uma task sequencial,
 mas parou em `corrigir` por quota `429`.
+Nota de dataset Lista0: a atividade `126e8b5ad7dd6d59` possui base docs
+presentes, porem a auditoria de PDF de 2026-05-17 confirmou que o enunciado
+`5dc75513e958c25b` contem os exercicios 1 a 7 enquanto o gabarito
+`dbfe3a77a631489f` cobre somente `Lista 0, Exercicio 5`. Portanto qualquer smoke
+integral da Lista0 precisa falhar alto ou ser explicitamente escopado ao
+exercicio 5; sucesso de correcao da atividade inteira com esse gabarito nao conta
+como validacao de provider.
 Nota GPT-4o: as tres etapas finais foram revalidadas em 2026-05-17 no smoke
 `task_386f96bbf158`. As tres extracoes foram revalidadas depois em
 `task_013ad41fd3ed`, runtime `99b8c3c`: `extrair_questoes`
