@@ -185,7 +185,8 @@ def test_pdf_json_consistency_rejects_truncated_correction_feedback(tmp_path):
     _write_pdf(
         pdf_path,
         "Nota Final: 8.0\nQuestão 1 - Nota: 3.0\n"
-        "Feedback Geral:\nDiana demonstrou bom entendimento nas resoluções diret",
+        "Feedback Geral:\nDiana demonstrou bom entendimento geral das operações matemáticas. "
+        "Ela resolveu corretamente a maior parte",
     )
     json_doc = _doc("json", ".json")
     pdf_doc = _doc("pdf", ".pdf")
@@ -198,3 +199,39 @@ def test_pdf_json_consistency_rejects_truncated_correction_feedback(tmp_path):
 
     assert any("truncar Feedback Geral" in error for error in errors)
     assert any("sem pontuação final" in error for error in errors)
+
+
+def test_pdf_json_consistency_accepts_pedagogical_general_opinion_heading(tmp_path):
+    json_path = tmp_path / "correcao.json"
+    pdf_path = tmp_path / "correcao.pdf"
+    feedback = (
+        "Diana demonstrou um excelente desempenho geral, com domínio sólido em álgebra, "
+        "potenciação e geometria. O erro na questão de porcentagem parece ser um deslize "
+        "de cálculo ou de aplicação da taxa, visto que as outras competências mais complexas "
+        "foram atingidas com sucesso. Recomenda-se revisar a conversão de porcentagem para "
+        "valores decimais ou fracionários."
+    )
+    json_path.write_text(
+        json.dumps(
+            {
+                "nota_final": 8,
+                "questoes": [{"numero": 1, "nota": 3}],
+                "feedback_geral": feedback,
+            }
+        ),
+        encoding="utf-8",
+    )
+    _write_pdf(
+        pdf_path,
+        "Nota Final: 8.0\nQuestão 1 - Nota: 3.0\nParecer Pedagógico Geral\n" + feedback,
+    )
+    json_doc = _doc("json", ".json")
+    pdf_doc = _doc("pdf", ".pdf")
+    executor = _executor_with_paths({"json": json_path, "pdf": pdf_path})
+
+    errors = executor._validar_consistencia_pdf_json_tool_outputs(
+        {"create_document": [json_doc], "execute_python_code": [pdf_doc]},
+        TipoDocumento.CORRECAO,
+    )
+
+    assert errors == []

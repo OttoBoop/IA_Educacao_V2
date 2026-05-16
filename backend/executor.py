@@ -538,20 +538,50 @@ class PipelineExecutor:
 
             feedback_geral = json_data.get("feedback_geral")
             if isinstance(feedback_geral, str) and len(feedback_geral.strip()) >= 120:
+                def _norm(value: str) -> str:
+                    return re.sub(r"\s+", " ", value or "").strip().lower()
+
+                def _word_text(value: str) -> str:
+                    return " ".join(re.findall(r"\w+", _norm(value), flags=re.UNICODE))
+
+                expected_feedback = _norm(feedback_geral)
+                pdf_full_text = _norm(pdf_text or "")
+                expected_words = _word_text(feedback_geral)
+                pdf_words = _word_text(pdf_text or "")
+                expected_word_list = expected_words.split()
+
                 feedback_match = re.search(
-                    r"feedback\s+geral\s*[:\-]?\s*(.+)$",
+                    (
+                        r"(?:feedback\s+geral|parecer(?:\s+pedag[oó]gico)?\s+geral)"
+                        r"\s*[:\-]?\s*(.+)$"
+                    ),
                     pdf_text or "",
                     flags=re.IGNORECASE | re.DOTALL,
                 )
-                if not feedback_match:
-                    errors.append(f"PDF {pdf_label} sem Feedback Geral verificável para CORRIGIR")
+                pdf_feedback = _norm(feedback_match.group(1)) if feedback_match else ""
+                full_feedback_present = expected_feedback in pdf_full_text
+
+                prefix_size = min(12, len(expected_word_list))
+                suffix_size = min(8, len(expected_word_list))
+                prefix = " ".join(expected_word_list[:prefix_size])
+                suffix = " ".join(expected_word_list[-suffix_size:])
+                prefix_found = bool(prefix) and prefix in pdf_words
+                suffix_found = bool(suffix) and suffix in pdf_words
+
+                if not full_feedback_present and not prefix_found:
+                    errors.append(
+                        f"PDF {pdf_label} sem feedback_geral do JSON verificável para CORRIGIR"
+                    )
                 else:
-                    pdf_feedback = re.sub(r"\s+", " ", feedback_match.group(1)).strip()
                     min_len = min(160, int(len(feedback_geral.strip()) * 0.45))
-                    if len(pdf_feedback) < min_len:
+                    measured_feedback = pdf_feedback or expected_feedback if full_feedback_present else pdf_feedback
+                    if (
+                        not full_feedback_present
+                        and (len(measured_feedback) < min_len or not suffix_found)
+                    ):
                         errors.append(
                             f"PDF {pdf_label} parece truncar Feedback Geral: "
-                            f"{len(pdf_feedback)} chars no PDF contra {len(feedback_geral.strip())} no JSON"
+                            f"{len(measured_feedback)} chars no PDF contra {len(feedback_geral.strip())} no JSON"
                         )
                     if pdf_feedback and not re.search(r"[.!?)]\s*$", pdf_feedback):
                         errors.append(
