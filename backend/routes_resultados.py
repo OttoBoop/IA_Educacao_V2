@@ -65,18 +65,17 @@ def _numero(value: Any) -> Optional[float]:
 def _correcao_tem_nota_confiavel(dados: Any) -> bool:
     if not isinstance(dados, dict):
         return False
-    if _numero(dados.get("nota_final")) is not None:
-        return True
-    if _numero(dados.get("nota")) is not None:
-        return True
+    tem_nota = _numero(dados.get("nota_final")) is not None or _numero(dados.get("nota")) is not None
+    tem_item_avaliavel = False
     for campo in ("questoes", "correcoes"):
         itens = dados.get(campo)
         if isinstance(itens, list) and any(
             isinstance(item, dict) and _numero(item.get("nota")) is not None
             for item in itens
         ):
-            return True
-    return False
+            tem_item_avaliavel = True
+            tem_nota = True
+    return tem_nota and tem_item_avaliavel
 
 
 def _documento_resumo(doc: Any) -> Dict[str, Any]:

@@ -273,8 +273,8 @@ def test_visualizador_historico_fast_uses_latest_correction_summary(monkeypatch)
     visualizador.storage = fake_storage
 
     correction_payloads = {
-        "doc-new": {"nota": 8.5, "feedback": "ok"},
-        "doc-old": {"nota": 2.0, "feedback": "old"},
+        "doc-new": {"nota": 8.5, "questoes": [{"nota": 8.5}], "feedback": "ok"},
+        "doc-old": {"nota": 2.0, "questoes": [{"nota": 2.0}], "feedback": "old"},
     }
     monkeypatch.setattr(
         visualizador,
@@ -357,7 +357,7 @@ def test_visualizador_historico_fast_skips_latest_error_correction(monkeypatch):
         "_ler_json",
         lambda documento: {
             "doc-error": {"_erro_pipeline": {"tipo": "PDF_JSON_INCONSISTENTE"}},
-            "doc-ok": {"nota": 7.0, "feedback": "ok"},
+            "doc-ok": {"nota": 7.0, "questoes": [{"nota": 7.0}], "feedback": "ok"},
         }.get(documento.id, {}),
     )
 

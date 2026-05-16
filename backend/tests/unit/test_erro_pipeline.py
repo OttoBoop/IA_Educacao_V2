@@ -2043,7 +2043,7 @@ class TestF5T1_APIPropagaErro:
         with tempfile.NamedTemporaryFile(
             mode='w', suffix='.json', delete=False, encoding='utf-8'
         ) as f:
-            json.dump({"nota": 8.5, "correcoes": []}, f)
+            json.dump({"nota": 8.5, "questoes": [{"nota": 8.5}]}, f)
             temp_path = f.name
 
         try:
@@ -2145,7 +2145,7 @@ class TestF5T1_APIPropagaErro:
         ) as f_ok, tempfile.NamedTemporaryFile(
             mode='w', suffix='.json', delete=False, encoding='utf-8'
         ) as f_error:
-            json.dump({"nota_final": 8.0, "questoes": []}, f_ok)
+            json.dump({"nota_final": 8.0, "questoes": [{"nota": 8.0}]}, f_ok)
             json.dump({"_erro_pipeline": {"tipo": "PDF_JSON_INCONSISTENTE"}}, f_error)
             ok_path = f_ok.name
             error_path = f_error.name
@@ -2342,6 +2342,7 @@ class TestF5T1_APIPropagaErro:
             vis,
             "_ler_json",
             lambda documento: {
+                "nota": 0,
                 "habilidades_demonstradas": ["x"],
                 "feedback_geral": "Sem nota e sem questoes avaliaveis",
             },
@@ -2423,7 +2424,9 @@ class TestF5T2_VisualizadorPropagaErro:
         vis.storage.get_aluno = MagicMock(return_value=mock_aluno)
         vis.storage.listar_documentos = MagicMock(return_value=[mock_correcao_doc])
 
-        vis._ler_json = MagicMock(return_value={"nota": 8.5, "feedback": "Bom"})
+        vis._ler_json = MagicMock(
+            return_value={"nota": 8.5, "questoes": [{"nota": 8.5}], "feedback": "Bom"}
+        )
 
         resultado = vis.get_resultado_aluno("ativ_test", "aluno_test")
 

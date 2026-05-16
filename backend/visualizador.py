@@ -184,6 +184,16 @@ class VisualizadorResultados:
             next(iter(concluidos), None)
         )
 
+    def _correcao_tem_item_avaliavel(self, data: Dict[str, Any]) -> bool:
+        for campo in ("questoes", "correcoes"):
+            itens = data.get(campo)
+            if not isinstance(itens, list):
+                continue
+            for item in itens:
+                if isinstance(item, dict) and self._safe_float(item.get("nota")) is not None:
+                    return True
+        return False
+
     def _resumir_correcao(
         self,
         atividade_nota_maxima: float,
@@ -266,7 +276,10 @@ class VisualizadorResultados:
         # Ler dados da correção
         correcao_data = self._ler_json(correcao_doc)
         correcao_summary = self._resumir_correcao(atividade.nota_maxima, correcao_data)
-        if correcao_summary.get("nota") is None:
+        if (
+            correcao_summary.get("nota") is None
+            or not self._correcao_tem_item_avaliavel(correcao_data)
+        ):
             self.storage._log_hot_endpoint_profile(
                 "/api/resultados/{atividade_id}/{aluno_id}",
                 started_at,
@@ -785,7 +798,10 @@ class VisualizadorResultados:
                     atividade_row.get("nota_maxima", 0),
                     correction_data,
                 )
-                if summaries[atividade_id].get("nota") is None:
+                if (
+                    summaries[atividade_id].get("nota") is None
+                    or not self._correcao_tem_item_avaliavel(correction_data)
+                ):
                     summaries.pop(atividade_id, None)
             except Exception as exc:
                 logging.warning(
