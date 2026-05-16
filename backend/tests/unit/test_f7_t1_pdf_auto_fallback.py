@@ -60,7 +60,8 @@ def _make_chat_service_module(model, tool_calls_response):
     mock_key_manager.get_por_empresa = MagicMock(return_value=api_key_config)
     mock_module.api_key_manager = mock_key_manager
 
-    from chat_service import ProviderType
+    from chat_service import ProviderAPIError, ProviderType
+    mock_module.ProviderAPIError = ProviderAPIError
     mock_module.ProviderType = ProviderType
 
     mock_client_instance = MagicMock()
@@ -77,7 +78,13 @@ def _make_tools_module():
     mock_module.PIPELINE_TOOLS = []
     mock_module.CREATE_DOCUMENT = MagicMock()
     mock_module.EXECUTE_PYTHON_CODE = MagicMock()
-    mock_module.ToolExecutionContext = MagicMock()
+
+    class MockToolExecutionContext:
+        def __init__(self, **kwargs):
+            self.__dict__.update(kwargs)
+            self.created_document_ids = []
+
+    mock_module.ToolExecutionContext = MockToolExecutionContext
     return mock_module
 
 
@@ -201,13 +208,13 @@ async def _call_executar_com_tools(tool_calls_response, tools_to_use=None):
 # ============================================================
 
 
-class TestPdfFallbackFlagSet:
+class TestPdfFallbackBlocked:
     """F7-T1: When LLM calls create_document but NOT execute_python_code,
     the result must fail high instead of using a PDF fallback.
     """
 
     @pytest.mark.asyncio
-    async def test_pdf_fallback_used_true_when_only_create_document(self):
+    async def test_missing_pdf_fails_without_fallback(self):
         """JSON-only output must not be accepted as success."""
         response = _response_with_create_document_only()
         result = await _call_executar_com_tools(response)
@@ -260,11 +267,11 @@ class TestPdfFallbackNotTriggeredWhenBothTools:
 # ============================================================
 
 
-class TestPdfFallbackAlertAdded:
+class TestMissingPdfBlockingAlert:
     """P0: missing PDF should produce a blocking warning, not pdf_fallback."""
 
     @pytest.mark.asyncio
-    async def test_fallback_alert_in_alertas(self):
+    async def test_missing_pdf_alert_in_alertas(self):
         """A JSON-only tool result must not emit pdf_fallback success alert."""
         response = _response_with_create_document_only()
         result = await _call_executar_com_tools(response)
