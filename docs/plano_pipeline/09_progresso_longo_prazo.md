@@ -5,9 +5,9 @@
 **Status geral:** o servico oficial Render
 `srv-d5t8gbh4tr6s738fr3s0` (`IA_Educacao_V2`, branch `main`, URL
 `https://ia-educacao-v2.onrender.com`) tem como codigo funcional mais recente
-confirmado o commit `50fb1d7` (`fix: expose token usage migration status`),
+confirmado o commit `e2260d2` (`fix: show token usage migration details in dashboard`),
 validado por `/api/deploy-info`, `/api/health` e
-`./scripts/check_deploy.sh 50fb1d704bb9c72e775376a0cb627c0a71e44b27`. Se
+`./scripts/check_deploy.sh e2260d26ca06d0a9598689bcef2c4b7d800385d8`. Se
 `/api/deploy-info` apontar commit documental posterior, comparar com este hash
 funcional antes de concluir que houve nova mudanca de runtime. O lote funcional
 publicado ate esse hash faz resultado, historico, pendencias e status de
@@ -30,6 +30,9 @@ JSON bruto gigante.
 O ciclo `50fb1d7` deixou `/api/custos/status` expor `error_code=PGRST205`,
 `missing_migration=true` e `migration_path=backend/migrations/002_create_token_usage.sql`
 para o bloqueio Supabase `token_usage`.
+O ciclo `e2260d2` fez o dashboard ler esses campos no objeto
+`token_usage_backend.supabase` e mostrar o codigo/caminho da migration no site,
+sem exigir terminal para entender o bloqueio.
 GPT-4.1, GPT-5.4 Mini e GPT-4o seguem referencias de pipeline confirmadas na
 fixture Diana; Google esta limitado por quota `429` nos smokes recentes,
 Anthropic segue bloqueado por credito, e Supabase `token_usage` continua ausente
@@ -2835,6 +2838,32 @@ Critério de pronto: lista de limpeza segura e revisada.
 - Status: diagnostico publicado e smokeado. Bloqueio real permanece externo:
   aplicar a migration no Supabase ou disponibilizar credencial/caminho admin
   para que Paulo rode a SQL sem expor segredo.
+
+### 2026-05-17 -- Dashboard: alerta visivel da migration `token_usage`
+
+- Alvo: fazer o bloqueio de custo duravel aparecer no site oficial, nao apenas
+  no JSON de `/api/custos/status`.
+- Achado: o frontend lia `tokenUsageBackend.error_code`, mas o backend publicado
+  em `50fb1d7` entrega `error_code`, `missing_migration` e `migration_path`
+  dentro de `token_usage_backend.supabase`.
+- Mudanca: `frontend/index_v2.html` agora le tambem o objeto Supabase aninhado e
+  monta o alerta com `Codigo: PGRST205` e
+  `backend/migrations/002_create_token_usage.sql` quando a migration estiver
+  ausente.
+- Validacoes locais: `py_compile` de `test_frontend_cost_status_ui.py`;
+  `git diff --check`; `test_frontend_cost_status_ui.py` passou com `4 passed`.
+- Commit/deploy: `e2260d2` (`fix: show token usage migration details in dashboard`)
+  publicado em `origin/main`; Render confirmou
+  `e2260d26ca06d0a9598689bcef2c4b7d800385d8` em 180s por
+  `./scripts/wait_deploy.sh`, `./scripts/check_deploy.sh`, `/api/deploy-info`
+  e `/api/health`.
+- Smoke live: HTML oficial contem `tokenUsageSupabase.error_code`,
+  `tokenUsageSupabase.missing_migration === true`,
+  `backend/migrations/002_create_token_usage.sql` e `Custos não duráveis`.
+  `/api/custos/status?limit=80` segue retornando `ok=false`,
+  `error_code=PGRST205`, `missing_migration=true` e o mesmo `migration_path`.
+- Status: UI publicada e smokeada. Bloqueio real permanece externo: a tabela
+  `public.token_usage` ainda precisa existir no Supabase.
 
 ## Riscos Abertos
 
