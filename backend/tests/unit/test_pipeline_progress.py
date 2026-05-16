@@ -149,6 +149,27 @@ class TestUpdateStageProgress:
         finally:
             task_registry.pop(task_id, None)
 
+    def test_skipped_stage_stores_visible_reason_and_clears_error_payload(self):
+        """Skipped/reused stages must not stay pending or keep stale red errors."""
+        from routes_tasks import task_registry, register_pipeline_task, update_stage_progress
+
+        task_id = register_pipeline_task("pipeline_todos_os_alunos", "ativ-skip", ["aluno-1"])
+        try:
+            update_stage_progress(task_id, "aluno-1", "corrigir", "failed", error="erro antigo")
+            update_stage_progress(
+                task_id,
+                "aluno-1",
+                "corrigir",
+                "skipped",
+                error={"mensagem": "documento já existe"},
+            )
+            student = task_registry[task_id]["students"]["aluno-1"]
+            assert student["stages"]["corrigir"] == "skipped"
+            assert "corrigir" not in student["stage_errors"]
+            assert student["stage_skips"]["corrigir"]["mensagem"] == "documento já existe"
+        finally:
+            task_registry.pop(task_id, None)
+
     def test_does_not_affect_other_stages(self):
         """Updating one stage leaves others unchanged."""
         from routes_tasks import task_registry, register_pipeline_task, update_stage_progress
@@ -191,6 +212,106 @@ class TestCompletePipelineTask:
         try:
             complete_pipeline_task(task_id, status="failed")
             assert task_registry[task_id]["status"] == "failed"
+        finally:
+            task_registry.pop(task_id, None)
+
+    def test_batch_task_stays_running_while_other_students_are_pending(self):
+        """A per-student failure must not stop polling before the batch loop ends."""
+        from routes_tasks import (
+            complete_pipeline_task,
+            register_pipeline_task,
+            task_registry,
+            update_stage_progress,
+        )
+
+        task_id = register_pipeline_task(
+            "pipeline_todos_os_alunos",
+            "ativ-batch-running",
+            ["aluno-ok", "aluno-pendente"],
+        )
+        try:
+            for stage in PIPELINE_STAGES:
+                update_stage_progress(task_id, "aluno-ok", stage, "completed")
+            complete_pipeline_task(task_id, "completed")
+
+            task = task_registry[task_id]
+            assert task["status"] == "running"
+            assert "aluno-pendente" in task["summary"]["students_pending"]
+        finally:
+            task_registry.pop(task_id, None)
+
+    def test_batch_task_fails_when_any_student_failed_after_all_terminal(self):
+        """A finished batch with any failed student cannot report global completed."""
+        from routes_tasks import (
+            complete_pipeline_task,
+            register_pipeline_task,
+            task_registry,
+            update_stage_progress,
+        )
+
+        task_id = register_pipeline_task(
+            "pipeline_todos_os_alunos",
+            "ativ-batch-fail",
+            ["aluno-ok", "aluno-falha"],
+        )
+        try:
+            for stage in PIPELINE_STAGES:
+                update_stage_progress(task_id, "aluno-ok", stage, "completed")
+            update_stage_progress(
+                task_id,
+                "aluno-falha",
+                "extrair_respostas",
+                "failed",
+                error="arquivo invalido",
+            )
+            for stage in PIPELINE_STAGES:
+                if stage != "extrair_respostas":
+                    update_stage_progress(task_id, "aluno-falha", stage, "skipped", error="bloqueado")
+
+            complete_pipeline_task(task_id, "completed")
+
+            task = task_registry[task_id]
+            assert task["status"] == "failed"
+            assert "Pipeline em lote terminou com falhas" in task["error"]
+            assert task["summary"]["failed_stages"] == 1
+            assert task["summary"]["skipped_stages"] == 5
+            assert task["summary"]["students_failed"] == ["aluno-falha"]
+        finally:
+            task_registry.pop(task_id, None)
+
+    def test_batch_failure_does_not_stop_polling_before_remaining_students_finish(self):
+        """A failed student is visible, but the batch stays running for other students."""
+        from routes_tasks import (
+            complete_pipeline_task,
+            register_pipeline_task,
+            task_registry,
+            update_stage_progress,
+        )
+
+        task_id = register_pipeline_task(
+            "pipeline_todos_os_alunos",
+            "ativ-batch-continue",
+            ["aluno-falha", "aluno-pendente"],
+        )
+        try:
+            update_stage_progress(
+                task_id,
+                "aluno-falha",
+                "corrigir",
+                "failed",
+                error="schema invalido",
+            )
+            for stage in PIPELINE_STAGES:
+                if stage != "corrigir":
+                    update_stage_progress(task_id, "aluno-falha", stage, "skipped", error="bloqueado")
+
+            complete_pipeline_task(task_id, "failed", error="corrigir: schema invalido")
+
+            task = task_registry[task_id]
+            assert task["status"] == "running"
+            assert task["last_error"] == "corrigir: schema invalido"
+            assert task["summary"]["failed_stages"] == 1
+            assert "aluno-pendente" in task["summary"]["students_pending"]
         finally:
             task_registry.pop(task_id, None)
 

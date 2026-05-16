@@ -6157,8 +6157,39 @@ Crie UM documento separado para cada aluno, nomeando como "relatorio_[nome_aluno
                     payload["severidade"] = erro_pipeline.get("severidade")
             return payload
 
+        def _marcar_etapa_pulada(stage_name: str, reason: str) -> None:
+            etapas_puladas[stage_name] = reason
+            if task_id:
+                update_stage_progress(
+                    task_id,
+                    aluno_id,
+                    stage_name,
+                    "skipped",
+                    error={"mensagem": reason},
+                )
+
         def _finalizar_task_com_erro(resultado):
             if task_id:
+                etapa_falha = resultado.etapa.value if hasattr(resultado.etapa, 'value') else str(resultado.etapa)
+                if etapa_falha in ALL_STEPS:
+                    indice_falha = ALL_STEPS.index(etapa_falha)
+                    task = task_registry.get(task_id, {})
+                    stages = (
+                        task.get("students", {})
+                        .get(aluno_id, {})
+                        .get("stages", {})
+                    )
+                    for stage_name in ALL_STEPS[indice_falha + 1:]:
+                        if stages.get(stage_name) == "pending":
+                            update_stage_progress(
+                                task_id,
+                                aluno_id,
+                                stage_name,
+                                "skipped",
+                                error={
+                                    "mensagem": f"bloqueado por falha em {etapa_falha}",
+                                },
+                            )
                 complete_pipeline_task(task_id, "failed", error=_mensagem_erro_task(resultado))
 
         # 1. Extrair questões
@@ -6187,7 +6218,7 @@ Crie UM documento separado para cada aluno, nomeando como "relatorio_[nome_aluno
                 _finalizar_task_com_erro(resultado)
                 return resultados
         else:
-            etapas_puladas["extrair_questoes"] = reason
+            _marcar_etapa_pulada("extrair_questoes", reason)
 
         # 2. Extrair gabarito
         should_run, reason = _should_run("extrair_gabarito", TipoDocumento.EXTRACAO_GABARITO, docs)
@@ -6215,7 +6246,7 @@ Crie UM documento separado para cada aluno, nomeando como "relatorio_[nome_aluno
                 _finalizar_task_com_erro(resultado)
                 return resultados
         else:
-            etapas_puladas["extrair_gabarito"] = reason
+            _marcar_etapa_pulada("extrair_gabarito", reason)
 
         # 3. Extrair respostas do aluno
         should_run, reason = _should_run("extrair_respostas", TipoDocumento.EXTRACAO_RESPOSTAS, docs_aluno)
@@ -6265,7 +6296,7 @@ Crie UM documento separado para cada aluno, nomeando como "relatorio_[nome_aluno
                 _finalizar_task_com_erro(resultado)
                 return resultados
         else:
-            etapas_puladas["extrair_respostas"] = reason
+            _marcar_etapa_pulada("extrair_respostas", reason)
 
         # 4. Corrigir
         should_run, reason = _should_run("corrigir", TipoDocumento.CORRECAO, docs_aluno)
@@ -6293,7 +6324,7 @@ Crie UM documento separado para cada aluno, nomeando como "relatorio_[nome_aluno
                 _finalizar_task_com_erro(resultado)
                 return resultados
         else:
-            etapas_puladas["corrigir"] = reason
+            _marcar_etapa_pulada("corrigir", reason)
 
         # 5. Analisar habilidades
         should_run, reason = _should_run("analisar_habilidades", TipoDocumento.ANALISE_HABILIDADES, docs_aluno)
@@ -6321,7 +6352,7 @@ Crie UM documento separado para cada aluno, nomeando como "relatorio_[nome_aluno
                 _finalizar_task_com_erro(resultado)
                 return resultados
         else:
-            etapas_puladas["analisar_habilidades"] = reason
+            _marcar_etapa_pulada("analisar_habilidades", reason)
 
         # 6. Gerar relatório
         should_run, reason = _should_run("gerar_relatorio", TipoDocumento.RELATORIO_FINAL, docs_aluno)
@@ -6349,7 +6380,7 @@ Crie UM documento separado para cada aluno, nomeando como "relatorio_[nome_aluno
                 _finalizar_task_com_erro(resultado)
                 return resultados
         else:
-            etapas_puladas["gerar_relatorio"] = reason
+            _marcar_etapa_pulada("gerar_relatorio", reason)
 
         # Log final summary
         logger.info(f"Pipeline concluído: {len(resultados)} etapas executadas, {len(etapas_puladas)} puladas")

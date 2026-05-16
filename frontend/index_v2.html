@@ -282,12 +282,27 @@
             color: var(--danger, #e74c3c);
         }
 
+        .tarefa-stage.skipped {
+            color: var(--text-muted);
+        }
+
         .tarefa-stage-error {
             margin: 2px 10px 8px 28px;
             padding: 6px 8px;
             border-left: 3px solid var(--danger, #e74c3c);
             background: rgba(231, 76, 60, 0.08);
             color: var(--danger, #e74c3c);
+            font-size: 0.76rem;
+            line-height: 1.35;
+            white-space: normal;
+        }
+
+        .tarefa-stage-skip {
+            margin: 2px 10px 8px 28px;
+            padding: 6px 8px;
+            border-left: 3px solid var(--border);
+            background: rgba(127, 140, 141, 0.08);
+            color: var(--text-muted);
             font-size: 0.76rem;
             line-height: 1.35;
             white-space: normal;
@@ -8706,7 +8721,7 @@
             const container = document.getElementById('tree-tarefas');
             if (!container) return;
 
-            const stageIcons = { completed: '\u2705', running: '\u23F3', pending: '\u2B1C', failed: '\u274C' };
+            const stageIcons = { completed: '\u2705', running: '\u23F3', pending: '\u2B1C', failed: '\u274C', skipped: '\u21B7' };
             const stageNames = {
                 extrair_questoes: 'Extrair Quest\u00F5es',
                 extrair_gabarito: 'Extrair Gabarito',
@@ -8734,6 +8749,12 @@
                     ? '<span class="tarefa-stage-error-meta">' + escapeHtml(meta.join(' • ')) + '</span>'
                     : '';
                 return '<div class="tarefa-stage-error">Falha da etapa: ' + escapeHtml(mensagem) + metaHtml + '</div>';
+            }
+
+            function renderStageSkip(stageSkip) {
+                if (!stageSkip) return '';
+                const mensagem = stageSkip.mensagem || stageSkip.reason || 'Etapa pulada.';
+                return '<div class="tarefa-stage-skip">Etapa pulada: ' + escapeHtml(mensagem) + '</div>';
             }
 
             if (!tasks || Object.keys(tasks).length === 0) {
@@ -8873,6 +8894,7 @@
                             for (const [alunoId, aluno] of Object.entries(task.students || {})) {
                                 const stages   = aluno.stages || {};
                                 const stageErrors = aluno.stage_errors || {};
+                                const stageSkips = aluno.stage_skips || {};
                                 const alunoName = aluno.nome || alunoId;
 
                                 html += '<div class="tarefa-aluno' + (isCancelled ? ' cancelled' : '') + '" data-task="' + taskId + '" data-aluno="' + alunoId + '">';
@@ -8889,6 +8911,8 @@
                                     html += '<div class="tarefa-stage ' + status + '">' + icon + ' ' + name + '</div>';
                                     if (status === 'failed') {
                                         html += renderStageError(stageErrors[stage]);
+                                    } else if (status === 'skipped') {
+                                        html += renderStageSkip(stageSkips[stage]);
                                     }
                                 }
 

@@ -1060,6 +1060,7 @@ async def _executar_pipeline_todos_os_alunos_background(
 ):
     """Background helper: runs pipeline for every student in the turma sequentially."""
     from executor import executor
+    from routes_tasks import complete_pipeline_task, task_registry, update_stage_progress
 
     for aluno in alunos_para_processar:
         try:
@@ -1075,8 +1076,29 @@ async def _executar_pipeline_todos_os_alunos_background(
                 selected_steps=steps_list,
                 force_rerun=force_rerun,
             )
-        except Exception:
-            pass  # Individual student failures don't block remaining students
+        except Exception as exc:
+            task = task_registry.get(task_id) or {}
+            student = (task.get("students") or {}).get(aluno.id, {})
+            stages = student.get("stages") or {}
+            failed_stage = next(
+                (stage for stage, status in stages.items() if status == "running"),
+                None,
+            ) or next(
+                (stage for stage, status in stages.items() if status == "pending"),
+                "gerar_relatorio",
+            )
+            update_stage_progress(
+                task_id,
+                aluno.id,
+                failed_stage,
+                "failed",
+                error={
+                    "mensagem": f"Excecao no processamento em lote: {exc}",
+                    "tipo": "batch_student_exception",
+                },
+            )
+
+    complete_pipeline_task(task_id, "completed")
 
 
 @router.post("/api/executar/pipeline-todos-os-alunos", tags=["Execução"])
