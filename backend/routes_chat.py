@@ -439,11 +439,8 @@ Seja preciso e educativo nas correcoes."""
 
             latency_ms = (time.time() - start_time) * 1000
 
-            # DEBUG: Add marker to response content to verify this exact code is running
-            debug_marker = "\n\n<!-- DEBUG_V3_MARKER_2026 -->"
-
             return {
-                "response": resposta_final + debug_marker,
+                "response": resposta_final,
                 "provider": model_config.tipo.value,
                 "model": resposta["modelo"],
                 "model_name": model_config.nome,
