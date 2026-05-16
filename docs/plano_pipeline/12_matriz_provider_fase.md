@@ -4,8 +4,8 @@
 **Atividades de teste principais:** Lista0 — Algebra Linear Avancada
 (`126e8b5ad7dd6d59`) e smoke simples oficial `Smoke Paulo Pipeline 2026-05-16`
 (`f68d57a9a339081f`)
-**Runtime oficial atual:** backend Render em `fdf0cbd`; `origin/main` recebeu o
-ciclo funcional `fdf0cbd` e pode receber registro documental posterior. Use
+**Runtime oficial atual:** backend Render em `ae04982`; `origin/main` recebeu o
+ciclo funcional `ae04982` e pode receber registro documental posterior. Use
 `/api/deploy-info` como gate de codigo live.
 **Commits aplicados/observados:** `a632883`, `5737611`, `50935ea`, `479b77d`,
 `b12be9a`, `301eba6`, `f67055c`, `462ea1d`, `b4d7ee6`, `99483d1`,
@@ -23,17 +23,27 @@ ciclo funcional `fdf0cbd` e pode receber registro documental posterior. Use
 `4094bda`, `4d8f73d`, `f40acf3`, `700b088`, `1307909`, `bed0c08`, `feaf5d0`,
 `d47d748`, `c53fae6`, `9ab53df`, `1454e68`, `3fce335`, `33fb7d5`, `0f84552`,
 `974f040`, `11a396b`, `c094fba`, `d799165`, `6b43016`, `8c77cc4`, `29a4b7e`,
-`fdf0cbd`
+`fdf0cbd`, `e2260d2`, `ae04982`
 
 ## Status Oficial De Deploy
 
 - O servico oficial em 2026-05-17 e
   `srv-d5t8gbh4tr6s738fr3s0` (`IA_Educacao_V2`), branch `main`,
   `rootDir=backend`, URL `https://ia-educacao-v2.onrender.com`.
-- `/api/deploy-info` confirmou o runtime backend `11a396b` com
+- `/api/deploy-info` confirmou o runtime backend `ae04982` com
   `source=RENDER_GIT_COMMIT`; esse e o gate primario atual para codigo live.
-- `origin/main` avancou para `29a4b7e` apenas com documentacao; isso nao mudou o
-  codigo Render live nem a matriz de comportamento do backend.
+- `origin/main` esta alinhado com o codigo funcional `ae04982`; commits
+  documentais posteriores podem mudar o hash sem mudar comportamento de
+  provider/pipeline.
+- `e2260d2` tornou o bloqueio de migration `token_usage` visivel no dashboard.
+- `ae04982` adicionou `por_etapa` em `/api/custos/resumo` e o smoke live
+  confirmou `runs_analisados=59`, `runs_precificados=57`,
+  `runs_bloqueados=2`, `custo_usd=1.404252` e custos por etapa.
+- Sweep live de conexao pos-`e2260d2`: OpenAI OK; Gemini 2.5 Flash, Gemini 2.5
+  Flash Lite e Gemini 3 Flash OK; Gemini 2.5 Pro bloqueado por quota `429`;
+  Anthropic bloqueado por credito; Ollama indisponivel no Render.
+- Pipeline live GPT-5.4 Mini: `task_a1f7521077a5` completou as 6 etapas na
+  fixture Diana (`f68d57a9a339081f`/`10d9fa4f4303ea1f`) sem `stage_errors`.
 - O commit `fdf0cbd` mudou backend/frontend para catalogo OpenAI GPT-5.x e foi
   publicado no GitHub; Render confirmou `fdf0cbd` por `/api/deploy-info`,
   `wait_deploy.sh` e `check_deploy.sh`.
@@ -984,7 +994,7 @@ nem datasets maiores.
 
 **Proximos passos:**
 1. Manter deploy oficial confirmado por `/api/deploy-info` antes de cada smoke
-   novo; o codigo funcional mais recente confirmado e `e2260d2`. Commits
+   novo; o codigo funcional mais recente confirmado e `ae04982`. Commits
    documentais posteriores podem mudar o hash de `/api/deploy-info` sem alterar
    comportamento de pipeline.
 2. Aplicar/validar a migration Supabase `token_usage` antes de chamar custo de
@@ -1012,5 +1022,6 @@ nem datasets maiores.
    `quota_exhausted`); `50fb1d7` confirmou diagnostico explicito da migration
    ausente (`PGRST205`, `missing_migration=true`,
    `backend/migrations/002_create_token_usage.sql`); `e2260d2` confirmou que o
-   dashboard oficial mostra esse codigo e caminho da migration. Falta aplicar a
+   dashboard oficial mostra esse codigo e caminho da migration; `ae04982`
+   confirmou custo agregado por etapa em `/api/custos/resumo`. Falta aplicar a
    migration `token_usage` e seguir a proxima revalidacao de provider.

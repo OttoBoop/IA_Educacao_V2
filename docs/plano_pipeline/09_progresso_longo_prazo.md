@@ -5,9 +5,9 @@
 **Status geral:** o servico oficial Render
 `srv-d5t8gbh4tr6s738fr3s0` (`IA_Educacao_V2`, branch `main`, URL
 `https://ia-educacao-v2.onrender.com`) tem como codigo funcional mais recente
-confirmado o commit `e2260d2` (`fix: show token usage migration details in dashboard`),
+confirmado o commit `ae04982` (`fix: expose cost totals by pipeline stage`),
 validado por `/api/deploy-info`, `/api/health` e
-`./scripts/check_deploy.sh e2260d26ca06d0a9598689bcef2c4b7d800385d8`. Se
+`./scripts/check_deploy.sh ae04982250877dc12da5a01be16edc2eaa43b5bd`. Se
 `/api/deploy-info` apontar commit documental posterior, comparar com este hash
 funcional antes de concluir que houve nova mudanca de runtime. O lote funcional
 publicado ate esse hash faz resultado, historico, pendencias e status de
@@ -33,10 +33,14 @@ para o bloqueio Supabase `token_usage`.
 O ciclo `e2260d2` fez o dashboard ler esses campos no objeto
 `token_usage_backend.supabase` e mostrar o codigo/caminho da migration no site,
 sem exigir terminal para entender o bloqueio.
+O ciclo `ae04982` adicionou `por_etapa` em `/api/custos/resumo` e confirmou o
+agregado live: `correcao` segue como a maior fatia de custo, seguida por
+`analise_habilidades` e `relatorio_final`.
 GPT-4.1, GPT-5.4 Mini e GPT-4o seguem referencias de pipeline confirmadas na
-fixture Diana; Google esta limitado por quota `429` nos smokes recentes,
-Anthropic segue bloqueado por credito, e Supabase `token_usage` continua ausente
-(`PGRST205`), deixando custo duravel como gate real.
+fixture Diana; o sweep mais recente confirmou OpenAI OK, Gemini Flash/Flash
+Lite/3 Flash OK, Gemini 2.5 Pro bloqueado por quota `429`, Anthropic bloqueado
+por credito e Ollama indisponivel no Render. Supabase `token_usage` continua
+ausente (`PGRST205`), deixando custo duravel como gate real.
 
 Atualizacao Lista0 de 2026-05-17: a atividade real `Lista0`
 (`126e8b5ad7dd6d59`) tem documentos base cadastrados e 63 alunos
@@ -2864,6 +2868,45 @@ Critério de pronto: lista de limpeza segura e revisada.
   `error_code=PGRST205`, `missing_migration=true` e o mesmo `migration_path`.
 - Status: UI publicada e smokeada. Bloqueio real permanece externo: a tabela
   `public.token_usage` ainda precisa existir no Supabase.
+
+### 2026-05-17 -- Custos: agregado oficial por etapa e sweep de providers
+
+- Alvo: deixar custos consultaveis por etapa de pipeline, alem de provider e
+  run, e atualizar o estado real dos providers configurados.
+- Sweep de conexao via `/api/settings/models/{id}/testar`: OpenAI OK para
+  `gpt-4o`, `o3-mini`, `gpt-4.1`, `o4-mini`, `gpt-5-nano` e
+  `gpt-5.4-mini`; Google OK para `gemini-2.5-flash`,
+  `gemini-2.5-flash-lite` e `gemini-3-flash-preview`; Google Pro bloqueado por
+  quota `429`; Claude Haiku/Sonnet 4.5 bloqueados por credito Anthropic; Ollama
+  local indisponivel no Render.
+- Smoke de pipeline: `task_a1f7521077a5`, runtime `e2260d2`, atividade
+  `f68d57a9a339081f`, aluna `10d9fa4f4303ea1f`, modelo `gpt54mini001`,
+  `force_rerun=true`, seis etapas `completed` e sem `stage_errors`.
+- Observacao operacional: a primeira chamada Python nao recebeu o `task_id`, mas
+  `/api/tasks` mostrou a task registrada e concluida; a repeticao curta via
+  `curl` (`task_a0ac9628c0fa`, apenas `corrigir`) retornou `task_id` em
+  `1.27s` e completou. Monitorar se a perda de resposta inicial voltar a
+  ocorrer.
+- Mudanca: `cost_tracking.py` passou a expor `etapa`, `etapa_origem` e agregado
+  `por_etapa`; quando a etapa vem da metadata, `etapa_origem=metadata`; quando
+  so vem do tipo do documento, `etapa_origem=tipo_documento`.
+- Validacoes locais: `py_compile` de `cost_tracking.py` e
+  `test_cost_tracking.py`; `git diff --check`; `test_cost_tracking.py` passou
+  com `28 passed`.
+- Commit/deploy: `ae04982` (`fix: expose cost totals by pipeline stage`)
+  publicado em `origin/main`; Render confirmou
+  `ae04982250877dc12da5a01be16edc2eaa43b5bd` em 180s por
+  `./scripts/wait_deploy.sh`, `./scripts/check_deploy.sh`, `/api/deploy-info`
+  e `/api/health`.
+- Smoke live de custo: `/api/custos/resumo?limit=120` retornou
+  `runs_analisados=59`, `runs_precificados=57`, `runs_bloqueados=2`,
+  `custo_usd=1.404252`, `token_usage_durable=false` e `por_etapa` com
+  `correcao=US$ 0.755318`, `analise_habilidades=US$ 0.311354`,
+  `relatorio_final=US$ 0.261663`, `extrair_gabarito=US$ 0.026077`,
+  `extrair_respostas=US$ 0.026308` e `extrair_questoes=US$ 0.023532`.
+- Status: custo por etapa publicado e smokeado. Bloqueio real remanescente:
+  aplicar `backend/migrations/002_create_token_usage.sql` no Supabase para
+  tornar falhas sem documento duraveis.
 
 ## Riscos Abertos
 
