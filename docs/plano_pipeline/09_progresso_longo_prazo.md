@@ -101,6 +101,17 @@ retornou `ok=false`, `runs_precificados=37`, `runs_bloqueados=0`,
 `durable=false`, e o HTML servido continha `dashboard-cost-alerts` e a chamada
 `/custos/status?limit=80`.
 
+Atualizacao GPT-4o full de 2026-05-17: no mesmo runtime `54d083e`, a task
+`task_68b19146a95b` completou as 6 etapas com `180b8298a279` na fixture Diana.
+Artefatos finais: questoes `5adf51fcd1adc4c0`, gabarito
+`7c097774fce46472`, respostas `9e6d562d51a6f6e4`, correcao JSON/PDF
+`b2abc9a73c8dc3a8`/`8911e1a3acae4ad2`, habilidades JSON/PDF
+`21f2d7d065aeafe5`/`72203996b8960b50` e relatorio JSON/PDF
+`bbc5963d712a7f1e`/`f12312b96e3725a3`. PDFs baixados por `pdftotext`
+confirmaram `Nota Final: 8.0`; custo aproximado das 6 etapas: `US$ 0.314369`.
+Houve retries explicitos: JSONs inválidos anteriores ficaram `status=erro`
+antes dos artefatos finais, sem troca silenciosa de modelo.
+
 A sequencia que destravou esse ponto foi:
 
 - `5a3daca`: alinhou prompts OpenAI para dual-output via tools.
@@ -219,7 +230,7 @@ Estabilizar o NOVO CR para que a pipeline:
 | Frente | Estado | Proximo passo |
 |--------|--------|---------------|
 | Docs e plano | Sprint 0 concluida | Manter este painel como fonte oficial e anexos fora do fluxo diario |
-| Pipeline | GPT-5.4 Mini (`gpt54mini001`) completou as 6 etapas no site oficial em `task_a5f0d734f0b3`, Render hash `2cad38a`, com documentos, custos e inspeção semantica inicial coerente nos JSONs; re-smoke no Render `0ac92f0` (`task_605512496b0d`) completou as 6 etapas, mas expôs divergencia P0 entre JSON e PDF em `corrigir` e `gerar_relatorio`; `2052a01` bloqueou PDF inconsistente com falha alta em `task_857c0c3657ef`; `3a77a17` adicionou retry PDF/JSON e `task_e389f360b812` completou as etapas finais com PDF/JSON coerentes na fixture simples; `392ec7c` bloqueou relatorio que muda `nota_final` em relacao a correcao oficial e o smoke Nano `task_57da745b8de5` confirmou JSON/PDF de relatorio com `nota_final=8.0`; Gemini 3 Flash segue validado em etapas individuais, mas pipeline sequencial bateu quota `429`; GPT-5 Nano segue parcial em `extrair_respostas` por historico de qualidade/datasets maiores | Revalidar matriz por provider/modelo e manter bloqueio P0: nao aceitar `completed` sem documento, schema, custo, conteudo minimo, nota cross-stage e artefatos coerentes entre si |
+| Pipeline | GPT-5.4 Mini (`gpt54mini001`) completou as 6 etapas no site oficial em `task_a5f0d734f0b3`, Render hash `2cad38a`, com documentos, custos e inspeção semantica inicial coerente nos JSONs; re-smoke no Render `0ac92f0` (`task_605512496b0d`) completou as 6 etapas, mas expôs divergencia P0 entre JSON e PDF em `corrigir` e `gerar_relatorio`; `2052a01` bloqueou PDF inconsistente com falha alta em `task_857c0c3657ef`; `3a77a17` adicionou retry PDF/JSON e `task_e389f360b812` completou as etapas finais com PDF/JSON coerentes na fixture simples; `392ec7c` bloqueou relatorio que muda `nota_final` em relacao a correcao oficial e o smoke Nano `task_57da745b8de5` confirmou JSON/PDF de relatorio com `nota_final=8.0`; GPT-4o completou full smoke `task_68b19146a95b` em `54d083e` com custo aproximado `US$ 0.314369`; Gemini 3 Flash segue validado em etapas individuais, mas pipeline sequencial bateu quota `429`; GPT-5 Nano segue parcial em `extrair_respostas` por historico de qualidade/datasets maiores | Revalidar matriz por provider/modelo e manter bloqueio P0: nao aceitar `completed` sem documento, schema, custo, conteudo minimo, nota cross-stage e artefatos coerentes entre si |
 | Schema e avisos | Sprint 2 concluida localmente | Manter schema oficial, defaults e visualizador cobertos por testes |
 | Custos/tokens | Metadata de documento, endpoints live, resumo por `cost_run_id`, `TokenUsageRecord` local, migration Supabase dedicada `b2dc88b`; smoke full GPT-5.4 Mini `task_a5f0d734f0b3` registrou custo medido por etapa: `US$ 0.002312`, `US$ 0.002759`, `US$ 0.002657`, `US$ 0.026149`, `US$ 0.017470` e `US$ 0.027763`, total aproximado `US$ 0.079110`; smoke Nano `task_57da745b8de5` registrou `29067/6701` tokens no `cost_run_id=tool_8feb2ba8dfca`, incluindo PDF em erro e retry concluido; `460643f` faz `/api/custos/status` retornar `ok=false` e alerta bloqueante enquanto `PGRST205`, `durable=false` e `local_record_count=0` persistirem; `54d083e` mostra esse bloqueio no dashboard oficial | Aplicar `backend/migrations/002_create_token_usage.sql` no Supabase; revalidar ate `token_usage_backend.durable=true`; depois persistir custos de falhas sem documento |
 | UI de erros | Dashboard oficial mostra bloqueio de custos nao duraveis no commit `54d083e`; falhas por aluno/etapa ainda estao pendentes | Mostrar falha por aluno/etapa sem depender de terminal |
@@ -1852,6 +1863,32 @@ Critério de pronto: lista de limpeza segura e revisada.
 - Proximo alvo: aplicar a migration Supabase `002_create_token_usage.sql` quando
   houver credencial/admin, ou continuar a matriz provider sem depender desse
   segredo.
+
+### 2026-05-17 -- GPT-4o full smoke pós-fixes
+
+- Alvo: fechar a lacuna em que GPT-4o tinha etapas individuais revalidadas, mas
+  nao uma pipeline completa de 6 etapas no site oficial pos-fixes.
+- Smoke oficial: `task_68b19146a95b`, runtime `54d083e`, modelo
+  `180b8298a279` (`openai/gpt-4o`), fixture Diana, `force_rerun=true`.
+- Resultado task: `completed`; etapas `extrair_questoes`, `extrair_gabarito`,
+  `extrair_respostas`, `corrigir`, `analisar_habilidades` e `gerar_relatorio`
+  marcadas `completed`.
+- Artefatos finais:
+  `5adf51fcd1adc4c0`, `7c097774fce46472`, `9e6d562d51a6f6e4`,
+  `b2abc9a73c8dc3a8`/`8911e1a3acae4ad2`,
+  `21f2d7d065aeafe5`/`72203996b8960b50` e
+  `bbc5963d712a7f1e`/`f12312b96e3725a3`.
+- Inspecao semantica: 4 questoes, gabarito correto, respostas da aluna
+  `x = 5`, `34`, `25`, `20 cm2`, correcao `8.0` com Q3 errada, habilidades
+  coerentes e relatorio `nota_final=8.0`. `pdftotext` confirmou PDF de correcao
+  e relatorio com `Nota Final: 8.0`.
+- Custos medidos: extracoes `US$ 0.006967`, `US$ 0.007275`,
+  `US$ 0.008337`; tools `US$ 0.088400`, `US$ 0.127185`, `US$ 0.076205`;
+  total aproximado `US$ 0.314369`.
+- Observacao: retries explicitos geraram documentos `status=erro` por
+  `json_schema_validation` antes dos JSONs finais de tools. Isso e aceitavel
+  como retry no mesmo modelo, mas deve permanecer visivel na UI/custos e nunca
+  virar sucesso silencioso.
 
 ## Riscos Abertos
 

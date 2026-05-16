@@ -227,7 +227,7 @@ detalhar e auditar estas linhas.
 | Pipeline P5/P6 | Contencao de nota e preservacao de `_documentos_faltantes` | `N/A` ainda e fallback proibido como estado final. |
 | Schema/avisos | Defaults `_avisos_*`, visualizador melhorado e schemas mais permissivos | Permissividade nao e contrato forte; pode aceitar legado demais. |
 | Tokens/custos | Split input/output; metadata de documento; endpoints `/api/custos/status` e `/api/custos/resumo` respondendo live; resumo agrega por `cost_run_id`; `TokenUsageRecord` local cobre falha sem documento enquanto o filesystem vive; codigo Supabase e migration dedicada `b2dc88b` existem; diagnostico live mostra `PGRST205`; smoke full GPT-5.4 Mini `task_a5f0d734f0b3` mediu custo por etapa e total aproximado `US$ 0.079110`; smoke Nano `task_57da745b8de5` registrou `29067/6701` tokens em documentos de relatorio; `/api/custos/status?limit=80` mostrou `runs_precificados=37`, `runs_bloqueados=0`, `ok=false`, `custos_persistencia_status=parcial_sem_token_usage_duravel` e alerta bloqueante `token_usage_not_durable`; dashboard live em `54d083e` mostra "Custos não duráveis" | Falta aplicar `backend/migrations/002_create_token_usage.sql` no Supabase. |
-| Providers | Gemini passou em chat simples live, `extrair_questoes`, `extrair_respostas` e nas tres etapas finais; `extrair_gabarito` Gemini foi reclassificado como invalido por tudo `MISSING_CONTENT` e depois revalidado na fixture simples; GPT-5 Nano passou em chat simples live, `extrair_questoes`, `extrair_gabarito` pos-`5527e26` e `gerar_relatorio` pos-`392ec7c`, mas `extrair_respostas` Nano continua parcial por historico de qualidade em dataset maior; GPT-5.4 Mini passou `extrair_respostas` em amostras e completou um smoke full oficial simples em `task_a5f0d734f0b3` com inspeção semantica inicial coerente; re-smoke `task_605512496b0d` no patch `0ac92f0` completou, mas PDFs divergiram dos JSONs; `2052a01` bloqueou isso com falha alta em `task_857c0c3657ef`; `3a77a17` passou no smoke reduzido `task_e389f360b812` com retry PDF/JSON; `392ec7c` passou no smoke Nano de relatorio `task_57da745b8de5` | Revalidar matriz por provider e repetir Gemini quando quota/decisao permitir. |
+| Providers | Gemini passou em chat simples live, `extrair_questoes`, `extrair_respostas` e nas tres etapas finais; `extrair_gabarito` Gemini foi reclassificado como invalido por tudo `MISSING_CONTENT` e depois revalidado na fixture simples; GPT-5 Nano passou em chat simples live, `extrair_questoes`, `extrair_gabarito` pos-`5527e26` e `gerar_relatorio` pos-`392ec7c`, mas `extrair_respostas` Nano continua parcial por historico de qualidade em dataset maior; GPT-5.4 Mini passou `extrair_respostas` em amostras e completou um smoke full oficial simples em `task_a5f0d734f0b3` com inspeção semantica inicial coerente; re-smoke `task_605512496b0d` no patch `0ac92f0` completou, mas PDFs divergiram dos JSONs; `2052a01` bloqueou isso com falha alta em `task_857c0c3657ef`; `3a77a17` passou no smoke reduzido `task_e389f360b812` com retry PDF/JSON; `392ec7c` passou no smoke Nano de relatorio `task_57da745b8de5`; GPT-4o completou full smoke `task_68b19146a95b` em `54d083e`, com custo aproximado `US$ 0.314369` | Revalidar matriz por provider e repetir Gemini quando quota/decisao permitir. |
 | Seguranca Rio | Regra de nao usar chave em chat e Rio pausado | Arquivos Rio/untracked continuam fora do ciclo ativo. |
 
 ### O Que Falta
@@ -3123,6 +3123,53 @@ Interpretação:
 - O erro deixou de ser invisivel na interface principal. Isso fecha uma parte
   da UI de erros, mas nao substitui os alertas por aluno/etapa/provider que
   ainda faltam.
+
+## Atualizacao 2026-05-17 -- GPT-4o Full Smoke Oficial
+
+Motivo:
+
+- GPT-4o tinha sido revalidado por etapas, mas faltava uma pipeline completa de
+  6 etapas depois dos guards de schema, PDF/JSON e custos.
+
+Smoke:
+
+- Task: `task_68b19146a95b`
+- Runtime: `54d083e`
+- Modelo: `180b8298a279` (`openai/gpt-4o`)
+- Fixture: Diana Omega, atividade `f68d57a9a339081f`
+- Resultado da task: `completed` nas 6 etapas.
+
+Artefatos finais:
+
+| Etapa | Documento(s) | Tokens | Custo |
+|---|---|---:|---:|
+| `extrair_questoes` | `5adf51fcd1adc4c0` | `1151/409` | `US$ 0.006967` |
+| `extrair_gabarito` | `7c097774fce46472` | `1774/284` | `US$ 0.007275` |
+| `extrair_respostas` | `9e6d562d51a6f6e4` | `2167/292` | `US$ 0.008337` |
+| `corrigir` | `b2abc9a73c8dc3a8` / `8911e1a3acae4ad2` | `23696/2916` | `US$ 0.088400` |
+| `analisar_habilidades` | `21f2d7d065aeafe5` / `72203996b8960b50` | `37758/3279` | `US$ 0.127185` |
+| `gerar_relatorio` | `bbc5963d712a7f1e` / `f12312b96e3725a3` | `21482/2250` | `US$ 0.076205` |
+
+Total aproximado: `US$ 0.314369`.
+
+Inspecao:
+
+- Questões e gabarito: 4 itens, valores esperados.
+- Respostas da aluna: `x = 5`, `34`, `25`, `20 cm2`,
+  `questoes_respondidas=4`, sem `ilegivel`.
+- Correção final: `nota_final=8.0`, notas por questão `3.0`, `3.0`, `0.0`,
+  `2.0`.
+- Habilidades: proficiencia geral `8.0`, porcentagem como area de atenção.
+- Relatorio final: `nota_final=8.0`; PDF de correção e PDF de relatório
+  confirmados via `pdftotext` com `Nota Final: 8.0`.
+
+Observacao importante:
+
+- As etapas de tools geraram documentos intermediarios `status=erro` por
+  `json_schema_validation` antes dos documentos finais. Isso e retry explicito
+  no mesmo modelo, com erro visivel e custo registrado. Nao e fallback
+  silencioso. A UI ainda precisa deixar essas tentativas visiveis por
+  aluno/etapa.
 
 ## Trabalho Aberto Desta Auditoria
 

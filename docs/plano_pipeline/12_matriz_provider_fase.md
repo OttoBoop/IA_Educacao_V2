@@ -15,14 +15,14 @@
 `5527e26`, `2792d89`, `23282d7`, `7d0c874`, `8dd6c54`, `c1598b9`,
 `01fb04c`, `6b57ef1`, `3b9eedc`, `b8b8693`, `283e8c6`, `1ce3d23`,
 `2d72c6b`, `f2211bb`, `5a3daca`, `92bd095`, `f6b040c`, `2cad38a`,
-`2885da7`, `99b8c3c`, `392ec7c`, `460643f`
+`2885da7`, `99b8c3c`, `392ec7c`, `460643f`, `54d083e`
 
 ## Status Oficial De Deploy
 
 - O servico oficial em 2026-05-17 e
   `srv-d5t8gbh4tr6s738fr3s0` (`IA_Educacao_V2`), branch `main`,
   `rootDir=backend`, URL `https://ia-educacao-v2.onrender.com`.
-- `/api/deploy-info` confirmou o runtime backend `460643f` com
+- `/api/deploy-info` confirmou o runtime backend `54d083e` com
   `source=RENDER_GIT_COMMIT`; esse e o gate primario atual.
 - O HTML marker pode ficar stale e nao prova runtime antigo: commits de
   frontend/docs/marker podem nao disparar deploy quando o servico Render usa
@@ -68,7 +68,7 @@
 - `origin/main` tambem contem a migration dedicada `b2dc88b`
   (`backend/migrations/002_create_token_usage.sql`), ainda nao aplicada ao
   Supabase de producao.
-- Render live agora chegou a `460643f` por `/api/deploy-info`; marker HTML segue
+- Render live agora chegou a `54d083e` por `/api/deploy-info`; marker HTML segue
   apenas auxiliar.
 - Docs antigos registram que auto-deploy Git nao funciona de forma confiavel; o
   ciclo usou deploy via API Render com token local seguro, sem imprimir segredo.
@@ -111,6 +111,19 @@ Nota GPT-4o: as tres etapas finais foram revalidadas em 2026-05-17 no smoke
 `raciocinio_parcial`; os commits `2885da7` e `99b8c3c` transformaram isso em
 erro bloqueante. O rerun final veio com `raciocinio_parcial=null` quando so
 havia resposta final visivel.
+Nota GPT-4o full: em `54d083e`, a task `task_68b19146a95b` completou as 6
+etapas na fixture Diana: `extrair_questoes` `5adf51fcd1adc4c0` (`1151/409`,
+`US$ 0.006967`), `extrair_gabarito` `7c097774fce46472` (`1774/284`,
+`US$ 0.007275`), `extrair_respostas` `9e6d562d51a6f6e4` (`2167/292`,
+`US$ 0.008337`), `corrigir` JSON/PDF
+`b2abc9a73c8dc3a8`/`8911e1a3acae4ad2` (`23696/2916`, `US$ 0.088400`),
+`analisar_habilidades` JSON/PDF `21f2d7d065aeafe5`/`72203996b8960b50`
+(`37758/3279`, `US$ 0.127185`) e `gerar_relatorio` JSON/PDF
+`bbc5963d712a7f1e`/`f12312b96e3725a3` (`21482/2250`, `US$ 0.076205`).
+Total aproximado: `US$ 0.314369`. Houve retries explicitos com JSONs inválidos
+marcados `status=erro` antes dos artefatos finais de `corrigir`,
+`analisar_habilidades` e `gerar_relatorio`; isso nao e fallback de provider,
+mas precisa continuar visivel nos custos e na UI.
 Nota Nano/relatorio: a full Nano `task_f0c0f15a2f27`, no runtime `99b8c3c`,
 completou as 6 etapas, mas revelou falso verde em `GERAR_RELATORIO`: correcao
 JSON `cff76af34d9248a6` tinha `nota_final=8.0` e o relatorio JSON/PDF
