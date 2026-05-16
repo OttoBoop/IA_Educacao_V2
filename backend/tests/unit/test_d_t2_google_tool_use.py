@@ -588,3 +588,45 @@ class TestGoogleProviderErrors:
         assert exc.value.status_code == 503
         assert exc.value.retryable is True
         assert "UNAVAILABLE" in str(exc.value)
+
+    @pytest.mark.asyncio
+    async def test_error_after_tool_call_preserves_accumulated_usage(
+        self, google_client, mock_tool_registry, anthropic_format_tools
+    ):
+        fc_response = make_google_function_call_response(
+            [{"name": "create_document", "args": {"title": "T", "content": "C"}}],
+            usage={"promptTokenCount": 20, "candidatesTokenCount": 6, "totalTokenCount": 26},
+        )
+
+        async def mock_exec(tool_name, tool_input, tool_use_id, context=None):
+            return ToolResult(tool_use_id=tool_use_id, content="OK", is_error=False)
+
+        mock_tool_registry.execute = mock_exec
+
+        with patch("httpx.AsyncClient") as mock_client_cls:
+            mock_client = AsyncMock()
+            mock_client_cls.return_value.__aenter__ = AsyncMock(return_value=mock_client)
+            mock_client_cls.return_value.__aexit__ = AsyncMock(return_value=False)
+
+            mock_r1 = MagicMock(status_code=200)
+            mock_r1.json.return_value = fc_response
+            mock_r2 = MagicMock(status_code=429)
+            mock_r2.text = '{"error":{"status":"RESOURCE_EXHAUSTED","message":"quota"}}'
+            mock_client.post = AsyncMock(side_effect=[mock_r1, mock_r2])
+
+            with pytest.raises(ProviderAPIError) as exc:
+                await google_client._chat_google_with_tools(
+                    mensagem="Create doc",
+                    historico=[],
+                    system="Helper",
+                    tools=anthropic_format_tools,
+                    tool_registry=mock_tool_registry,
+                    max_iterations=10,
+                )
+
+        assert exc.value.status_code == 429
+        assert exc.value.retryable is True
+        assert exc.value.input_tokens == 20
+        assert exc.value.output_tokens == 6
+        assert exc.value.total_tokens == 26
+        assert "RESOURCE_EXHAUSTED" in str(exc.value)

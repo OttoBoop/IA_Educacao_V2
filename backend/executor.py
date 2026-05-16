@@ -5116,6 +5116,10 @@ Seja preciso, educativo e construtivo em suas análises."""
                 tokens_entrada = 0
                 tokens_saida = 0
             tokens_total = int(tokens_entrada or 0) + int(tokens_saida or 0)
+            if tokens_total <= 0:
+                tokens_entrada = int(getattr(e, "input_tokens", 0) or 0)
+                tokens_saida = int(getattr(e, "output_tokens", 0) or 0)
+                tokens_total = int(getattr(e, "total_tokens", 0) or 0) or tokens_entrada + tokens_saida
             tempo_ms = (time.time() - inicio) * 1000
             model_info = locals().get("model")
             model_provider = getattr(getattr(model_info, "tipo", None), "value", getattr(model_info, "tipo", ""))

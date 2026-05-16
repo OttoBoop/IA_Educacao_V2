@@ -55,9 +55,17 @@ RETRYABLE_HTTP_STATUS = {408, 409, 425, 429, 500, 502, 503, 504}
 
 
 class ProviderAPIError(Exception):
-    """Erro HTTP de provider preservando status e retryability."""
+    """Erro HTTP de provider preservando status, retryability e usage parcial."""
 
-    def __init__(self, provider: str, status_code: int, body: str):
+    def __init__(
+        self,
+        provider: str,
+        status_code: int,
+        body: str,
+        input_tokens: int = 0,
+        output_tokens: int = 0,
+        total_tokens: int = 0,
+    ):
         body_preview = (body or "").strip()[:500]
         message = f"Erro API {provider}: {status_code}"
         if body_preview:
@@ -67,6 +75,9 @@ class ProviderAPIError(Exception):
         self.status_code = status_code
         self.body = body_preview
         self.retryable = status_code in RETRYABLE_HTTP_STATUS
+        self.input_tokens = int(input_tokens or 0)
+        self.output_tokens = int(output_tokens or 0)
+        self.total_tokens = int(total_tokens or 0) or self.input_tokens + self.output_tokens
 
 
 # URLs padrão por tipo
@@ -1129,7 +1140,14 @@ class ChatClient:
                 )
 
                 if response.status_code != 200:
-                    raise ProviderAPIError("Anthropic", response.status_code, response.text)
+                    raise ProviderAPIError(
+                        "Anthropic",
+                        response.status_code,
+                        response.text,
+                        input_tokens=total_input_tokens,
+                        output_tokens=total_output_tokens,
+                        total_tokens=total_tokens,
+                    )
 
                 data = response.json()
 
@@ -1357,7 +1375,14 @@ class ChatClient:
                 )
 
                 if response.status_code != 200:
-                    raise ProviderAPIError("OpenAI", response.status_code, response.text)
+                    raise ProviderAPIError(
+                        "OpenAI",
+                        response.status_code,
+                        response.text,
+                        input_tokens=total_input_tokens,
+                        output_tokens=total_output_tokens,
+                        total_tokens=total_tokens,
+                    )
 
                 data = response.json()
 
@@ -1530,7 +1555,14 @@ class ChatClient:
                 )
 
                 if response.status_code != 200:
-                    raise ProviderAPIError("OpenAI", response.status_code, response.text)
+                    raise ProviderAPIError(
+                        "OpenAI",
+                        response.status_code,
+                        response.text,
+                        input_tokens=total_input_tokens,
+                        output_tokens=total_output_tokens,
+                        total_tokens=total_tokens,
+                    )
 
                 data = response.json()
 
@@ -1701,7 +1733,14 @@ class ChatClient:
                 )
 
                 if response.status_code != 200:
-                    raise ProviderAPIError("Google", response.status_code, response.text)
+                    raise ProviderAPIError(
+                        "Google",
+                        response.status_code,
+                        response.text,
+                        input_tokens=total_input_tokens,
+                        output_tokens=total_output_tokens,
+                        total_tokens=total_tokens,
+                    )
 
                 data = response.json()
 
