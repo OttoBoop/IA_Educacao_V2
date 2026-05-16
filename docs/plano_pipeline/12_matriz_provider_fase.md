@@ -1,7 +1,9 @@
 # Matriz Provider × Fase — Status Atual
 
 **Atualizado:** 2026-05-16
-**Atividade de teste:** Lista0 — Algebra Linear Avancada (`126e8b5ad7dd6d59`)
+**Atividades de teste principais:** Lista0 — Algebra Linear Avancada
+(`126e8b5ad7dd6d59`) e smoke simples oficial `Smoke Paulo Pipeline 2026-05-16`
+(`f68d57a9a339081f`)
 **Commits aplicados/observados:** `a632883`, `5737611`, `50935ea`, `479b77d`,
 `b12be9a`, `301eba6`, `f67055c`, `462ea1d`, `b4d7ee6`, `99483d1`,
 `f505be6`, `d75b05a`, `97a7c79`, `ec95193`, `ff7b92a`, `68ebe51`,
@@ -12,24 +14,20 @@
 `2947178`, `53d0252`, `f55e299`, `5f10651`, `e6060e1`, `a7dead3`,
 `5527e26`, `2792d89`, `23282d7`, `7d0c874`, `8dd6c54`, `c1598b9`,
 `01fb04c`, `6b57ef1`, `3b9eedc`, `b8b8693`, `283e8c6`, `1ce3d23`,
-`2d72c6b`, `f2211bb`
+`2d72c6b`, `f2211bb`, `5a3daca`, `92bd095`, `f6b040c`, `2cad38a`
 
 ## Status Oficial De Deploy
 
-- Render MCP confirmou em 2026-05-16 o servico oficial
+- O servico oficial em 2026-05-16 e
   `srv-d5t8gbh4tr6s738fr3s0` (`IA_Educacao_V2`), branch `main`,
   `rootDir=backend`, URL `https://ia-educacao-v2.onrender.com`.
-- `list_deploys` marcou o deploy `dep-d841f437uimc73fs60lg` como `live`,
-  apontando para o commit funcional
-  `1ce3d2314c278d853bb7e6c74105e628d1a19b9c`. Os deploys `283e8c6`,
-  `b8b8693`, `3b9eedc`, `01fb04c`, `c1598b9`, `8dd6c54` e `5527e26`
-  aparecem como historicos/deactivated.
-- O HTML live ainda aponta `novocr-deploy=e6060e1`. Isso e marker stale, nao
-  prova de runtime antigo: commits de frontend/docs/marker podem nao disparar
-  deploy quando o servico Render usa `rootDir=backend`.
-- Os smokes abaixo devem dizer qual evidencia oficial usam: marker HTML quando
-  aplicavel, Render MCP/lista de deploys quando o runtime for confirmado por
-  commit backend, e sempre comportamento live por endpoint.
+- `/api/deploy-info` confirmou o runtime backend `2cad38a` com
+  `source=RENDER_GIT_COMMIT`; esse e o gate primario atual.
+- O HTML marker pode ficar stale e nao prova runtime antigo: commits de
+  frontend/docs/marker podem nao disparar deploy quando o servico Render usa
+  `rootDir=backend`.
+- Os smokes abaixo devem dizer qual evidencia oficial usam: `/api/deploy-info`,
+  lista de deploys quando disponivel e sempre comportamento live por endpoint.
 - O commit `f2211bb` esta live em Render (`dep-d84bsou8bjmc73dgr12g`) e
   `/api/deploy-info` confirmou `source=RENDER_GIT_COMMIT`; ele corrige selecao
   de artefatos processados antigos em prompts/anexos.
@@ -58,7 +56,7 @@
 - Depois disso, os commits `6b57ef1`, `3b9eedc`, `b8b8693`, `283e8c6` e
   `1ce3d23` tentaram corrigir a qualidade real de `extrair_respostas` Nano:
   adicionaram questoes/texto do PDF/imagens, proibiram inferencia do enunciado e
-  bloquearam JSON vazio inconsistente. O runtime live atual e `1ce3d23`; o smoke
+  bloquearam JSON vazio inconsistente. O runtime live daquele ciclo foi `1ce3d23`; o smoke
   final `task_3d5feaf0da71` falhou alto sem documento verde e registrou custo em
   `usage_52590d55d210459e`.
 - Tambem em producao, uma pipeline sequencial completa Gemini (`task_5e97bbee896e`)
@@ -69,8 +67,8 @@
 - `origin/main` tambem contem a migration dedicada `b2dc88b`
   (`backend/migrations/002_create_token_usage.sql`), ainda nao aplicada ao
   Supabase de producao.
-- Render live chegou a `1ce3d23` pela lista de deploys do Render MCP; o marker
-  HTML segue atrasado em `e6060e1`.
+- Render live agora chegou a `2cad38a` por `/api/deploy-info`; marker HTML segue
+  apenas auxiliar.
 - Docs antigos registram que auto-deploy Git nao funciona de forma confiavel; o
   ciclo usou deploy via API Render com token local seguro, sem imprimir segredo.
 - Smokes live anteriores continuam citados com seus markers; smokes de
@@ -96,7 +94,7 @@
 | **Claude Haiku 4.5** (`588f3efe7975`) | ⏸️ | ⏸️ | ⏸️ | 🚫 | 🚫 | 🚫 |
 | **Gemini 3 Flash** (`gem3flash001`) | ✅ | ❌ | ✅ | ✅ | ✅ | ✅ |
 | **GPT-5 Nano** (`gpt5nano001`) | ✅ | ✅ | ❌ | ⚠️ | ⚠️ | ⚠️ |
-| **GPT-5.4 Mini** (`gpt54mini001`) | ⏸️ | ⚠️ | ✅ | ⏸️ | ⏸️ | ⏸️ |
+| **GPT-5.4 Mini** (`gpt54mini001`) | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | **GPT-4o** (`180b8298a279`) — referencia | ✅ | ✅ | ✅ | ⚠️ | ⚠️ | ⚠️ |
 
 Nota de leitura: os checks da tabela acima sao por etapa individual validada.
@@ -138,6 +136,18 @@ com conteudo real, Q1/Q2 `MISSING_CONTENT`, Q3 `LOW_CONFIDENCE`, tokens
 Alvaro (`task_19062336eb8b`), criou `4a82ddf1d2118ff0`, 7/7 respostas com
 conteudo real, Q2/Q3 `LOW_CONFIDENCE`, tokens `90588/2813` e custo `US$ 0.0806`.
 Isso valida a etapa nessas amostras, nao pipeline completa.
+
+Nota pos-`2cad38a`: GPT-5.4 Mini passou tambem em um smoke full oficial simples
+no Render, `task_a5f0d734f0b3`, atividade `Smoke Paulo Pipeline 2026-05-16`,
+aluna Diana Omega, hash live `2cad38a`. As 6 etapas ficaram `completed` usando
+`gpt54mini001`: `extrair_questoes` doc `f65318c550a76842`, `extrair_gabarito`
+doc `70df18512be9c617`, `extrair_respostas` doc `14ca81d800de2648`,
+`corrigir` docs `2c7cd4cf9eb85e57`/`769744b6fff6f3b9`,
+`analisar_habilidades` docs `12b24cd992477eab`/`15579ed3ad2614be` e
+`gerar_relatorio` docs `38686372cb8ea981`/`37b0c86cee879ced`. Custo aproximado
+das 6 etapas: `US$ 0.079110`. Isso move GPT-5.4 Mini para ✅ nessa fixture, mas
+nao valida automaticamente datasets reais maiores, Gemini/Nano/Haiku, nem
+substitui inspeção semantica dos artefatos.
 
 Nota de pipeline per-phase: antes de `f2211bb`, o smoke
 `task_ea1ac75c9459` falhou alto em `extrair_gabarito` porque Nano retornou tudo
@@ -526,7 +536,11 @@ Ver [teste_gpt5nano_pipeline_completo.md](arquivo_2026_04_17/teste_gpt5nano_pipe
 - [x] Corrigir contaminacao por artefatos antigos em prompts/anexos; `f2211bb`
       reduziu tokens e destravou o gabarito no smoke per-phase
 - [ ] Corrigir `analisar_habilidades` em pipeline integrada: `task_19ee59ac1881`
-      falhou alto por tool-use incompleto em GPT-5 Nano
+      falhou alto por tool-use incompleto em GPT-5 Nano; GPT-5.4 Mini passou em
+      pipeline completa propria no smoke `task_a5f0d734f0b3`
+- [x] Validar GPT-5.4 Mini (`gpt54mini001`) nas 6 etapas em uma fixture simples
+      oficial: `task_a5f0d734f0b3`, Render `2cad38a`, documentos e custos
+      registrados
 - [x] Preparar codigo para persistir `TokenUsageRecord` em Supabase quando a
       tabela existir
 - [x] Criar registro local mensal de custo de falhas sem documento final
@@ -585,7 +599,7 @@ Ver [teste_gpt5nano_pipeline_completo.md](arquivo_2026_04_17/teste_gpt5nano_pipe
   extracao real de respostas, corrigir `analisar_habilidades` no run integrado,
   rodar pipeline completa de 6 etapas, schema minimo por etapa e custo duravel
   de falhas sem documento final.
-- ✅ **GPT-5.4 Mini candidato OCR:** `extrair_respostas` passou em uma amostra
+- ✅ **GPT-5.4 Mini candidato OCR/pipeline simples:** `extrair_respostas` passou em uma amostra
   oficial primeiro como cadastro efemero (`task_9c10e3752bcb`, doc
   `a39d26fcc621c7a8`, custo `US$ 0.081492`) e depois como modelo versionado
   `gpt54mini001` (`task_706931a94555`, doc `fec100a2e41eabcf`, custo
@@ -594,16 +608,18 @@ Ver [teste_gpt5nano_pipeline_completo.md](arquivo_2026_04_17/teste_gpt5nano_pipe
   completou `extrair_respostas` (`f10a6ef8a8ca0897`) e gerou gabarito
   estruturado (`17573f1218bd6c39`), mas o gabarito da Lista0 estava incompleto;
   portanto ele fica confirmado em `extrair_respostas` e parcial em
-  `extrair_gabarito`.
+  `extrair_gabarito` para aquela Lista0. Depois de `2cad38a`, a fixture simples
+  `task_a5f0d734f0b3` completou as 6 etapas com `gpt54mini001`, documentos
+  persistidos e custo aproximado `US$ 0.079110`.
 - ⏸️ **Claude Haiku 4.5:** Aguardando creditos.
 - 📊 **Confiabilidade Gemini 3 Flash:** etapas individuais OK, mas a primeira
   pipeline sequencial pos-runner bateu quota `429` em `corrigir`. Precisa duas
   execucoes completas quando quota/credito permitir.
 
-**Marco 1 ainda nao atingido oficialmente:** chat, etapas individuais e uma task
-full com status `completed` ajudam, mas o site oficial precisa completar 6
-etapas com gabarito completo, correção semanticamente valida, custo/metadata e
-erro alto quando faltar insumo.
+**Marco 1 atingido para uma fixture simples, nao para a matriz inteira:** o site
+oficial completou 6 etapas com GPT-5.4 Mini, custo/metadata e deploy confirmado.
+Ainda falta repetir por provider relevante, inspecionar semanticamente os
+artefatos e manter erro alto quando faltar insumo.
 
 **Bugs criticos descobertos nesta sessao:**
 1. GPT-5 Nano tool-use historico: multiplas chamadas `create_document`, nomes alucinados, sem validacao de schema
@@ -612,15 +628,14 @@ erro alto quando faltar insumo.
 4. Sem endpoint de eventos de task (dificulta diagnostico de falhas transientes)
 
 **Proximos passos:**
-1. Manter deploy oficial confirmado por Render MCP/lista de deploys ou
-   `/api/deploy-info` antes de cada smoke novo; commit `2d72c6b` ja confirmou
-   esse gate com `check_deploy.sh 2d72c6b`.
+1. Manter deploy oficial confirmado por `/api/deploy-info` antes de cada smoke
+   novo; o runtime atual confirmado e `2cad38a`.
 2. Aplicar/validar a migration Supabase `token_usage` antes de chamar custo de
    falha sem documento de duravel.
-3. Obter ou reextrair gabarito completo para a Lista0, depois rerodar
-   `corrigir` -> `analisar_habilidades` -> `gerar_relatorio`.
-4. Revalidar `extrair_respostas` com provider/modelo mais forte em OCR/handwriting
-   em mais amostras; GPT-5 Nano permanece ❌ nessa fase.
+3. Inspecionar os artefatos do smoke `task_a5f0d734f0b3` para confirmar conteudo
+   pedagogico, nao apenas status `completed`.
+4. Revalidar Gemini/Nano/GPT-4o por provider/modelo; GPT-5 Nano permanece ❌ em
+   `extrair_respostas`.
 5. Aplicar `backend/migrations/002_create_token_usage.sql` no Supabase para
    tornar duravel o custo de falhas sem documento.
 6. Quando creditos Anthropic forem recarregados, validar Haiku 4.5 via

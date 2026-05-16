@@ -2,64 +2,60 @@
 
 **Atualizado:** 2026-05-16
 **Responsavel operacional:** Paulo
-**Status geral:** Render MCP confirmou o servico oficial
+**Status geral:** o servico oficial Render
 `srv-d5t8gbh4tr6s738fr3s0` (`IA_Educacao_V2`, branch `main`, URL
-`https://ia-educacao-v2.onrender.com`) com deploy live do commit funcional
-`2d72c6b` (`dep-d84bjopo3t8c73fbshug`), confirmado por Render MCP e por
-`/api/deploy-info` com `source=RENDER_GIT_COMMIT`. O marcador HTML continua
-mostrando `novocr-deploy=5527e26`
-porque o servico usa `rootDir=backend` e commits apenas de frontend/docs/marker
-nao garantem novo deploy; portanto, o gate oficial e Render MCP/lista de
-deploys + comportamento live, e o marker HTML virou apenas sinal auxiliar. O
-patch `5527e26` removeu fallback Markdown de relatorio e
-adicionou guard para gabarito todo `MISSING_CONTENT`; apos esse deploy, GPT-5
-Nano em `extrair_gabarito` passou no site oficial: task `task_dc719eeea626`,
-JSON `5f433f9a1bc30842`, 7 respostas reais, tokens `78104/8353`, custo
-`US$ 0.007246`. A falha antiga de Nano `61fb077d746c2a55` e os gabaritos Gemini
-tudo `MISSING_CONTENT` continuam como evidencia de que schema parseavel nao
-basta. Gemini passou nas tres extracoes dentro de uma pipeline sequencial
-completa, mas a mesma task falhou alto em `corrigir` por quota Google/Gemini
-`429` do free tier; nao houve troca de modelo nem sucesso falso. GPT-5 Nano
-esta confirmado em `extrair_questoes`, `extrair_gabarito`, `corrigir`,
-`analisar_habilidades` e `gerar_relatorio`; `extrair_respostas` continua ❌
-como qualidade de modelo/etapa. A sequencia recente foi: `01fb04c` passou a
-falhar alto quando tudo vinha vazio; `6b57ef1` colocou `questoes_extraidas` no
-prompt; `3b9eedc` colocou texto extraido do PDF; `b8b8693` anexou paginas
-escaneadas como imagens; `283e8c6` proibiu inferir respostas do enunciado; e
-`1ce3d23` bloqueou JSON inconsistente/majoritariamente vazio em scans. O smoke
-oficial final (`task_3d5feaf0da71`) falhou alto sem criar novo documento verde,
-com custo registrado em `TokenUsageRecord` local `usage_52590d55d210459e`
-(`US$ 0.008555`). Em seguida, `gpt-5.4-mini` foi cadastrado explicitamente como
-candidato OpenAI para OCR/handwriting; a conexao respondeu `OK`, e o smoke
-`task_9c10e3752bcb` completou `extrair_respostas` com documento
-`a39d26fcc621c7a8`: 4/7 respostas extraidas, 3/7 marcadas como sem resposta
-visivel, tokens `97004/1942`, custo `US$ 0.081492`. Depois o modelo duravel
-`gpt54mini001` entrou em `backend/data/models.json`, sobreviveu deploy e o smoke
-versionado `task_706931a94555` gerou `fec100a2e41eabcf`: 5/7 respostas
-extraidas, Q1/Q2 `MISSING_CONTENT`, Q3 `LOW_CONFIDENCE`, tokens `97004/1737`,
-custo `US$ 0.080570`. A segunda amostra versionada, Alvaro
-(`task_19062336eb8b`), gerou `4a82ddf1d2118ff0`: 7/7 respostas extraidas,
-Q2/Q3 `LOW_CONFIDENCE`, tokens `90588/2813`, custo `US$ 0.0806`. Isso confirma
-candidato forte para a etapa em mais de uma amostra, nao pipeline completa. O
-resumo de custos agrega por `cost_run_id`; falhas sem documento
-final tem `TokenUsageRecord` local mensal e codigo preparado para Supabase
-quando a tabela `token_usage` existir. O endpoint live ainda confirma que essa
-tabela nao existe (`PGRST205`) e que o store local nao e duravel entre deploys:
-`/api/custos/status?limit=500` mostrou `local_record_count=0`,
-`token_usage_analisados=0`, `runs_precificados=28`, `runs_bloqueados=458` e
-`durable=false`.
-Rio 3 segue pausado. O ciclo posterior `f2211bb` corrigiu contaminacao por
-artefatos antigos: o executor agora usa o documento processado mais recente por
-tipo nos prompts/anexos e nao recua para gabarito original quando a correcao
-exige `EXTRACAO_GABARITO` estruturado. Render confirmou `f2211bb` live; o smoke
-per-phase `task_19ee59ac1881` passou por `extrair_questoes`,
-`extrair_gabarito`, `extrair_respostas` com `gpt54mini001` e `corrigir`, e
-falhou alto em `analisar_habilidades` por tool-use incompleto, sem inventar PDF
-ou JSON. O ciclo `6b20d43`/`d4bb2bd`/`3a7dfea` depois disso rodou um smoke full
-(`task_bc6cc84d10ef`) que completou 6 etapas, mas a inspeção invalidou a
-correção porque o gabarito extraído estava incompleto; agora `corrigir` falha
-alto nesse caso (`task_5894e6d5858e`). Proximo alvo real: obter/reextrair
-gabarito completo antes de tentar validar a pipeline inteira.
+`https://ia-educacao-v2.onrender.com`) esta em `2cad38a`, confirmado por
+`/api/deploy-info` com `source=RENDER_GIT_COMMIT`. O site oficial completou uma
+pipeline de 6 etapas em producao com GPT-5.4 Mini (`gpt54mini001`) na atividade
+`Smoke Paulo Pipeline 2026-05-16`: task `task_a5f0d734f0b3`, aluna Diana Omega,
+hash live `2cad38a`, etapas `extrair_questoes`, `extrair_gabarito`,
+`extrair_respostas`, `corrigir`, `analisar_habilidades` e `gerar_relatorio`
+marcadas como `completed`. Este e o primeiro smoke full recente em que o mesmo
+modelo OpenAI versionado completou as 6 etapas no Render oficial com documentos
+e custos medidos. Ele nao substitui a matriz completa de providers nem valida
+todos os datasets reais.
+
+A sequencia que destravou esse ponto foi:
+
+- `5a3daca`: alinhou prompts OpenAI para dual-output via tools.
+- `92bd095`: afrouxou o schema de `content` para JSON de artefato, sem voltar a
+  aceitar sucesso silencioso.
+- `f6b040c`: corrigiu o schema OpenAI `array` que faltava `items`.
+- `2cad38a`: passou a falhar alto quando `create_document` e chamado mas o
+  storage nao persiste o artefato obrigatorio.
+
+Antes do sucesso, tres smokes oficiais falharam por motivos uteis e agora
+registrados: `task_04bfc1bbe616` ainda falhava em `analisar_habilidades`;
+`task_a1977746ef2f` expôs erro OpenAI 400 por schema invalido; e
+`task_200440ba527e` expôs chamadas `create_document` sem artefato persistido.
+Esses erros nao foram escondidos por fallback de modelo.
+
+Custos do smoke completo GPT-5.4 Mini aparecem no endpoint live por
+`cost_run_id`, provider/modelo e tokens splitados. Evidencia principal:
+`extrair_questoes` doc `f65318c550a76842` (`1150/322`, `US$ 0.002312`);
+`extrair_gabarito` doc `70df18512be9c617` (`1813/311`, `US$ 0.002759`);
+`extrair_respostas` doc `14ca81d800de2648` (`2042/250`, `US$ 0.002657`);
+`corrigir` docs `2c7cd4cf9eb85e57`/`769744b6fff6f3b9` (`18480/2731`,
+`US$ 0.026149`); `analisar_habilidades` docs `12b24cd992477eab`/
+`15579ed3ad2614be` (`10627/2111`, `US$ 0.017470`); `gerar_relatorio` docs
+`38686372cb8ea981`/`37b0c86cee879ced` (`16246/3462`, `US$ 0.027763`). O custo
+somado das 6 etapas desse smoke e aproximadamente `US$ 0.079110`; o resumo
+live com `limit=8` mostrou `runs_precificados=5`, `runs_bloqueados=0` e
+`custo_usd=0.076798`, porque a janela nao inclui todas as extracoes.
+
+Bloqueio de custos ainda aberto: o endpoint live continua confirmando que
+`public.token_usage` nao existe no Supabase (`PGRST205`), com
+`token_usage_backend.durable=false` e `local_record_count=0`. Portanto custo em
+documentos recentes esta medido, mas registro duravel de falhas sem documento
+ainda depende de aplicar `backend/migrations/002_create_token_usage.sql`.
+
+Rio 3 segue pausado. O loop ativo e pipeline oficial, providers existentes,
+custos, erro alto e deploy confirmado. Proximos alvos reais: aplicar/validar
+`token_usage` duravel; revalidar matriz de providers (Gemini, Nano, Haiku
+quando houver credito, GPT-4o explicito); inspecionar semanticamente os
+artefatos do smoke GPT-5.4 Mini alem do status `completed`; e melhorar UI de
+erros para que o usuario veja aluno, etapa, provider, custo e causa sem abrir
+terminal.
 
 Este e o ponto de entrada do plano. O objetivo deste arquivo e dizer, em poucas
 linhas, onde estamos, qual e a proxima fila e quais frentes estao pausadas.
@@ -97,9 +93,9 @@ Estabilizar o NOVO CR para que a pipeline:
 | Frente | Estado | Proximo passo |
 |--------|--------|---------------|
 | Docs e plano | Sprint 0 concluida | Manter este painel como fonte oficial e anexos fora do fluxo diario |
-| Pipeline | Gemini 3 Flash validado em `extrair_questoes`, `extrair_respostas` e etapas finais; `extrair_gabarito` Gemini foi reclassificado como invalido porque retornou tudo `MISSING_CONTENT`; pipeline sequencial Gemini avancou pelas tres extracoes e falhou alto em `corrigir` por quota `429`; GPT-5 Nano validado em `extrair_questoes`, `extrair_gabarito` e smokes historicos de etapas finais, mas `extrair_respostas` Nano continua ❌; GPT-5.4 Mini completou `extrair_respostas` em duas amostras avulsas e no smoke per-phase (`1e5db36f3ab9aa0e`); `task_bc6cc84d10ef` completou 6 etapas com Nano+Mini, mas inspeção semantica invalidou a correcao porque o gabarito extraido estava incompleto; desde `3a7dfea`, `corrigir` falha alto quando o gabarito tem `MISSING_CONTENT` bloqueante | Obter/reextrair gabarito completo para a Lista0 e rerodar `corrigir` -> `analisar_habilidades` -> `gerar_relatorio`; nao aceitar `completed` sem inspeção minima de conteudo |
+| Pipeline | GPT-5.4 Mini (`gpt54mini001`) completou as 6 etapas no site oficial em `task_a5f0d734f0b3`, Render hash `2cad38a`, com documentos e custos para `extrair_questoes`, `extrair_gabarito`, `extrair_respostas`, `corrigir`, `analisar_habilidades` e `gerar_relatorio`; Gemini 3 Flash segue validado em etapas individuais, mas pipeline sequencial bateu quota `429`; GPT-5 Nano segue validado em `extrair_questoes`, `extrair_gabarito` e smokes de etapas finais, mas `extrair_respostas` Nano continua ❌ por qualidade; `task_bc6cc84d10ef` permanece evidencia historica de que `completed` pode ser semanticamente invalido se gabarito/conteudo falhar | Inspecionar artefatos do smoke GPT-5.4 Mini, repetir matriz por provider/modelo e manter bloqueio P0: nao aceitar `completed` sem documento, schema, custo e conteudo minimo |
 | Schema e avisos | Sprint 2 concluida localmente | Manter schema oficial, defaults e visualizador cobertos por testes |
-| Custos/tokens | Metadata de documento, endpoints live, resumo por `cost_run_id`, `TokenUsageRecord` local, migration Supabase dedicada `b2dc88b`; falha alta final de `task_3d5feaf0da71` registrou `usage_52590d55d210459e` sem documento final antes de deploy posterior, tokens `100188/8863`, custo `US$ 0.008555`; GPT-5.4 Mini em `extrair_respostas` registrou documentos `a39d26fcc621c7a8`, `fec100a2e41eabcf` e `4a82ddf1d2118ff0`, custos `US$ 0.081492`, `US$ 0.080570` e `US$ 0.0806`; diagnostico live ainda acusa `PGRST205`, `durable=false` e `local_record_count=0`, provando que o fallback local de `TokenUsageRecord` nao sobrevive deploy | Aplicar `backend/migrations/002_create_token_usage.sql` no Supabase; revalidar ate `token_usage_backend.durable=true` |
+| Custos/tokens | Metadata de documento, endpoints live, resumo por `cost_run_id`, `TokenUsageRecord` local, migration Supabase dedicada `b2dc88b`; smoke full GPT-5.4 Mini `task_a5f0d734f0b3` registrou custo medido por etapa: `US$ 0.002312`, `US$ 0.002759`, `US$ 0.002657`, `US$ 0.026149`, `US$ 0.017470` e `US$ 0.027763`, total aproximado `US$ 0.079110`; `/api/custos/resumo?limit=8` mostrou `runs_precificados=5`, `runs_bloqueados=0`, `tokens_entrada=49208`, `tokens_saida=8865`, `custo_usd=0.076798`; diagnostico live ainda acusa `PGRST205`, `durable=false` e `local_record_count=0`, provando que o fallback local de `TokenUsageRecord` nao sobrevive deploy | Aplicar `backend/migrations/002_create_token_usage.sql` no Supabase; revalidar ate `token_usage_backend.durable=true`; depois persistir custos de falhas sem documento |
 | UI de erros | Pendente | Mostrar falha por aluno/etapa sem depender de terminal |
 | Limpeza de dados | Pendente | Reclassificar "fantasmas" antes de qualquer delecao |
 | Rio 3 | Pausada | Nao pedir chave, nao rodar smoke, nao deployar Rio sem nova decisao |
@@ -135,26 +131,26 @@ Estabilizar o NOVO CR para que a pipeline:
   nao cobria o caminho real do executor multimodal).
 - Commit funcional de bloqueio anti-respostas-sem-conteudo no executor:
   `01fb04c` (Render live e smoke oficial falhando alto).
+- Commit funcional de alinhamento OpenAI dual-output: `5a3daca`.
+- Commit funcional de schema flexivel para artefato JSON OpenAI: `92bd095`
+  (primeira versao ainda expôs schema 400 por array sem `items`).
+- Commit funcional de schema OpenAI array valido: `f6b040c`.
+- Commit funcional de falha alta quando tool chama `create_document` mas storage
+  nao persiste o artefato obrigatorio: `2cad38a` (Render live e smoke full
+  `task_a5f0d734f0b3` completo nas 6 etapas com GPT-5.4 Mini).
 - Marker mais novo publicado no GitHub para runtime: `a7dead3`
   (`chore: mark deploy e6060e1`).
 - Marker mais novo publicado no GitHub para o guard: `2792d89`
   (`chore: mark deploy 5527e26`).
-- Render MCP em 2026-05-16: servico oficial `srv-d5t8gbh4tr6s738fr3s0`,
-  branch `main`, repo `https://github.com/OttoBoop/IA_Educacao_V2`,
-  `rootDir=backend`, autoDeploy `yes`; deploy `dep-d83tp2m7r5hc73d7o7d0`
-  live em `01fb04c060f1a88c0f8ea4b09f64a9191d43c291`. Deploys anteriores
-  `c1598b9`, `8dd6c54` e `5527e26` aparecem como `deactivated`.
-- Marker HTML atual observado depois do deploy: `novocr-deploy=e6060e1`. Isso
-  nao invalida o runtime `01fb04c`, porque commits de marker/frontend/docs podem
-  nao disparar deploy num servico com `rootDir=backend`. `check_deploy.sh` deve
-  ser corrigido em ciclo proprio ou usado apenas como sinal auxiliar.
-- GitHub `origin/main`: contem `e6060e1`, marker `a7dead3`, `f55e299`,
-  `d653c13`, marker `2947178`, `5527e26`, marker `2792d89` e commits
-  documentais posteriores.
+- Render em 2026-05-16: servico oficial `srv-d5t8gbh4tr6s738fr3s0`, branch
+  `main`, repo `https://github.com/OttoBoop/IA_Educacao_V2`, `rootDir=backend`,
+  autoDeploy `yes`; `/api/deploy-info` confirmou `2cad38a` com
+  `source=RENDER_GIT_COMMIT`.
+- Marker HTML pode ficar atrasado em commits de docs/frontend; o gate oficial
+  para backend agora e `/api/deploy-info` + smoke live, nao apenas marcador HTML.
+- GitHub `origin/main`: alinhado com `2cad38a` antes do ciclo documental atual.
 - Render live observado: saiu de `2e1098f` para `b12be9a` e depois confirmou
-  marcadores `b4d7ee6`, `f505be6`, `97a7c79`, `c75af88`, `39aa50a`,
-  `b24f03e`, `eab7d90`, `7ed8b8b`, `839968e`, `55e168a`, `4f27dae`,
-  `5527e26`, `8dd6c54`, `c1598b9` e `01fb04c`.
+  marcadores/fixes sucessivos ate `2cad38a`.
 - `/api/custos/status` no Render: HTTP 200, confirmando endpoints de custo live.
 - GitHub Actions: sem runs recentes observaveis.
 - GitHub webhooks/deployments via `gh api`: sem entradas visiveis.
@@ -1467,8 +1463,54 @@ Critério de pronto: lista de limpeza segura e revisada.
   bloqueando durabilidade de falhas sem documento.
 - Status: a pipeline com esses arquivos da Lista0 nao deve ser chamada de
   validada; ela agora falha no ponto certo porque o gabarito da atividade esta
-  incompleto. Proximo alvo: fornecer/reextrair gabarito completo ou escolher
-  outra atividade com gabarito completo para validar a pipeline inteira.
+  incompleto. O ciclo seguinte escolheu uma fixture limpa diferente para validar
+  o fluxo OpenAI completo.
+
+### 2026-05-16 -- OpenAI Responses/tool-use e smoke completo GPT-5.4 Mini
+
+- Alvo: destravar pipeline oficial no Render para modelo OpenAI com tools, sem
+  fallback de provider/modelo e sem tratar tool-call sem arquivo persistido como
+  sucesso.
+- Commits: `5a3daca` alinhou prompt/tool-use; `92bd095` permitiu conteudo JSON
+  estruturado em `create_document`; `f6b040c` corrigiu schema OpenAI `array`
+  sem `items`; `2cad38a` fez `handle_create_document` retornar erro quando o
+  storage nao persiste artefato obrigatorio de pipeline.
+- Falhas uteis antes do sucesso: `task_04bfc1bbe616` ainda falhou em
+  `analisar_habilidades`; `task_a1977746ef2f` falhou por schema OpenAI 400;
+  `task_200440ba527e` provou que o modelo chamava `create_document`, mas nada
+  ficava persistido. Essas falhas viraram patches, nao fallback silencioso.
+- Validacoes locais do ciclo: `py_compile` dos arquivos tocados; `git diff
+  --check`; testes focados `97 passed`; bateria ampla focada em pipeline/custos
+  `254 passed, 3 skipped`.
+- Deploy: `/api/deploy-info` no Render confirmou `2cad38a` e `/api/health`
+  continuou healthy.
+- Smoke oficial: `task_a5f0d734f0b3`, atividade `Smoke Paulo Pipeline
+  2026-05-16`, aluna Diana Omega, modelo `gpt54mini001`, completou as 6 etapas:
+  `extrair_questoes`, `extrair_gabarito`, `extrair_respostas`, `corrigir`,
+  `analisar_habilidades` e `gerar_relatorio`.
+- Evidencia de documentos/custos:
+  - `extrair_questoes`: `f65318c550a76842`, `1150/322`, `US$ 0.002312`.
+  - `extrair_gabarito`: `70df18512be9c617`, `1813/311`, `US$ 0.002759`.
+  - `extrair_respostas`: `14ca81d800de2648`, `2042/250`, `US$ 0.002657`.
+  - `corrigir`: `2c7cd4cf9eb85e57` e `769744b6fff6f3b9`, `18480/2731`,
+    `US$ 0.026149`.
+  - `analisar_habilidades`: `12b24cd992477eab` e `15579ed3ad2614be`,
+    `10627/2111`, `US$ 0.017470`.
+  - `gerar_relatorio`: `38686372cb8ea981` e `37b0c86cee879ced`,
+    `16246/3462`, `US$ 0.027763`.
+- Custo total aproximado das 6 etapas: `US$ 0.079110`. O endpoint
+  `/api/custos/resumo?limit=8` mostrou uma janela parcial com
+  `runs_precificados=5`, `runs_bloqueados=0`, `tokens_entrada=49208`,
+  `tokens_saida=8865` e `custo_usd=0.076798`.
+- Bloqueio persistente: `token_usage_backend.supabase.table_available=false`,
+  `durable=false`, erro `PGRST205`. Custos em documentos existem, mas falhas sem
+  documento ainda precisam de `backend/migrations/002_create_token_usage.sql`
+  aplicada no Supabase.
+- Status: GPT-5.4 Mini agora tem um smoke full oficial positivo nessa fixture
+  simples. Isso nao valida Gemini/Nano/Haiku/GPT-4o, nem substitui inspeção
+  semantica profunda dos artefatos.
+- Proximo alvo: atualizar matriz e auditoria, depois escolher entre aplicar
+  `token_usage` duravel, revalidar providers restantes ou atacar UI de erros.
 
 ## Riscos Abertos
 
@@ -1478,9 +1520,8 @@ Critério de pronto: lista de limpeza segura e revisada.
    necessario, mas nao prova qualidade pedagogica.
 4. A tabela Supabase `token_usage` tem migration dedicada em `b2dc88b`, mas o
    live confirmou que ela ainda nao existe no schema cache (`PGRST205`).
-5. Render MCP confirma runtime `1ce3d23`, mas o HTML marker ainda aponta
-   `e6060e1`; `check_deploy.sh` baseado apenas no HTML e insuficiente para
-   servico `rootDir=backend`.
+5. O gate oficial de deploy precisa continuar usando `/api/deploy-info` e smoke
+   live; marker HTML pode ficar atrasado em servico `rootDir=backend`.
 6. Gemini 3 Flash bateu quota `429` em pipeline sequencial completa; nao tratar
    isso como bug silencioso da pipeline, mas tambem nao chamar de pipeline
    completa validada.
@@ -1488,9 +1529,8 @@ Critério de pronto: lista de limpeza segura e revisada.
    respostas viram `MISSING_CONTENT`; Nano passou no smoke pos-`5527e26`, mas
    Gemini ainda precisa rerun antes de voltar a ✅.
 8. `extrair_respostas` parseavel pode ser conteudo invalido quando as respostas
-   ficam sem conteudo, inferidas ou inconsistentes; desde `1ce3d23`, o caso
-   final falha alto no executor e registra custo, mas a qualidade da extracao
-   ainda precisa ser corrigida.
+   ficam sem conteudo, inferidas ou inconsistentes; Nano ainda e ❌ nessa etapa,
+   enquanto GPT-5.4 Mini passou em amostras e em um smoke full simples.
 9. Cadastro via settings no Render pode nao sobreviver deploy; modelos oficiais
    precisam estar versionados em `backend/data/models.json` ou em storage
    duravel real.
@@ -1500,5 +1540,6 @@ Critério de pronto: lista de limpeza segura e revisada.
 11. Rio 3 nao deve voltar ao fluxo ativo sem nova decisao e nova chave segura.
 12. Status `completed` da task nao basta; a correção precisa ser semanticamente
     compativel com `extracao_respostas` e `gabarito_extraido`. O caso
-    `task_bc6cc84d10ef` provou que uma pipeline pode completar e ainda estar
-    invalida se o gabarito estiver incompleto.
+    `task_bc6cc84d10ef` provou falso positivo semantico, e o caso
+    `task_a5f0d734f0b3` agora precisa inspeção de conteudo para virar referencia
+    alem da fixture simples.
