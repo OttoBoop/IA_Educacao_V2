@@ -162,3 +162,39 @@ def test_pdf_json_consistency_accepts_matching_grade_and_question_notes(tmp_path
     )
 
     assert errors == []
+
+
+def test_pdf_json_consistency_rejects_truncated_correction_feedback(tmp_path):
+    json_path = tmp_path / "correcao.json"
+    pdf_path = tmp_path / "correcao.pdf"
+    json_path.write_text(
+        json.dumps(
+            {
+                "nota_final": 8,
+                "questoes": [{"numero": 1, "nota": 3}],
+                "feedback_geral": (
+                    "Diana demonstrou bom entendimento geral das operações matemáticas. "
+                    "Ela resolveu corretamente a maior parte da prova, mas deve praticar "
+                    "a conversão de porcentagens para frações decimais e mostrar passos "
+                    "intermediários com mais clareza para facilitar a validação."
+                ),
+            }
+        ),
+        encoding="utf-8",
+    )
+    _write_pdf(
+        pdf_path,
+        "Nota Final: 8.0\nQuestão 1 - Nota: 3.0\n"
+        "Feedback Geral:\nDiana demonstrou bom entendimento nas resoluções diret",
+    )
+    json_doc = _doc("json", ".json")
+    pdf_doc = _doc("pdf", ".pdf")
+    executor = _executor_with_paths({"json": json_path, "pdf": pdf_path})
+
+    errors = executor._validar_consistencia_pdf_json_tool_outputs(
+        {"create_document": [json_doc], "execute_python_code": [pdf_doc]},
+        TipoDocumento.CORRECAO,
+    )
+
+    assert any("truncar Feedback Geral" in error for error in errors)
+    assert any("sem pontuação final" in error for error in errors)

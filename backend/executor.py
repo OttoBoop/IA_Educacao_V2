@@ -536,6 +536,29 @@ class PipelineExecutor:
             if json_data.get("questoes") and checked_questions == 0:
                 errors.append(f"PDF {pdf_label} sem notas por questão verificáveis para CORRIGIR")
 
+            feedback_geral = json_data.get("feedback_geral")
+            if isinstance(feedback_geral, str) and len(feedback_geral.strip()) >= 120:
+                feedback_match = re.search(
+                    r"feedback\s+geral\s*[:\-]?\s*(.+)$",
+                    pdf_text or "",
+                    flags=re.IGNORECASE | re.DOTALL,
+                )
+                if not feedback_match:
+                    errors.append(f"PDF {pdf_label} sem Feedback Geral verificável para CORRIGIR")
+                else:
+                    pdf_feedback = re.sub(r"\s+", " ", feedback_match.group(1)).strip()
+                    min_len = min(160, int(len(feedback_geral.strip()) * 0.45))
+                    if len(pdf_feedback) < min_len:
+                        errors.append(
+                            f"PDF {pdf_label} parece truncar Feedback Geral: "
+                            f"{len(pdf_feedback)} chars no PDF contra {len(feedback_geral.strip())} no JSON"
+                        )
+                    if pdf_feedback and not re.search(r"[.!?)]\s*$", pdf_feedback):
+                        errors.append(
+                            f"PDF {pdf_label} termina Feedback Geral sem pontuação final; "
+                            "possível corte de layout"
+                        )
+
         return errors
     
     # ============================================================
