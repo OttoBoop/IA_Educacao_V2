@@ -2337,14 +2337,23 @@ class TestF5T1_APIPropagaErro:
         mock_storage.listar_alunos.return_value = [aluno]
         mock_storage.listar_atividades.return_value = [atividade]
 
-        resultado = SimpleNamespace(nota_final=0)
         mock_visualizador = MagicMock()
-        mock_visualizador.get_estatisticas_atividade.return_value = {
-            "corrigidos": 1,
-            "pendentes": 0,
-            "estatisticas": {"media": 0},
-        }
-        mock_visualizador.get_resultado_aluno.return_value = resultado
+        mock_visualizador.get_ranking_turma.return_value = [
+            {
+                "aluno_id": "aluno_test",
+                "aluno_nome": "Aluno Zero",
+                "nota": 0,
+                "nota_maxima": 10,
+                "percentual": 0,
+                "questoes_corretas": 0,
+                "total_questoes": 1,
+                "corrigido": True,
+                "posicao": 1,
+            }
+        ]
+        mock_visualizador.get_resultado_aluno.side_effect = AssertionError(
+            "dashboard_turma must reuse ranking instead of querying each student result"
+        )
 
         with patch("routes_resultados.storage", mock_storage), \
              patch("routes_resultados.visualizador", mock_visualizador):
@@ -2353,6 +2362,8 @@ class TestF5T1_APIPropagaErro:
 
         assert response["atividades"][0]["media"] == 0
         assert response["alunos"][0]["media"] == 0
+        mock_visualizador.get_ranking_turma.assert_called_once_with("ativ_test")
+        mock_visualizador.get_resultado_aluno.assert_not_called()
 
     def test_visualizador_ignores_correction_without_reliable_grade(self, monkeypatch):
         """A concluded correction without numeric grade cannot produce completo=True."""

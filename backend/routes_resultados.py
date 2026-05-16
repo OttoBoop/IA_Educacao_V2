@@ -133,6 +133,43 @@ def _aplicar_documento_na_etapa(etapas: Dict[str, Dict[str, Any]], doc: Any) -> 
         })
 
 
+def _estatisticas_do_ranking(ranking: list[Dict[str, Any]]) -> Dict[str, Any]:
+    corrigidos = [
+        item for item in ranking
+        if item.get("corrigido") and item.get("nota") is not None
+    ]
+
+    if not corrigidos:
+        return {
+            "total_alunos": len(ranking),
+            "corrigidos": 0,
+            "pendentes": len(ranking),
+            "estatisticas": None,
+        }
+
+    notas = [item["nota"] for item in corrigidos]
+    return {
+        "total_alunos": len(ranking),
+        "corrigidos": len(corrigidos),
+        "pendentes": len(ranking) - len(corrigidos),
+        "estatisticas": {
+            "media": sum(notas) / len(notas),
+            "maior_nota": max(notas),
+            "menor_nota": min(notas),
+            "mediana": sorted(notas)[len(notas) // 2],
+            "aprovados": sum(1 for n in notas if n >= 6),
+            "reprovados": sum(1 for n in notas if n < 6),
+            "distribuicao": {
+                "0-2": sum(1 for n in notas if 0 <= n < 2),
+                "2-4": sum(1 for n in notas if 2 <= n < 4),
+                "4-6": sum(1 for n in notas if 4 <= n < 6),
+                "6-8": sum(1 for n in notas if 6 <= n < 8),
+                "8-10": sum(1 for n in notas if 8 <= n <= 10),
+            },
+        },
+    }
+
+
 # ============================================================
 # RESULTADO DO ALUNO
 # ============================================================
@@ -478,8 +515,11 @@ async def dashboard_turma(turma_id: str):
     
     # Estatísticas por atividade
     atividades_stats = []
+    rankings_por_atividade: Dict[str, list[Dict[str, Any]]] = {}
     for ativ in atividades:
-        stats = visualizador.get_estatisticas_atividade(ativ.id)
+        ranking = visualizador.get_ranking_turma(ativ.id)
+        rankings_por_atividade[ativ.id] = ranking
+        stats = _estatisticas_do_ranking(ranking)
         atividades_stats.append({
             "id": ativ.id,
             "nome": ativ.nome,
@@ -491,14 +531,17 @@ async def dashboard_turma(turma_id: str):
         })
     
     # Calcular médias por aluno
+    notas_por_aluno: Dict[str, list[float]] = {aluno.id: [] for aluno in alunos}
+    for ranking in rankings_por_atividade.values():
+        for item in ranking:
+            aluno_id = item.get("aluno_id")
+            nota = item.get("nota")
+            if item.get("corrigido") and nota is not None and aluno_id in notas_por_aluno:
+                notas_por_aluno[aluno_id].append(nota)
+
     alunos_medias = []
     for aluno in alunos:
-        notas = []
-        for ativ in atividades:
-            resultado = visualizador.get_resultado_aluno(ativ.id, aluno.id)
-            if resultado:
-                notas.append(resultado.nota_final)
-        
+        notas = notas_por_aluno.get(aluno.id, [])
         media = sum(notas) / len(notas) if notas else None
         alunos_medias.append({
             "aluno_id": aluno.id,

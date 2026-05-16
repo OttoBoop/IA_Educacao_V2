@@ -415,6 +415,88 @@ def test_visualizador_historico_fast_error_only_is_not_corrected(monkeypatch):
     assert historico[0]["nota"] is None
 
 
+def test_visualizador_ranking_turma_batches_corrections(monkeypatch):
+    fake_storage = SimpleNamespace()
+    fake_storage.get_atividade = lambda atividade_id: SimpleNamespace(
+        id=atividade_id,
+        turma_id="turma-1",
+        nome="Prova 1",
+        nota_maxima=10.0,
+    )
+    fake_storage.get_turma = lambda turma_id: SimpleNamespace(id=turma_id)
+    fake_storage.listar_alunos = lambda turma_id: [
+        SimpleNamespace(id="aluno-zero", nome="Alice Zero"),
+        SimpleNamespace(id="aluno-oito", nome="Bob Oito"),
+        SimpleNamespace(id="aluno-sem-doc", nome="Carol Sem Doc"),
+        SimpleNamespace(id="aluno-invalido", nome="Dani Invalido"),
+    ]
+    fake_storage._log_hot_endpoint_profile = MagicMock()
+    select_calls = []
+
+    error_row = _doc_row(
+        "doc-bob-error",
+        "ativ-1",
+        "aluno-oito",
+        criado_em="2026-03-14T12:00:00",
+    )
+    error_row["status"] = "erro"
+    correction_rows = [
+        error_row,
+        _doc_row("doc-bob-ok", "ativ-1", "aluno-oito", criado_em="2026-03-14T11:00:00"),
+        _doc_row("doc-alice-zero", "ativ-1", "aluno-zero", criado_em="2026-03-14T10:00:00"),
+        _doc_row("doc-dani-invalid", "ativ-1", "aluno-invalido", criado_em="2026-03-14T09:00:00"),
+    ]
+
+    def fake_select_rows(table, filters=None, order_by=None, order_desc=False, limit=None, columns=None):
+        select_calls.append((table, dict(filters or {}), order_by, order_desc))
+        assert table == "documentos"
+        assert filters == {
+            "atividade_id": "ativ-1",
+            "aluno_id": ["aluno-zero", "aluno-oito", "aluno-sem-doc", "aluno-invalido"],
+            "tipo": "correcao",
+            "status": "concluido",
+        }
+        assert order_by == "criado_em"
+        assert order_desc is True
+        return correction_rows
+
+    fake_storage._select_rows = fake_select_rows
+
+    visualizador = VisualizadorResultados()
+    visualizador.storage = fake_storage
+    visualizador.get_resultado_aluno = MagicMock(
+        side_effect=AssertionError("ranking must not call per-student detail")
+    )
+    monkeypatch.setattr(
+        visualizador,
+        "_ler_json",
+        lambda documento: {
+            "doc-bob-ok": {"nota": 8.0, "questoes": [{"nota": 8.0, "acerto": True}]},
+            "doc-alice-zero": {"nota_final": 0.0, "questoes": [{"nota": 0.0, "acerto": False}]},
+            "doc-dani-invalid": {"nota_final": 7.0, "feedback_geral": "sem itens"},
+        }.get(documento.id, {}),
+    )
+
+    ranking = visualizador.get_ranking_turma("ativ-1")
+
+    assert select_calls
+    visualizador.get_resultado_aluno.assert_not_called()
+    assert [item["aluno_id"] for item in ranking] == [
+        "aluno-oito",
+        "aluno-zero",
+        "aluno-sem-doc",
+        "aluno-invalido",
+    ]
+    assert ranking[0]["posicao"] == 1
+    assert ranking[0]["nota"] == 8.0
+    assert ranking[0]["questoes_corretas"] == 1
+    assert ranking[1]["posicao"] == 2
+    assert ranking[1]["nota"] == 0.0
+    assert ranking[1]["corrigido"] is True
+    assert ranking[2]["corrigido"] is False
+    assert ranking[3]["corrigido"] is False
+
+
 def test_dashboard_aluno_fast_preserves_existing_shape(monkeypatch):
     visualizador = VisualizadorResultados()
     visualizador.storage = SimpleNamespace(

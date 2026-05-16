@@ -235,6 +235,61 @@ class VisualizadorResultados:
             percentual = nota / nota_maxima * 100
 
         return {"nota": nota, "nota_maxima": nota_maxima, "percentual": percentual}
+
+    def _contar_itens_correcao(self, data: Dict[str, Any]) -> Dict[str, int]:
+        """Conta itens avaliaveis da correcao para visoes agregadas."""
+        total = 0
+        corretas = 0
+
+        for campo in ("questoes", "correcoes"):
+            itens = data.get(campo)
+            if not isinstance(itens, list):
+                continue
+
+            for item in itens:
+                if not isinstance(item, dict):
+                    continue
+                if self._safe_float(item.get("nota")) is None:
+                    continue
+                total += 1
+                status = str(item.get("status", "")).lower()
+                if item.get("acerto") is True or status == "correta":
+                    corretas += 1
+
+        return {"total": total, "corretas": corretas}
+
+    def _correcoes_concluidas_por_aluno(
+        self,
+        atividade_id: str,
+        aluno_ids: List[str],
+    ) -> Dict[str, Documento]:
+        if not aluno_ids:
+            return {}
+
+        rows = self.storage._select_rows(
+            "documentos",
+            filters={
+                "atividade_id": atividade_id,
+                "aluno_id": aluno_ids,
+                "tipo": TipoDocumento.CORRECAO.value,
+                "status": "concluido",
+            },
+            order_by="criado_em",
+            order_desc=True,
+        )
+
+        docs_por_aluno: Dict[str, List[Documento]] = {}
+        for row in rows:
+            documento = Documento.from_dict(row)
+            if not documento.aluno_id:
+                continue
+            docs_por_aluno.setdefault(documento.aluno_id, []).append(documento)
+
+        return {
+            aluno_id: doc
+            for aluno_id, docs in docs_por_aluno.items()
+            if (doc := self._escolher_documento_resultado(docs))
+        }
     
     def get_resultado_aluno(self, atividade_id: str, aluno_id: str) -> Optional[VisaoAluno]:
         """
@@ -349,7 +404,7 @@ class VisualizadorResultados:
     def _ler_json(self, documento: Documento) -> Dict[str, Any]:
         """Lê conteúdo JSON de um documento"""
         try:
-            arquivo = storage.resolver_caminho_documento(documento)
+            arquivo = self.storage.resolver_caminho_documento(documento)
             if arquivo.exists():
                 with open(arquivo, 'r', encoding='utf-8') as f:
                     content = f.read()
@@ -637,28 +692,49 @@ class VisualizadorResultados:
         Retorna ranking dos alunos em uma atividade.
         Ordenado por nota (maior para menor).
         """
+        started_at = time.perf_counter()
         atividade = self.storage.get_atividade(atividade_id)
         if not atividade:
+            self.storage._log_hot_endpoint_profile(
+                "/api/resultados/{atividade_id}/ranking",
+                started_at,
+                {"atividade": 0, "alunos": 0, "documentos": 0},
+                {"json_reads": 0},
+            )
             return []
         
         turma = self.storage.get_turma(atividade.turma_id)
         alunos = self.storage.listar_alunos(turma.id) if turma else []
+        correcoes_por_aluno = self._correcoes_concluidas_por_aluno(
+            atividade_id,
+            [aluno.id for aluno in alunos],
+        )
         
         ranking = []
+        json_reads = 0
         
         for aluno in alunos:
-            resultado = self.get_resultado_aluno(atividade_id, aluno.id)
+            correcao_doc = correcoes_por_aluno.get(aluno.id)
+            correcao_data = self._ler_json(correcao_doc) if correcao_doc else {}
+            if correcao_doc:
+                json_reads += 1
+            correcao_summary = self._resumir_correcao(atividade.nota_maxima, correcao_data)
+            contagem = self._contar_itens_correcao(correcao_data)
             
-            if resultado:
+            if (
+                correcao_doc
+                and correcao_summary.get("nota") is not None
+                and self._correcao_tem_item_avaliavel(correcao_data)
+            ):
                 ranking.append({
                     "posicao": 0,  # Será preenchido depois
                     "aluno_id": aluno.id,
                     "aluno_nome": aluno.nome,
-                    "nota": resultado.nota_final,
-                    "nota_maxima": resultado.nota_maxima,
-                    "percentual": resultado.percentual,
-                    "questoes_corretas": resultado.questoes_corretas,
-                    "total_questoes": resultado.total_questoes,
+                    "nota": correcao_summary["nota"],
+                    "nota_maxima": correcao_summary["nota_maxima"],
+                    "percentual": correcao_summary["percentual"],
+                    "questoes_corretas": contagem["corretas"],
+                    "total_questoes": contagem["total"],
                     "corrigido": True
                 })
             else:
@@ -681,6 +757,13 @@ class VisualizadorResultados:
         for i, item in enumerate(ranking):
             if item["corrigido"]:
                 item["posicao"] = i + 1
+
+        self.storage._log_hot_endpoint_profile(
+            "/api/resultados/{atividade_id}/ranking",
+            started_at,
+            {"atividade": 1, "alunos": len(alunos), "documentos": len(correcoes_por_aluno)},
+            {"json_reads": json_reads},
+        )
         
         return ranking
     
