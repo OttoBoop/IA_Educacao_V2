@@ -310,6 +310,42 @@ class TestBothOutputsNoRetry:
             f"(no retry needed). Got call_count={call_count}."
         )
 
+    async def test_expected_document_type_rejects_runtime_json_outside_schema(self):
+        """Parseable create_document JSON outside the stage schema must fail high."""
+        response = {
+            "content": "",
+            "tokens": 150,
+            "modelo": "test-model",
+            "provider": "anthropic",
+            "tool_calls": [
+                {
+                    "name": "create_document",
+                    "input": {
+                        "documents": [
+                            {
+                                "filename": "correcao.json",
+                                "content": json.dumps({"feedback_geral": "sem dados"}),
+                            }
+                        ]
+                    },
+                },
+                {
+                    "name": "execute_python_code",
+                    "input": {"code": "# generate PDF"},
+                },
+            ],
+        }
+
+        result, _mock_client = await _call_executar_com_tools(
+            chat_side_effect=response,
+            tools_to_use=["create_document", "execute_python_code"],
+            expected_document_type=TipoDocumento.CORRECAO,
+        )
+
+        assert result.sucesso is False
+        assert "sem nota_final" in (result.erro or "")
+        assert "sem lista de questoes" in (result.erro or "")
+
     async def test_openai_dual_output_starts_with_forced_json_tool_choice(self):
         """OpenAI dual-output calls should force create_document upfront."""
         both_response = _tool_response(["create_document", "execute_python_code"])

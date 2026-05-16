@@ -3919,8 +3919,12 @@ Seja preciso, educativo e construtivo em suas análises."""
                     or _doc_status_value(doc) == StatusProcessamento.ERRO.value
                 )
 
-            def _json_schema_errors_for_doc(doc: Any) -> List[str]:
-                """Fail high on known placeholder/schema leaks in persisted JSON."""
+            def _json_schema_errors_for_data(
+                data: Any,
+                doc_label: str,
+                filename: str = "",
+            ) -> List[str]:
+                """Fail high on known placeholder/schema leaks in JSON payloads."""
                 errors: List[str] = []
                 placeholders = (
                     "student123",
@@ -3931,25 +3935,6 @@ Seja preciso, educativo e construtivo em suas análises."""
                     "<nome",
                     "<str>",
                 )
-
-                doc_label = getattr(doc, "id", None) or getattr(doc, "nome_arquivo", "json")
-                filename = (getattr(doc, "nome_arquivo", "") or "").lower()
-                try:
-                    path = self.storage.resolver_caminho_documento(doc)
-                except Exception as exc:
-                    errors.append(f"JSON {doc_label} não pôde ser resolvido para validação: {exc}")
-                    return errors
-
-                if not path or not Path(path).exists():
-                    errors.append(f"JSON {doc_label} não pôde ser lido para validação")
-                    return errors
-
-                try:
-                    with open(path, "r", encoding="utf-8") as fh:
-                        data = json.load(fh)
-                except Exception as exc:
-                    errors.append(f"JSON {doc_label} inválido: {exc}")
-                    return errors
 
                 serialized = json.dumps(data, ensure_ascii=False).lower()
                 for placeholder in placeholders:
@@ -4010,6 +3995,26 @@ Seja preciso, educativo e construtivo em suas análises."""
 
                 return errors
 
+            def _json_schema_errors_for_doc(doc: Any) -> List[str]:
+                """Fail high on known placeholder/schema leaks in persisted JSON."""
+                doc_label = getattr(doc, "id", None) or getattr(doc, "nome_arquivo", "json")
+                filename = (getattr(doc, "nome_arquivo", "") or "").lower()
+                try:
+                    path = self.storage.resolver_caminho_documento(doc)
+                except Exception as exc:
+                    return [f"JSON {doc_label} não pôde ser resolvido para validação: {exc}"]
+
+                if not path or not Path(path).exists():
+                    return [f"JSON {doc_label} não pôde ser lido para validação"]
+
+                try:
+                    with open(path, "r", encoding="utf-8") as fh:
+                        data = json.load(fh)
+                except Exception as exc:
+                    return [f"JSON {doc_label} inválido: {exc}"]
+
+                return _json_schema_errors_for_data(data, doc_label, filename)
+
             def _invalid_json_artifacts(state: Dict[str, Any]) -> List[tuple[Any, List[str]]]:
                 if expected_document_type not in {
                     TipoDocumento.CORRECAO,
@@ -4033,6 +4038,43 @@ Seja preciso, educativo e construtivo em suas análises."""
                 errors: List[str] = []
                 for _, doc_errors in _invalid_json_artifacts(state):
                     errors.extend(doc_errors)
+                if (
+                    expected_document_type in {
+                        TipoDocumento.CORRECAO,
+                        TipoDocumento.ANALISE_HABILIDADES,
+                        TipoDocumento.RELATORIO_FINAL,
+                    }
+                    and not state.get("docs_by_tool", {}).get("create_document")
+                ):
+                    for idx, tc in enumerate(_combined_tool_calls(respostas_tool), start=1):
+                        if tc.get("name") != "create_document":
+                            continue
+                        docs_input = tc.get("input", {}).get("documents", [])
+                        if isinstance(docs_input, dict):
+                            docs = [docs_input]
+                        elif isinstance(docs_input, list):
+                            docs = docs_input
+                        else:
+                            docs = []
+                        if not docs and tc.get("input", {}).get("content") is not None:
+                            docs = [{"content": tc.get("input", {}).get("content")}]
+                        for doc_idx, doc in enumerate(docs, start=1):
+                            if not isinstance(doc, dict):
+                                continue
+                            label = doc.get("filename") or f"runtime create_document {idx}.{doc_idx}"
+                            content = doc.get("content")
+                            if isinstance(content, dict):
+                                data = content
+                            elif isinstance(content, str):
+                                try:
+                                    data = json.loads(content)
+                                except Exception as exc:
+                                    errors.append(f"JSON {label} inválido: {exc}")
+                                    continue
+                            else:
+                                errors.append(f"JSON {label} sem content JSON")
+                                continue
+                            errors.extend(_json_schema_errors_for_data(data, str(label), str(label).lower()))
                 return errors
 
             def _latest_tool_doc(
