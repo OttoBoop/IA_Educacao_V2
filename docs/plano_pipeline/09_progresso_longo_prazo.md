@@ -4,22 +4,17 @@
 **Responsavel operacional:** Paulo
 **Status geral:** o servico oficial Render
 `srv-d5t8gbh4tr6s738fr3s0` (`IA_Educacao_V2`, branch `main`, URL
-`https://ia-educacao-v2.onrender.com`) esta em runtime backend `11a396b`,
+`https://ia-educacao-v2.onrender.com`) esta em runtime backend `fdf0cbd`,
 confirmado por `/api/deploy-info`, `/api/health` e
-`./scripts/check_deploy.sh 11a396b`. O `origin/main` esta em `29a4b7e`, commit
-de documentacao posterior ao deploy de codigo; portanto o site oficial roda o
-codigo `11a396b` e o GitHub registra ate `29a4b7e` antes do ciclo OpenAI/catalogo
-atual. O ultimo ciclo de codigo
-corrigiu falso negativo do guard PDF/JSON em `CORRIGIR`: PDFs coerentes com
-rotulos `Comentário pedagógico geral` e `Feedback geral da avaliação` deixam de
-gerar retry artificial. Smoke oficial `task_92c4b74494f7` com GPT-4.1 confirmou
-JSON `a05a2a4faeab71d1` e PDF `dc9fe13dc6b8b994`, ambos `concluido`, sem PDF
-intermediario `status=erro`, custo `14617/2400`, `US$ 0.048434`. GPT-4.1 tambem
-tem full pipeline unico confirmado na fixture Diana (`task_f6851ed535b8`);
-GPT-5.4 Mini e GPT-4o seguem referencias confirmadas nessa fixture. Google esta
-limitado por quota `429` nos smokes recentes, Anthropic segue bloqueado por
-credito, e Supabase `token_usage` continua ausente (`PGRST205`), deixando custo
-duravel como gate real.
+`./scripts/check_deploy.sh fdf0cbd`. O ciclo publicado alinhou catalogo/modelos
+OpenAI GPT-5.x aos docs oficiais: reasoning sem `temperature`, variantes `-pro`
+sem capabilities inventadas, `gpt-5-image` removido do catalogo textual e
+limites de contexto/output corrigidos. Smoke live seguro confirmou catalogo,
+estimativa de custo e chat simples com `gpt54mini001` (`HTTP 200`, JSON valido,
+`tokens_used=409`). GPT-4.1, GPT-5.4 Mini e GPT-4o seguem referencias de pipeline
+confirmadas na fixture Diana; Google esta limitado por quota `429` nos smokes
+recentes, Anthropic segue bloqueado por credito, e Supabase `token_usage`
+continua ausente (`PGRST205`), deixando custo duravel como gate real.
 
 Atualizacao Lista0 de 2026-05-17: a atividade real `Lista0`
 (`126e8b5ad7dd6d59`) tem documentos base cadastrados e 63 alunos
@@ -43,8 +38,15 @@ tambem sao reconhecidas pelo provider legado e pelo frontend; o slug inexistente
 `git diff --check`, `test_model_manager.py` (55), `test_d_t1_openai_tool_use.py`
 com `test_cost_tracking.py` (38) e `test_providers.py` (11). No mesmo ciclo, o
 catalogo foi ajustado para limites oficiais de contexto/output e capabilities
-das variantes `-pro`. Ainda falta publicar, confirmar Render e fazer smoke
-oficial sem gastar em dataset invalido.
+das variantes `-pro`. Publicacao: commit `fdf0cbd`, push para `origin/main`,
+Render confirmado em 150s por `wait_deploy.sh`/`check_deploy.sh`. Smokes live:
+`/api/settings/model-catalog/openai/gpt-5.5`, `gpt-5.5-pro`, `gpt-5.4-pro`,
+`gpt-5.2-pro` e `gpt-5-pro` retornaram metadata esperada; `gpt-5-image`
+retornou `404`; `/api/settings/model-catalog/calculate-cost` para
+`openai/gpt-5.4-mini` retornou `cost_per_request=0.003`, `daily_cost=0.09`;
+`/api/chat` com `gpt54mini001` retornou JSON valido e `tokens_used=409`. Nenhum
+smoke de pipeline integral foi feito neste ciclo porque a Lista0 segue bloqueada
+por gabarito parcial.
 
 Atualizacao chat/providers de 2026-05-17 no runtime `c53fae6`: o smoke oficial
 `POST /api/chat` com GPT-5.4 Mini (`gpt54mini001`) retornou HTTP 200, JSON

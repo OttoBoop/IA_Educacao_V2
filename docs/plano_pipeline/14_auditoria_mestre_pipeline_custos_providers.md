@@ -3499,7 +3499,7 @@ Fontes oficiais consultadas:
   `gpt-5.2-pro`, `gpt-5`, `gpt-5-pro`, `gpt-5-mini`, `gpt-5-nano`,
   `gpt-5.4-mini`, `gpt-5.4-nano`.
 
-Mudanca local:
+Mudanca publicada:
 
 - `backend/chat_service.py`, `backend/ai_providers.py`, `backend/anexos.py` e
   `frontend/index_v2.html` reconhecem a familia GPT-5.x atual como reasoning
@@ -3510,8 +3510,10 @@ Mudanca local:
   Structured Outputs; `gpt-5.5-pro` nao anuncia streaming.
 - `gpt-5-image` saiu do catalogo textual. Imagem fica em familia dedicada
   `GPT Image`/`gpt-image-*`, fora do smoke de pipeline textual.
+- Commit funcional: `fdf0cbd`; Render confirmou `fdf0cbd` por
+  `/api/deploy-info`, `wait_deploy.sh` e `check_deploy.sh`.
 
-Validacao local:
+Validacao:
 
 - `py_compile` dos arquivos Python tocados passou.
 - `test_model_manager.py`: 55 passed, cobrindo contexto/output,
@@ -3519,14 +3521,23 @@ Validacao local:
   ausencia de `gpt-5-image` e from-catalog sem `temperature`.
 - `test_d_t1_openai_tool_use.py` + `test_cost_tracking.py`: 38 passed.
 - `test_providers.py`: 11 passed.
+- Smokes live sem mutacao: `/api/health` healthy; catalogo OpenAI retornou
+  metadata esperada para `gpt-5.5`, `gpt-5.5-pro`, `gpt-5.4-pro`,
+  `gpt-5.2-pro` e `gpt-5-pro`; `gpt-5-image` retornou `404`.
+- Smoke de custo estimado: `openai/gpt-5.4-mini`, `1000/500` tokens,
+  `30` requests/dia, retornou `cost_per_request=0.003`, `daily_cost=0.09`,
+  `monthly_cost=2.7`.
+- Smoke de chat oficial: `/api/chat` com `gpt54mini001` retornou HTTP 200,
+  `model=gpt-5.4-mini`, JSON valido e `tokens_used=409`.
 
 Estado:
 
-- Ainda nao publicado. Este ciclo so conta como oficial depois de commit,
-  push, Render em hash esperado e smoke live.
 - Esta atualizacao nao valida nenhum provider novo por qualidade pedagogica; ela
   corrige o catalogo para que proximos smokes nao comecem com parametros
   errados.
+- Custo duravel segue bloqueado por Supabase: `/api/custos/status?limit=80`
+  continua `ok=false`, `token_usage_not_durable`, `PGRST205` para
+  `public.token_usage`.
 
 ## Trabalho Aberto Desta Auditoria
 

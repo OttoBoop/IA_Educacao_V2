@@ -4,10 +4,9 @@
 **Atividades de teste principais:** Lista0 — Algebra Linear Avancada
 (`126e8b5ad7dd6d59`) e smoke simples oficial `Smoke Paulo Pipeline 2026-05-16`
 (`f68d57a9a339081f`)
-**Runtime oficial atual:** backend Render em `11a396b`; `origin/main` em
-`29a4b7e`, commit documental posterior. Use `/api/deploy-info` como gate de
-codigo live; o ciclo OpenAI/catalogo de 2026-05-17 ainda precisa ser publicado e
-confirmado no Render.
+**Runtime oficial atual:** backend Render em `fdf0cbd`; `origin/main` recebeu o
+ciclo funcional `fdf0cbd` e pode receber registro documental posterior. Use
+`/api/deploy-info` como gate de codigo live.
 **Commits aplicados/observados:** `a632883`, `5737611`, `50935ea`, `479b77d`,
 `b12be9a`, `301eba6`, `f67055c`, `462ea1d`, `b4d7ee6`, `99483d1`,
 `f505be6`, `d75b05a`, `97a7c79`, `ec95193`, `ff7b92a`, `68ebe51`,
@@ -23,7 +22,8 @@ confirmado no Render.
 `854cec7`, `b07472f`, `dc5884f`, `0d5ab9d`, `c870ed4`, `45f5cf8`,
 `4094bda`, `4d8f73d`, `f40acf3`, `700b088`, `1307909`, `bed0c08`, `feaf5d0`,
 `d47d748`, `c53fae6`, `9ab53df`, `1454e68`, `3fce335`, `33fb7d5`, `0f84552`,
-`974f040`, `11a396b`, `c094fba`, `d799165`, `6b43016`, `8c77cc4`, `29a4b7e`
+`974f040`, `11a396b`, `c094fba`, `d799165`, `6b43016`, `8c77cc4`, `29a4b7e`,
+`fdf0cbd`
 
 ## Status Oficial De Deploy
 
@@ -32,10 +32,11 @@ confirmado no Render.
   `rootDir=backend`, URL `https://ia-educacao-v2.onrender.com`.
 - `/api/deploy-info` confirmou o runtime backend `11a396b` com
   `source=RENDER_GIT_COMMIT`; esse e o gate primario atual para codigo live.
-- `origin/main` avancou para `29a4b7e` apenas com documentacao; isso nao muda o
-  codigo Render live nem a matriz de comportamento do backend. O lote
-  OpenAI/catalogo posterior muda backend/frontend e, portanto, so vira status
-  oficial depois de push, deploy e smoke.
+- `origin/main` avancou para `29a4b7e` apenas com documentacao; isso nao mudou o
+  codigo Render live nem a matriz de comportamento do backend.
+- O commit `fdf0cbd` mudou backend/frontend para catalogo OpenAI GPT-5.x e foi
+  publicado no GitHub; Render confirmou `fdf0cbd` por `/api/deploy-info`,
+  `wait_deploy.sh` e `check_deploy.sh`.
 - O HTML marker pode ficar stale e nao prova runtime antigo: commits de
   frontend/docs/marker podem nao disparar deploy quando o servico Render usa
   `rootDir=backend`.
@@ -148,13 +149,16 @@ Nota de leitura: os checks da tabela acima sao por etapa individual validada.
 Eles nao significam que a pipeline completa de 6 etapas passou em uma unica
 task. Em 2026-05-16, Gemini completou as tres extracoes em uma task sequencial,
 mas parou em `corrigir` por quota `429`.
-Nota OpenAI/catalogo 2026-05-17: a matriz de comportamento ainda nao muda por
-catalogo, mas o lote atual corrige cadastro e chamada de modelos GPT-5.x:
+Nota OpenAI/catalogo 2026-05-17: a matriz de comportamento nao muda so por
+catalogo, mas o lote `fdf0cbd` corrigiu cadastro e chamada de modelos GPT-5.x:
 `gpt-5.4/5.5`, `gpt-5.2`, `gpt-5`, `gpt-5-mini`, `gpt-5-nano` e variantes
 `-pro` passam a ser reasoning/no-temperature em todos os caminhos relevantes;
 `gpt-5-image` sai do catalogo textual; limites de output/contexto e capabilities
-das variantes `-pro` foram alinhados aos docs oficiais. Essa nota so vira
-confirmacao operacional apos deploy e smoke live.
+das variantes `-pro` foram alinhados aos docs oficiais. Confirmacao operacional:
+catalogo live retornou metadata esperada, `gpt-5-image` retornou `404`,
+estimativa de custo de `gpt-5.4-mini` retornou `US$ 0.003` por request
+`1000/500`, e `/api/chat` com `gpt54mini001` respondeu JSON valido com
+`tokens_used=409`.
 Nota de dataset Lista0: a atividade `126e8b5ad7dd6d59` possui base docs
 presentes, porem a auditoria de PDF de 2026-05-17 confirmou que o enunciado
 `5dc75513e958c25b` contem os exercicios 1 a 7 enquanto o gabarito
