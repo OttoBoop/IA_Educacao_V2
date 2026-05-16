@@ -4,12 +4,23 @@
 **Responsavel operacional:** Paulo
 **Status geral:** o servico oficial Render
 `srv-d5t8gbh4tr6s738fr3s0` (`IA_Educacao_V2`, branch `main`, URL
-`https://ia-educacao-v2.onrender.com`) esta em `9ab53df`, confirmado por
-`/api/deploy-info`, `/api/health` e `./scripts/check_deploy.sh 9ab53df`. O
-estado oficial mais recente normaliza erros estruturados da API para a UI:
-`error.message` agora e string, enquanto `provider`, `provider_status_code` e
-`retryable` continuam como campos proprios; o HTML live contem esses metadados
-em `formatApiErrorMessage` e `renderStageError`. Antes disso, `c53fae6`
+`https://ia-educacao-v2.onrender.com`) esta em `3fce335`, confirmado por
+`/api/deploy-info`, `/api/health`, Render MCP (`dep-d84u56e7r5hc73dmdsa0`) e
+`./scripts/check_deploy.sh 3fce335`. O ciclo `1454e68` preservou tokens quando
+o executor ja tinha respostas parciais de tool-use antes de um erro de
+provider; `3fce335` levou a mesma regra para dentro dos loops de tools do
+`ChatClient`, fazendo `ProviderAPIError` carregar `input_tokens`,
+`output_tokens` e `total_tokens` acumulados antes do HTTP 429/5xx. O smoke live
+Gemini 2.5 Flash `task_81f274a6f510` falhou alto em `corrigir` por quota Google
+`429`, com `provider=Google`, `codigo=429` e `retryable=true`; ele falhou antes
+de criar novo artefato parcial, portanto nao adicionou novo `token_split_missing`.
+O resumo live ainda mostra dois bloqueios antigos (`338b25f9c0f74415` e
+`c4d75e5b0456b27a`) sem split de tokens, e a tabela Supabase `token_usage`
+continua ausente (`PGRST205`). Antes disso, `9ab53df` normalizou erros
+estruturados da API para a UI: `error.message` agora e string, enquanto
+`provider`, `provider_status_code` e `retryable` continuam como campos proprios;
+o HTML live contem esses metadados em `formatApiErrorMessage` e
+`renderStageError`. Antes disso, `c53fae6`
 preservou status HTTP real de erro de provider no `POST /api/chat`, depois de
 `d47d748` remover o marcador
 `DEBUG_V3_MARKER_2026` que corrompia respostas JSON. Antes disso, `feaf5d0`
@@ -50,6 +61,21 @@ Haiku retorna HTTP 400 com `error.provider=Anthropic`, `retryable=false`; GPT-5.
 Mini continua HTTP 200 com JSON parseavel. O HTML live contem
 `provider_status_code`, `retry possível`, `stageError.erro_codigo` e
 `formatApiErrorMessage`, evitando toast/erro visual com objeto cru.
+
+Atualizacao custos/provider em 2026-05-17 no runtime `3fce335`: commits
+`1454e68` e `3fce335` fecharam a lacuna de tokens parciais em erro de provider
+depois de tool-use. Validacoes locais: `py_compile` de `backend/chat_service.py`
+e `backend/executor.py`; `git diff --check`; `test_cost_tracking.py` e
+`test_d_t2_google_tool_use.py` com 39 testes; regressao curta com
+`test_cost_tracking.py`, `test_erro_pipeline.py`, `test_stage_tool_pdf_quality.py`,
+`test_e_t2_retry_partial_output.py` e `test_d_t2_google_tool_use.py` com 158
+testes. Deploy oficial: `3fce335` em `origin/main` e Render `live`. Smoke:
+`task_81f274a6f510` rodou `selected_steps=["corrigir"]` com `gem25flash001` e
+falhou alto por Google `429 RESOURCE_EXHAUSTED`; como a quota bloqueou antes de
+novo documento parcial, o teste live nao reproduziu o caso de documento criado
+antes do erro. `/api/custos/resumo?limit=60` ficou com `runs_precificados=25`,
+`runs_bloqueados=2`, ambos historicos por `token_split_missing`; sem novo falso
+verde e sem novo bloqueio criado por esse smoke.
 
 Atualizacao de 2026-05-17 no runtime `700b088`: o ciclo `f40acf3` alinhou
 `PROMPTS_PADRAO` e `STAGE_TOOL_INSTRUCTIONS` para `CORRIGIR`,
@@ -323,6 +349,9 @@ Estabilizar o NOVO CR para que a pipeline:
 - Commit funcional de payload malformado em `create_document`: `eab7d90`.
 - Commit funcional de resumo de custos por run: `7ed8b8b`.
 - Commit funcional de `TokenUsageRecord` para falhas sem documento: `839968e`.
+- Commit funcional de usage parcial em erro de provider apos tools:
+  `1454e68`/`3fce335` (Render live; testes locais 158; smoke Gemini 2.5 Flash
+  `task_81f274a6f510` falhou alto por quota antes de criar novo artefato).
 - Commit funcional de preparo Supabase `token_usage`: `55e168a`.
 - Commit funcional de diagnostico backend `token_usage`: `4f27dae`.
 - Commit de migration dedicada `token_usage`: `b2dc88b` (GitHub; nao muda o

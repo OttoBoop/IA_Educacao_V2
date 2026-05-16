@@ -18,14 +18,14 @@
 `2885da7`, `99b8c3c`, `392ec7c`, `460643f`, `54d083e`,
 `854cec7`, `b07472f`, `dc5884f`, `0d5ab9d`, `c870ed4`, `45f5cf8`,
 `4094bda`, `4d8f73d`, `f40acf3`, `700b088`, `1307909`, `bed0c08`, `feaf5d0`,
-`d47d748`, `c53fae6`, `9ab53df`
+`d47d748`, `c53fae6`, `9ab53df`, `1454e68`, `3fce335`
 
 ## Status Oficial De Deploy
 
 - O servico oficial em 2026-05-17 e
   `srv-d5t8gbh4tr6s738fr3s0` (`IA_Educacao_V2`), branch `main`,
   `rootDir=backend`, URL `https://ia-educacao-v2.onrender.com`.
-- `/api/deploy-info` confirmou o runtime backend `9ab53df` com
+- `/api/deploy-info` confirmou o runtime backend `3fce335` com
   `source=RENDER_GIT_COMMIT`; esse e o gate primario atual.
 - O HTML marker pode ficar stale e nao prova runtime antigo: commits de
   frontend/docs/marker podem nao disparar deploy quando o servico Render usa
@@ -84,6 +84,14 @@
   `error.message` textual e preserva `provider`, `provider_status_code` e
   `retryable` como campos proprios; o frontend servido mostra esses metadados
   em toasts/API errors e em erros por etapa da sidebar.
+- Render live chegou a `1454e68` e depois `3fce335`: erros de provider depois
+  de tool-use agora preservam usage parcial. `1454e68` cobre tokens ja vistos
+  pelo executor em respostas parciais; `3fce335` cobre o caso em que o erro
+  nasce dentro do loop de tools do `ChatClient`, antes de retornar resposta ao
+  executor. Smoke live `task_81f274a6f510` com `gem25flash001` falhou alto por
+  Google `429` antes de criar novo documento parcial; por isso a correcao ficou
+  validada por testes e deploy, mas a reproduçao live exata segue bloqueada por
+  quota Google.
 - Docs antigos registram que auto-deploy Git nao funciona de forma confiavel; o
   ciclo usou deploy via API Render com token local seguro, sem imprimir segredo.
 - Smokes live anteriores continuam citados com seus markers; smokes de
@@ -160,7 +168,12 @@ runtime `4d8f73d`: o endpoint de conexao de Gemini 2.5 Flash retornou
 `success=true`, mas o smoke isolado `task_e99a2c20be17` em `corrigir` falhou
 alto por Google `429 RESOURCE_EXHAUSTED`, com `stage_errors.corrigir.codigo=429`
 e `retryable=true`, sem novo documento verde. Conexao viva nao promove a etapa
-para pipeline-ready.
+para pipeline-ready. Novo smoke em runtime `3fce335`,
+`task_81f274a6f510`, repetiu `corrigir` com `gem25flash001` e tambem falhou
+alto por Google `429`; desta vez o objetivo era validar custo de erro depois de
+documento parcial, mas a quota travou antes de criar novo artefato, entao nao
+houve novo `token_split_missing`. Os bloqueios de custo restantes sao
+historicos (`338b25f9c0f74415` e `c4d75e5b0456b27a`).
 Nota sweep de conexao 2026-05-17: OpenAI (`gpt-4o`, GPT-4.1, GPT-5 Nano,
 GPT-5.4 Mini, o3 Mini, o4 Mini), Gemini 2.5 Flash/Lite e Gemini 3 Flash
 retornaram `success=true`; Gemini 2.5 Pro retornou `429`; Haiku/Sonnet seguem

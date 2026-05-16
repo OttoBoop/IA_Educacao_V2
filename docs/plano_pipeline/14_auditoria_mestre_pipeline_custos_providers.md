@@ -10,7 +10,22 @@ um deve ser lido, o que ainda vale, o que ficou historico, e quais fatos precisa
 guiar os proximos ciclos.
 
 Atualizacao de controle de 2026-05-17: o site oficial esta em runtime backend
-`9ab53df` por `/api/deploy-info`, `/api/health` e `check_deploy.sh`. O commit
+`3fce335` por `/api/deploy-info`, `/api/health`, Render MCP
+(`dep-d84u56e7r5hc73dmdsa0`) e `check_deploy.sh 3fce335`. O commit
+`1454e68` preservou tokens de erro de provider quando o executor ja tinha
+respostas parciais de tool-use; `3fce335` fecha o caso mais interno, em que o
+HTTP 429/5xx nasce dentro do loop de tools do `ChatClient` antes de retornar
+resposta ao executor. Testes locais: 39 focados de custo/Google tool-use e 158
+na regressao curta de custos, erro de pipeline, PDF/tool e retry parcial. Smoke
+live `task_81f274a6f510` com Gemini 2.5 Flash em `corrigir` falhou alto por
+Google `429`, com erro estruturado; como a quota travou antes de criar novo
+artefato parcial, nao surgiu novo `token_split_missing`. O resumo live
+`/api/custos/resumo?limit=60` ainda mostra dois bloqueios antigos sem split
+(`338b25f9c0f74415`, `c4d75e5b0456b27a`) e Supabase `token_usage` continua
+ausente por `PGRST205`.
+
+Atualizacao anterior de controle de 2026-05-17: o site oficial estava em runtime
+backend `9ab53df` por `/api/deploy-info`, `/api/health` e `check_deploy.sh`. O commit
 `9ab53df` normalizou erro estruturado para API/UI: `error.message` fica textual,
 e os metadados `provider`, `provider_status_code` e `retryable` permanecem como
 campos proprios para toast/sidebar/historico. Os commits `d47d748` e `c53fae6`
@@ -3407,8 +3422,8 @@ claro. O que ainda existe para fazer:
 |---|---|---|
 | Ciclo anti-fallback | Codigo/testes | `nota_final=N/A` em relatório foi fechado em `ad7e00e`; PDF auto-fallback foi reclassificado como guardado em `dc5884f`; JSON embrulhado em Markdown/prosa foi bloqueado em `0d5ab9d`; retorno Path 2 basico foi melhorado em `c870ed4`; schema minimo runtime de `CORRIGIR` foi bloqueado em `45f5cf8`; smoke oficial `task_42e3b303c39a` confirmou sucesso real de `corrigir` com PDF intermediario inconsistente marcado como erro; `4094bda` adicionou cobertura para `ANALISAR_HABILIDADES`/`GERAR_RELATORIO` runtime fora do schema; `4d8f73d` adicionou cobertura para PDF stale; `f40acf3` alinhou prompts/tool instructions; `700b088` adicionou guarda semantica contra correcao que troca resposta do aluno ou marca acerto para divergencia numerica; `1307909` cobre literal divergente; `bed0c08` cobre cabecalho PDF placeholder; `feaf5d0` cobre totais incoerentes e o smoke `task_ec7acffbb6d4` provou retry ate JSON/PDF coerentes; ainda restam smokes de matriz, semantica aberta e UI/historico obedecendo `status=erro`. |
 | Settings de modelos | Codigo/testes/deploy | `from-catalog` deu 500 e create ignorou capabilities no site live; patch `b16e051` ja foi deployado e retestado; cadastro por API sumiu no deploy, mas o modelo versionado `gpt54mini001` apareceu no site em `be19b7e` e passou teste de conexao. |
-| Metadata/custo real | Codigo/testes/deploy | Metadata e endpoints existem no site; full smoke GPT-5.4 Mini mediu custo por etapa; smoke `task_42e3b303c39a` mediu `26251/4582` tokens e `US$ 0.040307`; re-smoke `task_cc22b6c239d0` mediu `56891/9827` tokens e `US$ 0.086890`; Supabase `token_usage` segue ausente (`PGRST205`), `local_record_count=0` depois de deploy e custo de falha sem documento ainda nao e duravel. |
-| Provider revalidation | Smoke/producao | Matriz Doc 12 registra GPT-5.4 Mini full smoke em fixture simples, GPT-4o full smoke (`task_68b19146a95b`) e Gemini 2.5 Flash com extracoes OK/tool-use corrigido mas bloqueado por quota; continua incompleta ate novos smokes por provider/rota/dataset. |
+| Metadata/custo real | Codigo/testes/deploy | Metadata e endpoints existem no site; full smoke GPT-5.4 Mini mediu custo por etapa; smoke `task_42e3b303c39a` mediu `26251/4582` tokens e `US$ 0.040307`; re-smoke `task_cc22b6c239d0` mediu `56891/9827` tokens e `US$ 0.086890`; `1454e68`/`3fce335` cobrem tokens parciais em erro de provider depois de tool-use; Supabase `token_usage` segue ausente (`PGRST205`), `local_record_count=0` depois de deploy e custo de falha sem documento ainda nao e duravel. |
+| Provider revalidation | Smoke/producao | Matriz Doc 12 registra GPT-5.4 Mini full smoke em fixture simples, GPT-4o full smoke (`task_68b19146a95b`) e Gemini 2.5 Flash com extracoes OK/tool-use corrigido mas bloqueado por quota; smoke `task_81f274a6f510` em `3fce335` confirma erro alto Google `429` sem novo falso verde, mas nao reproduziu documento parcial por falta de quota. Continua incompleta ate novos smokes por provider/rota/dataset. |
 | PDFs/UI GPT-5.4 Mini/GPT-4o | Codigo/testes/deploy/smoke | `task_a5f0d734f0b3` completou 6 etapas, JSONs passaram inspeção semantica inicial e PDFs existem; `0ac92f0` corrigiu parte do layout, mas `task_605512496b0d` provou divergencia PDF/JSON; `2052a01` transformou essa divergencia em erro alto; `3a77a17` validou retry explicito do PDF; `3e6be20` bloqueia Feedback Geral truncado; GPT-4o passou as etapas finais com artefatos ruins marcados como erro; `task_42e3b303c39a` confirmou PDF final coerente em `corrigir`. Ainda falta repetir em datasets maiores e melhorar UI de erro para o usuario final. |
 | Gabarito incompleto bloqueia correção | Codigo/testes/deploy/smoke | `3a7dfea` bloqueia `CORRIGIR` com `MISSING_CONTENT` no gabarito; continua importante para datasets como Lista0, embora a fixture Diana tenha completado. |
 | UI de erros | Produto/frontend | Sidebar ja mostra a causa por aluno/etapa desde `98fafc9`; ainda falta resultado/historico e mensagens completas para provider/custo. |
