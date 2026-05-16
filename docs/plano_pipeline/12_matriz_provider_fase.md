@@ -50,6 +50,10 @@ ciclo funcional `ae04982` e pode receber registro documental posterior. Use
 - Pipeline live GPT-5 Nano: `task_0818b99194aa` passou `extrair_respostas` na
   fixture Diana; documento `f021525b6fdf0db0`, respostas reais `x = 5`, `34`,
   `25`, `20 cm2`, custo `US$ 0.000914`. Continuar parcial fora dessa fixture.
+- Pipeline live GPT-5 Nano: `task_960c0a287a13` passou `corrigir` na fixture
+  Diana com retry explicito; JSON `d6ae91c76625c82b` e PDF
+  `1ba9013486b61342` concluidos, nota `8.0`, custo `US$ 0.005149`; artefatos
+  intermediarios foram preservados como erro, nao mascarados.
 - O commit `fdf0cbd` mudou backend/frontend para catalogo OpenAI GPT-5.x e foi
   publicado no GitHub; Render confirmou `fdf0cbd` por `/api/deploy-info`,
   `wait_deploy.sh` e `check_deploy.sh`.
@@ -1009,9 +1013,9 @@ nem datasets maiores.
    fixture simples e GPT-4o passou as seis etapas individualmente, mas ainda
    faltam datasets maiores e GPT-4o full 6 etapas em uma unica task.
 4. Revalidar Gemini/Nano/Haiku por provider/modelo; Gemini 2.5 Flash falhou
-   alto por quota `429` em `corrigir`, GPT-5 Nano passou `extrair_respostas`
-   na fixture simples mas segue parcial em dataset maior, e Haiku segue
-   bloqueado por credito.
+   alto por quota `429` em `corrigir`, GPT-5 Nano passou `extrair_respostas` e
+   `corrigir` na fixture simples mas segue parcial em dataset maior, e Haiku
+   segue bloqueado por credito.
 5. Aplicar `backend/migrations/002_create_token_usage.sql` no Supabase para
    tornar duravel o custo de falhas sem documento.
 6. Quando creditos Anthropic forem recarregados, validar Haiku 4.5 via

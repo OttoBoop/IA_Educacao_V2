@@ -36,8 +36,8 @@ sem exigir terminal para entender o bloqueio.
 O ciclo `ae04982` adicionou `por_etapa` em `/api/custos/resumo` e confirmou o
 agregado live: `correcao` segue como a maior fatia de custo, seguida por
 `analise_habilidades` e `relatorio_final`.
-GPT-4.1, GPT-5.4 Mini e GPT-4o seguem referencias de pipeline confirmadas na
-fixture Diana; GPT-5 Nano passou `extrair_respostas` nessa fixture simples, mas
+GPT-4.1, GPT-5.4 Mini, GPT-4o e GPT-5 Nano seguem referencias OpenAI na fixture
+Diana; Nano passou `extrair_respostas` e `corrigir` nessa fixture simples, mas
 continua parcial por historico de qualidade em dataset maior. O sweep mais
 recente confirmou OpenAI OK, Gemini Flash/Flash Lite/3 Flash OK em conexao
 simples, mas `corrigir` com Gemini 2.5 Flash ainda falha alto por quota `429`;
@@ -2949,6 +2949,31 @@ Critério de pronto: lista de limpeza segura e revisada.
   `custo_usd=0.027222`.
 - Status: Nano fica confirmado para `extrair_respostas` nessa fixture simples,
   mas nao vira pipeline-ready em dataset maior sem novos smokes de qualidade.
+
+### 2026-05-17 -- Provider: GPT-5 Nano passa `corrigir` com retries visiveis
+
+- Alvo: testar o ponto historicamente perigoso do Nano: JSON/PDF divergente em
+  `CORRIGIR`.
+- Smoke: `task_960c0a287a13`, runtime `ae04982`, atividade
+  `f68d57a9a339081f`, aluna `10d9fa4f4303ea1f`, modelo `gpt5nano001`,
+  `selected_steps=["corrigir"]`, `force_rerun=true`.
+- Resultado: task `completed`; `corrigir=completed`; sem `stage_errors` finais.
+- Artefatos oficiais: JSON `d6ae91c76625c82b` e PDF `1ba9013486b61342`,
+  ambos `status=concluido`, provider/modelo `openai/gpt-5-nano`,
+  `tokens_entrada=33949`, `tokens_saida=8630`, `tokens_total=42579`,
+  `cost_run_id=tool_fe3dec8d7c1c`.
+- Conteudo verificado: `nota_final=8.0`; Q1 `3/3`, Q2 `3/3`, Q3 `0/2` por
+  porcentagem `25` vs `30`, Q4 `2/2`; `total_acertos=3`, `total_erros=1`.
+- Erros intermediarios preservados: JSON `9bf3a79a50ec0ff7` falhou por
+  `json_schema_validation`; PDF `a643037bf008e890` falhou por
+  `pdf_json_consistency`; JSON `2804464ef6056e8b` foi marcado
+  `stale_tool_artifact`. Isso e retry explicito no mesmo modelo, nao fallback.
+- Custo live: `/api/custos/resumo?limit=140` precificou
+  `tool_fe3dec8d7c1c` em `US$ 0.005149`; o resumo retornou
+  `runs_analisados=73`, `runs_precificados=71`, `runs_bloqueados=2` e
+  `custo_usd=1.478610`.
+- Status: Nano fica confirmado para `corrigir` nessa fixture simples com
+  retries visiveis, mas ainda nao vira pipeline-ready em datasets maiores.
 
 ## Riscos Abertos
 
