@@ -5,19 +5,20 @@
 **Status geral:** o servico oficial Render
 `srv-d5t8gbh4tr6s738fr3s0` (`IA_Educacao_V2`, branch `main`, URL
 `https://ia-educacao-v2.onrender.com`) tem como codigo funcional mais recente
-confirmado o commit `b8e14db` (`fix: surface partial result error documents`),
+confirmado o commit `325c200` (`fix: require evaluated items for correction results`),
 validado por `/api/deploy-info`, `/api/health` e
-`./scripts/check_deploy.sh b8e14db9336789f2dfa74410738a2c903bc2fc8d`. Se
+`./scripts/check_deploy.sh 325c20023fa940766b9dcf116b9a2bcbc8765e7d`. Se
 `/api/deploy-info` apontar commit documental posterior, comparar com este hash
 funcional antes de concluir que houve nova mudanca de runtime. O ciclo
-publicado faz a tela/rota de resultados obedecer `status=erro`: documento em
-erro nao conta como progresso parcial, retry concluido pode fechar a etapa sem
-esconder o erro anterior, e os documentos de erro continuam visiveis com
-provider/modelo/tokens/causa. GPT-4.1, GPT-5.4 Mini e GPT-4o seguem referencias
-de pipeline confirmadas na fixture Diana; Google esta limitado por quota `429`
-nos smokes recentes, Anthropic segue bloqueado por credito, e Supabase
-`token_usage` continua ausente (`PGRST205`), deixando custo duravel como gate
-real.
+publicado faz resultado, historico, pendencias e status de pipeline obedecerem
+`status=erro` e conteudo avaliavel: documento em erro nao conta como progresso,
+correcao sem questao/correcao com nota nao vira `completo=true`, retry concluido
+pode fechar a etapa sem esconder erro anterior, e documentos de erro continuam
+visiveis com provider/modelo/tokens/causa. GPT-4.1, GPT-5.4 Mini e GPT-4o
+seguem referencias de pipeline confirmadas na fixture Diana; Google esta
+limitado por quota `429` nos smokes recentes, Anthropic segue bloqueado por
+credito, e Supabase `token_usage` continua ausente (`PGRST205`), deixando custo
+duravel como gate real.
 
 Atualizacao Lista0 de 2026-05-17: a atividade real `Lista0`
 (`126e8b5ad7dd6d59`) tem documentos base cadastrados e 63 alunos
@@ -2637,9 +2638,31 @@ Critério de pronto: lista de limpeza segura e revisada.
   `routes_pipeline.py` e testes; `test_student_fast_paths.py` passou com
   `10 passed`; `test_erro_pipeline.py` passou com `79 passed`;
   `git diff --check` passou.
-- Status antes do deploy: patch validado localmente. Proximo passo do ciclo e
-  commit, push, deploy oficial, smoke live de status/historico e registro do
-  hash funcional.
+- Commits/deploys:
+  - `a1f6375` publicou a primeira parte: historico rapido, comparativo,
+    atividades pendentes e status pipeline ignorando documentos `status=erro`;
+    Render confirmou em 150s.
+  - O smoke live em Eric/Lista0 revelou que ainda havia falso verde quando a
+    correcao era `concluido`, mas sem questoes/correcoes avaliaveis
+    (`nota_final=0`, `total_questoes=0`).
+  - `27c6b16` tentou bloquear nota numerica sem nota confiavel, mas o smoke
+    mostrou que o dado antigo ainda passava.
+  - `325c200` endureceu a regra: correcao so vira resultado completo/status
+    pronto se houver ao menos uma questao/correcao com nota. Render confirmou
+    `325c20023fa940766b9dcf116b9a2bcbc8765e7d` em 180s; `check_deploy.sh`,
+    `/api/deploy-info` e `/api/health` passaram.
+- Smokes oficiais sem nova IA:
+  - Eric/Lista0 (`126e8b5ad7dd6d59`/`660e9421b246ad3f`):
+    `/api/resultados` agora retorna `completo=false`, etapa `correcao` com
+    `status=erro` e `erro_tipo=CORRECAO_SEM_NOTA_CONFIAVEL`;
+    `/api/pipeline/status` retorna `correcao=false`;
+    `/api/alunos/.../historico` retorna `corrigido=false`, `nota=null`;
+    `/api/alunos/.../atividades-pendentes` retorna `aguardando_correcao`.
+  - Diana/fixture simples (`f68d57a9a339081f`/`10d9fa4f4303ea1f`) continua
+    `completo=true`, `aluno_nome=Diana Omega`, `nota_final=8.0`.
+- Status: publicado no site oficial. Proximo alvo de Sprint 4 e revisar ranking
+  de turma/dashboard e mensagens de erro para provider/custo com a mesma
+  clareza.
 
 ## Riscos Abertos
 

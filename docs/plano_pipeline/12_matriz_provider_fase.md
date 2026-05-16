@@ -984,7 +984,7 @@ nem datasets maiores.
 
 **Proximos passos:**
 1. Manter deploy oficial confirmado por `/api/deploy-info` antes de cada smoke
-   novo; o codigo funcional mais recente confirmado e `b8e14db`. Commits
+   novo; o codigo funcional mais recente confirmado e `325c200`. Commits
    documentais posteriores podem mudar o hash de `/api/deploy-info` sem alterar
    comportamento de pipeline.
 2. Aplicar/validar a migration Supabase `token_usage` antes de chamar custo de
@@ -1002,5 +1002,6 @@ nem datasets maiores.
    documento parcial em erro nao conta como etapa concluida; retry concluido
    pode fechar a etapa, mas o documento de erro continua visivel na lista para
    auditoria e custo. Status: confirmado em `b8e14db` para HTML live e fixture
-   Diana com retry concluido; falta caso live com erro-only parcial e revisao de
-   historico/ranking.
+   Diana com retry concluido; `325c200` confirmou Eric/Lista0 como parcial/erro
+   quando a correcao nao tem questao/correcao avaliavel; falta revisao de
+   ranking/dashboard e mensagens finais de provider/custo.
