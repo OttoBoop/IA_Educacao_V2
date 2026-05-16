@@ -5,9 +5,9 @@
 **Status geral:** o servico oficial Render
 `srv-d5t8gbh4tr6s738fr3s0` (`IA_Educacao_V2`, branch `main`, URL
 `https://ia-educacao-v2.onrender.com`) tem como codigo funcional mais recente
-confirmado o commit `148d8b3` (`fix: protect ranking routes and zero averages`),
+confirmado o commit `147296d` (`fix: batch ranking dashboard aggregates`),
 validado por `/api/deploy-info`, `/api/health` e
-`./scripts/check_deploy.sh 148d8b30e2a2a126792d8c94831cd1ae69f5e3f6`. Se
+`./scripts/check_deploy.sh 147296d5f3c93a7687c76ce11e09c2c6d1a60f40`. Se
 `/api/deploy-info` apontar commit documental posterior, comparar com este hash
 funcional antes de concluir que houve nova mudanca de runtime. O ciclo
 publicado faz resultado, historico, pendencias e status de pipeline obedecerem
@@ -17,6 +17,8 @@ pode fechar a etapa sem esconder erro anterior, e documentos de erro continuam
 visiveis com provider/modelo/tokens/causa. O mesmo deploy corrigiu as rotas
 agregadas de ranking/estatisticas, que antes eram capturadas pela rota dinamica
 de aluno, e preservou medias legitimas `0.0` no dashboard/historico/comparativos.
+O ciclo seguinte reduziu o dashboard da turma Lista0 de cerca de 85s para 1.4s
+ao reaproveitar ranking em lote, sem reabilitar resultados sem itens avaliaveis.
 GPT-4.1, GPT-5.4 Mini e GPT-4o seguem referencias de pipeline confirmadas na
 fixture Diana; Google esta limitado por quota `429` nos smokes recentes,
 Anthropic segue bloqueado por credito, e Supabase `token_usage` continua ausente
@@ -2695,10 +2697,46 @@ Critério de pronto: lista de limpeza segura e revisada.
     `nota=0.0`, `corrigido=true`, `posicao=7`.
   - `/api/dashboard/turma/3f3ab03dfe783f30` preserva Eric com `media=null` e
     Alice com `media=0.0`.
-- Novo achado: dashboard/ranking de turma grande ainda e lento no site oficial
-  (dashboard levou cerca de 85s para parsear a resposta da Lista0). Proximo
-  alvo do loop: reduzir leituras repetidas/N+1 nos agregados sem relaxar as
-  regras de erro alto.
+- Achado que abriu o ciclo seguinte: dashboard/ranking de turma grande ainda
+  era lento no site oficial (dashboard levou cerca de 85s para parsear a
+  resposta da Lista0). O alvo virou reduzir leituras repetidas/N+1 nos
+  agregados sem relaxar as regras de erro alto.
+
+### 2026-05-17 -- Ranking/dashboard: agregados em lote
+
+- Alvo: corrigir o gargalo de agregados descoberto apos `148d8b3`.
+- Causa provavel: `get_ranking_turma` chamava `get_resultado_aluno` para cada
+  aluno; `dashboard_turma` ainda percorria aluno por aluno por atividade para
+  calcular medias. Na Lista0, isso multiplicava leituras de documentos e JSONs.
+- Mudanca: `get_ranking_turma` agora busca as correcoes concluidas da atividade
+  em lote via `_select_rows`, agrupa por aluno, le somente o JSON de correcao
+  escolhido e usa a mesma regra de nota confiavel: nota numerica so conta se
+  houver item avaliavel em `questoes[]` ou `correcoes[]`.
+- Mudanca: `dashboard_turma` reutiliza o ranking de cada atividade para montar
+  estatisticas e medias por aluno, em vez de chamar resultado detalhado para
+  cada par aluno/atividade.
+- Validacoes locais: `py_compile` de `visualizador.py`, `routes_resultados.py`
+  e testes; `git diff --check`; `test_student_fast_paths.py` +
+  `test_erro_pipeline.py` passaram juntos com `92 passed`.
+- Commit/deploy: `147296d` (`fix: batch ranking dashboard aggregates`)
+  publicado em `origin/main`; Render confirmou
+  `147296d5f3c93a7687c76ce11e09c2c6d1a60f40` em 150s por
+  `./scripts/wait_deploy.sh`, `./scripts/check_deploy.sh`, `/api/deploy-info`
+  e `/api/health`.
+- Smoke live sem nova IA:
+  - `/api/resultados/126e8b5ad7dd6d59/estatisticas`: primeiro acesso apos
+    deploy levou `12.315s`; repeticoes aquecidas ficaram entre `0.907s` e
+    `1.309s`, com `corrigidos=19`, `pendentes=44`, `media=1.2415789473684211`
+    e `menor_nota=0.0`.
+  - `/api/resultados/126e8b5ad7dd6d59/ranking`: repeticoes ficaram entre
+    `0.818s` e `1.126s`, `total=63`; Eric segue `corrigido=false`,
+    `nota=null`; Alice segue `corrigido=true`, `nota=0.0`, `posicao=7`.
+  - `/api/dashboard/turma/3f3ab03dfe783f30`: `1.433s`, `63` alunos e `1`
+    atividade; Eric segue com `atividades_corrigidas=0`, `media=null`; Alice
+    segue com `atividades_corrigidas=1`, `media=0.0`.
+- Status: publicado e smokeado no site oficial. Proximo alvo do loop: voltar
+  para provider/custo/pipeline, priorizando falhas ainda abertas de mensagens
+  provider/custo e persistencia duravel de `token_usage`.
 
 ## Riscos Abertos
 
