@@ -23,6 +23,16 @@ from models import TipoDocumento
 router = APIRouter()
 
 
+def _documento_concluido(doc) -> bool:
+    status = getattr(doc, "status", None)
+    if isinstance(status, str):
+        return status == "concluido"
+    value = getattr(status, "value", None)
+    if isinstance(value, str):
+        return value == "concluido"
+    return True
+
+
 # ============================================================
 # HELPER: DETECÇÃO DE MIME TYPE
 # ============================================================
@@ -205,18 +215,18 @@ async def status_pipeline(atividade_id: str, aluno_id: Optional[str] = None):
     docs_base = storage.listar_documentos(atividade_id)
     
     status_base = {
-        "enunciado": any(d.tipo == TipoDocumento.ENUNCIADO for d in docs_base),
-        "gabarito": any(d.tipo == TipoDocumento.GABARITO for d in docs_base),
-        "questoes_extraidas": any(d.tipo == TipoDocumento.EXTRACAO_QUESTOES for d in docs_base)
+        "enunciado": any(d.tipo == TipoDocumento.ENUNCIADO and _documento_concluido(d) for d in docs_base),
+        "gabarito": any(d.tipo == TipoDocumento.GABARITO and _documento_concluido(d) for d in docs_base),
+        "questoes_extraidas": any(d.tipo == TipoDocumento.EXTRACAO_QUESTOES and _documento_concluido(d) for d in docs_base)
     }
     
     status_aluno = None
     if aluno_id:
         docs_aluno = storage.listar_documentos(atividade_id, aluno_id)
         status_aluno = {
-            "prova": any(d.tipo == TipoDocumento.PROVA_RESPONDIDA for d in docs_aluno),
-            "respostas_extraidas": any(d.tipo == TipoDocumento.EXTRACAO_RESPOSTAS for d in docs_aluno),
-            "correcao": any(d.tipo == TipoDocumento.CORRECAO for d in docs_aluno)
+            "prova": any(d.tipo == TipoDocumento.PROVA_RESPONDIDA and _documento_concluido(d) for d in docs_aluno),
+            "respostas_extraidas": any(d.tipo == TipoDocumento.EXTRACAO_RESPOSTAS and _documento_concluido(d) for d in docs_aluno),
+            "correcao": any(d.tipo == TipoDocumento.CORRECAO and _documento_concluido(d) for d in docs_aluno)
         }
     
     return {"atividade_id": atividade_id, "status_base": status_base, "status_aluno": status_aluno}
@@ -452,7 +462,10 @@ async def gerar_relatorios(data: GerarRelatoriosRequest):
             docs = storage.listar_documentos(data.atividade_id, data.aluno_id)
             
             # Buscar dados de correção
-            correcao_doc = next((d for d in docs if d.tipo == TipoDocumento.CORRECAO), None)
+            correcao_doc = next(
+                (d for d in docs if d.tipo == TipoDocumento.CORRECAO and _documento_concluido(d)),
+                None,
+            )
             if not correcao_doc:
                 raise HTTPException(400, "Correção não encontrada para o aluno")
             

@@ -2231,6 +2231,80 @@ class TestF5T1_APIPropagaErro:
 
         assert vis.get_resultado_aluno("ativ_test", "aluno_test") is None
 
+    @pytest.mark.asyncio
+    async def test_atividades_pendentes_ignora_correcao_status_erro(self):
+        """Pending activities must not treat failed correction document as corrected."""
+        from models import StatusProcessamento, TipoDocumento
+
+        aluno = MagicMock()
+        aluno.id = "aluno_test"
+        aluno.nome = "Aluno Teste"
+
+        turma = MagicMock()
+        turma.id = "turma_test"
+        turma.nome = "Turma Teste"
+        turma.materia_id = "materia_test"
+
+        materia = MagicMock()
+        materia.nome = "Matematica"
+
+        atividade = MagicMock()
+        atividade.id = "ativ_test"
+        atividade.nome = "Prova"
+        atividade.tipo = "prova"
+
+        prova = MagicMock()
+        prova.tipo = TipoDocumento.PROVA_RESPONDIDA
+        prova.status = StatusProcessamento.CONCLUIDO
+
+        correcao_erro = MagicMock()
+        correcao_erro.tipo = TipoDocumento.CORRECAO
+        correcao_erro.status = StatusProcessamento.ERRO
+
+        mock_storage = MagicMock()
+        mock_storage.get_aluno.return_value = aluno
+        mock_storage.get_turmas_do_aluno.return_value = [{"id": "turma_test"}]
+        mock_storage.get_turma.return_value = turma
+        mock_storage.get_materia.return_value = materia
+        mock_storage.listar_atividades.return_value = [atividade]
+        mock_storage.listar_documentos.return_value = [prova, correcao_erro]
+
+        with patch("routes_resultados.storage", mock_storage):
+            from routes_resultados import get_atividades_pendentes_aluno
+            response = await get_atividades_pendentes_aluno("aluno_test")
+
+        assert response["total_pendentes"] == 1
+        assert response["pendentes"][0]["status"] == "aguardando_correcao"
+
+    @pytest.mark.asyncio
+    async def test_status_pipeline_ignora_documentos_erro(self):
+        """Pipeline status must only mark generated steps true for concluded docs."""
+        from models import StatusProcessamento, TipoDocumento
+
+        atividade = MagicMock()
+        atividade.id = "ativ_test"
+
+        prova = MagicMock()
+        prova.tipo = TipoDocumento.PROVA_RESPONDIDA
+        prova.status = StatusProcessamento.CONCLUIDO
+
+        correcao_erro = MagicMock()
+        correcao_erro.tipo = TipoDocumento.CORRECAO
+        correcao_erro.status = StatusProcessamento.ERRO
+
+        mock_storage = MagicMock()
+        mock_storage.get_atividade.return_value = atividade
+        mock_storage.listar_documentos.side_effect = (
+            lambda atividade_id, aluno_id=None: [prova, correcao_erro] if aluno_id else []
+        )
+
+        with patch("routes_pipeline.storage", mock_storage):
+            from routes_pipeline import status_pipeline
+            response = await status_pipeline("ativ_test", aluno_id="aluno_test")
+
+        assert response["status_aluno"]["prova"] is True
+        assert response["status_aluno"]["correcao"] is False
+
 
 # ============================================================
 # F5-T2: Visualizador includes erro_pipeline in VisaoAluno

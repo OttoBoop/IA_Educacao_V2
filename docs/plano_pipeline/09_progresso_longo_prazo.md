@@ -2612,6 +2612,29 @@ Critério de pronto: lista de limpeza segura e revisada.
   historico/ranking/agregados para impedir que documentos `status=erro` virem
   nota/correcao valida em listas resumidas.
 
+### 2026-05-17 -- Historico/status nao contam correcao em erro
+
+- Alvo: continuar Sprint 4 nos agregados depois da rota/tela de resultado
+  parcial. O problema era o mesmo falso verde em outra superficie: historico,
+  pendencias e status de pipeline podiam responder "corrigido" quando havia
+  apenas documento `CORRECAO` em `status=erro`.
+- Mudanca: `VisualizadorResultados.get_historico_aluno_fast()` ignora correcoes
+  em `status=erro` e tambem nao marca atividade como corrigida quando o JSON
+  concluido nao produz nota numerica.
+- Mudanca: `get_comparativo_questao()` passa a escolher somente documentos
+  concluidos para questoes/gabarito/respostas/correcao, evitando comparativo
+  baseado em artefato parcial ou falho.
+- Mudanca: `/api/alunos/{aluno_id}/atividades-pendentes` e
+  `/api/pipeline/status/{atividade_id}` consideram correção/respostas/prova
+  como presentes apenas quando o documento esta `concluido`.
+- Validacoes locais: `py_compile` de `visualizador.py`, `routes_resultados.py`,
+  `routes_pipeline.py` e testes; `test_student_fast_paths.py` passou com
+  `10 passed`; `test_erro_pipeline.py` passou com `78 passed`;
+  `git diff --check` passou.
+- Status antes do deploy: patch validado localmente. Proximo passo do ciclo e
+  commit, push, deploy oficial, smoke live de status/historico e registro do
+  hash funcional.
+
 ## Riscos Abertos
 
 1. Creditos Anthropic insuficientes ainda bloqueiam validacao Haiku.

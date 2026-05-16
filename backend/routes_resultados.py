@@ -575,7 +575,10 @@ async def get_atividades_pendentes_aluno(aluno_id: str):
             # Verificar se tem prova mas não tem correção
             docs = storage.listar_documentos(ativ.id, aluno_id)
             tem_prova = any(d.tipo == TipoDocumento.PROVA_RESPONDIDA for d in docs)
-            tem_correcao = any(d.tipo == TipoDocumento.CORRECAO for d in docs)
+            tem_correcao = any(
+                d.tipo == TipoDocumento.CORRECAO and _documento_status(d) == "concluido"
+                for d in docs
+            )
             
             if tem_prova and not tem_correcao:
                 pendentes.append({

@@ -548,7 +548,9 @@ class VisualizadorResultados:
         }
         
         # Buscar questões extraídas
-        questoes_doc = next((d for d in docs_base if d.tipo == TipoDocumento.EXTRACAO_QUESTOES), None)
+        questoes_doc = self._escolher_documento_resultado(
+            [d for d in docs_base if d.tipo == TipoDocumento.EXTRACAO_QUESTOES]
+        )
         if questoes_doc:
             data = self._ler_json(questoes_doc)
             questoes = data.get("questoes", [])
@@ -557,7 +559,9 @@ class VisualizadorResultados:
                 resultado["enunciado"] = questao
         
         # Buscar gabarito
-        gabarito_doc = next((d for d in docs_base if d.tipo == TipoDocumento.EXTRACAO_GABARITO), None)
+        gabarito_doc = self._escolher_documento_resultado(
+            [d for d in docs_base if d.tipo == TipoDocumento.EXTRACAO_GABARITO]
+        )
         if gabarito_doc:
             data = self._ler_json(gabarito_doc)
             respostas = data.get("respostas", [])
@@ -566,7 +570,9 @@ class VisualizadorResultados:
                 resultado["gabarito"] = resposta
         
         # Buscar resposta do aluno
-        respostas_doc = next((d for d in documentos if d.tipo == TipoDocumento.EXTRACAO_RESPOSTAS), None)
+        respostas_doc = self._escolher_documento_resultado(
+            [d for d in documentos if d.tipo == TipoDocumento.EXTRACAO_RESPOSTAS]
+        )
         if respostas_doc:
             data = self._ler_json(respostas_doc)
             respostas = data.get("respostas", [])
@@ -575,7 +581,9 @@ class VisualizadorResultados:
                 resultado["resposta_aluno"] = resposta
         
         # Buscar correção
-        correcao_doc = next((d for d in documentos if d.tipo == TipoDocumento.CORRECAO), None)
+        correcao_doc = self._escolher_documento_resultado(
+            [d for d in documentos if d.tipo == TipoDocumento.CORRECAO]
+        )
         if correcao_doc:
             data = self._ler_json(correcao_doc)
             
@@ -740,8 +748,11 @@ class VisualizadorResultados:
         latest_docs: Dict[str, Documento] = {}
         for row in correction_rows:
             atividade_id = row.get("atividade_id")
+            documento = Documento.from_dict(row)
+            if self._status_documento(documento) != "concluido":
+                continue
             if atividade_id and atividade_id not in latest_docs:
-                latest_docs[atividade_id] = Documento.from_dict(row)
+                latest_docs[atividade_id] = documento
 
         summaries: Dict[str, Dict[str, Optional[float]]] = {}
         json_reads = 0
@@ -754,6 +765,8 @@ class VisualizadorResultados:
                     atividade_row.get("nota_maxima", 0),
                     correction_data,
                 )
+                if summaries[atividade_id].get("nota") is None:
+                    summaries.pop(atividade_id, None)
             except Exception as exc:
                 logging.warning(
                     "[visualizador] Falha ao resumir correção do aluno atividade=%s aluno=%s: %s",

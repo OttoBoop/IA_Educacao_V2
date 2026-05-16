@@ -312,6 +312,109 @@ def test_visualizador_historico_fast_uses_latest_correction_summary(monkeypatch)
     ]
 
 
+def test_visualizador_historico_fast_skips_latest_error_correction(monkeypatch):
+    fake_storage = SimpleNamespace()
+    fake_storage.get_turmas_do_aluno = lambda aluno_id: [
+        {
+            "id": "turma-1",
+            "nome": "9A",
+            "ano_letivo": 2026,
+            "materia_nome": "Matematica",
+        }
+    ]
+    fake_storage._log_hot_endpoint_profile = lambda *args, **kwargs: None
+
+    atividades_rows = [
+        {
+            "id": "ativ-1",
+            "turma_id": "turma-1",
+            "nome": "Prova 1",
+            "tipo": "prova",
+            "data_aplicacao": "2026-03-10T09:00:00",
+            "nota_maxima": 10.0,
+        },
+    ]
+    error_row = _doc_row("doc-error", "ativ-1", "aluno-1", criado_em="2026-03-13T10:00:00")
+    error_row["status"] = "erro"
+    correction_rows = [
+        error_row,
+        _doc_row("doc-ok", "ativ-1", "aluno-1", criado_em="2026-03-12T10:00:00"),
+    ]
+
+    def fake_select_rows(table, filters=None, order_by=None, order_desc=False, limit=None, columns=None):
+        if table == "atividades":
+            return atividades_rows
+        if table == "documentos":
+            return correction_rows
+        raise AssertionError(f"unexpected table lookup: {table}")
+
+    fake_storage._select_rows = fake_select_rows
+
+    visualizador = VisualizadorResultados()
+    visualizador.storage = fake_storage
+    monkeypatch.setattr(
+        visualizador,
+        "_ler_json",
+        lambda documento: {
+            "doc-error": {"_erro_pipeline": {"tipo": "PDF_JSON_INCONSISTENTE"}},
+            "doc-ok": {"nota": 7.0, "feedback": "ok"},
+        }.get(documento.id, {}),
+    )
+
+    historico = visualizador.get_historico_aluno_fast("aluno-1")
+
+    assert historico[0]["corrigido"] is True
+    assert historico[0]["nota"] == 7.0
+
+
+def test_visualizador_historico_fast_error_only_is_not_corrected(monkeypatch):
+    fake_storage = SimpleNamespace()
+    fake_storage.get_turmas_do_aluno = lambda aluno_id: [
+        {
+            "id": "turma-1",
+            "nome": "9A",
+            "ano_letivo": 2026,
+            "materia_nome": "Matematica",
+        }
+    ]
+    fake_storage._log_hot_endpoint_profile = lambda *args, **kwargs: None
+
+    atividades_rows = [
+        {
+            "id": "ativ-1",
+            "turma_id": "turma-1",
+            "nome": "Prova 1",
+            "tipo": "prova",
+            "data_aplicacao": "2026-03-10T09:00:00",
+            "nota_maxima": 10.0,
+        },
+    ]
+    error_row = _doc_row("doc-error", "ativ-1", "aluno-1", criado_em="2026-03-13T10:00:00")
+    error_row["status"] = "erro"
+
+    def fake_select_rows(table, filters=None, order_by=None, order_desc=False, limit=None, columns=None):
+        if table == "atividades":
+            return atividades_rows
+        if table == "documentos":
+            return [error_row]
+        raise AssertionError(f"unexpected table lookup: {table}")
+
+    fake_storage._select_rows = fake_select_rows
+
+    visualizador = VisualizadorResultados()
+    visualizador.storage = fake_storage
+    monkeypatch.setattr(
+        visualizador,
+        "_ler_json",
+        lambda documento: {"_erro_pipeline": {"tipo": "PDF_JSON_INCONSISTENTE"}},
+    )
+
+    historico = visualizador.get_historico_aluno_fast("aluno-1")
+
+    assert historico[0]["corrigido"] is False
+    assert historico[0]["nota"] is None
+
+
 def test_dashboard_aluno_fast_preserves_existing_shape(monkeypatch):
     visualizador = VisualizadorResultados()
     visualizador.storage = SimpleNamespace(

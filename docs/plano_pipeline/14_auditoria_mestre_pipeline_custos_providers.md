@@ -3615,6 +3615,40 @@ Estado:
 - Ainda falta revisar historico/ranking para garantir que outros agregados
   tambem nao transformem documento em erro em nota/correcao valida.
 
+## Atualizacao 2026-05-17 -- Historico E Status Nao Contam Erro Como Corrigido
+
+Problema:
+
+- Depois de corrigir a tela de resultado, a mesma classe de bug ainda existia em
+  agregados: historico rapido, atividades pendentes e status de pipeline olhavam
+  para a existencia de documento `CORRECAO` em vez do `status` do documento.
+- Esse comportamento podia tirar uma atividade da fila de pendencias ou marcar
+  historico como corrigido mesmo quando o unico artefato era `status=erro`.
+
+Mudanca:
+
+- `VisualizadorResultados.get_historico_aluno_fast()` pula documentos de
+  correcao que nao estao `concluido` e so marca `corrigido=true` quando ha nota
+  numerica confiavel.
+- `get_comparativo_questao()` escolhe apenas documentos concluidos para
+  questoes/gabarito/respostas/correcao.
+- `/api/alunos/{aluno_id}/atividades-pendentes` e
+  `/api/pipeline/status/{atividade_id}` so tratam prova, respostas e correcao
+  como presentes quando o documento esta `concluido`.
+
+Validacao local:
+
+- `py_compile` de `backend/visualizador.py`, `backend/routes_resultados.py`,
+  `backend/routes_pipeline.py` e testes tocados.
+- `test_student_fast_paths.py`: `10 passed`.
+- `test_erro_pipeline.py`: `78 passed`.
+- `git diff --check`: sem erros.
+
+Estado:
+
+- Patch validado localmente, ainda pendente de commit/deploy/smoke oficial no
+  momento desta anotacao.
+
 ## Trabalho Aberto Desta Auditoria
 
 Esta auditoria nao encerra o loop tecnico. Ela deixa o proximo trabalho mais
@@ -3628,7 +3662,7 @@ claro. O que ainda existe para fazer:
 | Provider revalidation | Smoke/producao | Matriz Doc 12 registra GPT-5.4 Mini full smoke em fixture simples, GPT-4o full smoke (`task_68b19146a95b`) e Gemini 2.5 Flash com extracoes OK/tool-use corrigido mas bloqueado por quota; smoke `task_81f274a6f510` em `3fce335` confirma erro alto Google `429` sem novo falso verde; Gemini 2.5 Flash Lite `task_52e5fa9020a0` confirmou caminho Google Lite com erro alto de PDF/codigo, e `task_124bf0e8d7bf` em `0f84552` confirmou erro alto de JSON/PDF divergentes; GPT-5 Nano `task_90eb0936b7ce` confirmou `corrigir` como falha alta por PDF/JSON divergentes; GPT-4.1 `task_f6851ed535b8` confirmou full pipeline unico com JSON/PDF coerentes e custos medidos. Continua incompleta ate novos smokes por provider/rota/dataset. |
 | PDFs/UI GPT-5.4 Mini/GPT-4o | Codigo/testes/deploy/smoke | `task_a5f0d734f0b3` completou 6 etapas, JSONs passaram inspeção semantica inicial e PDFs existem; `0ac92f0` corrigiu parte do layout, mas `task_605512496b0d` provou divergencia PDF/JSON; `2052a01` transformou essa divergencia em erro alto; `3a77a17` validou retry explicito do PDF; `3e6be20` bloqueia Feedback Geral truncado; GPT-4o passou as etapas finais com artefatos ruins marcados como erro; `task_42e3b303c39a` confirmou PDF final coerente em `corrigir`. Ainda falta repetir em datasets maiores e melhorar UI de erro para o usuario final. |
 | Gabarito incompleto bloqueia correção | Codigo/testes/deploy/smoke | `3a7dfea` bloqueia `CORRIGIR` com `MISSING_CONTENT` no gabarito; continua importante para datasets como Lista0, embora a fixture Diana tenha completado. |
-| UI de erros | Produto/frontend | Sidebar ja mostra a causa por aluno/etapa desde `98fafc9`; resultado parcial agora distingue `status=erro` de progresso concluido e mostra banner/documento em erro; `b8e14db` foi deployado e smoke live confirmou HTML e documento em erro visivel na fixture Diana; ainda falta historico/ranking, erro-only parcial em producao e mensagens completas para provider/custo. |
+| UI de erros | Produto/frontend | Sidebar ja mostra a causa por aluno/etapa desde `98fafc9`; resultado parcial agora distingue `status=erro` de progresso concluido e mostra banner/documento em erro; `b8e14db` foi deployado e smoke live confirmou HTML e documento em erro visivel na fixture Diana; ciclo seguinte corrigiu historico rapido, comparativo, atividades pendentes e status pipeline para ignorarem documentos `status=erro`; ainda falta deploy/smoke desse segundo patch, ranking completo por dataset e mensagens completas para provider/custo. |
 | Limpeza de dados | Dados | "Fantasmas" precisam reclassificacao; PDF com `/conteudo=null` nao pode ser deletado. |
 
 Regra de continuidade:
