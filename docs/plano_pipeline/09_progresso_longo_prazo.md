@@ -138,6 +138,17 @@ ausencia de erro de etapa. Observacao de polish: o PDF de analise contem typo
 visual `Proeficiência`; nao e falso verde de schema/custo, mas deve entrar em
 melhoria de qualidade de PDF.
 
+Atualizacao GPT-4.1 extracoes em 2026-05-17 no runtime `0f84552`: smoke
+`task_fd62c9db2359`, `selected_steps=["extrair_questoes","extrair_gabarito","extrair_respostas"]`,
+completou no site oficial. `EXTRAIR_QUESTOES` gerou JSON `b5393676dc1c1dd4`
+com 4 questoes e pontuacao total `10.0` (`1151/441`, `US$ 0.005830`);
+`EXTRAIR_GABARITO` gerou `f6e322b5829d4d34` com respostas `x=5`, `34`, `30`,
+`20 cm2` (`1852/451`, `US$ 0.007312`); `EXTRAIR_RESPOSTAS` gerou
+`c429ee5f3276fa90` com 4 respostas da Diana, Q3 `25`, sem resposta em branco e
+`raciocinio_parcial=null` (`2242/288`, `US$ 0.006788`). Status: GPT-4.1 esta
+confirmado nas 6 etapas da fixture simples, somando os smokes por grupo de
+etapas, com custo medido por etapa.
+
 Atualizacao de 2026-05-17 no runtime `700b088`: o ciclo `f40acf3` alinhou
 `PROMPTS_PADRAO` e `STAGE_TOOL_INSTRUCTIONS` para `CORRIGIR`,
 `ANALISAR_HABILIDADES` e `GERAR_RELATORIO`, e tornou obrigatorios campos de

@@ -133,7 +133,7 @@
 | **GPT-5 Nano** (`gpt5nano001`) | ✅ | ✅ | ⚠️ | ❌ | ⚠️ | ✅ |
 | **GPT-5.4 Mini** (`gpt54mini001`) | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | **GPT-4o** (`180b8298a279`) — referencia | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
-| **GPT-4.1** (`ffae9accf68e`) | ⏸️ | ⏸️ | ⏸️ | ✅ | ✅ | ✅ |
+| **GPT-4.1** (`ffae9accf68e`) | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 
 Nota de leitura: os checks da tabela acima sao por etapa individual validada.
 Eles nao significam que a pipeline completa de 6 etapas passou em uma unica
@@ -233,6 +233,13 @@ Relatorio: JSON `10d478289be3cf03`, PDF `e4e6f65038d399db`, `14021/2107`,
 `US$ 0.044898`. A nota final permaneceu `8.0`. A validacao de qualidade achou
 typo `Proeficiência` no PDF de analise; isso e melhoria visual, nao falso verde
 de pipeline.
+Nota GPT-4.1 extracoes: `task_fd62c9db2359` completou as tres extracoes no
+runtime `0f84552`. `EXTRAIR_QUESTOES` `b5393676dc1c1dd4` trouxe 4 questoes e
+10 pontos (`US$ 0.005830`), `EXTRAIR_GABARITO` `f6e322b5829d4d34` trouxe
+respostas completas (`US$ 0.007312`) e `EXTRAIR_RESPOSTAS`
+`c429ee5f3276fa90` trouxe 4 respostas da Diana, Q3 `25` e
+`raciocinio_parcial=null` (`US$ 0.006788`). A cobertura GPT-4.1 fica ✅ nas 6
+etapas para a fixture simples, embora ainda falte dataset maior.
 Nota P0 atualizada: `extrair_gabarito` Gemini era ❌ porque o output historico
 retornou todas as respostas como `MISSING_CONTENT`, embora o PDF base tivesse
 texto extraivel de "Exercicio 5". Em 2026-05-17, o smoke
