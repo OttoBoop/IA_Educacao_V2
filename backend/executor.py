@@ -2880,6 +2880,10 @@ Regras obrigatórias:
                     ),
                     flags=re.IGNORECASE,
                 )
+                especulacao_pattern = re.compile(
+                    r"\b(provavelmente|possivelmente|talvez|aparentemente|deve\s+ter|parece\s+que)\b",
+                    flags=re.IGNORECASE,
+                )
 
                 def _sem_conteudo(item: Any) -> bool:
                     if not isinstance(item, dict):
@@ -2889,6 +2893,8 @@ Regras obrigatórias:
                     if not resposta_aluno and not item.get("em_branco") and not item.get("ilegivel"):
                         inconsistentes.append(item.get("questao_numero", "?"))
                     if raciocinio_parcial and julgamento_pattern.search(raciocinio_parcial):
+                        julgamentos.append(item.get("questao_numero", "?"))
+                    if raciocinio_parcial and especulacao_pattern.search(raciocinio_parcial):
                         julgamentos.append(item.get("questao_numero", "?"))
                     return (
                         bool(item.get("ilegivel"))
@@ -2910,8 +2916,8 @@ Regras obrigatórias:
                     return (
                         "EXTRAIR_RESPOSTAS colocou julgamento/correcao em "
                         f"raciocinio_parcial nas questoes: {questoes}. Esta etapa deve "
-                        "transcrever sinais observaveis, nao comparar com gabarito nem "
-                        "dizer se a resposta esta correta."
+                        "transcrever sinais observaveis, nao especular metodo, comparar "
+                        "com gabarito nem dizer se a resposta esta correta."
                     )
 
                 todas_sem_conteudo = all(marcadores_sem_conteudo)

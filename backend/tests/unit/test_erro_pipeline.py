@@ -140,6 +140,33 @@ class TestBlockingParsedResponses:
         assert erro is not None
         assert "julgamento/correcao" in erro
 
+    def test_extrair_respostas_raciocinio_nao_pode_especular(self):
+        from executor import EtapaProcessamento, PipelineExecutor
+
+        executor = PipelineExecutor.__new__(PipelineExecutor)
+        erro = executor._erro_resposta_parseada(
+            EtapaProcessamento.EXTRAIR_RESPOSTAS,
+            {
+                "aluno": "Diana Omega",
+                "respostas": [
+                    {
+                        "questao_numero": 1,
+                        "resposta_aluno": "x = 5",
+                        "em_branco": False,
+                        "ilegivel": False,
+                        "raciocinio_parcial": (
+                            "Aluno provavelmente usou operações inversas."
+                        ),
+                    }
+                ],
+                "questoes_respondidas": 1,
+                "questoes_em_branco": 0,
+            },
+        )
+
+        assert erro is not None
+        assert "especular metodo" in erro
+
 
 class TestExtrairRespostasContextoQuestoes:
     """EXTRAIR_RESPOSTAS deve receber questoes extraidas no prompt, nao so anexo."""

@@ -306,6 +306,8 @@ class TestPromptExtrairRespostasReescrito:
         assert "correto" in texto_lower
         assert "incorreto" in texto_lower
         assert "etapa corrigir" in texto_lower
+        assert "provavelmente" in texto_lower
+        assert "raciocinio_parcial: null" in texto_lower
 
     def test_prompt_extrair_respostas_renderiza_sem_vars_soltas(self):
         """Prompt EXTRAIR_RESPOSTAS deve renderizar sem variáveis não substituídas."""
