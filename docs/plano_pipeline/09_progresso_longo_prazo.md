@@ -37,12 +37,13 @@ O ciclo `ae04982` adicionou `por_etapa` em `/api/custos/resumo` e confirmou o
 agregado live: `correcao` segue como a maior fatia de custo, seguida por
 `analise_habilidades` e `relatorio_final`.
 GPT-4.1, GPT-5.4 Mini e GPT-4o seguem referencias de pipeline confirmadas na
-fixture Diana; o sweep mais recente confirmou OpenAI OK, Gemini Flash/Flash
-Lite/3 Flash OK em conexao simples, mas `corrigir` com Gemini 2.5 Flash ainda
-falha alto por quota `429`; Gemini 2.5 Pro tambem esta bloqueado por quota,
-Anthropic bloqueado por credito e Ollama indisponivel no Render. Supabase
-`token_usage` continua ausente (`PGRST205`), deixando custo duravel como gate
-real.
+fixture Diana; GPT-5 Nano passou `extrair_respostas` nessa fixture simples, mas
+continua parcial por historico de qualidade em dataset maior. O sweep mais
+recente confirmou OpenAI OK, Gemini Flash/Flash Lite/3 Flash OK em conexao
+simples, mas `corrigir` com Gemini 2.5 Flash ainda falha alto por quota `429`;
+Gemini 2.5 Pro tambem esta bloqueado por quota, Anthropic bloqueado por credito
+e Ollama indisponivel no Render. Supabase `token_usage` continua ausente
+(`PGRST205`), deixando custo duravel como gate real.
 
 Atualizacao Lista0 de 2026-05-17: a atividade real `Lista0`
 (`126e8b5ad7dd6d59`) tem documentos base cadastrados e 63 alunos
@@ -2927,6 +2928,27 @@ Critério de pronto: lista de limpeza segura e revisada.
   `tokens_saida=0`, portanto nao foi precificada.
 - Status: Gemini 2.5 Flash nao esta pipeline-ready agora. O sistema falhou alto
   e nao fez fallback para OpenAI.
+
+### 2026-05-17 -- Provider: GPT-5 Nano passa `extrair_respostas` na fixture simples
+
+- Alvo: revalidar o ponto mais sensivel do Nano na fixture Diana, sem extrapolar
+  para dataset maior.
+- Smoke: `task_0818b99194aa`, runtime `ae04982`, atividade
+  `f68d57a9a339081f`, aluna `10d9fa4f4303ea1f`, modelo `gpt5nano001`,
+  `selected_steps=["extrair_respostas"]`, `force_rerun=true`.
+- Resultado: task `completed`; `extrair_respostas=completed`; sem
+  `stage_errors`.
+- Documento: `f021525b6fdf0db0`, `status=concluido`, provider/modelo
+  `openai/gpt-5-nano`, `tokens_entrada=2286`, `tokens_saida=1998`,
+  `tokens_total=4284`, `tempo_processamento_ms=14522.7`.
+- Conteudo verificado: 4 respostas reais (`x = 5`, `34`, `25`, `20 cm2`),
+  `questoes_respondidas=4`, `questoes_em_branco=0`, sem avisos no JSON.
+- Custo live: `/api/custos/resumo?limit=120` precificou o run
+  `f021525b6fdf0db0` em `US$ 0.000914`; `extrair_respostas` subiu para
+  `8` runs, `tokens_entrada=18620`, `tokens_saida=4070`,
+  `custo_usd=0.027222`.
+- Status: Nano fica confirmado para `extrair_respostas` nessa fixture simples,
+  mas nao vira pipeline-ready em dataset maior sem novos smokes de qualidade.
 
 ## Riscos Abertos
 
