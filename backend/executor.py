@@ -3666,7 +3666,11 @@ Seja preciso, educativo e construtivo em suas análises."""
 
             def _validate_json_artifacts(state: Dict[str, Any]) -> List[str]:
                 """Fail high on known placeholder/schema leaks in persisted JSON."""
-                if expected_document_type != TipoDocumento.ANALISE_HABILIDADES:
+                if expected_document_type not in {
+                    TipoDocumento.CORRECAO,
+                    TipoDocumento.ANALISE_HABILIDADES,
+                    TipoDocumento.RELATORIO_FINAL,
+                }:
                     return []
 
                 errors: List[str] = []
@@ -3709,9 +3713,38 @@ Seja preciso, educativo e construtivo em suas análises."""
                         errors.append(f"JSON {doc_label} contém placeholder proibido: {placeholder}")
                         break
 
-                habilidades = data.get("habilidades") if isinstance(data, dict) else None
-                if not habilidades:
-                    errors.append(f"JSON {doc_label} sem lista/dicionário de habilidades")
+                if not isinstance(data, dict):
+                    errors.append(
+                        f"JSON {doc_label} deve ser objeto JSON na raiz, não {type(data).__name__}"
+                    )
+                    return errors
+
+                def _numeric(value: Any) -> bool:
+                    if isinstance(value, (int, float)):
+                        return math.isfinite(float(value))
+                    if isinstance(value, str):
+                        try:
+                            return math.isfinite(float(value.replace(",", ".")))
+                        except ValueError:
+                            return False
+                    return False
+
+                if expected_document_type == TipoDocumento.CORRECAO:
+                    if not _numeric(data.get("nota_final")):
+                        errors.append(f"JSON {doc_label} sem nota_final numérica")
+                    if not isinstance(data.get("questoes"), list) or not data.get("questoes"):
+                        errors.append(f"JSON {doc_label} sem lista de questoes")
+
+                if expected_document_type == TipoDocumento.ANALISE_HABILIDADES:
+                    habilidades = data.get("habilidades")
+                    if not habilidades:
+                        errors.append(f"JSON {doc_label} sem lista/dicionário de habilidades")
+
+                if expected_document_type == TipoDocumento.RELATORIO_FINAL:
+                    if not _numeric(data.get("nota_final")):
+                        errors.append(f"JSON {doc_label} sem nota_final numérica")
+                    if not data.get("resumo_geral"):
+                        errors.append(f"JSON {doc_label} sem resumo_geral")
 
                 return errors
 
@@ -3781,12 +3814,28 @@ Seja preciso, educativo e construtivo em suas análises."""
                         json_content = f"[JSON anterior indisponivel para leitura no retry: {exc}]"
 
                 schema_hint = ""
+                if expected_document_type == TipoDocumento.CORRECAO:
+                    schema_hint = (
+                        "Para CORRIGIR, o content salvo por create_document deve ser "
+                        "um OBJETO JSON na raiz, nunca uma lista/array. Campos "
+                        "obrigatorios na raiz: nota_final, questoes, total_acertos, "
+                        "total_erros, feedback_geral, _avisos_documento, "
+                        "_avisos_questao. "
+                    )
                 if expected_document_type == TipoDocumento.ANALISE_HABILIDADES:
                     schema_hint = (
                         "Para ANALISAR_HABILIDADES, o content salvo por create_document "
                         "deve ser um OBJETO JSON na raiz, nunca uma lista/array. "
                         "Campos obrigatorios na raiz: habilidades, indicadores, "
                         "recomendacoes, _avisos_documento, _avisos_questao. "
+                    )
+                if expected_document_type == TipoDocumento.RELATORIO_FINAL:
+                    schema_hint = (
+                        "Para GERAR_RELATORIO, o content salvo por create_document "
+                        "deve ser um OBJETO JSON na raiz, nunca uma lista/array. "
+                        "Campos obrigatorios na raiz: resumo_geral, pontos_fortes, "
+                        "areas_melhoria, recomendacoes, nota_final, detalhamento, "
+                        "_avisos_documento, _avisos_questao. "
                     )
 
                 return (

@@ -601,12 +601,19 @@ async def test_executar_com_tools_repara_pdf_nao_persistido_com_retry(monkeypatc
 
     json_path = tmp_path / "correcao.json"
     pdf_path = tmp_path / "correcao.pdf"
-    json_path.write_text('{"nota_final": 7}', encoding="utf-8")
+    json_path.write_text(
+        '{"nota_final": 7, "questoes": [{"numero": 1, "nota": 3}]}',
+        encoding="utf-8",
+    )
     import fitz
 
     pdf = fitz.open()
     page = pdf.new_page()
-    page.insert_text((40, 80), "Nota final: 7.0 / 10.0", fontsize=11)
+    page.insert_text(
+        (40, 80),
+        "Nota final: 7.0 / 10.0\nQuestão 1 — Acerto | Nota: 3.0",
+        fontsize=11,
+    )
     pdf.save(str(pdf_path))
     pdf.close()
 
@@ -940,6 +947,168 @@ async def test_executar_com_tools_repara_json_schema_invalido(monkeypatch, tmp_p
     assert resultado.sucesso is True
     assert resultado.tentativas == 3
     assert DummyClient.calls == 3
+    assert any(
+        call.args[0] == "doc-json-bad"
+        and call.kwargs.get("status") == StatusProcessamento.ERRO
+        and call.kwargs["metadata_patch"]["erro_tipo"] == "json_schema_validation"
+        for call in executor.storage.atualizar_documento_processamento.call_args_list
+    )
+
+
+@pytest.mark.asyncio
+async def test_executar_com_tools_repara_correcao_json_array(monkeypatch, tmp_path):
+    import fitz
+    import chat_service
+    from executor import PipelineExecutor
+    from chat_service import ProviderType
+
+    model = SimpleNamespace(
+        id="gpt4o",
+        tipo=ProviderType.OPENAI,
+        modelo="gpt-4o",
+        api_key_id=None,
+        suporta_function_calling=True,
+        max_tokens=1024,
+        temperature=0,
+        suporta_temperature=True,
+    )
+
+    monkeypatch.setattr(chat_service.model_manager, "get", lambda model_id: model)
+    monkeypatch.setattr(chat_service.api_key_manager, "get", lambda key_id: None)
+    monkeypatch.setattr(
+        chat_service.api_key_manager,
+        "get_por_empresa",
+        lambda provider: SimpleNamespace(api_key="test-key"),
+    )
+
+    bad_json_path = tmp_path / "correcao_bad.json"
+    good_json_path = tmp_path / "correcao_good.json"
+    pdf_path = tmp_path / "correcao.pdf"
+    bad_json_path.write_text(
+        '[{"nota_final": 8, "questoes": [{"numero": 3, "nota": 0}]}]',
+        encoding="utf-8",
+    )
+    good_json_path.write_text(
+        '{"nota_final": 8, "questoes": [{"numero": 3, "nota": 0}]}',
+        encoding="utf-8",
+    )
+    pdf = fitz.open()
+    page = pdf.new_page()
+    page.insert_textbox(
+        fitz.Rect(40, 40, 560, 800),
+        "Nota final: 8.0 / 10.0\nQuestão 3 — Erro | Nota: 0.0\n",
+        fontsize=11,
+    )
+    pdf.save(str(pdf_path))
+    pdf.close()
+
+    class DummyClient:
+        calls = 0
+
+        def __init__(self, model_config, api_key):
+            self.model_config = model_config
+            self.api_key = api_key
+
+        async def chat_with_tools(self, **kwargs):
+            DummyClient.calls += 1
+            context = kwargs["context"]
+            if DummyClient.calls == 1:
+                context.created_document_ids.append("doc-json-bad")
+                return {
+                    "content": "",
+                    "tokens": 10,
+                    "input_tokens": 8,
+                    "output_tokens": 2,
+                    "tool_calls": [
+                        {
+                            "id": "json-1",
+                            "name": "create_document",
+                            "input": {"content": bad_json_path.read_text(encoding="utf-8")},
+                            "is_error": False,
+                            "files_generated": [],
+                        }
+                    ],
+                }
+            if DummyClient.calls == 2:
+                context.created_document_ids.append("doc-pdf")
+                return {
+                    "content": "",
+                    "tokens": 10,
+                    "input_tokens": 8,
+                    "output_tokens": 2,
+                    "tool_calls": [
+                        {
+                            "id": "pdf-1",
+                            "name": "execute_python_code",
+                            "input": {"output_files": ["correcao.pdf"]},
+                            "is_error": False,
+                            "files_generated": [{"filename": "correcao.pdf", "size_bytes": 128}],
+                        }
+                    ],
+                }
+
+            context.created_document_ids.append("doc-json-good")
+            return {
+                "content": "",
+                "tokens": 10,
+                "input_tokens": 8,
+                "output_tokens": 2,
+                "tool_calls": [
+                    {
+                        "id": "json-2",
+                        "name": "create_document",
+                        "input": {"content": good_json_path.read_text(encoding="utf-8")},
+                        "is_error": False,
+                        "files_generated": [],
+                    }
+                ],
+            }
+
+    monkeypatch.setattr(chat_service, "ChatClient", DummyClient)
+
+    docs = {
+        "doc-json-bad": SimpleNamespace(
+            id="doc-json-bad",
+            extensao=".json",
+            metadata={"tool": "create_document"},
+            criado_por="ia_create_document",
+        ),
+        "doc-json-good": SimpleNamespace(
+            id="doc-json-good",
+            extensao=".json",
+            metadata={"tool": "create_document"},
+            criado_por="ia_create_document",
+        ),
+        "doc-pdf": SimpleNamespace(
+            id="doc-pdf",
+            extensao=".pdf",
+            metadata={"tool": "execute_python_code"},
+            criado_por="ia_execute_python_code",
+        ),
+    }
+    paths = {
+        "doc-json-bad": bad_json_path,
+        "doc-json-good": good_json_path,
+        "doc-pdf": pdf_path,
+    }
+
+    executor = PipelineExecutor()
+    executor.storage.get_documento = MagicMock(side_effect=lambda doc_id: docs[doc_id])
+    executor.storage.resolver_caminho_documento = MagicMock(side_effect=lambda doc: paths[doc.id])
+    executor.storage.atualizar_documento_processamento = MagicMock()
+
+    resultado = await executor.executar_com_tools(
+        mensagem="corrija",
+        atividade_id="ativ-1",
+        aluno_id="aluno-1",
+        provider_id="gpt4o",
+        tools_to_use=["create_document", "execute_python_code"],
+        expected_document_type=TipoDocumento.CORRECAO,
+        prompt_id="prompt-1",
+    )
+
+    assert resultado.sucesso is True
+    assert resultado.tentativas == 3
     assert any(
         call.args[0] == "doc-json-bad"
         and call.kwargs.get("status") == StatusProcessamento.ERRO
