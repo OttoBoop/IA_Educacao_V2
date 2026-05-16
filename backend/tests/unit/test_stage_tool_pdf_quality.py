@@ -349,6 +349,55 @@ def test_pdf_json_consistency_accepts_pedagogical_comment_heading(tmp_path):
     assert errors == []
 
 
+def test_pdf_json_consistency_accepts_feedback_general_assessment_heading(tmp_path):
+    json_path = tmp_path / "correcao.json"
+    pdf_path = tmp_path / "correcao.pdf"
+    feedback = (
+        "A aluna demonstrou domínio consistente dos principais conceitos abordados, "
+        "com respostas corretas em equação linear, operações com potências e cálculo "
+        "de área de triângulo, denotando compreensão dos processos matemáticos e "
+        "segurança nos procedimentos algébricos. O único erro, na porcentagem, "
+        "reflete um equívoco de operação, não conceitual, sugerindo atenção futura "
+        "a detalhes computacionais. O raciocínio matemático está bem estruturado, "
+        "faltando apenas precisão em operações aritméticas pontuais."
+    )
+    json_path.write_text(
+        json.dumps(
+            {
+                "nota_final": 8,
+                "questoes": [
+                    {"numero": 1, "nota": 3},
+                    {"numero": 2, "nota": 3},
+                    {"numero": 3, "nota": 0},
+                    {"numero": 4, "nota": 2},
+                ],
+                "feedback_geral": feedback,
+            }
+        ),
+        encoding="utf-8",
+    )
+    _write_pdf(
+        pdf_path,
+        "Nota final: 8.0 / 10.0\n"
+        "Questão 1: Acerto | Nota 3.0 / 3.0\n"
+        "Questão 2: Acerto | Nota 3.0 / 3.0\n"
+        "Questão 3: Erro | Nota 0.0 / 2.0\n"
+        "Questão 4: Acerto | Nota 2.0 / 2.0\n"
+        "Feedback geral da avaliação:\n"
+        + feedback,
+    )
+    json_doc = _doc("json", ".json")
+    pdf_doc = _doc("pdf", ".pdf")
+    executor = _executor_with_paths({"json": json_path, "pdf": pdf_path})
+
+    errors = executor._validar_consistencia_pdf_json_tool_outputs(
+        {"create_document": [json_doc], "execute_python_code": [pdf_doc]},
+        TipoDocumento.CORRECAO,
+    )
+
+    assert errors == []
+
+
 def test_pdf_json_consistency_accepts_non_truncated_feedback_paraphrase(tmp_path):
     json_path = tmp_path / "correcao.json"
     pdf_path = tmp_path / "correcao.pdf"

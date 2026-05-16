@@ -606,7 +606,8 @@ class PipelineExecutor:
 
                 feedback_match = re.search(
                     (
-                        r"(?:feedback\s+geral|parecer(?:\s+pedag[oó]gico)?\s+geral|"
+                        r"(?:feedback\s+geral(?:\s+da\s+avalia[cç][aã]o)?|"
+                        r"parecer(?:\s+pedag[oó]gico)?\s+geral|"
                         r"coment[aá]rio\s+pedag[oó]gico\s+geral)"
                         r"\s*[:\-]?\s*(.+)$"
                     ),
