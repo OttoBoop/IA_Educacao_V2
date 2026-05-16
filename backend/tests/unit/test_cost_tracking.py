@@ -191,6 +191,56 @@ def test_cost_summary_expoe_erro_pipeline_em_documento_precificado(tmp_path):
     assert documento["erro_tipo"] == "pdf_json_consistency"
 
 
+def test_cost_summary_expoe_resumo_estruturado_de_erro_provider(tmp_path):
+    store, atividade, aluno = _seed_storage(tmp_path)
+    arquivo = tmp_path / "correcao.json"
+    arquivo.write_text("{}", encoding="utf-8")
+    erro_google = """
+    Erro API Google: 429 - {
+      "error": {
+        "code": 429,
+        "message": "You exceeded your current quota, please check your plan and billing details.",
+        "status": "RESOURCE_EXHAUSTED"
+      }
+    }
+    * Quota exceeded for metric: generativelanguage.googleapis.com/generate_content_free_tier_requests,
+    limit: 20, model: gemini-2.5-flash-lite. Please retry later.
+    """ + (" detalhe" * 120)
+
+    doc = store.salvar_documento(
+        arquivo_origem=str(arquivo),
+        tipo=TipoDocumento.CORRECAO,
+        atividade_id=atividade.id,
+        aluno_id=aluno.id,
+        ia_provider="google",
+        ia_modelo="gemini-2.5-flash-lite",
+        tokens_usados=300,
+        metadata={
+            "tokens_entrada": 200,
+            "tokens_saida": 100,
+            "cost_run_id": "run-google-429",
+            "erro_execucao": erro_google,
+        },
+    )
+    updated = store.atualizar_documento_processamento(
+        doc.id,
+        status=StatusProcessamento.ERRO,
+    )
+
+    summary = build_cost_summary([updated])
+
+    sample = summary["amostras"][0]
+    documento = sample["documentos"][0]
+    assert sample["erro_codigo"] == 429
+    assert sample["erro_provider_status"] == "RESOURCE_EXHAUSTED"
+    assert sample["erro_provider_modelo"] == "gemini-2.5-flash-lite"
+    assert sample["erro_categoria"] == "quota_exhausted"
+    assert len(sample["erro_resumo"]) <= 360
+    assert sample["erro_resumo"].endswith("…")
+    assert documento["erro_codigo"] == 429
+    assert documento["erro_resumo"] == sample["erro_resumo"]
+
+
 def test_cost_summary_bloqueia_run_com_metadata_conflitante(tmp_path):
     store, atividade, aluno = _seed_storage(tmp_path)
     arquivo_json = tmp_path / "correcao.json"

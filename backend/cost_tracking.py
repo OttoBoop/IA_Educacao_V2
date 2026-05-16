@@ -8,12 +8,17 @@ invent input/output splits from legacy total-only token counts.
 from __future__ import annotations
 
 from collections import Counter, defaultdict
+import json
+import re
 from typing import Any, Dict, Iterable, Optional
 
 from model_catalog import model_catalog
 from models import Documento
 from storage import storage
 from token_usage import TokenUsageRecord, token_usage_store
+
+
+MAX_ERROR_SUMMARY_CHARS = 360
 
 
 def _metadata(doc: Documento) -> Dict[str, Any]:
@@ -27,11 +32,68 @@ def _token_int(value: Any) -> int:
         return 0
 
 
+def _stringify_error(value: Any) -> Optional[str]:
+    if value is None:
+        return None
+    if isinstance(value, dict):
+        for key in ("mensagem", "message", "erro", "error"):
+            message = value.get(key)
+            if isinstance(message, str) and message.strip():
+                return message
+        return json.dumps(value, ensure_ascii=False, sort_keys=True)
+    return str(value)
+
+
+def _compact_error_text(value: Any) -> Optional[str]:
+    text = _stringify_error(value)
+    if not text:
+        return None
+    text = re.sub(r"\s+", " ", text).strip()
+    if len(text) <= MAX_ERROR_SUMMARY_CHARS:
+        return text
+    return f"{text[:MAX_ERROR_SUMMARY_CHARS - 1].rstrip()}…"
+
+
+def _provider_error_fields(value: Any) -> Dict[str, Any]:
+    text = _stringify_error(value) or ""
+    fields: Dict[str, Any] = {}
+
+    code_match = re.search(r'"code"\s*:\s*(\d{3})|\b(4\d\d|5\d\d)\b', text)
+    if code_match:
+        fields["erro_codigo"] = int(code_match.group(1) or code_match.group(2))
+
+    status_match = re.search(r'"status"\s*:\s*"([^"]+)"', text)
+    if status_match:
+        fields["erro_provider_status"] = status_match.group(1)
+    elif "RESOURCE_EXHAUSTED" in text:
+        fields["erro_provider_status"] = "RESOURCE_EXHAUSTED"
+
+    model_match = re.search(r"model:\s*([A-Za-z0-9_.:-]+)", text)
+    if model_match:
+        fields["erro_provider_modelo"] = model_match.group(1).rstrip(".,;")
+
+    if "Quota exceeded" in text or fields.get("erro_provider_status") == "RESOURCE_EXHAUSTED":
+        fields["erro_categoria"] = "quota_exhausted"
+
+    return fields
+
+
+def _error_public_fields(value: Any) -> Dict[str, Any]:
+    resumo = _compact_error_text(value)
+    if not resumo:
+        return {}
+    return {
+        "erro_resumo": resumo,
+        **_provider_error_fields(value),
+    }
+
+
 def _cost_for(doc: Documento, metadata: Dict[str, Any]) -> Dict[str, Any]:
     input_tokens = _token_int(metadata.get("tokens_entrada"))
     output_tokens = _token_int(metadata.get("tokens_saida"))
     total_tokens = _token_int(metadata.get("tokens_total") or doc.tokens_usados)
 
+    erro_execucao = metadata.get("erro_pipeline") or metadata.get("erro_execucao")
     base = {
         "documento_id": doc.id,
         "tipo": doc.tipo.value,
@@ -44,8 +106,9 @@ def _cost_for(doc: Documento, metadata: Dict[str, Any]) -> Dict[str, Any]:
         "tokens_total": total_tokens,
         "cost_run_id": metadata.get("cost_run_id") or doc.id,
         "status": doc.status.value if hasattr(doc.status, "value") else str(doc.status),
-        "erro_execucao": metadata.get("erro_pipeline") or metadata.get("erro_execucao"),
+        "erro_execucao": erro_execucao,
         "erro_tipo": metadata.get("erro_tipo"),
+        **_error_public_fields(erro_execucao),
     }
 
     if not doc.ia_provider or not doc.ia_modelo:
@@ -91,6 +154,7 @@ def _cost_for_usage(record: TokenUsageRecord) -> Dict[str, Any]:
         "erro_execucao": record.erro,
         "erro_codigo": record.erro_codigo,
         "source": record.source,
+        **_error_public_fields(record.erro),
     }
 
     if not record.provider or not record.modelo:
@@ -141,6 +205,11 @@ def _documents_for_run(rows: Iterable[Dict[str, Any]]) -> list[Dict[str, Any]]:
             "custo_status": row["custo_status"],
             "erro": row.get("erro") or row.get("erro_execucao"),
             "erro_execucao": row.get("erro_execucao"),
+            "erro_resumo": row.get("erro_resumo"),
+            "erro_codigo": row.get("erro_codigo"),
+            "erro_provider_status": row.get("erro_provider_status"),
+            "erro_provider_modelo": row.get("erro_provider_modelo"),
+            "erro_categoria": row.get("erro_categoria"),
             "erro_tipo": row.get("erro_tipo"),
         }
         for row in rows
@@ -156,6 +225,11 @@ def _usage_records_for_run(rows: Iterable[Dict[str, Any]]) -> list[Dict[str, Any
             "custo_status": row["custo_status"],
             "erro": row.get("erro"),
             "erro_execucao": row.get("erro_execucao"),
+            "erro_resumo": row.get("erro_resumo"),
+            "erro_codigo": row.get("erro_codigo"),
+            "erro_provider_status": row.get("erro_provider_status"),
+            "erro_provider_modelo": row.get("erro_provider_modelo"),
+            "erro_categoria": row.get("erro_categoria"),
         }
         for row in rows
         if row.get("usage_record_id")
