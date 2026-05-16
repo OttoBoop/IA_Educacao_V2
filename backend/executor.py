@@ -3482,10 +3482,12 @@ Seja preciso, educativo e construtivo em suas análises."""
                 if has_persisted_docs or has_runtime_metadata:
                     has_json = any(
                         (getattr(doc, "extensao", "") or "").lower() == ".json"
+                        and not _doc_is_error(doc)
                         for doc in docs_by_tool["create_document"]
                     )
                     has_pdf = any(
                         (getattr(doc, "extensao", "") or "").lower() == ".pdf"
+                        and not _doc_is_error(doc)
                         for doc in docs_by_tool["execute_python_code"]
                     )
                 else:
@@ -3664,15 +3666,21 @@ Seja preciso, educativo e construtivo em suas análises."""
                     "```"
                 )
 
-            def _validate_json_artifacts(state: Dict[str, Any]) -> List[str]:
-                """Fail high on known placeholder/schema leaks in persisted JSON."""
-                if expected_document_type not in {
-                    TipoDocumento.CORRECAO,
-                    TipoDocumento.ANALISE_HABILIDADES,
-                    TipoDocumento.RELATORIO_FINAL,
-                }:
-                    return []
+            docs_marked_error: set[str] = set()
 
+            def _doc_status_value(doc: Any) -> str:
+                status = getattr(doc, "status", "") or ""
+                return getattr(status, "value", str(status))
+
+            def _doc_is_error(doc: Any) -> bool:
+                doc_id = getattr(doc, "id", None)
+                return (
+                    (doc_id is not None and doc_id in docs_marked_error)
+                    or _doc_status_value(doc) == StatusProcessamento.ERRO.value
+                )
+
+            def _json_schema_errors_for_doc(doc: Any) -> List[str]:
+                """Fail high on known placeholder/schema leaks in persisted JSON."""
                 errors: List[str] = []
                 placeholders = (
                     "student123",
@@ -3683,10 +3691,6 @@ Seja preciso, educativo e construtivo em suas análises."""
                     "<nome",
                     "<str>",
                 )
-
-                doc = _latest_tool_doc(state, "create_document", ".json")
-                if not doc:
-                    return []
 
                 doc_label = getattr(doc, "id", None) or getattr(doc, "nome_arquivo", "json")
                 filename = (getattr(doc, "nome_arquivo", "") or "").lower()
@@ -3746,6 +3750,31 @@ Seja preciso, educativo e construtivo em suas análises."""
                     if not data.get("resumo_geral"):
                         errors.append(f"JSON {doc_label} sem resumo_geral")
 
+                return errors
+
+            def _invalid_json_artifacts(state: Dict[str, Any]) -> List[tuple[Any, List[str]]]:
+                if expected_document_type not in {
+                    TipoDocumento.CORRECAO,
+                    TipoDocumento.ANALISE_HABILIDADES,
+                    TipoDocumento.RELATORIO_FINAL,
+                }:
+                    return []
+
+                invalid: List[tuple[Any, List[str]]] = []
+                for doc in state.get("docs_by_tool", {}).get("create_document", []):
+                    if (getattr(doc, "extensao", "") or "").lower() != ".json":
+                        continue
+                    if _doc_is_error(doc):
+                        continue
+                    errors = _json_schema_errors_for_doc(doc)
+                    if errors:
+                        invalid.append((doc, errors))
+                return invalid
+
+            def _validate_json_artifacts(state: Dict[str, Any]) -> List[str]:
+                errors: List[str] = []
+                for _, doc_errors in _invalid_json_artifacts(state):
+                    errors.extend(doc_errors)
                 return errors
 
             def _latest_tool_doc(
@@ -3854,22 +3883,21 @@ Seja preciso, educativo e construtivo em suas análises."""
                     + "\n```\n"
                 )
 
-            def _mark_latest_json_error(
+            def _mark_invalid_json_errors(
                 state: Dict[str, Any],
                 erro_msg: str,
             ) -> None:
-                json_doc = _latest_tool_doc(state, "create_document", ".json")
-                if not json_doc:
-                    return
-                self.storage.atualizar_documento_processamento(
-                    getattr(json_doc, "id"),
-                    status=StatusProcessamento.ERRO,
-                    metadata_patch={
-                        "erro_pipeline": erro_msg,
-                        "erro_tipo": "json_schema_validation",
-                        "cost_run_id": context.cost_run_id,
-                    },
-                )
+                for json_doc, _ in _invalid_json_artifacts(state):
+                    docs_marked_error.add(getattr(json_doc, "id"))
+                    self.storage.atualizar_documento_processamento(
+                        getattr(json_doc, "id"),
+                        status=StatusProcessamento.ERRO,
+                        metadata_patch={
+                            "erro_pipeline": erro_msg,
+                            "erro_tipo": "json_schema_validation",
+                            "cost_run_id": context.cost_run_id,
+                        },
+                    )
 
             def _mark_latest_pdf_error(
                 state: Dict[str, Any],
@@ -3878,6 +3906,7 @@ Seja preciso, educativo e construtivo em suas análises."""
                 pdf_doc = _latest_tool_doc(state, "execute_python_code", ".pdf")
                 if not pdf_doc:
                     return
+                docs_marked_error.add(getattr(pdf_doc, "id"))
                 self.storage.atualizar_documento_processamento(
                     getattr(pdf_doc, "id"),
                     status=StatusProcessamento.ERRO,
@@ -3887,6 +3916,64 @@ Seja preciso, educativo e construtivo em suas análises."""
                         "cost_run_id": context.cost_run_id,
                     },
                 )
+
+            def _mark_stale_dual_output_artifacts(
+                state: Dict[str, Any],
+                tokens_entrada: int,
+                tokens_saida: int,
+                tokens_total: int,
+                tempo_ms: float,
+            ) -> List[str]:
+                if not dual_output_expected:
+                    return []
+
+                marked: List[str] = []
+                specs = [
+                    ("create_document", ".json", "JSON"),
+                    ("execute_python_code", ".pdf", "PDF"),
+                ]
+                for tool_name, extension, label in specs:
+                    docs = [
+                        doc
+                        for doc in state.get("docs_by_tool", {}).get(tool_name, [])
+                        if (getattr(doc, "extensao", "") or "").lower() == extension
+                        and not _doc_is_error(doc)
+                    ]
+                    if len(docs) <= 1:
+                        continue
+
+                    official_doc = docs[-1]
+                    official_id = getattr(official_doc, "id", "artefato oficial")
+                    for stale_doc in docs[:-1]:
+                        stale_id = getattr(stale_doc, "id", None)
+                        if not stale_id:
+                            continue
+                        docs_marked_error.add(stale_id)
+                        erro_msg = (
+                            f"Artefato {label} extra gerado pela etapa. "
+                            f"Somente o mais recente validado ({official_id}) "
+                            "permanece como artefato oficial."
+                        )
+                        self.storage.atualizar_documento_processamento(
+                            stale_id,
+                            ia_provider=model.tipo.value,
+                            ia_modelo=model.modelo,
+                            prompt_usado=prompt_id,
+                            tokens_usados=tokens_total,
+                            tempo_processamento_ms=tempo_ms,
+                            status=StatusProcessamento.ERRO,
+                            metadata_patch={
+                                "erro_pipeline": erro_msg,
+                                "erro_tipo": "stale_tool_artifact",
+                                "tokens_entrada": tokens_entrada,
+                                "tokens_saida": tokens_saida,
+                                "tokens_total": tokens_total,
+                                "cost_run_id": context.cost_run_id,
+                                "custo_origem": "tool_use",
+                            },
+                        )
+                        marked.append(f"{label} extra {stale_id} marcado como erro")
+                return marked
 
             initial_tool_choice = (
                 _forced_openai_tool("create_document")
@@ -4120,6 +4207,7 @@ Seja preciso, educativo e construtivo em suas análises."""
             tokens_saida = _sum_usage(respostas_tool, "output_tokens")
             tokens_total = tokens_entrada + tokens_saida
 
+            json_repair_error_msg: Optional[str] = None
             json_validation_errors = _validate_json_artifacts(final_state)
             if (
                 json_validation_errors
@@ -4130,7 +4218,8 @@ Seja preciso, educativo e construtivo em suas análises."""
                     "Saida JSON invalida antes do retry: "
                     + "; ".join(json_validation_errors)
                 )
-                _mark_latest_json_error(final_state, repair_error_msg)
+                json_repair_error_msg = repair_error_msg
+                _mark_invalid_json_errors(final_state, repair_error_msg)
                 resposta = await client.chat_with_tools(
                     mensagem=_retry_json_validation_message(final_state, json_validation_errors),
                     tools=_tools_by_names(["create_document"]),
@@ -4199,7 +4288,17 @@ Seja preciso, educativo e construtivo em suas análises."""
                     expected_document_type,
                 )
 
-            validation_errors = json_validation_errors + pdf_json_errors
+            post_repair_missing_errors: List[str] = []
+            if dual_output_expected and not final_state["complete"]:
+                msg = (
+                    "Saída obrigatória incompleta após retry de validação: "
+                    + ", ".join(final_state["missing"])
+                )
+                if json_repair_error_msg:
+                    msg += f". Erro original: {json_repair_error_msg}"
+                post_repair_missing_errors.append(msg)
+
+            validation_errors = post_repair_missing_errors + json_validation_errors + pdf_json_errors
             if validation_errors:
                 erro_msg = (
                     "Saída obrigatória inválida: "
@@ -4242,6 +4341,19 @@ Seja preciso, educativo e construtivo em suas análises."""
                     tentativas=tentativas,
                     erro=erro_msg,
                 )
+
+            stale_artifact_warnings = _mark_stale_dual_output_artifacts(
+                final_state,
+                tokens_entrada,
+                tokens_saida,
+                tokens_total,
+                tempo_ms,
+            )
+            if stale_artifact_warnings:
+                alertas.append({
+                    "tipo": "aviso",
+                    "mensagem": "; ".join(stale_artifact_warnings),
+                })
 
             for doc_id in context.created_document_ids:
                 self.storage.atualizar_documento_processamento(

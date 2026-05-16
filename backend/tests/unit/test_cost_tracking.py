@@ -982,10 +982,20 @@ async def test_executar_com_tools_repara_correcao_json_array(monkeypatch, tmp_pa
     )
 
     bad_json_path = tmp_path / "correcao_bad.json"
+    bad_json_path_2 = tmp_path / "correcao_bad_2.json"
+    stale_json_path = tmp_path / "correcao_stale.json"
     good_json_path = tmp_path / "correcao_good.json"
     pdf_path = tmp_path / "correcao.pdf"
     bad_json_path.write_text(
         '[{"nota_final": 8, "questoes": [{"numero": 3, "nota": 0}]}]',
+        encoding="utf-8",
+    )
+    bad_json_path_2.write_text(
+        '[{"nota_final": 8, "questoes": [{"numero": 3, "nota": 0}]}]',
+        encoding="utf-8",
+    )
+    stale_json_path.write_text(
+        '{"nota_final": 8, "questoes": [{"numero": 3, "nota": 0}]}',
         encoding="utf-8",
     )
     good_json_path.write_text(
@@ -1013,7 +1023,9 @@ async def test_executar_com_tools_repara_correcao_json_array(monkeypatch, tmp_pa
             DummyClient.calls += 1
             context = kwargs["context"]
             if DummyClient.calls == 1:
-                context.created_document_ids.append("doc-json-bad")
+                context.created_document_ids.extend(
+                    ["doc-json-bad", "doc-json-stale", "doc-json-bad-2"]
+                )
                 return {
                     "content": "",
                     "tokens": 10,
@@ -1073,6 +1085,18 @@ async def test_executar_com_tools_repara_correcao_json_array(monkeypatch, tmp_pa
             metadata={"tool": "create_document"},
             criado_por="ia_create_document",
         ),
+        "doc-json-bad-2": SimpleNamespace(
+            id="doc-json-bad-2",
+            extensao=".json",
+            metadata={"tool": "create_document"},
+            criado_por="ia_create_document",
+        ),
+        "doc-json-stale": SimpleNamespace(
+            id="doc-json-stale",
+            extensao=".json",
+            metadata={"tool": "create_document"},
+            criado_por="ia_create_document",
+        ),
         "doc-json-good": SimpleNamespace(
             id="doc-json-good",
             extensao=".json",
@@ -1088,6 +1112,8 @@ async def test_executar_com_tools_repara_correcao_json_array(monkeypatch, tmp_pa
     }
     paths = {
         "doc-json-bad": bad_json_path,
+        "doc-json-bad-2": bad_json_path_2,
+        "doc-json-stale": stale_json_path,
         "doc-json-good": good_json_path,
         "doc-pdf": pdf_path,
     }
@@ -1113,6 +1139,18 @@ async def test_executar_com_tools_repara_correcao_json_array(monkeypatch, tmp_pa
         call.args[0] == "doc-json-bad"
         and call.kwargs.get("status") == StatusProcessamento.ERRO
         and call.kwargs["metadata_patch"]["erro_tipo"] == "json_schema_validation"
+        for call in executor.storage.atualizar_documento_processamento.call_args_list
+    )
+    assert any(
+        call.args[0] == "doc-json-bad-2"
+        and call.kwargs.get("status") == StatusProcessamento.ERRO
+        and call.kwargs["metadata_patch"]["erro_tipo"] == "json_schema_validation"
+        for call in executor.storage.atualizar_documento_processamento.call_args_list
+    )
+    assert any(
+        call.args[0] == "doc-json-stale"
+        and call.kwargs.get("status") == StatusProcessamento.ERRO
+        and call.kwargs["metadata_patch"]["erro_tipo"] == "stale_tool_artifact"
         for call in executor.storage.atualizar_documento_processamento.call_args_list
     )
 
