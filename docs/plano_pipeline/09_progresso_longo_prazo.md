@@ -4,8 +4,10 @@
 **Responsavel operacional:** Paulo
 **Status geral:** o servico oficial Render
 `srv-d5t8gbh4tr6s738fr3s0` (`IA_Educacao_V2`, branch `main`, URL
-`https://ia-educacao-v2.onrender.com`) esta em `54d083e`, confirmado por
-`/api/deploy-info` com `source=RENDER_GIT_COMMIT`. O primeiro marco full
+`https://ia-educacao-v2.onrender.com`) esta em `dc5884f`, confirmado por
+`/api/deploy-info` com `source=RENDER_GIT_COMMIT`. O commit `dc5884f` nao muda
+runtime de produto; ele estabiliza a guarda de teste que prova que JSON sem PDF
+obrigatorio falha alto, sem PDF inventado por fallback. O primeiro marco full
 recente continua sendo o smoke de 6 etapas com GPT-5.4 Mini (`gpt54mini001`) na
 atividade `Smoke Paulo Pipeline 2026-05-16`: task `task_a5f0d734f0b3`, aluna
 Diana Omega, hash live `2cad38a`, etapas `extrair_questoes`,
@@ -2020,6 +2022,29 @@ Critério de pronto: lista de limpeza segura e revisada.
 - Status: o fallback final `nota_final=N/A` deixou de ser aceitável no executor
   de relatório. Ainda falta atacar outros fallbacks/permissividades antigas:
   JSON permissivo, regex/Markdown legado e qualquer artefato parcial verde.
+
+### 2026-05-17 -- Guarda contra PDF auto-fallback estabilizada
+
+- Alvo: confirmar que a regra P0 "sem PDF inventado" esta protegida por teste
+  confiavel, em vez de depender de uma suite quebrada por mocks.
+- Commit funcional/teste: `dc5884f`.
+- Mudancas: `test_f7_t1_pdf_auto_fallback.py` agora injeta a classe real
+  `ProviderAPIError` no mock de `chat_service` e usa um
+  `ToolExecutionContext` minimo com `cost_run_id` serializavel. Os nomes dos
+  testes tambem deixam claro que JSON-only deve falhar sem fallback.
+- Validacoes locais: `python -m py_compile
+  backend/tests/unit/test_f7_t1_pdf_auto_fallback.py`; `git diff --check`;
+  `PYTHONPATH=backend /home/otavio/Documents/vscode/.venv/bin/python -m pytest
+  backend/tests/unit/test_f7_t1_pdf_auto_fallback.py
+  backend/tests/unit/test_e_t2_retry_partial_output.py
+  backend/tests/unit/test_cost_tracking.py -q` com `49 passed`.
+- Deploy: `git push origin HEAD:main`; `./scripts/wait_deploy.sh dc5884f`
+  encontrou o hash apos 120s; `./scripts/check_deploy.sh dc5884f` passou;
+  `/api/health` respondeu `healthy`.
+- Status: nao havia patch de runtime neste ciclo. A descoberta importante e que
+  o produto ja falha alto para saida dual incompleta, e agora o teste P0 mede
+  isso sem falso vermelho. O item PDF auto-fallback sai da lista de "aberto no
+  codigo atual" e fica como guarda a manter.
 
 ## Riscos Abertos
 

@@ -231,7 +231,7 @@ detalhar e auditar estas linhas.
 | Frente | Temos hoje | Limite da afirmacao |
 |---|---|---|
 | Documentacao | Doc 09 como painel curto; Doc 14 como auditoria mestre; Doc 05/12 com notas de status | Manter Doc 09 curto e Doc 14 detalhado; registrar novos ciclos sem criar doc extra. |
-| Git/GitHub | `/api/deploy-info` confirmou runtime `ad7e00e`; `origin/main` esta alinhado com os fixes de dashboard de custo, tool-use Google faseado, consistencia PDF/JSON por feedback coerente, erro por aluno/etapa na sidebar e bloqueio anti-`nota_final=N/A` em relatório | Nao usar somente marker HTML como gate quando Render `rootDir=backend` ignora commits sem backend; combinar `/api/deploy-info`, deploy list quando disponivel e comportamento live. |
+| Git/GitHub | `/api/deploy-info` confirmou runtime `dc5884f`; `origin/main` esta alinhado com os fixes de dashboard de custo, tool-use Google faseado, consistencia PDF/JSON por feedback coerente, erro por aluno/etapa na sidebar, bloqueio anti-`nota_final=N/A` em relatório e guarda de teste contra PDF auto-fallback | Nao usar somente marker HTML como gate quando Render `rootDir=backend` ignora commits sem backend; combinar `/api/deploy-info`, deploy list quando disponivel e comportamento live. |
 | Pipeline P4 | Bloqueio de extracao de respostas sem prova valida esta no codigo publicado | Precisa smoke dedicado apenas se P4 voltar a ser alvo. |
 | Pipeline P5/P6 | Preservacao de `_documentos_faltantes`; `ad7e00e` bloqueia `GERAR_RELATORIO` sem `nota_final` numerica confiavel | Ainda falta caçar outros fallbacks antigos, mas `nota_final=N/A` nao e mais aceite final no executor de relatório. |
 | Schema/avisos | Defaults `_avisos_*`, visualizador melhorado e schemas mais permissivos | Permissividade nao e contrato forte; pode aceitar legado demais. |
@@ -244,14 +244,14 @@ detalhar e auditar estas linhas.
 | Frente | Falta | Por que importa |
 |---|---|---|
 | Path 2/tool-use | Restringir artefatos extras e validar schema minimo, alem do JSON parseavel | Sem isso, documento ruidoso pode parecer resultado pedagogico final. |
-| Anti-fallback | Remover sucesso verde para PDF auto-fallback, JSON permissivo e provider/model swap; `nota_final=N/A` em relatório foi fechado em `ad7e00e` | Fallback silencioso engana o usuario. |
+| Anti-fallback | PDF auto-fallback e `nota_final=N/A` estao protegidos contra sucesso verde; restam JSON permissivo, regex/Markdown legado e provider/model swap | Fallback silencioso engana o usuario. |
 | Prompts/schema | Resolver conflito entre `PROMPTS_PADRAO` legado e `STAGE_TOOL_INSTRUCTIONS` | Modelos pequenos podem seguir o schema errado. |
 | Custos | Registrar falhas que consomem tokens sem documento final | Sucesso com documento ja tem custo medido; falha ainda pode sumir. |
 | Metadata | Revalidar provider/modelo/tokens/tempo nas rotas e providers restantes | GPT-5.4 Mini ja mostrou metadata e conteudo JSON coerente nas 6 etapas da fixture simples; Gemini/Nano/Haiku/GPT-4o ainda precisam matriz atualizada. |
 | Providers | Revalidar Gemini, Nano, Haiku e GPT-4o nas etapas restantes, especialmente extracoes e pipeline completa | Resultado historico ou schema parseavel nao prova qualidade de conteudo. |
 | UI de erro | `98fafc9` publica `stage_errors` por aluno/etapa no task-progress e renderiza a causa na sidebar; falta expandir o mesmo padrao para resultado/historico | Backend falhar alto nao basta se a UI traduz mal. |
 | Dados | Reclassificar "fantasmas" sem deletar PDF valido por `/conteudo=null` | Evita apagar prova respondida real. |
-| Git/deploy | Commit `2d72c6b` adicionou `/api/deploy-info`; o runtime atual confirmado e `ad7e00e` | Usar `/api/deploy-info` antes de novos smokes; marker HTML e apenas auxiliar. |
+| Git/deploy | Commit `2d72c6b` adicionou `/api/deploy-info`; o runtime atual confirmado e `dc5884f` | Usar `/api/deploy-info` antes de novos smokes; marker HTML e apenas auxiliar. |
 
 ### Bloqueios E Alertas
 
@@ -337,11 +337,11 @@ essa tabela aplicada, nao da para responder com confianca historica "quanto
 custou esta atividade/turma/aluno/periodo".
 
 O proximo ciclo tecnico correto e cumprir o Doc 02 no Path 2 e remover fallback
-silencioso: JSON invalido deve falhar na etapa original; PDF auto-fallback nao
-pode virar sucesso verde; nota ausente nao pode virar `N/A`; provider/modelo
-solicitado deve rodar ou falhar; metadata e documento principal precisam ser
-retornados e persistidos. So depois faz sentido persistir custo real, revalidar
-providers, melhorar UI de erro e limpar dados.
+silencioso: JSON invalido deve falhar na etapa original; a guarda contra PDF
+auto-fallback deve continuar passando; nota ausente nao pode virar `N/A`;
+provider/modelo solicitado deve rodar ou falhar; metadata e documento principal
+precisam ser retornados e persistidos. So depois faz sentido persistir custo
+real, revalidar providers, melhorar UI de erro e limpar dados.
 
 ### Estado Em Tabela
 
@@ -373,7 +373,7 @@ fila de tarefas. Cada item abaixo deve ser entendido como contrato herdado.
 | D02-6 | Tokens precisam virar custo persistido por contexto educacional | Parcial | Endpoints `/api/custos/*` respondem, precificam runs com split, agrupam JSON+PDF por `cost_run_id`; `TokenUsageRecord` local e codigo/migration Supabase existem; live confirma `PGRST205` | Teste: aplicar tabela Supabase `token_usage` e falha depois de consumir tokens cria registro duravel. |
 | D02-7 | Metadata dos documentos deve ter provider/modelo/tokens/tempo | Parcial live | Documentos recentes de Gemini/Nano carregam provider/modelo/tokens/custo; falta cobrir todas as etapas e falhas | Teste: documento gerado por IA tem `ia_provider`, `ia_modelo`, `tokens_usados`, `tempo_processamento_ms` em cada etapa. |
 | D02-8 | Provider sem tools nao pode cair em chat simples | Parcialmente fechado | `chat_service.py` agora falha explicitamente; manter contrato | Teste: provider sem function calling em etapa tool-use falha antes de criar artefato. |
-| D02-9 | PDF obrigatorio ausente nao pode virar sucesso enganoso | Aberto P0 | PDF auto-fallback ainda pode salvar PDF e retornar `sucesso=True` | Teste: modelo que nao chama `execute_python_code` falha ou retorna parcial bloqueante, nunca verde. |
+| D02-9 | PDF obrigatorio ausente nao pode virar sucesso enganoso | Feito/guardado | O executor atual falha alto quando a saida dual esta incompleta; `dc5884f` estabilizou `test_f7_t1_pdf_auto_fallback.py` para provar JSON-only sem PDF como erro, sem falso vermelho de mock | Manter teste P0 em toda mudanca de `executar_com_tools`; se provider voltar a gerar parcial verde, corrigir no ciclo. |
 | D02-10 | Retry dual-output nao pode duplicar/mascarar documentos | Parcial | Artefato extra nao-JSON foi bloqueado; duplicata JSON/retry ainda precisa auditoria | Teste: retry cria no maximo um JSON principal por etapa ou marca duplicata como erro. |
 | D02-11 | GPT-5 Nano-like output lixo deve falhar cedo | Parcial | Historico gerou lixo; fixes agora rejeitam tool ausente, JSON invalido e payload malformado | Teste fixture Nano-like fora do schema minimo falha em CORRIGIR antes de ANALISAR/GERAR. |
 | D02-12 | `GERAR_RELATORIO` precisa de schema unico e nota confiavel | Parcial | `ad7e00e` faz relatorio sem nota confiavel falhar alto; formatos legado/tool-use ainda coexistem | Proximo teste: schema ativo e unico, sem permissividade legado excessiva. |
@@ -455,8 +455,8 @@ obrigatoria falham.
 - Validar schema minimo da etapa antes de `ResultadoExecucao(sucesso=True)`.
 - Fazer `executar_com_tools()` retornar etapa real, `resposta_parsed` e
   `documento_id` principal quando houver sucesso.
-- Trocar PDF auto-fallback verde por erro alto ou sucesso parcial bloqueante,
-  conforme decisao de produto documentada no teste.
+- Manter a guarda de PDF ausente como erro alto e cobrir qualquer regressao em
+  `executar_com_tools()`.
 - Remover `nota_final=N/A` como aceite final de `GERAR_RELATORIO`.
 - Criar fixture "Nano-like" com JSON malformado/nome alucinado/texto natural em
   `.json` e provar falha cedo em CORRIGIR.
@@ -1005,7 +1005,7 @@ Mapa dos commits publicados ou preparados:
 |---|---|---|
 | `7e4b852` | Consolida docs e painel de planejamento | Publicado no GitHub; precisa Render para ser produto. |
 | `3b3291f` | P4: prova respondida valida antes de extrair respostas | Publicado no GitHub; precisa smoke oficial. |
-| `a695db4` | P5/P6: nota e documentos faltantes | Contencao publicada; `N/A` ainda deve virar erro alto no ciclo P0. |
+| `a695db4` | P5/P6: nota e documentos faltantes | Contencao historica; superseded por `ad7e00e`, onde `N/A` virou erro alto para `GERAR_RELATORIO`. |
 | `76c8467` | Sprint 2: schema e avisos | Publicado; matriz provider precisa revalidacao pos-fix. |
 | `b12be9a` | Sprint 3: split de tokens | Publicado; Render nao confirmou. |
 | `301eba6` | Marcador `novocr-deploy` para `b12be9a` | Publicado; Render continuou stale. |
@@ -1056,7 +1056,7 @@ Esta secao fica antes do mapa de documentos porque ela responde a pergunta
 | Trava | O que significa | Evidencia | Proximo movimento |
 |---|---|---|---|
 | Gate oficial confuso | O HTML marker pode ficar stale por `rootDir=backend`; `/api/deploy-info` reporta o runtime backend. | `/api/deploy-info` retornou `2cad38a` via `RENDER_GIT_COMMIT`; smoke `task_a5f0d734f0b3` rodou no site oficial. | Usar `/api/deploy-info` como gate primario e smoke como aceite. |
-| Fallbacks ainda misturados com robustez | Alguns docs/testes antigos tratam fallback como comportamento bom. | PDF auto-fallback, `nota_final=N/A`, parsing permissivo. | Ciclo anti-fallback antes de custo/dashboard. |
+| Fallbacks ainda misturados com robustez | Alguns docs/testes antigos tratam fallback como comportamento bom. | PDF auto-fallback e `nota_final=N/A` ja foram reclassificados; parsing permissivo segue risco ativo. | Ciclo anti-fallback antes de custo/dashboard. |
 | Custo parcialmente persistido | Documentos recentes e `TokenUsageRecord` local cobrem parte do problema; historico por periodo ainda nao e duravel. | Deploy `4f27dae` e endpoints `/api/custos/*`; `PGRST205` confirma tabela ausente. | Aplicar `token_usage` no Supabase e validar falha real sem documento. |
 | Provider matrix ainda incompleta | Doc 12 agora registra GPT-5.4 Mini full smoke com JSONs coerentes, mas nem todos os providers/rotas estao confirmados. | Gemini `extrair_gabarito` invalido; Nano `extrair_respostas` falha alto mas nao extrai; Haiku bloqueado por credito; GPT-4o historico. | Smoke por provider/rota depois de cada fix real, com custo e erro registrados. |
 | UI nao explica falhas suficientes | Usuario pode ver status/documento sem entender falha real. | Riscos do Doc 09 e logs antigos de UI/deploy. | Sprint 4 com mensagens por aluno/etapa/provider. |
@@ -1080,7 +1080,7 @@ ponta. A leitura correta agora e:
 | `executar_com_tools()` deve retornar metadados uteis | Token split foi corrigido localmente; `etapa` ainda volta como `"tools"` e `resposta_parsed`/`documento_id` continuam ausentes nesse retorno. | Retornar etapa real, documento principal e JSON parseado/validado no `ResultadoExecucao`. |
 | Tokens do Path 2 precisam virar custo auditavel | `input_tokens`/`output_tokens` existem e custos recentes aparecem nos endpoints. | Persistir `TokenUsageRecord` em Supabase, custo por etapa/aluno/atividade e custo de falhas duravel. |
 | Provider sem tools nao pode cair em chat simples | `chat_service.py` agora falha explicitamente para provider sem tool-use. | Manter teste cobrindo esse contrato e revalidar providers no site oficial. |
-| PDF/artefato faltante nao pode virar sucesso enganoso | `executar_com_tools()` ainda usa PDF auto-fallback e retorna `sucesso=True`. | Converter PDF auto-fallback em erro alto ou sucesso parcial bloqueante com UI vermelha. |
+| PDF/artefato faltante nao pode virar sucesso enganoso | Estado atual guardado: `executar_com_tools()` falha alto para saida dual incompleta; `dc5884f` estabilizou o teste P0. | Manter a guarda e investigar somente regressao ou provider que volte a marcar parcial como verde. |
 | Modelos pequenos que geram lixo precisam falhar cedo | GPT-5 Nano historicamente gerou documentos ruins; alguns testes locais cobrem partes. | Schema invalido deve falhar em CORRIGIR, antes de ANALISAR/GERAR descobrir o estrago. |
 
 Conclusao operacional: dizer "Sprint 2 concluida" so e aceitavel como
@@ -1200,8 +1200,8 @@ rodada de trabalho.
 |---|---|---|
 | Quais fallbacks ainda existem no codigo de pipeline? | Define P0 real, nao so retorico. | `rg fallback`, leitura de executor/chat/tools, testes focados. |
 | Qual fallback pode continuar? | Nem todo fallback e ruim; env server-side e display visual podem ser aceitaveis. | Classificar permitido/proibido/permitido com alerta. |
-| O PDF auto-fallback deve virar erro ou sucesso parcial? | Decide comportamento e testes. | Decisao de produto + teste de `executar_com_tools`. |
-| `nota_final=N/A` deve bloquear em qual ponto? | Evita relatorio enganoso. | Teste de `GERAR_RELATORIO` sem nota confiavel. |
+| PDF ausente continua falhando alto? | Garante que a regra P0 nao regrediu. | `test_f7_t1_pdf_auto_fallback.py` e smoke de etapa tool-use quando houver provider/credito. |
+| `nota_final=N/A` continua bloqueado? | Evita regressao para relatorio enganoso. | Teste de `GERAR_RELATORIO` sem nota confiavel. |
 | Onde tokens se perdem antes de persistir? | Necessario para custo real. | Teste de `_salvar_resultado` e `storage.salvar_documento`. |
 | Render esta em qual commit? | Sem isso nao ha progresso oficial. | `check_deploy`/health depois de push/deploy autorizado. |
 | Quais providers passam pos-fix? | Matriz atual esta stale. | Smokes por rota/etapa, sem fallback de modelo. |
@@ -1229,9 +1229,9 @@ classes diferentes; algumas sao aceitaveis, outras sao P0.
 | `nota_final=N/A` | `backend/executor.py:1755-1757`, `backend/tests/unit/test_erro_pipeline.py:655-657` | Pode gerar relatorio sem nota confiavel e parecer resultado final. |
 | Markdown aceito como relatorio valido | `backend/executor.py:2012-2025` | Pode aceitar formato errado quando JSON/schema era obrigatorio. |
 | Regex para extrair JSON | `backend/executor.py:1964-2008` | Pode capturar trecho errado e transformar resposta ruim em estrutura aparentemente valida. |
-| PDF auto-fallback | `backend/executor.py:2580-2677` | Modelo nao produziu PDF esperado, mas sistema cria PDF e retorna `sucesso=True`. |
+| PDF auto-fallback | Historico Doc 01; guarda atual em `backend/tests/unit/test_f7_t1_pdf_auto_fallback.py` | Reclassificado em 2026-05-17: nao apareceu como bug de runtime atual; `executar_com_tools()` falha alto para JSON-only sem PDF, e `dc5884f` estabilizou o teste P0. |
 | Gabarito original se extracao falta | `backend/executor.py:1736` | Pode mascarar pipeline incompleta se nao for explicito. |
-| Teste de PDF fallback esperando sucesso | `backend/tests/unit/test_f7_t1_pdf_auto_fallback.py:226-238` | Codifica comportamento agora considerado errado pelo P0. |
+| Teste de PDF fallback esperando sucesso | `dc5884f` | Corrigido: nomes e asserts agora medem erro alto, `pdf_fallback_used=False` e ausencia de alerta `pdf_fallback`. |
 | Teste E-T2 aceita parcial como sucesso | `backend/tests/unit/test_e_t2_retry_partial_output.py` | Precisa reclassificar sucesso parcial vs erro bloqueante. |
 
 ### Fallbacks ja corrigidos ou parcialmente protegidos
@@ -1687,7 +1687,8 @@ O que ficou desatualizado:
 
 - Token split no Path 2 foi corrigido localmente.
 - O provider fallback silencioso foi parcialmente corrigido em `44c5786`.
-- Ainda ha riscos de PDF auto-fallback, metadata e schema invalido.
+- PDF auto-fallback saiu da lista de risco ativo em `dc5884f`; ainda ha riscos
+  de metadata e schema invalido.
 
 Como orientar o proximo loop:
 
@@ -2564,8 +2565,8 @@ Erros conhecidos por provider/rota:
 | Modelo solicitado ausente | Antes podia cair em default; `44c5786` corrigiu parte | Manter: modelo escolhido roda ou falha. |
 | Provider sem tools | Antes podia cair em chat simples; `44c5786` corrigiu parte | Manter erro alto. |
 | JSON parse | Regex/Markdown aceitos em alguns casos | JSON obrigatorio deve validar schema. |
-| PDF auto-fallback | Sistema cria PDF se IA nao chamou `execute_python_code` | Nao pode marcar sucesso; virar erro/alerta bloqueante. |
-| `nota_final=N/A` | Evita template literal | Contencao temporaria; relatorio sem nota confiavel deve falhar. |
+| PDF auto-fallback | Historico: sistema podia compensar ausencia de `execute_python_code`; estado atual guardado em `dc5884f` | Manter erro alto e teste P0; nao reabrir como feature. |
+| `nota_final=N/A` | Evitava template literal | Fechado em `ad7e00e`: relatorio sem nota confiavel falha antes da IA. |
 | Gabarito original quando extracao falta | Pode mascarar pipeline incompleta | Deve ser decisao explicita e visivel. |
 | Env var de API key | Resolucao server-side alternativa | Permitido se nao vaza e nao troca provider/modelo. |
 | UI breadcrumb/display name fallback | Fallback visual local | Menor risco, mas nao pode esconder falha de pipeline. |
@@ -2575,21 +2576,19 @@ Evidencia de codigo observada nesta releitura:
 | Evidencia | Arquivo/linhas | Leitura |
 |---|---|---|
 | Tool-use sem suporte hoje falha explicitamente | `backend/chat_service.py:914-923` | Bom: provider sem tools nao cai mais em chat simples. |
-| PDF auto-fallback detecta `create_document` sem `execute_python_code` | `backend/executor.py:2580-2592` | Risco P0: o sistema compensa ausencia de tool esperada. |
-| PDF fallback salva documento com display name de fallback | `backend/executor.py:2633-2640` | Risco P0: artefato pode parecer documento final. |
-| PDF fallback adiciona alerta e continua | `backend/executor.py:2649-2657` | Alerta nao basta se a UI/estado ainda tratam como sucesso. |
-| `executar_com_tools` retorna `sucesso=True` depois do fallback | `backend/executor.py:2666-2674` | Prioridade: transformar em erro alto ou sucesso parcial bloqueante. |
-| Teste antigo esperava fallback como sucesso | `backend/tests/unit/test_f7_t1_pdf_auto_fallback.py:226-238` | Teste precisa ser reescrito sob a regra P0. |
-| `_preparar_variaveis_texto` garante `nota_final = "N/A"` | `backend/executor.py:1755-1757` | Contencao local; proximo ciclo deve falhar se nota confiavel estiver ausente. |
-| Teste P5 aceita JSON sem nota retornando `N/A` | `backend/tests/unit/test_erro_pipeline.py:655-657` | Teste deve mudar quando P0 remover fallback de nota. |
+| Saida dual incompleta gera erro alto | `backend/executor.py` + `backend/tests/unit/test_f7_t1_pdf_auto_fallback.py` em `dc5884f` | Bom: JSON-only sem PDF retorna `sucesso=False`, `pdf_fallback_used=False` e alerta bloqueante. |
+| Teste antigo de PDF fallback | `dc5884f` | Corrigido: a suite nao espera mais sucesso enganoso e nao quebra por mock de excecao/cost_run_id. |
+| `_preparar_variaveis_texto` nao injeta `N/A` em `GERAR_RELATORIO` | `ad7e00e` | Bom: relatorio sem nota confiavel falha antes da IA. |
+| Teste P5 de nota ausente | `ad7e00e` | Corrigido: JSON invalido ou sem nota retorna `None` e gera `NOTA_FINAL_INDETERMINADA`. |
 
 Prioridade P0 de remocao:
 
 1. Schema invalido marcado como `completed`.
-2. PDF auto-fallback tratado como sucesso.
+2. Parsing permissivo que transforma lixo em documento.
 3. Relatorio gerado com nota ausente ou falsa.
 4. Qualquer troca automatica de modelo/provider.
-5. Parsing permissivo que transforma lixo em documento.
+5. Avisos/defaults que fazem parecer que o modelo declarou algo que o sistema
+   apenas preencheu.
 
 Testes P0 que devem nascer do proximo ciclo:
 
@@ -3337,6 +3336,8 @@ Validacao:
 Estado:
 
 - `nota_final=N/A` nao e mais saida aceitavel do executor de relatorio.
+- PDF auto-fallback nao esta aberto como bug de runtime atual; existe guarda de
+  teste dedicada em `dc5884f`.
 - Ainda restam outras frentes anti-fallback: JSON permissivo, regex/Markdown
   legado, artefatos parciais verdes e status historico que precisa obedecer
   `status=erro`.
@@ -3348,7 +3349,7 @@ claro. O que ainda existe para fazer:
 
 | Item | Tipo | Por que ainda falta |
 |---|---|---|
-| Ciclo anti-fallback | Codigo/testes | `nota_final=N/A` em relatório foi fechado em `ad7e00e`; ainda restam PDF auto-fallback, regex/Markdown legado, JSON permissivo e parciais como sucesso. |
+| Ciclo anti-fallback | Codigo/testes | `nota_final=N/A` em relatório foi fechado em `ad7e00e`; PDF auto-fallback foi reclassificado como guardado em `dc5884f`; ainda restam regex/Markdown legado, JSON permissivo e parciais como sucesso. |
 | Settings de modelos | Codigo/testes/deploy | `from-catalog` deu 500 e create ignorou capabilities no site live; patch `b16e051` ja foi deployado e retestado; cadastro por API sumiu no deploy, mas o modelo versionado `gpt54mini001` apareceu no site em `be19b7e` e passou teste de conexao. |
 | Metadata/custo real | Codigo/testes/deploy | Metadata e endpoints existem no site; full smoke GPT-5.4 Mini mediu custo por etapa, mas Supabase `token_usage` segue ausente (`PGRST205`), `local_record_count=0` depois de deploy e custo de falha sem documento ainda nao e duravel. |
 | Provider revalidation | Smoke/producao | Matriz Doc 12 registra GPT-5.4 Mini full smoke em fixture simples, GPT-4o full smoke (`task_68b19146a95b`) e Gemini 2.5 Flash com extracoes OK/tool-use corrigido mas bloqueado por quota; continua incompleta ate novos smokes por provider/rota/dataset. |
