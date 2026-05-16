@@ -173,7 +173,7 @@ ciclo funcional `2a0462d` para expor `token_usage_durable` no resumo de custos. 
 | **Gemini 2.5 Flash** (`gem25flash001`) | ✅ | ✅ | ✅ | 🚫 | ⏸️ | ⏸️ |
 | **Gemini 2.5 Flash Lite** (`gem25lite001`) | ⏸️ | ⏸️ | ⏸️ | ❌ | ⏸️ | ⏸️ |
 | **Gemini 3 Flash** (`gem3flash001`) | ✅ | ✅ | ✅ | ⚠️ | ⚠️ | ⚠️ |
-| **GPT-5 Nano** (`gpt5nano001`) | ✅ | ✅ | ⚠️ | ❌ | ⚠️ | ✅ |
+| **GPT-5 Nano** (`gpt5nano001`) | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | **GPT-5.4 Mini** (`gpt54mini001`) | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | **GPT-4o** (`180b8298a279`) — referencia | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | **GPT-4.1** (`ffae9accf68e`) | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
@@ -182,6 +182,12 @@ Nota de leitura: os checks da tabela acima sao por etapa individual validada.
 Eles nao significam que a pipeline completa de 6 etapas passou em uma unica
 task. Em 2026-05-16, Gemini completou as tres extracoes em uma task sequencial,
 mas parou em `corrigir` por quota `429`.
+
+Nota GPT-5 Nano pos-`ed592de`: a linha ✅ significa que as seis etapas ja
+passaram na fixture simples Diana com artefatos/custos rastreados e aviso
+composto corrigido. Isso nao promove Nano a pipeline-ready geral: ainda falta
+rodar dataset maior e repetir full pipeline numa unica task pos-fix.
+
 Nota OpenAI/catalogo 2026-05-17: a matriz de comportamento nao muda so por
 catalogo, mas o lote `fdf0cbd` corrigiu cadastro e chamada de modelos GPT-5.x:
 `gpt-5.4/5.5`, `gpt-5.2`, `gpt-5`, `gpt-5-mini`, `gpt-5-nano` e variantes

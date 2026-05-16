@@ -5,46 +5,30 @@
 **Status geral:** o servico oficial Render
 `srv-d5t8gbh4tr6s738fr3s0` (`IA_Educacao_V2`, branch `main`, URL
 `https://ia-educacao-v2.onrender.com`) tem como codigo funcional mais recente
-confirmado o commit `ae04982` (`fix: expose cost totals by pipeline stage`),
+confirmado o commit `2a0462d` (`fix: expose token usage durability in cost summary`),
 validado por `/api/deploy-info`, `/api/health` e
-`./scripts/check_deploy.sh ae04982250877dc12da5a01be16edc2eaa43b5bd`. Se
-`/api/deploy-info` apontar commit documental posterior, comparar com este hash
-funcional antes de concluir que houve nova mudanca de runtime. O lote funcional
-publicado ate esse hash faz resultado, historico, pendencias e status de
-pipeline obedecerem `status=erro` e conteudo avaliavel: documento em erro nao
-conta como progresso, correcao sem questao/correcao com nota nao vira
-`completo=true`, retry concluido pode fechar a etapa sem esconder erro anterior,
-e documentos de erro continuam visiveis com provider/modelo/tokens/causa.
-O mesmo lote corrigiu as rotas agregadas de ranking/estatisticas, que antes
-eram capturadas pela rota dinamica de aluno, e preservou medias legitimas `0.0`
-no dashboard/historico/comparativos. O ciclo `147296d` reduziu o dashboard da
-turma Lista0 de cerca de 85s para 1.4s ao reaproveitar ranking em lote, sem
-reabilitar resultados sem itens avaliaveis.
-O ciclo `22f6f31` trocou o modelo padrao versionado de Claude Haiku 4.5
-(bloqueado por credito Anthropic) para GPT-5.4 Mini (`gpt54mini001`) e confirmou
-o default vivo em `/api/settings/status` e `/api/settings/models`.
-O ciclo `48407f2` adicionou resumo estruturado para erros de provider em
-`/api/custos/resumo`, expondo `erro_codigo`, `erro_provider_status`,
-`erro_provider_modelo`, `erro_categoria` e `erro_resumo` curto sem depender do
-JSON bruto gigante.
-O ciclo `50fb1d7` deixou `/api/custos/status` expor `error_code=PGRST205`,
-`missing_migration=true` e `migration_path=backend/migrations/002_create_token_usage.sql`
-para o bloqueio Supabase `token_usage`.
-O ciclo `e2260d2` fez o dashboard ler esses campos no objeto
-`token_usage_backend.supabase` e mostrar o codigo/caminho da migration no site,
-sem exigir terminal para entender o bloqueio.
-O ciclo `ae04982` adicionou `por_etapa` em `/api/custos/resumo` e confirmou o
-agregado live: `correcao` segue como a maior fatia de custo, seguida por
-`analise_habilidades` e `relatorio_final`.
-GPT-4.1, GPT-5.4 Mini, GPT-4o e GPT-5 Nano seguem referencias OpenAI na fixture
-Diana; Nano passou `extrair_respostas`, `corrigir`, `analisar_habilidades` e
-`gerar_relatorio` nessa fixture simples, mas continua parcial por historico de
-qualidade em dataset maior e por ressalva nova de schema de aviso composto. O
-sweep mais recente confirmou OpenAI OK, Gemini Flash/Flash Lite/3 Flash OK em
+`./scripts/check_deploy.sh 2a0462ded12cd524ce68af2cb7143bde2a31f952`.
+`origin/main` pode estar em commit documental posterior; isso nao muda runtime
+enquanto `/api/deploy-info` continuar apontando para `2a0462d`.
+
+Estado funcional consolidado: documentos com `status=erro` nao contam como
+progresso; correcao sem itens avaliaveis nao vira `completo=true`; ranking,
+estatisticas e dashboard preservam notas legitimas `0.0`; o default oficial e
+GPT-5.4 Mini (`gpt54mini001`); erros de provider aparecem estruturados em chat,
+task progress e custos; o dashboard mostra o bloqueio de migration
+`token_usage`; `/api/custos/resumo` agrega por `cost_run_id`, `por_etapa` e agora
+expõe `token_usage_durable=false` quando a persistencia de falhas sem documento
+nao e duravel.
+
+Estado de providers: GPT-4.1, GPT-5.4 Mini, GPT-4o e GPT-5 Nano seguem
+referencias OpenAI na fixture Diana. Nano ja passou as seis etapas nessa fixture
+simples, inclusive `gerar_relatorio` pos-`ed592de` com `_avisos_questao.codigo`
+unico, mas ainda precisa dataset maior e full pipeline numa unica task antes de
+ser chamado de pipeline-ready geral. Gemini Flash/Flash Lite/3 Flash passam em
 conexao simples, mas `corrigir` com Gemini 2.5 Flash ainda falha alto por quota
-`429`; Gemini 2.5 Pro tambem esta bloqueado por quota, Anthropic bloqueado por
-credito e Ollama indisponivel no Render. Supabase `token_usage` continua
-ausente (`PGRST205`), deixando custo duravel como gate real.
+`429`; Gemini 2.5 Pro tambem esta bloqueado por quota, Anthropic segue bloqueado
+por credito e Ollama esta indisponivel no Render. Supabase `token_usage`
+continua ausente (`PGRST205`), deixando custo duravel como gate real.
 
 Atualizacao Lista0 de 2026-05-17: a atividade real `Lista0`
 (`126e8b5ad7dd6d59`) tem documentos base cadastrados e 63 alunos
@@ -512,9 +496,9 @@ Estabilizar o NOVO CR para que a pipeline:
 | Frente | Estado | Proximo passo |
 |--------|--------|---------------|
 | Docs e plano | Sprint 0 concluida | Manter este painel como fonte oficial e anexos fora do fluxo diario |
-| Pipeline | GPT-4.1 (`ffae9accf68e`) tem full smoke unico confirmado em `task_f6851ed535b8` e re-smoke `corrigir` pos-guard `task_92c4b74494f7` sem retry artificial; GPT-5.4 Mini (`gpt54mini001`) completou 6 etapas em `task_a5f0d734f0b3` e segue referencia confirmada apos guards; GPT-4o completou full smoke `task_68b19146a95b` em `54d083e`; Gemini 2.5 Flash/Gemini 3/Gemini Lite estao bloqueados por quota Google `429` nos smokes recentes, embora tenham historicos parciais; GPT-5 Nano segue parcial/falhando alto em pontos de qualidade, especialmente `corrigir`/`extrair_respostas` | Revalidar matriz por provider/modelo quando quota/credito permitir e manter P0: nao aceitar `completed` sem documento, schema, custo, conteudo minimo, nota cross-stage e artefatos coerentes entre si |
+| Pipeline | GPT-4.1 (`ffae9accf68e`) tem full smoke unico confirmado em `task_f6851ed535b8` e re-smoke `corrigir` pos-guard `task_92c4b74494f7` sem retry artificial; GPT-5.4 Mini (`gpt54mini001`) completou 6 etapas em `task_a5f0d734f0b3` e `task_a1f7521077a5`; GPT-4o completou full smoke `task_68b19146a95b`; GPT-5 Nano passou as 6 etapas na fixture Diana em smokes por etapa (`task_0818b99194aa`, `task_960c0a287a13`, `task_fa50cb3ffc16`, `task_0c7339f48aec`), mas ainda nao em dataset maior/full task unica pos-fix; Gemini 2.5 Flash/Gemini 3/Gemini Lite estao bloqueados por quota Google `429` nos smokes recentes, embora tenham historicos parciais | Revalidar matriz por provider/modelo quando quota/credito permitir e manter P0: nao aceitar `completed` sem documento, schema, custo, conteudo minimo, nota cross-stage e artefatos coerentes entre si |
 | Schema e avisos | Sprint 2 concluida localmente | Manter schema oficial, defaults e visualizador cobertos por testes |
-| Custos/tokens | Metadata de documento, endpoints live, resumo por `cost_run_id`, `TokenUsageRecord` local, migration Supabase dedicada `b2dc88b`; GPT-4.1 full smoke `task_f6851ed535b8` mediu total aproximado `US$ 0.222856`; re-smoke `task_92c4b74494f7` apos guard reduziu `corrigir` para `US$ 0.048434`; Gemini Lite quota `task_5850e9adf001` registrou documentos de erro custeaveis `US$ 0.000543` e `US$ 0.000382`; `460643f` faz `/api/custos/status` retornar `ok=false` e alerta bloqueante enquanto `PGRST205`, `durable=false` e `local_record_count=0` persistirem; `54d083e` mostra esse bloqueio no dashboard oficial | Aplicar `backend/migrations/002_create_token_usage.sql` no Supabase; revalidar ate `token_usage_backend.durable=true`; depois persistir custos de falhas sem documento |
+| Custos/tokens | Metadata de documento, endpoints live, resumo por `cost_run_id`, `por_etapa` e `token_usage_durable`; `TokenUsageRecord` local e migration Supabase dedicada `b2dc88b`; GPT-4.1 full smoke `task_f6851ed535b8` mediu total aproximado `US$ 0.222856`; GPT-5.4 Mini e Nano tem custos por etapa registrados; Gemini Lite quota registrou documentos de erro custeaveis; `/api/custos/status` e `/api/custos/resumo` deixam claro `PGRST205`, `durable=false` e `token_usage_durable=false` enquanto a tabela Supabase nao existir | Aplicar `backend/migrations/002_create_token_usage.sql` no Supabase; revalidar ate `token_usage_backend.durable=true`; depois persistir custos de falhas sem documento |
 | UI de erros | Dashboard oficial mostra bloqueio de custos nao duraveis no commit `54d083e`; `98fafc9` adicionou `stage_errors` por aluno/etapa em `/api/task-progress` e a sidebar renderiza a causa abaixo da etapa falha; smoke live `task_7362d0fb1939` confirmou erro de `extrair_respostas` sem prova antes de chamar IA | Ampliar para telas de resultado/historico e garantir que erros de provider/custo apareçam com a mesma clareza |
 | Limpeza de dados | Pendente | Reclassificar "fantasmas" antes de qualquer delecao |
 | Rio 3 | Pausada | Nao pedir chave, nao rodar smoke, nao deployar Rio sem nova decisao |
