@@ -4,29 +4,40 @@
 **Responsavel operacional:** Paulo
 **Status geral:** o servico oficial Render
 `srv-d5t8gbh4tr6s738fr3s0` (`IA_Educacao_V2`, branch `main`, URL
-`https://ia-educacao-v2.onrender.com`) esta em `4d8f73d`, confirmado por
-`/api/deploy-info` com `source=RENDER_GIT_COMMIT`. O commit funcional `45f5cf8`
-fecha mais um pedaço P0 do Path 2: mesmo quando nao ha storage persistido no
-teste, JSON parseavel de `create_document` que esteja fora do schema minimo da
-etapa falha alto antes de sucesso. O commit `4094bda` nao muda comportamento de
-runtime, mas publica a cobertura que impede regressao desse guard tambem em
-`ANALISAR_HABILIDADES` e `GERAR_RELATORIO`. O commit `4d8f73d` publica cobertura
-para impedir que PDF duplicado/stale em retry dual-output fique verde. No
-runtime `45f5cf8`, o smoke oficial reduzido
-`task_42e3b303c39a` reexecutou `corrigir` com GPT-5.4 Mini (`gpt54mini001`) na
-fixture Diana Omega e completou com JSON oficial `776b70be01c24641`, PDF final
-`12dbdc65d469e982`, PDF intermediario `204a8a5c3f81af97` marcado como erro por
-`pdf_json_consistency`, split `26251/4582` tokens e custo `US$ 0.040307`. O PDF
-final extraido por `pdftotext` bateu com o JSON: `nota_final=8.0`, Q3
-`0.0/2.0` e feedback geral completo. O primeiro marco full
-recente continua sendo o smoke de 6 etapas com GPT-5.4 Mini (`gpt54mini001`) na
-atividade `Smoke Paulo Pipeline 2026-05-16`: task `task_a5f0d734f0b3`, aluna
-Diana Omega, hash live `2cad38a`, etapas `extrair_questoes`,
-`extrair_gabarito`, `extrair_respostas`, `corrigir`, `analisar_habilidades` e
-`gerar_relatorio` marcadas como `completed`. Depois disso, o loop avançou para
-endurecer artefatos PDF/JSON e revalidar GPT-4o explicitamente no Render. O
-marco GPT-5.4 Mini nao substitui a matriz completa de providers nem valida
-todos os datasets reais.
+`https://ia-educacao-v2.onrender.com`) esta em `700b088`, confirmado por
+`/api/deploy-info`, `/api/health` e `./scripts/check_deploy.sh 700b088`. O
+estado oficial mais recente nao e apenas "pipeline completou": o smoke
+`task_cc22b6c239d0` comprovou `corrigir`, `analisar_habilidades` e
+`gerar_relatorio` com GPT-5.4 Mini na fixture Diana Omega, preservando a resposta
+do aluno na correcao. Q3 ficou `25` vs gabarito `30`, `nota=0.0/2.0`,
+`nota_final=8.0`, PDFs finais coerentes por `pdftotext`, custo
+`56891/9827` tokens e `US$ 0.086890`. O custo ainda nao e duravel porque
+`/api/custos/status?limit=80` segue com `token_usage_not_durable` ate aplicar
+`backend/migrations/002_create_token_usage.sql` no Supabase. O primeiro marco
+full recente continua sendo o smoke de 6 etapas com GPT-5.4 Mini
+(`task_a5f0d734f0b3`), mas os ciclos posteriores endureceram PDF/JSON, schema
+runtime, avisos, linhagem e rastreabilidade semantica. Esse marco nao substitui
+a matriz completa de providers nem valida todos os datasets reais.
+
+Atualizacao de 2026-05-17 no runtime `700b088`: o ciclo `f40acf3` alinhou
+`PROMPTS_PADRAO` e `STAGE_TOOL_INSTRUCTIONS` para `CORRIGIR`,
+`ANALISAR_HABILIDADES` e `GERAR_RELATORIO`, e tornou obrigatorios campos de
+schema/avisos/linhagem em `ANALISAR_HABILIDADES` e `GERAR_RELATORIO`. O smoke
+`task_9671e072f42c` passou tecnicamente, mas revelou falso verde semantico:
+Q3 tinha `resposta_aluno=25` em `EXTRACAO_RESPOSTAS` e `resposta_correta=30`
+no gabarito, mas a correcao marcou Q3 como correta e `nota_final=10.0`. O
+commit `700b088` adicionou rastreabilidade obrigatoria em `CORRIGIR`: quando
+existem documentos upstream, cada `questoes[]` precisa carregar
+`resposta_aluno` da extracao de respostas e `resposta_correta` do gabarito; se
+trocar a resposta do aluno ou der acerto/nota maxima para divergencia numerica,
+a etapa falha alto. Deploy confirmado por `./scripts/check_deploy.sh 700b088`,
+`/api/deploy-info` e `/api/health`. O re-smoke `task_cc22b6c239d0` completou
+`corrigir`, `analisar_habilidades` e `gerar_relatorio` com GPT-5.4 Mini:
+correcao JSON `c3c680d099f781f7` marcou Q3 `25` vs `30`, nota `0.0/2.0` e
+`nota_final=8.0`; PDFs finais extraidos por `pdftotext` confirmaram nota 8.0,
+Q3 erro e recomendacao focada em porcentagem. Custo do re-smoke:
+`56891/9827` tokens, `US$ 0.086890`; o alerta `token_usage_not_durable`
+continua bloqueante ate aplicar `backend/migrations/002_create_token_usage.sql`.
 
 Atualizacao operacional de 2026-05-17: depois de `3e6be20`, o loop publicou
 `629c4ee` e `aff2180`. `629c4ee` corrigiu uma validação estreita demais que
@@ -2234,6 +2245,52 @@ Critério de pronto: lista de limpeza segura e revisada.
 - Status: Gemini 2.5 Flash tem conexao viva e extracoes historicas medidas, mas
   `corrigir` segue bloqueado por quota, nao pipeline-ready. Nao trocar provider
   por baixo; repetir apenas quando quota liberar.
+
+### 2026-05-17 -- Contrato tecnico e semantico de CORRIGIR
+
+- Alvo: fechar D02-3/D02-4 e capturar o falso verde semantico exposto pelo
+  smoke oficial das etapas finais.
+- Commit tecnico: `f40acf3`.
+  - `backend/prompts.py`: `PROMPTS_PADRAO` de `CORRIGIR`,
+    `ANALISAR_HABILIDADES` e `GERAR_RELATORIO` agora aponta para o contrato de
+    tool-use, sem schema legado contraditorio.
+  - `backend/executor.py`: `ANALISE_HABILIDADES` exige `indicadores`,
+    `recomendacoes` e `_avisos_*`; `RELATORIO_FINAL` exige `pontos_fortes`,
+    `areas_melhoria`, `recomendacoes`, `detalhamento`, `_avisos_*` e
+    `_fontes_utilizadas`.
+  - Testes: `70 passed` na cesta tool-use/PDF/custos e `112 passed, 3 skipped`
+    na cesta validacao/erros/modelos.
+- Smoke em `f40acf3`: `task_9671e072f42c` passou, mas a auditoria rejeitou o
+  resultado como falso verde semantico. A correcao JSON `acede2d27bc6c38a`
+  transformou Q3 de `resposta_aluno=25` em acerto com `nota_final=10.0`.
+- Commit semantico: `700b088`.
+  - `CORRIGIR` agora deve copiar `resposta_aluno` e `resposta_correta` em cada
+    questao; o runtime compara esses campos com `EXTRACAO_RESPOSTAS` e
+    `EXTRACAO_GABARITO` quando eles existem.
+  - Teste novo: `test_executar_com_tools_rejeita_correcao_que_troca_resposta_do_aluno`.
+  - Validacoes: `py_compile`, `git diff --check`, `70 passed` na cesta
+    tool-use/PDF/custos e `112 passed, 3 skipped` na cesta validacao/erros/modelos.
+- Deploy: `git push origin HEAD:main`; `./scripts/wait_deploy.sh 700b088`
+  encontrou o runtime apos 120s; `./scripts/check_deploy.sh 700b088` passou;
+  `/api/deploy-info` retornou `commit=700b088`; `/api/health` respondeu
+  `healthy`.
+- Smoke oficial: `task_cc22b6c239d0`, fixture Diana Omega, modelo
+  `gpt54mini001`, `selected_steps=["corrigir","analisar_habilidades","gerar_relatorio"]`.
+  Resultado: `completed` sem `stage_errors`.
+- Artefatos finais:
+  - Correcao JSON `c3c680d099f781f7`, PDF `9814e0d8107b4d44`:
+    `nota_final=8.0`, Q3 `resposta_aluno=25.`, `resposta_correta=30`,
+    `nota=0.0/2.0`, `total_acertos=3`, `total_erros=1`.
+  - Analise JSON `aabad9f809a388a3`, PDF `17575cac06b3e8f7`:
+    `proficiencia_geral=0.8`, porcentagem em desenvolvimento.
+  - Relatorio JSON `9bf0e1dac90a58c1`, PDF `a6f80bac65611376`:
+    `nota_final=8.0`, `_fontes_utilizadas=["CORRIGIR","ANALISAR_HABILIDADES"]`.
+- Custos: `/api/custos/resumo?limit=5` mostrou `56891/9827` tokens e
+  `US$ 0.086890` nos tres runs OpenAI do smoke. `/api/custos/status?limit=80`
+  continua `ok=false` por `token_usage_not_durable`/Supabase `PGRST205`.
+- Status: GPT-5.4 Mini esta confirmado para as etapas finais nessa fixture
+  simples pos-`700b088`. O proximo alvo real e ampliar a checagem semantica para
+  mais tipos de resposta/datasets e resolver persistencia duravel de custos.
 
 ## Riscos Abertos
 
