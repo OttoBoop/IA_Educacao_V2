@@ -4,6 +4,8 @@
 **Atividades de teste principais:** Lista0 — Algebra Linear Avancada
 (`126e8b5ad7dd6d59`) e smoke simples oficial `Smoke Paulo Pipeline 2026-05-16`
 (`f68d57a9a339081f`)
+**Runtime oficial atual:** backend Render em `11a396b`; `origin/main` em commit
+documental posterior. Use `/api/deploy-info` como gate de codigo live.
 **Commits aplicados/observados:** `a632883`, `5737611`, `50935ea`, `479b77d`,
 `b12be9a`, `301eba6`, `f67055c`, `462ea1d`, `b4d7ee6`, `99483d1`,
 `f505be6`, `d75b05a`, `97a7c79`, `ec95193`, `ff7b92a`, `68ebe51`,
@@ -18,15 +20,16 @@
 `2885da7`, `99b8c3c`, `392ec7c`, `460643f`, `54d083e`,
 `854cec7`, `b07472f`, `dc5884f`, `0d5ab9d`, `c870ed4`, `45f5cf8`,
 `4094bda`, `4d8f73d`, `f40acf3`, `700b088`, `1307909`, `bed0c08`, `feaf5d0`,
-`d47d748`, `c53fae6`, `9ab53df`, `1454e68`, `3fce335`, `33fb7d5`, `0f84552`
+`d47d748`, `c53fae6`, `9ab53df`, `1454e68`, `3fce335`, `33fb7d5`, `0f84552`,
+`974f040`, `11a396b`, `d799165`, `6b43016`
 
 ## Status Oficial De Deploy
 
 - O servico oficial em 2026-05-17 e
   `srv-d5t8gbh4tr6s738fr3s0` (`IA_Educacao_V2`), branch `main`,
   `rootDir=backend`, URL `https://ia-educacao-v2.onrender.com`.
-- `/api/deploy-info` confirmou o runtime backend `0f84552` com
-  `source=RENDER_GIT_COMMIT`; esse e o gate primario atual.
+- `/api/deploy-info` confirmou o runtime backend `11a396b` com
+  `source=RENDER_GIT_COMMIT`; esse e o gate primario atual para codigo live.
 - O HTML marker pode ficar stale e nao prova runtime antigo: commits de
   frontend/docs/marker podem nao disparar deploy quando o servico Render usa
   `rootDir=backend`.

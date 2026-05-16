@@ -10,10 +10,11 @@ um deve ser lido, o que ainda vale, o que ficou historico, e quais fatos precisa
 guiar os proximos ciclos.
 
 Atualizacao de controle de 2026-05-17: o site oficial esta em runtime backend
-`0f84552` por `/api/deploy-info`, `/api/health`, Render MCP
-(`dep-d84uf0e7r5hc73dmk4fg`) e `check_deploy.sh 0f84552`. O commit
-`0f84552` adicionou retry explicito, no mesmo modelo, para erro de codigo em
-`execute_python_code` quando o JSON ja foi persistido e o PDF ainda falta. O
+`11a396b` por `/api/deploy-info`, `/api/health` e `check_deploy.sh 11a396b`;
+`origin/main` ja avancou para commits documentais posteriores, entao o codigo
+live correto continua sendo `11a396b`. O runtime historico `0f84552` adicionou
+retry explicito, no mesmo modelo, para erro de codigo em `execute_python_code`
+quando o JSON ja foi persistido e o PDF ainda falta. O
 smoke Gemini 2.5 Flash Lite `task_124bf0e8d7bf` falhou alto por JSON invalido
 antes de o reparo de PDF virar sucesso: JSON `7fde0dfd076a36e3` sem
 `questoes`, `nota_final=0`, PDF `e8861f03a2980412` com `8.0`; custo
