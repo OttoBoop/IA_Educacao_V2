@@ -235,9 +235,14 @@ The code runs in isolation with these allowed libraries:
 pandas, numpy, matplotlib, openpyxl, reportlab, Pillow, scipy
 
 Important: Always save outputs to files (e.g., 'output.xlsx', 'chart.png').
-For PDF reports, set output_files to an explicit .pdf filename and write/save
-that exact file from the code. A successful tool call without a generated file
-is not considered a completed pipeline artifact.""",
+Use simple relative filenames only, with no directories or absolute paths.
+Never write to /mnt/data, /tmp, /home, or any path containing "/".
+Never use open(..., "w") or open(..., "wb") to create output files; direct
+open-based writes are blocked by the sandbox validator. For PDF reports, set
+output_files to an explicit .pdf filename and use reportlab save APIs directly,
+for example canvas.Canvas("report.pdf") or SimpleDocTemplate("report.pdf")
+followed by save/build. A successful tool call without a generated file is not
+considered a completed pipeline artifact.""",
     parameters=[
         ToolParameter(
             name="code",

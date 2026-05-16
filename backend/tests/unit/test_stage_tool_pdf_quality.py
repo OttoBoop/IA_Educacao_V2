@@ -5,7 +5,7 @@ import json
 
 import fitz
 
-from executor import PipelineExecutor, STAGE_TOOL_INSTRUCTIONS
+from executor import PipelineExecutor, PDF_SANDBOX_RULES, STAGE_TOOL_INSTRUCTIONS
 from models import TipoDocumento
 from prompts import EtapaProcessamento
 
@@ -35,6 +35,23 @@ def test_relatorio_pdf_instructions_keep_grade_and_proficiency_separate():
     assert "metricas separadas" in instructions
     assert "8/10 (75%)" in instructions
     assert "omita o percentual" in instructions
+
+
+def test_core_pdf_instructions_forbid_open_write_and_absolute_paths():
+    for etapa in (
+        EtapaProcessamento.CORRIGIR,
+        EtapaProcessamento.ANALISAR_HABILIDADES,
+        EtapaProcessamento.GERAR_RELATORIO,
+    ):
+        instructions = STAGE_TOOL_INSTRUCTIONS[etapa].lower()
+
+        assert PDF_SANDBOX_RULES.lower() in instructions
+        assert "/mnt/data" in instructions
+        assert "/tmp" in instructions
+        assert "open(..., 'w')" in instructions
+        assert "open(..., 'wb')" in instructions
+        assert "canvas.canvas" in instructions
+        assert "simpledoctemplate" in instructions
 
 
 def _write_pdf(path, text):

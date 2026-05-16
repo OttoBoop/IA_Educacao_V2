@@ -147,6 +147,15 @@ STAGE_TOOLS: Dict[EtapaProcessamento, List[str]] = {
     EtapaProcessamento.RELATORIO_DESEMPENHO_MATERIA: ["create_document", "execute_python_code"],
 }
 
+PDF_SANDBOX_RULES = (
+    "Use somente nome de arquivo relativo simples para o PDF, sem diretorios, "
+    "sem barras e sem paths absolutos como /mnt/data, /tmp ou /home. "
+    "NUNCA use open(..., 'w') nem open(..., 'wb') para criar o PDF; esse padrao "
+    "e bloqueado pelo sandbox. Use APIs do reportlab diretamente, por exemplo "
+    "canvas.Canvas('relatorio.pdf') ou SimpleDocTemplate('relatorio.pdf'), e "
+    "chame save()/build() no objeto do reportlab."
+)
+
 STAGE_TOOL_INSTRUCTIONS: Dict[EtapaProcessamento, str] = {
     EtapaProcessamento.CORRIGIR: """
 INSTRUÇÕES DE TOOL-USE PARA CORREÇÃO:
@@ -192,6 +201,7 @@ Você DEVE usar as ferramentas disponíveis para produzir dois outputs:
    caber no layout. Se usar tabela, cada celula textual deve quebrar linha e
    preservar o conteudo essencial.
    Use extensão .pdf e nome descritivo.
+""" + PDF_SANDBOX_RULES + """
 """,
     EtapaProcessamento.ANALISAR_HABILIDADES: """
 INSTRUÇÕES DE TOOL-USE PARA ANÁLISE DE HABILIDADES:
@@ -255,6 +265,7 @@ Você DEVE usar as ferramentas disponíveis para produzir dois outputs:
    Use o arquivo "analise_habilidades.pdf". O código DEVE gravar esse .pdf real
    no disco e preencher output_files com ["analise_habilidades.pdf"]. Não basta
    imprimir, retornar base64 ou descrever o PDF.
+""" + PDF_SANDBOX_RULES + """
 """,
     EtapaProcessamento.GERAR_RELATORIO: """
 INSTRUÇÕES DE TOOL-USE PARA RELATÓRIO FINAL:
@@ -305,6 +316,7 @@ Você DEVE usar as ferramentas disponíveis para produzir dois outputs:
    O PDF nao pode cortar ou truncar textos longos; use Paragraph/word-wrap ou
    blocos verticais.
    Use extensão .pdf.
+""" + PDF_SANDBOX_RULES + """
 """,
     # F-T4: DESEMPENHO_TAREFA
     EtapaProcessamento.RELATORIO_DESEMPENHO_TAREFA: """
@@ -3574,6 +3586,8 @@ Seja preciso, educativo e construtivo em suas análises."""
                         "O JSON foi salvo, mas o PDF obrigatório não foi persistido. "
                         "Chame execute_python_code agora, preencha output_files com "
                         f"['{pdf_filename}'], e use reportlab para salvar exatamente esse arquivo. "
+                        + PDF_SANDBOX_RULES
+                        + " "
                         "O código precisa gravar esse .pdf real no diretório atual. "
                         "Não responda em texto simples."
                         + contexto_retry
@@ -3589,6 +3603,8 @@ Seja preciso, educativo e construtivo em suas análises."""
                     "Esta etapa exige dois artefatos persistidos: JSON via create_document "
                     "e PDF via execute_python_code. Chame as ferramentas agora; para o PDF, "
                     f"preencha output_files com ['{pdf_filename}'] e salve esse arquivo com reportlab. "
+                    + PDF_SANDBOX_RULES
+                    + " "
                     "Não responda em texto simples."
                     + contexto_retry
                 )
@@ -3818,7 +3834,9 @@ Seja preciso, educativo e construtivo em suas análises."""
                     "e nao invente valores. Gere novamente apenas o PDF usando exatamente "
                     "os valores do JSON abaixo.\n"
                     f"Preencha output_files com ['{pdf_filename}'] e salve um PDF real "
-                    "com reportlab. Se for CORRIGIR, cada questao exibida no PDF deve "
+                    "com reportlab. "
+                    + PDF_SANDBOX_RULES
+                    + " Se for CORRIGIR, cada questao exibida no PDF deve "
                     "usar exatamente questoes[].nota do JSON; a nota final do PDF deve "
                     "usar exatamente nota_final do JSON. Se for GERAR_RELATORIO, "
                     "nota_final e proficiencia_geral devem aparecer como metricas "
