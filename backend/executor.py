@@ -4054,6 +4054,79 @@ Seja preciso, educativo e construtivo em suas análises."""
                     return content[:max_chars] + "\n...[json truncado para retry]..."
                 return content
 
+            def _etapa_resultado_tool_use() -> Union[EtapaProcessamento, str]:
+                tipo_para_etapa = {
+                    TipoDocumento.CORRECAO: EtapaProcessamento.CORRIGIR,
+                    TipoDocumento.ANALISE_HABILIDADES: EtapaProcessamento.ANALISAR_HABILIDADES,
+                    TipoDocumento.RELATORIO_FINAL: EtapaProcessamento.GERAR_RELATORIO,
+                    TipoDocumento.RELATORIO_DESEMPENHO_TAREFA: EtapaProcessamento.RELATORIO_DESEMPENHO_TAREFA,
+                    TipoDocumento.RELATORIO_DESEMPENHO_TURMA: EtapaProcessamento.RELATORIO_DESEMPENHO_TURMA,
+                    TipoDocumento.RELATORIO_DESEMPENHO_MATERIA: EtapaProcessamento.RELATORIO_DESEMPENHO_MATERIA,
+                }
+                if expected_document_type:
+                    return tipo_para_etapa.get(expected_document_type, expected_document_type.value)
+                return "tools"
+
+            def _json_doc_oficial(state: Dict[str, Any]) -> Optional[Any]:
+                docs = state.get("docs_by_tool", {}).get("create_document", [])
+                for doc in reversed(docs):
+                    if (getattr(doc, "extensao", "") or "").lower() == ".json" and not _doc_is_error(doc):
+                        return doc
+                return None
+
+            def _json_from_content(raw: Any) -> Optional[Dict[str, Any]]:
+                if isinstance(raw, dict):
+                    return raw
+                if not isinstance(raw, str) or not raw.strip():
+                    return None
+                try:
+                    parsed = json.loads(raw)
+                except Exception:
+                    return None
+                return parsed if isinstance(parsed, dict) else None
+
+            def _json_from_tool_calls() -> Optional[Dict[str, Any]]:
+                for tc in reversed(_combined_tool_calls(respostas_tool)):
+                    if tc.get("name") != "create_document":
+                        continue
+                    docs_input = tc.get("input", {}).get("documents", [])
+                    if isinstance(docs_input, dict):
+                        docs = [docs_input]
+                    elif isinstance(docs_input, list):
+                        docs = docs_input
+                    else:
+                        docs = []
+                    for doc in reversed(docs):
+                        if not isinstance(doc, dict):
+                            continue
+                        parsed = _json_from_content(doc.get("content"))
+                        if parsed is not None:
+                            return parsed
+                    parsed = _json_from_content(tc.get("input", {}).get("content"))
+                    if parsed is not None:
+                        return parsed
+                return None
+
+            def _resposta_parsed_e_documento_principal(state: Dict[str, Any]) -> tuple[Optional[Dict[str, Any]], Optional[str]]:
+                json_doc = _json_doc_oficial(state)
+                if json_doc is not None:
+                    doc_id = getattr(json_doc, "id", None)
+                    try:
+                        path = self.storage.resolver_caminho_documento(json_doc)
+                        with open(path, "r", encoding="utf-8") as fh:
+                            parsed = json.load(fh)
+                        if isinstance(parsed, dict):
+                            return parsed, doc_id
+                    except Exception as exc:
+                        _logger.warning(
+                            "Nao foi possivel carregar JSON principal de tool-use",
+                            documento_id=doc_id,
+                            erro=str(exc),
+                        )
+                    return None, doc_id
+
+                return _json_from_tool_calls(), None
+
             def _retry_pdf_consistency_message(
                 state: Dict[str, Any],
                 pdf_errors: List[str],
@@ -4633,15 +4706,19 @@ Seja preciso, educativo e construtivo em suas análises."""
                     },
                 )
 
+            resposta_parsed_final, documento_id_principal = _resposta_parsed_e_documento_principal(final_state)
+
             return ResultadoExecucao(
                 sucesso=True,
-                etapa="tools",
+                etapa=_etapa_resultado_tool_use(),
                 resposta_raw=raw_content,
+                resposta_parsed=resposta_parsed_final,
                 provider=model.tipo.value,
                 modelo=model.modelo,
                 tokens_entrada=tokens_entrada,
                 tokens_saida=tokens_saida,
                 tempo_ms=tempo_ms,
+                documento_id=documento_id_principal,
                 alertas=alertas,
                 tentativas=tentativas,
                 pdf_fallback_used=pdf_fallback_used,

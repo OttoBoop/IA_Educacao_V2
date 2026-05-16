@@ -37,12 +37,13 @@ Run: cd IA_Educacao_V2/backend && pytest tests/unit/test_e_t2_retry_partial_outp
 
 import pytest
 import sys
+import json
 from pathlib import Path
 from unittest.mock import MagicMock, AsyncMock, patch, call
 
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
-from executor import PipelineExecutor, ResultadoExecucao
+from executor import PipelineExecutor, ResultadoExecucao, EtapaProcessamento
 from models import TipoDocumento
 
 
@@ -257,6 +258,51 @@ class TestBothOutputsNoRetry:
         assert result.sucesso is True, (
             f"Both outputs present → expected sucesso=True, got sucesso={result.sucesso}"
         )
+
+    async def test_expected_document_type_returns_real_stage_and_parsed_json(self):
+        """Tool-use success should return the pipeline stage and parsed JSON."""
+        json_content = {
+            "nota_final": 8,
+            "questoes": [{"numero": 1, "nota": 3, "feedback": "Correto"}],
+            "total_acertos": 1,
+            "total_erros": 0,
+            "feedback_geral": "Bom desempenho",
+            "_avisos_documento": [],
+            "_avisos_questao": [],
+        }
+        response = {
+            "content": "",
+            "tokens": 150,
+            "modelo": "test-model",
+            "provider": "anthropic",
+            "tool_calls": [
+                {
+                    "name": "create_document",
+                    "input": {
+                        "documents": [
+                            {
+                                "filename": "correcao.json",
+                                "content": json.dumps(json_content),
+                            }
+                        ]
+                    },
+                },
+                {
+                    "name": "execute_python_code",
+                    "input": {"code": "# generate PDF"},
+                },
+            ],
+        }
+
+        result, mock_client = await _call_executar_com_tools(
+            chat_side_effect=response,
+            tools_to_use=["create_document", "execute_python_code"],
+            expected_document_type=TipoDocumento.CORRECAO,
+        )
+
+        assert result.sucesso is True
+        assert result.etapa == EtapaProcessamento.CORRIGIR
+        assert result.resposta_parsed == json_content
 
         call_count = mock_client.chat_with_tools.call_count
         assert call_count == 1, (
