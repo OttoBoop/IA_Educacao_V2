@@ -1325,6 +1325,171 @@ async def test_executar_com_tools_repara_correcao_json_array(monkeypatch, tmp_pa
 
 
 @pytest.mark.asyncio
+async def test_executar_com_tools_rejeita_correcao_que_troca_resposta_do_aluno(
+    monkeypatch,
+    tmp_path,
+):
+    import chat_service
+    from executor import PipelineExecutor
+    from chat_service import ProviderType
+
+    model = SimpleNamespace(
+        id="gpt54mini",
+        tipo=ProviderType.OPENAI,
+        modelo="gpt-5.4-mini",
+        api_key_id=None,
+        suporta_function_calling=True,
+        max_tokens=1024,
+        temperature=0,
+        suporta_temperature=True,
+    )
+
+    monkeypatch.setattr(chat_service.model_manager, "get", lambda model_id: model)
+    monkeypatch.setattr(chat_service.api_key_manager, "get", lambda key_id: None)
+    monkeypatch.setattr(
+        chat_service.api_key_manager,
+        "get_por_empresa",
+        lambda provider: SimpleNamespace(api_key="test-key"),
+    )
+
+    respostas_path = tmp_path / "respostas.json"
+    gabarito_path = tmp_path / "gabarito.json"
+    respostas_path.write_text(
+        json.dumps({"respostas": [{"questao_numero": 3, "resposta_aluno": "25."}]}),
+        encoding="utf-8",
+    )
+    gabarito_path.write_text(
+        json.dumps({"respostas": [{"questao_numero": 3, "resposta_correta": "30"}]}),
+        encoding="utf-8",
+    )
+    bad_correction_path = tmp_path / "correcao_bad.json"
+    pdf_path = tmp_path / "correcao.pdf"
+
+    bad_correction = {
+        "nota_final": 10,
+        "questoes": [
+            {
+                "numero": 3,
+                "resposta_aluno": "30",
+                "resposta_correta": "30",
+                "nota": 2,
+                "nota_maxima": 2,
+                "acerto": True,
+                "feedback": "Correto.",
+            }
+        ],
+        "total_acertos": 1,
+        "total_erros": 0,
+        "feedback_geral": "Tudo certo.",
+        "_avisos_documento": [],
+        "_avisos_questao": [],
+    }
+    bad_correction_path.write_text(json.dumps(bad_correction), encoding="utf-8")
+    pdf_path.write_bytes(b"%PDF-1.4\n")
+
+    class DummyClient:
+        def __init__(self, model_config, api_key):
+            self.model_config = model_config
+            self.api_key = api_key
+
+        async def chat_with_tools(self, **kwargs):
+            context = kwargs["context"]
+            context.created_document_ids.extend(["doc-json", "doc-pdf"])
+            return {
+                "content": "",
+                "tokens": 10,
+                "input_tokens": 8,
+                "output_tokens": 2,
+                "tool_calls": [
+                    {
+                        "id": "json-bad",
+                        "name": "create_document",
+                        "input": {
+                            "documents": [
+                                {
+                                    "filename": "correcao.json",
+                                    "content": bad_correction_path.read_text(encoding="utf-8"),
+                                }
+                            ]
+                        },
+                        "is_error": False,
+                        "files_generated": [],
+                    },
+                    {
+                        "id": "pdf-ok",
+                        "name": "execute_python_code",
+                        "input": {"output_files": ["correcao.pdf"]},
+                        "is_error": False,
+                        "files_generated": [{"filename": "correcao.pdf", "size_bytes": 128}],
+                    },
+                ],
+            }
+
+    monkeypatch.setattr(chat_service, "ChatClient", DummyClient)
+
+    docs_base = [
+        SimpleNamespace(
+            id="gabarito-json",
+            tipo=TipoDocumento.EXTRACAO_GABARITO,
+            extensao=".json",
+            criado_em="2026-05-17T10:00:00",
+            metadata={},
+        )
+    ]
+    docs_aluno = [
+        SimpleNamespace(
+            id="respostas-json",
+            tipo=TipoDocumento.EXTRACAO_RESPOSTAS,
+            extensao=".json",
+            criado_em="2026-05-17T10:01:00",
+            metadata={},
+        )
+    ]
+    docs = {
+        "doc-json": SimpleNamespace(
+            id="doc-json",
+            nome_arquivo="correcao.json",
+            extensao=".json",
+            metadata={"tool": "create_document"},
+            criado_por="pipeline_tool",
+        ),
+        "doc-pdf": SimpleNamespace(
+            id="doc-pdf",
+            nome_arquivo="correcao.pdf",
+            extensao=".pdf",
+            metadata={"tool": "execute_python_code"},
+            criado_por="ia_execute_python_code",
+        ),
+    }
+    paths = {
+        "gabarito-json": gabarito_path,
+        "respostas-json": respostas_path,
+        "doc-json": bad_correction_path,
+        "doc-pdf": pdf_path,
+    }
+
+    executor = PipelineExecutor()
+    executor.storage.get_documento = MagicMock(side_effect=lambda doc_id: docs[doc_id])
+    executor.storage.listar_documentos = MagicMock(
+        side_effect=lambda _atividade_id, aluno_id=None: docs_aluno if aluno_id else docs_base
+    )
+    executor.storage.resolver_caminho_documento = MagicMock(side_effect=lambda doc: paths[doc.id])
+
+    resultado = await executor.executar_com_tools(
+        mensagem="corrija",
+        atividade_id="ativ-1",
+        aluno_id="aluno-1",
+        provider_id="gpt54mini",
+        tools_to_use=["create_document", "execute_python_code"],
+        expected_document_type=TipoDocumento.CORRECAO,
+        prompt_id="prompt-1",
+    )
+
+    assert resultado.sucesso is False
+    assert "resposta_aluno divergente da EXTRAIR_RESPOSTAS" in (resultado.erro or "")
+
+
+@pytest.mark.asyncio
 async def test_executar_com_tools_falha_json_placeholder_analisar(monkeypatch, tmp_path):
     import chat_service
     from executor import PipelineExecutor

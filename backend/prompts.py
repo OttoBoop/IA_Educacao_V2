@@ -415,6 +415,8 @@ Princípios que guiam seu trabalho:
   "questoes": [
     {
       "numero": 1,
+      "resposta_aluno": "Copie exatamente a resposta_aluno da extração de respostas",
+      "resposta_correta": "Copie exatamente a resposta_correta do gabarito",
       "nota": 0.0,
       "nota_maxima": 1.0,
       "acerto": false,
@@ -433,7 +435,8 @@ Princípios que guiam seu trabalho:
 }
 ```
 
-Use `_avisos_documento` para problemas no documento inteiro e `_avisos_questao` para problemas em questões específicas. Se não houver avisos, envie listas vazias []."""
+Use `_avisos_documento` para problemas no documento inteiro e `_avisos_questao` para problemas em questões específicas. Se não houver avisos, envie listas vazias [].
+Nunca substitua a resposta do aluno pela resposta correta: cada item em `questoes` deve carregar `resposta_aluno` da extração de respostas e `resposta_correta` do gabarito antes de atribuir nota."""
     ),
     
     EtapaProcessamento.ANALISAR_HABILIDADES: PromptTemplate(

@@ -22,6 +22,7 @@ import tempfile
 import os
 import math
 import uuid
+import unicodedata
 import fitz  # PyMuPDF — extract text from binary PDFs (RELATORIO_FINAL)
 
 from models import (
@@ -167,7 +168,15 @@ Você DEVE usar as ferramentas disponíveis para produzir dois outputs:
    {
      "nota_final": <float>,
      "questoes": [
-       {"numero": <int>, "nota": <float>, "nota_maxima": <float>, "acerto": <bool>, "feedback": "<str>"}
+       {
+         "numero": <int>,
+         "resposta_aluno": "<copie exatamente a resposta_aluno da EXTRAIR_RESPOSTAS>",
+         "resposta_correta": "<copie exatamente a resposta_correta da EXTRAIR_GABARITO>",
+         "nota": <float>,
+         "nota_maxima": <float>,
+         "acerto": <bool>,
+         "feedback": "<str>"
+       }
      ],
      "total_acertos": <int>,
      "total_erros": <int>,
@@ -189,6 +198,9 @@ Você DEVE usar as ferramentas disponíveis para produzir dois outputs:
    Use _avisos_documento para problemas no documento inteiro.
    Use _avisos_questao para problemas em questões específicas (inclua o número da questão).
    Se não houver avisos, envie listas vazias [].
+   Nunca substitua a resposta do aluno pela resposta correta. Cada item de
+   questoes deve copiar `resposta_aluno` da extração de respostas e
+   `resposta_correta` do gabarito antes de atribuir nota.
    Use extensão .json e nome descritivo (ex: "correcao_aluno.json").
 
 2. **execute_python_code** — Gere um PDF estilizado com reportlab contendo:
@@ -3907,6 +3919,7 @@ Seja preciso, educativo e construtivo em suas análises."""
                 )
 
             docs_marked_error: set[str] = set()
+            correcao_trace_cache: Optional[Dict[str, Dict[Any, str]]] = None
 
             def _doc_status_value(doc: Any) -> str:
                 status = getattr(doc, "status", "") or ""
@@ -3918,6 +3931,82 @@ Seja preciso, educativo e construtivo em suas análises."""
                     (doc_id is not None and doc_id in docs_marked_error)
                     or _doc_status_value(doc) == StatusProcessamento.ERRO.value
                 )
+
+            def _read_json_doc_for_trace(doc: Any) -> Optional[Dict[str, Any]]:
+                try:
+                    path = self.storage.resolver_caminho_documento(doc)
+                except Exception:
+                    return None
+                if not path or not Path(path).exists():
+                    return None
+                try:
+                    with open(path, "r", encoding="utf-8") as fh:
+                        data = json.load(fh)
+                except Exception:
+                    return None
+                return data if isinstance(data, dict) else None
+
+            def _question_key(value: Any) -> Optional[Any]:
+                try:
+                    return int(value)
+                except (TypeError, ValueError):
+                    text = str(value or "").strip()
+                    return text or None
+
+            def _correcao_trace_maps() -> Dict[str, Dict[Any, str]]:
+                """Load upstream answers used to detect correction hallucinations."""
+                nonlocal correcao_trace_cache
+                if correcao_trace_cache is not None:
+                    return correcao_trace_cache
+
+                maps: Dict[str, Dict[Any, str]] = {"respostas_aluno": {}, "gabarito": {}}
+                correcao_trace_cache = maps
+                if expected_document_type != TipoDocumento.CORRECAO:
+                    return maps
+
+                try:
+                    docs_base_raw = self.storage.listar_documentos(atividade_id)
+                    docs_base = self._documentos_novos_primeiro(list(docs_base_raw or []))
+                except Exception:
+                    docs_base = []
+
+                try:
+                    docs_aluno_raw = (
+                        self.storage.listar_documentos(atividade_id, aluno_id)
+                        if aluno_id
+                        else []
+                    )
+                    docs_aluno = self._documentos_novos_primeiro(list(docs_aluno_raw or []))
+                except Exception:
+                    docs_aluno = []
+
+                respostas_doc = self._documento_json_da_ultima_execucao(
+                    docs_aluno,
+                    TipoDocumento.EXTRACAO_RESPOSTAS,
+                )
+                respostas_data = _read_json_doc_for_trace(respostas_doc) if respostas_doc else None
+                if isinstance(respostas_data, dict):
+                    for item in respostas_data.get("respostas") or []:
+                        if not isinstance(item, dict):
+                            continue
+                        key = _question_key(item.get("questao_numero"))
+                        if key is not None and item.get("resposta_aluno") is not None:
+                            maps["respostas_aluno"][key] = str(item.get("resposta_aluno"))
+
+                gabarito_doc = self._documento_json_da_ultima_execucao(
+                    docs_base,
+                    TipoDocumento.EXTRACAO_GABARITO,
+                )
+                gabarito_data = _read_json_doc_for_trace(gabarito_doc) if gabarito_doc else None
+                if isinstance(gabarito_data, dict):
+                    for item in gabarito_data.get("respostas") or []:
+                        if not isinstance(item, dict):
+                            continue
+                        key = _question_key(item.get("questao_numero"))
+                        if key is not None and item.get("resposta_correta") is not None:
+                            maps["gabarito"][key] = str(item.get("resposta_correta"))
+
+                return maps
 
             def _json_schema_errors_for_data(
                 data: Any,
@@ -3966,10 +4055,29 @@ Seja preciso, educativo e construtivo em suas análises."""
                     if not isinstance(data.get(field), str) or not data.get(field, "").strip():
                         errors.append(f"JSON {doc_label} sem {field} textual")
 
+                def _normalize_answer(value: Any) -> str:
+                    text = str(value or "").strip().lower()
+                    text = unicodedata.normalize("NFKD", text)
+                    text = "".join(ch for ch in text if not unicodedata.combining(ch))
+                    text = text.replace("²", "2")
+                    text = re.sub(r"\s+", "", text)
+                    text = re.sub(r"[\.;]+$", "", text)
+                    return text
+
+                def _single_numeric(value: Any) -> Optional[float]:
+                    numbers = re.findall(r"-?\d+(?:[\.,]\d+)?", str(value or ""))
+                    if len(numbers) != 1:
+                        return None
+                    try:
+                        return float(numbers[0].replace(",", "."))
+                    except ValueError:
+                        return None
+
                 if expected_document_type == TipoDocumento.CORRECAO:
                     if not _numeric(data.get("nota_final")):
                         errors.append(f"JSON {doc_label} sem nota_final numérica")
-                    if not isinstance(data.get("questoes"), list) or not data.get("questoes"):
+                    questoes = data.get("questoes")
+                    if not isinstance(questoes, list) or not questoes:
                         errors.append(f"JSON {doc_label} sem lista de questoes")
                     if not isinstance(data.get("feedback_geral"), str) or not data.get("feedback_geral", "").strip():
                         errors.append(f"JSON {doc_label} sem feedback_geral textual")
@@ -3979,6 +4087,75 @@ Seja preciso, educativo e construtivo em suas análises."""
                         errors.append(f"JSON {doc_label} sem total_erros numérico")
                     _required_list("_avisos_documento")
                     _required_list("_avisos_questao")
+                    if isinstance(questoes, list):
+                        trace_maps = _correcao_trace_maps()
+                        has_respostas = bool(trace_maps["respostas_aluno"])
+                        has_gabarito = bool(trace_maps["gabarito"])
+                        for item in questoes:
+                            if not isinstance(item, dict):
+                                errors.append(f"JSON {doc_label} tem item de questoes que não é objeto")
+                                continue
+                            numero = _question_key(item.get("numero"))
+                            questao_label = numero if numero is not None else "?"
+
+                            if has_respostas:
+                                resposta_aluno = item.get("resposta_aluno")
+                                if resposta_aluno is None or not str(resposta_aluno).strip():
+                                    errors.append(
+                                        f"JSON {doc_label} questão {questao_label} sem resposta_aluno rastreável"
+                                    )
+                                upstream = trace_maps["respostas_aluno"].get(numero)
+                                if (
+                                    upstream is not None
+                                    and resposta_aluno is not None
+                                    and _normalize_answer(resposta_aluno) != _normalize_answer(upstream)
+                                ):
+                                    errors.append(
+                                        f"JSON {doc_label} questão {questao_label} tem resposta_aluno "
+                                        "divergente da EXTRAIR_RESPOSTAS"
+                                    )
+
+                            if has_gabarito:
+                                resposta_correta = item.get("resposta_correta")
+                                if resposta_correta is None or not str(resposta_correta).strip():
+                                    errors.append(
+                                        f"JSON {doc_label} questão {questao_label} sem resposta_correta rastreável"
+                                    )
+                                upstream = trace_maps["gabarito"].get(numero)
+                                if (
+                                    upstream is not None
+                                    and resposta_correta is not None
+                                    and _normalize_answer(resposta_correta) != _normalize_answer(upstream)
+                                ):
+                                    errors.append(
+                                        f"JSON {doc_label} questão {questao_label} tem resposta_correta "
+                                        "divergente da EXTRACAO_GABARITO"
+                                    )
+
+                            resposta_aluno_num = _single_numeric(item.get("resposta_aluno"))
+                            resposta_correta_num = _single_numeric(item.get("resposta_correta"))
+                            if (
+                                resposta_aluno_num is not None
+                                and resposta_correta_num is not None
+                                and abs(resposta_aluno_num - resposta_correta_num) > 0.001
+                            ):
+                                nota = self._nota_como_float(item.get("nota"))
+                                nota_maxima = self._nota_como_float(item.get("nota_maxima"))
+                                if item.get("acerto") is True:
+                                    errors.append(
+                                        f"JSON {doc_label} questão {questao_label} marcada acerto=true "
+                                        "apesar de resposta_aluno numérica divergir do gabarito"
+                                    )
+                                if (
+                                    nota is not None
+                                    and nota_maxima is not None
+                                    and nota_maxima > 0
+                                    and nota >= nota_maxima - 0.001
+                                ):
+                                    errors.append(
+                                        f"JSON {doc_label} questão {questao_label} recebeu nota máxima "
+                                        "apesar de resposta_aluno numérica divergir do gabarito"
+                                    )
 
                 if expected_document_type == TipoDocumento.ANALISE_HABILIDADES:
                     habilidades = data.get("habilidades")
@@ -4241,7 +4418,9 @@ Seja preciso, educativo e construtivo em suas análises."""
                         "um OBJETO JSON na raiz, nunca uma lista/array. Campos "
                         "obrigatorios na raiz: nota_final, questoes, total_acertos, "
                         "total_erros, feedback_geral, _avisos_documento, "
-                        "_avisos_questao. "
+                        "_avisos_questao. Cada item em questoes deve copiar "
+                        "resposta_aluno da EXTRACAO_RESPOSTAS e resposta_correta "
+                        "da EXTRACAO_GABARITO. "
                     )
                 if expected_document_type == TipoDocumento.ANALISE_HABILIDADES:
                     schema_hint = (
