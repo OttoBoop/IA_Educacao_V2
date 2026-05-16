@@ -858,7 +858,8 @@ class ChatClient:
                 tools=tools,
                 tool_registry=tool_registry,
                 context=context,
-                max_iterations=max_iterations
+                max_iterations=max_iterations,
+                tool_choice=tool_choice,
             )
         else:
             # NO FALLBACK: if provider doesn't support tools, raise an explicit error.
@@ -1620,6 +1621,33 @@ class ChatClient:
             })
         return [{"function_declarations": function_declarations}]
 
+    def _convert_tool_choice_to_google_config(
+        self,
+        tool_choice: Optional[Any],
+        tools: List[Dict[str, Any]],
+    ) -> Optional[Dict[str, Any]]:
+        """Convert a tool_choice hint into Gemini REST toolConfig."""
+        if tool_choice is None:
+            return None
+
+        allowed_function_names: List[str] = []
+        if isinstance(tool_choice, dict):
+            if tool_choice.get("type") == "function":
+                name = tool_choice.get("name") or (tool_choice.get("function") or {}).get("name")
+                if name:
+                    allowed_function_names.append(name)
+        elif isinstance(tool_choice, str) and tool_choice.lower() in {"required", "any"}:
+            allowed_function_names = [
+                tool.get("name")
+                for tool in tools
+                if isinstance(tool, dict) and tool.get("name")
+            ]
+
+        function_calling_config: Dict[str, Any] = {"mode": "ANY"}
+        if allowed_function_names:
+            function_calling_config["allowedFunctionNames"] = allowed_function_names
+        return {"functionCallingConfig": function_calling_config}
+
     async def _chat_google_with_tools(
         self,
         mensagem: str,
@@ -1628,7 +1656,8 @@ class ChatClient:
         tools: List[Dict[str, Any]],
         tool_registry: ToolRegistry,
         context: Optional[ToolExecutionContext] = None,
-        max_iterations: int = 10
+        max_iterations: int = 10,
+        tool_choice: Optional[Any] = None,
     ) -> Dict:
         """Chat com API Google/Gemini with tool use support"""
         contents = []
@@ -1651,12 +1680,16 @@ class ChatClient:
         total_output_tokens = 0
         all_tool_calls = []
 
+        google_tool_config = self._convert_tool_choice_to_google_config(tool_choice, tools)
+
         for iteration in range(max_iterations):
             request_body = {
                 "contents": contents,
                 "generationConfig": generation_config,
                 "tools": google_tools
             }
+            if google_tool_config is not None and iteration == 0:
+                request_body["toolConfig"] = google_tool_config
 
             if system:
                 request_body["system_instruction"] = {"parts": [{"text": system}]}
@@ -1706,6 +1739,7 @@ class ChatClient:
                 fc = fc_part["functionCall"]
                 tool_name = fc["name"]
                 tool_input = fc.get("args", {})
+                function_call_id = fc.get("id")
                 tool_use_id = f"google_call_{iteration}_{i}"
 
                 result = await tool_registry.execute(
@@ -1730,6 +1764,8 @@ class ChatClient:
                         "response": {"result": result_content}
                     }
                 })
+                if function_call_id:
+                    function_response_parts[-1]["functionResponse"]["id"] = function_call_id
 
             # Add model response (with functionCall parts) to history
             contents.append({"role": "model", "parts": parts})

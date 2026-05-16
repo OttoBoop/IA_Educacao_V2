@@ -3576,6 +3576,8 @@ Seja preciso, educativo e construtivo em suas análises."""
             )
             provider_value = getattr(model.tipo, "value", model.tipo)
             is_openai_provider = provider_value == ProviderType.OPENAI.value
+            is_google_provider = provider_value == ProviderType.GOOGLE.value
+            uses_phased_tool_calls = is_openai_provider or is_google_provider
 
             def _forced_openai_tool(tool_name: str) -> Dict[str, Any]:
                 return {"type": "function", "function": {"name": tool_name}}
@@ -3787,12 +3789,16 @@ Seja preciso, educativo e construtivo em suas análises."""
                 ]
 
             def _retry_tool_choice_for_state(state: Dict[str, Any]) -> Optional[Any]:
-                if not is_openai_provider:
+                if not uses_phased_tool_calls:
                     return None
+                if not state["has_json"]:
+                    return _forced_openai_tool("create_document")
+                if not state["has_pdf"]:
+                    return _forced_openai_tool("execute_python_code")
                 return "required"
 
             def _initial_tools_for_provider() -> List[Dict[str, Any]]:
-                if dual_output_expected and is_openai_provider:
+                if dual_output_expected and uses_phased_tool_calls:
                     return [
                         tool
                         for tool in tools_definitions
@@ -4176,7 +4182,7 @@ Seja preciso, educativo e construtivo em suas análises."""
 
             initial_tool_choice = (
                 _forced_openai_tool("create_document")
-                if dual_output_expected and is_openai_provider
+                if dual_output_expected and uses_phased_tool_calls
                 else None
             )
 
@@ -4197,7 +4203,7 @@ Seja preciso, educativo e construtivo em suas análises."""
 
             if dual_output_expected:
                 state = _dual_output_state(respostas_tool)
-                if is_openai_provider:
+                if uses_phased_tool_calls:
                     if not state["has_json"]:
                         resposta = await client.chat_with_tools(
                             mensagem=_retry_create_document_message(),

@@ -73,10 +73,12 @@ def anthropic_format_tools(mock_tool_registry):
 
 def make_google_function_call_response(function_calls, usage=None):
     """Helper: create a mock Google Gemini response with functionCall parts"""
-    parts = [
-        {"functionCall": {"name": fc["name"], "args": fc["args"]}}
-        for fc in function_calls
-    ]
+    parts = []
+    for fc in function_calls:
+        function_call = {"name": fc["name"], "args": fc["args"]}
+        if fc.get("id"):
+            function_call["id"] = fc["id"]
+        parts.append({"functionCall": function_call})
     return {
         "candidates": [{
             "content": {"parts": parts, "role": "model"},
@@ -274,6 +276,129 @@ class TestGoogleToolFormatConversion:
             func_decl = tool_block["function_declarations"][0]
             assert func_decl["name"] == "create_document"
             assert "parameters" in func_decl
+
+    @pytest.mark.asyncio
+    async def test_forced_tool_choice_sets_google_tool_config(
+        self, google_client, mock_tool_registry, anthropic_format_tools
+    ):
+        """Forced Google tool calls use toolConfig ANY with an allowed function."""
+        final_response = make_google_final_response("No tools needed")
+
+        with patch("httpx.AsyncClient") as mock_client_cls:
+            mock_client = AsyncMock()
+            mock_client_cls.return_value.__aenter__ = AsyncMock(return_value=mock_client)
+            mock_client_cls.return_value.__aexit__ = AsyncMock(return_value=False)
+
+            mock_resp = MagicMock(status_code=200)
+            mock_resp.json.return_value = final_response
+            mock_client.post = AsyncMock(return_value=mock_resp)
+
+            await google_client._chat_google_with_tools(
+                mensagem="Hello",
+                historico=[],
+                system="Helper",
+                tools=anthropic_format_tools,
+                tool_registry=mock_tool_registry,
+                max_iterations=10,
+                tool_choice={"type": "function", "function": {"name": "create_document"}},
+            )
+
+            request_body = mock_client.post.call_args.kwargs["json"]
+
+        assert request_body["toolConfig"] == {
+            "functionCallingConfig": {
+                "mode": "ANY",
+                "allowedFunctionNames": ["create_document"],
+            }
+        }
+
+    @pytest.mark.asyncio
+    async def test_forced_tool_config_applies_only_first_iteration(
+        self, google_client, mock_tool_registry, anthropic_format_tools
+    ):
+        """A forced Google tool call should not force the follow-up final text turn."""
+        fc_response = make_google_function_call_response([
+            {"name": "create_document", "args": {"title": "Test", "content": "Hello"}}
+        ])
+        final_response = make_google_final_response("Document created!")
+
+        mock_tool_registry.execute = AsyncMock(return_value=ToolResult(
+            tool_use_id="google_call_0_0",
+            content="OK",
+            is_error=False,
+        ))
+
+        with patch("httpx.AsyncClient") as mock_client_cls:
+            mock_client = AsyncMock()
+            mock_client_cls.return_value.__aenter__ = AsyncMock(return_value=mock_client)
+            mock_client_cls.return_value.__aexit__ = AsyncMock(return_value=False)
+
+            mock_r1 = MagicMock(status_code=200)
+            mock_r1.json.return_value = fc_response
+            mock_r2 = MagicMock(status_code=200)
+            mock_r2.json.return_value = final_response
+            mock_client.post = AsyncMock(side_effect=[mock_r1, mock_r2])
+
+            await google_client._chat_google_with_tools(
+                mensagem="Create a document",
+                historico=[],
+                system="Helper",
+                tools=anthropic_format_tools,
+                tool_registry=mock_tool_registry,
+                max_iterations=10,
+                tool_choice={"type": "function", "function": {"name": "create_document"}},
+            )
+
+            first_body = mock_client.post.call_args_list[0].kwargs["json"]
+            second_body = mock_client.post.call_args_list[1].kwargs["json"]
+
+        assert "toolConfig" in first_body
+        assert "toolConfig" not in second_body
+
+    @pytest.mark.asyncio
+    async def test_function_response_preserves_google_function_call_id(
+        self, google_client, mock_tool_registry, anthropic_format_tools
+    ):
+        """Gemini 3 functionResponse parts must include the matching functionCall id."""
+        fc_response = make_google_function_call_response([
+            {
+                "name": "create_document",
+                "args": {"title": "Test", "content": "Hello"},
+                "id": "call_123",
+            }
+        ])
+        final_response = make_google_final_response("Document created!")
+
+        mock_tool_registry.execute = AsyncMock(return_value=ToolResult(
+            tool_use_id="google_call_0_0",
+            content="OK",
+            is_error=False,
+        ))
+
+        with patch("httpx.AsyncClient") as mock_client_cls:
+            mock_client = AsyncMock()
+            mock_client_cls.return_value.__aenter__ = AsyncMock(return_value=mock_client)
+            mock_client_cls.return_value.__aexit__ = AsyncMock(return_value=False)
+
+            mock_r1 = MagicMock(status_code=200)
+            mock_r1.json.return_value = fc_response
+            mock_r2 = MagicMock(status_code=200)
+            mock_r2.json.return_value = final_response
+            mock_client.post = AsyncMock(side_effect=[mock_r1, mock_r2])
+
+            await google_client._chat_google_with_tools(
+                mensagem="Create a document",
+                historico=[],
+                system="Helper",
+                tools=anthropic_format_tools,
+                tool_registry=mock_tool_registry,
+                max_iterations=10,
+            )
+
+            second_body = mock_client.post.call_args_list[1].kwargs["json"]
+
+        function_response = second_body["contents"][-1]["parts"][0]["functionResponse"]
+        assert function_response["id"] == "call_123"
 
 
 # ============================================================
