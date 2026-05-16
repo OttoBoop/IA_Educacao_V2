@@ -11,7 +11,11 @@ OpenAI GPT-5.x aos docs oficiais: reasoning sem `temperature`, variantes `-pro`
 sem capabilities inventadas, `gpt-5-image` removido do catalogo textual e
 limites de contexto/output corrigidos. Smoke live seguro confirmou catalogo,
 estimativa de custo e chat simples com `gpt54mini001` (`HTTP 200`, JSON valido,
-`tokens_used=409`). GPT-4.1, GPT-5.4 Mini e GPT-4o seguem referencias de pipeline
+`tokens_used=409`). Smoke de pipeline pos-deploy `task_0559fc57a3cc`, fixture
+Diana Omega, rodou `selected_steps=["corrigir"]` com `gpt54mini001` e completou
+sem `stage_errors`; JSON `92737f5ba69ca2d4` e PDF `bb6522992d2fe7d4` ficaram
+coerentes (`nota_final=8.0`, Q3 errada, `24593/4061` tokens,
+`US$ 0.036719`). GPT-4.1, GPT-5.4 Mini e GPT-4o seguem referencias de pipeline
 confirmadas na fixture Diana; Google esta limitado por quota `429` nos smokes
 recentes, Anthropic segue bloqueado por credito, e Supabase `token_usage`
 continua ausente (`PGRST205`), deixando custo duravel como gate real.
@@ -47,6 +51,20 @@ retornou `404`; `/api/settings/model-catalog/calculate-cost` para
 `/api/chat` com `gpt54mini001` retornou JSON valido e `tokens_used=409`. Nenhum
 smoke de pipeline integral foi feito neste ciclo porque a Lista0 segue bloqueada
 por gabarito parcial.
+
+Atualizacao pipeline OpenAI de 2026-05-17 no runtime `fdf0cbd`: o smoke oficial
+`task_0559fc57a3cc` rodou a etapa `corrigir` na fixture Diana
+(`f68d57a9a339081f`, aluna `10d9fa4f4303ea1f`) com `model_id=gpt54mini001`,
+`force_rerun=true` e `selected_steps=["corrigir"]`. A task completou sem
+`stage_errors`. Artefatos: JSON `92737f5ba69ca2d4` e PDF
+`bb6522992d2fe7d4`, ambos `status=concluido`, provider/modelo
+`openai/gpt-5.4-mini`, `tokens_entrada=24593`, `tokens_saida=4061`,
+`cost_run_id=tool_9c04a9d6a4af`, custo `US$ 0.036719`. O retry explicito
+marcou o PDF intermediario `067f4db99040043b` como `status=erro` por
+`pdf_json_consistency`; isso e comportamento correto, nao fallback silencioso.
+`/api/custos/status?limit=80` passou a `runs_analisados=44`,
+`runs_precificados=42`, mas segue `ok=false` por `token_usage_not_durable` /
+Supabase `PGRST205`.
 
 Atualizacao chat/providers de 2026-05-17 no runtime `c53fae6`: o smoke oficial
 `POST /api/chat` com GPT-5.4 Mini (`gpt54mini001`) retornou HTTP 200, JSON

@@ -159,6 +159,13 @@ catalogo live retornou metadata esperada, `gpt-5-image` retornou `404`,
 estimativa de custo de `gpt-5.4-mini` retornou `US$ 0.003` por request
 `1000/500`, e `/api/chat` com `gpt54mini001` respondeu JSON valido com
 `tokens_used=409`.
+Nota GPT-5.4 Mini pos-`fdf0cbd`: o smoke `task_0559fc57a3cc` rodou
+`selected_steps=["corrigir"]` na fixture Diana com `gpt54mini001` e completou
+sem `stage_errors`. JSON `92737f5ba69ca2d4` e PDF `bb6522992d2fe7d4` ficaram
+`status=concluido`, provider/modelo `openai/gpt-5.4-mini`, `24593/4061` tokens,
+`US$ 0.036719`; o PDF intermediario `067f4db99040043b` foi marcado
+`status=erro` por `pdf_json_consistency`, confirmando retry explicito sem
+fallback silencioso.
 Nota de dataset Lista0: a atividade `126e8b5ad7dd6d59` possui base docs
 presentes, porem a auditoria de PDF de 2026-05-17 confirmou que o enunciado
 `5dc75513e958c25b` contem os exercicios 1 a 7 enquanto o gabarito

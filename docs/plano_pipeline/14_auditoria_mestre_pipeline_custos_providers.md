@@ -3529,15 +3529,24 @@ Validacao:
   `monthly_cost=2.7`.
 - Smoke de chat oficial: `/api/chat` com `gpt54mini001` retornou HTTP 200,
   `model=gpt-5.4-mini`, JSON valido e `tokens_used=409`.
+- Smoke de pipeline oficial pos-deploy: `task_0559fc57a3cc`, fixture Diana,
+  `selected_steps=["corrigir"]`, `model_id=gpt54mini001`, `force_rerun=true`.
+  Resultado: task `completed`, etapa `corrigir=completed`, sem `stage_errors`.
+  JSON `92737f5ba69ca2d4` e PDF `bb6522992d2fe7d4` ficaram `status=concluido`,
+  provider/modelo `openai/gpt-5.4-mini`, `24593/4061` tokens, custo
+  `US$ 0.036719`. O PDF intermediario `067f4db99040043b` ficou `status=erro`
+  por `pdf_json_consistency`, mantendo a regra de retry explicito sem fallback.
 
 Estado:
 
 - Esta atualizacao nao valida nenhum provider novo por qualidade pedagogica; ela
   corrige o catalogo para que proximos smokes nao comecem com parametros
-  errados.
+  errados. Ela tambem confirmou que o `corrigir` OpenAI/GPT-5.4 Mini segue
+  operacional depois do deploy.
 - Custo duravel segue bloqueado por Supabase: `/api/custos/status?limit=80`
   continua `ok=false`, `token_usage_not_durable`, `PGRST205` para
-  `public.token_usage`.
+  `public.token_usage`; apos o smoke, `runs_analisados=44` e
+  `runs_precificados=42`.
 
 ## Trabalho Aberto Desta Auditoria
 
