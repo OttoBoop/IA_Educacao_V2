@@ -5,20 +5,21 @@
 **Status geral:** o servico oficial Render
 `srv-d5t8gbh4tr6s738fr3s0` (`IA_Educacao_V2`, branch `main`, URL
 `https://ia-educacao-v2.onrender.com`) tem como codigo funcional mais recente
-confirmado o commit `48407f2` (`fix: summarize provider cost errors`),
+confirmado o commit `50fb1d7` (`fix: expose token usage migration status`),
 validado por `/api/deploy-info`, `/api/health` e
-`./scripts/check_deploy.sh 48407f2be70b538ad38550366fcef0be33c1dc90`. Se
+`./scripts/check_deploy.sh 50fb1d704bb9c72e775376a0cb627c0a71e44b27`. Se
 `/api/deploy-info` apontar commit documental posterior, comparar com este hash
-funcional antes de concluir que houve nova mudanca de runtime. O ciclo
-publicado faz resultado, historico, pendencias e status de pipeline obedecerem
-`status=erro` e conteudo avaliavel: documento em erro nao conta como progresso,
-correcao sem questao/correcao com nota nao vira `completo=true`, retry concluido
-pode fechar a etapa sem esconder erro anterior, e documentos de erro continuam
-visiveis com provider/modelo/tokens/causa. O mesmo deploy corrigiu as rotas
-agregadas de ranking/estatisticas, que antes eram capturadas pela rota dinamica
-de aluno, e preservou medias legitimas `0.0` no dashboard/historico/comparativos.
-O ciclo seguinte reduziu o dashboard da turma Lista0 de cerca de 85s para 1.4s
-ao reaproveitar ranking em lote, sem reabilitar resultados sem itens avaliaveis.
+funcional antes de concluir que houve nova mudanca de runtime. O lote funcional
+publicado ate esse hash faz resultado, historico, pendencias e status de
+pipeline obedecerem `status=erro` e conteudo avaliavel: documento em erro nao
+conta como progresso, correcao sem questao/correcao com nota nao vira
+`completo=true`, retry concluido pode fechar a etapa sem esconder erro anterior,
+e documentos de erro continuam visiveis com provider/modelo/tokens/causa.
+O mesmo lote corrigiu as rotas agregadas de ranking/estatisticas, que antes
+eram capturadas pela rota dinamica de aluno, e preservou medias legitimas `0.0`
+no dashboard/historico/comparativos. O ciclo `147296d` reduziu o dashboard da
+turma Lista0 de cerca de 85s para 1.4s ao reaproveitar ranking em lote, sem
+reabilitar resultados sem itens avaliaveis.
 O ciclo `22f6f31` trocou o modelo padrao versionado de Claude Haiku 4.5
 (bloqueado por credito Anthropic) para GPT-5.4 Mini (`gpt54mini001`) e confirmou
 o default vivo em `/api/settings/status` e `/api/settings/models`.
@@ -26,6 +27,9 @@ O ciclo `48407f2` adicionou resumo estruturado para erros de provider em
 `/api/custos/resumo`, expondo `erro_codigo`, `erro_provider_status`,
 `erro_provider_modelo`, `erro_categoria` e `erro_resumo` curto sem depender do
 JSON bruto gigante.
+O ciclo `50fb1d7` deixou `/api/custos/status` expor `error_code=PGRST205`,
+`missing_migration=true` e `migration_path=backend/migrations/002_create_token_usage.sql`
+para o bloqueio Supabase `token_usage`.
 GPT-4.1, GPT-5.4 Mini e GPT-4o seguem referencias de pipeline confirmadas na
 fixture Diana; Google esta limitado por quota `429` nos smokes recentes,
 Anthropic segue bloqueado por credito, e Supabase `token_usage` continua ausente
@@ -2804,6 +2808,33 @@ Critério de pronto: lista de limpeza segura e revisada.
 - Status: publicado e smokeado no site oficial. Bloqueio remanescente:
   `public.token_usage` segue ausente no Supabase (`PGRST205`), entao falhas sem
   documento final ainda nao tem persistencia duravel.
+
+### 2026-05-17 -- Custos: diagnostico explicito da migration `token_usage`
+
+- Alvo: fazer o bloqueio de custo duravel aparecer como acao objetiva no
+  endpoint, nao apenas como string bruta de Supabase.
+- Achado: a UI ja tentava mostrar `token_usage_backend.error_code`, mas
+  `TokenUsageStore.status()` nao preenchia esse campo; o status carregava apenas
+  a mensagem raw truncada.
+- Mudanca: `token_usage.py` passou a extrair codigos como `PGRST205` do erro do
+  Supabase e adicionou `missing_migration` e `migration_path` no objeto
+  `token_usage_backend.supabase`.
+- Validacoes locais: `py_compile` de `token_usage.py`; `git diff --check`;
+  `test_cost_tracking.py` passou com `27 passed`.
+- Commit/deploy: `50fb1d7` (`fix: expose token usage migration status`)
+  publicado em `origin/main`; Render confirmou
+  `50fb1d704bb9c72e775376a0cb627c0a71e44b27` em 150s por
+  `./scripts/wait_deploy.sh`, `./scripts/check_deploy.sh`, `/api/deploy-info`
+  e `/api/health`.
+- Smoke live: `/api/custos/status?limit=80` retornou `ok=false`,
+  `custos_persistencia_status=parcial_sem_token_usage_duravel`,
+  `token_usage_durable=false`, `supabase_enabled=true`,
+  `table_available=false`, `error_code=PGRST205`,
+  `missing_migration=true` e
+  `migration_path=backend/migrations/002_create_token_usage.sql`.
+- Status: diagnostico publicado e smokeado. Bloqueio real permanece externo:
+  aplicar a migration no Supabase ou disponibilizar credencial/caminho admin
+  para que Paulo rode a SQL sem expor segredo.
 
 ## Riscos Abertos
 

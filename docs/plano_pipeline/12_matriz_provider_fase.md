@@ -984,7 +984,7 @@ nem datasets maiores.
 
 **Proximos passos:**
 1. Manter deploy oficial confirmado por `/api/deploy-info` antes de cada smoke
-   novo; o codigo funcional mais recente confirmado e `48407f2`. Commits
+   novo; o codigo funcional mais recente confirmado e `50fb1d7`. Commits
    documentais posteriores podem mudar o hash de `/api/deploy-info` sem alterar
    comportamento de pipeline.
 2. Aplicar/validar a migration Supabase `token_usage` antes de chamar custo de
@@ -1009,5 +1009,7 @@ nem datasets maiores.
    `22f6f31` confirmou default vivo em `gpt54mini001`/GPT-5.4 Mini, removendo
    Haiku bloqueado do caminho default; `48407f2` confirmou resumo estruturado
    de erro de provider em custos (`429`, `RESOURCE_EXHAUSTED`,
-   `quota_exhausted`). Falta migration `token_usage` e proxima revalidacao de
-   provider.
+   `quota_exhausted`); `50fb1d7` confirmou diagnostico explicito da migration
+   ausente (`PGRST205`, `missing_migration=true`,
+   `backend/migrations/002_create_token_usage.sql`). Falta aplicar a migration
+   `token_usage` e seguir a proxima revalidacao de provider.
