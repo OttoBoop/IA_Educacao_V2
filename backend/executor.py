@@ -2282,6 +2282,89 @@ Regras obrigatórias:
                 return nota
 
         return "N/A"
+
+    def _nota_final_correcao_oficial(
+        self,
+        atividade_id: str,
+        aluno_id: Optional[str],
+    ) -> tuple[Optional[float], Optional[str]]:
+        """Return the latest official CORRECAO nota_final, without older-run fallback."""
+        if not aluno_id:
+            return None, None
+
+        try:
+            documentos = self.storage.listar_documentos(atividade_id, aluno_id)
+        except Exception as exc:
+            return None, f"nao foi possivel listar documentos de correcao: {exc}"
+
+        docs_correcao = [
+            doc
+            for doc in documentos or []
+            if getattr(doc, "tipo", None) == TipoDocumento.CORRECAO
+        ]
+        if not docs_correcao:
+            return None, None
+
+        doc = self._documento_json_da_ultima_execucao(docs_correcao, TipoDocumento.CORRECAO)
+        if not doc:
+            return None, "a ultima execucao de CORRECAO nao tem JSON oficial"
+        if self._documento_em_erro(doc):
+            return None, f"o JSON oficial da CORRECAO {getattr(doc, 'id', '')} esta em erro"
+
+        doc_label = getattr(doc, "id", None) or getattr(doc, "nome_arquivo", "correcao")
+        try:
+            caminho = self.storage.resolver_caminho_documento(doc)
+        except Exception as exc:
+            return None, f"nao foi possivel resolver CORRECAO {doc_label}: {exc}"
+
+        if not caminho or not Path(caminho).exists():
+            return None, f"arquivo da CORRECAO {doc_label} nao encontrado"
+
+        try:
+            with open(caminho, "r", encoding="utf-8") as fh:
+                dados = json.load(fh)
+        except Exception as exc:
+            return None, f"JSON da CORRECAO {doc_label} invalido: {exc}"
+
+        if not isinstance(dados, dict):
+            return None, f"JSON da CORRECAO {doc_label} deve ser objeto na raiz"
+
+        nota = self._nota_como_float(dados.get("nota_final"))
+        if nota is None:
+            return None, f"JSON da CORRECAO {doc_label} sem nota_final numerica"
+        return nota, None
+
+    def _validar_relatorio_nota_final_contra_correcao(
+        self,
+        dados_relatorio: Dict[str, Any],
+        atividade_id: str,
+        aluno_id: Optional[str],
+        doc_label: str,
+    ) -> List[str]:
+        """Block RELATORIO_FINAL if it silently changes the official correction grade."""
+        erros: List[str] = []
+        nota_correcao, erro_correcao = self._nota_final_correcao_oficial(
+            atividade_id,
+            aluno_id,
+        )
+        if erro_correcao:
+            erros.append(
+                f"JSON {doc_label} nao pode validar nota_final contra CORRECAO oficial: "
+                f"{erro_correcao}"
+            )
+            return erros
+        if nota_correcao is None:
+            return erros
+
+        nota_relatorio = self._nota_como_float(dados_relatorio.get("nota_final"))
+        if nota_relatorio is None:
+            return erros
+        if abs(nota_relatorio - nota_correcao) > 0.01:
+            erros.append(
+                f"JSON {doc_label} tem nota_final {nota_relatorio:g}, mas CORRECAO "
+                f"oficial tem nota_final {nota_correcao:g}"
+            )
+        return erros
     
     def _preparar_variaveis_texto(
         self,
@@ -3854,6 +3937,14 @@ Seja preciso, educativo e construtivo em suas análises."""
                         errors.append(f"JSON {doc_label} sem nota_final numérica")
                     if not data.get("resumo_geral"):
                         errors.append(f"JSON {doc_label} sem resumo_geral")
+                    errors.extend(
+                        self._validar_relatorio_nota_final_contra_correcao(
+                            data,
+                            atividade_id,
+                            aluno_id,
+                            doc_label,
+                        )
+                    )
 
                 return errors
 
@@ -3971,7 +4062,8 @@ Seja preciso, educativo e construtivo em suas análises."""
                         "deve ser um OBJETO JSON na raiz, nunca uma lista/array. "
                         "Campos obrigatorios na raiz: resumo_geral, pontos_fortes, "
                         "areas_melhoria, recomendacoes, nota_final, detalhamento, "
-                        "_avisos_documento, _avisos_questao. "
+                        "_avisos_documento, _avisos_questao. A nota_final deve ser "
+                        "exatamente a nota_final da CORRECAO oficial mais recente. "
                     )
 
                 return (

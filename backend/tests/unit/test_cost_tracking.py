@@ -1333,6 +1333,221 @@ async def test_executar_com_tools_falha_json_placeholder_analisar(monkeypatch, t
 
 
 @pytest.mark.asyncio
+async def test_executar_com_tools_repara_relatorio_nota_final_divergente(
+    monkeypatch,
+    tmp_path,
+):
+    import fitz
+    import chat_service
+    from executor import PipelineExecutor
+    from chat_service import ProviderType
+
+    model = SimpleNamespace(
+        id="gpt5nano",
+        tipo=ProviderType.OPENAI,
+        modelo="gpt-5-nano",
+        api_key_id=None,
+        suporta_function_calling=True,
+        max_tokens=2048,
+        temperature=0,
+        suporta_temperature=True,
+    )
+
+    monkeypatch.setattr(chat_service.model_manager, "get", lambda model_id: model)
+    monkeypatch.setattr(chat_service.api_key_manager, "get", lambda key_id: None)
+    monkeypatch.setattr(
+        chat_service.api_key_manager,
+        "get_por_empresa",
+        lambda provider: SimpleNamespace(api_key="test-key"),
+    )
+
+    correction_path = tmp_path / "correcao.json"
+    bad_json_path = tmp_path / "relatorio_bad.json"
+    good_json_path = tmp_path / "relatorio_good.json"
+    bad_pdf_path = tmp_path / "relatorio_bad.pdf"
+    good_pdf_path = tmp_path / "relatorio_good.pdf"
+
+    correction_path.write_text(
+        json.dumps({"nota_final": 8.0, "questoes": [{"numero": 3, "nota": 0.0}]}),
+        encoding="utf-8",
+    )
+    bad_json_path.write_text(
+        json.dumps({"nota_final": 0.0, "resumo_geral": "Resumo errado."}),
+        encoding="utf-8",
+    )
+    good_json_path.write_text(
+        json.dumps({"nota_final": 8.0, "resumo_geral": "Resumo corrigido."}),
+        encoding="utf-8",
+    )
+
+    def _write_pdf(path, text):
+        pdf = fitz.open()
+        page = pdf.new_page()
+        page.insert_textbox(fitz.Rect(40, 40, 560, 800), text, fontsize=11)
+        pdf.save(str(path))
+        pdf.close()
+
+    _write_pdf(bad_pdf_path, "Relatório Final\nNota final: 0.0\n")
+    _write_pdf(good_pdf_path, "Relatório Final\nNota final: 8.0\nProficiência geral: 72%\n")
+
+    class DummyClient:
+        calls = 0
+
+        def __init__(self, model_config, api_key):
+            self.model_config = model_config
+            self.api_key = api_key
+
+        async def chat_with_tools(self, **kwargs):
+            DummyClient.calls += 1
+            context = kwargs["context"]
+            if DummyClient.calls == 1:
+                context.created_document_ids.append("doc-json-bad")
+                return {
+                    "content": "",
+                    "tokens": 10,
+                    "input_tokens": 8,
+                    "output_tokens": 2,
+                    "tool_calls": [
+                        {
+                            "id": "json-bad",
+                            "name": "create_document",
+                            "input": {"content": bad_json_path.read_text(encoding="utf-8")},
+                            "is_error": False,
+                            "files_generated": [],
+                        }
+                    ],
+                }
+            if DummyClient.calls == 2:
+                context.created_document_ids.append("doc-pdf-bad")
+                return {
+                    "content": "",
+                    "tokens": 10,
+                    "input_tokens": 8,
+                    "output_tokens": 2,
+                    "tool_calls": [
+                        {
+                            "id": "pdf-bad",
+                            "name": "execute_python_code",
+                            "input": {"output_files": ["relatorio.pdf"]},
+                            "is_error": False,
+                            "files_generated": [{"filename": "relatorio.pdf", "size_bytes": 128}],
+                        }
+                    ],
+                }
+            if DummyClient.calls == 3:
+                context.created_document_ids.append("doc-json-good")
+                return {
+                    "content": "",
+                    "tokens": 10,
+                    "input_tokens": 8,
+                    "output_tokens": 2,
+                    "tool_calls": [
+                        {
+                            "id": "json-good",
+                            "name": "create_document",
+                            "input": {"content": good_json_path.read_text(encoding="utf-8")},
+                            "is_error": False,
+                            "files_generated": [],
+                        }
+                    ],
+                }
+
+            context.created_document_ids.append("doc-pdf-good")
+            return {
+                "content": "",
+                "tokens": 10,
+                "input_tokens": 8,
+                "output_tokens": 2,
+                "tool_calls": [
+                    {
+                        "id": "pdf-good",
+                        "name": "execute_python_code",
+                        "input": {"output_files": ["relatorio.pdf"]},
+                        "is_error": False,
+                        "files_generated": [{"filename": "relatorio.pdf", "size_bytes": 128}],
+                    }
+                ],
+            }
+
+    monkeypatch.setattr(chat_service, "ChatClient", DummyClient)
+
+    docs = {
+        "doc-correcao": SimpleNamespace(
+            id="doc-correcao",
+            tipo=TipoDocumento.CORRECAO,
+            extensao=".json",
+            status=StatusProcessamento.CONCLUIDO,
+            criado_em="2026-05-16T20:00:00",
+            metadata={"cost_run_id": "correcao-run"},
+        ),
+        "doc-json-bad": SimpleNamespace(
+            id="doc-json-bad",
+            extensao=".json",
+            metadata={"tool": "create_document"},
+            criado_por="ia_create_document",
+        ),
+        "doc-json-good": SimpleNamespace(
+            id="doc-json-good",
+            extensao=".json",
+            metadata={"tool": "create_document"},
+            criado_por="ia_create_document",
+        ),
+        "doc-pdf-bad": SimpleNamespace(
+            id="doc-pdf-bad",
+            extensao=".pdf",
+            metadata={"tool": "execute_python_code"},
+            criado_por="ia_execute_python_code",
+        ),
+        "doc-pdf-good": SimpleNamespace(
+            id="doc-pdf-good",
+            extensao=".pdf",
+            metadata={"tool": "execute_python_code"},
+            criado_por="ia_execute_python_code",
+        ),
+    }
+    paths = {
+        "doc-correcao": correction_path,
+        "doc-json-bad": bad_json_path,
+        "doc-json-good": good_json_path,
+        "doc-pdf-bad": bad_pdf_path,
+        "doc-pdf-good": good_pdf_path,
+    }
+
+    executor = PipelineExecutor()
+    executor.storage.get_documento = MagicMock(side_effect=lambda doc_id: docs[doc_id])
+    executor.storage.listar_documentos = MagicMock(return_value=[docs["doc-correcao"]])
+    executor.storage.resolver_caminho_documento = MagicMock(side_effect=lambda doc: paths[doc.id])
+    executor.storage.atualizar_documento_processamento = MagicMock()
+
+    resultado = await executor.executar_com_tools(
+        mensagem="gere relatório",
+        atividade_id="ativ-1",
+        aluno_id="aluno-1",
+        provider_id="gpt5nano",
+        tools_to_use=["create_document", "execute_python_code"],
+        expected_document_type=TipoDocumento.RELATORIO_FINAL,
+        prompt_id="prompt-1",
+    )
+
+    assert resultado.sucesso is True
+    assert resultado.tentativas == 4
+    assert DummyClient.calls == 4
+    assert any(
+        call.args[0] == "doc-json-bad"
+        and call.kwargs.get("status") == StatusProcessamento.ERRO
+        and call.kwargs["metadata_patch"]["erro_tipo"] == "json_schema_validation"
+        and "CORRECAO oficial" in call.kwargs["metadata_patch"]["erro_pipeline"]
+        for call in executor.storage.atualizar_documento_processamento.call_args_list
+    )
+    assert any(
+        call.args[0] == "doc-pdf-bad"
+        and call.kwargs.get("status") == StatusProcessamento.ERRO
+        and call.kwargs["metadata_patch"]["erro_tipo"] == "pdf_json_consistency"
+        for call in executor.storage.atualizar_documento_processamento.call_args_list
+    )
+
+
+@pytest.mark.asyncio
 async def test_executar_com_tools_preserva_503_retryable(monkeypatch):
     import chat_service
     from executor import PipelineExecutor
