@@ -573,6 +573,45 @@ class TestOpenAIResponsesReasoningTools:
         assert result["content"] == "No tools needed"
 
     @pytest.mark.asyncio
+    async def test_forced_function_tool_choice_uses_responses_api_for_openai(
+        self,
+        openai_client,
+        mock_tool_registry,
+        anthropic_format_tools,
+    ):
+        """Forced specific tool calls use Responses API even for non-reasoning OpenAI models."""
+        final_response = make_openai_responses_final_response("No tools needed")
+
+        with patch("httpx.AsyncClient") as mock_client_cls:
+            mock_client = AsyncMock()
+            mock_client_cls.return_value.__aenter__ = AsyncMock(return_value=mock_client)
+            mock_client_cls.return_value.__aexit__ = AsyncMock(return_value=False)
+
+            mock_resp = MagicMock(status_code=200)
+            mock_resp.json.return_value = final_response
+            mock_client.post = AsyncMock(return_value=mock_resp)
+
+            result = await openai_client._chat_openai_with_tools(
+                mensagem="Hello",
+                historico=[],
+                system="Helper",
+                tools=anthropic_format_tools,
+                tool_registry=mock_tool_registry,
+                max_iterations=10,
+                tool_choice={"type": "function", "function": {"name": "create_document"}},
+            )
+
+        call_args = mock_client.post.call_args
+        assert call_args.args[0].endswith("/responses")
+        payload = call_args.kwargs["json"]
+
+        assert payload["model"] == "gpt-4o"
+        assert payload["tool_choice"] == {"type": "function", "name": "create_document"}
+        assert "reasoning" not in payload
+        assert "messages" not in payload
+        assert result["content"] == "No tools needed"
+
+    @pytest.mark.asyncio
     async def test_reasoning_responses_tool_loop_executes_and_returns_output(
         self,
         reasoning_openai_client,

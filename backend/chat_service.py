@@ -1306,7 +1306,11 @@ class ChatClient:
     ) -> Dict:
         """Chat com API OpenAI with tool use support"""
         is_reasoning = self._is_reasoning_model()
-        if is_reasoning:
+        use_responses_api = is_reasoning or (
+            isinstance(tool_choice, dict)
+            and tool_choice.get("type") == "function"
+        )
+        if use_responses_api:
             return await self._chat_openai_responses_with_tools(
                 mensagem=mensagem,
                 historico=historico,
