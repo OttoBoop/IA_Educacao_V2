@@ -137,6 +137,44 @@ def _aplicar_documento_na_etapa(etapas: Dict[str, Dict[str, Any]], doc: Any) -> 
 # RESULTADO DO ALUNO
 # ============================================================
 
+def _ranking_response(atividade_id: str):
+    ranking = visualizador.get_ranking_turma(atividade_id)
+    return {
+        "sucesso": True,
+        "atividade_id": atividade_id,
+        "total": len(ranking),
+        "ranking": ranking
+    }
+
+
+def _estatisticas_response(atividade_id: str):
+    atividade = storage.get_atividade(atividade_id)
+    if not atividade:
+        raise HTTPException(404, "Atividade não encontrada")
+
+    stats = visualizador.get_estatisticas_atividade(atividade_id)
+
+    return {
+        "sucesso": True,
+        "atividade": {
+            "id": atividade.id,
+            "nome": atividade.nome,
+            "nota_maxima": atividade.nota_maxima
+        },
+        **stats
+    }
+
+
+@router.get("/api/resultados/{atividade_id}/ranking", tags=["Resultados"])
+async def get_ranking_turma_static(atividade_id: str):
+    return _ranking_response(atividade_id)
+
+
+@router.get("/api/resultados/{atividade_id}/estatisticas", tags=["Resultados"])
+async def get_estatisticas_atividade_static(atividade_id: str):
+    return _estatisticas_response(atividade_id)
+
+
 @router.get("/api/resultados/{atividade_id}/{aluno_id}", tags=["Resultados"])
 async def get_resultado_aluno(atividade_id: str, aluno_id: str):
     """
@@ -289,43 +327,20 @@ async def get_comparativo_questao(atividade_id: str, aluno_id: str, numero: int)
 # RANKING E ESTATÍSTICAS
 # ============================================================
 
-@router.get("/api/resultados/{atividade_id}/ranking", tags=["Resultados"])
 async def get_ranking_turma(atividade_id: str):
     """
     Retorna ranking dos alunos em uma atividade.
     Ordenado por nota (maior para menor).
     """
-    ranking = visualizador.get_ranking_turma(atividade_id)
-    
-    return {
-        "sucesso": True,
-        "atividade_id": atividade_id,
-        "total": len(ranking),
-        "ranking": ranking
-    }
+    return _ranking_response(atividade_id)
 
 
-@router.get("/api/resultados/{atividade_id}/estatisticas", tags=["Resultados"])
 async def get_estatisticas_atividade(atividade_id: str):
     """
     Retorna estatísticas agregadas de uma atividade.
     Inclui média, mediana, distribuição de notas, etc.
     """
-    atividade = storage.get_atividade(atividade_id)
-    if not atividade:
-        raise HTTPException(404, "Atividade não encontrada")
-    
-    stats = visualizador.get_estatisticas_atividade(atividade_id)
-    
-    return {
-        "sucesso": True,
-        "atividade": {
-            "id": atividade.id,
-            "nome": atividade.nome,
-            "nota_maxima": atividade.nota_maxima
-        },
-        **stats
-    }
+    return _estatisticas_response(atividade_id)
 
 
 # ============================================================
@@ -358,7 +373,7 @@ async def get_historico_aluno(aluno_id: str):
         "estatisticas": {
             "total_atividades": len(historico),
             "corrigidas": len(notas),
-            "media_geral": round(media_geral, 2) if media_geral else None
+            "media_geral": round(media_geral, 2) if media_geral is not None else None
         },
         "historico": historico
     }
@@ -489,7 +504,7 @@ async def dashboard_turma(turma_id: str):
             "aluno_id": aluno.id,
             "aluno_nome": aluno.nome,
             "atividades_corrigidas": len(notas),
-            "media": round(media, 2) if media else None
+            "media": round(media, 2) if media is not None else None
         })
     
     # Ordenar por média
@@ -577,7 +592,7 @@ async def get_turmas_aluno_detalhado(aluno_id: str):
                 "data_entrada": t.get("data_entrada"),
                 "total_atividades": len(atividades),
                 "atividades_corrigidas": atividades_corrigidas,
-                "media": round(media, 2) if media else None
+                "media": round(media, 2) if media is not None else None
             })
     
     # Ordenar por matéria, depois por ano letivo
@@ -694,8 +709,8 @@ async def get_comparativo_turmas_aluno(aluno_id: str, materia_id: Optional[str] 
             "ano_letivo": turma.ano_letivo,
             "total_atividades": len(atividades),
             "atividades_corrigidas": len(notas),
-            "media": round(media, 2) if media else None,
-            "media_percentual": round(media_percentual, 1) if media_percentual else None,
+            "media": round(media, 2) if media is not None else None,
+            "media_percentual": round(media_percentual, 1) if media_percentual is not None else None,
             "notas": notas
         })
     

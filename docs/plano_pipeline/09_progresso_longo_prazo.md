@@ -2664,6 +2664,24 @@ Critério de pronto: lista de limpeza segura e revisada.
   de turma/dashboard e mensagens de erro para provider/custo com a mesma
   clareza.
 
+### 2026-05-17 -- Ranking/dashboard: rota estatica e nota zero
+
+- Alvo: continuar a validacao de agregados apos `325c200`.
+- Achado live: `/api/resultados/126e8b5ad7dd6d59/ranking` estava sendo
+  capturado pela rota dinamica `/api/resultados/{atividade_id}/{aluno_id}` e
+  retornava resultado parcial para um aluno ficticio `ranking`, nao o ranking.
+- Achado live: o dashboard de turma usava `if media`, entao uma media legitima
+  `0` aparecia como `null`, enquanto `atividades_corrigidas` ficava `1`.
+- Mudanca: as rotas estaticas de ranking/estatisticas foram registradas antes
+  da rota dinamica; os wrappers antigos agora usam helpers compartilhados.
+- Mudanca: medias zero em dashboard/historico/comparativos sao preservadas com
+  `is not None`, sem transformar `0` em `null`.
+- Validacoes locais: `py_compile` de `routes_resultados.py`; `git diff --check`;
+  `test_erro_pipeline.py` passou com `81 passed`, incluindo teste de ordem das
+  rotas e media zero no dashboard.
+- Status antes do deploy: patch validado localmente. Proximo passo e commit,
+  deploy oficial e smoke live de ranking/estatisticas/dashboard.
+
 ## Riscos Abertos
 
 1. Creditos Anthropic insuficientes ainda bloqueiam validacao Haiku.

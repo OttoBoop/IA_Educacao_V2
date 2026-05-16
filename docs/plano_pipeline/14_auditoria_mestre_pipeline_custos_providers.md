@@ -3676,6 +3676,22 @@ claro. O que ainda existe para fazer:
 | UI de erros | Produto/frontend | Sidebar ja mostra a causa por aluno/etapa desde `98fafc9`; resultado parcial agora distingue `status=erro` de progresso concluido e mostra banner/documento em erro; `b8e14db` foi deployado e smoke live confirmou HTML e documento em erro visivel na fixture Diana; `325c200` corrigiu historico rapido, comparativo, atividades pendentes e status pipeline para ignorarem documentos `status=erro`/sem itens avaliaveis; ainda falta ranking/dashboard e mensagens completas para provider/custo. |
 | Limpeza de dados | Dados | "Fantasmas" precisam reclassificacao; PDF com `/conteudo=null` nao pode ser deletado. |
 
+### Agregado: Ranking/Dashboard
+
+Atualizacao deste ciclo:
+
+- `/api/resultados/{atividade_id}/ranking` e
+  `/api/resultados/{atividade_id}/estatisticas` estavam definidos depois da rota
+  dinamica `/api/resultados/{atividade_id}/{aluno_id}`. Em producao, o path
+  `ranking` era tratado como `aluno_id`, retornando resultado parcial em vez do
+  ranking.
+- O dashboard tambem convertia media `0` em `null` por usar `if media`.
+- Patch local: registrar rotas estaticas antes da dinamica e preservar zero com
+  checagem `is not None`.
+- Validacao local: `test_erro_pipeline.py` com `81 passed`, incluindo cobertura
+  para ordem das rotas e media zero.
+- Falta: deploy/smoke oficial desse patch.
+
 Regra de continuidade:
 
 - Enquanto houver item aberto acima, uma validacao de docs nao deve ser tratada

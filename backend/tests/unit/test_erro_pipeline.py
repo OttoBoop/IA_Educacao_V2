@@ -2311,6 +2311,49 @@ class TestF5T1_APIPropagaErro:
         assert response["status_aluno"]["prova"] is True
         assert response["status_aluno"]["correcao"] is False
 
+    def test_resultados_static_routes_precede_dynamic_student_route(self):
+        """Ranking/statistics routes must not be swallowed by {aluno_id} route."""
+        from routes_resultados import router
+
+        paths = [getattr(route, "path", "") for route in router.routes]
+
+        dynamic_index = paths.index("/api/resultados/{atividade_id}/{aluno_id}")
+        assert paths.index("/api/resultados/{atividade_id}/ranking") < dynamic_index
+        assert paths.index("/api/resultados/{atividade_id}/estatisticas") < dynamic_index
+
+    @pytest.mark.asyncio
+    async def test_dashboard_turma_preserva_media_zero(self):
+        """Zero is a valid grade and must not be rendered as null."""
+        from types import SimpleNamespace
+
+        turma = SimpleNamespace(id="turma_test", nome="Turma", ano_letivo=2026, materia_id="materia_test")
+        materia = SimpleNamespace(nome="Matematica")
+        aluno = SimpleNamespace(id="aluno_test", nome="Aluno Zero")
+        atividade = SimpleNamespace(id="ativ_test", nome="Prova", tipo="prova", nota_maxima=10)
+
+        mock_storage = MagicMock()
+        mock_storage.get_turma.return_value = turma
+        mock_storage.get_materia.return_value = materia
+        mock_storage.listar_alunos.return_value = [aluno]
+        mock_storage.listar_atividades.return_value = [atividade]
+
+        resultado = SimpleNamespace(nota_final=0)
+        mock_visualizador = MagicMock()
+        mock_visualizador.get_estatisticas_atividade.return_value = {
+            "corrigidos": 1,
+            "pendentes": 0,
+            "estatisticas": {"media": 0},
+        }
+        mock_visualizador.get_resultado_aluno.return_value = resultado
+
+        with patch("routes_resultados.storage", mock_storage), \
+             patch("routes_resultados.visualizador", mock_visualizador):
+            from routes_resultados import dashboard_turma
+            response = await dashboard_turma("turma_test")
+
+        assert response["atividades"][0]["media"] == 0
+        assert response["alunos"][0]["media"] == 0
+
     def test_visualizador_ignores_correction_without_reliable_grade(self, monkeypatch):
         """A concluded correction without numeric grade cannot produce completo=True."""
         from models import StatusProcessamento, TipoDocumento
