@@ -365,3 +365,50 @@ class TestCreateDocumentAvisosDefaults:
         assert result.is_error is True
         assert result.files_generated == []
         assert "Storage persistence failed for pipeline artifact" in result.content
+
+    @pytest.mark.asyncio
+    async def test_create_document_pipeline_uses_context_activity_id(self, monkeypatch):
+        """Model-supplied activity labels must not override pipeline context ids."""
+        from models import TipoDocumento
+        from tool_handlers import handle_create_document
+        from tools import ToolExecutionContext
+        import storage as storage_module
+
+        saved_calls = []
+
+        class DummyStorage:
+            def salvar_documento(self, **kwargs):
+                saved_calls.append(kwargs)
+
+                class SavedDoc:
+                    id = "doc-ok"
+                    display_name = kwargs.get("display_name")
+                    nome_arquivo = kwargs.get("display_name")
+
+                return SavedDoc()
+
+        monkeypatch.setattr(storage_module, "storage", DummyStorage())
+
+        result = await handle_create_document(
+            {
+                "atividade_id": "Smoke Paulo Pipeline 2026-05-16",
+                "aluno_id": "aluno-input",
+                "documents": [
+                    {
+                        "filename": "correcao_diana_omega.json",
+                        "content": {"nota_final": 8, "questoes": []},
+                    }
+                ],
+            },
+            ToolExecutionContext(
+                atividade_id="ativ-real",
+                aluno_id="aluno-real",
+                expected_document_type=TipoDocumento.CORRECAO,
+                etapa="correcao",
+            ),
+        )
+
+        assert result.is_error is False
+        assert saved_calls[0]["atividade_id"] == "ativ-real"
+        assert saved_calls[0]["aluno_id"] == "aluno-real"
+        assert "Atividade não encontrada" not in result.content

@@ -691,10 +691,16 @@ async def handle_create_document(
             is_error=True
         )
 
-    aluno_id = input_data.get("aluno_id") or (context.aluno_id if context else None)
-    atividade_id = input_data.get("atividade_id") or (context.atividade_id if context else None)
     turma_id = input_data.get("turma_id")
     pipeline_requires_storage = bool(context and context.expected_document_type)
+    if pipeline_requires_storage:
+        # Pipeline tools run inside a server-side context. Do not let model
+        # supplied labels/names override the real persisted entity ids.
+        atividade_id = context.atividade_id
+        aluno_id = context.aluno_id or input_data.get("aluno_id")
+    else:
+        aluno_id = input_data.get("aluno_id") or (context.aluno_id if context else None)
+        atividade_id = input_data.get("atividade_id") or (context.atividade_id if context else None)
 
     if not documents:
         return ToolResult(
