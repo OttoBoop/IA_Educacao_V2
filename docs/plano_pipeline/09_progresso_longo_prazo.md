@@ -4,41 +4,21 @@
 **Responsavel operacional:** Paulo
 **Status geral:** o servico oficial Render
 `srv-d5t8gbh4tr6s738fr3s0` (`IA_Educacao_V2`, branch `main`, URL
-`https://ia-educacao-v2.onrender.com`) esta em `3fce335`, confirmado por
-`/api/deploy-info`, `/api/health`, Render MCP (`dep-d84u56e7r5hc73dmdsa0`) e
-`./scripts/check_deploy.sh 3fce335`. O ciclo `1454e68` preservou tokens quando
-o executor ja tinha respostas parciais de tool-use antes de um erro de
-provider; `3fce335` levou a mesma regra para dentro dos loops de tools do
-`ChatClient`, fazendo `ProviderAPIError` carregar `input_tokens`,
-`output_tokens` e `total_tokens` acumulados antes do HTTP 429/5xx. O smoke live
-Gemini 2.5 Flash `task_81f274a6f510` falhou alto em `corrigir` por quota Google
-`429`, com `provider=Google`, `codigo=429` e `retryable=true`; ele falhou antes
-de criar novo artefato parcial, portanto nao adicionou novo `token_split_missing`.
-O resumo live ainda mostra dois bloqueios antigos (`338b25f9c0f74415` e
-`c4d75e5b0456b27a`) sem split de tokens, e a tabela Supabase `token_usage`
-continua ausente (`PGRST205`). Antes disso, `9ab53df` normalizou erros
-estruturados da API para a UI: `error.message` agora e string, enquanto
-`provider`, `provider_status_code` e `retryable` continuam como campos proprios;
-o HTML live contem esses metadados em `formatApiErrorMessage` e
-`renderStageError`. Antes disso, `c53fae6`
-preservou status HTTP real de erro de provider no `POST /api/chat`, depois de
-`d47d748` remover o marcador
-`DEBUG_V3_MARKER_2026` que corrompia respostas JSON. Antes disso, `feaf5d0`
-endureceu `CORRIGIR` contra tres falsos verdes:
-troca/contradicao de resposta, PDF com cabecalho placeholder e JSON com
-`nota_final` que nao bate com a soma de `questoes[].nota`. O smoke oficial
-`task_ec7acffbb6d4` com GPT-5.4 Mini (`gpt54mini001`) provou o guard: a primeira
-tentativa JSON `a6e92125cee2b4d4` foi marcada `status=erro` porque tinha
-`nota_final=10` e soma 8; depois o retry gerou JSON `51f5a6a4536b60e7` e PDF
-`db4903bda7b4d2c0` coerentes, com cabecalho real, Q3 `25` vs `30`,
-`nota=0/2`, `nota_final=8`, custo `41137/5962` tokens e `US$ 0.057682`. O custo
-ainda nao e duravel porque `/api/custos/status?limit=80` segue com
-`token_usage_not_durable` ate aplicar `backend/migrations/002_create_token_usage.sql`
-no Supabase. O primeiro marco full recente continua sendo o smoke de 6 etapas
-com GPT-5.4 Mini (`task_a5f0d734f0b3`), mas os ciclos posteriores endureceram
-PDF/JSON, schema runtime, avisos, linhagem, rastreabilidade semantica e
-consistencia interna de notas. Esse marco nao substitui a matriz completa de
-providers nem valida todos os datasets reais.
+`https://ia-educacao-v2.onrender.com`) esta em runtime backend `11a396b`,
+confirmado por `/api/deploy-info`, `/api/health` e
+`./scripts/check_deploy.sh 11a396b`. O `origin/main` esta em `d799165`, commit
+de documentacao posterior ao deploy de codigo; portanto o site oficial roda o
+codigo `11a396b` e o GitHub registra ate `d799165`. O ultimo ciclo de codigo
+corrigiu falso negativo do guard PDF/JSON em `CORRIGIR`: PDFs coerentes com
+rotulos `Comentário pedagógico geral` e `Feedback geral da avaliação` deixam de
+gerar retry artificial. Smoke oficial `task_92c4b74494f7` com GPT-4.1 confirmou
+JSON `a05a2a4faeab71d1` e PDF `dc9fe13dc6b8b994`, ambos `concluido`, sem PDF
+intermediario `status=erro`, custo `14617/2400`, `US$ 0.048434`. GPT-4.1 tambem
+tem full pipeline unico confirmado na fixture Diana (`task_f6851ed535b8`);
+GPT-5.4 Mini e GPT-4o seguem referencias confirmadas nessa fixture. Google esta
+limitado por quota `429` nos smokes recentes, Anthropic segue bloqueado por
+credito, e Supabase `token_usage` continua ausente (`PGRST205`), deixando custo
+duravel como gate real.
 
 Atualizacao chat/providers de 2026-05-17 no runtime `c53fae6`: o smoke oficial
 `POST /api/chat` com GPT-5.4 Mini (`gpt54mini001`) retornou HTTP 200, JSON
@@ -448,9 +428,9 @@ Estabilizar o NOVO CR para que a pipeline:
 | Frente | Estado | Proximo passo |
 |--------|--------|---------------|
 | Docs e plano | Sprint 0 concluida | Manter este painel como fonte oficial e anexos fora do fluxo diario |
-| Pipeline | GPT-5.4 Mini (`gpt54mini001`) completou as 6 etapas no site oficial em `task_a5f0d734f0b3`, Render hash `2cad38a`, com documentos, custos e inspeção semantica inicial coerente nos JSONs; re-smoke no Render `0ac92f0` (`task_605512496b0d`) completou as 6 etapas, mas expôs divergencia P0 entre JSON e PDF em `corrigir` e `gerar_relatorio`; `2052a01` bloqueou PDF inconsistente com falha alta em `task_857c0c3657ef`; `3a77a17` adicionou retry PDF/JSON e `task_e389f360b812` completou as etapas finais com PDF/JSON coerentes na fixture simples; `392ec7c` bloqueou relatorio que muda `nota_final` em relacao a correcao oficial e o smoke Nano `task_57da745b8de5` confirmou JSON/PDF de relatorio com `nota_final=8.0`; GPT-4o completou full smoke `task_68b19146a95b` em `54d083e` com custo aproximado `US$ 0.314369`; Gemini 2.5 Flash completou extracoes, `854cec7` corrigiu falta de tool-use e `b07472f` removeu falso bloqueio por paráfrase, mas revalidacao de `corrigir` esta bloqueada por Google `429`; Gemini 3 Flash segue validado em etapas individuais, mas pipeline sequencial bateu quota `429`; GPT-5 Nano segue parcial em `extrair_respostas` por historico de qualidade/datasets maiores | Revalidar matriz por provider/modelo e manter bloqueio P0: nao aceitar `completed` sem documento, schema, custo, conteudo minimo, nota cross-stage e artefatos coerentes entre si |
+| Pipeline | GPT-4.1 (`ffae9accf68e`) tem full smoke unico confirmado em `task_f6851ed535b8` e re-smoke `corrigir` pos-guard `task_92c4b74494f7` sem retry artificial; GPT-5.4 Mini (`gpt54mini001`) completou 6 etapas em `task_a5f0d734f0b3` e segue referencia confirmada apos guards; GPT-4o completou full smoke `task_68b19146a95b` em `54d083e`; Gemini 2.5 Flash/Gemini 3/Gemini Lite estao bloqueados por quota Google `429` nos smokes recentes, embora tenham historicos parciais; GPT-5 Nano segue parcial/falhando alto em pontos de qualidade, especialmente `corrigir`/`extrair_respostas` | Revalidar matriz por provider/modelo quando quota/credito permitir e manter P0: nao aceitar `completed` sem documento, schema, custo, conteudo minimo, nota cross-stage e artefatos coerentes entre si |
 | Schema e avisos | Sprint 2 concluida localmente | Manter schema oficial, defaults e visualizador cobertos por testes |
-| Custos/tokens | Metadata de documento, endpoints live, resumo por `cost_run_id`, `TokenUsageRecord` local, migration Supabase dedicada `b2dc88b`; smoke full GPT-5.4 Mini `task_a5f0d734f0b3` registrou custo medido por etapa: `US$ 0.002312`, `US$ 0.002759`, `US$ 0.002657`, `US$ 0.026149`, `US$ 0.017470` e `US$ 0.027763`, total aproximado `US$ 0.079110`; smoke Nano `task_57da745b8de5` registrou `29067/6701` tokens no `cost_run_id=tool_8feb2ba8dfca`, incluindo PDF em erro e retry concluido; `460643f` faz `/api/custos/status` retornar `ok=false` e alerta bloqueante enquanto `PGRST205`, `durable=false` e `local_record_count=0` persistirem; `54d083e` mostra esse bloqueio no dashboard oficial | Aplicar `backend/migrations/002_create_token_usage.sql` no Supabase; revalidar ate `token_usage_backend.durable=true`; depois persistir custos de falhas sem documento |
+| Custos/tokens | Metadata de documento, endpoints live, resumo por `cost_run_id`, `TokenUsageRecord` local, migration Supabase dedicada `b2dc88b`; GPT-4.1 full smoke `task_f6851ed535b8` mediu total aproximado `US$ 0.222856`; re-smoke `task_92c4b74494f7` apos guard reduziu `corrigir` para `US$ 0.048434`; Gemini Lite quota `task_5850e9adf001` registrou documentos de erro custeaveis `US$ 0.000543` e `US$ 0.000382`; `460643f` faz `/api/custos/status` retornar `ok=false` e alerta bloqueante enquanto `PGRST205`, `durable=false` e `local_record_count=0` persistirem; `54d083e` mostra esse bloqueio no dashboard oficial | Aplicar `backend/migrations/002_create_token_usage.sql` no Supabase; revalidar ate `token_usage_backend.durable=true`; depois persistir custos de falhas sem documento |
 | UI de erros | Dashboard oficial mostra bloqueio de custos nao duraveis no commit `54d083e`; `98fafc9` adicionou `stage_errors` por aluno/etapa em `/api/task-progress` e a sidebar renderiza a causa abaixo da etapa falha; smoke live `task_7362d0fb1939` confirmou erro de `extrair_respostas` sem prova antes de chamar IA | Ampliar para telas de resultado/historico e garantir que erros de provider/custo apareçam com a mesma clareza |
 | Limpeza de dados | Pendente | Reclassificar "fantasmas" antes de qualquer delecao |
 | Rio 3 | Pausada | Nao pedir chave, nao rodar smoke, nao deployar Rio sem nova decisao |
@@ -520,20 +500,31 @@ Estabilizar o NOVO CR para que a pipeline:
 - Commit funcional anti-`nota_final=N/A` em relatório:
   `ad7e00e` (`GERAR_RELATORIO` falha alto com
   `NOTA_FINAL_INDETERMINADA` quando não há nota numérica confiável).
+- Commit funcional de usage parcial em erro dentro do `ChatClient`:
+  `3fce335`.
+- Commit funcional de ids server-side no `create_document` de pipeline:
+  `33fb7d5`.
+- Commit funcional de retry explicito para erro de codigo PDF:
+  `0f84552`.
+- Commit funcional de guard PDF/JSON para headings reais de feedback:
+  `974f040` e `11a396b` (Render live; re-smoke GPT-4.1
+  `task_92c4b74494f7` sem PDF intermediario `status=erro`).
+- Commits documentais mais recentes apos o deploy de codigo:
+  `c094fba` e `d799165` em `origin/main`.
 - Marker mais novo publicado no GitHub para runtime: `a7dead3`
   (`chore: mark deploy e6060e1`).
 - Marker mais novo publicado no GitHub para o guard: `2792d89`
   (`chore: mark deploy 5527e26`).
 - Render em 2026-05-17: servico oficial `srv-d5t8gbh4tr6s738fr3s0`, branch
   `main`, repo `https://github.com/OttoBoop/IA_Educacao_V2`, `rootDir=backend`,
-  autoDeploy `yes`; `/api/deploy-info` confirmou `ad7e00e` com
-  `source=RENDER_GIT_COMMIT`.
+  autoDeploy `yes`; `/api/deploy-info` confirmou `11a396b` com
+  `source=RENDER_GIT_COMMIT` depois de `check_deploy.sh 11a396b`.
 - Marker HTML pode ficar atrasado em commits de docs/frontend; o gate oficial
   para backend agora e `/api/deploy-info` + smoke live, nao apenas marcador HTML.
-- GitHub `origin/main`: alinhado com `ad7e00e` no ciclo anti-`nota_final=N/A`
-  antes do commit documental deste registro.
+- GitHub `origin/main`: `d799165` no ultimo registro documental observado; como
+  foi docs-only, o backend live segue em `11a396b`.
 - Render live observado: saiu de `2e1098f` para `b12be9a` e depois confirmou
-  marcadores/fixes sucessivos ate `ad7e00e`.
+  marcadores/fixes sucessivos ate `11a396b`.
 - `/api/custos/status` no Render: HTTP 200, confirmando endpoints de custo live.
 - GitHub Actions: sem runs recentes observaveis.
 - GitHub webhooks/deployments via `gh api`: sem entradas visiveis.
