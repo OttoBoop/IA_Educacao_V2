@@ -249,7 +249,7 @@ Estabilizar o NOVO CR para que a pipeline:
 | Pipeline | GPT-5.4 Mini (`gpt54mini001`) completou as 6 etapas no site oficial em `task_a5f0d734f0b3`, Render hash `2cad38a`, com documentos, custos e inspeção semantica inicial coerente nos JSONs; re-smoke no Render `0ac92f0` (`task_605512496b0d`) completou as 6 etapas, mas expôs divergencia P0 entre JSON e PDF em `corrigir` e `gerar_relatorio`; `2052a01` bloqueou PDF inconsistente com falha alta em `task_857c0c3657ef`; `3a77a17` adicionou retry PDF/JSON e `task_e389f360b812` completou as etapas finais com PDF/JSON coerentes na fixture simples; `392ec7c` bloqueou relatorio que muda `nota_final` em relacao a correcao oficial e o smoke Nano `task_57da745b8de5` confirmou JSON/PDF de relatorio com `nota_final=8.0`; GPT-4o completou full smoke `task_68b19146a95b` em `54d083e` com custo aproximado `US$ 0.314369`; Gemini 2.5 Flash completou extracoes, `854cec7` corrigiu falta de tool-use e `b07472f` removeu falso bloqueio por paráfrase, mas revalidacao de `corrigir` esta bloqueada por Google `429`; Gemini 3 Flash segue validado em etapas individuais, mas pipeline sequencial bateu quota `429`; GPT-5 Nano segue parcial em `extrair_respostas` por historico de qualidade/datasets maiores | Revalidar matriz por provider/modelo e manter bloqueio P0: nao aceitar `completed` sem documento, schema, custo, conteudo minimo, nota cross-stage e artefatos coerentes entre si |
 | Schema e avisos | Sprint 2 concluida localmente | Manter schema oficial, defaults e visualizador cobertos por testes |
 | Custos/tokens | Metadata de documento, endpoints live, resumo por `cost_run_id`, `TokenUsageRecord` local, migration Supabase dedicada `b2dc88b`; smoke full GPT-5.4 Mini `task_a5f0d734f0b3` registrou custo medido por etapa: `US$ 0.002312`, `US$ 0.002759`, `US$ 0.002657`, `US$ 0.026149`, `US$ 0.017470` e `US$ 0.027763`, total aproximado `US$ 0.079110`; smoke Nano `task_57da745b8de5` registrou `29067/6701` tokens no `cost_run_id=tool_8feb2ba8dfca`, incluindo PDF em erro e retry concluido; `460643f` faz `/api/custos/status` retornar `ok=false` e alerta bloqueante enquanto `PGRST205`, `durable=false` e `local_record_count=0` persistirem; `54d083e` mostra esse bloqueio no dashboard oficial | Aplicar `backend/migrations/002_create_token_usage.sql` no Supabase; revalidar ate `token_usage_backend.durable=true`; depois persistir custos de falhas sem documento |
-| UI de erros | Dashboard oficial mostra bloqueio de custos nao duraveis no commit `54d083e`; falhas por aluno/etapa ainda estao pendentes | Mostrar falha por aluno/etapa sem depender de terminal |
+| UI de erros | Dashboard oficial mostra bloqueio de custos nao duraveis no commit `54d083e`; `98fafc9` adicionou `stage_errors` por aluno/etapa em `/api/task-progress` e a sidebar renderiza a causa abaixo da etapa falha; smoke live `task_7362d0fb1939` confirmou erro de `extrair_respostas` sem prova antes de chamar IA | Ampliar para telas de resultado/historico e garantir que erros de provider/custo apareçam com a mesma clareza |
 | Limpeza de dados | Pendente | Reclassificar "fantasmas" antes de qualquer delecao |
 | Rio 3 | Pausada | Nao pedir chave, nao rodar smoke, nao deployar Rio sem nova decisao |
 
@@ -302,19 +302,24 @@ Estabilizar o NOVO CR para que a pipeline:
   existir no Supabase).
 - Commit funcional de alerta de custo nao duravel no dashboard:
   `54d083e` (`dashboard-cost-alerts` consulta `/api/custos/status?limit=80`).
+- Commit docs de registro Google/quota: `f836ab2`.
+- Commit funcional de erro por aluno/etapa na sidebar:
+  `98fafc9` (`stage_errors` em `/api/task-progress`, renderizado em
+  `tarefa-stage-error`).
 - Marker mais novo publicado no GitHub para runtime: `a7dead3`
   (`chore: mark deploy e6060e1`).
 - Marker mais novo publicado no GitHub para o guard: `2792d89`
   (`chore: mark deploy 5527e26`).
 - Render em 2026-05-17: servico oficial `srv-d5t8gbh4tr6s738fr3s0`, branch
   `main`, repo `https://github.com/OttoBoop/IA_Educacao_V2`, `rootDir=backend`,
-  autoDeploy `yes`; `/api/deploy-info` confirmou `54d083e` com
+  autoDeploy `yes`; `/api/deploy-info` confirmou `98fafc9` com
   `source=RENDER_GIT_COMMIT`.
 - Marker HTML pode ficar atrasado em commits de docs/frontend; o gate oficial
   para backend agora e `/api/deploy-info` + smoke live, nao apenas marcador HTML.
-- GitHub `origin/main`: alinhado com `54d083e` no ciclo UI de custos.
+- GitHub `origin/main`: alinhado com `98fafc9` no ciclo UI de erros por etapa
+  antes do commit documental deste registro.
 - Render live observado: saiu de `2e1098f` para `b12be9a` e depois confirmou
-  marcadores/fixes sucessivos ate `54d083e`.
+  marcadores/fixes sucessivos ate `98fafc9`.
 - `/api/custos/status` no Render: HTTP 200, confirmando endpoints de custo live.
 - GitHub Actions: sem runs recentes observaveis.
 - GitHub webhooks/deployments via `gh api`: sem entradas visiveis.
@@ -1958,6 +1963,33 @@ Critério de pronto: lista de limpeza segura e revisada.
   `custos_persistencia_status=parcial_sem_token_usage_duravel`.
 - Status: bloqueado por quota para concluir `CORRIGIR`/tools Gemini 2.5 Flash.
   Nao e aceito como full smoke, mas a falha silenciosa anterior foi corrigida.
+
+### 2026-05-17 -- Sidebar mostra erro por aluno e etapa
+
+- Alvo: tirar o diagnostico de falha do terminal e colocar no contrato vivo de
+  progresso que a UI consome.
+- Commit funcional: `98fafc9`.
+- Mudancas: `routes_tasks.update_stage_progress()` agora aceita `error` e grava
+  `students[aluno].stage_errors[etapa]`; `PipelineExecutor` envia mensagem,
+  codigo, provider/modelo e documentos faltantes quando uma etapa falha; a
+  sidebar de tarefas renderiza um bloco `tarefa-stage-error` abaixo da etapa
+  vermelha.
+- Testes locais: `py_compile`; `git diff --check`; suite focada com
+  `test_pipeline_progress.py`, `test_erro_pipeline.py`,
+  `test_a4_render_tarefas_tree.py`, `test_routes_tasks.py`,
+  `test_hierarchy_rendering.py`, `test_taskqueue_refactor.py`,
+  `test_backend_async_pipeline.py`, `test_backend_async_turma.py` e
+  `test_cancel_buttons.py` passou com `154 passed`.
+- Deploy: `/api/deploy-info` confirmou `98fafc9`; `/api/health` respondeu
+  `healthy`; HTML live contem `stage_errors`, `renderStageError` e
+  `tarefa-stage-error`.
+- Smoke sem custo de IA: `task_7362d0fb1939`, apenas `extrair_respostas` para
+  aluno inexistente na fixture Diana, falhou antes de provider com
+  `students.smoke_sem_prova_stage_error.stage_errors.extrair_respostas.mensagem`
+  igual a "Aluno smoke_sem_prova_stage_error nao tem prova_respondida enviada."
+- Status: primeira camada de UI de erro por aluno/etapa publicada. Ainda falta
+  levar a mesma clareza para telas de resultado/historico e para custos
+  persistidos.
 
 ## Riscos Abertos
 

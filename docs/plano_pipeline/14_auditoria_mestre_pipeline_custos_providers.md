@@ -158,7 +158,7 @@ detalhar e auditar estas linhas.
    por tool-use, alem de relatorios agregados.
 3. O Doc 02 mostrou que o maior risco arquitetural esta no Path 2: schemas
    conflitantes, JSON opaco, avisos/metadata/tokens incompletos e tools parciais.
-4. Os fixes principais ja chegaram ao site oficial ate `b07472f`: `/api/deploy-info`
+4. Os fixes principais ja chegaram ao site oficial ate `98fafc9`: `/api/deploy-info`
    confirma o servico `srv-d5t8gbh4tr6s738fr3s0` com
    `source=RENDER_GIT_COMMIT`. O marker HTML continua sendo apenas auxiliar em
    servico `rootDir=backend`.
@@ -230,12 +230,12 @@ detalhar e auditar estas linhas.
 | Frente | Temos hoje | Limite da afirmacao |
 |---|---|---|
 | Documentacao | Doc 09 como painel curto; Doc 14 como auditoria mestre; Doc 05/12 com notas de status | Manter Doc 09 curto e Doc 14 detalhado; registrar novos ciclos sem criar doc extra. |
-| Git/GitHub | `/api/deploy-info` confirmou runtime `b07472f`; `origin/main` esta alinhado com os fixes de dashboard de custo, tool-use Google faseado e consistencia PDF/JSON por feedback coerente | Nao usar somente marker HTML como gate quando Render `rootDir=backend` ignora commits sem backend; combinar `/api/deploy-info`, deploy list quando disponivel e comportamento live. |
+| Git/GitHub | `/api/deploy-info` confirmou runtime `98fafc9`; `origin/main` esta alinhado com os fixes de dashboard de custo, tool-use Google faseado, consistencia PDF/JSON por feedback coerente e erro por aluno/etapa na sidebar | Nao usar somente marker HTML como gate quando Render `rootDir=backend` ignora commits sem backend; combinar `/api/deploy-info`, deploy list quando disponivel e comportamento live. |
 | Pipeline P4 | Bloqueio de extracao de respostas sem prova valida esta no codigo publicado | Precisa smoke dedicado apenas se P4 voltar a ser alvo. |
 | Pipeline P5/P6 | Contencao de nota e preservacao de `_documentos_faltantes` | `N/A` ainda e fallback proibido como estado final. |
 | Schema/avisos | Defaults `_avisos_*`, visualizador melhorado e schemas mais permissivos | Permissividade nao e contrato forte; pode aceitar legado demais. |
 | Tokens/custos | Split input/output; metadata de documento; endpoints `/api/custos/status` e `/api/custos/resumo` respondendo live; resumo agrega por `cost_run_id`; `TokenUsageRecord` local cobre falha sem documento enquanto o filesystem vive; codigo Supabase e migration dedicada `b2dc88b` existem; diagnostico live mostra `PGRST205`; smoke full GPT-5.4 Mini `task_a5f0d734f0b3` mediu custo por etapa e total aproximado `US$ 0.079110`; smoke Nano `task_57da745b8de5` registrou `29067/6701` tokens em documentos de relatorio; `/api/custos/status?limit=80` mostrou `runs_precificados=37`, `runs_bloqueados=0`, `ok=false`, `custos_persistencia_status=parcial_sem_token_usage_duravel` e alerta bloqueante `token_usage_not_durable`; dashboard live em `54d083e` mostra "Custos não duráveis" | Falta aplicar `backend/migrations/002_create_token_usage.sql` no Supabase. |
-| Providers | Gemini 2.5 Flash passou nas tres extracoes da fixture Diana; `854cec7` corrigiu o bug de tools incompletas com tool-use Google forcado/faseado; `b07472f` corrigiu falso bloqueio de feedback parafraseado; a revalidacao final agora esta bloqueada por quota Google `429`; Gemini 3 Flash passou em chat simples live, `extrair_questoes`, `extrair_respostas` e nas tres etapas finais, mas segue bloqueado por quota `429` para revalidacao full; `extrair_gabarito` Gemini foi reclassificado como invalido por tudo `MISSING_CONTENT` e depois revalidado na fixture simples; GPT-5 Nano passou em chat simples live, `extrair_questoes`, `extrair_gabarito` pos-`5527e26` e `gerar_relatorio` pos-`392ec7c`, mas `extrair_respostas` Nano continua parcial por historico de qualidade em dataset maior; GPT-5.4 Mini passou `extrair_respostas` em amostras e completou um smoke full oficial simples em `task_a5f0d734f0b3` com inspeção semantica inicial coerente; re-smoke `task_605512496b0d` no patch `0ac92f0` completou, mas PDFs divergiram dos JSONs; `2052a01` bloqueou isso com falha alta em `task_857c0c3657ef`; `3a77a17` passou no smoke reduzido `task_e389f360b812` com retry PDF/JSON; `392ec7c` passou no smoke Nano de relatorio `task_57da745b8de5`; GPT-4o completou full smoke `task_68b19146a95b` em `54d083e`, com custo aproximado `US$ 0.314369` | Revalidar matriz por provider, mas nao rerodar Gemini enquanto quota Google estiver saturada. |
+| Providers | Gemini 2.5 Flash passou nas tres extracoes da fixture Diana; `854cec7` corrigiu o bug de tools incompletas com tool-use Google forcado/faseado; `b07472f` corrigiu falso bloqueio de feedback parafraseado; a revalidacao final agora esta bloqueada por quota Google `429`; Gemini 3 Flash passou em chat simples live, `extrair_questoes`, `extrair_respostas` e nas tres etapas finais, mas segue bloqueado por quota `429` para revalidacao full; `extrair_gabarito` Gemini foi reclassificado como invalido por tudo `MISSING_CONTENT` e depois revalidado na fixture simples; GPT-5 Nano passou em chat simples live, `extrair_questoes`, `extrair_gabarito` pos-`5527e26` e `gerar_relatorio` pos-`392ec7c`, mas `extrair_respostas` Nano continua parcial por historico de qualidade em dataset maior; GPT-5.4 Mini passou `extrair_respostas` em amostras e completou um smoke full oficial simples em `task_a5f0d734f0b3` com inspeção semantica inicial coerente; re-smoke `task_605512496b0d` no patch `0ac92f0` completou, mas PDFs divergiram dos JSONs; `2052a01` bloqueou isso com falha alta em `task_857c0c3657ef`; `3a77a17` passou no smoke reduzido `task_e389f360b812` com retry PDF/JSON; `392ec7c` passou no smoke Nano de relatorio `task_57da745b8de5`; GPT-4o completou full smoke `task_68b19146a95b` em `54d083e`, com custo aproximado `US$ 0.314369`; `98fafc9` nao muda provider, mas torna falhas por etapa visiveis na sidebar | Revalidar matriz por provider, mas nao rerodar Gemini enquanto quota Google estiver saturada. |
 | Seguranca Rio | Regra de nao usar chave em chat e Rio pausado | Arquivos Rio/untracked continuam fora do ciclo ativo. |
 
 ### O Que Falta
@@ -248,15 +248,15 @@ detalhar e auditar estas linhas.
 | Custos | Registrar falhas que consomem tokens sem documento final | Sucesso com documento ja tem custo medido; falha ainda pode sumir. |
 | Metadata | Revalidar provider/modelo/tokens/tempo nas rotas e providers restantes | GPT-5.4 Mini ja mostrou metadata e conteudo JSON coerente nas 6 etapas da fixture simples; Gemini/Nano/Haiku/GPT-4o ainda precisam matriz atualizada. |
 | Providers | Revalidar Gemini, Nano, Haiku e GPT-4o nas etapas restantes, especialmente extracoes e pipeline completa | Resultado historico ou schema parseavel nao prova qualidade de conteudo. |
-| UI de erro | Mostrar aluno, etapa, provider, causa e artefato real/parcial/erro | Backend falhar alto nao basta se a UI traduz mal. |
+| UI de erro | `98fafc9` publica `stage_errors` por aluno/etapa no task-progress e renderiza a causa na sidebar; falta expandir o mesmo padrao para resultado/historico | Backend falhar alto nao basta se a UI traduz mal. |
 | Dados | Reclassificar "fantasmas" sem deletar PDF valido por `/conteudo=null` | Evita apagar prova respondida real. |
-| Git/deploy | Commit `2d72c6b` adicionou `/api/deploy-info`; o runtime atual confirmado para o patch PDF e `0ac92f0` | Usar `/api/deploy-info` antes de novos smokes; marker HTML e apenas auxiliar. |
+| Git/deploy | Commit `2d72c6b` adicionou `/api/deploy-info`; o runtime atual confirmado e `98fafc9` | Usar `/api/deploy-info` antes de novos smokes; marker HTML e apenas auxiliar. |
 
 ### Bloqueios E Alertas
 
 | Item | Estado | Acao correta |
 |---|---|---|
-| Render/site oficial | `/api/deploy-info` confirmou `b07472f` como deploy live no patch de tool-use Google/feedback coerente | Tratar HTML marker como auxiliar; usar smoke real para aceite. |
+| Render/site oficial | `/api/deploy-info` confirmou `98fafc9` como deploy live no patch de erro por aluno/etapa na sidebar | Tratar HTML marker como auxiliar; usar smoke real para aceite. |
 | Guard `5527e26` | Runtime confirmado por Render MCP; smoke Nano `extrair_gabarito` pos-guard passou com 7 respostas reais | Guard publicado; falta rerodar Gemini. |
 | Respostas tudo ilegivel/vazio/inferidas | Nano ja produziu `extrair_respostas` com todas as respostas sem conteudo, depois conteudo so de Q7, depois conteudo suspeito inferido do enunciado, depois JSON verde inconsistente; o PDF de Eric tem paginas manuscritas e texto extraivel de Q7 | Desde `1ce3d23`, o caso final falha alto no executor e registra custo sem documento. Agora falta corrigir prompt/entrada/modelo para extrair conteudo real ou marcar Nano como inadequado para prova manuscrita. |
 | Gemini quota | Pipeline sequencial `task_5e97bbee896e` falhou em `corrigir` por `429 RESOURCE_EXHAUSTED`, limite free tier `20` para `gemini-3-flash` | Nao rerodar de imediato; tratar como bloqueio de provider/quota, nao como sucesso nem como falha silenciosa. |
@@ -3259,6 +3259,45 @@ Interpretação atualizada:
 - O comportamento correto enquanto isso e registrar bloqueio de provider/quota,
   nao rerodar em loop cego e nao trocar para outro modelo em silencio.
 
+## Atualizacao 2026-05-17 -- Erro Por Aluno/Etapa Na Sidebar
+
+Problema:
+
+- O backend ja falhava alto e o run tinha `task.error`, mas cada etapa na
+  sidebar era apenas `pending/running/completed/failed`.
+- Isso obrigava o usuario a abrir terminal ou endpoint para saber qual etapa,
+  aluno, provider/codigo ou documento faltante causou o bloqueio.
+
+Mudanca publicada:
+
+- Commit funcional `98fafc9`.
+- `backend/routes_tasks.py`: `register_pipeline_task()` cria
+  `stage_errors={}` por aluno; `update_stage_progress()` aceita `error`,
+  armazena payload por etapa quando o status e `failed` e limpa erro antigo
+  quando a etapa volta a `running`, `completed` ou `pending`.
+- `backend/executor.py`: cada falha de etapa envia mensagem, codigo,
+  retryability, provider/modelo e documentos faltantes quando existirem.
+- `frontend/index_v2.html`: `renderTarefasTree()` le `aluno.stage_errors` e
+  renderiza `tarefa-stage-error` abaixo da etapa falha.
+
+Validacao:
+
+- Local: `py_compile`, `git diff --check` e suite focada com `154 passed`.
+- Deploy: `/api/deploy-info` confirmou `98fafc9`; `/api/health` respondeu
+  `healthy`; HTML live contem `stage_errors`, `renderStageError` e
+  `tarefa-stage-error`.
+- Smoke sem IA: `task_7362d0fb1939` rodou somente `extrair_respostas` para
+  aluno inexistente e falhou antes de provider, expondo:
+  `students.smoke_sem_prova_stage_error.stage_errors.extrair_respostas.mensagem`
+  = "Aluno smoke_sem_prova_stage_error nao tem prova_respondida enviada."
+
+Estado:
+
+- Primeira camada de UI de erro por aluno/etapa esta oficial.
+- Ainda falta repetir o padrao em telas de resultado/historico e custos
+  persistidos, para que o usuario nunca precise inferir falha por ausencia de
+  documento.
+
 ## Trabalho Aberto Desta Auditoria
 
 Esta auditoria nao encerra o loop tecnico. Ela deixa o proximo trabalho mais
@@ -3272,7 +3311,7 @@ claro. O que ainda existe para fazer:
 | Provider revalidation | Smoke/producao | Matriz Doc 12 registra GPT-5.4 Mini full smoke em fixture simples, GPT-4o full smoke (`task_68b19146a95b`) e Gemini 2.5 Flash com extracoes OK/tool-use corrigido mas bloqueado por quota; continua incompleta ate novos smokes por provider/rota/dataset. |
 | PDFs/UI GPT-5.4 Mini/GPT-4o | Codigo/testes/deploy/smoke | `task_a5f0d734f0b3` completou 6 etapas, JSONs passaram inspeção semantica inicial e PDFs existem; `0ac92f0` corrigiu parte do layout, mas `task_605512496b0d` provou divergencia PDF/JSON; `2052a01` transformou essa divergencia em erro alto; `3a77a17` validou retry explicito do PDF; `3e6be20` bloqueia Feedback Geral truncado e GPT-4o passou as etapas finais com artefatos ruins marcados como erro. | Repetir em datasets maiores e melhorar UI de erro para o usuario final. |
 | Gabarito incompleto bloqueia correção | Codigo/testes/deploy/smoke | `3a7dfea` bloqueia `CORRIGIR` com `MISSING_CONTENT` no gabarito; continua importante para datasets como Lista0, embora a fixture Diana tenha completado. |
-| UI de erros | Produto/frontend | Usuario precisa ver aluno, etapa, provider e causa sem terminal. |
+| UI de erros | Produto/frontend | Sidebar ja mostra a causa por aluno/etapa desde `98fafc9`; ainda falta resultado/historico e mensagens completas para provider/custo. |
 | Limpeza de dados | Dados | "Fantasmas" precisam reclassificacao; PDF com `/conteudo=null` nao pode ser deletado. |
 
 Regra de continuidade:
