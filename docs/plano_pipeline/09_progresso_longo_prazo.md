@@ -37,13 +37,14 @@ O ciclo `ae04982` adicionou `por_etapa` em `/api/custos/resumo` e confirmou o
 agregado live: `correcao` segue como a maior fatia de custo, seguida por
 `analise_habilidades` e `relatorio_final`.
 GPT-4.1, GPT-5.4 Mini, GPT-4o e GPT-5 Nano seguem referencias OpenAI na fixture
-Diana; Nano passou `extrair_respostas` e `corrigir` nessa fixture simples, mas
-continua parcial por historico de qualidade em dataset maior. O sweep mais
-recente confirmou OpenAI OK, Gemini Flash/Flash Lite/3 Flash OK em conexao
-simples, mas `corrigir` com Gemini 2.5 Flash ainda falha alto por quota `429`;
-Gemini 2.5 Pro tambem esta bloqueado por quota, Anthropic bloqueado por credito
-e Ollama indisponivel no Render. Supabase `token_usage` continua ausente
-(`PGRST205`), deixando custo duravel como gate real.
+Diana; Nano passou `extrair_respostas`, `corrigir`, `analisar_habilidades` e
+`gerar_relatorio` nessa fixture simples, mas continua parcial por historico de
+qualidade em dataset maior e por ressalva nova de schema de aviso composto. O
+sweep mais recente confirmou OpenAI OK, Gemini Flash/Flash Lite/3 Flash OK em
+conexao simples, mas `corrigir` com Gemini 2.5 Flash ainda falha alto por quota
+`429`; Gemini 2.5 Pro tambem esta bloqueado por quota, Anthropic bloqueado por
+credito e Ollama indisponivel no Render. Supabase `token_usage` continua
+ausente (`PGRST205`), deixando custo duravel como gate real.
 
 Atualizacao Lista0 de 2026-05-17: a atividade real `Lista0`
 (`126e8b5ad7dd6d59`) tem documentos base cadastrados e 63 alunos
@@ -2974,6 +2975,33 @@ Critério de pronto: lista de limpeza segura e revisada.
   `custo_usd=1.478610`.
 - Status: Nano fica confirmado para `corrigir` nessa fixture simples com
   retries visiveis, mas ainda nao vira pipeline-ready em datasets maiores.
+
+### 2026-05-17 -- Provider: GPT-5 Nano passa etapas finais com ressalva de aviso
+
+- Alvo: fechar `ANALISAR_HABILIDADES` e `GERAR_RELATORIO` do Nano na fixture
+  Diana, usando a correcao oficial recente.
+- Smoke: `task_fa50cb3ffc16`, runtime `ae04982`, atividade
+  `f68d57a9a339081f`, aluna `10d9fa4f4303ea1f`, modelo `gpt5nano001`,
+  `selected_steps=["analisar_habilidades","gerar_relatorio"]`,
+  `force_rerun=true`.
+- Resultado: task `completed`; `analisar_habilidades=completed` e
+  `gerar_relatorio=completed`; sem `stage_errors`.
+- Analise: JSON `2d8d88a985a24701` e PDF `9267575cffe1d443`, ambos
+  `status=concluido`, `cost_run_id=tool_318aee5ffa98`,
+  `tokens_entrada=16729`, `tokens_saida=3614`, custo `US$ 0.002282`.
+- Relatorio: JSON `f94add68a8a7f8e3` e PDF `139a6e500184e13d`, ambos
+  `status=concluido`, `cost_run_id=tool_ba65fbf2385a`,
+  `tokens_entrada=14352`, `tokens_saida=2986`, custo `US$ 0.001912`.
+- Conteudo verificado: relatorio manteve `nota_final=8.0`, fontes
+  `CORRIGIR` e `ANALISAR_HABILIDADES`, foco em porcentagem como area de
+  melhoria; analise marcou proficiencia geral `0.83`.
+- Ressalva: `_avisos_questao.codigo` no relatorio veio como string composta
+  `ILLEGIBLE_QUESTION|MISSING_CONTENT|LOW_CONFIDENCE`; isso deve virar alvo de
+  schema/avisos, porque codigo de aviso composto pode confundir UI/analise.
+- Custo live: `/api/custos/resumo?limit=160` retornou `runs_analisados=85`,
+  `runs_precificados=83`, `runs_bloqueados=2`, `custo_usd=1.599386`.
+- Status: Nano fica confirmado nas etapas finais da fixture simples, com
+  ressalva aberta para normalizar codigos de aviso.
 
 ## Riscos Abertos
 

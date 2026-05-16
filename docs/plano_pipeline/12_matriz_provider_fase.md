@@ -54,6 +54,10 @@ ciclo funcional `ae04982` e pode receber registro documental posterior. Use
   Diana com retry explicito; JSON `d6ae91c76625c82b` e PDF
   `1ba9013486b61342` concluidos, nota `8.0`, custo `US$ 0.005149`; artefatos
   intermediarios foram preservados como erro, nao mascarados.
+- Pipeline live GPT-5 Nano: `task_fa50cb3ffc16` passou `analisar_habilidades`
+  e `gerar_relatorio` na fixture Diana; custos `US$ 0.002282` e `US$ 0.001912`.
+  Ressalva: o relatorio trouxe `_avisos_questao.codigo` composto
+  `ILLEGIBLE_QUESTION|MISSING_CONTENT|LOW_CONFIDENCE`, alvo de schema/avisos.
 - O commit `fdf0cbd` mudou backend/frontend para catalogo OpenAI GPT-5.x e foi
   publicado no GitHub; Render confirmou `fdf0cbd` por `/api/deploy-info`,
   `wait_deploy.sh` e `check_deploy.sh`.
@@ -1013,9 +1017,10 @@ nem datasets maiores.
    fixture simples e GPT-4o passou as seis etapas individualmente, mas ainda
    faltam datasets maiores e GPT-4o full 6 etapas em uma unica task.
 4. Revalidar Gemini/Nano/Haiku por provider/modelo; Gemini 2.5 Flash falhou
-   alto por quota `429` em `corrigir`, GPT-5 Nano passou `extrair_respostas` e
-   `corrigir` na fixture simples mas segue parcial em dataset maior, e Haiku
-   segue bloqueado por credito.
+   alto por quota `429` em `corrigir`, GPT-5 Nano passou `extrair_respostas`,
+   `corrigir`, `analisar_habilidades` e `gerar_relatorio` na fixture simples
+   mas segue parcial em dataset maior/schema de avisos, e Haiku segue bloqueado
+   por credito.
 5. Aplicar `backend/migrations/002_create_token_usage.sql` no Supabase para
    tornar duravel o custo de falhas sem documento.
 6. Quando creditos Anthropic forem recarregados, validar Haiku 4.5 via
