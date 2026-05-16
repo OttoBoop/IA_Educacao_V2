@@ -310,6 +310,45 @@ def test_pdf_json_consistency_accepts_pedagogical_general_opinion_heading(tmp_pa
     assert errors == []
 
 
+def test_pdf_json_consistency_accepts_pedagogical_comment_heading(tmp_path):
+    json_path = tmp_path / "correcao.json"
+    pdf_path = tmp_path / "correcao.pdf"
+    feedback = (
+        "Diana demonstrou domínio conceitual em equação linear, operações com "
+        "potências e cálculo de área de triângulo, errando apenas a questão de "
+        "porcentagem. O erro ali foi de execução do cálculo percentual, típico "
+        "em alunos que já sabem aplicar regras algébricas mas podem confundir "
+        "operações com frações e porcentagens. Recomendo revisar a equivalência "
+        "entre percentuais e seus correspondentes decimais para fortalecer seu "
+        "entendimento e evitar esse tipo de confusão."
+    )
+    json_path.write_text(
+        json.dumps(
+            {
+                "nota_final": 8,
+                "questoes": [{"numero": 1, "nota": 3}],
+                "feedback_geral": feedback,
+            }
+        ),
+        encoding="utf-8",
+    )
+    _write_pdf(
+        pdf_path,
+        "Nota Final: 8.0\nQuestão 1 - Nota: 3.0\n"
+        "Comentário pedagógico geral:\n" + feedback,
+    )
+    json_doc = _doc("json", ".json")
+    pdf_doc = _doc("pdf", ".pdf")
+    executor = _executor_with_paths({"json": json_path, "pdf": pdf_path})
+
+    errors = executor._validar_consistencia_pdf_json_tool_outputs(
+        {"create_document": [json_doc], "execute_python_code": [pdf_doc]},
+        TipoDocumento.CORRECAO,
+    )
+
+    assert errors == []
+
+
 def test_pdf_json_consistency_accepts_non_truncated_feedback_paraphrase(tmp_path):
     json_path = tmp_path / "correcao.json"
     pdf_path = tmp_path / "correcao.pdf"
