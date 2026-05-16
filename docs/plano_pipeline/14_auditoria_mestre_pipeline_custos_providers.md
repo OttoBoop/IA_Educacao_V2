@@ -2489,7 +2489,7 @@ Fila minima para custo real:
 
 | Provider/modelo | Estado atual | Evidencia | O que falta |
 |---|---|---|---|
-| Gemini 3 Flash | Chat OK; `extrair_questoes`, `extrair_respostas` e etapas finais OK com custo; `extrair_gabarito` reclassificado como invalido; pipeline sequencial pos-runner bloqueada por quota em `corrigir` | `extrair_questoes`: task `task_737c8d45befc`, JSONs `3f1ca7eed14f5d37`/`9d61dcb36e6ca4b5`, custos `US$ 0.002806`/`US$ 0.002801`; `extrair_gabarito`: task `task_094c921eb038`, JSON `36d1fdd0a453e2f5`, custo `US$ 0.020378`, mas tudo `MISSING_CONTENT`; `extrair_respostas`: task `task_7d357943288d`, JSON `59cb3e341515d745`, custo `US$ 0.023273`; `corrigir`: task `task_8f53987c57c4`, custo `US$ 0.007931`; `analisar_habilidades`: task `task_a78369e23e5c`, JSON `7904a6a1aa34131f`, PDF `245970da4cc42c02`, custo `US$ 0.009447`; `gerar_relatorio`: task `task_58fb48fc8324`, JSON `fe6ad549481a0ed9`, PDF `b815d1faa5aeab77`, custo `US$ 0.006120`; sequencial `task_5e97bbee896e`: extracoes `025e065ceca92237`, `9188bd504796f767`, `ea25e7d9d9a0f9a0`, falha `429` em `corrigir` | Rerodar `extrair_gabarito` apos guard; repetir pipeline sequencial completa quando quota/credito permitir, sem trocar modelo e sem retry cego. |
+| Gemini 3 Flash | Chat OK; `extrair_questoes`, `extrair_gabarito`, `extrair_respostas` e etapas finais OK em smokes individuais com custo; pipeline sequencial pos-runner bloqueada por quota em `corrigir` | `extrair_questoes`: task `task_737c8d45befc`, JSONs `3f1ca7eed14f5d37`/`9d61dcb36e6ca4b5`, custos `US$ 0.002806`/`US$ 0.002801`; `extrair_gabarito` historico `task_094c921eb038` foi invalido por tudo `MISSING_CONTENT`, mas o rerun `task_c08f3d478aad` criou JSON `92e5e77b24874ad1` com 4 respostas reais, tokens `2040/507`, custo `US$ 0.001220`; `extrair_respostas`: task `task_7d357943288d`, JSON `59cb3e341515d745`, custo `US$ 0.023273`; `corrigir`: task `task_8f53987c57c4`, custo `US$ 0.007931`; `analisar_habilidades`: task `task_a78369e23e5c`, JSON `7904a6a1aa34131f`, PDF `245970da4cc42c02`, custo `US$ 0.009447`; `gerar_relatorio`: task `task_58fb48fc8324`, JSON `fe6ad549481a0ed9`, PDF `b815d1faa5aeab77`, custo `US$ 0.006120`; sequencial `task_5e97bbee896e`: extracoes `025e065ceca92237`, `9188bd504796f767`, `ea25e7d9d9a0f9a0`, falha `429` em `corrigir` | Repetir pipeline sequencial completa quando quota/credito permitir, sem trocar modelo e sem retry cego. |
 | GPT-5 Nano | Chat OK; `extrair_questoes`, `extrair_gabarito` e `corrigir` OK no smoke integrado pos-`f2211bb`; etapas finais tem sucesso individual historico; `extrair_respostas` falhou conteudo e agora falha alto desde `1ce3d23`; falta pipeline completa propria do Nano | Smoke integrado `task_19ee59ac1881`: `extrair_questoes` `d50f3b909e6773e7` (`US$ 0.003580`), `extrair_gabarito` `8dd414ee1617c3a5` (`US$ 0.002545`), `corrigir` JSON/PDF `f0302debf41ae58f`/`31794fc784905c00` (`US$ 0.002807`), falha em `analisar_habilidades` com doc erro `b5f17f2d1a980a3d` (`US$ 0.004213`). Historico: `extrair_respostas` falhou em `task_3d5feaf0da71`; analise individual ja passou em `task_020ba25bdb2b`; relatorio individual ja passou em `task_aec830b85c03`. | Manter Nano fora de `extrair_respostas`; revalidar etapas finais em run integrado apenas se Nano voltar a ser alvo. |
 | GPT-5.4 Mini | `extrair_respostas` OK em amostras avulsas e smoke integrado; full smoke oficial simples completou as 6 etapas; etapas finais revalidadas com retry PDF/JSON | Smoke usou cadastro efemero `04b31001cf81`; teste de conexao retornou `OK`; `task_9c10e3752bcb` criou JSON `a39d26fcc621c7a8`, 4/7 respostas com conteudo real, 3/7 `MISSING_CONTENT`, tokens `97004/1942`, custo `US$ 0.081492`; depois `gpt54mini001` entrou em `backend/data/models.json`; `task_706931a94555` criou `fec100a2e41eabcf`, tokens `97004/1737`, custo `US$ 0.080570`; `task_19062336eb8b` criou `4a82ddf1d2118ff0`, 7/7 respostas reais, tokens `90588/2813`, custo `US$ 0.0806`; no smoke integrado `task_19ee59ac1881`, `gpt54mini001` criou `1e5db36f3ab9aa0e`, tokens `18176/2081`, custo `US$ 0.022996`; no smoke full `task_a5f0d734f0b3` completou as 6 etapas no Render `2cad38a`, com custo total aproximado `US$ 0.079110` e JSONs coerentes; re-smoke `task_605512496b0d` no Render `0ac92f0` completou as 6 etapas, mas PDF de correcao divergiu (`9.0`/Q3 `2.0` contra JSON `8`/Q3 `0`) e PDF de relatorio mostrou `Nota final: N/A` contra JSON `8`; `task_857c0c3657ef` no Render `2052a01` falhou alto em `corrigir` e registrou custo `US$ 0.024458` (`16116/2749`); `task_e389f360b812` no Render `3a77a17` completou etapas finais, com `corrigir` PDF/JSON `b9fbaf4dc24b4a75`/`dd79a9c3f369fc09`, Q3 `0.0/2.0`, `gerar_relatorio` PDF/JSON `3bc1b11467f885ce`/`ce538fb798f1230e`, custo das etapas finais `US$ 0.032536`, `US$ 0.021490`, `US$ 0.019338`. | Confirmado nessa fixture simples; repetir em datasets maiores e nos demais providers. |
 | Claude Haiku 4.5 | Bloqueado | Creditos Anthropic insuficientes | Recarregar creditos e testar sem trocar provider. |
@@ -2515,7 +2515,7 @@ Erros conhecidos por provider/rota:
 | Gemini 3 Flash | `pipeline-completo` pos-fix `corrigir` | Depois de 503 retryability, task `task_8f53987c57c4` completou com JSON/PDF e custo | Confirmado para `corrigir`; extracoes ainda pendentes. |
 | Gemini 3 Flash | `pipeline-completo` pos-fix etapas finais | Tasks `task_a78369e23e5c` e `task_58fb48fc8324` completaram com JSON/PDF e custo | Confirmado para `analisar_habilidades` e `gerar_relatorio`; nao valida extracoes. |
 | Gemini 3 Flash | `pipeline-completo` pos-fix `extrair_questoes` | Task `task_737c8d45befc` completou, mas timeout de cliente e retry operacional geraram dois documentos de extracao | Confirmado para conteudo/custo de `extrair_questoes`; bug operacional corrigido por `f55e299` e endurecido por `e6060e1`; marker HTML ainda atrasado. |
-| Gemini 3 Flash | `pipeline-completo` pos-fix `extrair_gabarito` | Task `task_094c921eb038` completou; resposta inicial retornou `task_id` em 1.155s e `/api/health` ficou saudavel nos 20 polls, mas o JSON marcou todas as questoes como `MISSING_CONTENT` apesar de existir texto de Q5 no PDF base | Reclassificado como falha de conteudo; precisa guard e rerun. |
+| Gemini 3 Flash | `pipeline-completo` pos-fix `extrair_gabarito` | Task `task_094c921eb038` completou; resposta inicial retornou `task_id` em 1.155s e `/api/health` ficou saudavel nos 20 polls, mas o JSON marcou todas as questoes como `MISSING_CONTENT` apesar de existir texto de Q5 no PDF base | Reclassificado como falha de conteudo historica; rerun posterior `task_c08f3d478aad` corrigiu a fixture Diana. |
 | Gemini 3 Flash | `pipeline-completo` pos-fix `extrair_respostas` | Task `task_7d357943288d` completou; resposta inicial retornou `task_id` em 1.002s e `/api/health` ficou saudavel | Confirmado para conteudo/custo de `extrair_respostas`; as 6 etapas individuais estao OK. |
 | Gemini 3 Flash | `pipeline-completo` sequencial pos-runner | Task `task_5e97bbee896e` completou as tres extracoes, manteve health saudavel, mas falhou alto em `corrigir` por quota `429`; correcoes parciais ficaram `status=erro` e custo bloqueado por `token_split_missing` | Bloqueado por quota provider; nao promover como pipeline completa validada. |
 | GPT-5 Nano | `pipeline-completo` pos-fix `corrigir` | Task `task_49b7ada546d4` falhou alto por saida obrigatoria incompleta | Falha correta, sem fallback. |
@@ -2906,6 +2906,37 @@ Interpretação:
 - A pipeline completa de 6 etapas com GPT-4o ainda nao esta validada.
 - O comportamento arquitetural melhorou: arrays, PDFs divergentes, PDFs
   truncados, PDF com `N/A` e artefatos extras nao ficam mais verdes.
+
+## Atualizacao 2026-05-17 -- Gemini 3 Flash `extrair_gabarito`
+
+Depois do ciclo GPT-4o, o loop voltou para a matriz de providers. O alvo foi um
+P0 antigo: Gemini 3 Flash tinha `extrair_gabarito` reclassificado como falha de
+conteudo porque retornou todas as respostas como `MISSING_CONTENT`.
+
+Smoke oficial:
+
+- Task: `task_c08f3d478aad`
+- Runtime Render: `3e6be20`
+- Modelo: `gem3flash001` (`google/gemini-3-flash-preview`)
+- Etapa: `selected_steps=["extrair_gabarito"]`
+- Documento: `92e5e77b24874ad1`
+- Tokens/custo: `2040/507`, `US$ 0.001220`
+
+Inspeção:
+
+- JSON raiz e objeto.
+- Campo `respostas` tem 4 itens reais.
+- Respostas conferidas: Q1 `x = 5`, Q2 `34`, Q3 `30`, Q4 `20 cm2`.
+- Nao houve `MISSING_CONTENT` no resultado inspecionado.
+
+Interpretação:
+
+- Gemini 3 Flash volta a ✅ em `extrair_gabarito` para a fixture simples Diana.
+- Isso nao fecha Gemini como pipeline completa: a sequencial anterior parou em
+  `corrigir` por quota `429`, entao ainda precisa rerun completo quando quota
+  permitir.
+- O custo medido apareceu em `/api/custos/resumo`; a persistencia duravel
+  Supabase continua bloqueada por `PGRST205`.
 
 ## Trabalho Aberto Desta Auditoria
 

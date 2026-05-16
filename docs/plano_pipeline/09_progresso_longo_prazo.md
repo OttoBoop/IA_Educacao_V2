@@ -1672,6 +1672,25 @@ Critério de pronto: lista de limpeza segura e revisada.
   Supabase `token_usage`; GPT-4o esta confirmado para estas tres etapas na
   fixture simples, nao para a pipeline completa de 6 etapas.
 
+### 2026-05-17 -- Gemini 3 Flash `extrair_gabarito` revalidado
+
+- Alvo: revalidar o P0 historico de Gemini em `extrair_gabarito`, que antes
+  retornava tudo como `MISSING_CONTENT`.
+- Smoke oficial: `task_c08f3d478aad`, Render runtime `3e6be20`, modelo
+  `gem3flash001`, `selected_steps=["extrair_gabarito"]`, `force_rerun=true`.
+- Resultado: etapa `completed`; documento JSON `92e5e77b24874ad1`,
+  provider/modelo `google/gemini-3-flash-preview`, `2040/507` tokens,
+  `US$ 0.001220`.
+- Inspecao do JSON: raiz objeto com `respostas`, 4 itens reais e coerentes:
+  Q1 `x = 5`, Q2 `34`, Q3 `30`, Q4 `20 cm2`. Nenhum `MISSING_CONTENT` no
+  resultado inspecionado.
+- Atualizacao de matriz: Gemini 3 Flash volta a ✅ em `extrair_gabarito` para
+  esta fixture simples. Ainda falta pipeline sequencial completa quando quota
+  permitir.
+- Observacao de deploy/docs: commit docs `d829291` esta no GitHub, mas Render
+  nao mudou de `3e6be20` apos 600s, provavelmente por mudança fora do
+  `rootDir=backend`; o runtime tecnico validado segue `3e6be20`.
+
 ## Riscos Abertos
 
 1. Creditos Anthropic insuficientes ainda bloqueiam validacao Haiku.

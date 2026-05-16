@@ -92,7 +92,7 @@
 | Provider/Modelo | EXTRAIR_QUESTOES | EXTRAIR_GABARITO | EXTRAIR_RESPOSTAS | CORRIGIR | ANALISAR_HABILIDADES | GERAR_RELATORIO |
 |-----------------|:---:|:---:|:---:|:---:|:---:|:---:|
 | **Claude Haiku 4.5** (`588f3efe7975`) | ⏸️ | ⏸️ | ⏸️ | 🚫 | 🚫 | 🚫 |
-| **Gemini 3 Flash** (`gem3flash001`) | ✅ | ❌ | ✅ | ✅ | ✅ | ✅ |
+| **Gemini 3 Flash** (`gem3flash001`) | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | **GPT-5 Nano** (`gpt5nano001`) | ✅ | ✅ | ❌ | ⚠️ | ⚠️ | ⚠️ |
 | **GPT-5.4 Mini** (`gpt54mini001`) | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | **GPT-4o** (`180b8298a279`) — referencia | ⚠️ | ⚠️ | ⚠️ | ✅ | ✅ | ✅ |
@@ -104,9 +104,13 @@ mas parou em `corrigir` por quota `429`.
 Nota GPT-4o: as tres etapas finais foram revalidadas em 2026-05-17 no smoke
 `task_386f96bbf158`; as tres extracoes seguem `⚠️` porque ainda nao foram
 retestadas pos-guards atuais nesse modelo.
-Nota P0: `extrair_gabarito` Gemini continua ❌ porque o output retornou todas
-as respostas como `MISSING_CONTENT`, embora o PDF base tenha texto extraivel de
-"Exercicio 5". Nano tinha a mesma falha historica em `task_2da0fb90c3fb`, mas
+Nota P0 atualizada: `extrair_gabarito` Gemini era ❌ porque o output historico
+retornou todas as respostas como `MISSING_CONTENT`, embora o PDF base tivesse
+texto extraivel de "Exercicio 5". Em 2026-05-17, o smoke
+`task_c08f3d478aad` revalidou Gemini 3 Flash na fixture Diana e criou JSON
+`92e5e77b24874ad1` com 4 respostas reais (`x=5`, `34`, `30`, `20 cm2`),
+tokens `2040/507` e custo `US$ 0.001220`; por isso a etapa volta a ✅ nessa
+fixture simples. Nano tinha a mesma falha historica em `task_2da0fb90c3fb`, mas
 foi revalidado apos `5527e26` na task `task_dc719eeea626`, com JSON
 `5f433f9a1bc30842` e 7 respostas reais. Schema parseavel e custo medido nao
 bastam; conteudo precisa fazer sentido.
@@ -543,9 +547,9 @@ na fixture simples. Ainda falta pipeline completa de 6 etapas e datasets maiores
 - [x] Rodar Gemini 3 Flash em `extrair_questoes` com custo/metadata
 - [x] Rodar Gemini 3 Flash em `extrair_gabarito` com custo/metadata e health
       responsivo durante a execucao
-- [ ] Rerodar Gemini 3 Flash em `extrair_gabarito` apos guard anti-tudo-
-      `MISSING_CONTENT`; execucao anterior foi reclassificada como conteudo
-      invalido
+- [x] Rerodar Gemini 3 Flash em `extrair_gabarito` apos guard anti-tudo-
+      `MISSING_CONTENT`; `task_c08f3d478aad` criou JSON `92e5e77b24874ad1`
+      com 4 respostas reais e custo `US$ 0.001220`
 - [x] Confirmar deploy `5527e26`: Render MCP mostrou deploy live
       `dep-d83spamq1p3s73f0ks20` em `5527e265...`; o marker HTML segue
       atrasado em `e6060e1`
