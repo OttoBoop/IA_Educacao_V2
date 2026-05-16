@@ -424,6 +424,40 @@ def test_token_usage_store_status_expoe_backend_local(tmp_path):
     assert status["durable"] is False
 
 
+def test_token_usage_store_status_expoe_codigo_migration_supabase(tmp_path, monkeypatch):
+    import token_usage
+
+    class FakeQuery:
+        def select(self, *args, **kwargs):
+            return self
+
+        def limit(self, *args, **kwargs):
+            return self
+
+        def execute(self):
+            raise Exception(
+                "{'message': \"Could not find the table 'public.token_usage' in the schema cache\", "
+                "'code': 'PGRST205', 'hint': None, 'details': None}"
+            )
+
+    class FakeClient:
+        def table(self, table_name):
+            assert table_name == "token_usage"
+            return FakeQuery()
+
+    monkeypatch.setattr(token_usage, "supabase_db", SimpleNamespace(client=FakeClient()))
+    store = TokenUsageStore(tmp_path, use_supabase=True)
+
+    status = store.status()
+
+    assert status["supabase"]["enabled"] is True
+    assert status["supabase"]["table_available"] is False
+    assert status["supabase"]["error_code"] == "PGRST205"
+    assert status["supabase"]["missing_migration"] is True
+    assert status["supabase"]["migration_path"] == "backend/migrations/002_create_token_usage.sql"
+    assert status["durable"] is False
+
+
 def test_cost_summary_deduplica_documento_e_token_usage_mesmo_run(tmp_path):
     store, atividade, aluno = _seed_storage(tmp_path)
     arquivo_json = tmp_path / "correcao.json"

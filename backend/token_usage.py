@@ -9,6 +9,7 @@ without inventing a Documento.
 from __future__ import annotations
 
 import json
+import re
 import uuid
 from dataclasses import asdict, dataclass, field
 from datetime import datetime, timezone
@@ -27,6 +28,16 @@ except Exception:
 
 def _utc_now_iso() -> str:
     return datetime.now(timezone.utc).isoformat()
+
+
+def _extract_error_code(error: str) -> Optional[str]:
+    if not error:
+        return None
+    match = re.search(r"['\"]code['\"]\s*:\s*['\"]([^'\"]+)['\"]", error)
+    if match:
+        return match.group(1)
+    match = re.search(r"\b([A-Z]{3,}\d{3,})\b", error)
+    return match.group(1) if match else None
 
 
 @dataclass
@@ -111,6 +122,9 @@ class TokenUsageStore:
             "table_available": False,
             "record_count": None,
             "error": None,
+            "error_code": None,
+            "missing_migration": False,
+            "migration_path": "backend/migrations/002_create_token_usage.sql",
         }
         if supabase_status["enabled"]:
             try:
@@ -123,7 +137,11 @@ class TokenUsageStore:
                 supabase_status["table_available"] = True
                 supabase_status["record_count"] = int(result.count or 0)
             except Exception as exc:
-                supabase_status["error"] = str(exc)[:200]
+                error = str(exc)[:500]
+                error_code = _extract_error_code(error)
+                supabase_status["error"] = error[:200]
+                supabase_status["error_code"] = error_code
+                supabase_status["missing_migration"] = error_code == "PGRST205"
 
         return {
             "local_path": str(self.usage_path),
