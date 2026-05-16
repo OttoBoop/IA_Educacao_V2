@@ -53,11 +53,16 @@ Inspeção semantica inicial dos JSONs do mesmo smoke tambem passou: 4 questoes,
 4 respostas de gabarito, 4 respostas da aluna, correcao `8/10` por erro na
 porcentagem da questao 3, analise de habilidades coerente e relatorio alinhado.
 Rio 3 segue pausado. O loop ativo e pipeline oficial, providers existentes,
-custos, erro alto e deploy confirmado. Proximos alvos reais: aplicar/validar
-`token_usage` duravel; revalidar matriz de providers (Gemini, Nano, Haiku
-quando houver credito, GPT-4o explicito); ampliar a inspeção para PDFs/UI; e
-melhorar UI de erros para que o usuario veja aluno, etapa, provider, custo e
-causa sem abrir terminal.
+custos, erro alto e deploy confirmado. A checagem dos PDFs confirmou download
+HTTP 200 e texto extraivel, mas achou dois ajustes: o PDF de correcao pode
+cortar feedback longo em tabela estreita, e o relatorio misturou `8/10` com
+`75% de proficiencia geral` de modo potencialmente confuso. O patch local
+reforca as instrucoes de `execute_python_code` para PDFs nao truncarem texto e
+para nota/proficiencia serem metricas separadas. Proximos alvos reais:
+aplicar/validar `token_usage` duravel; revalidar matriz de providers (Gemini,
+Nano, Haiku quando houver credito, GPT-4o explicito); deployar/revalidar o patch
+PDF; e melhorar UI de erros para que o usuario veja aluno, etapa, provider,
+custo e causa sem abrir terminal.
 
 Este e o ponto de entrada do plano. O objetivo deste arquivo e dizer, em poucas
 linhas, onde estamos, qual e a proxima fila e quais frentes estao pausadas.
@@ -95,7 +100,7 @@ Estabilizar o NOVO CR para que a pipeline:
 | Frente | Estado | Proximo passo |
 |--------|--------|---------------|
 | Docs e plano | Sprint 0 concluida | Manter este painel como fonte oficial e anexos fora do fluxo diario |
-| Pipeline | GPT-5.4 Mini (`gpt54mini001`) completou as 6 etapas no site oficial em `task_a5f0d734f0b3`, Render hash `2cad38a`, com documentos, custos e inspeção semantica inicial coerente nos JSONs; Gemini 3 Flash segue validado em etapas individuais, mas pipeline sequencial bateu quota `429`; GPT-5 Nano segue validado em `extrair_questoes`, `extrair_gabarito` e smokes de etapas finais, mas `extrair_respostas` Nano continua ❌ por qualidade; `task_bc6cc84d10ef` permanece evidencia historica de que `completed` pode ser semanticamente invalido se gabarito/conteudo falhar | Repetir matriz por provider/modelo, ampliar inspeção para PDFs/UI e manter bloqueio P0: nao aceitar `completed` sem documento, schema, custo e conteudo minimo |
+| Pipeline | GPT-5.4 Mini (`gpt54mini001`) completou as 6 etapas no site oficial em `task_a5f0d734f0b3`, Render hash `2cad38a`, com documentos, custos e inspeção semantica inicial coerente nos JSONs; PDFs baixam e têm texto, mas o patch local endurece layout/metricas; Gemini 3 Flash segue validado em etapas individuais, mas pipeline sequencial bateu quota `429`; GPT-5 Nano segue validado em `extrair_questoes`, `extrair_gabarito` e smokes de etapas finais, mas `extrair_respostas` Nano continua ❌ por qualidade; `task_bc6cc84d10ef` permanece evidencia historica de que `completed` pode ser semanticamente invalido se gabarito/conteudo falhar | Deployar/revalidar patch PDF, repetir matriz por provider/modelo e manter bloqueio P0: nao aceitar `completed` sem documento, schema, custo e conteudo minimo |
 | Schema e avisos | Sprint 2 concluida localmente | Manter schema oficial, defaults e visualizador cobertos por testes |
 | Custos/tokens | Metadata de documento, endpoints live, resumo por `cost_run_id`, `TokenUsageRecord` local, migration Supabase dedicada `b2dc88b`; smoke full GPT-5.4 Mini `task_a5f0d734f0b3` registrou custo medido por etapa: `US$ 0.002312`, `US$ 0.002759`, `US$ 0.002657`, `US$ 0.026149`, `US$ 0.017470` e `US$ 0.027763`, total aproximado `US$ 0.079110`; `/api/custos/resumo?limit=8` mostrou `runs_precificados=5`, `runs_bloqueados=0`, `tokens_entrada=49208`, `tokens_saida=8865`, `custo_usd=0.076798`; diagnostico live ainda acusa `PGRST205`, `durable=false` e `local_record_count=0`, provando que o fallback local de `TokenUsageRecord` nao sobrevive deploy | Aplicar `backend/migrations/002_create_token_usage.sql` no Supabase; revalidar ate `token_usage_backend.durable=true`; depois persistir custos de falhas sem documento |
 | UI de erros | Pendente | Mostrar falha por aluno/etapa sem depender de terminal |
@@ -1521,8 +1526,20 @@ Critério de pronto: lista de limpeza segura e revisada.
 - Status atualizado: a fixture simples GPT-5.4 Mini passou em status, documentos,
   custos e inspeção semantica inicial. Isso nao valida Gemini/Nano/Haiku/GPT-4o
   nem datasets maiores.
-- Proximo alvo: aplicar `token_usage` duravel, revalidar providers restantes,
-  checar PDFs/UI do smoke e atacar UI de erros.
+- Checagem PDF: `correcao`, `analise_habilidades` e `relatorio_final` retornam
+  HTTP 200, sao PDFs reais e têm texto extraivel. Achados: o PDF de correcao
+  truncou feedback longo em tabela estreita; o relatorio exibiu `Nota final:
+  8/10 (75% de proficiência geral)`, que mistura metricas diferentes.
+- Patch local: `backend/executor.py` agora instrui os PDFs de `CORRIGIR`,
+  `ANALISAR_HABILIDADES` e `GERAR_RELATORIO` a usar word-wrap/blocos sem cortar
+  texto; `GERAR_RELATORIO` deve rotular `nota_final` e `proficiencia_geral` como
+  metricas separadas e nunca escrever `8/10 (75%)`.
+- Validações locais do patch PDF: `py_compile`; `git diff --check`;
+  `test_stage_tool_pdf_quality.py`, `test_f_t1_corrigir_tool_migration.py`,
+  `test_f_t2_analisar_tool_use.py` e `test_f_t3_relatorio_tool_migration.py`
+  com `41 passed` e o aviso conhecido de pytest `timeout`.
+- Proximo alvo: commitar/deployar o patch PDF, aplicar `token_usage` duravel,
+  revalidar providers restantes e atacar UI de erros.
 
 ## Riscos Abertos
 

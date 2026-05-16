@@ -184,8 +184,13 @@ Você DEVE usar as ferramentas disponíveis para produzir dois outputs:
 2. **execute_python_code** — Gere um PDF estilizado com reportlab contendo:
    - Cabeçalho com nome do aluno, matéria e data
    - Nota final em destaque
-   - Tabela de questões com status (acerto/erro) e feedback
+   - Questões com status (acerto/erro), nota e feedback completo
    - Resumo geral
+   O PDF nao pode cortar, truncar ou esconder feedback. Evite tabelas largas
+   para textos longos; prefira blocos por questao ou use Paragraph/word-wrap do
+   ReportLab com largura suficiente. Nao use slicing tipo texto[:80] para
+   caber no layout. Se usar tabela, cada celula textual deve quebrar linha e
+   preservar o conteudo essencial.
    Use extensão .pdf e nome descritivo.
 """,
     EtapaProcessamento.ANALISAR_HABILIDADES: """
@@ -244,6 +249,9 @@ Você DEVE usar as ferramentas disponíveis para produzir dois outputs:
    - Lista de habilidades com níveis e indicadores visuais
    - Indicadores de proficiência
    - Recomendações pedagógicas priorizadas
+   O PDF nao pode cortar, truncar ou esconder evidencias/recomendacoes. Use
+   Paragraph/word-wrap ou blocos verticais em vez de colunas estreitas para
+   textos longos.
    Use o arquivo "analise_habilidades.pdf". O código DEVE gravar esse .pdf real
    no disco e preencher output_files com ["analise_habilidades.pdf"]. Não basta
    imprimir, retornar base64 ou descrever o PDF.
@@ -290,6 +298,12 @@ Você DEVE usar as ferramentas disponíveis para produzir dois outputs:
    - Pontos fortes destacados
    - Áreas de melhoria
    - Recomendações pedagógicas
+   Se exibir `nota_final` e `proficiencia_geral`, trate como metricas separadas
+   e rotule claramente (ex: "Nota final: 8/10" e "Proficiência geral: 75%").
+   Nao escreva "8/10 (75%)" nem qualquer texto que faca parecer que a nota
+   8/10 equivale a 75%. Se nao houver percentual confiavel, omita o percentual.
+   O PDF nao pode cortar ou truncar textos longos; use Paragraph/word-wrap ou
+   blocos verticais.
    Use extensão .pdf.
 """,
     # F-T4: DESEMPENHO_TAREFA
