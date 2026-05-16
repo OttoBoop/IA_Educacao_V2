@@ -92,11 +92,15 @@ def _cost_for(doc: Documento, metadata: Dict[str, Any]) -> Dict[str, Any]:
     input_tokens = _token_int(metadata.get("tokens_entrada"))
     output_tokens = _token_int(metadata.get("tokens_saida"))
     total_tokens = _token_int(metadata.get("tokens_total") or doc.tokens_usados)
+    etapa = metadata.get("etapa") or doc.tipo.value
+    etapa_origem = "metadata" if metadata.get("etapa") else "tipo_documento"
 
     erro_execucao = metadata.get("erro_pipeline") or metadata.get("erro_execucao")
     base = {
         "documento_id": doc.id,
         "tipo": doc.tipo.value,
+        "etapa": etapa,
+        "etapa_origem": etapa_origem,
         "atividade_id": doc.atividade_id,
         "aluno_id": doc.aluno_id,
         "provider": doc.ia_provider,
@@ -142,6 +146,8 @@ def _cost_for_usage(record: TokenUsageRecord) -> Dict[str, Any]:
         "documento_id": None,
         "usage_record_id": record.id,
         "tipo": "token_usage",
+        "etapa": record.etapa,
+        "etapa_origem": "token_usage",
         "atividade_id": record.atividade_id,
         "aluno_id": record.aluno_id,
         "provider": record.provider,
@@ -201,6 +207,8 @@ def _documents_for_run(rows: Iterable[Dict[str, Any]]) -> list[Dict[str, Any]]:
         {
             "documento_id": row["documento_id"],
             "tipo": row["tipo"],
+            "etapa": row.get("etapa"),
+            "etapa_origem": row.get("etapa_origem"),
             "status": row["status"],
             "custo_status": row["custo_status"],
             "erro": row.get("erro") or row.get("erro_execucao"),
@@ -221,6 +229,8 @@ def _usage_records_for_run(rows: Iterable[Dict[str, Any]]) -> list[Dict[str, Any
     return [
         {
             "usage_record_id": row["usage_record_id"],
+            "etapa": row.get("etapa"),
+            "etapa_origem": row.get("etapa_origem"),
             "status": row["status"],
             "custo_status": row["custo_status"],
             "erro": row.get("erro"),
@@ -279,6 +289,7 @@ def build_cost_summary(
     counted_runs = 0
     blocked = Counter()
     by_provider: Dict[str, Dict[str, Any]] = {}
+    by_stage: Dict[str, Dict[str, Any]] = {}
     samples: list[Dict[str, Any]] = []
     alerts: list[Dict[str, Any]] = []
 
@@ -339,8 +350,20 @@ def build_cost_summary(
         provider["tokens_saida"] += row["tokens_saida"]
         provider["custo_usd"] += float(row["custo_usd"])
 
+        stage_key = row.get("etapa") or "unknown"
+        stage = by_stage.setdefault(
+            stage_key,
+            {"etapa": stage_key, "runs": 0, "tokens_entrada": 0, "tokens_saida": 0, "custo_usd": 0.0},
+        )
+        stage["runs"] += 1
+        stage["tokens_entrada"] += row["tokens_entrada"]
+        stage["tokens_saida"] += row["tokens_saida"]
+        stage["custo_usd"] += float(row["custo_usd"])
+
     for provider in by_provider.values():
         provider["custo_usd"] = round(provider["custo_usd"], 6)
+    for stage in by_stage.values():
+        stage["custo_usd"] = round(stage["custo_usd"], 6)
 
     token_usage_backend = token_usage_store.status()
     custos_persistencia_status = (
@@ -378,6 +401,7 @@ def build_cost_summary(
         "tokens_saida": total_output,
         "custo_usd": round(total_usd, 6),
         "por_provider": sorted(by_provider.values(), key=lambda item: item["provider"]),
+        "por_etapa": sorted(by_stage.values(), key=lambda item: item["etapa"]),
         "amostras": samples[:50],
         "alertas": alerts[:50],
     }

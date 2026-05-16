@@ -158,6 +158,44 @@ def test_cost_summary_conta_um_run_com_json_e_pdf(tmp_path):
     assert set(summary["amostras"][0]["documentos_ids"]) == {doc_json.id, doc_pdf.id}
 
 
+def test_cost_summary_expoe_etapa_e_agregado_por_etapa(tmp_path):
+    store, atividade, aluno = _seed_storage(tmp_path)
+    arquivo = tmp_path / "correcao.json"
+    arquivo.write_text('{"nota_final": 8}', encoding="utf-8")
+
+    doc = store.salvar_documento(
+        arquivo_origem=str(arquivo),
+        tipo=TipoDocumento.CORRECAO,
+        atividade_id=atividade.id,
+        aluno_id=aluno.id,
+        ia_provider="openai",
+        ia_modelo="gpt-5-nano",
+        tokens_usados=300,
+        metadata={
+            "tokens_entrada": 200,
+            "tokens_saida": 100,
+            "cost_run_id": "run-stage",
+            "etapa": "corrigir",
+        },
+    )
+
+    summary = build_cost_summary([doc])
+
+    sample = summary["amostras"][0]
+    assert sample["etapa"] == "corrigir"
+    assert sample["etapa_origem"] == "metadata"
+    assert sample["documentos"][0]["etapa"] == "corrigir"
+    assert summary["por_etapa"] == [
+        {
+            "etapa": "corrigir",
+            "runs": 1,
+            "tokens_entrada": 200,
+            "tokens_saida": 100,
+            "custo_usd": sample["custo_usd"],
+        }
+    ]
+
+
 def test_cost_summary_expoe_erro_pipeline_em_documento_precificado(tmp_path):
     store, atividade, aluno = _seed_storage(tmp_path)
     arquivo_pdf = tmp_path / "correcao.pdf"
@@ -307,8 +345,10 @@ def test_cost_summary_inclui_token_usage_sem_documento():
     assert summary["tokens_entrada"] == 300
     assert summary["tokens_saida"] == 50
     assert summary["amostras"][0]["cost_run_id"] == "run-no-doc"
+    assert summary["amostras"][0]["etapa"] == "correcao"
     assert summary["amostras"][0]["documentos_contagem"] == 0
     assert summary["amostras"][0]["token_usage_ids"] == ["usage-1"]
+    assert summary["por_etapa"][0]["etapa"] == "correcao"
 
 
 def test_cost_summary_alerta_quando_token_usage_nao_e_duravel(monkeypatch):
