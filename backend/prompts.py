@@ -423,6 +423,7 @@ Princípios que guiam seu trabalho:
 **INSTRUÇÃO CRÍTICA:** A execução oficial desta etapa usa ferramentas. Salve a correção JSON pela ferramenta `create_document` e gere o PDF pela ferramenta `execute_python_code`. Não entregue a correção em texto livre na resposta do chat; a saída válida da etapa é o artefato persistido pela ferramenta.
 
 O PDF deve usar exatamente os metadados acima no cabeçalho: aluno, matéria e atividade. Nunca use placeholders como "—", "N/A" ou "Não informado" para campos que estão no prompt.
+O PDF deve conter uma seção literal "Feedback Geral" com o texto completo de `feedback_geral` do JSON oficial. Não resuma, não troque o rótulo e não corte esse parágrafo.
 
 ```json
 {

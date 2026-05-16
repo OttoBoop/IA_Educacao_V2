@@ -211,7 +211,9 @@ Você DEVE usar as ferramentas disponíveis para produzir dois outputs:
    - Cabeçalho com nome do aluno, matéria e data
    - Nota final em destaque
    - Questões com status (acerto/erro), nota e feedback completo
-   - Resumo geral
+   - Seção literal "Feedback Geral" com o texto completo de `feedback_geral`
+     do JSON oficial. O PDF sera rejeitado se essa seção estiver ausente,
+     resumida demais, truncada ou terminar sem pontuação.
    Nao use placeholders como "—", "N/A" ou "Nao informado" no cabecalho quando
    os metadados aparecem no prompt.
    O PDF nao pode cortar, truncar ou esconder feedback. Evite tabelas largas
@@ -4635,7 +4637,9 @@ Seja preciso, educativo e construtivo em suas análises."""
                     + PDF_SANDBOX_RULES
                     + " Se for CORRIGIR, cada questao exibida no PDF deve "
                     "usar exatamente questoes[].nota do JSON; a nota final do PDF deve "
-                    "usar exatamente nota_final do JSON. O cabecalho do PDF nao pode usar "
+                    "usar exatamente nota_final do JSON; e o PDF deve ter uma secao literal "
+                    "'Feedback Geral' contendo o texto completo de feedback_geral do JSON, "
+                    "sem resumir, truncar ou trocar por outro rotulo. O cabecalho do PDF nao pode usar "
                     "placeholders como '—', 'N/A' ou 'Nao informado' para aluno, materia, "
                     "atividade ou data; use os metadados do prompt original quando estiverem "
                     "disponiveis. Se for GERAR_RELATORIO, "

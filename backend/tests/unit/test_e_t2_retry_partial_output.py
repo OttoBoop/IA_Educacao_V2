@@ -1389,6 +1389,9 @@ async def test_pdf_json_consistency_gets_two_same_model_repairs(monkeypatch, tmp
     mensagens = [alerta["mensagem"] for alerta in result.alertas]
     assert any("retry 1/2" in mensagem for mensagem in mensagens)
     assert any("retry 2/2" in mensagem for mensagem in mensagens)
+    assert "Feedback Geral" in calls[2]["mensagem"]
+    assert "feedback_geral" in calls[2]["mensagem"]
+    assert "Feedback Geral" in calls[3]["mensagem"]
 
 
 @pytest.mark.asyncio

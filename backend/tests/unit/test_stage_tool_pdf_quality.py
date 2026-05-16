@@ -16,6 +16,9 @@ def test_corrigir_pdf_instructions_forbid_clipped_feedback():
 
     assert "nao pode cortar" in instructions
     assert "feedback" in instructions
+    assert "feedback geral" in instructions
+    assert "feedback_geral" in instructions
+    assert "texto completo" in instructions
     assert "word-wrap" in instructions or "paragraph" in instructions
     assert "texto[:80]" in instructions
     assert "placeholders" in instructions
@@ -28,6 +31,9 @@ def test_corrigir_prompt_exposes_header_metadata_to_pdf_generation():
     assert "**matéria:** {{materia}}" in prompt_text
     assert "**atividade:** {{atividade}}" in prompt_text
     assert "nunca use placeholders" in prompt_text
+    assert "feedback geral" in prompt_text
+    assert "feedback_geral" in prompt_text
+    assert "texto completo" in prompt_text
 
 
 def test_analisar_pdf_instructions_forbid_clipped_evidence():
