@@ -4,7 +4,7 @@
 **Responsavel operacional:** Paulo
 **Status geral:** o servico oficial Render
 `srv-d5t8gbh4tr6s738fr3s0` (`IA_Educacao_V2`, branch `main`, URL
-`https://ia-educacao-v2.onrender.com`) esta em `3e6be20`, confirmado por
+`https://ia-educacao-v2.onrender.com`) esta em `aff2180`, confirmado por
 `/api/deploy-info` com `source=RENDER_GIT_COMMIT`. O primeiro marco full
 recente continua sendo o smoke de 6 etapas com GPT-5.4 Mini (`gpt54mini001`) na
 atividade `Smoke Paulo Pipeline 2026-05-16`: task `task_a5f0d734f0b3`, aluna
@@ -14,6 +14,34 @@ Diana Omega, hash live `2cad38a`, etapas `extrair_questoes`,
 endurecer artefatos PDF/JSON e revalidar GPT-4o explicitamente no Render. O
 marco GPT-5.4 Mini nao substitui a matriz completa de providers nem valida
 todos os datasets reais.
+
+Atualizacao operacional de 2026-05-17: depois de `3e6be20`, o loop publicou
+`629c4ee` e `aff2180`. `629c4ee` corrigiu uma validação estreita demais que
+exigia o rótulo literal "Feedback Geral" no PDF, embora Gemini tivesse gerado o
+conteudo completo sob "Parecer Pedagógico Geral". O smoke Gemini full
+`task_c9302f341734` completou as 6 etapas em `629c4ee`, mas a auditoria achou
+novo falso verde: o JSON de `corrigir` usou `feedback_geral_texto` e
+`feedback_geralSmall`, sem `feedback_geral`. `aff2180` tornou
+`feedback_geral`, `total_acertos`, `total_erros`, `_avisos_documento` e
+`_avisos_questao` obrigatorios para `CORRIGIR`. Os reruns Gemini posteriores
+(`task_0cbc99255c7e`, `task_6347f5e0d311`, `task_26412081ac9f`) falharam alto
+por quota Google `429`, com limite free-tier `generate_content_free_tier_requests`
+do modelo `gemini-3-flash`; portanto Gemini fica bloqueado por quota para
+revalidar o schema novo, nao confirmado como full final.
+
+No mesmo runtime `aff2180`, GPT-5.4 Mini completou novamente a pipeline de 6
+etapas em `task_299dd8a00517`. Artefatos/custos: `extrair_questoes`
+`6510078afa7dcc4b` (`1150/489`, `US$ 0.003063`), `extrair_gabarito`
+`1f2e9af35f895de1` (`1903/295`, `US$ 0.002755`), `extrair_respostas`
+`98dc9d287f28893e` (`2129/455`, `US$ 0.003644`), `corrigir`
+PDF/JSON `54bbdd06a48f9376`/`f4f5a5d1f71a262f` (`23462/3876`,
+`US$ 0.035039`), `analisar_habilidades`
+`71c5cd58b3a11403`/`6972964717580587` (`12285/2154`, `US$ 0.018907`) e
+`gerar_relatorio` `092a5ac44779a0e7`/`c9552a74276b38ac`
+(`19398/3778`, `US$ 0.031550`). Total aproximado: `US$ 0.094958`. O JSON de
+correcao veio com `feedback_geral` correto e o PDF/JSON ficaram coerentes; o
+PDF de correcao ainda mostra "Aluno: Não informado", que fica como lacuna de
+qualidade/metadata de PDF.
 
 A sequencia que destravou esse ponto foi:
 
@@ -1690,6 +1718,33 @@ Critério de pronto: lista de limpeza segura e revisada.
 - Observacao de deploy/docs: commit docs `d829291` esta no GitHub, mas Render
   nao mudou de `3e6be20` apos 600s, provavelmente por mudança fora do
   `rootDir=backend`; o runtime tecnico validado segue `3e6be20`.
+
+### 2026-05-17 -- Schema `CORRIGIR` endurecido e smokes em `aff2180`
+
+- Alvo: impedir falso verde quando o modelo gera campo parecido com
+  `feedback_geral`, mas nao o campo contratual.
+- Commits/deploy: `629c4ee` validou feedback de correcao por conteudo do PDF,
+  aceitando "Parecer Pedagógico Geral" quando o texto completo esta presente;
+  `aff2180` passou a exigir `feedback_geral`, `total_acertos`, `total_erros`,
+  `_avisos_documento` e `_avisos_questao` no JSON de `CORRIGIR`.
+- Evidencia que motivou `aff2180`: Gemini full `task_c9302f341734` completou em
+  `629c4ee`, mas o JSON `54c7fafd5569cca2` usou `feedback_geral_texto` e
+  `feedback_geralSmall`, entao o completed era falso verde de schema.
+- Reruns Gemini em `aff2180`: `task_0cbc99255c7e` falhou em
+  `extrair_questoes` por Google `429`; `task_6347f5e0d311` e
+  `task_26412081ac9f` falharam em `corrigir` pelo mesmo limite free-tier
+  `generate_content_free_tier_requests`, modelo `gemini-3-flash`. Status:
+  bloqueado por quota para revalidar `CORRIGIR` com o schema novo.
+- Smoke GPT-5.4 Mini em `aff2180`: `task_299dd8a00517` completou 6 etapas.
+  JSONs principais estao coerentes; `corrigir` agora contem `feedback_geral`
+  real. Custos por etapa: `US$ 0.003063`, `US$ 0.002755`, `US$ 0.003644`,
+  `US$ 0.035039`, `US$ 0.018907`, `US$ 0.031550`; total aproximado
+  `US$ 0.094958`.
+- Observacoes de qualidade: `extrair_respostas` incluiu uma observacao
+  contraditoria na Q1 ("x = 5" mas "nao corresponde ao valor correto esperado"),
+  embora a correcao final tenha pontuado corretamente; o PDF de correcao mostra
+  "Aluno: Não informado". Esses pontos nao quebraram o smoke, mas entram na fila
+  de qualidade/UX e validacao semantica mais fina.
 
 ## Riscos Abertos
 

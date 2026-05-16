@@ -2938,6 +2938,58 @@ Interpretação:
 - O custo medido apareceu em `/api/custos/resumo`; a persistencia duravel
   Supabase continua bloqueada por `PGRST205`.
 
+## Atualizacao 2026-05-17 -- `aff2180`, Schema De Correção E GPT-5.4 Mini Full
+
+Este ciclo mostrou por que o loop nao pode parar no primeiro `completed`.
+
+Sequencia factual:
+
+1. `629c4ee` foi publicado e confirmado no Render. Ele corrigiu uma validação
+   estreita demais: o PDF Gemini trazia o texto completo do parecer, mas com o
+   titulo "Parecer Pedagógico Geral", nao "Feedback Geral". A regra correta
+   passou a validar o conteudo do `feedback_geral`, sem aceitar truncamento.
+2. Em `629c4ee`, Gemini 3 Flash completou a pipeline full
+   `task_c9302f341734`, mas a auditoria achou falso verde de schema:
+   `corrigir` gerou JSON `54c7fafd5569cca2` com
+   `feedback_geral_texto`/`feedback_geralSmall`, sem `feedback_geral`.
+3. `aff2180` foi publicado e confirmado no Render. Ele tornou obrigatorios no
+   JSON de `CORRIGIR`: `feedback_geral`, `total_acertos`, `total_erros`,
+   `_avisos_documento` e `_avisos_questao`.
+4. Reruns Gemini em `aff2180` nao conseguiram validar o schema novo por quota
+   Google `429`: full `task_0cbc99255c7e` falhou em `extrair_questoes`;
+   correção-only `task_6347f5e0d311` e `task_26412081ac9f` falharam em
+   `corrigir`. O erro expôs limite free-tier
+   `generate_content_free_tier_requests`, `limit: 20`, modelo
+   `gemini-3-flash`.
+5. No mesmo runtime, GPT-5.4 Mini completou full pipeline
+   `task_299dd8a00517` com schema endurecido e custo medido.
+
+Artefatos GPT-5.4 Mini `task_299dd8a00517`:
+
+| Etapa | Artefatos | Tokens | Custo |
+|---|---|---:|---:|
+| `extrair_questoes` | JSON `6510078afa7dcc4b` | `1150/489` | `US$ 0.003063` |
+| `extrair_gabarito` | JSON `1f2e9af35f895de1` | `1903/295` | `US$ 0.002755` |
+| `extrair_respostas` | JSON `98dc9d287f28893e` | `2129/455` | `US$ 0.003644` |
+| `corrigir` | PDF `54bbdd06a48f9376`, JSON `f4f5a5d1f71a262f` | `23462/3876` | `US$ 0.035039` |
+| `analisar_habilidades` | PDF `71c5cd58b3a11403`, JSON `6972964717580587` | `12285/2154` | `US$ 0.018907` |
+| `gerar_relatorio` | PDF `092a5ac44779a0e7`, JSON `c9552a74276b38ac` | `19398/3778` | `US$ 0.031550` |
+
+Total aproximado: `US$ 0.094958`.
+
+Interpretação:
+
+- GPT-5.4 Mini segue como melhor provider validado para a fixture simples
+  Diana: 6 etapas, JSONs coerentes, PDF/JSON de correção coerentes, custo
+  medido por etapa.
+- Gemini 3 Flash nao deve ser marcado como full confirmado pos-`aff2180`; ele
+  esta bloqueado por quota para revalidar as etapas finais com o schema novo.
+- O custo ainda nao e duravel no Supabase: `/api/custos/status` segue com
+  `token_usage_backend.durable=false` e `PGRST205`.
+- Lacunas de qualidade ainda abertas: PDF de correção GPT-5.4 Mini mostrou
+  "Aluno: Não informado"; `extrair_respostas` incluiu uma observacao
+  contraditoria na Q1 apesar de extrair `x = 5` corretamente.
+
 ## Trabalho Aberto Desta Auditoria
 
 Esta auditoria nao encerra o loop tecnico. Ela deixa o proximo trabalho mais

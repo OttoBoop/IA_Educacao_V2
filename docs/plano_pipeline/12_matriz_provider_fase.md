@@ -92,7 +92,7 @@
 | Provider/Modelo | EXTRAIR_QUESTOES | EXTRAIR_GABARITO | EXTRAIR_RESPOSTAS | CORRIGIR | ANALISAR_HABILIDADES | GERAR_RELATORIO |
 |-----------------|:---:|:---:|:---:|:---:|:---:|:---:|
 | **Claude Haiku 4.5** (`588f3efe7975`) | ⏸️ | ⏸️ | ⏸️ | 🚫 | 🚫 | 🚫 |
-| **Gemini 3 Flash** (`gem3flash001`) | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| **Gemini 3 Flash** (`gem3flash001`) | ✅ | ✅ | ✅ | ⚠️ | ⚠️ | ⚠️ |
 | **GPT-5 Nano** (`gpt5nano001`) | ✅ | ✅ | ❌ | ⚠️ | ⚠️ | ⚠️ |
 | **GPT-5.4 Mini** (`gpt54mini001`) | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | **GPT-4o** (`180b8298a279`) — referencia | ⚠️ | ⚠️ | ⚠️ | ✅ | ✅ | ✅ |
@@ -114,6 +114,13 @@ fixture simples. Nano tinha a mesma falha historica em `task_2da0fb90c3fb`, mas
 foi revalidado apos `5527e26` na task `task_dc719eeea626`, com JSON
 `5f433f9a1bc30842` e 7 respostas reais. Schema parseavel e custo medido nao
 bastam; conteudo precisa fazer sentido.
+Nota Gemini pos-`aff2180`: `task_c9302f341734` chegou a completar as 6 etapas
+em `629c4ee`, mas a auditoria achou falso verde de schema em `corrigir`: JSON
+`54c7fafd5569cca2` tinha `feedback_geral_texto`/`feedback_geralSmall`, nao
+`feedback_geral`. O commit `aff2180` passou a bloquear esse caso. Reruns
+posteriores (`task_0cbc99255c7e`, `task_6347f5e0d311`,
+`task_26412081ac9f`) falharam alto por Google quota `429`; por isso as etapas
+finais Gemini ficam ⚠️ ate nova revalidacao com quota disponivel.
 Nota P0 adicional: `extrair_respostas` Nano rodou em
 `task_a9ff0d69d5e9`, mas o JSON `b968c9539f277deb` marcou todas as 7 respostas
 como `ilegivel=true`, embora o PDF `f60d37284d616ca4` tenha texto extraivel da
@@ -407,7 +414,7 @@ documento verde. Portanto:
 
 ---
 
-### Gemini 3 Flash Preview — ✅ ETAPAS FINAIS DO ALUNO POS-FIX VALIDADAS
+### Gemini 3 Flash Preview — ⚠️ ETAPAS FINAIS AGUARDAM REVALIDACAO POS-SCHEMA
 
 **Smoke live pos-fix:** `pipeline-completo` com apenas `corrigir` falhou em
 2026-05-15. Antes do patch, a task nao expôs `error`; depois do deploy
@@ -422,6 +429,15 @@ Gemini. A primeira pipeline sequencial completa pos-runner (`task_5e97bbee896e`)
 passou por `extrair_questoes`, `extrair_gabarito` e `extrair_respostas`, mas
 falhou alto em `corrigir` por quota Google/Gemini `429`, sem troca silenciosa de
 modelo e sem marcar as etapas finais como sucesso.
+
+**Atualizacao 2026-05-17 em `aff2180`:** `629c4ee` corrigiu a validação de PDF
+para aceitar o texto completo de `feedback_geral` mesmo quando o PDF usa o
+título "Parecer Pedagógico Geral". Em seguida, a auditoria do Gemini full
+`task_c9302f341734` descobriu falso verde de JSON: `corrigir` gerou
+`feedback_geral_texto`/`feedback_geralSmall` no lugar de `feedback_geral`.
+`aff2180` endureceu o schema de `CORRIGIR`. A revalidacao ficou bloqueada por
+quota Google `429` nos reruns `task_0cbc99255c7e`, `task_6347f5e0d311` e
+`task_26412081ac9f`.
 
 **Historico positivo via `pipeline-completo`** para Eric Manoel antes dos commits
 `b12be9a`/Sprint 3b (ver [teste_gemini_pipeline_completo.md](arquivo_2026_04_17/teste_gemini_pipeline_completo.md)).
@@ -665,10 +681,15 @@ na fixture simples. Ainda falta pipeline completa de 6 etapas e datasets maiores
   Finalmente, `3a77a17` passou no smoke reduzido `task_e389f360b812`:
   `corrigir`, `analisar_habilidades` e `gerar_relatorio` completaram, e a
   inspeção manual confirmou PDF/JSON coerentes para correcao e relatorio.
+  Em `aff2180`, o full smoke `task_299dd8a00517` completou novamente as 6
+  etapas com schema de `CORRIGIR` endurecido; `corrigir` trouxe
+  `feedback_geral` real no JSON `f4f5a5d1f71a262f`, PDF `54bbdd06a48f9376` e
+  custo total aproximado de `US$ 0.094958`.
 - ⏸️ **Claude Haiku 4.5:** Aguardando creditos.
-- 📊 **Confiabilidade Gemini 3 Flash:** etapas individuais OK, mas a primeira
-  pipeline sequencial pos-runner bateu quota `429` em `corrigir`. Precisa duas
-  execucoes completas quando quota/credito permitir.
+- 📊 **Confiabilidade Gemini 3 Flash:** extracoes OK; etapas finais ficaram
+  ⚠️ depois que `aff2180` endureceu `feedback_geral` em `CORRIGIR`. A
+  revalidacao foi bloqueada por quota Google `429`. Precisa duas execucoes
+  completas quando quota/credito permitir.
 
 **Marco 1 atingido para uma fixture simples, nao para a matriz inteira:** o site
 oficial completou 6 etapas com GPT-5.4 Mini, custo/metadata e inspeção
@@ -684,7 +705,7 @@ nem datasets maiores.
 
 **Proximos passos:**
 1. Manter deploy oficial confirmado por `/api/deploy-info` antes de cada smoke
-   novo; o runtime atual confirmado e `3e6be20`.
+   novo; o runtime atual confirmado e `aff2180`.
 2. Aplicar/validar a migration Supabase `token_usage` antes de chamar custo de
    falha sem documento de duravel.
 3. Revalidar matriz por provider/modelo; GPT-5.4 Mini passou 6 etapas em
