@@ -6,9 +6,10 @@
 `srv-d5t8gbh4tr6s738fr3s0` (`IA_Educacao_V2`, branch `main`, URL
 `https://ia-educacao-v2.onrender.com`) esta em runtime backend `11a396b`,
 confirmado por `/api/deploy-info`, `/api/health` e
-`./scripts/check_deploy.sh 11a396b`. O `origin/main` esta em `8c77cc4`, commit
+`./scripts/check_deploy.sh 11a396b`. O `origin/main` esta em `29a4b7e`, commit
 de documentacao posterior ao deploy de codigo; portanto o site oficial roda o
-codigo `11a396b` e o GitHub registra ate `8c77cc4`. O ultimo ciclo de codigo
+codigo `11a396b` e o GitHub registra ate `29a4b7e` antes do ciclo OpenAI/catalogo
+atual. O ultimo ciclo de codigo
 corrigiu falso negativo do guard PDF/JSON em `CORRIGIR`: PDFs coerentes com
 rotulos `Comentário pedagógico geral` e `Feedback geral da avaliação` deixam de
 gerar retry artificial. Smoke oficial `task_92c4b74494f7` com GPT-4.1 confirmou
@@ -31,6 +32,19 @@ escopo for declarado como exercicio 5; para validar a pipeline integral da
 atividade inteira, falta gabarito completo ou reextracao/cadastro correto. Nenhuma
 chamada de IA foi feita neste ciclo; o objetivo foi evitar gasto em smoke que
 nasceria invalidado pelo dado.
+
+Atualizacao OpenAI/catalogo de 2026-05-17: consulta aos docs oficiais da OpenAI
+confirmou `gpt-5.5` como linha mais recente, com `reasoning.effort` e preferencia
+por Responses API em workflows de raciocinio/tool-use. O ciclo corrigiu um risco
+de modelo fantasma/parametro errado: `gpt-5.2`, `gpt-5.2-pro`, `gpt-5-pro` e a
+familia GPT-5.4/5.5 entram como reasoning sem `temperature`; variantes `-pro`
+tambem sao reconhecidas pelo provider legado e pelo frontend; o slug inexistente
+`gpt-5-image` saiu do catalogo textual. Validacoes locais: `py_compile`,
+`git diff --check`, `test_model_manager.py` (55), `test_d_t1_openai_tool_use.py`
+com `test_cost_tracking.py` (38) e `test_providers.py` (11). No mesmo ciclo, o
+catalogo foi ajustado para limites oficiais de contexto/output e capabilities
+das variantes `-pro`. Ainda falta publicar, confirmar Render e fazer smoke
+oficial sem gastar em dataset invalido.
 
 Atualizacao chat/providers de 2026-05-17 no runtime `c53fae6`: o smoke oficial
 `POST /api/chat` com GPT-5.4 Mini (`gpt54mini001`) retornou HTTP 200, JSON

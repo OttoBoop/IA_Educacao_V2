@@ -101,19 +101,18 @@ DEFAULT_URLS = {
 MODELOS_SUGERIDOS = {
     ProviderType.OPENAI: [
         # GPT-5 Series (Newest)
-        {"id": "gpt-5.5", "nome": "GPT-5.5", "suporta_vision": True, "suporta_tools": True},
-        {"id": "gpt-5.5-pro", "nome": "GPT-5.5 Pro", "suporta_vision": True, "suporta_tools": True},
-        {"id": "gpt-5.4", "nome": "GPT-5.4", "suporta_vision": True, "suporta_tools": True},
-        {"id": "gpt-5.4-mini", "nome": "GPT-5.4 Mini", "suporta_vision": True, "suporta_tools": True},
-        {"id": "gpt-5.4-nano", "nome": "GPT-5.4 Nano", "suporta_vision": True, "suporta_tools": True},
-        {"id": "gpt-5.4-pro", "nome": "GPT-5.4 Pro", "suporta_vision": True, "suporta_tools": True},
-        {"id": "gpt-5.2", "nome": "GPT-5.2", "suporta_vision": True, "suporta_tools": True},
-        {"id": "gpt-5.2-pro", "nome": "GPT-5.2 Pro", "suporta_vision": True, "suporta_tools": True},
-        {"id": "gpt-5", "nome": "GPT-5", "suporta_vision": True, "suporta_tools": True},
-        {"id": "gpt-5-mini", "nome": "GPT-5 Mini", "suporta_vision": True, "suporta_tools": True},
-        {"id": "gpt-5-nano", "nome": "GPT-5 Nano", "suporta_vision": True, "suporta_tools": True},
-        {"id": "gpt-5-pro", "nome": "GPT-5 Pro", "suporta_vision": True, "suporta_tools": True},
-        {"id": "gpt-5-image", "nome": "GPT-5 Image", "suporta_vision": True, "suporta_tools": True},
+        {"id": "gpt-5.5", "nome": "GPT-5.5", "suporta_vision": True, "suporta_tools": True, "suporta_temperature": False},
+        {"id": "gpt-5.5-pro", "nome": "GPT-5.5 Pro", "suporta_vision": True, "suporta_tools": True, "suporta_temperature": False},
+        {"id": "gpt-5.4", "nome": "GPT-5.4", "suporta_vision": True, "suporta_tools": True, "suporta_temperature": False},
+        {"id": "gpt-5.4-mini", "nome": "GPT-5.4 Mini", "suporta_vision": True, "suporta_tools": True, "suporta_temperature": False},
+        {"id": "gpt-5.4-nano", "nome": "GPT-5.4 Nano", "suporta_vision": True, "suporta_tools": True, "suporta_temperature": False},
+        {"id": "gpt-5.4-pro", "nome": "GPT-5.4 Pro", "suporta_vision": True, "suporta_tools": True, "suporta_temperature": False},
+        {"id": "gpt-5.2", "nome": "GPT-5.2", "suporta_vision": True, "suporta_tools": True, "suporta_temperature": False},
+        {"id": "gpt-5.2-pro", "nome": "GPT-5.2 Pro", "suporta_vision": True, "suporta_tools": True, "suporta_temperature": False},
+        {"id": "gpt-5", "nome": "GPT-5", "suporta_vision": True, "suporta_tools": True, "suporta_temperature": False},
+        {"id": "gpt-5-mini", "nome": "GPT-5 Mini", "suporta_vision": True, "suporta_tools": True, "suporta_temperature": False},
+        {"id": "gpt-5-nano", "nome": "GPT-5 Nano", "suporta_vision": True, "suporta_tools": True, "suporta_temperature": False},
+        {"id": "gpt-5-pro", "nome": "GPT-5 Pro", "suporta_vision": True, "suporta_tools": True, "suporta_temperature": False},
         # GPT-4 Series
         {"id": "gpt-4o", "nome": "GPT-4o", "suporta_vision": True, "suporta_tools": True},
         {"id": "gpt-4o-mini", "nome": "GPT-4o Mini", "suporta_vision": True, "suporta_tools": True},
@@ -195,9 +194,10 @@ MODELOS_SUGERIDOS = {
 REASONING_MODELS = [
     'o3', 'o3-mini', 'o3-pro', 'o4-mini',
     'gpt-5', 'gpt-5-mini', 'gpt-5-nano',
-    'gpt-5.1', 'gpt-5.2',
-    'gpt-5.4', 'gpt-5.4-mini', 'gpt-5.4-nano',
+    'gpt-5.1', 'gpt-5.2', 'gpt-5.2-pro',
+    'gpt-5.4', 'gpt-5.4-mini', 'gpt-5.4-nano', 'gpt-5.4-pro',
     'gpt-5.5', 'gpt-5.5-pro',
+    'gpt-5-pro',
     'deepseek-reasoner',
 ]
 
@@ -675,6 +675,9 @@ class ModelManager:
                 break
 
         capacidades.update(kwargs)
+
+        if capacidades.get("suporta_temperature") is False:
+            capacidades["temperature"] = None
         
         config = ModelConfig(
             id=model_id,

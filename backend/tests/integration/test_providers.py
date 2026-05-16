@@ -235,7 +235,9 @@ class TestSavedModelsConfiguration:
         # Known valid OpenAI model patterns (updated Jan 2026)
         valid_patterns = [
             # GPT-5 series (released 2025-2026)
-            "gpt-5.2", "gpt-5.2-pro", "gpt-5", "gpt-5-mini", "gpt-5-nano", "gpt-5-pro", "gpt-5-image",
+            "gpt-5.5", "gpt-5.5-pro",
+            "gpt-5.4", "gpt-5.4-mini", "gpt-5.4-nano", "gpt-5.4-pro",
+            "gpt-5.2", "gpt-5.2-pro", "gpt-5", "gpt-5-mini", "gpt-5-nano", "gpt-5-pro",
             # GPT-4 series
             "gpt-4o", "gpt-4o-mini",
             "gpt-4.1", "gpt-4.1-mini", "gpt-4.1-nano",

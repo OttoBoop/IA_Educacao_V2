@@ -1,6 +1,6 @@
 {
   "version": "2026.05",
-  "last_updated": "2026-05-15",
+  "last_updated": "2026-05-17",
   "providers": {
     "openai": {
       "name": "OpenAI",
@@ -16,7 +16,7 @@
           "input_cost": 5.00,
           "output_cost": 30.00,
           "cached_input_cost": 0.50,
-          "context_window": 1000000,
+          "context_window": 1050000,
           "max_output": 128000,
           "supports_vision": true,
           "supports_tools": true,
@@ -34,15 +34,15 @@
           "description": "Versao premium da familia GPT-5.5 para tarefas complexas",
           "input_cost": 30.00,
           "output_cost": 180.00,
-          "context_window": 1000000,
+          "context_window": 1050000,
           "max_output": 128000,
           "supports_vision": true,
           "supports_tools": true,
           "supports_json_mode": true,
-          "supports_streaming": true,
+          "supports_streaming": false,
           "supports_reasoning": true,
           "special_params": {
-            "reasoning_effort": ["none", "low", "medium", "high", "xhigh"]
+            "reasoning_effort": ["medium", "high", "xhigh"]
           },
           "requires_temperature": false
         },
@@ -53,7 +53,7 @@
           "input_cost": 2.50,
           "output_cost": 15.00,
           "cached_input_cost": 0.25,
-          "context_window": 1000000,
+          "context_window": 1050000,
           "max_output": 128000,
           "supports_vision": true,
           "supports_tools": true,
@@ -109,7 +109,26 @@
           "description": "Versao premium da familia GPT-5.4",
           "input_cost": 30.00,
           "output_cost": 180.00,
-          "context_window": 1000000,
+          "context_window": 1050000,
+          "max_output": 128000,
+          "supports_vision": true,
+          "supports_tools": true,
+          "supports_json_mode": false,
+          "supports_streaming": true,
+          "supports_reasoning": true,
+          "special_params": {
+            "reasoning_effort": ["medium", "high", "xhigh"]
+          },
+          "requires_temperature": false
+        },
+        {
+          "id": "gpt-5.2",
+          "display_name": "GPT-5.2",
+          "description": "Modelo flagship mais recente da OpenAI com 400K context",
+          "input_cost": 1.75,
+          "output_cost": 14.00,
+          "cached_input_cost": 0.175,
+          "context_window": 400000,
           "max_output": 128000,
           "supports_vision": true,
           "supports_tools": true,
@@ -122,33 +141,22 @@
           "requires_temperature": false
         },
         {
-          "id": "gpt-5.2",
-          "display_name": "GPT-5.2",
-          "description": "Modelo flagship mais recente da OpenAI com 400K context",
-          "input_cost": 1.75,
-          "output_cost": 14.00,
-          "cached_input_cost": 0.175,
-          "context_window": 400000,
-          "max_output": 32768,
-          "supports_vision": true,
-          "supports_tools": true,
-          "supports_json_mode": true,
-          "supports_streaming": true,
-          "supports_reasoning": true
-        },
-        {
           "id": "gpt-5.2-pro",
           "display_name": "GPT-5.2 Pro",
           "description": "Versao premium do GPT-5.2 para tarefas complexas",
           "input_cost": 21.00,
           "output_cost": 168.00,
           "context_window": 400000,
-          "max_output": 32768,
+          "max_output": 128000,
           "supports_vision": true,
           "supports_tools": true,
-          "supports_json_mode": true,
+          "supports_json_mode": false,
           "supports_streaming": true,
-          "supports_reasoning": true
+          "supports_reasoning": true,
+          "special_params": {
+            "reasoning_effort": ["medium", "high", "xhigh"]
+          },
+          "requires_temperature": false
         },
         {
           "id": "gpt-5",
@@ -158,12 +166,16 @@
           "output_cost": 10.00,
           "cached_input_cost": 0.125,
           "context_window": 400000,
-          "max_output": 32768,
+          "max_output": 128000,
           "supports_vision": true,
           "supports_tools": true,
           "supports_json_mode": true,
           "supports_streaming": true,
-          "supports_reasoning": true
+          "supports_reasoning": true,
+          "special_params": {
+            "reasoning_effort": ["minimal", "low", "medium", "high"]
+          },
+          "requires_temperature": false
         },
         {
           "id": "gpt-5-mini",
@@ -173,12 +185,16 @@
           "output_cost": 2.00,
           "cached_input_cost": 0.025,
           "context_window": 400000,
-          "max_output": 32768,
+          "max_output": 128000,
           "supports_vision": true,
           "supports_tools": true,
           "supports_json_mode": true,
           "supports_streaming": true,
-          "supports_reasoning": true
+          "supports_reasoning": true,
+          "special_params": {
+            "reasoning_effort": ["minimal", "low", "medium", "high"]
+          },
+          "requires_temperature": false
         },
         {
           "id": "gpt-5-nano",
@@ -188,12 +204,16 @@
           "output_cost": 0.40,
           "cached_input_cost": 0.005,
           "context_window": 400000,
-          "max_output": 32768,
+          "max_output": 128000,
           "supports_vision": true,
           "supports_tools": true,
           "supports_json_mode": true,
           "supports_streaming": true,
-          "supports_reasoning": true
+          "supports_reasoning": true,
+          "special_params": {
+            "reasoning_effort": ["minimal", "low", "medium", "high"]
+          },
+          "requires_temperature": false
         },
         {
           "id": "gpt-5-pro",
@@ -202,27 +222,16 @@
           "input_cost": 15.00,
           "output_cost": 120.00,
           "context_window": 400000,
-          "max_output": 32768,
+          "max_output": 272000,
           "supports_vision": true,
           "supports_tools": true,
           "supports_json_mode": true,
           "supports_streaming": true,
-          "supports_reasoning": true
-        },
-        {
-          "id": "gpt-5-image",
-          "display_name": "GPT-5 Image",
-          "description": "GPT-5 otimizado para geracao e analise de imagens",
-          "input_cost": 10.00,
-          "output_cost": 10.00,
-          "cached_input_cost": 1.25,
-          "context_window": 400000,
-          "max_output": 32768,
-          "supports_vision": true,
-          "supports_tools": true,
-          "supports_json_mode": true,
-          "supports_streaming": true,
-          "supports_reasoning": true
+          "supports_reasoning": true,
+          "special_params": {
+            "reasoning_effort": ["high"]
+          },
+          "requires_temperature": false
         },
         {
           "id": "gpt-4o",

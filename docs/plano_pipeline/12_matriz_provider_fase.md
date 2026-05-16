@@ -5,8 +5,9 @@
 (`126e8b5ad7dd6d59`) e smoke simples oficial `Smoke Paulo Pipeline 2026-05-16`
 (`f68d57a9a339081f`)
 **Runtime oficial atual:** backend Render em `11a396b`; `origin/main` em
-`8c77cc4`, commit documental posterior. Use `/api/deploy-info` como gate de
-codigo live.
+`29a4b7e`, commit documental posterior. Use `/api/deploy-info` como gate de
+codigo live; o ciclo OpenAI/catalogo de 2026-05-17 ainda precisa ser publicado e
+confirmado no Render.
 **Commits aplicados/observados:** `a632883`, `5737611`, `50935ea`, `479b77d`,
 `b12be9a`, `301eba6`, `f67055c`, `462ea1d`, `b4d7ee6`, `99483d1`,
 `f505be6`, `d75b05a`, `97a7c79`, `ec95193`, `ff7b92a`, `68ebe51`,
@@ -22,7 +23,7 @@ codigo live.
 `854cec7`, `b07472f`, `dc5884f`, `0d5ab9d`, `c870ed4`, `45f5cf8`,
 `4094bda`, `4d8f73d`, `f40acf3`, `700b088`, `1307909`, `bed0c08`, `feaf5d0`,
 `d47d748`, `c53fae6`, `9ab53df`, `1454e68`, `3fce335`, `33fb7d5`, `0f84552`,
-`974f040`, `11a396b`, `c094fba`, `d799165`, `6b43016`, `8c77cc4`
+`974f040`, `11a396b`, `c094fba`, `d799165`, `6b43016`, `8c77cc4`, `29a4b7e`
 
 ## Status Oficial De Deploy
 
@@ -31,8 +32,10 @@ codigo live.
   `rootDir=backend`, URL `https://ia-educacao-v2.onrender.com`.
 - `/api/deploy-info` confirmou o runtime backend `11a396b` com
   `source=RENDER_GIT_COMMIT`; esse e o gate primario atual para codigo live.
-- `origin/main` avancou para `8c77cc4` apenas com documentacao; isso nao muda o
-  codigo Render live nem a matriz de comportamento do backend.
+- `origin/main` avancou para `29a4b7e` apenas com documentacao; isso nao muda o
+  codigo Render live nem a matriz de comportamento do backend. O lote
+  OpenAI/catalogo posterior muda backend/frontend e, portanto, so vira status
+  oficial depois de push, deploy e smoke.
 - O HTML marker pode ficar stale e nao prova runtime antigo: commits de
   frontend/docs/marker podem nao disparar deploy quando o servico Render usa
   `rootDir=backend`.
@@ -145,6 +148,13 @@ Nota de leitura: os checks da tabela acima sao por etapa individual validada.
 Eles nao significam que a pipeline completa de 6 etapas passou em uma unica
 task. Em 2026-05-16, Gemini completou as tres extracoes em uma task sequencial,
 mas parou em `corrigir` por quota `429`.
+Nota OpenAI/catalogo 2026-05-17: a matriz de comportamento ainda nao muda por
+catalogo, mas o lote atual corrige cadastro e chamada de modelos GPT-5.x:
+`gpt-5.4/5.5`, `gpt-5.2`, `gpt-5`, `gpt-5-mini`, `gpt-5-nano` e variantes
+`-pro` passam a ser reasoning/no-temperature em todos os caminhos relevantes;
+`gpt-5-image` sai do catalogo textual; limites de output/contexto e capabilities
+das variantes `-pro` foram alinhados aos docs oficiais. Essa nota so vira
+confirmacao operacional apos deploy e smoke live.
 Nota de dataset Lista0: a atividade `126e8b5ad7dd6d59` possui base docs
 presentes, porem a auditoria de PDF de 2026-05-17 confirmou que o enunciado
 `5dc75513e958c25b` contem os exercicios 1 a 7 enquanto o gabarito

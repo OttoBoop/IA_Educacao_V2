@@ -190,6 +190,36 @@ class TestDefaultModelUniqueness:
 class TestModelCapabilities:
     """Regressoes para cadastro de modelos por catalogo/settings."""
 
+    @pytest.mark.parametrize(
+        "model_id",
+        [
+            "gpt-5.5",
+            "gpt-5.5-pro",
+            "gpt-5.4",
+            "gpt-5.4-mini",
+            "gpt-5.4-nano",
+            "gpt-5.4-pro",
+            "gpt-5.2",
+            "gpt-5.2-pro",
+            "gpt-5",
+            "gpt-5-mini",
+            "gpt-5-nano",
+            "gpt-5-pro",
+        ],
+    )
+    def test_openai_reasoning_models_do_not_keep_temperature(self, model_manager_instance, model_id):
+        """GPT-5 family models must be configured as reasoning models, not temperature models."""
+        from chat_service import ProviderType
+
+        model = model_manager_instance.adicionar(
+            nome=model_id,
+            tipo=ProviderType.OPENAI,
+            modelo=model_id,
+        )
+
+        assert model.suporta_temperature is False
+        assert model.temperature is None
+
     def test_adicionar_mescla_capabilities_sem_duplicar_kwargs(self, model_manager_instance):
         """Caller pode sobrescrever capabilities sugeridas sem TypeError."""
         from chat_service import ProviderType
@@ -290,6 +320,153 @@ async def test_criar_modelo_do_catalogo_nao_duplica_capabilities(monkeypatch, mo
     assert model["suporta_vision"] is True
     assert model["suporta_function_calling"] is True
     assert model["suporta_temperature"] is False
+
+
+@pytest.mark.parametrize(
+    "model_id",
+    ["gpt-5.5-pro", "gpt-5.4-pro", "gpt-5.2-pro", "gpt-5-pro"],
+)
+def test_openai_pro_reasoning_build_params_sem_temperature(model_id):
+    """OpenAI pro reasoning models cannot receive temperature/max_tokens."""
+    from chat_service import ChatClient, ModelConfig, ProviderType
+
+    client = ChatClient(
+        ModelConfig(
+            id=f"test-{model_id}",
+            nome=model_id,
+            tipo=ProviderType.OPENAI,
+            modelo=model_id,
+            max_tokens=1234,
+            temperature=0.7,
+        ),
+        api_key="test-key",
+    )
+
+    params = client._build_params()
+
+    assert client._is_reasoning_model() is True
+    assert params["model"] == model_id
+    assert params["max_completion_tokens"] == 1234
+    assert "max_tokens" not in params
+    assert "temperature" not in params
+
+
+@pytest.mark.parametrize(
+    "model_id",
+    ["gpt-5.5-pro", "gpt-5.4-pro", "gpt-5.2-pro", "gpt-5-pro"],
+)
+def test_legacy_openai_provider_reconhece_pro_reasoning(model_id):
+    """O provider legado tambem precisa tratar variantes pro como reasoning."""
+    from ai_providers import OpenAIProvider
+
+    provider = OpenAIProvider(api_key="test-key", model=model_id)
+
+    assert provider._is_reasoning_model() is True
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "catalog_ref",
+    ["openai/gpt-5.5", "openai/gpt-5.2", "openai/gpt-5.2-pro", "openai/gpt-5-pro"],
+)
+async def test_criar_modelo_do_catalogo_openai_reasoning_sem_temperature(
+    monkeypatch,
+    model_manager_instance,
+    catalog_ref,
+):
+    """Modelos GPT-5 do catalogo entram sem temperature, inclusive variantes pro."""
+    import routes_chat
+
+    monkeypatch.setattr(routes_chat, "model_manager", model_manager_instance)
+
+    response = await routes_chat.criar_modelo_do_catalogo(
+        routes_chat.ModelFromCatalogCreate(catalog_ref=catalog_ref)
+    )
+    model = response["model"]
+
+    assert response["success"] is True
+    assert model["catalog_ref"] == catalog_ref
+    assert model["suporta_temperature"] is False
+    assert model["temperature"] is None
+
+
+@pytest.mark.parametrize(
+    "model_id, expected_context, expected_max_output",
+    [
+        ("gpt-5.5", 1050000, 128000),
+        ("gpt-5.5-pro", 1050000, 128000),
+        ("gpt-5.4", 1050000, 128000),
+        ("gpt-5.4-pro", 1050000, 128000),
+        ("gpt-5.2", 400000, 128000),
+        ("gpt-5.2-pro", 400000, 128000),
+        ("gpt-5", 400000, 128000),
+        ("gpt-5-mini", 400000, 128000),
+        ("gpt-5-nano", 400000, 128000),
+        ("gpt-5-pro", 400000, 272000),
+    ],
+)
+def test_catalogo_openai_gpt5_contexto_e_saida_maxima_oficiais(
+    model_id,
+    expected_context,
+    expected_max_output,
+):
+    """O catalogo nao pode ficar preso nos limites antigos de output/contexto."""
+    from model_catalog import model_catalog
+
+    metadata = model_catalog.get_model_info("openai", model_id)
+
+    assert metadata is not None
+    assert metadata.context_window == expected_context
+    assert metadata.max_output == expected_max_output
+    assert metadata.requires_temperature is False
+
+
+@pytest.mark.parametrize(
+    "model_id, expected_efforts",
+    [
+        ("gpt-5.4-pro", ["medium", "high", "xhigh"]),
+        ("gpt-5.2-pro", ["medium", "high", "xhigh"]),
+        ("gpt-5-pro", ["high"]),
+    ],
+)
+def test_catalogo_openai_pro_reasoning_effort_restrito(model_id, expected_efforts):
+    """Variantes pro nao devem anunciar niveis de reasoning que a doc oficial nao lista."""
+    from model_catalog import model_catalog
+
+    metadata = model_catalog.get_model_info("openai", model_id)
+
+    assert metadata is not None
+    assert metadata.special_params["reasoning_effort"] == expected_efforts
+
+
+@pytest.mark.parametrize(
+    "model_id, supports_json_mode, supports_streaming",
+    [
+        ("gpt-5.5-pro", True, False),
+        ("gpt-5.4-pro", False, True),
+        ("gpt-5.2-pro", False, True),
+    ],
+)
+def test_catalogo_openai_pro_capabilities_oficiais(
+    model_id,
+    supports_json_mode,
+    supports_streaming,
+):
+    """Capabilities de modelos pro precisam seguir a doc, nao herdar defaults."""
+    from model_catalog import model_catalog
+
+    metadata = model_catalog.get_model_info("openai", model_id)
+
+    assert metadata is not None
+    assert metadata.supports_json_mode is supports_json_mode
+    assert metadata.supports_streaming is supports_streaming
+
+
+def test_catalogo_nao_expoe_gpt5_image_slug_inexistente():
+    """A lista oficial atual usa gpt-image-*, nao um slug textual gpt-5-image."""
+    from model_catalog import model_catalog
+
+    assert model_catalog.get_model_info("openai", "gpt-5-image") is None
 
 
 # ============================================================

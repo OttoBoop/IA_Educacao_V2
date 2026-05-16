@@ -165,11 +165,14 @@ Todos retornam JSON com campos: `total_usd`, `tokens_entrada`, `tokens_saida`,
 
 ### 1.4 Precificacao por modelo (referencia)
 
-Dados do `model_catalog.json` (versao 2026.05, atualizado 2026-05-15) e
-checagem oficial da documentacao OpenAI em 2026-05-16. A pagina de modelos da
+Dados do `model_catalog.json` (versao 2026.05, atualizado 2026-05-17) e
+checagem oficial da documentacao OpenAI em 2026-05-17. A pagina de modelos da
 OpenAI recomenda `gpt-5.5` para raciocinio complexo e cita `gpt-5.4-mini` /
 `gpt-5.4-nano` para workloads de menor custo/latencia; a pagina de precos lista
 os valores abaixo para contexto curto.
+Nota operacional: os modelos GPT-5.x sao tratados como reasoning sem
+`temperature`; os limites de output do catalogo foram alinhados aos limites
+oficiais atuais (128K para GPT-5/5.2/5.4/5.5, exceto `gpt-5-pro` com 272K).
 **Precos em USD por 1M tokens.**
 
 #### Modelos recomendados para o pipeline educacional

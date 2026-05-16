@@ -264,8 +264,10 @@ Available markers:
 - `claude-haiku-4-5-20251001` - Fast & cheap
 
 ### OpenAI
-- `gpt-5`, `gpt-5-mini` - Latest generation
-- `o3`, `o3-mini`, `o4-mini` - Reasoning models (no temperature)
+- `gpt-5.5`, `gpt-5.5-pro` - Latest frontier reasoning generation
+- `gpt-5.4`, `gpt-5.4-mini`, `gpt-5.4-nano`, `gpt-5.4-pro` - Current validated family in NOVO CR
+- `gpt-5`, `gpt-5-mini`, `gpt-5-nano`, `gpt-5-pro` - Earlier GPT-5 reasoning family
+- `o3`, `o3-mini`, `o3-pro`, `o4-mini` - Reasoning models (no temperature)
 - `gpt-4o`, `gpt-4o-mini` - Previous generation
 
 ## Environment Variables

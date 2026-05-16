@@ -448,10 +448,12 @@ Lista de modelos sugeridos por provider exibida na UI de configuracao. Contem os
 Modelos que usam `reasoning_effort` ao inves de `temperature`:
 
 ```
-o3, o3-mini, o3-pro, o4-mini, gpt-5, gpt-5-mini, gpt-5-nano, gpt-5.1, gpt-5.2, deepseek-reasoner
+o3, o3-mini, o3-pro, o4-mini, gpt-5*, gpt-5.1, gpt-5.2*, gpt-5.4*, gpt-5.5*, deepseek-reasoner
 ```
 
-Nota: `o1` e `o1-pro` foram removidos da lista (deprecated), mas ainda existem no `model_catalog.json`.
+Nota 2026-05-17: as familias GPT-5.4/5.5 e variantes `-pro` entram como
+reasoning/no-temperature. `o1` e `o1-pro` permanecem no catalogo historico, mas
+nao sao sugeridos para novos cadastros.
 
 ---
 
@@ -507,8 +509,8 @@ O metodo `to_dict()` expoe apenas preview da chave (primeiros 8 + ultimos 4 cara
 
 ### 5.1 Metadados Globais
 
-- **Versao:** 2026.01
-- **Ultima atualizacao:** 2026-01-28
+- **Versao:** 2026.05
+- **Ultima atualizacao:** 2026-05-17
 
 ### 5.2 Precos por Modelo (USD por 1M tokens)
 
@@ -516,13 +518,18 @@ O metodo `to_dict()` expoe apenas preview da chave (primeiros 8 + ultimos 4 cara
 
 | Modelo | Input | Output | Cache | Context | Max Output |
 |--------|-------|--------|-------|---------|------------|
-| gpt-5.2 | $1.75 | $14.00 | $0.175 | 400K | 32K |
-| gpt-5.2-pro | $21.00 | $168.00 | -- | 400K | 32K |
-| gpt-5 | $1.25 | $10.00 | $0.125 | 400K | 32K |
-| gpt-5-mini | $0.25 | $2.00 | $0.025 | 400K | 32K |
-| gpt-5-nano | $0.05 | $0.40 | $0.005 | 400K | 32K |
-| gpt-5-pro | $15.00 | $120.00 | -- | 400K | 32K |
-| gpt-5-image | $10.00 | $10.00 | $1.25 | 400K | 32K |
+| gpt-5.5 | $5.00 | $30.00 | $0.50 | 1.05M | 128K |
+| gpt-5.5-pro | $30.00 | $180.00 | -- | 1.05M | 128K |
+| gpt-5.4 | $2.50 | $15.00 | $0.25 | 1.05M | 128K |
+| gpt-5.4-mini | $0.75 | $4.50 | $0.075 | 400K | 128K |
+| gpt-5.4-nano | $0.20 | $1.25 | $0.02 | 400K | 128K |
+| gpt-5.4-pro | $30.00 | $180.00 | -- | 1.05M | 128K |
+| gpt-5.2 | $1.75 | $14.00 | $0.175 | 400K | 128K |
+| gpt-5.2-pro | $21.00 | $168.00 | -- | 400K | 128K |
+| gpt-5 | $1.25 | $10.00 | $0.125 | 400K | 128K |
+| gpt-5-mini | $0.25 | $2.00 | $0.025 | 400K | 128K |
+| gpt-5-nano | $0.05 | $0.40 | $0.005 | 400K | 128K |
+| gpt-5-pro | $15.00 | $120.00 | -- | 400K | 272K |
 | gpt-4o | $2.50 | $10.00 | -- | 128K | 16K |
 | gpt-4o-mini | $0.15 | $0.60 | -- | 128K | 16K |
 | gpt-4.1 | $2.00 | $8.00 | -- | 1M | 32K |
@@ -628,15 +635,25 @@ O metodo `to_dict()` expoe apenas preview da chave (primeiros 8 + ultimos 4 cara
 
 **PROBLEMAS ENCONTRADOS:**
 
-1. **Catalogo datado de 2026-01-28:** O campo `last_updated` e janeiro 2026. Estamos em abril 2026. Precos e modelos podem ter mudado. Recomendacao: atualizar periodicamente.
+1. **Historico resolvido em 2026-05-17:** a auditoria original registrava
+   "Catalogo datado de 2026-01-28"; o campo `last_updated` agora acompanha a
+   versao 2026.05. A regra continua: checar periodicamente contra docs oficiais
+   antes de promover modelo para pipeline.
 
 2. **o1 e o1-pro ainda no catalogo:** Em `MODELOS_SUGERIDOS` de `chat_service.py`, o1 e o1-pro estao marcados como deprecated com comentario "removed as deprecated". Porem, o `model_catalog.json` ainda os lista com precos. **INCONSISTENCIA: modelos deprecated existem no catalogo mas nao nos sugeridos.**
 
 3. **Gemini 2.0 Flash marcado como deprecated:** Consta no catalogo e em `MODELOS_SUGERIDOS` com nota "Deprecated - EOL March 2026". Como estamos em abril 2026, este modelo provavelmente ja foi desligado. **Recomendacao: remover ou marcar como inativo.**
 
-4. **Precos do GPT-5.2-pro parecem extremamente altos:** $21/1M input e $168/1M output. Verificar contra documentacao oficial atualizada.
+4. **Precos do GPT-5.2-pro sao altos, mas confirmados:** $21/1M input e
+   $168/1M output foram mantidos por bater com a documentacao oficial atual.
 
-5. **gpt-5.1 na lista REASONING_MODELS mas nao no catalogo:** `chat_service.py` lista `gpt-5.1` em `REASONING_MODELS`, mas nao existe entrada correspondente em `model_catalog.json` nem em `models.json`.
+5. **gpt-5.1 na lista REASONING_MODELS mas nao no catalogo:** `chat_service.py`
+   lista `gpt-5.1` em `REASONING_MODELS`, mas nao existe entrada correspondente
+   em `model_catalog.json` nem em `models.json`.
+
+6. **`gpt-5-image` removido:** o slug textual antigo nao aparece no catalogo
+   oficial atual de modelos de texto. Imagem fica em familia dedicada
+   `GPT Image`/`gpt-image-*`, fora da matriz de pipeline textual.
 
 ---
 

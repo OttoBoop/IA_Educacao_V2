@@ -3481,6 +3481,53 @@ Estado:
   ANALISAR/GERAR, artefatos parciais verdes e status historico que precisa
   obedecer `status=erro`.
 
+## Atualizacao 2026-05-17 -- Catalogo OpenAI E Modelos GPT-5.x
+
+Problema:
+
+- O projeto ja tinha referencias a modelos novos da OpenAI, mas elas estavam
+  desalinhadas entre catalogo, provider legado, frontend e docs.
+- Isso criava dois riscos P0 indiretos: cadastrar modelo reasoning como se
+  aceitasse `temperature`, e manter slug fantasma (`gpt-5-image`) como se fosse
+  modelo textual de pipeline.
+
+Fontes oficiais consultadas:
+
+- `https://developers.openai.com/api/docs/models`
+- `https://developers.openai.com/api/docs/guides/latest-model`
+- Paginas especificas: `gpt-5.5-pro`, `gpt-5.4-pro`, `gpt-5.2`,
+  `gpt-5.2-pro`, `gpt-5`, `gpt-5-pro`, `gpt-5-mini`, `gpt-5-nano`,
+  `gpt-5.4-mini`, `gpt-5.4-nano`.
+
+Mudanca local:
+
+- `backend/chat_service.py`, `backend/ai_providers.py`, `backend/anexos.py` e
+  `frontend/index_v2.html` reconhecem a familia GPT-5.x atual como reasoning
+  sem `temperature`, inclusive variantes `-pro`.
+- `backend/data/model_catalog.json` foi atualizado para 2026.05/2026-05-17:
+  GPT-5/5.2/5.4/5.5 usam limites oficiais de contexto/output; `gpt-5-pro`
+  usa `272K` de max output; `gpt-5.4-pro` e `gpt-5.2-pro` nao anunciam
+  Structured Outputs; `gpt-5.5-pro` nao anuncia streaming.
+- `gpt-5-image` saiu do catalogo textual. Imagem fica em familia dedicada
+  `GPT Image`/`gpt-image-*`, fora do smoke de pipeline textual.
+
+Validacao local:
+
+- `py_compile` dos arquivos Python tocados passou.
+- `test_model_manager.py`: 55 passed, cobrindo contexto/output,
+  `reasoning_effort` das variantes `-pro`, streaming/Structured Outputs,
+  ausencia de `gpt-5-image` e from-catalog sem `temperature`.
+- `test_d_t1_openai_tool_use.py` + `test_cost_tracking.py`: 38 passed.
+- `test_providers.py`: 11 passed.
+
+Estado:
+
+- Ainda nao publicado. Este ciclo so conta como oficial depois de commit,
+  push, Render em hash esperado e smoke live.
+- Esta atualizacao nao valida nenhum provider novo por qualidade pedagogica; ela
+  corrige o catalogo para que proximos smokes nao comecem com parametros
+  errados.
+
 ## Trabalho Aberto Desta Auditoria
 
 Esta auditoria nao encerra o loop tecnico. Ela deixa o proximo trabalho mais
