@@ -544,6 +544,21 @@ class PipelineExecutor:
                 def _word_text(value: str) -> str:
                     return " ".join(re.findall(r"\w+", _norm(value), flags=re.UNICODE))
 
+                def _keywords(value: str) -> set[str]:
+                    stopwords = {
+                        "aluno", "aluna", "diana", "omega", "questao", "questoes",
+                        "resposta", "respostas", "correta", "incorreta", "desempenho",
+                        "geral", "muito", "mais", "para", "como", "onde", "sobre",
+                        "esta", "este", "essa", "esse", "pela", "pelo", "pelos",
+                        "pelas", "uma", "com", "das", "dos", "que", "deve",
+                        "pode", "ponto", "pontos",
+                    }
+                    return {
+                        word
+                        for word in re.findall(r"\w+", _norm(value), flags=re.UNICODE)
+                        if len(word) >= 5 and word not in stopwords
+                    }
+
                 expected_feedback = _norm(feedback_geral)
                 pdf_full_text = _norm(pdf_text or "")
                 expected_words = _word_text(feedback_geral)
@@ -567,16 +582,33 @@ class PipelineExecutor:
                 suffix = " ".join(expected_word_list[-suffix_size:])
                 prefix_found = bool(prefix) and prefix in pdf_words
                 suffix_found = bool(suffix) and suffix in pdf_words
+                feedback_keywords = _keywords(feedback_geral)
+                pdf_feedback_keywords = _keywords(pdf_feedback)
+                keyword_overlap = feedback_keywords & pdf_feedback_keywords
+                overlap_ratio = (
+                    len(keyword_overlap) / len(feedback_keywords)
+                    if feedback_keywords
+                    else 0.0
+                )
+                min_len = min(160, int(len(feedback_geral.strip()) * 0.45))
+                paraphrase_present = (
+                    bool(pdf_feedback)
+                    and len(pdf_feedback) >= min_len
+                    and (
+                        len(keyword_overlap) >= 6
+                        or overlap_ratio >= 0.35
+                    )
+                )
 
-                if not full_feedback_present and not prefix_found:
+                if not full_feedback_present and not prefix_found and not paraphrase_present:
                     errors.append(
                         f"PDF {pdf_label} sem feedback_geral do JSON verificável para CORRIGIR"
                     )
                 else:
-                    min_len = min(160, int(len(feedback_geral.strip()) * 0.45))
                     measured_feedback = pdf_feedback or expected_feedback if full_feedback_present else pdf_feedback
                     if (
                         not full_feedback_present
+                        and not paraphrase_present
                         and (len(measured_feedback) < min_len or not suffix_found)
                     ):
                         errors.append(

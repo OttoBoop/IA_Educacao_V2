@@ -235,3 +235,52 @@ def test_pdf_json_consistency_accepts_pedagogical_general_opinion_heading(tmp_pa
     )
 
     assert errors == []
+
+
+def test_pdf_json_consistency_accepts_non_truncated_feedback_paraphrase(tmp_path):
+    json_path = tmp_path / "correcao.json"
+    pdf_path = tmp_path / "correcao.pdf"
+    json_path.write_text(
+        json.dumps(
+            {
+                "nota_final": 8,
+                "questoes": [
+                    {"numero": 1, "nota": 3},
+                    {"numero": 2, "nota": 3},
+                    {"numero": 3, "nota": 0},
+                    {"numero": 4, "nota": 2},
+                ],
+                "feedback_geral": (
+                    "O aluno demonstrou um bom domínio na resolução de equações "
+                    "lineares, expressões numéricas com ordem de operações e cálculo "
+                    "de área de triângulos. O único ponto a ser revisado é a precisão "
+                    "no cálculo de porcentagens, onde um erro aritmético foi identificado. "
+                    "Com uma revisão focada nas operações de multiplicação e conversão "
+                    "de porcentagens, o desempenho pode ser aprimorado para a excelência."
+                ),
+            }
+        ),
+        encoding="utf-8",
+    )
+    _write_pdf(
+        pdf_path,
+        "Nota Final: 8.0 / 10.0\n"
+        "Questão 1\nNota: 3.0\nQuestão 2\nNota: 3.0\n"
+        "Questão 3\nNota: 0.0\nQuestão 4\nNota: 2.0\n"
+        "Feedback Geral:\n"
+        "Diana, seu desempenho nesta avaliação foi muito bom, demonstrando forte "
+        "domínio em equações lineares de primeiro grau, ordem de operações e cálculo "
+        "da área de triângulos. Você acertou a maioria das questões com precisão. "
+        "O único ponto a ser revisado é o cálculo de porcentagens. Sugiro praticar "
+        "mais a conversão e a multiplicação para garantir a exatidão. Continue assim!",
+    )
+    json_doc = _doc("json", ".json")
+    pdf_doc = _doc("pdf", ".pdf")
+    executor = _executor_with_paths({"json": json_path, "pdf": pdf_path})
+
+    errors = executor._validar_consistencia_pdf_json_tool_outputs(
+        {"create_document": [json_doc], "execute_python_code": [pdf_doc]},
+        TipoDocumento.CORRECAO,
+    )
+
+    assert errors == []
