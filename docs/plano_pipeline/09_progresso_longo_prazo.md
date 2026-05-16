@@ -2209,6 +2209,32 @@ Critério de pronto: lista de limpeza segura e revisada.
 - Status: D02-10 fica melhor coberto por teste, mas ainda pede smoke oficial de
   provider/site e verificacao de UI/historico obedecendo `status=erro`.
 
+### 2026-05-17 -- Sweep de conexao dos providers e smoke Gemini bloqueado
+
+- Alvo: atualizar o estado real dos providers existentes no site oficial, sem
+  Rio 3 e sem usar segredo novo.
+- Conexoes OpenAI: `gpt-4o`, GPT-4.1, GPT-5 Nano, GPT-5.4 Mini, o3 Mini e o4
+  Mini retornaram `success=true` no endpoint
+  `POST /api/settings/models/{id}/testar`.
+- Conexoes Google: Gemini 2.5 Flash, Gemini 2.5 Flash Lite e Gemini 3 Flash
+  retornaram `success=true`; Gemini 2.5 Pro retornou Google `429`.
+- Conexoes Anthropic: Haiku 4.5 e Sonnet 4.5 continuam bloqueados por creditos
+  Anthropic insuficientes.
+- Smoke oficial Gemini 2.5 Flash: `task_e99a2c20be17`, fixture Diana Omega,
+  `selected_steps=["corrigir"]`, `force_rerun=true`, modelo `gem25flash001`,
+  runtime `4d8f73d`. Resultado: `status=failed`, `corrigir=failed`,
+  `stage_errors.corrigir.provider=Google`, `codigo=429`, `retryable=true`,
+  mensagem `RESOURCE_EXHAUSTED` por limite free-tier
+  `generate_content_free_tier_requests` do modelo `gemini-2.5-flash`.
+- Custos/documentos: nenhum novo documento de correcao apareceu para essa task;
+  `/api/custos/resumo?limit=30` continuou mostrando o run Google antigo
+  `338b25f9c0f74415` como bloqueado por `token_split_missing`, alem dos runs
+  medidos anteriores. Como a chamada bateu quota antes de gerar artefato/tokens,
+  o registro oficial novo fica no task-progress, nao em documento.
+- Status: Gemini 2.5 Flash tem conexao viva e extracoes historicas medidas, mas
+  `corrigir` segue bloqueado por quota, nao pipeline-ready. Nao trocar provider
+  por baixo; repetir apenas quando quota liberar.
+
 ## Riscos Abertos
 
 1. Creditos Anthropic insuficientes ainda bloqueiam validacao Haiku.

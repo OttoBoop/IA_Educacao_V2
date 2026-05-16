@@ -143,7 +143,16 @@ runtime `b07472f`, o rerun full `task_6bba32964706` chegou novamente a
 `corrigir`, mas falhou por Google `429` antes de validar a etapa; a tentativa
 isolada `task_f9b76153875a` tambem falhou por `429`. Um JSON parcial
 `338b25f9c0f74415` foi marcado `status=erro`, como esperado. Status atual:
-extracoes ✅, tools bloqueadas por quota para revalidacao.
+extracoes ✅, tools bloqueadas por quota para revalidacao. Novo sweep em
+runtime `4d8f73d`: o endpoint de conexao de Gemini 2.5 Flash retornou
+`success=true`, mas o smoke isolado `task_e99a2c20be17` em `corrigir` falhou
+alto por Google `429 RESOURCE_EXHAUSTED`, com `stage_errors.corrigir.codigo=429`
+e `retryable=true`, sem novo documento verde. Conexao viva nao promove a etapa
+para pipeline-ready.
+Nota sweep de conexao 2026-05-17: OpenAI (`gpt-4o`, GPT-4.1, GPT-5 Nano,
+GPT-5.4 Mini, o3 Mini, o4 Mini), Gemini 2.5 Flash/Lite e Gemini 3 Flash
+retornaram `success=true`; Gemini 2.5 Pro retornou `429`; Haiku/Sonnet seguem
+bloqueados por creditos Anthropic.
 Nota Nano/relatorio: a full Nano `task_f0c0f15a2f27`, no runtime `99b8c3c`,
 completou as 6 etapas, mas revelou falso verde em `GERAR_RELATORIO`: correcao
 JSON `cff76af34d9248a6` tinha `nota_final=8.0` e o relatorio JSON/PDF
