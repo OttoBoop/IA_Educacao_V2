@@ -208,6 +208,8 @@ Você DEVE usar as ferramentas disponíveis para produzir dois outputs:
    - Nota final em destaque
    - Questões com status (acerto/erro), nota e feedback completo
    - Resumo geral
+   Nao use placeholders como "—", "N/A" ou "Nao informado" no cabecalho quando
+   os metadados aparecem no prompt.
    O PDF nao pode cortar, truncar ou esconder feedback. Evite tabelas largas
    para textos longos; prefira blocos por questao ou use Paragraph/word-wrap do
    ReportLab com largura suficiente. Nao use slicing tipo texto[:80] para
@@ -493,6 +495,19 @@ class PipelineExecutor:
                 return str(int(value))
             return f"{value:.2f}".rstrip("0").rstrip(".")
 
+        def _placeholder_header(label_pattern: str) -> bool:
+            placeholder = (
+                r"(?:[-–—?]+|n/?a|nao\s+informad[oa]|não\s+informad[oa]|"
+                r"nao\s+definid[oa]|não\s+definid[oa])"
+            )
+            return bool(
+                re.search(
+                    rf"\b(?:{label_pattern})\s*:\s*{placeholder}(?=\s|$|\|)",
+                    pdf_text or "",
+                    flags=re.IGNORECASE,
+                )
+            )
+
         expected_grade = _as_float(json_data.get("nota_final") if isinstance(json_data, dict) else None)
         if expected_grade is not None:
             grade_match = re.search(
@@ -523,6 +538,17 @@ class PipelineExecutor:
                 )
 
         if expected_document_type == TipoDocumento.CORRECAO and isinstance(json_data, dict):
+            for label_pattern, label in (
+                (r"aluno", "aluno"),
+                (r"mat[eé]ria", "materia"),
+                (r"atividade", "atividade"),
+                (r"data", "data"),
+            ):
+                if _placeholder_header(label_pattern):
+                    errors.append(
+                        f"PDF {pdf_label} usa placeholder no cabeçalho para {label}"
+                    )
+
             checked_questions = 0
             for question in json_data.get("questoes") or []:
                 if not isinstance(question, dict):
@@ -4419,6 +4445,9 @@ Seja preciso, educativo e construtivo em suas análises."""
                         json_content = _read_doc_text_for_retry(json_doc)
                     except Exception as exc:
                         json_content = f"[JSON indisponivel para leitura no retry: {exc}]"
+                contexto_original = str(mensagem or "").strip()
+                if len(contexto_original) > 6000:
+                    contexto_original = contexto_original[:6000] + "\n...[contexto truncado para retry de PDF]..."
 
                 pdf_filename = f"{expected_document_type.value if expected_document_type else 'relatorio'}.pdf"
                 return (
@@ -4434,11 +4463,17 @@ Seja preciso, educativo e construtivo em suas análises."""
                     + PDF_SANDBOX_RULES
                     + " Se for CORRIGIR, cada questao exibida no PDF deve "
                     "usar exatamente questoes[].nota do JSON; a nota final do PDF deve "
-                    "usar exatamente nota_final do JSON. Se for GERAR_RELATORIO, "
+                    "usar exatamente nota_final do JSON. O cabecalho do PDF nao pode usar "
+                    "placeholders como '—', 'N/A' ou 'Nao informado' para aluno, materia, "
+                    "atividade ou data; use os metadados do prompt original quando estiverem "
+                    "disponiveis. Se for GERAR_RELATORIO, "
                     "nota_final e proficiencia_geral devem aparecer como metricas "
                     "separadas.\n\n"
                     "ERROS DETECTADOS NO PDF ANTERIOR:\n"
                     + "\n".join(f"- {error}" for error in pdf_errors)
+                    + "\n\nCONTEXTO ORIGINAL DA ETAPA, INCLUINDO METADADOS DO CABECALHO:\n```\n"
+                    + contexto_original
+                    + "\n```\n"
                     + "\n\nJSON OFICIAL VALIDADO:\n```json\n"
                     + json_content
                     + "\n```\n"

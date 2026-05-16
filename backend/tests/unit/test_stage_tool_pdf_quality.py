@@ -18,6 +18,16 @@ def test_corrigir_pdf_instructions_forbid_clipped_feedback():
     assert "feedback" in instructions
     assert "word-wrap" in instructions or "paragraph" in instructions
     assert "texto[:80]" in instructions
+    assert "placeholders" in instructions
+
+
+def test_corrigir_prompt_exposes_header_metadata_to_pdf_generation():
+    prompt_text = PROMPTS_PADRAO[EtapaProcessamento.CORRIGIR].texto.lower()
+
+    assert "**aluno:** {{nome_aluno}}" in prompt_text
+    assert "**matéria:** {{materia}}" in prompt_text
+    assert "**atividade:** {{atividade}}" in prompt_text
+    assert "nunca use placeholders" in prompt_text
 
 
 def test_analisar_pdf_instructions_forbid_clipped_evidence():
@@ -188,6 +198,43 @@ def test_pdf_json_consistency_accepts_matching_grade_and_question_notes(tmp_path
     )
 
     assert errors == []
+
+
+def test_pdf_json_consistency_rejects_placeholder_correction_header(tmp_path):
+    json_path = tmp_path / "correcao.json"
+    pdf_path = tmp_path / "correcao.pdf"
+    json_path.write_text(
+        json.dumps(
+            {
+                "nota_final": 8,
+                "questoes": [
+                    {"numero": 1, "nota": 3},
+                    {"numero": 3, "nota": 0},
+                ],
+            }
+        ),
+        encoding="utf-8",
+    )
+    _write_pdf(
+        pdf_path,
+        "Correção da Avaliação\n"
+        "Aluno: — | Matéria: — | Data: —\n"
+        "Nota final: 8\n"
+        "Questão 1 - Acerto\nNota: 3\n"
+        "Questão 3 - Erro\nNota: 0\n",
+    )
+    json_doc = _doc("json", ".json")
+    pdf_doc = _doc("pdf", ".pdf")
+    executor = _executor_with_paths({"json": json_path, "pdf": pdf_path})
+
+    errors = executor._validar_consistencia_pdf_json_tool_outputs(
+        {"create_document": [json_doc], "execute_python_code": [pdf_doc]},
+        TipoDocumento.CORRECAO,
+    )
+
+    assert any("placeholder no cabeçalho para aluno" in error for error in errors)
+    assert any("placeholder no cabeçalho para materia" in error for error in errors)
+    assert any("placeholder no cabeçalho para data" in error for error in errors)
 
 
 def test_pdf_json_consistency_rejects_truncated_correction_feedback(tmp_path):

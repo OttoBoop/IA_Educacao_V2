@@ -378,7 +378,16 @@ Se não conseguir ler alguma resposta com certeza, marque como ilegível e trans
         etapa=EtapaProcessamento.CORRIGIR,
         descricao="Corrige as respostas comparando com o gabarito com rigor pedagógico",
         is_padrao=True,
-        variaveis=["questao", "resposta_esperada", "resposta_aluno", "criterios", "nota_maxima"],
+        variaveis=[
+            "questao",
+            "resposta_esperada",
+            "resposta_aluno",
+            "criterios",
+            "nota_maxima",
+            "nome_aluno",
+            "materia",
+            "atividade",
+        ],
         texto_sistema="""Você é um professor experiente com profundo entendimento pedagógico, especializado em identificar o raciocínio por trás das respostas dos alunos — não apenas se estão certas ou erradas.
 
 Sua função vai além da nota: você identifica o que o aluno estava pensando, classifica o tipo de erro com precisão pedagógica, e avalia o potencial demonstrado. Sua análise serve tanto ao professor (diagnóstico preciso) quanto ao aluno (compreensão do próprio processo de aprendizado).
@@ -390,6 +399,10 @@ Princípios que guiam seu trabalho:
 - Linguagem construtiva: critique o erro específico, nunca o aluno como pessoa
 - A narrativa não é um resumo do erro — é uma interpretação pedagógica do que aconteceu""",
         texto="""Corrija a prova do aluno com rigor e sensibilidade pedagógica, usando os dados estruturados das etapas anteriores.
+
+**Aluno:** {{nome_aluno}}
+**Matéria:** {{materia}}
+**Atividade:** {{atividade}}
 
 **Questões extraídas:**
 {{questao}}
@@ -408,6 +421,8 @@ Princípios que guiam seu trabalho:
 ---
 
 **INSTRUÇÃO CRÍTICA:** A execução oficial desta etapa usa ferramentas. Salve a correção JSON pela ferramenta `create_document` e gere o PDF pela ferramenta `execute_python_code`. Não entregue a correção em texto livre na resposta do chat; a saída válida da etapa é o artefato persistido pela ferramenta.
+
+O PDF deve usar exatamente os metadados acima no cabeçalho: aluno, matéria e atividade. Nunca use placeholders como "—", "N/A" ou "Não informado" para campos que estão no prompt.
 
 ```json
 {
