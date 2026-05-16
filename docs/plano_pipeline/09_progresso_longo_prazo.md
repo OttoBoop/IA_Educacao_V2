@@ -4,7 +4,7 @@
 **Responsavel operacional:** Paulo
 **Status geral:** o servico oficial Render
 `srv-d5t8gbh4tr6s738fr3s0` (`IA_Educacao_V2`, branch `main`, URL
-`https://ia-educacao-v2.onrender.com`) esta em `99b8c3c`, confirmado por
+`https://ia-educacao-v2.onrender.com`) esta em `392ec7c`, confirmado por
 `/api/deploy-info` com `source=RENDER_GIT_COMMIT`. O primeiro marco full
 recente continua sendo o smoke de 6 etapas com GPT-5.4 Mini (`gpt54mini001`) na
 atividade `Smoke Paulo Pipeline 2026-05-16`: task `task_a5f0d734f0b3`, aluna
@@ -68,6 +68,19 @@ Haiku 4.5 foi rechecado pelo endpoint oficial
 bloqueado por créditos Anthropic: HTTP 200 da API do site, `success=false`, erro
 Anthropic `invalid_request_error` com mensagem de saldo insuficiente. Nao ha
 pipeline Haiku util enquanto esse bloqueio externo persistir.
+
+Atualizacao Nano/relatorio de 2026-05-17: a pipeline full Nano
+`task_f0c0f15a2f27`, no runtime `99b8c3c`, completou as 6 etapas, mas a
+auditoria achou falso verde em `GERAR_RELATORIO`: a correcao oficial Nano
+`cff76af34d9248a6` tinha `nota_final=8.0`, enquanto o relatorio JSON
+`8184fe013490b53e`/PDF `15cbe3b104f37891` registrou `nota_final=0.0`. O commit
+`392ec7c` passou a validar `RELATORIO_FINAL.nota_final` contra a `CORRECAO`
+oficial mais recente, sem buscar correcao antiga como fallback. O smoke live
+`task_57da745b8de5`, em Render `392ec7c`, reexecutou apenas `gerar_relatorio`
+com `gpt5nano001`: JSON `66fcc132db1be96a` ficou com `nota_final=8.0`, o PDF
+ruim `34e404fcd809270d` foi marcado `status=erro` por
+`pdf_json_consistency`, e o PDF final `735896580f441e89` trouxe texto extraivel
+com `Nota final: 8.0`. Tokens do run: `29067/6701`, total `35768`.
 
 A sequencia que destravou esse ponto foi:
 
@@ -187,9 +200,9 @@ Estabilizar o NOVO CR para que a pipeline:
 | Frente | Estado | Proximo passo |
 |--------|--------|---------------|
 | Docs e plano | Sprint 0 concluida | Manter este painel como fonte oficial e anexos fora do fluxo diario |
-| Pipeline | GPT-5.4 Mini (`gpt54mini001`) completou as 6 etapas no site oficial em `task_a5f0d734f0b3`, Render hash `2cad38a`, com documentos, custos e inspeção semantica inicial coerente nos JSONs; re-smoke no Render `0ac92f0` (`task_605512496b0d`) completou as 6 etapas, mas expôs divergencia P0 entre JSON e PDF em `corrigir` e `gerar_relatorio`; `2052a01` bloqueou PDF inconsistente com falha alta em `task_857c0c3657ef`; `3a77a17` adicionou retry PDF/JSON e `task_e389f360b812` completou as etapas finais com PDF/JSON coerentes na fixture simples; Gemini 3 Flash segue validado em etapas individuais, mas pipeline sequencial bateu quota `429`; GPT-5 Nano segue validado em `extrair_questoes`, `extrair_gabarito` e smokes de etapas finais, mas `extrair_respostas` Nano continua ❌ por qualidade | Revalidar matriz por provider/modelo e manter bloqueio P0: nao aceitar `completed` sem documento, schema, custo, conteudo minimo e artefatos coerentes entre si |
+| Pipeline | GPT-5.4 Mini (`gpt54mini001`) completou as 6 etapas no site oficial em `task_a5f0d734f0b3`, Render hash `2cad38a`, com documentos, custos e inspeção semantica inicial coerente nos JSONs; re-smoke no Render `0ac92f0` (`task_605512496b0d`) completou as 6 etapas, mas expôs divergencia P0 entre JSON e PDF em `corrigir` e `gerar_relatorio`; `2052a01` bloqueou PDF inconsistente com falha alta em `task_857c0c3657ef`; `3a77a17` adicionou retry PDF/JSON e `task_e389f360b812` completou as etapas finais com PDF/JSON coerentes na fixture simples; `392ec7c` bloqueou relatorio que muda `nota_final` em relacao a correcao oficial e o smoke Nano `task_57da745b8de5` confirmou JSON/PDF de relatorio com `nota_final=8.0`; Gemini 3 Flash segue validado em etapas individuais, mas pipeline sequencial bateu quota `429`; GPT-5 Nano segue parcial em `extrair_respostas` por historico de qualidade/datasets maiores | Revalidar matriz por provider/modelo e manter bloqueio P0: nao aceitar `completed` sem documento, schema, custo, conteudo minimo, nota cross-stage e artefatos coerentes entre si |
 | Schema e avisos | Sprint 2 concluida localmente | Manter schema oficial, defaults e visualizador cobertos por testes |
-| Custos/tokens | Metadata de documento, endpoints live, resumo por `cost_run_id`, `TokenUsageRecord` local, migration Supabase dedicada `b2dc88b`; smoke full GPT-5.4 Mini `task_a5f0d734f0b3` registrou custo medido por etapa: `US$ 0.002312`, `US$ 0.002759`, `US$ 0.002657`, `US$ 0.026149`, `US$ 0.017470` e `US$ 0.027763`, total aproximado `US$ 0.079110`; `/api/custos/resumo?limit=8` mostrou `runs_precificados=5`, `runs_bloqueados=0`, `tokens_entrada=49208`, `tokens_saida=8865`, `custo_usd=0.076798`; diagnostico live ainda acusa `PGRST205`, `durable=false` e `local_record_count=0`, provando que o fallback local de `TokenUsageRecord` nao sobrevive deploy | Aplicar `backend/migrations/002_create_token_usage.sql` no Supabase; revalidar ate `token_usage_backend.durable=true`; depois persistir custos de falhas sem documento |
+| Custos/tokens | Metadata de documento, endpoints live, resumo por `cost_run_id`, `TokenUsageRecord` local, migration Supabase dedicada `b2dc88b`; smoke full GPT-5.4 Mini `task_a5f0d734f0b3` registrou custo medido por etapa: `US$ 0.002312`, `US$ 0.002759`, `US$ 0.002657`, `US$ 0.026149`, `US$ 0.017470` e `US$ 0.027763`, total aproximado `US$ 0.079110`; smoke Nano `task_57da745b8de5` registrou `29067/6701` tokens no `cost_run_id=tool_8feb2ba8dfca`, incluindo PDF em erro e retry concluido; `/api/custos/status?limit=80` mostrou `runs_precificados=37`, `runs_bloqueados=0`, mas diagnostico live ainda acusa `PGRST205`, `durable=false` e `local_record_count=0`, provando que o fallback local de `TokenUsageRecord` nao sobrevive deploy | Aplicar `backend/migrations/002_create_token_usage.sql` no Supabase; revalidar ate `token_usage_backend.durable=true`; depois persistir custos de falhas sem documento |
 | UI de erros | Pendente | Mostrar falha por aluno/etapa sem depender de terminal |
 | Limpeza de dados | Pendente | Reclassificar "fantasmas" antes de qualquer delecao |
 | Rio 3 | Pausada | Nao pedir chave, nao rodar smoke, nao deployar Rio sem nova decisao |
@@ -232,19 +245,25 @@ Estabilizar o NOVO CR para que a pipeline:
 - Commit funcional de falha alta quando tool chama `create_document` mas storage
   nao persiste o artefato obrigatorio: `2cad38a` (Render live e smoke full
   `task_a5f0d734f0b3` completo nas 6 etapas com GPT-5.4 Mini).
+- Commit funcional de guards de `EXTRAIR_RESPOSTAS`: `2885da7` bloqueou linguagem
+  de correcao e `99b8c3c` bloqueou raciocinio especulativo; GPT-4o
+  `task_013ad41fd3ed` confirmou extracoes limpas.
+- Commit funcional de validacao de `nota_final` do relatorio contra correcao:
+  `392ec7c` (Render live e smoke Nano `task_57da745b8de5` com JSON/PDF de
+  relatorio `nota_final=8.0`).
 - Marker mais novo publicado no GitHub para runtime: `a7dead3`
   (`chore: mark deploy e6060e1`).
 - Marker mais novo publicado no GitHub para o guard: `2792d89`
   (`chore: mark deploy 5527e26`).
-- Render em 2026-05-16: servico oficial `srv-d5t8gbh4tr6s738fr3s0`, branch
+- Render em 2026-05-17: servico oficial `srv-d5t8gbh4tr6s738fr3s0`, branch
   `main`, repo `https://github.com/OttoBoop/IA_Educacao_V2`, `rootDir=backend`,
-  autoDeploy `yes`; `/api/deploy-info` confirmou `2cad38a` com
+  autoDeploy `yes`; `/api/deploy-info` confirmou `392ec7c` com
   `source=RENDER_GIT_COMMIT`.
 - Marker HTML pode ficar atrasado em commits de docs/frontend; o gate oficial
   para backend agora e `/api/deploy-info` + smoke live, nao apenas marcador HTML.
-- GitHub `origin/main`: alinhado com `2cad38a` antes do ciclo documental atual.
+- GitHub `origin/main`: alinhado com `392ec7c` antes do ciclo documental atual.
 - Render live observado: saiu de `2e1098f` para `b12be9a` e depois confirmou
-  marcadores/fixes sucessivos ate `2cad38a`.
+  marcadores/fixes sucessivos ate `392ec7c`.
 - `/api/custos/status` no Render: HTTP 200, confirmando endpoints de custo live.
 - GitHub Actions: sem runs recentes observaveis.
 - GitHub webhooks/deployments via `gh api`: sem entradas visiveis.

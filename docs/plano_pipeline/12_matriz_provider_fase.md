@@ -1,6 +1,6 @@
 # Matriz Provider × Fase — Status Atual
 
-**Atualizado:** 2026-05-16
+**Atualizado:** 2026-05-17
 **Atividades de teste principais:** Lista0 — Algebra Linear Avancada
 (`126e8b5ad7dd6d59`) e smoke simples oficial `Smoke Paulo Pipeline 2026-05-16`
 (`f68d57a9a339081f`)
@@ -14,14 +14,15 @@
 `2947178`, `53d0252`, `f55e299`, `5f10651`, `e6060e1`, `a7dead3`,
 `5527e26`, `2792d89`, `23282d7`, `7d0c874`, `8dd6c54`, `c1598b9`,
 `01fb04c`, `6b57ef1`, `3b9eedc`, `b8b8693`, `283e8c6`, `1ce3d23`,
-`2d72c6b`, `f2211bb`, `5a3daca`, `92bd095`, `f6b040c`, `2cad38a`
+`2d72c6b`, `f2211bb`, `5a3daca`, `92bd095`, `f6b040c`, `2cad38a`,
+`2885da7`, `99b8c3c`, `392ec7c`
 
 ## Status Oficial De Deploy
 
-- O servico oficial em 2026-05-16 e
+- O servico oficial em 2026-05-17 e
   `srv-d5t8gbh4tr6s738fr3s0` (`IA_Educacao_V2`), branch `main`,
   `rootDir=backend`, URL `https://ia-educacao-v2.onrender.com`.
-- `/api/deploy-info` confirmou o runtime backend `2cad38a` com
+- `/api/deploy-info` confirmou o runtime backend `392ec7c` com
   `source=RENDER_GIT_COMMIT`; esse e o gate primario atual.
 - O HTML marker pode ficar stale e nao prova runtime antigo: commits de
   frontend/docs/marker podem nao disparar deploy quando o servico Render usa
@@ -67,7 +68,7 @@
 - `origin/main` tambem contem a migration dedicada `b2dc88b`
   (`backend/migrations/002_create_token_usage.sql`), ainda nao aplicada ao
   Supabase de producao.
-- Render live agora chegou a `2cad38a` por `/api/deploy-info`; marker HTML segue
+- Render live agora chegou a `392ec7c` por `/api/deploy-info`; marker HTML segue
   apenas auxiliar.
 - Docs antigos registram que auto-deploy Git nao funciona de forma confiavel; o
   ciclo usou deploy via API Render com token local seguro, sem imprimir segredo.
@@ -93,7 +94,7 @@
 |-----------------|:---:|:---:|:---:|:---:|:---:|:---:|
 | **Claude Haiku 4.5** (`588f3efe7975`) | ⏸️ | ⏸️ | ⏸️ | 🚫 | 🚫 | 🚫 |
 | **Gemini 3 Flash** (`gem3flash001`) | ✅ | ✅ | ✅ | ⚠️ | ⚠️ | ⚠️ |
-| **GPT-5 Nano** (`gpt5nano001`) | ✅ | ✅ | ⚠️ | ⚠️ | ⚠️ | ⚠️ |
+| **GPT-5 Nano** (`gpt5nano001`) | ✅ | ✅ | ⚠️ | ⚠️ | ⚠️ | ✅ |
 | **GPT-5.4 Mini** (`gpt54mini001`) | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | **GPT-4o** (`180b8298a279`) — referencia | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 
@@ -110,6 +111,16 @@ Nota GPT-4o: as tres etapas finais foram revalidadas em 2026-05-17 no smoke
 `raciocinio_parcial`; os commits `2885da7` e `99b8c3c` transformaram isso em
 erro bloqueante. O rerun final veio com `raciocinio_parcial=null` quando so
 havia resposta final visivel.
+Nota Nano/relatorio: a full Nano `task_f0c0f15a2f27`, no runtime `99b8c3c`,
+completou as 6 etapas, mas revelou falso verde em `GERAR_RELATORIO`: correcao
+JSON `cff76af34d9248a6` tinha `nota_final=8.0` e o relatorio JSON/PDF
+`8184fe013490b53e`/`15cbe3b104f37891` registrou `nota_final=0.0`. O commit
+`392ec7c` passou a validar `RELATORIO_FINAL.nota_final` contra a `CORRECAO`
+oficial da ultima execucao. O smoke live `task_57da745b8de5` reexecutou apenas
+`gerar_relatorio` com Nano e gerou JSON `66fcc132db1be96a` com `nota_final=8.0`;
+o PDF ruim `34e404fcd809270d` foi marcado `status=erro` por
+`pdf_json_consistency`; o PDF final `735896580f441e89` ficou concluido e
+`pdftotext` confirmou `Nota final: 8.0`. Tokens do run: `29067/6701`.
 Nota P0 atualizada: `extrair_gabarito` Gemini era ❌ porque o output historico
 retornou todas as respostas como `MISSING_CONTENT`, embora o PDF base tivesse
 texto extraivel de "Exercicio 5". Em 2026-05-17, o smoke
@@ -481,7 +492,7 @@ quota Google `429` nos reruns `task_0cbc99255c7e`, `task_6347f5e0d311` e
 
 ---
 
-### GPT-5 Nano — ✅ CHAT SIMPLES, ✅ ETAPAS FINAIS POS-FIX VALIDADAS
+### GPT-5 Nano — ✅ CHAT SIMPLES, ✅ RELATORIO COM NOTA CROSS-STAGE VALIDADA
 
 **Smoke live de chat em 2026-05-15:** respondeu JSON simples corretamente via
 `POST /api/chat` com `model_id=gpt5nano001` e 526 tokens. Portanto o bloqueio
@@ -506,6 +517,17 @@ passou na task `task_020ba25bdb2b` e `gerar_relatorio` passou na task
 custo por `cost_run_id` e sem placeholders proibidos nos JSONs novos. O patch
 anti-placeholder `d653c13` e ancestral dos deploys atuais, mas ainda falta
 smoke especifico se esse risco voltar a aparecer.
+
+**Smoke full e re-smoke de relatorio em 2026-05-17:** `task_f0c0f15a2f27`
+completou a pipeline simples inteira com Nano, mas a auditoria classificou o
+resultado como falso verde em `GERAR_RELATORIO`: o relatorio mudou a nota de
+`8.0` para `0.0`. Depois do commit `392ec7c`, `task_57da745b8de5` confirmou o
+comportamento correto no site oficial: relatorio JSON `66fcc132db1be96a` com
+`nota_final=8.0`, primeiro PDF `34e404fcd809270d` marcado erro por falta de
+nota verificavel, PDF final `735896580f441e89` concluido com `Nota final: 8.0`.
+Isso promove `GERAR_RELATORIO` Nano para ✅ na fixture simples, mas nao promove a
+pipeline Nano inteira: `extrair_respostas` segue ⚠️ por historico de qualidade em
+dataset maior/manuscrito.
 
 **Testado em 2 caminhos com resultados muito diferentes:**
 
@@ -637,6 +659,9 @@ na fixture simples. Ainda falta pipeline completa de 6 etapas e datasets maiores
 - [ ] Rerodar smoke especifico do guard anti-placeholder se esse risco voltar a
       aparecer
 - [x] Validar `gerar_relatorio` com GPT-5 Nano apos `analisar_habilidades`
+- [x] Revalidar `gerar_relatorio` Nano apos guard cross-stage de `nota_final`:
+      `task_57da745b8de5`, Render `392ec7c`, JSON `66fcc132db1be96a`, PDF final
+      `735896580f441e89`
 - [ ] Testar Haiku 4.5 (bloqueado ate creditos recarregarem)
 
 ### Prioridade BAIXA
