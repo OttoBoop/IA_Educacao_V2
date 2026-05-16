@@ -8251,7 +8251,10 @@
                     <div class="stat-card"><div class="stat-value" style="color: var(--text-muted);">...</div><div class="stat-label">Alunos</div></div>
                     <div class="stat-card"><div class="stat-value" style="color: var(--text-muted);">...</div><div class="stat-label">Atividades</div></div>
                 </div>
-                <div id="dashboard-alerts">${renderLoadingNotice('Carregando indicadores...')}</div>
+                <div id="dashboard-alerts">
+                    <div id="dashboard-data-alerts">${renderLoadingNotice('Carregando indicadores...')}</div>
+                    <div id="dashboard-cost-alerts">${renderLoadingNotice('Verificando custos...')}</div>
+                </div>
                 <div class="card">
                     <div class="card-header">
                         <h3 class="card-title">Matérias</h3>
@@ -8276,17 +8279,60 @@
         }
 
         function renderDashboardAlerts(stats) {
-            const container = document.getElementById('dashboard-alerts');
+            const container = document.getElementById('dashboard-data-alerts') || document.getElementById('dashboard-alerts');
             if (!container) return;
-            container.innerHTML = stats.alertas.atividades_sem_gabarito > 0 ? `
+            const alertas = stats.alertas || {};
+            container.innerHTML = alertas.atividades_sem_gabarito > 0 ? `
                 <div class="alert alert-warning">
                     <span class="alert-icon">⚠️</span>
                     <div class="alert-content">
                         <div class="alert-title">Atenção</div>
-                        <div class="alert-text">${stats.alertas.atividades_sem_gabarito} atividade(s) sem gabarito</div>
+                        <div class="alert-text">${alertas.atividades_sem_gabarito} atividade(s) sem gabarito</div>
                     </div>
                 </div>
             ` : '';
+        }
+
+        function renderDashboardCostStatus(costStatus) {
+            const container = document.getElementById('dashboard-cost-alerts');
+            if (!container) return;
+
+            const alertas = Array.isArray(costStatus.alertas) ? costStatus.alertas : [];
+            const tokenUsageAlert = alertas.find(alerta => alerta.tipo === 'token_usage_not_durable');
+            const tokenUsageBackend = costStatus.token_usage_backend || {};
+            const statusNaoDuravel = costStatus.custos_persistencia_status === 'parcial_sem_token_usage_duravel';
+            const tokenUsageNaoDuravel = tokenUsageBackend.durable === false || Boolean(tokenUsageAlert) || statusNaoDuravel;
+
+            if (tokenUsageNaoDuravel) {
+                const codigo = tokenUsageBackend.error_code ? ` Código: ${tokenUsageBackend.error_code}.` : '';
+                container.innerHTML = renderInlineAlert(
+                    'danger',
+                    'Custos não duráveis',
+                    `A medição existe, mas falhas sem documento final ainda não ficam persistidas no Supabase.${codigo} Aplique a migration token_usage antes de considerar custos completos.`
+                );
+                return;
+            }
+
+            if (costStatus.ok === false) {
+                container.innerHTML = renderInlineAlert(
+                    'danger',
+                    'Custos indisponíveis',
+                    'O painel de custos respondeu com erro. Corrija o bloqueio antes de validar custos oficiais.'
+                );
+                return;
+            }
+
+            container.innerHTML = '';
+        }
+
+        function renderDashboardCostStatusError() {
+            const container = document.getElementById('dashboard-cost-alerts');
+            if (!container) return;
+            container.innerHTML = renderInlineAlert(
+                'warning',
+                'Custos sem verificação',
+                'Não foi possível verificar custos agora. Rode a checagem antes de validar uma pipeline oficial.'
+            );
         }
 
         function renderDashboardStatsError() {
@@ -8300,7 +8346,7 @@
                 `;
             }
 
-            const alerts = document.getElementById('dashboard-alerts');
+            const alerts = document.getElementById('dashboard-data-alerts') || document.getElementById('dashboard-alerts');
             if (alerts) {
                 alerts.innerHTML = renderInlineAlert('warning', 'Indicadores indisponíveis', 'Não foi possível carregar os números do dashboard agora.');
             }
@@ -8905,7 +8951,17 @@
                     renderDashboardMateriasError();
                 });
 
-            await Promise.allSettled([statsPromise, materiasPromise]);
+            const costStatusPromise = api('/custos/status?limit=80')
+                .then(costStatus => {
+                    if (!isContentRequestActive(requestId, 'dashboard')) return;
+                    renderDashboardCostStatus(costStatus);
+                })
+                .catch(() => {
+                    if (!isContentRequestActive(requestId, 'dashboard')) return;
+                    renderDashboardCostStatusError();
+                });
+
+            await Promise.allSettled([statsPromise, materiasPromise, costStatusPromise]);
         }
 
         async function showMateria(materiaId) {
