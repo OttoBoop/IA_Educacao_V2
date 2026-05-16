@@ -4,11 +4,11 @@
 **Responsavel operacional:** Paulo
 **Status geral:** o servico oficial Render
 `srv-d5t8gbh4tr6s738fr3s0` (`IA_Educacao_V2`, branch `main`, URL
-`https://ia-educacao-v2.onrender.com`) esta em `c870ed4`, confirmado por
-`/api/deploy-info` com `source=RENDER_GIT_COMMIT`. O commit `c870ed4` melhora o
-contrato de sucesso do Path 2: `executar_com_tools()` passa a retornar a etapa
-real derivada de `expected_document_type`, `resposta_parsed` do JSON principal e
-`documento_id` quando ha JSON persistido. O primeiro marco full
+`https://ia-educacao-v2.onrender.com`) esta em `45f5cf8`, confirmado por
+`/api/deploy-info` com `source=RENDER_GIT_COMMIT`. O commit `45f5cf8` fecha mais
+um pedaço P0 do Path 2: mesmo quando nao ha storage persistido no teste, JSON
+parseavel de `create_document` que esteja fora do schema minimo da etapa falha
+alto antes de sucesso. O primeiro marco full
 recente continua sendo o smoke de 6 etapas com GPT-5.4 Mini (`gpt54mini001`) na
 atividade `Smoke Paulo Pipeline 2026-05-16`: task `task_a5f0d734f0b3`, aluna
 Diana Omega, hash live `2cad38a`, etapas `extrair_questoes`,
@@ -2097,6 +2097,30 @@ Critério de pronto: lista de limpeza segura e revisada.
 - Status: D02-2 saiu de aberto puro para parcial melhorado. Ainda falta
   garantir schema minimo por etapa no objeto retornado e tratar todo parcial
   parseavel como erro alto antes de sucesso.
+
+### 2026-05-17 -- Path 2 bloqueia JSON runtime fora do schema minimo
+
+- Alvo: impedir que um `create_document` com JSON parseavel, mas fora do schema
+  minimo da etapa, seja aceito como sucesso quando o teste nao simula storage
+  persistido.
+- Commit funcional: `45f5cf8`.
+- Mudancas: a validacao de schema de tool-use foi extraida para
+  `_json_schema_errors_for_data()` e agora cobre tanto JSON persistido em
+  arquivo quanto payload runtime vindo do `create_document`. Para `CORRIGIR`,
+  um JSON como `{"feedback_geral":"sem dados"}` falha por ausencia de
+  `nota_final`, `questoes`, totais e `_avisos_*`, mesmo tendo PDF presente.
+- Testes locais: `python -m py_compile backend/executor.py
+  backend/tests/unit/test_e_t2_retry_partial_output.py`; `git diff --check`;
+  suite dual-output/custo/PDF com `61 passed`; suite de migracao
+  `corrigir`/`analisar_habilidades`/`gerar_relatorio` + erro/schema com
+  `158 passed, 3 skipped`.
+- Deploy: `git push origin HEAD:main`; `./scripts/wait_deploy.sh 45f5cf8`
+  encontrou o hash apos 150s; `./scripts/check_deploy.sh 45f5cf8` passou;
+  `/api/health` respondeu `healthy`.
+- Status: D02-1 esta muito mais perto de fechado: JSON parseavel mas fora do
+  schema de `CORRIGIR` nao passa no caminho runtime. Proximo ciclo deve decidir
+  entre smoke barato sem IA, smoke de provider existente, ou seguir para parciais
+  verdes/status historico.
 
 ## Riscos Abertos
 
