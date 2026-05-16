@@ -126,6 +126,18 @@ endpoint `/api/custos/resumo`: run `tool_9d63d57a7b83`, `24217/4005` tokens,
 `US$ 0.080474`, `custo_status=ok`. Status: `CORRIGIR` confirmado para GPT-4.1
 nessa fixture simples, com retry explicito e sem fallback.
 
+Atualizacao GPT-4.1 etapas finais em 2026-05-17 no runtime `0f84552`: smoke
+`task_5c3ba86e86c1`, `selected_steps=["analisar_habilidades","gerar_relatorio"]`,
+completou no site oficial usando a correcao GPT-4.1 previa. Analise:
+JSON `7b39243c100e30de`, PDF `e6c692989734476b`, run `tool_ec6f3dfbc045`,
+`12478/2235` tokens, `US$ 0.042836`. Relatorio: JSON
+`10d478289be3cf03`, PDF `e4e6f65038d399db`, run `tool_3d4161aa8b2d`,
+`14021/2107` tokens, `US$ 0.044898`. A inspeção manual confirmou
+`nota_final=8.0`, proficiencia `8.0`, areas de melhoria em porcentagem e
+ausencia de erro de etapa. Observacao de polish: o PDF de analise contem typo
+visual `Proeficiência`; nao e falso verde de schema/custo, mas deve entrar em
+melhoria de qualidade de PDF.
+
 Atualizacao de 2026-05-17 no runtime `700b088`: o ciclo `f40acf3` alinhou
 `PROMPTS_PADRAO` e `STAGE_TOOL_INSTRUCTIONS` para `CORRIGIR`,
 `ANALISAR_HABILIDADES` e `GERAR_RELATORIO`, e tornou obrigatorios campos de

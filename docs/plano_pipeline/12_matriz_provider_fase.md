@@ -133,7 +133,7 @@
 | **GPT-5 Nano** (`gpt5nano001`) | ✅ | ✅ | ⚠️ | ❌ | ⚠️ | ✅ |
 | **GPT-5.4 Mini** (`gpt54mini001`) | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | **GPT-4o** (`180b8298a279`) — referencia | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
-| **GPT-4.1** (`ffae9accf68e`) | ⏸️ | ⏸️ | ⏸️ | ✅ | ⏸️ | ⏸️ |
+| **GPT-4.1** (`ffae9accf68e`) | ⏸️ | ⏸️ | ⏸️ | ✅ | ✅ | ✅ |
 
 Nota de leitura: os checks da tabela acima sao por etapa individual validada.
 Eles nao significam que a pipeline completa de 6 etapas passou em uma unica
@@ -226,6 +226,13 @@ Nota GPT-4.1/corrigir: no runtime `0f84552`, o smoke `task_714dab24c41a` com
 `nota_final=8.0`, Q3 errada por `25` vs `30`, e feedback geral presente. O PDF
 intermediario `b18662384cdac7c6` ficou `status=erro` antes do retry explicito.
 Custo: `tool_9d63d57a7b83`, `24217/4005`, `US$ 0.080474`.
+Nota GPT-4.1 etapas finais: no mesmo runtime, `task_5c3ba86e86c1` completou
+`ANALISAR_HABILIDADES` e `GERAR_RELATORIO`. Analise: JSON
+`7b39243c100e30de`, PDF `e6c692989734476b`, `12478/2235`, `US$ 0.042836`.
+Relatorio: JSON `10d478289be3cf03`, PDF `e4e6f65038d399db`, `14021/2107`,
+`US$ 0.044898`. A nota final permaneceu `8.0`. A validacao de qualidade achou
+typo `Proeficiência` no PDF de analise; isso e melhoria visual, nao falso verde
+de pipeline.
 Nota P0 atualizada: `extrair_gabarito` Gemini era ❌ porque o output historico
 retornou todas as respostas como `MISSING_CONTENT`, embora o PDF base tivesse
 texto extraivel de "Exercicio 5". Em 2026-05-17, o smoke
