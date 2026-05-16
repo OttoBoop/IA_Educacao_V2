@@ -18,14 +18,14 @@
 `2885da7`, `99b8c3c`, `392ec7c`, `460643f`, `54d083e`,
 `854cec7`, `b07472f`, `dc5884f`, `0d5ab9d`, `c870ed4`, `45f5cf8`,
 `4094bda`, `4d8f73d`, `f40acf3`, `700b088`, `1307909`, `bed0c08`, `feaf5d0`,
-`d47d748`, `c53fae6`, `9ab53df`, `1454e68`, `3fce335`, `33fb7d5`
+`d47d748`, `c53fae6`, `9ab53df`, `1454e68`, `3fce335`, `33fb7d5`, `0f84552`
 
 ## Status Oficial De Deploy
 
 - O servico oficial em 2026-05-17 e
   `srv-d5t8gbh4tr6s738fr3s0` (`IA_Educacao_V2`), branch `main`,
   `rootDir=backend`, URL `https://ia-educacao-v2.onrender.com`.
-- `/api/deploy-info` confirmou o runtime backend `33fb7d5` com
+- `/api/deploy-info` confirmou o runtime backend `0f84552` com
   `source=RENDER_GIT_COMMIT`; esse e o gate primario atual.
 - O HTML marker pode ficar stale e nao prova runtime antigo: commits de
   frontend/docs/marker podem nao disparar deploy quando o servico Render usa
@@ -98,6 +98,12 @@
   `task_52e5fa9020a0` nao repetiu `Atividade não encontrada`; falhou alto por
   tentativa indevida de PDF via `create_document` e `IndentationError` no
   `execute_python_code`, com custo rastreavel no documento `ea407d2ce87fb99a`.
+- Render live chegou a `0f84552`: se `execute_python_code` falhar antes de
+  persistir PDF, o executor faz uma tentativa adicional no mesmo modelo com o
+  erro anterior e o JSON oficial. O smoke Gemini 2.5 Flash Lite
+  `task_124bf0e8d7bf` nao chegou a usar esse reparo como sucesso porque o JSON
+  oficial estava invalido; falhou alto por `JSON ... sem lista de questoes` e
+  divergencia de `nota_final`, com custo rastreavel no run `tool_44dd029b1954`.
 - Docs antigos registram que auto-deploy Git nao funciona de forma confiavel; o
   ciclo usou deploy via API Render com token local seguro, sem imprimir segredo.
 - Smokes live anteriores continuam citados com seus markers; smokes de
@@ -192,7 +198,10 @@ server-side do contexto. O re-smoke `task_52e5fa9020a0` no runtime `33fb7d5`
 removeu esse erro de storage e falhou alto por contrato/modelo: tentativa de PDF
 via `create_document` e `IndentationError` no `execute_python_code`. O custo do
 erro ficou ok: documento `ea407d2ce87fb99a`, `14772/1805` tokens,
-`US$ 0.001649`.
+`US$ 0.001649`. No runtime `0f84552`, o executor ganhou reparo explicito para
+erro de codigo PDF, mas o smoke `task_124bf0e8d7bf` falhou antes por JSON
+invalido e PDF divergente: `7fde0dfd076a36e3` sem `questoes`, `nota_final=0`,
+PDF `e8861f03a2980412` com `8.0`, custo `18748/1934`, `US$ 0.001986`.
 Nota Nano/relatorio: a full Nano `task_f0c0f15a2f27`, no runtime `99b8c3c`,
 completou as 6 etapas, mas revelou falso verde em `GERAR_RELATORIO`: correcao
 JSON `cff76af34d9248a6` tinha `nota_final=8.0` e o relatorio JSON/PDF
