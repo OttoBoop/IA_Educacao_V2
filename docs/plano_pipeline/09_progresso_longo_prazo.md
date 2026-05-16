@@ -2621,15 +2621,21 @@ Critério de pronto: lista de limpeza segura e revisada.
 - Mudanca: `VisualizadorResultados.get_historico_aluno_fast()` ignora correcoes
   em `status=erro` e tambem nao marca atividade como corrigida quando o JSON
   concluido nao produz nota numerica.
+- Mudanca: `VisualizadorResultados.get_resultado_aluno()` tambem deixa de
+  devolver `completo=true` quando a correcao concluida nao tem nota numerica nem
+  questoes/correcoes avaliaveis; isso fecha o falso verde observado no aluno
+  Eric/Lista0, que aparecia com `nota_final=0` e `total_questoes=0`.
 - Mudanca: `get_comparativo_questao()` passa a escolher somente documentos
   concluidos para questoes/gabarito/respostas/correcao, evitando comparativo
   baseado em artefato parcial ou falho.
 - Mudanca: `/api/alunos/{aluno_id}/atividades-pendentes` e
   `/api/pipeline/status/{atividade_id}` consideram correção/respostas/prova
-  como presentes apenas quando o documento esta `concluido`.
+  como presentes apenas quando o documento esta `concluido`; para correcao, o
+  status agora usa o resultado consolidado confiavel, nao a mera existencia de
+  arquivo.
 - Validacoes locais: `py_compile` de `visualizador.py`, `routes_resultados.py`,
   `routes_pipeline.py` e testes; `test_student_fast_paths.py` passou com
-  `10 passed`; `test_erro_pipeline.py` passou com `78 passed`;
+  `10 passed`; `test_erro_pipeline.py` passou com `79 passed`;
   `git diff --check` passou.
 - Status antes do deploy: patch validado localmente. Proximo passo do ciclo e
   commit, push, deploy oficial, smoke live de status/historico e registro do

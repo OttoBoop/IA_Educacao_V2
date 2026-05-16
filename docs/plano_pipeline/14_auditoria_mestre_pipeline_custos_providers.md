@@ -3630,18 +3630,23 @@ Mudanca:
 - `VisualizadorResultados.get_historico_aluno_fast()` pula documentos de
   correcao que nao estao `concluido` e so marca `corrigido=true` quando ha nota
   numerica confiavel.
+- `VisualizadorResultados.get_resultado_aluno()` nao devolve mais
+  `completo=true` para correcao concluida sem nota numerica nem
+  questoes/correcoes avaliaveis. O caso Eric/Lista0 (`nota_final=0`,
+  `total_questoes=0`) foi a evidencia live que motivou essa extensao.
 - `get_comparativo_questao()` escolhe apenas documentos concluidos para
   questoes/gabarito/respostas/correcao.
 - `/api/alunos/{aluno_id}/atividades-pendentes` e
   `/api/pipeline/status/{atividade_id}` so tratam prova, respostas e correcao
-  como presentes quando o documento esta `concluido`.
+  como presentes quando o documento esta `concluido`; para correcao, o status
+  passa pelo resultado consolidado confiavel.
 
 Validacao local:
 
 - `py_compile` de `backend/visualizador.py`, `backend/routes_resultados.py`,
   `backend/routes_pipeline.py` e testes tocados.
 - `test_student_fast_paths.py`: `10 passed`.
-- `test_erro_pipeline.py`: `78 passed`.
+- `test_erro_pipeline.py`: `79 passed`.
 - `git diff --check`: sem erros.
 
 Estado:

@@ -2268,8 +2268,11 @@ class TestF5T1_APIPropagaErro:
         mock_storage.get_materia.return_value = materia
         mock_storage.listar_atividades.return_value = [atividade]
         mock_storage.listar_documentos.return_value = [prova, correcao_erro]
+        mock_visualizador = MagicMock()
+        mock_visualizador.get_resultado_aluno.return_value = None
 
-        with patch("routes_resultados.storage", mock_storage):
+        with patch("routes_resultados.storage", mock_storage), \
+             patch("routes_resultados.visualizador", mock_visualizador):
             from routes_resultados import get_atividades_pendentes_aluno
             response = await get_atividades_pendentes_aluno("aluno_test")
 
@@ -2297,13 +2300,54 @@ class TestF5T1_APIPropagaErro:
         mock_storage.listar_documentos.side_effect = (
             lambda atividade_id, aluno_id=None: [prova, correcao_erro] if aluno_id else []
         )
+        mock_visualizador = MagicMock()
+        mock_visualizador.get_resultado_aluno.return_value = None
 
-        with patch("routes_pipeline.storage", mock_storage):
+        with patch("routes_pipeline.storage", mock_storage), \
+             patch("visualizador.visualizador", mock_visualizador):
             from routes_pipeline import status_pipeline
             response = await status_pipeline("ativ_test", aluno_id="aluno_test")
 
         assert response["status_aluno"]["prova"] is True
         assert response["status_aluno"]["correcao"] is False
+
+    def test_visualizador_ignores_correction_without_reliable_grade(self, monkeypatch):
+        """A concluded correction without numeric grade cannot produce completo=True."""
+        from models import StatusProcessamento, TipoDocumento
+        from visualizador import VisualizadorResultados
+
+        mock_atividade = MagicMock()
+        mock_atividade.nome = "Prova"
+        mock_atividade.nota_maxima = 10.0
+
+        mock_aluno = MagicMock()
+        mock_aluno.nome = "Aluno"
+
+        mock_doc = MagicMock()
+        mock_doc.tipo = TipoDocumento.CORRECAO
+        mock_doc.nome_arquivo = "correcao_sem_nota.json"
+        mock_doc.status = StatusProcessamento.CONCLUIDO
+        mock_doc.criado_em = None
+        mock_doc.ia_provider = "openai"
+
+        mock_storage = MagicMock()
+        mock_storage.get_atividade = MagicMock(return_value=mock_atividade)
+        mock_storage.get_aluno = MagicMock(return_value=mock_aluno)
+        mock_storage.listar_documentos = MagicMock(return_value=[mock_doc])
+        mock_storage._log_hot_endpoint_profile = MagicMock()
+
+        vis = VisualizadorResultados()
+        vis.storage = mock_storage
+        monkeypatch.setattr(
+            vis,
+            "_ler_json",
+            lambda documento: {
+                "habilidades_demonstradas": ["x"],
+                "feedback_geral": "Sem nota e sem questoes avaliaveis",
+            },
+        )
+
+        assert vis.get_resultado_aluno("ativ_test", "aluno_test") is None
 
 
 # ============================================================
@@ -2313,8 +2357,8 @@ class TestF5T1_APIPropagaErro:
 class TestF5T2_VisualizadorPropagaErro:
     """F5-T2: Visualizador includes _erro_pipeline in VisaoAluno.to_dict()."""
 
-    def test_correction_with_erro_pipeline_included_in_to_dict(self):
-        """When correction JSON has _erro_pipeline, to_dict() should include erro_pipeline."""
+    def test_correction_with_erro_pipeline_not_returned_as_complete_result(self):
+        """A correction JSON with only _erro_pipeline must not become complete result."""
         from visualizador import VisualizadorResultados
         from models import TipoDocumento
 
@@ -2352,10 +2396,7 @@ class TestF5T2_VisualizadorPropagaErro:
 
         resultado = vis.get_resultado_aluno("ativ_test", "aluno_test")
 
-        assert resultado is not None, "Should return VisaoAluno even with error"
-        resultado_dict = resultado.to_dict()
-        assert "erro_pipeline" in resultado_dict, \
-            "to_dict() should include erro_pipeline when correction has error"
+        assert resultado is None, "Error-only correction must fall through to partial error response"
 
     def test_normal_correction_no_erro_pipeline_in_to_dict(self):
         """Normal correction should NOT have erro_pipeline in to_dict()."""

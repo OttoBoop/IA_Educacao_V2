@@ -53,6 +53,32 @@ def _documento_metadata(doc: Any) -> Dict[str, Any]:
     return metadata if isinstance(metadata, dict) else {}
 
 
+def _numero(value: Any) -> Optional[float]:
+    try:
+        if value is None or value == "":
+            return None
+        return float(value)
+    except (TypeError, ValueError):
+        return None
+
+
+def _correcao_tem_nota_confiavel(dados: Any) -> bool:
+    if not isinstance(dados, dict):
+        return False
+    if _numero(dados.get("nota_final")) is not None:
+        return True
+    if _numero(dados.get("nota")) is not None:
+        return True
+    for campo in ("questoes", "correcoes"):
+        itens = dados.get(campo)
+        if isinstance(itens, list) and any(
+            isinstance(item, dict) and _numero(item.get("nota")) is not None
+            for item in itens
+        ):
+            return True
+    return False
+
+
 def _documento_resumo(doc: Any) -> Dict[str, Any]:
     metadata = _documento_metadata(doc)
     erro_pipeline = metadata.get("erro_pipeline")
@@ -195,6 +221,22 @@ async def get_resultado_aluno(atividade_id: str, aluno_id: str):
             etapas[tipo].setdefault("erro_pipeline", erro_pipeline)
             break
 
+    if etapas["correcao"].get("completa") and not _correcao_tem_nota_confiavel(
+        dados_parciais.get("correcao")
+    ):
+        etapas["correcao"].update({
+            "completa": False,
+            "status": "erro",
+            "erro_tipo": "CORRECAO_SEM_NOTA_CONFIAVEL",
+            "erro_execucao": "Correção concluída sem nota ou questões avaliáveis.",
+        })
+        erro_pipeline = erro_pipeline or {
+            "tipo": "CORRECAO_SEM_NOTA_CONFIAVEL",
+            "mensagem": "Correção concluída sem nota ou questões avaliáveis.",
+            "severidade": "alto",
+            "etapa": "correcao",
+        }
+
     etapas_com_erro = {
         tipo: etapa
         for tipo, etapa in etapas.items()
@@ -208,6 +250,9 @@ async def get_resultado_aluno(atividade_id: str, aluno_id: str):
             "severidade": "alto",
             "etapa": tipo_erro,
         }
+
+    etapas_completas = sum(1 for e in etapas.values() if e["completa"])
+    progresso = round(etapas_completas / total_etapas * 100)
 
     response = {
         "sucesso": True,
@@ -575,10 +620,7 @@ async def get_atividades_pendentes_aluno(aluno_id: str):
             # Verificar se tem prova mas não tem correção
             docs = storage.listar_documentos(ativ.id, aluno_id)
             tem_prova = any(d.tipo == TipoDocumento.PROVA_RESPONDIDA for d in docs)
-            tem_correcao = any(
-                d.tipo == TipoDocumento.CORRECAO and _documento_status(d) == "concluido"
-                for d in docs
-            )
+            tem_correcao = visualizador.get_resultado_aluno(ativ.id, aluno_id) is not None
             
             if tem_prova and not tem_correcao:
                 pendentes.append({

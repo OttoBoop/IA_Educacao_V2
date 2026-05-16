@@ -223,10 +223,12 @@ async def status_pipeline(atividade_id: str, aluno_id: Optional[str] = None):
     status_aluno = None
     if aluno_id:
         docs_aluno = storage.listar_documentos(atividade_id, aluno_id)
+        from visualizador import visualizador
+
         status_aluno = {
             "prova": any(d.tipo == TipoDocumento.PROVA_RESPONDIDA and _documento_concluido(d) for d in docs_aluno),
             "respostas_extraidas": any(d.tipo == TipoDocumento.EXTRACAO_RESPOSTAS and _documento_concluido(d) for d in docs_aluno),
-            "correcao": any(d.tipo == TipoDocumento.CORRECAO and _documento_concluido(d) for d in docs_aluno)
+            "correcao": visualizador.get_resultado_aluno(atividade_id, aluno_id) is not None
         }
     
     return {"atividade_id": atividade_id, "status_base": status_base, "status_aluno": status_aluno}

@@ -199,15 +199,26 @@ class VisualizadorResultados:
         if nota is None:
             nota = self._safe_float(data.get("nota"))
 
-        correcoes = data.get("correcoes")
-        if nota is None and isinstance(correcoes, list):
-            nota = 0.0
+        for lista_campo in ("questoes", "correcoes"):
+            itens = data.get(lista_campo)
+            if nota is not None or not isinstance(itens, list):
+                continue
+
+            notas = []
             nota_max_total = 0.0
-            for correcao in correcoes:
-                nota += self._safe_float(correcao.get("nota"), 0.0) or 0.0
-                nota_max_total += self._safe_float(correcao.get("nota_maxima"), 0.0) or 0.0
-            if nota_max_total > 0:
-                nota_maxima = nota_max_total
+            for item in itens:
+                if not isinstance(item, dict):
+                    continue
+                nota_item = self._safe_float(item.get("nota"))
+                if nota_item is None:
+                    continue
+                notas.append(nota_item)
+                nota_max_total += self._safe_float(item.get("nota_maxima"), 0.0) or 0.0
+
+            if notas:
+                nota = sum(notas)
+                if nota_max_total > 0:
+                    nota_maxima = nota_max_total
 
         percentual = None
         if nota is not None and nota_maxima > 0:
@@ -254,6 +265,15 @@ class VisualizadorResultados:
         
         # Ler dados da correção
         correcao_data = self._ler_json(correcao_doc)
+        correcao_summary = self._resumir_correcao(atividade.nota_maxima, correcao_data)
+        if correcao_summary.get("nota") is None:
+            self.storage._log_hot_endpoint_profile(
+                "/api/resultados/{atividade_id}/{aluno_id}",
+                started_at,
+                {"atividade": 1, "aluno": 1, "documentos": len(documentos)},
+                {"json_reads": 1},
+            )
+            return None
         analise_data = self._ler_json(analise_doc) if analise_doc else {}
         relatorio_data = self._ler_json(relatorio_doc) if relatorio_doc else {}
         json_reads = 1 + (1 if analise_doc else 0) + (1 if relatorio_doc else 0)
