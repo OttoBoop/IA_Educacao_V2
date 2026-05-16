@@ -5086,14 +5086,18 @@ Seja preciso, educativo e construtivo em suas análises."""
                 final_state.get("docs_by_tool", {}),
                 expected_document_type,
             )
-            if (
+            pdf_consistency_repair_attempts = 0
+            max_pdf_consistency_repairs = 2
+            while (
                 pdf_json_errors
                 and not json_validation_errors
                 and dual_output_expected
                 and "execute_python_code" in tools_to_use
+                and pdf_consistency_repair_attempts < max_pdf_consistency_repairs
             ):
                 repair_error_msg = (
-                    "Saida PDF/JSON inconsistente antes do retry: "
+                    "Saida PDF/JSON inconsistente antes do retry "
+                    f"{pdf_consistency_repair_attempts + 1}/{max_pdf_consistency_repairs}: "
                     + "; ".join(pdf_json_errors)
                 )
                 _mark_latest_pdf_error(final_state, repair_error_msg)
@@ -5111,13 +5115,17 @@ Seja preciso, educativo e construtivo em suas análises."""
                 )
                 respostas_tool.append(resposta)
                 tentativas += 1
+                pdf_consistency_repair_attempts += 1
                 final_state = _dual_output_state(respostas_tool)
                 tokens_entrada = _sum_usage(respostas_tool, "input_tokens") or _sum_usage(respostas_tool, "tokens")
                 tokens_saida = _sum_usage(respostas_tool, "output_tokens")
                 tokens_total = tokens_entrada + tokens_saida
                 alertas.append({
                     "tipo": "aviso",
-                    "mensagem": repair_error_msg + ". PDF regenerado por retry explicito.",
+                    "mensagem": (
+                        repair_error_msg
+                        + ". PDF regenerado por retry explicito no mesmo modelo."
+                    ),
                 })
 
                 json_validation_errors = _validate_json_artifacts(final_state)

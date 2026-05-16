@@ -1227,6 +1227,171 @@ async def test_pdf_execution_error_triggers_same_model_code_repair(monkeypatch, 
 
 
 @pytest.mark.asyncio
+async def test_pdf_json_consistency_gets_two_same_model_repairs(monkeypatch, tmp_path):
+    """PDF/JSON inconsistency may get two explicit same-model PDF repairs."""
+    import chat_service
+    import fitz
+    from chat_service import ProviderType
+
+    feedback = (
+        "Ótima atuação na maior parte da prova. Pontos fortes: resolução de "
+        "equações lineares, aplicação correta da ordem de operações e uso "
+        "adequado da fórmula da área. Ponto a melhorar: revisar porcentagens "
+        "e manter a unidade de medida consistente."
+    )
+    json_path = tmp_path / "correcao.json"
+    json_path.write_text(
+        json.dumps(
+            {
+                "nota_final": 8,
+                "questoes": [
+                    {
+                        "numero": 1,
+                        "resposta_aluno": "x = 5",
+                        "resposta_correta": "x = 5",
+                        "nota": 8,
+                        "nota_maxima": 8,
+                        "acerto": True,
+                        "feedback": "Bom desempenho.",
+                    }
+                ],
+                "total_acertos": 1,
+                "total_erros": 0,
+                "feedback_geral": feedback,
+                "_avisos_documento": [],
+                "_avisos_questao": [],
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    def write_pdf(path, feedback_text):
+        pdf = fitz.open()
+        page = pdf.new_page()
+        page.insert_textbox(
+            fitz.Rect(40, 40, 560, 800),
+            "Aluno: Ada\n"
+            "Matéria: Matemática\n"
+            "Atividade: Prova 1\n"
+            "Data: 2026-05-17\n"
+            "Nota final: 8.0\n"
+            "Questão 1 — Nota: 8.0\n"
+            f"Feedback Geral: {feedback_text}\n",
+            fontsize=11,
+        )
+        pdf.save(str(path))
+        pdf.close()
+
+    bad_pdf_1 = tmp_path / "correcao_bad_1.pdf"
+    bad_pdf_2 = tmp_path / "correcao_bad_2.pdf"
+    good_pdf = tmp_path / "correcao_good.pdf"
+    write_pdf(bad_pdf_1, "Ótima atuação")
+    write_pdf(bad_pdf_2, "Ótima atuação na maior parte da prova")
+    write_pdf(good_pdf, feedback)
+
+    docs = {
+        "doc-json": SimpleNamespace(
+            id="doc-json",
+            extensao=".json",
+            metadata={"tool": "create_document"},
+            status=StatusProcessamento.CONCLUIDO,
+        ),
+        "doc-pdf-bad-1": SimpleNamespace(
+            id="doc-pdf-bad-1",
+            extensao=".pdf",
+            metadata={"tool": "execute_python_code"},
+            status=StatusProcessamento.CONCLUIDO,
+        ),
+        "doc-pdf-bad-2": SimpleNamespace(
+            id="doc-pdf-bad-2",
+            extensao=".pdf",
+            metadata={"tool": "execute_python_code"},
+            status=StatusProcessamento.CONCLUIDO,
+        ),
+        "doc-pdf-good": SimpleNamespace(
+            id="doc-pdf-good",
+            extensao=".pdf",
+            metadata={"tool": "execute_python_code"},
+            status=StatusProcessamento.CONCLUIDO,
+        ),
+    }
+    paths = {
+        "doc-json": json_path,
+        "doc-pdf-bad-1": bad_pdf_1,
+        "doc-pdf-bad-2": bad_pdf_2,
+        "doc-pdf-good": good_pdf,
+    }
+
+    class FakeStorage:
+        atualizar_documento_processamento = MagicMock()
+
+        def get_documento(self, doc_id):
+            return docs.get(doc_id)
+
+        def resolver_caminho_documento(self, doc):
+            return paths[doc.id]
+
+    model = SimpleNamespace(
+        id="gemini-lite",
+        tipo=ProviderType.GOOGLE,
+        modelo="gemini-2.5-flash-lite",
+        api_key_id=None,
+        suporta_function_calling=True,
+        max_tokens=1024,
+        temperature=0,
+        suporta_temperature=False,
+    )
+    monkeypatch.setattr(chat_service.model_manager, "get", lambda _model_id: model)
+    monkeypatch.setattr(chat_service.api_key_manager, "get", lambda _key_id: None)
+    monkeypatch.setattr(
+        chat_service.api_key_manager,
+        "get_por_empresa",
+        lambda _provider: SimpleNamespace(api_key="test-key"),
+    )
+
+    calls = []
+
+    class DummyClient:
+        def __init__(self, model_config, api_key):
+            pass
+
+        async def chat_with_tools(self, **kwargs):
+            calls.append(kwargs)
+            context = kwargs["context"]
+            if len(calls) == 1:
+                context.created_document_ids.append("doc-json")
+                return _tool_response(["create_document"])
+            if len(calls) == 2:
+                context.created_document_ids.append("doc-pdf-bad-1")
+                return _tool_response(["execute_python_code"])
+            if len(calls) == 3:
+                context.created_document_ids.append("doc-pdf-bad-2")
+                return _tool_response(["execute_python_code"])
+            context.created_document_ids.append("doc-pdf-good")
+            return _tool_response(["execute_python_code"])
+
+    monkeypatch.setattr(chat_service, "ChatClient", DummyClient)
+
+    executor = PipelineExecutor()
+    executor.storage = FakeStorage()
+    result = await executor.executar_com_tools(
+        mensagem="Gere correção.",
+        atividade_id="atividade-1",
+        aluno_id="aluno-1",
+        provider_id="gemini-lite",
+        tools_to_use=["create_document", "execute_python_code"],
+        expected_document_type=TipoDocumento.CORRECAO,
+    )
+
+    assert result.sucesso is True
+    assert result.tentativas == 4
+    assert len(calls) == 4
+    mensagens = [alerta["mensagem"] for alerta in result.alertas]
+    assert any("retry 1/2" in mensagem for mensagem in mensagens)
+    assert any("retry 2/2" in mensagem for mensagem in mensagens)
+
+
+@pytest.mark.asyncio
 async def test_codigo_composto_de_aviso_falha_alto_no_tool_runtime():
     """Runtime tool output with A|B|C warning code must not be accepted."""
     invalid_report = {
