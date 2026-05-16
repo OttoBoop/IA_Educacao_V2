@@ -8327,15 +8327,22 @@
             const alertas = Array.isArray(costStatus.alertas) ? costStatus.alertas : [];
             const tokenUsageAlert = alertas.find(alerta => alerta.tipo === 'token_usage_not_durable');
             const tokenUsageBackend = costStatus.token_usage_backend || {};
+            const tokenUsageSupabase = tokenUsageBackend.supabase || {};
             const statusNaoDuravel = costStatus.custos_persistencia_status === 'parcial_sem_token_usage_duravel';
             const tokenUsageNaoDuravel = tokenUsageBackend.durable === false || Boolean(tokenUsageAlert) || statusNaoDuravel;
 
             if (tokenUsageNaoDuravel) {
-                const codigo = tokenUsageBackend.error_code ? ` Código: ${tokenUsageBackend.error_code}.` : '';
+                const errorCode = tokenUsageBackend.error_code || tokenUsageSupabase.error_code;
+                const missingMigration = tokenUsageBackend.missing_migration === true || tokenUsageSupabase.missing_migration === true;
+                const migrationPath = tokenUsageBackend.migration_path || tokenUsageSupabase.migration_path || 'backend/migrations/002_create_token_usage.sql';
+                const codigo = errorCode ? ` Código: ${errorCode}.` : '';
+                const migration = missingMigration && migrationPath
+                    ? ` Aplique ${migrationPath} no Supabase antes de considerar custos completos.`
+                    : ' Aplique a migration token_usage antes de considerar custos completos.';
                 container.innerHTML = renderInlineAlert(
                     'danger',
                     'Custos não duráveis',
-                    `A medição existe, mas falhas sem documento final ainda não ficam persistidas no Supabase.${codigo} Aplique a migration token_usage antes de considerar custos completos.`
+                    `A medição existe, mas falhas sem documento final ainda não ficam persistidas no Supabase.${codigo}${migration}`
                 );
                 return;
             }

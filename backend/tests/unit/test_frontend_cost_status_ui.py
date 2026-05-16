@@ -31,6 +31,11 @@ def test_dashboard_surfaces_non_durable_token_usage(html_content):
     assert "custos_persistencia_status" in html_content
     assert "parcial_sem_token_usage_duravel" in html_content
     assert "tokenUsageBackend.durable === false" in html_content
+    assert "tokenUsageSupabase.error_code" in html_content
+    assert "tokenUsageSupabase.missing_migration === true" in html_content
+    assert "tokenUsageSupabase.migration_path" in html_content
+    assert "backend/migrations/002_create_token_usage.sql" in html_content
+    assert "Código:" in html_content
     assert "Custos não duráveis" in html_content
     assert "Aplique a migration token_usage" in html_content
 
