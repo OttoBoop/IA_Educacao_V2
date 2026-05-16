@@ -22,7 +22,8 @@ from pathlib import Path
 from chat_service import (
     api_key_manager, model_manager, chat_service,
     ApiKeyConfig, ModelConfig, ProviderType,
-    DEFAULT_URLS, MODELOS_SUGERIDOS, get_tipos_providers
+    DEFAULT_URLS, MODELOS_SUGERIDOS, get_tipos_providers,
+    ProviderAPIError,
 )
 from model_catalog import model_catalog, ModelMetadata
 from storage import storage
@@ -449,6 +450,17 @@ Seja preciso e educativo nas correcoes."""
                 "debug_endpoint": "chat_direto_v3",
                 "debug_prompt_start": system_prompt[:100] if system_prompt else "NONE"
             }
+        except ProviderAPIError as e:
+            raise HTTPException(
+                status_code=e.status_code,
+                detail={
+                    "erro": "provider_api_error",
+                    "provider": e.provider,
+                    "provider_status_code": e.status_code,
+                    "retryable": e.retryable,
+                    "mensagem": str(e),
+                },
+            )
         except Exception as e:
             raise HTTPException(500, f"Erro ao processar chat: {str(e)}")
 

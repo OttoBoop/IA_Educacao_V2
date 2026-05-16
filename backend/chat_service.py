@@ -988,18 +988,17 @@ class ChatClient:
             )
             
             if response.status_code != 200:
-                error_msg = f"Erro API OpenAI: {response.status_code}"
                 if response.status_code == 400:
-                    error_msg += f" - Erro na requisição para '{self.config.modelo}'. Verifique os parâmetros ou tente outro modelo como GPT-4o."
+                    detail = f"Erro na requisição para '{self.config.modelo}'. Verifique os parâmetros."
                 elif response.status_code == 401:
-                    error_msg += " - Chave de API inválida ou expirada."
+                    detail = "Chave de API inválida ou expirada."
                 elif response.status_code == 429:
-                    error_msg += " - Limite de requisições atingido. Aguarde alguns minutos ou tente outro modelo."
+                    detail = "Limite de requisições atingido. Aguarde alguns minutos."
                 elif response.status_code == 404:
-                    error_msg += f" - Modelo '{self.config.modelo}' não encontrado. Tente outro modelo."
+                    detail = f"Modelo '{self.config.modelo}' não encontrado."
                 else:
-                    error_msg += f" - {response.text[:300]}"
-                raise Exception(error_msg)
+                    detail = response.text[:300]
+                raise ProviderAPIError("OpenAI", response.status_code, detail)
 
             data = response.json()
             usage = data.get("usage", {})
@@ -1052,19 +1051,18 @@ class ChatClient:
             if response.status_code != 200:
                 # Always include the actual API response for debugging
                 api_body = response.text[:500]
-                error_msg = f"Erro API Anthropic: {response.status_code}"
                 if response.status_code == 400:
                     # Include actual error — could be credit balance, invalid model, or other
-                    error_msg += f" - {api_body}"
+                    detail = api_body
                 elif response.status_code == 401:
-                    error_msg += " - Chave de API inválida ou expirada."
+                    detail = "Chave de API inválida ou expirada."
                 elif response.status_code == 429:
-                    error_msg += " - Limite de requisições atingido. Aguarde alguns minutos ou tente outro modelo."
+                    detail = "Limite de requisições atingido. Aguarde alguns minutos."
                 elif response.status_code == 404:
-                    error_msg += f" - Modelo '{self.config.modelo}' não encontrado. Tente outro modelo."
+                    detail = f"Modelo '{self.config.modelo}' não encontrado."
                 else:
-                    error_msg += f" - {api_body}"
-                raise Exception(error_msg)
+                    detail = api_body
+                raise ProviderAPIError("Anthropic", response.status_code, detail)
 
             data = response.json()
 
@@ -1826,18 +1824,17 @@ class ChatClient:
             )
             
             if response.status_code != 200:
-                error_msg = f"Erro API Google: {response.status_code}"
                 if response.status_code == 400:
-                    error_msg += f" - Erro na requisição para '{self.config.modelo}'. Verifique os parâmetros ou tente outro modelo como GPT-4o."
+                    detail = f"Erro na requisição para '{self.config.modelo}'. Verifique os parâmetros."
                 elif response.status_code == 403:
-                    error_msg += " - Chave de API sem permissão para este modelo ou região."
+                    detail = "Chave de API sem permissão para este modelo ou região."
                 elif response.status_code == 429:
-                    error_msg += " - Limite de requisições atingido. Aguarde alguns minutos ou tente outro modelo."
+                    detail = "Limite de requisições atingido. Aguarde alguns minutos."
                 elif response.status_code == 404:
-                    error_msg += f" - Modelo '{self.config.modelo}' não encontrado. Tente outro modelo."
+                    detail = f"Modelo '{self.config.modelo}' não encontrado."
                 else:
-                    error_msg += f" - {response.text[:300]}"
-                raise Exception(error_msg)
+                    detail = response.text[:300]
+                raise ProviderAPIError("Google", response.status_code, detail)
 
             data = response.json()
 
