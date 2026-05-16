@@ -9,10 +9,11 @@ lida de memoria. Ele nao substitui os documentos originais: ele explica como cad
 um deve ser lido, o que ainda vale, o que ficou historico, e quais fatos precisam
 guiar os proximos ciclos.
 
-Atualizacao de controle de 2026-05-17: o codigo funcional mais recente
-confirmado no site oficial e `9b68de1`, validado por `/api/deploy-info` com
-cache-buster/no-cache, `/api/health`, `check_deploy.sh` e smoke live de batch
-`task_ee773aefb10d`. Smokes anteriores continuam
+Atualizacao de controle de 2026-05-17: o runtime mais recente confirmado no site
+oficial e `a3e95e8`, validado por `/api/deploy-info` com
+cache-buster/no-cache, `/api/health`, `check_deploy.sh` e smoke live de
+catalogo/custos. O codigo funcional de batch dentro desse runtime continua
+validado por `task_ee773aefb10d`. Smokes anteriores continuam
 validando documentos/ranking/dashboard nos hashes registrados em seus proprios
 ciclos. O ciclo `dbbecfe` aumentou para duas as tentativas explicitas de
 reparo PDF/JSON, mas o smoke full Nano `task_4f6296b3789d` ainda falhou alto em
@@ -3986,6 +3987,17 @@ Atualizacao deste ciclo:
   prova que a chave/conta ativa no site oficial ainda nao enxerga esses
   creditos. A matriz marca Haiku como `🚫 chave/saldo`, nao como falha do
   modelo.
+- Publicacao: commit `a3e95e8` foi enviado para `origin/main`; Render confirmou
+  `a3e95e8fd0e749226508f7f48fbdaa5f0ff306b1` depois de 150s.
+- Smoke pos-deploy:
+  - `check_deploy.sh a3e95e8`, `/api/deploy-info` com no-cache e `/api/health`
+    passaram.
+  - `/api/settings/model-catalog/calculate-cost` retornou Gemini 2.5 Flash
+    `US$ 0.053285`, Flash Lite `US$ 0.012387` e Gemini 3 Flash
+    `US$ 0.074338` para `74257/12403`.
+  - `/api/custos/resumo?limit=200` retornou `runs_analisados=101`,
+    `runs_precificados=99`, `runs_bloqueados=2`, `custo_usd=1.884676`,
+    `por_provider.google.custo_usd=0.052051` e `token_usage_durable=false`.
 
 Interpretacao:
 

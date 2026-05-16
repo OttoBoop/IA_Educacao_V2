@@ -5,9 +5,10 @@
 (`126e8b5ad7dd6d59`), smoke simples oficial `Smoke Paulo Pipeline 2026-05-16`
 (`f68d57a9a339081f`) e atividade textual `Prova 1 - Equações do 1º Grau`
 (`8f58cc8b5fb75869`)
-**Runtime oficial atual:** backend Render em `9b68de1`; `origin/main` recebeu o
-ciclo funcional `9b68de1` para impedir falso `completed` em batch com falha,
-marcar etapas reaproveitadas como `skipped` e expor `summary` por task. Use
+**Runtime oficial atual:** backend Render em `a3e95e8`; `origin/main` recebeu o
+ciclo `a3e95e8` para publicar a matriz operacional por modelo ativo e corrigir
+precos Gemini no catalogo de custos. O codigo funcional de batch mais recente
+continua sendo `9b68de1`, agora incluido no runtime `a3e95e8`. Use
 `/api/deploy-info` com no-cache/cache-buster como gate de codigo live.
 **Commits aplicados/observados:** `a632883`, `5737611`, `50935ea`, `479b77d`,
 `b12be9a`, `301eba6`, `f67055c`, `462ea1d`, `b4d7ee6`, `99483d1`,
@@ -26,18 +27,25 @@ marcar etapas reaproveitadas como `skipped` e expor `summary` por task. Use
 `d47d748`, `c53fae6`, `9ab53df`, `1454e68`, `3fce335`, `33fb7d5`, `0f84552`,
 `974f040`, `11a396b`, `c094fba`, `d799165`, `6b43016`, `8c77cc4`, `29a4b7e`,
 `fdf0cbd`, `e2260d2`, `ae04982`, `ed592de`, `2a0462d`, `dbbecfe`, `4a4caf0`,
-`0bcff27`, `9b68de1`
+`0bcff27`, `9b68de1`, `a3e95e8`
 
 ## Status Oficial De Deploy
 
 - O servico oficial em 2026-05-17 e
   `srv-d5t8gbh4tr6s738fr3s0` (`IA_Educacao_V2`), branch `main`,
   `rootDir=backend`, URL `https://ia-educacao-v2.onrender.com`.
-- `/api/deploy-info` confirmou o runtime backend `9b68de1` com
+- `/api/deploy-info` confirmou o runtime backend `a3e95e8` com
   `source=RENDER_GIT_COMMIT`; esse e o gate primario atual para codigo live.
-- `origin/main` esta alinhado com o codigo funcional `9b68de1`; commits
+- `origin/main` esta alinhado com o ciclo `a3e95e8`; commits
   documentais posteriores podem mudar o hash sem mudar comportamento de
   provider/pipeline.
+- Smoke pos-deploy de catalogo: `/api/settings/model-catalog/calculate-cost`
+  retornou para o perfil `74257/12403`: Gemini 2.5 Flash `US$ 0.053285`,
+  Gemini 2.5 Flash Lite `US$ 0.012387`, Gemini 3 Flash `US$ 0.074338`.
+- Smoke pos-deploy de custos: `/api/custos/resumo?limit=200` retornou
+  `runs_analisados=101`, `runs_precificados=99`, `runs_bloqueados=2`,
+  `custo_usd=1.884676`, Google `US$ 0.052051`, OpenAI `US$ 1.832625` e
+  `token_usage_durable=false`.
 - `e2260d2` tornou o bloqueio de migration `token_usage` visivel no dashboard.
 - `ae04982` adicionou `por_etapa` em `/api/custos/resumo` e o smoke live
   confirmou `runs_analisados=59`, `runs_precificados=57`,

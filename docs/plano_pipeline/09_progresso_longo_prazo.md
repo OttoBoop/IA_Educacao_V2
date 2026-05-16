@@ -5,12 +5,14 @@
 **Status geral:** o servico oficial Render
 `srv-d5t8gbh4tr6s738fr3s0` (`IA_Educacao_V2`, branch `main`, URL
 `https://ia-educacao-v2.onrender.com`) tem como codigo funcional mais recente
-confirmado o commit `9b68de1` (`fix: keep batch pipeline failures visible`),
+confirmado o commit `a3e95e8` (`docs: add model cost matrix`),
 validado por `/api/deploy-info` com cache-buster, `/api/health`,
-`./scripts/check_deploy.sh 9b68de1` e smoke oficial de batch
-`task_ee773aefb10d`.
+`./scripts/check_deploy.sh a3e95e8` e smoke oficial de catalogo/custos.
+O codigo funcional de batch contido nesse runtime continua sendo `9b68de1`,
+validado por `task_ee773aefb10d`.
 `origin/main` pode estar em commit documental posterior; isso nao muda runtime
-enquanto `/api/deploy-info` com no-cache continuar apontando para `9b68de1`.
+enquanto `/api/deploy-info` com no-cache continuar apontando para o hash
+registrado neste painel.
 
 Estado funcional consolidado: documentos com `status=erro` nao contam como
 progresso; correcao sem itens avaliaveis nao vira `completo=true`; ranking,
@@ -3350,10 +3352,20 @@ Critério de pronto: lista de limpeza segura e revisada.
   - `python -m py_compile backend/model_catalog.py
     backend/tests/unit/test_cost_tracking.py`.
   - `test_cost_tracking.py`: `30 passed`.
-- Proximo passo: commit/push/deploy do catalogo e docs; depois checar
-  `/api/custos/resumo` live para confirmar que estimativas Gemini novas estao
-  servidas pelo site. Haiku so deve ser reexecutado depois de atualizar a chave
-  Anthropic no Render.
+- Commit/push/deploy: `a3e95e8` publicado em `origin/main`; Render confirmou
+  `a3e95e8fd0e749226508f7f48fbdaa5f0ff306b1` depois de 150s.
+- Smoke pos-deploy:
+  - `./scripts/check_deploy.sh a3e95e8`, `/api/deploy-info` com no-cache e
+    `/api/health` passaram.
+  - `/api/settings/model-catalog/calculate-cost` para o perfil `74257/12403`
+    retornou Gemini 2.5 Flash `US$ 0.053285`, Flash Lite `US$ 0.012387` e
+    Gemini 3 Flash `US$ 0.074338`.
+  - `/api/custos/resumo?limit=200` retornou `runs_analisados=101`,
+    `runs_precificados=99`, `runs_bloqueados=2`, `custo_usd=1.884676`,
+    Google `US$ 0.052051`, OpenAI `US$ 1.832625`,
+    `token_usage_durable=false`.
+- Proximo passo: Haiku so deve ser reexecutado depois de atualizar a chave
+  Anthropic no Render; custo duravel segue bloqueado pela migration Supabase.
 
 ## Riscos Abertos
 
