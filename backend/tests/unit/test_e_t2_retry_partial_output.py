@@ -346,6 +346,64 @@ class TestBothOutputsNoRetry:
         assert "sem nota_final" in (result.erro or "")
         assert "sem lista de questoes" in (result.erro or "")
 
+    @pytest.mark.parametrize(
+        ("document_type", "filename", "payload", "expected_error"),
+        [
+            (
+                TipoDocumento.ANALISE_HABILIDADES,
+                "analise_habilidades.json",
+                {"resumo_geral": "texto sem habilidades"},
+                "sem lista/dicionário de habilidades",
+            ),
+            (
+                TipoDocumento.RELATORIO_FINAL,
+                "relatorio_final.json",
+                {"resumo_geral": "texto sem nota"},
+                "sem nota_final",
+            ),
+        ],
+    )
+    async def test_expected_document_type_rejects_runtime_json_outside_schema_for_late_stages(
+        self,
+        document_type,
+        filename,
+        payload,
+        expected_error,
+    ):
+        """ANALISAR/RELATORIO runtime JSON must also obey stage schema."""
+        response = {
+            "content": "",
+            "tokens": 150,
+            "modelo": "test-model",
+            "provider": "anthropic",
+            "tool_calls": [
+                {
+                    "name": "create_document",
+                    "input": {
+                        "documents": [
+                            {
+                                "filename": filename,
+                                "content": json.dumps(payload),
+                            }
+                        ]
+                    },
+                },
+                {
+                    "name": "execute_python_code",
+                    "input": {"code": "# generate PDF"},
+                },
+            ],
+        }
+
+        result, _mock_client = await _call_executar_com_tools(
+            chat_side_effect=response,
+            tools_to_use=["create_document", "execute_python_code"],
+            expected_document_type=document_type,
+        )
+
+        assert result.sucesso is False
+        assert expected_error in (result.erro or "")
+
     async def test_openai_dual_output_starts_with_forced_json_tool_choice(self):
         """OpenAI dual-output calls should force create_document upfront."""
         both_response = _tool_response(["create_document", "execute_python_code"])
