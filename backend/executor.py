@@ -3680,38 +3680,38 @@ Seja preciso, educativo e construtivo em suas análises."""
                     "<str>",
                 )
 
-                for doc in state.get("docs_by_tool", {}).get("create_document", []):
-                    if (getattr(doc, "extensao", "") or "").lower() != ".json":
-                        continue
+                doc = _latest_tool_doc(state, "create_document", ".json")
+                if not doc:
+                    return []
 
-                    doc_label = getattr(doc, "id", None) or getattr(doc, "nome_arquivo", "json")
-                    filename = (getattr(doc, "nome_arquivo", "") or "").lower()
-                    try:
-                        path = self.storage.resolver_caminho_documento(doc)
-                    except Exception as exc:
-                        errors.append(f"JSON {doc_label} não pôde ser resolvido para validação: {exc}")
-                        continue
+                doc_label = getattr(doc, "id", None) or getattr(doc, "nome_arquivo", "json")
+                filename = (getattr(doc, "nome_arquivo", "") or "").lower()
+                try:
+                    path = self.storage.resolver_caminho_documento(doc)
+                except Exception as exc:
+                    errors.append(f"JSON {doc_label} não pôde ser resolvido para validação: {exc}")
+                    return errors
 
-                    if not path or not Path(path).exists():
-                        errors.append(f"JSON {doc_label} não pôde ser lido para validação")
-                        continue
+                if not path or not Path(path).exists():
+                    errors.append(f"JSON {doc_label} não pôde ser lido para validação")
+                    return errors
 
-                    try:
-                        with open(path, "r", encoding="utf-8") as fh:
-                            data = json.load(fh)
-                    except Exception as exc:
-                        errors.append(f"JSON {doc_label} inválido: {exc}")
-                        continue
+                try:
+                    with open(path, "r", encoding="utf-8") as fh:
+                        data = json.load(fh)
+                except Exception as exc:
+                    errors.append(f"JSON {doc_label} inválido: {exc}")
+                    return errors
 
-                    serialized = json.dumps(data, ensure_ascii=False).lower()
-                    for placeholder in placeholders:
-                        if placeholder in serialized or placeholder in filename:
-                            errors.append(f"JSON {doc_label} contém placeholder proibido: {placeholder}")
-                            break
+                serialized = json.dumps(data, ensure_ascii=False).lower()
+                for placeholder in placeholders:
+                    if placeholder in serialized or placeholder in filename:
+                        errors.append(f"JSON {doc_label} contém placeholder proibido: {placeholder}")
+                        break
 
-                    habilidades = data.get("habilidades") if isinstance(data, dict) else None
-                    if not habilidades:
-                        errors.append(f"JSON {doc_label} sem lista/dicionário de habilidades")
+                habilidades = data.get("habilidades") if isinstance(data, dict) else None
+                if not habilidades:
+                    errors.append(f"JSON {doc_label} sem lista/dicionário de habilidades")
 
                 return errors
 
@@ -3766,6 +3766,60 @@ Seja preciso, educativo e construtivo em suas análises."""
                     + "\n\nJSON OFICIAL VALIDADO:\n```json\n"
                     + json_content
                     + "\n```\n"
+                )
+
+            def _retry_json_validation_message(
+                state: Dict[str, Any],
+                json_errors: List[str],
+            ) -> str:
+                json_doc = _latest_tool_doc(state, "create_document", ".json")
+                json_content = ""
+                if json_doc is not None:
+                    try:
+                        json_content = _read_doc_text_for_retry(json_doc)
+                    except Exception as exc:
+                        json_content = f"[JSON anterior indisponivel para leitura no retry: {exc}]"
+
+                schema_hint = ""
+                if expected_document_type == TipoDocumento.ANALISE_HABILIDADES:
+                    schema_hint = (
+                        "Para ANALISAR_HABILIDADES, o content salvo por create_document "
+                        "deve ser um OBJETO JSON na raiz, nunca uma lista/array. "
+                        "Campos obrigatorios na raiz: habilidades, indicadores, "
+                        "recomendacoes, _avisos_documento, _avisos_questao. "
+                    )
+
+                return (
+                    "O JSON salvo nao respeitou o schema obrigatorio da etapa. Isto e "
+                    "erro bloqueante, mas voce tem uma tentativa explicita de reparo no "
+                    "MESMO modelo.\n"
+                    "Nesta chamada, a unica ferramenta disponivel e create_document. "
+                    "Nao gere PDF, nao responda em texto livre e nao mude o conteudo "
+                    "pedagogico; apenas salve novamente um arquivo .json com schema "
+                    "valido.\n"
+                    + schema_hint
+                    + "\nERROS DETECTADOS NO JSON ANTERIOR:\n"
+                    + "\n".join(f"- {error}" for error in json_errors)
+                    + "\n\nJSON ANTERIOR INVALIDO:\n```json\n"
+                    + json_content
+                    + "\n```\n"
+                )
+
+            def _mark_latest_json_error(
+                state: Dict[str, Any],
+                erro_msg: str,
+            ) -> None:
+                json_doc = _latest_tool_doc(state, "create_document", ".json")
+                if not json_doc:
+                    return
+                self.storage.atualizar_documento_processamento(
+                    getattr(json_doc, "id"),
+                    status=StatusProcessamento.ERRO,
+                    metadata_patch={
+                        "erro_pipeline": erro_msg,
+                        "erro_tipo": "json_schema_validation",
+                        "cost_run_id": context.cost_run_id,
+                    },
                 )
 
             def _mark_latest_pdf_error(
@@ -4018,6 +4072,40 @@ Seja preciso, educativo e construtivo em suas análises."""
             tokens_total = tokens_entrada + tokens_saida
 
             json_validation_errors = _validate_json_artifacts(final_state)
+            if (
+                json_validation_errors
+                and dual_output_expected
+                and "create_document" in tools_to_use
+            ):
+                repair_error_msg = (
+                    "Saida JSON invalida antes do retry: "
+                    + "; ".join(json_validation_errors)
+                )
+                _mark_latest_json_error(final_state, repair_error_msg)
+                resposta = await client.chat_with_tools(
+                    mensagem=_retry_json_validation_message(final_state, json_validation_errors),
+                    tools=_tools_by_names(["create_document"]),
+                    tool_registry=registry,
+                    system_prompt=system_prompt,
+                    context=context,
+                    tool_choice=(
+                        _forced_openai_tool("create_document")
+                        if is_openai_provider
+                        else None
+                    ),
+                )
+                respostas_tool.append(resposta)
+                tentativas += 1
+                final_state = _dual_output_state(respostas_tool)
+                tokens_entrada = _sum_usage(respostas_tool, "input_tokens") or _sum_usage(respostas_tool, "tokens")
+                tokens_saida = _sum_usage(respostas_tool, "output_tokens")
+                tokens_total = tokens_entrada + tokens_saida
+                alertas.append({
+                    "tipo": "aviso",
+                    "mensagem": repair_error_msg + ". JSON regenerado por retry explicito.",
+                })
+                json_validation_errors = _validate_json_artifacts(final_state)
+
             pdf_json_errors = self._validar_consistencia_pdf_json_tool_outputs(
                 final_state.get("docs_by_tool", {}),
                 expected_document_type,
