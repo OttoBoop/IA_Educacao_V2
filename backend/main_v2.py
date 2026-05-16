@@ -252,15 +252,26 @@ app.add_middleware(
 @app.exception_handler(HTTPException)
 async def http_exception_handler(request: Request, exc: HTTPException):
     trace_id = getattr(request.state, "trace_id", None)
+    if isinstance(exc.detail, dict):
+        error_payload = dict(exc.detail)
+        message = (
+            error_payload.get("message")
+            or error_payload.get("mensagem")
+            or error_payload.get("erro")
+            or "Erro na requisição"
+        )
+        error_payload["message"] = message
+        error_payload["status_code"] = exc.status_code
+        error_payload["trace_id"] = trace_id
+    else:
+        error_payload = {
+            "message": exc.detail,
+            "status_code": exc.status_code,
+            "trace_id": trace_id,
+        }
     return JSONResponse(
         status_code=exc.status_code,
-        content={
-            "error": {
-                "message": exc.detail,
-                "status_code": exc.status_code,
-                "trace_id": trace_id,
-            }
-        },
+        content={"error": error_payload},
     )
 
 

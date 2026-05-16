@@ -8159,16 +8159,26 @@
         }
 
         function formatApiErrorMessage(data) {
-            const rawMessage = data?.error?.message || data?.detail || data?.message || data?.raw;
-            if (!rawMessage) return 'Erro na requisição';
-            if (typeof rawMessage === 'string') return rawMessage;
-            if (rawMessage.mensagem) {
+            const error = data?.error || {};
+            const rawMessage = error.message || data?.detail || data?.message || data?.raw;
+            let message = 'Erro na requisição';
+            if (typeof rawMessage === 'string' && rawMessage) {
+                message = rawMessage;
+            } else if (rawMessage?.mensagem) {
                 const firstError = Array.isArray(rawMessage.erros) && rawMessage.erros.length
                     ? ` ${rawMessage.erros[0].erro || ''}`.trim()
                     : '';
-                return firstError ? `${rawMessage.mensagem} ${firstError}` : rawMessage.mensagem;
+                message = firstError ? `${rawMessage.mensagem} ${firstError}` : rawMessage.mensagem;
             }
-            return 'Erro na requisição';
+            const provider = error.provider || rawMessage?.provider;
+            const providerStatus = error.provider_status_code || rawMessage?.provider_status_code;
+            const retryable = error.retryable ?? rawMessage?.retryable;
+            const meta = [];
+            if (provider) meta.push(`provider ${provider}`);
+            if (providerStatus) meta.push(`código ${providerStatus}`);
+            if (retryable === true) meta.push('retry possível');
+            if (retryable === false) meta.push('retry não indicado');
+            return meta.length ? `${message} (${meta.join(' • ')})` : message;
         }
 
         async function api(endpoint, options = {}) {
@@ -8703,10 +8713,13 @@
                 if (!stageError) return '';
                 const mensagem = stageError.mensagem || stageError.erro || stageError.detail || 'Falha sem detalhe informado.';
                 const meta = [];
-                if (stageError.codigo) meta.push('Código ' + stageError.codigo);
+                const codigo = stageError.codigo || stageError.erro_codigo || stageError.provider_status_code;
+                if (codigo) meta.push('Código ' + codigo);
                 if (stageError.provider) meta.push('Provider ' + stageError.provider);
                 if (stageError.modelo) meta.push('Modelo ' + stageError.modelo);
                 if (stageError.tipo) meta.push('Tipo ' + stageError.tipo);
+                if (stageError.retryable === true) meta.push('Retry possível');
+                if (stageError.retryable === false) meta.push('Retry não indicado');
                 if (Array.isArray(stageError.documentos_faltantes) && stageError.documentos_faltantes.length) {
                     meta.push('Faltando: ' + stageError.documentos_faltantes.join(', '));
                 }
