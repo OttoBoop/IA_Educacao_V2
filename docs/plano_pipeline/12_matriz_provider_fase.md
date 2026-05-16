@@ -18,14 +18,14 @@
 `2885da7`, `99b8c3c`, `392ec7c`, `460643f`, `54d083e`,
 `854cec7`, `b07472f`, `dc5884f`, `0d5ab9d`, `c870ed4`, `45f5cf8`,
 `4094bda`, `4d8f73d`, `f40acf3`, `700b088`, `1307909`, `bed0c08`, `feaf5d0`,
-`d47d748`, `c53fae6`, `9ab53df`, `1454e68`, `3fce335`
+`d47d748`, `c53fae6`, `9ab53df`, `1454e68`, `3fce335`, `33fb7d5`
 
 ## Status Oficial De Deploy
 
 - O servico oficial em 2026-05-17 e
   `srv-d5t8gbh4tr6s738fr3s0` (`IA_Educacao_V2`), branch `main`,
   `rootDir=backend`, URL `https://ia-educacao-v2.onrender.com`.
-- `/api/deploy-info` confirmou o runtime backend `3fce335` com
+- `/api/deploy-info` confirmou o runtime backend `33fb7d5` com
   `source=RENDER_GIT_COMMIT`; esse e o gate primario atual.
 - O HTML marker pode ficar stale e nao prova runtime antigo: commits de
   frontend/docs/marker podem nao disparar deploy quando o servico Render usa
@@ -92,6 +92,12 @@
   Google `429` antes de criar novo documento parcial; por isso a correcao ficou
   validada por testes e deploy, mas a reproduçao live exata segue bloqueada por
   quota Google.
+- Render live chegou a `33fb7d5`: `create_document` em etapas de pipeline agora
+  usa `ToolExecutionContext.atividade_id`/`aluno_id` em vez de valores
+  inventados pelo modelo. Re-smoke Gemini 2.5 Flash Lite
+  `task_52e5fa9020a0` nao repetiu `Atividade não encontrada`; falhou alto por
+  tentativa indevida de PDF via `create_document` e `IndentationError` no
+  `execute_python_code`, com custo rastreavel no documento `ea407d2ce87fb99a`.
 - Docs antigos registram que auto-deploy Git nao funciona de forma confiavel; o
   ciclo usou deploy via API Render com token local seguro, sem imprimir segredo.
 - Smokes live anteriores continuam citados com seus markers; smokes de
@@ -116,6 +122,7 @@
 |-----------------|:---:|:---:|:---:|:---:|:---:|:---:|
 | **Claude Haiku 4.5** (`588f3efe7975`) | ⏸️ | ⏸️ | ⏸️ | 🚫 | 🚫 | 🚫 |
 | **Gemini 2.5 Flash** (`gem25flash001`) | ✅ | ✅ | ✅ | 🚫 | ⏸️ | ⏸️ |
+| **Gemini 2.5 Flash Lite** (`gem25lite001`) | ⏸️ | ⏸️ | ⏸️ | ❌ | ⏸️ | ⏸️ |
 | **Gemini 3 Flash** (`gem3flash001`) | ✅ | ✅ | ✅ | ⚠️ | ⚠️ | ⚠️ |
 | **GPT-5 Nano** (`gpt5nano001`) | ✅ | ✅ | ⚠️ | ⚠️ | ⚠️ | ✅ |
 | **GPT-5.4 Mini** (`gpt54mini001`) | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
@@ -178,6 +185,14 @@ Nota sweep de conexao 2026-05-17: OpenAI (`gpt-4o`, GPT-4.1, GPT-5 Nano,
 GPT-5.4 Mini, o3 Mini, o4 Mini), Gemini 2.5 Flash/Lite e Gemini 3 Flash
 retornaram `success=true`; Gemini 2.5 Pro retornou `429`; Haiku/Sonnet seguem
 bloqueados por creditos Anthropic.
+Nota Gemini 2.5 Flash Lite: conexao `success=true`, mas `corrigir` nao esta
+pipeline-ready. O smoke `task_6ee6a6386cea` revelou um bug do sistema, corrigido
+em `33fb7d5`: model input com nome da atividade nao deve sobrescrever o id
+server-side do contexto. O re-smoke `task_52e5fa9020a0` no runtime `33fb7d5`
+removeu esse erro de storage e falhou alto por contrato/modelo: tentativa de PDF
+via `create_document` e `IndentationError` no `execute_python_code`. O custo do
+erro ficou ok: documento `ea407d2ce87fb99a`, `14772/1805` tokens,
+`US$ 0.001649`.
 Nota Nano/relatorio: a full Nano `task_f0c0f15a2f27`, no runtime `99b8c3c`,
 completou as 6 etapas, mas revelou falso verde em `GERAR_RELATORIO`: correcao
 JSON `cff76af34d9248a6` tinha `nota_final=8.0` e o relatorio JSON/PDF

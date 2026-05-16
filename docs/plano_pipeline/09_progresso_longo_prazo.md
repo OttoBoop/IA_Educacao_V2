@@ -77,6 +77,21 @@ antes do erro. `/api/custos/resumo?limit=60` ficou com `runs_precificados=25`,
 `runs_bloqueados=2`, ambos historicos por `token_split_missing`; sem novo falso
 verde e sem novo bloqueio criado por esse smoke.
 
+Atualizacao de tool-use Google em 2026-05-17 no runtime `33fb7d5`: o smoke
+Gemini 2.5 Flash Lite `task_6ee6a6386cea` revelou bug real em `create_document`:
+o modelo passou `atividade_id="Smoke Paulo Pipeline 2026-05-16"` e a tool
+tentou salvar com esse nome em vez do id oficial, gerando
+`Atividade não encontrada`. O commit `33fb7d5` passou a preferir o
+`ToolExecutionContext` server-side para `atividade_id`/`aluno_id` em etapas de
+pipeline. Validacoes: `py_compile`, `git diff --check`, `test_warning_system.py`
+com 76 testes e regressao curta com 161 testes. Deploy confirmado por
+`check_deploy.sh 33fb7d5`, `/api/deploy-info`, `/api/health` e Render MCP
+`dep-d84ua8flk1mc73em0f60`. Re-smoke `task_52e5fa9020a0` removeu o erro de
+storage: a etapa agora falha alto por erro real do modelo (`create_document`
+tentou PDF e `execute_python_code` gerou `IndentationError`). O custo do erro
+ficou rastreavel: documento `ea407d2ce87fb99a`, `tool_f0e5ce2a3a55`,
+`14772/1805` tokens, `US$ 0.001649`, `status=erro`, `custo_status=ok`.
+
 Atualizacao de 2026-05-17 no runtime `700b088`: o ciclo `f40acf3` alinhou
 `PROMPTS_PADRAO` e `STAGE_TOOL_INSTRUCTIONS` para `CORRIGIR`,
 `ANALISAR_HABILIDADES` e `GERAR_RELATORIO`, e tornou obrigatorios campos de
@@ -352,6 +367,9 @@ Estabilizar o NOVO CR para que a pipeline:
 - Commit funcional de usage parcial em erro de provider apos tools:
   `1454e68`/`3fce335` (Render live; testes locais 158; smoke Gemini 2.5 Flash
   `task_81f274a6f510` falhou alto por quota antes de criar novo artefato).
+- Commit funcional para IDs server-side em `create_document` de pipeline:
+  `33fb7d5` (Render live; `task_52e5fa9020a0` removeu erro de storage por
+  nome de atividade e expôs erro real de PDF/codigo do Gemini Lite).
 - Commit funcional de preparo Supabase `token_usage`: `55e168a`.
 - Commit funcional de diagnostico backend `token_usage`: `4f27dae`.
 - Commit de migration dedicada `token_usage`: `b2dc88b` (GitHub; nao muda o
