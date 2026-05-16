@@ -36,9 +36,9 @@ continua sendo `9b68de1`, agora incluido no runtime `a3e95e8`. Use
   `rootDir=backend`, URL `https://ia-educacao-v2.onrender.com`.
 - `/api/deploy-info` confirmou o runtime backend `a3e95e8` com
   `source=RENDER_GIT_COMMIT`; esse e o gate primario atual para codigo live.
-- `origin/main` esta alinhado com o ciclo `a3e95e8`; commits
-  documentais posteriores podem mudar o hash sem mudar comportamento de
-  provider/pipeline.
+- `origin/main` pode estar em commit documental posterior a `a3e95e8`; o gate
+  de comportamento de provider/pipeline continua sendo `/api/deploy-info` com
+  no-cache e os smokes live.
 - Smoke pos-deploy de catalogo: `/api/settings/model-catalog/calculate-cost`
   retornou para o perfil `74257/12403`: Gemini 2.5 Flash `US$ 0.053285`,
   Gemini 2.5 Flash Lite `US$ 0.012387`, Gemini 3 Flash `US$ 0.074338`.
