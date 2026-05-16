@@ -984,7 +984,7 @@ nem datasets maiores.
 
 **Proximos passos:**
 1. Manter deploy oficial confirmado por `/api/deploy-info` antes de cada smoke
-   novo; o codigo funcional mais recente confirmado e `325c200`. Commits
+   novo; o codigo funcional mais recente confirmado e `148d8b3`. Commits
    documentais posteriores podem mudar o hash de `/api/deploy-info` sem alterar
    comportamento de pipeline.
 2. Aplicar/validar a migration Supabase `token_usage` antes de chamar custo de
@@ -1003,5 +1003,7 @@ nem datasets maiores.
    pode fechar a etapa, mas o documento de erro continua visivel na lista para
    auditoria e custo. Status: confirmado em `b8e14db` para HTML live e fixture
    Diana com retry concluido; `325c200` confirmou Eric/Lista0 como parcial/erro
-   quando a correcao nao tem questao/correcao avaliavel; falta revisao de
-   ranking/dashboard e mensagens finais de provider/custo.
+   quando a correcao nao tem questao/correcao avaliavel; `148d8b3` confirmou
+   ranking/estatisticas/dashboard com rota correta e media zero preservada.
+   Falta desempenho de agregados em turma grande e mensagens finais de
+   provider/custo.

@@ -10,12 +10,12 @@ um deve ser lido, o que ainda vale, o que ficou historico, e quais fatos precisa
 guiar os proximos ciclos.
 
 Atualizacao de controle de 2026-05-17: o codigo funcional mais recente
-confirmado no site oficial e `325c200`, validado por `/api/deploy-info`,
-`/api/health`, `check_deploy.sh` e smoke live de HTML/documentos. Commits
-documentais posteriores podem alterar o hash de `/api/deploy-info` sem mudar o
-comportamento de pipeline; para diagnostico tecnico, comparar sempre com o
-ultimo hash funcional registrado. A auditoria da Lista0 tambem foi rechecada no
-site oficial: a atividade `126e8b5ad7dd6d59` possui 63
+confirmado no site oficial e `148d8b3`, validado por `/api/deploy-info`,
+`/api/health`, `check_deploy.sh` e smoke live de HTML/documentos/ranking/
+dashboard. Commits documentais posteriores podem alterar o hash de
+`/api/deploy-info` sem mudar o comportamento de pipeline; para diagnostico
+tecnico, comparar sempre com o ultimo hash funcional registrado. A auditoria da
+Lista0 tambem foi rechecada no site oficial: a atividade `126e8b5ad7dd6d59` possui 63
 alunos, 38 com prova e 34 corrigidos, mas o gabarito base
 `dbfe3a77a631489f` cobre somente `Lista 0, Exercicio 5`, enquanto o enunciado
 `5dc75513e958c25b` lista exercicios 1 a 7. Assim, a Lista0 nao pode ser tratada
@@ -355,7 +355,7 @@ detalhar e auditar estas linhas.
 | Frente | Temos hoje | Limite da afirmacao |
 |---|---|---|
 | Documentacao | Doc 09 como painel curto; Doc 14 como auditoria mestre; Doc 05/12 com notas de status | Manter Doc 09 curto e Doc 14 detalhado; registrar novos ciclos sem criar doc extra. |
-| Git/GitHub | `/api/deploy-info` confirmou runtime `325c200`; `origin/main` esta alinhado com os fixes de dashboard de custo, tool-use Google faseado, consistencia PDF/JSON por feedback coerente, erro por aluno/etapa na sidebar, bloqueio anti-`nota_final=N/A`, guarda contra PDF auto-fallback, rejeicao de JSON embrulhado em Markdown/prosa, retorno Path 2 com etapa real/JSON parseado, schema minimo runtime, cobertura anti-regressao para etapas tardias, cobertura de PDF stale, contrato de prompts tardios, rastreabilidade semantica de correcao, cabecalho PDF real, consistencia interna de notas, contrato de erro/chat por provider/UI, resultado parcial obedecendo `status=erro` e correcao sem itens avaliaveis bloqueada | Nao usar somente marker HTML como gate quando Render `rootDir=backend` ignora commits sem backend; combinar `/api/deploy-info`, deploy list quando disponivel e comportamento live. |
+| Git/GitHub | `/api/deploy-info` confirmou runtime `148d8b3`; `origin/main` esta alinhado com os fixes de dashboard de custo, tool-use Google faseado, consistencia PDF/JSON por feedback coerente, erro por aluno/etapa na sidebar, bloqueio anti-`nota_final=N/A`, guarda contra PDF auto-fallback, rejeicao de JSON embrulhado em Markdown/prosa, retorno Path 2 com etapa real/JSON parseado, schema minimo runtime, cobertura anti-regressao para etapas tardias, cobertura de PDF stale, contrato de prompts tardios, rastreabilidade semantica de correcao, cabecalho PDF real, consistencia interna de notas, contrato de erro/chat por provider/UI, resultado parcial obedecendo `status=erro`, correcao sem itens avaliaveis bloqueada, rotas agregadas protegidas e media zero preservada | Nao usar somente marker HTML como gate quando Render `rootDir=backend` ignora commits sem backend; combinar `/api/deploy-info`, deploy list quando disponivel e comportamento live. |
 | Pipeline P4 | Bloqueio de extracao de respostas sem prova valida esta no codigo publicado | Precisa smoke dedicado apenas se P4 voltar a ser alvo. |
 | Pipeline P5/P6 | Preservacao de `_documentos_faltantes`; `ad7e00e` bloqueia `GERAR_RELATORIO` sem `nota_final` numerica confiavel | Ainda falta caçar outros fallbacks antigos, mas `nota_final=N/A` nao e mais aceite final no executor de relatório. |
 | Schema/avisos | Defaults `_avisos_*`, visualizador melhorado, `f40acf3` alinhando prompts/tool instructions de `CORRIGIR`, `ANALISAR_HABILIDADES` e `GERAR_RELATORIO`; `700b088` exigindo rastreabilidade de resposta/gabarito em `CORRIGIR`; `1307909`/`bed0c08`/`feaf5d0` bloqueando literal divergente, cabecalho PDF fake e totais incoerentes | Ainda falta distinguir default de output real do modelo e ampliar checagens semanticas para respostas mais abertas/datasets maiores. |
@@ -373,15 +373,15 @@ detalhar e auditar estas linhas.
 | Custos | Registrar falhas que consomem tokens sem documento final | Sucesso com documento ja tem custo medido; falha ainda pode sumir. |
 | Metadata | Revalidar provider/modelo/tokens/tempo nas rotas e providers restantes | GPT-5.4 Mini ja mostrou metadata e conteudo JSON coerente nas 6 etapas da fixture simples; Gemini/Nano/Haiku/GPT-4o ainda precisam matriz atualizada. |
 | Providers | Revalidar Gemini, Nano, Haiku e GPT-4o nas etapas restantes, especialmente extracoes e pipeline completa | Resultado historico ou schema parseavel nao prova qualidade de conteudo. |
-| UI de erro | `98fafc9` publica `stage_errors` por aluno/etapa no task-progress e renderiza a causa na sidebar; `9ab53df` normaliza erro estruturado e mostra provider/codigo/retry em API errors e stage errors; `b8e14db` faz resultado parcial e cards de documento obedecerem `status=erro`; `325c200` bloqueia `completo=true` para correcao sem itens avaliaveis e atualiza historico/pendencias/status | Falta expandir o mesmo padrao para ranking/dashboard e mensagens menos brutas. |
+| UI de erro | `98fafc9` publica `stage_errors` por aluno/etapa no task-progress e renderiza a causa na sidebar; `9ab53df` normaliza erro estruturado e mostra provider/codigo/retry em API errors e stage errors; `b8e14db` faz resultado parcial e cards de documento obedecerem `status=erro`; `325c200` bloqueia `completo=true` para correcao sem itens avaliaveis e atualiza historico/pendencias/status; `148d8b3` faz ranking/estatisticas/dashboard obedecerem rota correta e media `0.0` | Falta melhorar mensagens finais de provider/custo e desempenho dos agregados em turma grande. |
 | Dados | Reclassificar "fantasmas" sem deletar PDF valido por `/conteudo=null` | Evita apagar prova respondida real. |
-| Git/deploy | Commit `2d72c6b` adicionou `/api/deploy-info`; o codigo funcional mais recente confirmado e `325c200` | Usar `/api/deploy-info` antes de novos smokes; marker HTML e apenas auxiliar; commits documentais podem mudar o hash sem mudar comportamento. |
+| Git/deploy | Commit `2d72c6b` adicionou `/api/deploy-info`; o codigo funcional mais recente confirmado e `148d8b3` | Usar `/api/deploy-info` antes de novos smokes; marker HTML e apenas auxiliar; commits documentais podem mudar o hash sem mudar comportamento. |
 
 ### Bloqueios E Alertas
 
 | Item | Estado | Acao correta |
 |---|---|---|
-| Render/site oficial | `/api/deploy-info` confirmou `325c200` como deploy live no patch de resultado parcial/historico/status obedecendo `status=erro` e itens avaliaveis | Tratar HTML marker como auxiliar; usar smoke real para aceite; se doc-only posterior mudar hash, preservar `325c200` como ultimo codigo funcional validado. |
+| Render/site oficial | `/api/deploy-info` confirmou `148d8b3` como deploy live no patch de resultado parcial/historico/status obedecendo `status=erro`, itens avaliaveis, rotas agregadas protegidas e media zero | Tratar HTML marker como auxiliar; usar smoke real para aceite; se doc-only posterior mudar hash, preservar `148d8b3` como ultimo codigo funcional validado. |
 | Guard `5527e26` | Runtime confirmado por Render MCP; smoke Nano `extrair_gabarito` pos-guard passou com 7 respostas reais | Guard publicado; falta rerodar Gemini. |
 | Respostas tudo ilegivel/vazio/inferidas | Nano ja produziu `extrair_respostas` com todas as respostas sem conteudo, depois conteudo so de Q7, depois conteudo suspeito inferido do enunciado, depois JSON verde inconsistente; o PDF de Eric tem paginas manuscritas e texto extraivel de Q7 | Desde `1ce3d23`, o caso final falha alto no executor e registra custo sem documento. Agora falta corrigir prompt/entrada/modelo para extrair conteudo real ou marcar Nano como inadequado para prova manuscrita. |
 | Gemini quota | Pipeline sequencial `task_5e97bbee896e` falhou em `corrigir` por `429 RESOURCE_EXHAUSTED`, limite free tier `20` para `gemini-3-flash` | Nao rerodar de imediato; tratar como bloqueio de provider/quota, nao como sucesso nem como falha silenciosa. |
@@ -3673,7 +3673,7 @@ claro. O que ainda existe para fazer:
 | Provider revalidation | Smoke/producao | Matriz Doc 12 registra GPT-5.4 Mini full smoke em fixture simples, GPT-4o full smoke (`task_68b19146a95b`) e Gemini 2.5 Flash com extracoes OK/tool-use corrigido mas bloqueado por quota; smoke `task_81f274a6f510` em `3fce335` confirma erro alto Google `429` sem novo falso verde; Gemini 2.5 Flash Lite `task_52e5fa9020a0` confirmou caminho Google Lite com erro alto de PDF/codigo, e `task_124bf0e8d7bf` em `0f84552` confirmou erro alto de JSON/PDF divergentes; GPT-5 Nano `task_90eb0936b7ce` confirmou `corrigir` como falha alta por PDF/JSON divergentes; GPT-4.1 `task_f6851ed535b8` confirmou full pipeline unico com JSON/PDF coerentes e custos medidos. Continua incompleta ate novos smokes por provider/rota/dataset. |
 | PDFs/UI GPT-5.4 Mini/GPT-4o | Codigo/testes/deploy/smoke | `task_a5f0d734f0b3` completou 6 etapas, JSONs passaram inspeção semantica inicial e PDFs existem; `0ac92f0` corrigiu parte do layout, mas `task_605512496b0d` provou divergencia PDF/JSON; `2052a01` transformou essa divergencia em erro alto; `3a77a17` validou retry explicito do PDF; `3e6be20` bloqueia Feedback Geral truncado; GPT-4o passou as etapas finais com artefatos ruins marcados como erro; `task_42e3b303c39a` confirmou PDF final coerente em `corrigir`. Ainda falta repetir em datasets maiores e melhorar UI de erro para o usuario final. |
 | Gabarito incompleto bloqueia correção | Codigo/testes/deploy/smoke | `3a7dfea` bloqueia `CORRIGIR` com `MISSING_CONTENT` no gabarito; continua importante para datasets como Lista0, embora a fixture Diana tenha completado. |
-| UI de erros | Produto/frontend | Sidebar ja mostra a causa por aluno/etapa desde `98fafc9`; resultado parcial agora distingue `status=erro` de progresso concluido e mostra banner/documento em erro; `b8e14db` foi deployado e smoke live confirmou HTML e documento em erro visivel na fixture Diana; `325c200` corrigiu historico rapido, comparativo, atividades pendentes e status pipeline para ignorarem documentos `status=erro`/sem itens avaliaveis; ainda falta ranking/dashboard e mensagens completas para provider/custo. |
+| UI de erros | Produto/frontend | Sidebar ja mostra a causa por aluno/etapa desde `98fafc9`; resultado parcial agora distingue `status=erro` de progresso concluido e mostra banner/documento em erro; `b8e14db` foi deployado e smoke live confirmou HTML e documento em erro visivel na fixture Diana; `325c200` corrigiu historico rapido, comparativo, atividades pendentes e status pipeline para ignorarem documentos `status=erro`/sem itens avaliaveis; `148d8b3` corrigiu ranking/estatisticas/dashboard para nao mascararem rota dinamica nem media zero. |
 | Limpeza de dados | Dados | "Fantasmas" precisam reclassificacao; PDF com `/conteudo=null` nao pode ser deletado. |
 
 ### Agregado: Ranking/Dashboard
@@ -3686,11 +3686,20 @@ Atualizacao deste ciclo:
   `ranking` era tratado como `aluno_id`, retornando resultado parcial em vez do
   ranking.
 - O dashboard tambem convertia media `0` em `null` por usar `if media`.
-- Patch local: registrar rotas estaticas antes da dinamica e preservar zero com
-  checagem `is not None`.
+- Patch: registrar rotas estaticas antes da dinamica e preservar zero com
+  checagem `is not None`; commit `148d8b3`.
 - Validacao local: `test_erro_pipeline.py` com `81 passed`, incluindo cobertura
   para ordem das rotas e media zero.
-- Falta: deploy/smoke oficial desse patch.
+- Deploy/smoke oficial: Render confirmou
+  `148d8b30e2a2a126792d8c94831cd1ae69f5e3f6` por `check_deploy.sh`,
+  `/api/deploy-info` e `/api/health`. O smoke da Lista0 confirmou
+  `/estatisticas` com `corrigidos=19`, `pendentes=44`, `menor_nota=0.0`;
+  `/ranking` com `total=63`, Eric como nao corrigido e Alice com `nota=0.0`;
+  `/dashboard/turma/3f3ab03dfe783f30` com Eric `media=null` e Alice
+  `media=0.0`.
+- Falta: desempenho. O dashboard da turma grande demorou cerca de 85s no smoke
+  live, indicando leituras repetidas/N+1 nos agregados. O proximo ciclo deve
+  otimizar ranking/dashboard sem relaxar regras de erro alto.
 
 Regra de continuidade:
 

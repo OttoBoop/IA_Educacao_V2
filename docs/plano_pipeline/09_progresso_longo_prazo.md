@@ -5,20 +5,22 @@
 **Status geral:** o servico oficial Render
 `srv-d5t8gbh4tr6s738fr3s0` (`IA_Educacao_V2`, branch `main`, URL
 `https://ia-educacao-v2.onrender.com`) tem como codigo funcional mais recente
-confirmado o commit `325c200` (`fix: require evaluated items for correction results`),
+confirmado o commit `148d8b3` (`fix: protect ranking routes and zero averages`),
 validado por `/api/deploy-info`, `/api/health` e
-`./scripts/check_deploy.sh 325c20023fa940766b9dcf116b9a2bcbc8765e7d`. Se
+`./scripts/check_deploy.sh 148d8b30e2a2a126792d8c94831cd1ae69f5e3f6`. Se
 `/api/deploy-info` apontar commit documental posterior, comparar com este hash
 funcional antes de concluir que houve nova mudanca de runtime. O ciclo
 publicado faz resultado, historico, pendencias e status de pipeline obedecerem
 `status=erro` e conteudo avaliavel: documento em erro nao conta como progresso,
 correcao sem questao/correcao com nota nao vira `completo=true`, retry concluido
 pode fechar a etapa sem esconder erro anterior, e documentos de erro continuam
-visiveis com provider/modelo/tokens/causa. GPT-4.1, GPT-5.4 Mini e GPT-4o
-seguem referencias de pipeline confirmadas na fixture Diana; Google esta
-limitado por quota `429` nos smokes recentes, Anthropic segue bloqueado por
-credito, e Supabase `token_usage` continua ausente (`PGRST205`), deixando custo
-duravel como gate real.
+visiveis com provider/modelo/tokens/causa. O mesmo deploy corrigiu as rotas
+agregadas de ranking/estatisticas, que antes eram capturadas pela rota dinamica
+de aluno, e preservou medias legitimas `0.0` no dashboard/historico/comparativos.
+GPT-4.1, GPT-5.4 Mini e GPT-4o seguem referencias de pipeline confirmadas na
+fixture Diana; Google esta limitado por quota `429` nos smokes recentes,
+Anthropic segue bloqueado por credito, e Supabase `token_usage` continua ausente
+(`PGRST205`), deixando custo duravel como gate real.
 
 Atualizacao Lista0 de 2026-05-17: a atividade real `Lista0`
 (`126e8b5ad7dd6d59`) tem documentos base cadastrados e 63 alunos
@@ -2679,8 +2681,24 @@ Critério de pronto: lista de limpeza segura e revisada.
 - Validacoes locais: `py_compile` de `routes_resultados.py`; `git diff --check`;
   `test_erro_pipeline.py` passou com `81 passed`, incluindo teste de ordem das
   rotas e media zero no dashboard.
-- Status antes do deploy: patch validado localmente. Proximo passo e commit,
-  deploy oficial e smoke live de ranking/estatisticas/dashboard.
+- Commit/deploy: `148d8b3` (`fix: protect ranking routes and zero averages`)
+  publicado em `origin/main`; Render confirmou
+  `148d8b30e2a2a126792d8c94831cd1ae69f5e3f6` em 210s por
+  `./scripts/check_deploy.sh`, `/api/deploy-info` e `/api/health`.
+- Smoke live de agregados:
+  - `/api/resultados/126e8b5ad7dd6d59/estatisticas` voltou a responder
+    estatisticas reais, com `corrigidos=19`, `pendentes=44`,
+    `media=1.2415789473684211` e `menor_nota=0.0`.
+  - `/api/resultados/126e8b5ad7dd6d59/ranking` voltou a responder ranking real:
+    `total=63`; Eric (`660e9421b246ad3f`) aparece como `corrigido=false`,
+    `nota=null`, `posicao=0`; Alice (`9b0f104fa9e7c5d9`) preserva
+    `nota=0.0`, `corrigido=true`, `posicao=7`.
+  - `/api/dashboard/turma/3f3ab03dfe783f30` preserva Eric com `media=null` e
+    Alice com `media=0.0`.
+- Novo achado: dashboard/ranking de turma grande ainda e lento no site oficial
+  (dashboard levou cerca de 85s para parsear a resposta da Lista0). Proximo
+  alvo do loop: reduzir leituras repetidas/N+1 nos agregados sem relaxar as
+  regras de erro alto.
 
 ## Riscos Abertos
 
