@@ -17,14 +17,15 @@
 `2d72c6b`, `f2211bb`, `5a3daca`, `92bd095`, `f6b040c`, `2cad38a`,
 `2885da7`, `99b8c3c`, `392ec7c`, `460643f`, `54d083e`,
 `854cec7`, `b07472f`, `dc5884f`, `0d5ab9d`, `c870ed4`, `45f5cf8`,
-`4094bda`, `4d8f73d`, `f40acf3`, `700b088`, `1307909`, `bed0c08`, `feaf5d0`
+`4094bda`, `4d8f73d`, `f40acf3`, `700b088`, `1307909`, `bed0c08`, `feaf5d0`,
+`d47d748`, `c53fae6`
 
 ## Status Oficial De Deploy
 
 - O servico oficial em 2026-05-17 e
   `srv-d5t8gbh4tr6s738fr3s0` (`IA_Educacao_V2`), branch `main`,
   `rootDir=backend`, URL `https://ia-educacao-v2.onrender.com`.
-- `/api/deploy-info` confirmou o runtime backend `feaf5d0` com
+- `/api/deploy-info` confirmou o runtime backend `c53fae6` com
   `source=RENDER_GIT_COMMIT`; esse e o gate primario atual.
 - O HTML marker pode ficar stale e nao prova runtime antigo: commits de
   frontend/docs/marker podem nao disparar deploy quando o servico Render usa
@@ -73,6 +74,12 @@
 - Render live agora chegou a `feaf5d0` por `/api/deploy-info`; marker HTML segue
   apenas auxiliar. O smoke `task_ec7acffbb6d4` validou `corrigir` com GPT-5.4
   Mini depois das guardas de literal, cabecalho PDF e soma/totais de nota.
+- Render live chegou depois a `d47d748` e `c53fae6`: `d47d748` removeu o
+  marcador HTML `DEBUG_V3_MARKER_2026` do corpo de `/api/chat`; `c53fae6`
+  preserva HTTP status real de provider no chat. Smokes live: GPT-5.4 Mini
+  retornou HTTP 200 com JSON parseavel; Gemini 3 Flash retornou HTTP 429
+  estruturado por quota Google; Claude Haiku retornou HTTP 400 estruturado por
+  credito Anthropic insuficiente.
 - Docs antigos registram que auto-deploy Git nao funciona de forma confiavel; o
   ciclo usou deploy via API Render com token local seguro, sem imprimir segredo.
 - Smokes live anteriores continuam citados com seus markers; smokes de
@@ -298,7 +305,8 @@ documento verde. Portanto:
 | Provider/Modelo | Chat |
 |-----------------|:---:|
 | **Claude Haiku 4.5** | ⏸️ |
-| **Gemini 3 Flash** | ✅ |
+| **Gemini 3 Flash** | 🚫 |
+| **GPT-5.4 Mini** | ✅ |
 | **GPT-5 Nano** | ✅ |
 | **GPT-4o** | ⏸️ |
 
@@ -307,6 +315,17 @@ documento verde. Portanto:
 - GPT-5 Nano (`gpt5nano001`): respondeu JSON simples, 526 tokens, HTTP 200.
 - Claude Haiku 4.5 (`588f3efe7975`): HTTP 500 com erro Anthropic de credito
   baixo. Bloqueado por billing, nao por codigo do chat.
+
+**Smokes live de chat em 2026-05-17 (`c53fae6`):**
+- GPT-5.4 Mini (`gpt54mini001`): HTTP 200, JSON parseavel, 413 tokens, sem
+  marcador `DEBUG_V3_MARKER_2026`.
+- Gemini 3 Flash (`gem3flash001`): HTTP 429 com erro estruturado
+  `provider_api_error`, `provider=Google`, `provider_status_code=429`,
+  `retryable=true`. Status atual de chat: bloqueado por quota, embora tenha
+  historico de chat OK.
+- Claude Haiku 4.5 (`588f3efe7975`): HTTP 400 com erro estruturado
+  `provider_api_error`, `provider=Anthropic`, `provider_status_code=400`,
+  `retryable=false`, credito insuficiente.
 
 **Smoke live de pipeline em 2026-05-15:**
 - Gemini 3 Flash (`gem3flash001`) em `pipeline-completo`, aluno Eric,

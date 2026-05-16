@@ -4,9 +4,12 @@
 **Responsavel operacional:** Paulo
 **Status geral:** o servico oficial Render
 `srv-d5t8gbh4tr6s738fr3s0` (`IA_Educacao_V2`, branch `main`, URL
-`https://ia-educacao-v2.onrender.com`) esta em `feaf5d0`, confirmado por
-`/api/deploy-info`, `/api/health` e `./scripts/check_deploy.sh feaf5d0`. O
-estado oficial mais recente endurece `CORRIGIR` contra tres falsos verdes:
+`https://ia-educacao-v2.onrender.com`) esta em `c53fae6`, confirmado por
+`/api/deploy-info`, `/api/health` e `./scripts/check_deploy.sh c53fae6`. O
+estado oficial mais recente preserva status HTTP real de erro de provider no
+`POST /api/chat`, depois de `d47d748` remover o marcador
+`DEBUG_V3_MARKER_2026` que corrompia respostas JSON. Antes disso, `feaf5d0`
+endureceu `CORRIGIR` contra tres falsos verdes:
 troca/contradicao de resposta, PDF com cabecalho placeholder e JSON com
 `nota_final` que nao bate com a soma de `questoes[].nota`. O smoke oficial
 `task_ec7acffbb6d4` com GPT-5.4 Mini (`gpt54mini001`) provou o guard: a primeira
@@ -21,6 +24,18 @@ com GPT-5.4 Mini (`task_a5f0d734f0b3`), mas os ciclos posteriores endureceram
 PDF/JSON, schema runtime, avisos, linhagem, rastreabilidade semantica e
 consistencia interna de notas. Esse marco nao substitui a matriz completa de
 providers nem valida todos os datasets reais.
+
+Atualizacao chat/providers de 2026-05-17 no runtime `c53fae6`: o smoke oficial
+`POST /api/chat` com GPT-5.4 Mini (`gpt54mini001`) retornou HTTP 200, JSON
+parseavel e sem marcador de debug (`tokens_used=413`). O mesmo smoke com
+Gemini 3 Flash (`gem3flash001`) retornou HTTP 429 estruturado, com
+`provider=Google`, `provider_status_code=429` e `retryable=true`; isso e quota
+de provider, nao falha silenciosa nem motivo para trocar modelo. Claude Haiku
+4.5 (`588f3efe7975`) retornou HTTP 400 estruturado, com
+`provider=Anthropic`, `provider_status_code=400`, `retryable=false` e mensagem
+de credito Anthropic insuficiente. A pendencia de custo duravel segue igual:
+`/api/custos/status?limit=80` continua `ok=false` por `public.token_usage`
+ausente no Supabase (`PGRST205`).
 
 Atualizacao de 2026-05-17 no runtime `700b088`: o ciclo `f40acf3` alinhou
 `PROMPTS_PADRAO` e `STAGE_TOOL_INSTRUCTIONS` para `CORRIGIR`,
