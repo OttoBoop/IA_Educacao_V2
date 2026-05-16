@@ -113,6 +113,33 @@ class TestBlockingParsedResponses:
         assert erro is not None
         assert "JSON inconsistente" in erro
 
+    def test_extrair_respostas_raciocinio_nao_pode_corrigir(self):
+        from executor import EtapaProcessamento, PipelineExecutor
+
+        executor = PipelineExecutor.__new__(PipelineExecutor)
+        erro = executor._erro_resposta_parseada(
+            EtapaProcessamento.EXTRAIR_RESPOSTAS,
+            {
+                "aluno": "Diana Omega",
+                "respostas": [
+                    {
+                        "questao_numero": 2,
+                        "resposta_aluno": "34",
+                        "em_branco": False,
+                        "ilegivel": False,
+                        "raciocinio_parcial": (
+                            "Aluno respondeu 34, mas o correto deveria ser 68."
+                        ),
+                    }
+                ],
+                "questoes_respondidas": 1,
+                "questoes_em_branco": 0,
+            },
+        )
+
+        assert erro is not None
+        assert "julgamento/correcao" in erro
+
 
 class TestExtrairRespostasContextoQuestoes:
     """EXTRAIR_RESPOSTAS deve receber questoes extraidas no prompt, nao so anexo."""

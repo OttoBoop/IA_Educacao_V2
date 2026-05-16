@@ -308,6 +308,8 @@ O campo raciocinio_parcial que você preencherá é evidência crítica para an�
 - Use "Questões da prova" apenas como mapa para numerar e localizar respostas.
 - O campo `resposta_aluno` deve vir somente do que estiver visivelmente escrito na prova respondida, no texto extraído dela ou nos anexos/imagens do aluno.
 - Nunca preencha `resposta_aluno` com o enunciado, com o gabarito, com uma solução esperada, com conhecimento externo ou com um "plano de resolução" que o aluno não escreveu.
+- Nesta etapa você NÃO corrige a prova e NÃO compara a resposta com o gabarito.
+- Não escreva em `raciocinio_parcial` frases de julgamento como "correto", "incorreto", "deveria ser", "valor esperado", "acertou" ou "errou". A correção é responsabilidade da etapa CORRIGIR.
 - Se você não encontrar evidência observável de resposta para uma questão, marque `em_branco: true` ou `ilegivel: true`; não complete a lacuna.
 - Se a leitura for incerta, prefira `ilegivel: true` com `LOW_CONFIDENCE` em `_avisos_questao`.
 
@@ -317,11 +319,11 @@ O campo raciocinio_parcial que você preencherá é evidência crítica para an�
 
 Registre qualquer sinal de que o aluno tentou raciocinar — mesmo que a resposta esteja errada:
 
-- ✅ "Aluno escreveu F=ma e identificou m=5kg, mas não completou o cálculo"
-- ✅ "Aluno acertou o primeiro passo (isolar a variável) mas errou a operação aritmética"
-- ✅ "Aluno demonstrou conhecer o conceito geral mas confundiu os termos específicos"
-- ✅ "Há rascunho de diagrama de corpo livre parcialmente correto"
-- ✅ "Aluno respondeu uma variação do problema que não era o que foi pedido (interpretação equivocada)"
+- ✅ "Aluno escreveu F=ma e identificou m=5kg, mas não completou o cálculo visível"
+- ✅ "Aluno escreveu passos para isolar a variável e registrou operações inversas"
+- ✅ "Aluno deixou sinais de tentativa de conversão percentual antes da resposta final"
+- ✅ "Há rascunho de diagrama de corpo livre com setas e identificação de forças"
+- ✅ "Aluno escreveu uma variação do problema, mas a etapa ainda não deve julgar se isso está certo ou errado"
 
 Use `null` quando: a resposta está em branco sem rascunho, ou quando não há nenhum sinal observável de raciocínio.
 

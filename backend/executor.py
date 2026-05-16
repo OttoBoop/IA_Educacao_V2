@@ -2872,13 +2872,24 @@ Regras obrigatórias:
             respostas = resposta_parsed.get("respostas")
             if isinstance(respostas, list) and respostas:
                 inconsistentes = []
+                julgamentos = []
+                julgamento_pattern = re.compile(
+                    (
+                        r"\b(corret[oa]s?|incorret[oa]s?|errad[oa]s?|"
+                        r"acertou|errou|deveria(?:\s+ser)?|esperad[oa]s?)\b"
+                    ),
+                    flags=re.IGNORECASE,
+                )
 
                 def _sem_conteudo(item: Any) -> bool:
                     if not isinstance(item, dict):
                         return False
                     resposta_aluno = str(item.get("resposta_aluno") or "").strip()
+                    raciocinio_parcial = str(item.get("raciocinio_parcial") or "").strip()
                     if not resposta_aluno and not item.get("em_branco") and not item.get("ilegivel"):
                         inconsistentes.append(item.get("questao_numero", "?"))
+                    if raciocinio_parcial and julgamento_pattern.search(raciocinio_parcial):
+                        julgamentos.append(item.get("questao_numero", "?"))
                     return (
                         bool(item.get("ilegivel"))
                         or bool(item.get("em_branco"))
@@ -2892,6 +2903,15 @@ Regras obrigatórias:
                         "EXTRAIR_RESPOSTAS retornou resposta_aluno vazio sem marcar "
                         f"em_branco=true ou ilegivel=true nas questoes: {questoes}. "
                         "Isso e JSON inconsistente e nao pode ser tratado como sucesso."
+                    )
+
+                if julgamentos:
+                    questoes = ", ".join(str(q) for q in julgamentos[:5])
+                    return (
+                        "EXTRAIR_RESPOSTAS colocou julgamento/correcao em "
+                        f"raciocinio_parcial nas questoes: {questoes}. Esta etapa deve "
+                        "transcrever sinais observaveis, nao comparar com gabarito nem "
+                        "dizer se a resposta esta correta."
                     )
 
                 todas_sem_conteudo = all(marcadores_sem_conteudo)

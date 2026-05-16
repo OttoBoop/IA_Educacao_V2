@@ -294,6 +294,19 @@ class TestPromptExtrairRespostasReescrito:
         assert "em_branco: true" in texto_lower
         assert "ilegivel: true" in texto_lower
 
+    def test_prompt_extrair_respostas_proibe_corrigir_raciocinio_parcial(self):
+        """EXTRAIR_RESPOSTAS deve observar raciocínio, não julgar correção."""
+        from prompts import PROMPTS_PADRAO, EtapaProcessamento
+
+        prompt = PROMPTS_PADRAO[EtapaProcessamento.EXTRAIR_RESPOSTAS]
+        texto_lower = prompt.texto.lower()
+
+        assert "não corrige" in texto_lower or "nao corrige" in texto_lower
+        assert "não compara" in texto_lower or "nao compara" in texto_lower
+        assert "correto" in texto_lower
+        assert "incorreto" in texto_lower
+        assert "etapa corrigir" in texto_lower
+
     def test_prompt_extrair_respostas_renderiza_sem_vars_soltas(self):
         """Prompt EXTRAIR_RESPOSTAS deve renderizar sem variáveis não substituídas."""
         from prompts import PROMPTS_PADRAO, EtapaProcessamento
