@@ -38,9 +38,11 @@ agregado live: `correcao` segue como a maior fatia de custo, seguida por
 `analise_habilidades` e `relatorio_final`.
 GPT-4.1, GPT-5.4 Mini e GPT-4o seguem referencias de pipeline confirmadas na
 fixture Diana; o sweep mais recente confirmou OpenAI OK, Gemini Flash/Flash
-Lite/3 Flash OK, Gemini 2.5 Pro bloqueado por quota `429`, Anthropic bloqueado
-por credito e Ollama indisponivel no Render. Supabase `token_usage` continua
-ausente (`PGRST205`), deixando custo duravel como gate real.
+Lite/3 Flash OK em conexao simples, mas `corrigir` com Gemini 2.5 Flash ainda
+falha alto por quota `429`; Gemini 2.5 Pro tambem esta bloqueado por quota,
+Anthropic bloqueado por credito e Ollama indisponivel no Render. Supabase
+`token_usage` continua ausente (`PGRST205`), deixando custo duravel como gate
+real.
 
 Atualizacao Lista0 de 2026-05-17: a atividade real `Lista0`
 (`126e8b5ad7dd6d59`) tem documentos base cadastrados e 63 alunos
@@ -2907,6 +2909,24 @@ Critério de pronto: lista de limpeza segura e revisada.
 - Status: custo por etapa publicado e smokeado. Bloqueio real remanescente:
   aplicar `backend/migrations/002_create_token_usage.sql` no Supabase para
   tornar falhas sem documento duraveis.
+
+### 2026-05-17 -- Provider: Gemini 2.5 Flash ainda bloqueado em pipeline
+
+- Alvo: distinguir conexao simples OK de pipeline-stage realmente operavel.
+- Smoke: `task_41c45d7939b5`, runtime `ae04982`, atividade
+  `f68d57a9a339081f`, aluna `10d9fa4f4303ea1f`, modelo `gem25flash001`,
+  `selected_steps=["corrigir"]`, `force_rerun=true`.
+- Resultado: task `failed`; `corrigir=failed`; `stage_errors.corrigir` trouxe
+  `provider=Google`, `codigo=429`, `retryable=true`, mensagem
+  `RESOURCE_EXHAUSTED`, modelo `gemini-2.5-flash`, limite free tier `20` e
+  sugestao de retry do provider.
+- Custos/erros: `/api/custos/resumo?limit=120` manteve
+  `runs_analisados=59`, `runs_precificados=57`, `runs_bloqueados=2` e mostrou
+  amostras de quota Google categorizadas; a tentativa Gemini 2.5 Flash apareceu
+  como erro `quota_exhausted` em `correcao`, mas com `tokens_entrada=0` e
+  `tokens_saida=0`, portanto nao foi precificada.
+- Status: Gemini 2.5 Flash nao esta pipeline-ready agora. O sistema falhou alto
+  e nao fez fallback para OpenAI.
 
 ## Riscos Abertos
 
