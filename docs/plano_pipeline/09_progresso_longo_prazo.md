@@ -4,10 +4,11 @@
 **Responsavel operacional:** Paulo
 **Status geral:** o servico oficial Render
 `srv-d5t8gbh4tr6s738fr3s0` (`IA_Educacao_V2`, branch `main`, URL
-`https://ia-educacao-v2.onrender.com`) esta em `dc5884f`, confirmado por
-`/api/deploy-info` com `source=RENDER_GIT_COMMIT`. O commit `dc5884f` nao muda
-runtime de produto; ele estabiliza a guarda de teste que prova que JSON sem PDF
-obrigatorio falha alto, sem PDF inventado por fallback. O primeiro marco full
+`https://ia-educacao-v2.onrender.com`) esta em `0d5ab9d`, confirmado por
+`/api/deploy-info` com `source=RENDER_GIT_COMMIT`. O commit `0d5ab9d` endurece
+o parser das etapas: quando ha `stage`, JSON dentro de Markdown/prosa vira erro
+alto (`invalid_json_envelope`) e array na raiz vira `invalid_json_root`; a
+pipeline exige JSON cru na raiz. O primeiro marco full
 recente continua sendo o smoke de 6 etapas com GPT-5.4 Mini (`gpt54mini001`) na
 atividade `Smoke Paulo Pipeline 2026-05-16`: task `task_a5f0d734f0b3`, aluna
 Diana Omega, hash live `2cad38a`, etapas `extrair_questoes`,
@@ -2020,8 +2021,9 @@ Critério de pronto: lista de limpeza segura e revisada.
   `stage_errors.gerar_relatorio.tipo=DOCUMENTO_FALTANTE` e
   `_documentos_faltantes=["correcoes","analise_habilidades"]`.
 - Status: o fallback final `nota_final=N/A` deixou de ser aceitável no executor
-  de relatório. Ainda falta atacar outros fallbacks/permissividades antigas:
-  JSON permissivo, regex/Markdown legado e qualquer artefato parcial verde.
+  de relatório. Naquele momento ainda faltavam fallbacks/permissividades
+  antigas; depois, `0d5ab9d` fechou o caso de JSON embrulhado em
+  Markdown/prosa. Restam schema minimo Path 2 e parciais verdes.
 
 ### 2026-05-17 -- Guarda contra PDF auto-fallback estabilizada
 
@@ -2045,6 +2047,32 @@ Critério de pronto: lista de limpeza segura e revisada.
   o produto ja falha alto para saida dual incompleta, e agora o teste P0 mede
   isso sem falso vermelho. O item PDF auto-fallback sai da lista de "aberto no
   codigo atual" e fica como guarda a manter.
+
+### 2026-05-17 -- JSON embrulhado em Markdown/prosa falha alto
+
+- Alvo: remover a permissividade em que `_parsear_resposta()` podia extrair
+  JSON por bloco Markdown ou regex e aceitar uma resposta que descumpriu a regra
+  "APENAS JSON cru".
+- Commit funcional: `0d5ab9d`.
+- Mudancas: `_parsear_resposta()` agora calcula `stage` uma vez, valida que a
+  raiz do JSON de etapa e objeto, retorna `invalid_json_root` para arrays na
+  raiz e retorna `invalid_json_envelope` quando o JSON so aparece dentro de
+  Markdown, comentarios ou texto ao redor. Sem `stage`, a compatibilidade dos
+  testes utilitarios de parse permanece.
+- Testes locais: `python -m py_compile backend/executor.py
+  backend/tests/unit/test_erro_pipeline.py`; `git diff --check`;
+  `PYTHONPATH=backend /home/otavio/Documents/vscode/.venv/bin/python -m pytest
+  backend/tests/unit/test_erro_pipeline.py backend/tests/unit/test_executor_models.py
+  backend/tests/unit/test_pipeline_validation.py backend/tests/unit/test_e_t2_retry_partial_output.py
+  backend/tests/unit/test_f7_t1_pdf_auto_fallback.py backend/tests/unit/test_cost_tracking.py -q`
+  com `161 passed, 3 skipped`.
+- Deploy: `git push origin HEAD:main`; `./scripts/wait_deploy.sh 0d5ab9d`
+  encontrou o hash apos 150s; `./scripts/check_deploy.sh 0d5ab9d` passou;
+  `/api/health` respondeu `healthy`.
+- Status: mais uma permissividade P0 saiu do caminho ativo da pipeline. Ainda
+  falta fechar o contrato Path 2: `executar_com_tools()` retornar etapa real,
+  `resposta_parsed` e `documento_id` principal, alem de validar schema minimo
+  de cada etapa antes do sucesso.
 
 ## Riscos Abertos
 
