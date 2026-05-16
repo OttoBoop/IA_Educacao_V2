@@ -377,6 +377,7 @@ def test_cost_summary_alerta_quando_token_usage_nao_e_duravel(monkeypatch):
     summary = cost_tracking.build_cost_summary([], token_usage_records=[])
 
     assert summary["custos_persistencia_status"] == "parcial_sem_token_usage_duravel"
+    assert summary["token_usage_durable"] is False
     assert summary["token_usage_backend"]["durable"] is False
     assert any(
         alerta["tipo"] == "token_usage_not_durable"

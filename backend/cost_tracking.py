@@ -390,6 +390,7 @@ def build_cost_summary(
         "persistent_storage": storage._backend_label() == "postgresql",
         "catalog_loaded": bool(model_catalog.providers),
         "custos_persistencia_status": custos_persistencia_status,
+        "token_usage_durable": bool(token_usage_backend.get("durable")),
         "token_usage_backend": token_usage_backend,
         "documentos_analisados": len(document_rows),
         "token_usage_analisados": len(usage_rows),
