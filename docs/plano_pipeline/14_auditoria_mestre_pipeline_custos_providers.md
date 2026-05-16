@@ -2853,6 +2853,60 @@ Novo movimento correto:
    promover `extrair_respostas`, Haiku quando houver credito e GPT-4o explicito.
 4. Continuar removendo fallbacks silenciosos e melhorando UI de erros.
 
+## Atualizacao 2026-05-17 -- GPT-4o Sem Falso Verde Nas Etapas Finais
+
+O loop seguinte atacou GPT-4o como modelo explicito, nao como fallback. O
+objetivo era descobrir se o provider OpenAI classico ainda conseguia cumprir o
+contrato moderno de tools, JSON, PDF, custo e erro alto.
+
+Sequencia de correcoes:
+
+1. `f7bca4c` passou chamadas OpenAI com tool forçada para Responses API.
+2. `33829bc` adicionou retry de JSON invalido em `analisar_habilidades`.
+3. `fdf1829` estendeu schema minimo para `correcao`,
+   `analise_habilidades` e `relatorio_final`.
+4. `3af2918` fez artefato em `status=erro` deixar de contar como JSON/PDF
+   presente, marcou todos os JSONs invalidos do run e marcou extras/stale como
+   erro.
+5. `00eb26b` proibiu caminhos absolutos e `open(..., "wb")` nos prompts da
+   tool de PDF, destravando erro `E2B_SECURITY File write outside sandbox`.
+6. `3e6be20` adicionou validação de PDF de correcao contra Feedback Geral
+   truncado.
+
+Smokes que guiaram o patch:
+
+- `task_738c5247b97f`: `corrigir` passou, mas `analisar_habilidades` falhou por
+  JSON array na raiz (`9c9653a86f447f9a`), custo `US$ 0.035130`.
+- `task_82763c17bac3`: completou, mas inspeção achou arrays ainda concluídos em
+  `correcao` e `relatorio_final`. Isso virou `3af2918`.
+- `task_8661e1034c6a`: falhou alto em `gerar_relatorio` por
+  `E2B_SECURITY File write outside sandbox`. Isso virou `00eb26b`.
+- `task_4880fd35b86c`: completou em `00eb26b`, mas o PDF de correcao cortou
+  Feedback Geral. Isso virou `3e6be20`.
+- `task_386f96bbf158`: completou em `3e6be20` com os artefatos oficiais
+  legiveis e coerentes.
+
+Resultado final do smoke GPT-4o `task_386f96bbf158`:
+
+| Etapa | Artefatos oficiais | Erros esperados preservados | Tokens | Custo |
+|---|---|---|---:|---:|
+| `corrigir` | PDF `e5ca0900654ed0e9`, JSON `e8269ff428d50802` | JSON arrays e PDF anterior inconsistente em `status=erro` | `66527/6861` | `US$ 0.234928` |
+| `analisar_habilidades` | PDF `9b8ef8b03388a741`, JSON `58ddf040c628863c` | JSONs extras marcados `stale_tool_artifact` | `47566/4498` | `US$ 0.163895` |
+| `gerar_relatorio` | PDF `4d4a42b77010d27a`, JSON `30c5a9c3225f1ed5` | JSON arrays, JSON stale e PDF `nota_final=N/A` em erro | `39023/4062` | `US$ 0.138178` |
+
+Total aproximado das tres etapas GPT-4o: `US$ 0.536...`. O endpoint
+`/api/custos/status` continua apontando `token_usage_backend.durable=false` por
+`PGRST205`; portanto o custo medido aparece nos documentos/cost summary, mas o
+registro duravel Supabase ainda depende da migration.
+
+Interpretação:
+
+- GPT-4o volta a ✅ somente para `corrigir`, `analisar_habilidades` e
+  `gerar_relatorio` nesta fixture simples.
+- A pipeline completa de 6 etapas com GPT-4o ainda nao esta validada.
+- O comportamento arquitetural melhorou: arrays, PDFs divergentes, PDFs
+  truncados, PDF com `N/A` e artefatos extras nao ficam mais verdes.
+
 ## Trabalho Aberto Desta Auditoria
 
 Esta auditoria nao encerra o loop tecnico. Ela deixa o proximo trabalho mais
@@ -2863,8 +2917,8 @@ claro. O que ainda existe para fazer:
 | Ciclo anti-fallback | Codigo/testes | PDF auto-fallback, `nota_final=N/A`, regex/Markdown e parciais como sucesso ainda precisam tratamento. |
 | Settings de modelos | Codigo/testes/deploy | `from-catalog` deu 500 e create ignorou capabilities no site live; patch `b16e051` ja foi deployado e retestado; cadastro por API sumiu no deploy, mas o modelo versionado `gpt54mini001` apareceu no site em `be19b7e` e passou teste de conexao. |
 | Metadata/custo real | Codigo/testes/deploy | Metadata e endpoints existem no site; full smoke GPT-5.4 Mini mediu custo por etapa, mas Supabase `token_usage` segue ausente (`PGRST205`), `local_record_count=0` depois de deploy e custo de falha sem documento ainda nao e duravel. |
-| Provider revalidation | Smoke/producao | Matriz Doc 12 registra GPT-5.4 Mini full smoke em fixture simples, mas continua incompleta ate novos smokes por provider/rota/dataset. |
-| PDFs/UI GPT-5.4 Mini | Codigo/testes/deploy/smoke | `task_a5f0d734f0b3` completou 6 etapas, JSONs passaram inspeção semantica inicial e PDFs existem; `0ac92f0` corrigiu parte do layout, mas `task_605512496b0d` provou divergencia PDF/JSON; `2052a01` transformou essa divergencia em erro alto no smoke `task_857c0c3657ef`; `3a77a17` validou retry explicito do PDF em `task_e389f360b812` e expôs `erro_pipeline` no resumo de custos. | Repetir em datasets maiores e melhorar UI de erro para o usuario final. |
+| Provider revalidation | Smoke/producao | Matriz Doc 12 registra GPT-5.4 Mini full smoke em fixture simples e GPT-4o nas tres etapas finais (`task_386f96bbf158`), mas continua incompleta ate novos smokes por provider/rota/dataset. |
+| PDFs/UI GPT-5.4 Mini/GPT-4o | Codigo/testes/deploy/smoke | `task_a5f0d734f0b3` completou 6 etapas, JSONs passaram inspeção semantica inicial e PDFs existem; `0ac92f0` corrigiu parte do layout, mas `task_605512496b0d` provou divergencia PDF/JSON; `2052a01` transformou essa divergencia em erro alto; `3a77a17` validou retry explicito do PDF; `3e6be20` bloqueia Feedback Geral truncado e GPT-4o passou as etapas finais com artefatos ruins marcados como erro. | Repetir em datasets maiores e melhorar UI de erro para o usuario final. |
 | Gabarito incompleto bloqueia correção | Codigo/testes/deploy/smoke | `3a7dfea` bloqueia `CORRIGIR` com `MISSING_CONTENT` no gabarito; continua importante para datasets como Lista0, embora a fixture Diana tenha completado. |
 | UI de erros | Produto/frontend | Usuario precisa ver aluno, etapa, provider e causa sem terminal. |
 | Limpeza de dados | Dados | "Fantasmas" precisam reclassificacao; PDF com `/conteudo=null` nao pode ser deletado. |

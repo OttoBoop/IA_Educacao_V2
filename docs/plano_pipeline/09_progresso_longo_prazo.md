@@ -1,18 +1,18 @@
 # Painel Vivo Paulo -- NOVO CR
 
-**Atualizado:** 2026-05-16
+**Atualizado:** 2026-05-17
 **Responsavel operacional:** Paulo
 **Status geral:** o servico oficial Render
 `srv-d5t8gbh4tr6s738fr3s0` (`IA_Educacao_V2`, branch `main`, URL
-`https://ia-educacao-v2.onrender.com`) esta em `2cad38a`, confirmado por
-`/api/deploy-info` com `source=RENDER_GIT_COMMIT`. O site oficial completou uma
-pipeline de 6 etapas em producao com GPT-5.4 Mini (`gpt54mini001`) na atividade
-`Smoke Paulo Pipeline 2026-05-16`: task `task_a5f0d734f0b3`, aluna Diana Omega,
-hash live `2cad38a`, etapas `extrair_questoes`, `extrair_gabarito`,
-`extrair_respostas`, `corrigir`, `analisar_habilidades` e `gerar_relatorio`
-marcadas como `completed`. Este e o primeiro smoke full recente em que o mesmo
-modelo OpenAI versionado completou as 6 etapas no Render oficial com documentos
-e custos medidos. Ele nao substitui a matriz completa de providers nem valida
+`https://ia-educacao-v2.onrender.com`) esta em `3e6be20`, confirmado por
+`/api/deploy-info` com `source=RENDER_GIT_COMMIT`. O primeiro marco full
+recente continua sendo o smoke de 6 etapas com GPT-5.4 Mini (`gpt54mini001`) na
+atividade `Smoke Paulo Pipeline 2026-05-16`: task `task_a5f0d734f0b3`, aluna
+Diana Omega, hash live `2cad38a`, etapas `extrair_questoes`,
+`extrair_gabarito`, `extrair_respostas`, `corrigir`, `analisar_habilidades` e
+`gerar_relatorio` marcadas como `completed`. Depois disso, o loop avançou para
+endurecer artefatos PDF/JSON e revalidar GPT-4o explicitamente no Render. O
+marco GPT-5.4 Mini nao substitui a matriz completa de providers nem valida
 todos os datasets reais.
 
 A sequencia que destravou esse ponto foi:
@@ -71,9 +71,31 @@ deployado em `3a77a17`; o smoke reduzido `task_e389f360b812` completou
 confirmou PDF de correção coerente com JSON (`nota_final=8.0`, Q3 `0.0/2.0`) e
 relatório com `Nota final: 8,0/10` separado de `Proficiência geral: 80%`. O
 resumo de custos agora também expõe `erro_pipeline` em documentos com status
-`erro`. Proximos alvos reais: aplicar e validar `token_usage` duravel; revalidar
-matriz de providers; e melhorar UI de erros para que o usuario veja aluno,
-etapa, provider, custo e causa sem abrir terminal.
+`erro`.
+
+Atualizacao GPT-4o em 2026-05-17: commits `f7bca4c`, `33829bc`, `fdf1829`,
+`3af2918`, `00eb26b` e `3e6be20` corrigiram, em ordem, o uso de Responses API
+para OpenAI forced tools, retry de JSON invalido, schema minimo de JSON para
+`correcao`/`analise_habilidades`/`relatorio_final`, marcacao de artefatos
+invalidos ou stale como `status=erro`, regras de sandbox para PDF e bloqueio de
+PDF de correcao truncado. O smoke reduzido GPT-4o final
+`task_386f96bbf158` em Render `3e6be20` completou `corrigir`,
+`analisar_habilidades` e `gerar_relatorio`. Artefatos oficiais: correcao PDF
+`e5ca0900654ed0e9` + JSON `e8269ff428d50802`; analise PDF
+`9b8ef8b03388a741` + JSON `58ddf040c628863c`; relatorio PDF
+`4d4a42b77010d27a` + JSON `30c5a9c3225f1ed5`. Inspecao `pdftotext` confirmou
+nota `8.0`, Q3 `0.0/2.0`, Feedback Geral completo, relatorio com Nota Final
+`8.0` e documentos legiveis. O run tambem registrou erros explicitos esperados:
+JSON arrays como `json_schema_validation`, JSONs extras como
+`stale_tool_artifact` e um PDF anterior de relatorio com `nota_final=N/A` como
+`pdf_json_consistency`. Custos GPT-4o do smoke final: `corrigir`
+`66527/6861`, `US$ 0.234928`; `analisar_habilidades` `47566/4498`,
+`US$ 0.163895`; `gerar_relatorio` `39023/4062`, `US$ 0.138178`; total
+aproximado das tres etapas `US$ 0.536...`.
+
+Proximos alvos reais: aplicar e validar `token_usage` duravel; revalidar
+Gemini/Nano/Haiku e datasets maiores; e melhorar UI de erros para que o usuario
+veja aluno, etapa, provider, custo e causa sem abrir terminal.
 
 Este e o ponto de entrada do plano. O objetivo deste arquivo e dizer, em poucas
 linhas, onde estamos, qual e a proxima fila e quais frentes estao pausadas.
@@ -1612,6 +1634,43 @@ Critério de pronto: lista de limpeza segura e revisada.
 - Proximo alvo: aplicar `token_usage` duravel, revalidar providers restantes e
   atacar UI de erros. O contrato PDF/JSON fica: sucesso apenas se artefatos
   concordam; divergencia vira retry explicito e depois erro alto.
+
+### 2026-05-17 -- GPT-4o explicito, schema/stale/PDF truncado
+
+- Alvo: revalidar GPT-4o como modelo explicito nas etapas finais sem fallback
+  de provider e sem aceitar artefato invalido como sucesso.
+- Commits publicados e confirmados no Render: `f7bca4c` usa Responses API para
+  OpenAI forced tools; `33829bc` adiciona retry de JSON invalido; `fdf1829`
+  amplia schema minimo para `correcao`, `analise_habilidades` e
+  `relatorio_final`; `3af2918` ignora artefatos em erro, marca todos os JSONs
+  invalidos e artefatos stale; `00eb26b` reforca regras de sandbox para PDFs;
+  `3e6be20` bloqueia PDF de correcao com Feedback Geral truncado.
+- Falhas intermediarias uteis: `task_738c5247b97f` destravou `corrigir`, mas
+  falhou em `analisar_habilidades` por JSON array na raiz; `task_82763c17bac3`
+  completou, mas inspecao achou arrays concluídos em `correcao`/`relatorio`;
+  `task_8661e1034c6a` falhou alto em `gerar_relatorio` por
+  `E2B_SECURITY File write outside sandbox`; `task_4880fd35b86c` completou em
+  `00eb26b`, mas a inspeção pegou PDF de correcao com Feedback Geral cortado.
+- Smoke final: `task_386f96bbf158` completou `corrigir`,
+  `analisar_habilidades` e `gerar_relatorio` em `3e6be20`. Artefatos oficiais:
+  correcao PDF/JSON `e5ca0900654ed0e9`/`e8269ff428d50802`; analise
+  `9b8ef8b03388a741`/`58ddf040c628863c`; relatorio
+  `4d4a42b77010d27a`/`30c5a9c3225f1ed5`.
+- Inspecao: JSONs oficiais sao objetos; PDFs tem texto extraivel; correcao
+  mostra `Nota Final: 8.0`, Q3 `0.0/2.0` e Feedback Geral completo; relatorio
+  mostra `Nota Final: 8.0`. Artefatos ruins do mesmo run ficaram em
+  `status=erro` com `json_schema_validation`, `stale_tool_artifact` ou
+  `pdf_json_consistency`.
+- Custos do smoke final GPT-4o: `corrigir` `66527/6861`, `US$ 0.234928`;
+  `analisar_habilidades` `47566/4498`, `US$ 0.163895`; `gerar_relatorio`
+  `39023/4062`, `US$ 0.138178`. Total aproximado das tres etapas:
+  `US$ 0.536...`.
+- Validacoes locais dos patches: `python -m py_compile` nos arquivos tocados;
+  `git diff --check`; suites focadas com `59`, depois `60`, depois `61`
+  testes passando conforme os guards foram adicionados.
+- Proximo alvo: revalidar outros providers/datasets e aplicar a migration
+  Supabase `token_usage`; GPT-4o esta confirmado para estas tres etapas na
+  fixture simples, nao para a pipeline completa de 6 etapas.
 
 ## Riscos Abertos
 

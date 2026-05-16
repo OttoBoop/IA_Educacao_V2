@@ -95,12 +95,15 @@
 | **Gemini 3 Flash** (`gem3flash001`) | ✅ | ❌ | ✅ | ✅ | ✅ | ✅ |
 | **GPT-5 Nano** (`gpt5nano001`) | ✅ | ✅ | ❌ | ⚠️ | ⚠️ | ⚠️ |
 | **GPT-5.4 Mini** (`gpt54mini001`) | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
-| **GPT-4o** (`180b8298a279`) — referencia | ✅ | ✅ | ✅ | ⚠️ | ⚠️ | ⚠️ |
+| **GPT-4o** (`180b8298a279`) — referencia | ⚠️ | ⚠️ | ⚠️ | ✅ | ✅ | ✅ |
 
 Nota de leitura: os checks da tabela acima sao por etapa individual validada.
 Eles nao significam que a pipeline completa de 6 etapas passou em uma unica
 task. Em 2026-05-16, Gemini completou as tres extracoes em uma task sequencial,
 mas parou em `corrigir` por quota `429`.
+Nota GPT-4o: as tres etapas finais foram revalidadas em 2026-05-17 no smoke
+`task_386f96bbf158`; as tres extracoes seguem `⚠️` porque ainda nao foram
+retestadas pos-guards atuais nesse modelo.
 Nota P0: `extrair_gabarito` Gemini continua ❌ porque o output retornou todas
 as respostas como `MISSING_CONTENT`, embora o PDF base tenha texto extraivel de
 "Exercicio 5". Nano tinha a mesma falha historica em `task_2da0fb90c3fb`, mas
@@ -501,22 +504,34 @@ Ver [teste_gpt5nano_pipeline_completo.md](arquivo_2026_04_17/teste_gpt5nano_pipe
 
 ---
 
-### GPT-4o — ⚠️ PARCIAL (modelo de referencia/fallback anterior)
+### GPT-4o — ✅ etapas finais confirmadas na fixture simples
 
-**Testado via `pipeline-completo`** para Eric Manoel (ver [teste_haiku_eric.md](arquivo_2026_04_17/teste_haiku_eric.md))
+**Testado via `pipeline-completo`** na atividade `Smoke Paulo Pipeline
+2026-05-16`, aluna Diana Omega, modelo `180b8298a279`, Render `3e6be20`,
+task `task_386f96bbf158`, `selected_steps=["corrigir",
+"analisar_habilidades","gerar_relatorio"]`.
 
-| Etapa | Status | Doc ID | Tokens In | Tokens Out | Tempo |
-|-------|--------|--------|-----------|------------|-------|
-| CORRIGIR | ✅ | `53642cb495a0be3b` | 92.639 | 291 | 15.7s |
-| ANALISAR_HABILIDADES | ✅ | `38998862379fd325` | 66.068 | 412 | 14.8s |
-| GERAR_RELATORIO | ✅ | `186a822b5ce1db5c` | 60.634 | 492 | 11.5s |
+| Etapa | Status | Artefatos oficiais | Tokens In/Out | Custo |
+|-------|--------|--------------------|---------------|-------|
+| CORRIGIR | ✅ | PDF `e5ca0900654ed0e9`, JSON `e8269ff428d50802` | `66527/6861` | `US$ 0.234928` |
+| ANALISAR_HABILIDADES | ✅ | PDF `9b8ef8b03388a741`, JSON `58ddf040c628863c` | `47566/4498` | `US$ 0.163895` |
+| GERAR_RELATORIO | ✅ | PDF `4d4a42b77010d27a`, JSON `30c5a9c3225f1ed5` | `39023/4062` | `US$ 0.138178` |
 
-**Problemas identificados:**
-1. ⚠️ **Sem campos `_avisos_*`** — nenhum dos 3 documentos contem avisos (teste anterior aos commits de injecao).
-2. ⚠️ **Schema antigo** — `correcao` usa flat format, nao STAGE_TOOL_INSTRUCTIONS.
-3. ⚠️ **Variaveis duplicadas** — ~50 arquivos enviados por chamada (docs base duplicados na atividade).
+**O que foi corrigido antes de virar ✅:**
 
-**Nao testado:** as 3 etapas de extracao (foram feitas antes, sem registro de qual modelo gerou).
+1. `f7bca4c` passou OpenAI forced tools para Responses API; antes GPT-4o nao
+   persistia os artefatos obrigatorios em `corrigir`.
+2. `33829bc` e `fdf1829` fizeram retry/validação de JSON para impedir raiz
+   array em `analise_habilidades`, `correcao` e `relatorio_final`.
+3. `3af2918` marcou todos os JSONs invalidos e artefatos extras/stale como
+   `status=erro`; antes alguns arrays ficavam concluídos no mesmo run.
+4. `00eb26b` corrigiu instruções de sandbox de PDF; antes `gerar_relatorio`
+   falhava alto por `E2B_SECURITY File write outside sandbox`.
+5. `3e6be20` bloqueou PDF de correcao com Feedback Geral truncado; o smoke
+   final confirmou PDF com Feedback Geral completo.
+
+**Limite da validação:** GPT-4o esta confirmado apenas para essas tres etapas
+na fixture simples. Ainda falta pipeline completa de 6 etapas e datasets maiores.
 
 ---
 
@@ -665,13 +680,14 @@ nem datasets maiores.
 
 **Proximos passos:**
 1. Manter deploy oficial confirmado por `/api/deploy-info` antes de cada smoke
-   novo; o runtime atual confirmado do retry PDF/JSON e `3a77a17`.
+   novo; o runtime atual confirmado e `3e6be20`.
 2. Aplicar/validar a migration Supabase `token_usage` antes de chamar custo de
    falha sem documento de duravel.
-3. Revalidar matriz por provider/modelo; o retry PDF/JSON esta publicado e
-   validado na fixture simples.
-4. Revalidar Gemini/Nano/GPT-4o por provider/modelo; GPT-5 Nano permanece ❌ em
-   `extrair_respostas`.
+3. Revalidar matriz por provider/modelo; GPT-5.4 Mini passou 6 etapas em
+   fixture simples e GPT-4o passou as tres etapas finais, mas ainda faltam
+   datasets maiores.
+4. Revalidar Gemini/Nano/Haiku por provider/modelo; GPT-5 Nano permanece ❌ em
+   `extrair_respostas` e Haiku segue bloqueado por credito.
 5. Aplicar `backend/migrations/002_create_token_usage.sql` no Supabase para
    tornar duravel o custo de falhas sem documento.
 6. Quando creditos Anthropic forem recarregados, validar Haiku 4.5 via
