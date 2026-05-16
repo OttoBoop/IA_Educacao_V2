@@ -49,13 +49,15 @@ Bloqueio de custos ainda aberto: o endpoint live continua confirmando que
 documentos recentes esta medido, mas registro duravel de falhas sem documento
 ainda depende de aplicar `backend/migrations/002_create_token_usage.sql`.
 
+Inspeção semantica inicial dos JSONs do mesmo smoke tambem passou: 4 questoes,
+4 respostas de gabarito, 4 respostas da aluna, correcao `8/10` por erro na
+porcentagem da questao 3, analise de habilidades coerente e relatorio alinhado.
 Rio 3 segue pausado. O loop ativo e pipeline oficial, providers existentes,
 custos, erro alto e deploy confirmado. Proximos alvos reais: aplicar/validar
 `token_usage` duravel; revalidar matriz de providers (Gemini, Nano, Haiku
-quando houver credito, GPT-4o explicito); inspecionar semanticamente os
-artefatos do smoke GPT-5.4 Mini alem do status `completed`; e melhorar UI de
-erros para que o usuario veja aluno, etapa, provider, custo e causa sem abrir
-terminal.
+quando houver credito, GPT-4o explicito); ampliar a inspeção para PDFs/UI; e
+melhorar UI de erros para que o usuario veja aluno, etapa, provider, custo e
+causa sem abrir terminal.
 
 Este e o ponto de entrada do plano. O objetivo deste arquivo e dizer, em poucas
 linhas, onde estamos, qual e a proxima fila e quais frentes estao pausadas.
@@ -93,7 +95,7 @@ Estabilizar o NOVO CR para que a pipeline:
 | Frente | Estado | Proximo passo |
 |--------|--------|---------------|
 | Docs e plano | Sprint 0 concluida | Manter este painel como fonte oficial e anexos fora do fluxo diario |
-| Pipeline | GPT-5.4 Mini (`gpt54mini001`) completou as 6 etapas no site oficial em `task_a5f0d734f0b3`, Render hash `2cad38a`, com documentos e custos para `extrair_questoes`, `extrair_gabarito`, `extrair_respostas`, `corrigir`, `analisar_habilidades` e `gerar_relatorio`; Gemini 3 Flash segue validado em etapas individuais, mas pipeline sequencial bateu quota `429`; GPT-5 Nano segue validado em `extrair_questoes`, `extrair_gabarito` e smokes de etapas finais, mas `extrair_respostas` Nano continua ❌ por qualidade; `task_bc6cc84d10ef` permanece evidencia historica de que `completed` pode ser semanticamente invalido se gabarito/conteudo falhar | Inspecionar artefatos do smoke GPT-5.4 Mini, repetir matriz por provider/modelo e manter bloqueio P0: nao aceitar `completed` sem documento, schema, custo e conteudo minimo |
+| Pipeline | GPT-5.4 Mini (`gpt54mini001`) completou as 6 etapas no site oficial em `task_a5f0d734f0b3`, Render hash `2cad38a`, com documentos, custos e inspeção semantica inicial coerente nos JSONs; Gemini 3 Flash segue validado em etapas individuais, mas pipeline sequencial bateu quota `429`; GPT-5 Nano segue validado em `extrair_questoes`, `extrair_gabarito` e smokes de etapas finais, mas `extrair_respostas` Nano continua ❌ por qualidade; `task_bc6cc84d10ef` permanece evidencia historica de que `completed` pode ser semanticamente invalido se gabarito/conteudo falhar | Repetir matriz por provider/modelo, ampliar inspeção para PDFs/UI e manter bloqueio P0: nao aceitar `completed` sem documento, schema, custo e conteudo minimo |
 | Schema e avisos | Sprint 2 concluida localmente | Manter schema oficial, defaults e visualizador cobertos por testes |
 | Custos/tokens | Metadata de documento, endpoints live, resumo por `cost_run_id`, `TokenUsageRecord` local, migration Supabase dedicada `b2dc88b`; smoke full GPT-5.4 Mini `task_a5f0d734f0b3` registrou custo medido por etapa: `US$ 0.002312`, `US$ 0.002759`, `US$ 0.002657`, `US$ 0.026149`, `US$ 0.017470` e `US$ 0.027763`, total aproximado `US$ 0.079110`; `/api/custos/resumo?limit=8` mostrou `runs_precificados=5`, `runs_bloqueados=0`, `tokens_entrada=49208`, `tokens_saida=8865`, `custo_usd=0.076798`; diagnostico live ainda acusa `PGRST205`, `durable=false` e `local_record_count=0`, provando que o fallback local de `TokenUsageRecord` nao sobrevive deploy | Aplicar `backend/migrations/002_create_token_usage.sql` no Supabase; revalidar ate `token_usage_backend.durable=true`; depois persistir custos de falhas sem documento |
 | UI de erros | Pendente | Mostrar falha por aluno/etapa sem depender de terminal |
@@ -1507,10 +1509,20 @@ Critério de pronto: lista de limpeza segura e revisada.
   documento ainda precisam de `backend/migrations/002_create_token_usage.sql`
   aplicada no Supabase.
 - Status: GPT-5.4 Mini agora tem um smoke full oficial positivo nessa fixture
-  simples. Isso nao valida Gemini/Nano/Haiku/GPT-4o, nem substitui inspeção
-  semantica profunda dos artefatos.
-- Proximo alvo: atualizar matriz e auditoria, depois escolher entre aplicar
-  `token_usage` duravel, revalidar providers restantes ou atacar UI de erros.
+  simples.
+- Inspeção semantica inicial dos JSONs:
+  - `extracao_questoes`: 4 questoes, pontuacao total `10.0`.
+  - `extracao_gabarito`: 4 respostas completas, sem `MISSING_CONTENT`.
+  - `extracao_respostas`: 4 respostas da aluna, nenhuma em branco/ilegivel.
+  - `correcao`: nota final `8`, acertos nas questoes 1, 2 e 4, erro na questao
+    3 por calcular `15% de 200` como `25` em vez de `30`.
+  - `analise_habilidades` e `relatorio_final`: coerentes com a correcao e com
+    recomendacao focada em porcentagem.
+- Status atualizado: a fixture simples GPT-5.4 Mini passou em status, documentos,
+  custos e inspeção semantica inicial. Isso nao valida Gemini/Nano/Haiku/GPT-4o
+  nem datasets maiores.
+- Proximo alvo: aplicar `token_usage` duravel, revalidar providers restantes,
+  checar PDFs/UI do smoke e atacar UI de erros.
 
 ## Riscos Abertos
 
@@ -1541,5 +1553,5 @@ Critério de pronto: lista de limpeza segura e revisada.
 12. Status `completed` da task nao basta; a correção precisa ser semanticamente
     compativel com `extracao_respostas` e `gabarito_extraido`. O caso
     `task_bc6cc84d10ef` provou falso positivo semantico, e o caso
-    `task_a5f0d734f0b3` agora precisa inspeção de conteudo para virar referencia
-    alem da fixture simples.
+    `task_a5f0d734f0b3` passou na inspeção JSON inicial, mas ainda precisa
+    checagem de PDFs/UI e repeticao alem da fixture simples.

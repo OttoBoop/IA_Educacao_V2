@@ -146,8 +146,10 @@ doc `70df18512be9c617`, `extrair_respostas` doc `14ca81d800de2648`,
 `analisar_habilidades` docs `12b24cd992477eab`/`15579ed3ad2614be` e
 `gerar_relatorio` docs `38686372cb8ea981`/`37b0c86cee879ced`. Custo aproximado
 das 6 etapas: `US$ 0.079110`. Isso move GPT-5.4 Mini para ✅ nessa fixture, mas
-nao valida automaticamente datasets reais maiores, Gemini/Nano/Haiku, nem
-substitui inspeção semantica dos artefatos.
+nao valida automaticamente datasets reais maiores, Gemini/Nano/Haiku. A
+inspeção semantica inicial dos JSONs tambem passou: 4 questoes, gabarito
+completo, 4 respostas da aluna, correcao `8/10` por erro na porcentagem da Q3,
+analise e relatorio alinhados.
 
 Nota de pipeline per-phase: antes de `f2211bb`, o smoke
 `task_ea1ac75c9459` falhou alto em `extrair_gabarito` porque Nano retornou tudo
@@ -617,9 +619,9 @@ Ver [teste_gpt5nano_pipeline_completo.md](arquivo_2026_04_17/teste_gpt5nano_pipe
   execucoes completas quando quota/credito permitir.
 
 **Marco 1 atingido para uma fixture simples, nao para a matriz inteira:** o site
-oficial completou 6 etapas com GPT-5.4 Mini, custo/metadata e deploy confirmado.
-Ainda falta repetir por provider relevante, inspecionar semanticamente os
-artefatos e manter erro alto quando faltar insumo.
+oficial completou 6 etapas com GPT-5.4 Mini, custo/metadata, deploy confirmado
+e inspeção semantica inicial coerente dos JSONs. Ainda falta repetir por
+provider relevante, checar PDFs/UI e manter erro alto quando faltar insumo.
 
 **Bugs criticos descobertos nesta sessao:**
 1. GPT-5 Nano tool-use historico: multiplas chamadas `create_document`, nomes alucinados, sem validacao de schema
@@ -632,8 +634,8 @@ artefatos e manter erro alto quando faltar insumo.
    novo; o runtime atual confirmado e `2cad38a`.
 2. Aplicar/validar a migration Supabase `token_usage` antes de chamar custo de
    falha sem documento de duravel.
-3. Inspecionar os artefatos do smoke `task_a5f0d734f0b3` para confirmar conteudo
-   pedagogico, nao apenas status `completed`.
+3. Checar PDFs/UI do smoke `task_a5f0d734f0b3`, ja que os JSONs passaram na
+   inspeção semantica inicial.
 4. Revalidar Gemini/Nano/GPT-4o por provider/modelo; GPT-5 Nano permanece ❌ em
    `extrair_respostas`.
 5. Aplicar `backend/migrations/002_create_token_usage.sql` no Supabase para
