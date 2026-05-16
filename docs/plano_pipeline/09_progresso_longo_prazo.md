@@ -306,20 +306,23 @@ Estabilizar o NOVO CR para que a pipeline:
 - Commit funcional de erro por aluno/etapa na sidebar:
   `98fafc9` (`stage_errors` em `/api/task-progress`, renderizado em
   `tarefa-stage-error`).
+- Commit funcional anti-`nota_final=N/A` em relatório:
+  `ad7e00e` (`GERAR_RELATORIO` falha alto com
+  `NOTA_FINAL_INDETERMINADA` quando não há nota numérica confiável).
 - Marker mais novo publicado no GitHub para runtime: `a7dead3`
   (`chore: mark deploy e6060e1`).
 - Marker mais novo publicado no GitHub para o guard: `2792d89`
   (`chore: mark deploy 5527e26`).
 - Render em 2026-05-17: servico oficial `srv-d5t8gbh4tr6s738fr3s0`, branch
   `main`, repo `https://github.com/OttoBoop/IA_Educacao_V2`, `rootDir=backend`,
-  autoDeploy `yes`; `/api/deploy-info` confirmou `98fafc9` com
+  autoDeploy `yes`; `/api/deploy-info` confirmou `ad7e00e` com
   `source=RENDER_GIT_COMMIT`.
 - Marker HTML pode ficar atrasado em commits de docs/frontend; o gate oficial
   para backend agora e `/api/deploy-info` + smoke live, nao apenas marcador HTML.
-- GitHub `origin/main`: alinhado com `98fafc9` no ciclo UI de erros por etapa
+- GitHub `origin/main`: alinhado com `ad7e00e` no ciclo anti-`nota_final=N/A`
   antes do commit documental deste registro.
 - Render live observado: saiu de `2e1098f` para `b12be9a` e depois confirmou
-  marcadores/fixes sucessivos ate `98fafc9`.
+  marcadores/fixes sucessivos ate `ad7e00e`.
 - `/api/custos/status` no Render: HTTP 200, confirmando endpoints de custo live.
 - GitHub Actions: sem runs recentes observaveis.
 - GitHub webhooks/deployments via `gh api`: sem entradas visiveis.
@@ -363,8 +366,9 @@ Critérios de pronto:
 Prioridade: P4, P5 e P6.
 
 - P4: barrar `EXTRAIR_RESPOSTAS` sem `prova_respondida` valida. **Concluido em 2026-05-12.**
-- P5: contencao temporaria de `nota_final`. **Concluido em 2026-05-13; nao e
-  regra final aceitavel se mascarar nota ausente.**
+- P5: contencao temporaria de `nota_final` foi concluida em 2026-05-13; em
+  2026-05-17, `ad7e00e` removeu o aceite final de `nota_final=N/A` em
+  `GERAR_RELATORIO`, que agora falha alto quando a nota confiavel esta ausente.
 - P6: nao descartar `_documentos_faltantes` em `gerar_relatorio`. **Concluido em 2026-05-13.**
 
 Critério de pronto: falha clara e rastreavel, sem output silencioso ruim.
@@ -456,7 +460,9 @@ Critério de pronto: lista de limpeza segura e revisada.
   `git diff --check`; `PYTHONPATH=backend /home/otavio/Documents/vscode/.venv/bin/python -m pytest backend/tests/unit/test_erro_pipeline.py -q`
   passou com 32 testes e 1 aviso de config `timeout` desconhecida.
 - Git: Sprint 0 documental foi commitada em `7e4b852` antes do ciclo P4.
-- Proximo alvo: Sprint 1/P5, contencao temporaria de `nota_final`.
+- Proximo alvo historico daquele momento: Sprint 1/P5, contencao temporaria de
+  `nota_final`; estado atual: `ad7e00e` converteu ausencia de nota confiavel em
+  erro alto no relatorio.
 
 ### 2026-05-13 -- Sprint 1/P5-P6: nota_final e documentos faltantes
 
@@ -467,9 +473,8 @@ Critério de pronto: lista de limpeza segura e revisada.
 - Comportamento: nota usa contencao ordenada (`nota_final`, `nota`, soma de
   `questoes[].nota`, soma de `correcoes[].nota`, `N/A`); erro de relatório
   retorna `_erro_pipeline`, `_documentos_faltantes` e `_documentos_carregados`.
-- Ressalva P0: `N/A` nao pode virar sucesso silencioso no produto final; proximo
-  ciclo de relatorio deve transformar nota nao confiavel em erro alto quando a
-  etapa exigir nota.
+- Ressalva P0 resolvida em 2026-05-17 para `GERAR_RELATORIO`: `ad7e00e`
+  transforma nota nao confiavel em erro alto antes de chamar IA.
 - Validacoes: `python -m py_compile backend/executor.py backend/tests/unit/test_erro_pipeline.py`;
   `git diff --check`; `PYTHONPATH=backend /home/otavio/Documents/vscode/.venv/bin/python -m pytest backend/tests/unit/test_erro_pipeline.py -q`
   passou com 41 testes e 1 aviso de config `timeout` desconhecida.
@@ -1990,6 +1995,31 @@ Critério de pronto: lista de limpeza segura e revisada.
 - Status: primeira camada de UI de erro por aluno/etapa publicada. Ainda falta
   levar a mesma clareza para telas de resultado/historico e para custos
   persistidos.
+
+### 2026-05-17 -- `GERAR_RELATORIO` sem nota confiavel falha alto
+
+- Alvo: remover a contencao antiga que podia colocar `nota_final=N/A` no prompt
+  de relatório e permitir resultado final enganoso.
+- Commit funcional: `ad7e00e`.
+- Mudancas: `ERRO_NOTA_FINAL_INDETERMINADA` entrou no framework de erros;
+  `_calcular_nota_final_de_correcoes()` retorna `None` quando não há número
+  confiável; `GERAR_RELATORIO` bloqueia antes da IA quando não consegue
+  determinar `nota_final` numérica por `nota_final`, `nota`, `questoes[].nota`
+  ou `correcoes[].nota`; `_preparar_variaveis_texto()` não injeta mais `N/A`
+  para `GERAR_RELATORIO`.
+- Testes locais: `py_compile`; `git diff --check`; suite focada
+  `test_erro_pipeline.py`, `test_stage_tool_pdf_quality.py` e
+  `test_cost_tracking.py` passou com `101 passed`; suite ampliada de relatório,
+  prompts, schema, visualizador e avisos passou com `164 passed, 3 skipped`.
+- Deploy: `/api/deploy-info` confirmou `ad7e00e`; `/api/health` respondeu
+  `healthy`.
+- Smoke sem custo de IA: `task_d4947f5a3594`, apenas `gerar_relatorio` para
+  aluno inexistente, falhou antes de provider com
+  `stage_errors.gerar_relatorio.tipo=DOCUMENTO_FALTANTE` e
+  `_documentos_faltantes=["correcoes","analise_habilidades"]`.
+- Status: o fallback final `nota_final=N/A` deixou de ser aceitável no executor
+  de relatório. Ainda falta atacar outros fallbacks/permissividades antigas:
+  JSON permissivo, regex/Markdown legado e qualquer artefato parcial verde.
 
 ## Riscos Abertos
 

@@ -165,8 +165,9 @@ detalhar e auditar estas linhas.
 5. P4 ja esta no codigo publicado: `EXTRAIR_RESPOSTAS` nao deve rodar sem
    `prova_respondida` valida; falta apenas smoke dedicado se esse bug voltar a
    ser alvo.
-6. P5/P6 melhoraram relatorio e documentos faltantes, mas `nota_final=N/A` e
-   apenas contencao temporaria e precisa virar erro alto.
+6. P5/P6 melhoraram relatorio e documentos faltantes; a contencao historica
+   `nota_final=N/A` foi convertida em erro alto no commit `ad7e00e` para
+   `GERAR_RELATORIO`.
 7. Sprint 2 melhorou schema/defaults/visualizador, mas nao fechou o contrato do
    Doc 02 porque Path 2 ainda precisa validar schema antes de sucesso.
 8. Sprint 3 separou `input_tokens`/`output_tokens`; Sprint 3b/4h confirmaram
@@ -230,9 +231,9 @@ detalhar e auditar estas linhas.
 | Frente | Temos hoje | Limite da afirmacao |
 |---|---|---|
 | Documentacao | Doc 09 como painel curto; Doc 14 como auditoria mestre; Doc 05/12 com notas de status | Manter Doc 09 curto e Doc 14 detalhado; registrar novos ciclos sem criar doc extra. |
-| Git/GitHub | `/api/deploy-info` confirmou runtime `98fafc9`; `origin/main` esta alinhado com os fixes de dashboard de custo, tool-use Google faseado, consistencia PDF/JSON por feedback coerente e erro por aluno/etapa na sidebar | Nao usar somente marker HTML como gate quando Render `rootDir=backend` ignora commits sem backend; combinar `/api/deploy-info`, deploy list quando disponivel e comportamento live. |
+| Git/GitHub | `/api/deploy-info` confirmou runtime `ad7e00e`; `origin/main` esta alinhado com os fixes de dashboard de custo, tool-use Google faseado, consistencia PDF/JSON por feedback coerente, erro por aluno/etapa na sidebar e bloqueio anti-`nota_final=N/A` em relatório | Nao usar somente marker HTML como gate quando Render `rootDir=backend` ignora commits sem backend; combinar `/api/deploy-info`, deploy list quando disponivel e comportamento live. |
 | Pipeline P4 | Bloqueio de extracao de respostas sem prova valida esta no codigo publicado | Precisa smoke dedicado apenas se P4 voltar a ser alvo. |
-| Pipeline P5/P6 | Contencao de nota e preservacao de `_documentos_faltantes` | `N/A` ainda e fallback proibido como estado final. |
+| Pipeline P5/P6 | Preservacao de `_documentos_faltantes`; `ad7e00e` bloqueia `GERAR_RELATORIO` sem `nota_final` numerica confiavel | Ainda falta caçar outros fallbacks antigos, mas `nota_final=N/A` nao e mais aceite final no executor de relatório. |
 | Schema/avisos | Defaults `_avisos_*`, visualizador melhorado e schemas mais permissivos | Permissividade nao e contrato forte; pode aceitar legado demais. |
 | Tokens/custos | Split input/output; metadata de documento; endpoints `/api/custos/status` e `/api/custos/resumo` respondendo live; resumo agrega por `cost_run_id`; `TokenUsageRecord` local cobre falha sem documento enquanto o filesystem vive; codigo Supabase e migration dedicada `b2dc88b` existem; diagnostico live mostra `PGRST205`; smoke full GPT-5.4 Mini `task_a5f0d734f0b3` mediu custo por etapa e total aproximado `US$ 0.079110`; smoke Nano `task_57da745b8de5` registrou `29067/6701` tokens em documentos de relatorio; `/api/custos/status?limit=80` mostrou `runs_precificados=37`, `runs_bloqueados=0`, `ok=false`, `custos_persistencia_status=parcial_sem_token_usage_duravel` e alerta bloqueante `token_usage_not_durable`; dashboard live em `54d083e` mostra "Custos não duráveis" | Falta aplicar `backend/migrations/002_create_token_usage.sql` no Supabase. |
 | Providers | Gemini 2.5 Flash passou nas tres extracoes da fixture Diana; `854cec7` corrigiu o bug de tools incompletas com tool-use Google forcado/faseado; `b07472f` corrigiu falso bloqueio de feedback parafraseado; a revalidacao final agora esta bloqueada por quota Google `429`; Gemini 3 Flash passou em chat simples live, `extrair_questoes`, `extrair_respostas` e nas tres etapas finais, mas segue bloqueado por quota `429` para revalidacao full; `extrair_gabarito` Gemini foi reclassificado como invalido por tudo `MISSING_CONTENT` e depois revalidado na fixture simples; GPT-5 Nano passou em chat simples live, `extrair_questoes`, `extrair_gabarito` pos-`5527e26` e `gerar_relatorio` pos-`392ec7c`, mas `extrair_respostas` Nano continua parcial por historico de qualidade em dataset maior; GPT-5.4 Mini passou `extrair_respostas` em amostras e completou um smoke full oficial simples em `task_a5f0d734f0b3` com inspeção semantica inicial coerente; re-smoke `task_605512496b0d` no patch `0ac92f0` completou, mas PDFs divergiram dos JSONs; `2052a01` bloqueou isso com falha alta em `task_857c0c3657ef`; `3a77a17` passou no smoke reduzido `task_e389f360b812` com retry PDF/JSON; `392ec7c` passou no smoke Nano de relatorio `task_57da745b8de5`; GPT-4o completou full smoke `task_68b19146a95b` em `54d083e`, com custo aproximado `US$ 0.314369`; `98fafc9` nao muda provider, mas torna falhas por etapa visiveis na sidebar | Revalidar matriz por provider, mas nao rerodar Gemini enquanto quota Google estiver saturada. |
@@ -243,20 +244,20 @@ detalhar e auditar estas linhas.
 | Frente | Falta | Por que importa |
 |---|---|---|
 | Path 2/tool-use | Restringir artefatos extras e validar schema minimo, alem do JSON parseavel | Sem isso, documento ruidoso pode parecer resultado pedagogico final. |
-| Anti-fallback | Remover sucesso verde para PDF auto-fallback, `nota_final=N/A`, JSON permissivo e provider/model swap | Fallback silencioso engana o usuario. |
+| Anti-fallback | Remover sucesso verde para PDF auto-fallback, JSON permissivo e provider/model swap; `nota_final=N/A` em relatório foi fechado em `ad7e00e` | Fallback silencioso engana o usuario. |
 | Prompts/schema | Resolver conflito entre `PROMPTS_PADRAO` legado e `STAGE_TOOL_INSTRUCTIONS` | Modelos pequenos podem seguir o schema errado. |
 | Custos | Registrar falhas que consomem tokens sem documento final | Sucesso com documento ja tem custo medido; falha ainda pode sumir. |
 | Metadata | Revalidar provider/modelo/tokens/tempo nas rotas e providers restantes | GPT-5.4 Mini ja mostrou metadata e conteudo JSON coerente nas 6 etapas da fixture simples; Gemini/Nano/Haiku/GPT-4o ainda precisam matriz atualizada. |
 | Providers | Revalidar Gemini, Nano, Haiku e GPT-4o nas etapas restantes, especialmente extracoes e pipeline completa | Resultado historico ou schema parseavel nao prova qualidade de conteudo. |
 | UI de erro | `98fafc9` publica `stage_errors` por aluno/etapa no task-progress e renderiza a causa na sidebar; falta expandir o mesmo padrao para resultado/historico | Backend falhar alto nao basta se a UI traduz mal. |
 | Dados | Reclassificar "fantasmas" sem deletar PDF valido por `/conteudo=null` | Evita apagar prova respondida real. |
-| Git/deploy | Commit `2d72c6b` adicionou `/api/deploy-info`; o runtime atual confirmado e `98fafc9` | Usar `/api/deploy-info` antes de novos smokes; marker HTML e apenas auxiliar. |
+| Git/deploy | Commit `2d72c6b` adicionou `/api/deploy-info`; o runtime atual confirmado e `ad7e00e` | Usar `/api/deploy-info` antes de novos smokes; marker HTML e apenas auxiliar. |
 
 ### Bloqueios E Alertas
 
 | Item | Estado | Acao correta |
 |---|---|---|
-| Render/site oficial | `/api/deploy-info` confirmou `98fafc9` como deploy live no patch de erro por aluno/etapa na sidebar | Tratar HTML marker como auxiliar; usar smoke real para aceite. |
+| Render/site oficial | `/api/deploy-info` confirmou `ad7e00e` como deploy live no patch anti-`nota_final=N/A` | Tratar HTML marker como auxiliar; usar smoke real para aceite. |
 | Guard `5527e26` | Runtime confirmado por Render MCP; smoke Nano `extrair_gabarito` pos-guard passou com 7 respostas reais | Guard publicado; falta rerodar Gemini. |
 | Respostas tudo ilegivel/vazio/inferidas | Nano ja produziu `extrair_respostas` com todas as respostas sem conteudo, depois conteudo so de Q7, depois conteudo suspeito inferido do enunciado, depois JSON verde inconsistente; o PDF de Eric tem paginas manuscritas e texto extraivel de Q7 | Desde `1ce3d23`, o caso final falha alto no executor e registra custo sem documento. Agora falta corrigir prompt/entrada/modelo para extrair conteudo real ou marcar Nano como inadequado para prova manuscrita. |
 | Gemini quota | Pipeline sequencial `task_5e97bbee896e` falhou em `corrigir` por `429 RESOURCE_EXHAUSTED`, limite free tier `20` para `gemini-3-flash` | Nao rerodar de imediato; tratar como bloqueio de provider/quota, nao como sucesso nem como falha silenciosa. |
@@ -375,7 +376,7 @@ fila de tarefas. Cada item abaixo deve ser entendido como contrato herdado.
 | D02-9 | PDF obrigatorio ausente nao pode virar sucesso enganoso | Aberto P0 | PDF auto-fallback ainda pode salvar PDF e retornar `sucesso=True` | Teste: modelo que nao chama `execute_python_code` falha ou retorna parcial bloqueante, nunca verde. |
 | D02-10 | Retry dual-output nao pode duplicar/mascarar documentos | Parcial | Artefato extra nao-JSON foi bloqueado; duplicata JSON/retry ainda precisa auditoria | Teste: retry cria no maximo um JSON principal por etapa ou marca duplicata como erro. |
 | D02-11 | GPT-5 Nano-like output lixo deve falhar cedo | Parcial | Historico gerou lixo; fixes agora rejeitam tool ausente, JSON invalido e payload malformado | Teste fixture Nano-like fora do schema minimo falha em CORRIGIR antes de ANALISAR/GERAR. |
-| D02-12 | `GERAR_RELATORIO` precisa de schema unico e nota confiavel | Aberto P0 | `nota_final=N/A` e formatos legado/tool-use coexistem | Teste: relatorio sem nota confiavel falha alto; schema ativo e unico. |
+| D02-12 | `GERAR_RELATORIO` precisa de schema unico e nota confiavel | Parcial | `ad7e00e` faz relatorio sem nota confiavel falhar alto; formatos legado/tool-use ainda coexistem | Proximo teste: schema ativo e unico, sem permissividade legado excessiva. |
 
 ### Ordem De Execucao Do Checklist
 
@@ -3298,6 +3299,48 @@ Estado:
   persistidos, para que o usuario nunca precise inferir falha por ausencia de
   documento.
 
+## Atualizacao 2026-05-17 -- Relatorio Sem Nota Confiavel Falha Alto
+
+Problema:
+
+- O P5 antigo era uma contencao: calculava `nota_final` por caminhos ordenados e
+  usava `N/A` quando nada numerico era confiavel.
+- Pela regra P0, isso nao pode ser aceite final. Um relatorio com `nota_final`
+  ausente deve bloquear antes da IA, nao pedir para o modelo completar uma nota
+  inventada.
+
+Mudanca publicada:
+
+- Commit funcional `ad7e00e`.
+- `backend/models.py`: novo tipo `ERRO_NOTA_FINAL_INDETERMINADA`.
+- `backend/executor.py`: `_calcular_nota_final_de_correcoes()` retorna `None`
+  quando nao ha nota numerica confiavel; `GERAR_RELATORIO` bloqueia antes de
+  `executar_com_tools()` se nao encontra `nota_final`, `nota`,
+  `questoes[].nota` ou `correcoes[].nota`; `_preparar_variaveis_texto()` nao
+  injeta mais `N/A` para `GERAR_RELATORIO`.
+- `backend/tests/unit/test_erro_pipeline.py`: testes agora provam que JSON
+  invalido/sem nota retorna `None` e que relatorio sem nota falha com
+  `_erro_pipeline.tipo=NOTA_FINAL_INDETERMINADA`, sem chamada de IA.
+
+Validacao:
+
+- Local: `py_compile`, `git diff --check` e suite focada com `101 passed`.
+- Suite ampliada: relatório/tool-use, prompts, schema, visualizador e avisos com
+  `164 passed, 3 skipped`.
+- Deploy: `/api/deploy-info` confirmou `ad7e00e`; `/api/health` respondeu
+  `healthy`.
+- Smoke sem IA: `task_d4947f5a3594` rodou apenas `gerar_relatorio` para aluno
+  inexistente e falhou antes de provider com
+  `stage_errors.gerar_relatorio.tipo=DOCUMENTO_FALTANTE`, preservando
+  `documentos_faltantes=["correcoes","analise_habilidades"]`.
+
+Estado:
+
+- `nota_final=N/A` nao e mais saida aceitavel do executor de relatorio.
+- Ainda restam outras frentes anti-fallback: JSON permissivo, regex/Markdown
+  legado, artefatos parciais verdes e status historico que precisa obedecer
+  `status=erro`.
+
 ## Trabalho Aberto Desta Auditoria
 
 Esta auditoria nao encerra o loop tecnico. Ela deixa o proximo trabalho mais
@@ -3305,7 +3348,7 @@ claro. O que ainda existe para fazer:
 
 | Item | Tipo | Por que ainda falta |
 |---|---|---|
-| Ciclo anti-fallback | Codigo/testes | PDF auto-fallback, `nota_final=N/A`, regex/Markdown e parciais como sucesso ainda precisam tratamento. |
+| Ciclo anti-fallback | Codigo/testes | `nota_final=N/A` em relatório foi fechado em `ad7e00e`; ainda restam PDF auto-fallback, regex/Markdown legado, JSON permissivo e parciais como sucesso. |
 | Settings de modelos | Codigo/testes/deploy | `from-catalog` deu 500 e create ignorou capabilities no site live; patch `b16e051` ja foi deployado e retestado; cadastro por API sumiu no deploy, mas o modelo versionado `gpt54mini001` apareceu no site em `be19b7e` e passou teste de conexao. |
 | Metadata/custo real | Codigo/testes/deploy | Metadata e endpoints existem no site; full smoke GPT-5.4 Mini mediu custo por etapa, mas Supabase `token_usage` segue ausente (`PGRST205`), `local_record_count=0` depois de deploy e custo de falha sem documento ainda nao e duravel. |
 | Provider revalidation | Smoke/producao | Matriz Doc 12 registra GPT-5.4 Mini full smoke em fixture simples, GPT-4o full smoke (`task_68b19146a95b`) e Gemini 2.5 Flash com extracoes OK/tool-use corrigido mas bloqueado por quota; continua incompleta ate novos smokes por provider/rota/dataset. |
