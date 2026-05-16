@@ -158,7 +158,7 @@ detalhar e auditar estas linhas.
    por tool-use, alem de relatorios agregados.
 3. O Doc 02 mostrou que o maior risco arquitetural esta no Path 2: schemas
    conflitantes, JSON opaco, avisos/metadata/tokens incompletos e tools parciais.
-4. Os fixes principais ja chegaram ao site oficial ate `54d083e`: `/api/deploy-info`
+4. Os fixes principais ja chegaram ao site oficial ate `b07472f`: `/api/deploy-info`
    confirma o servico `srv-d5t8gbh4tr6s738fr3s0` com
    `source=RENDER_GIT_COMMIT`. O marker HTML continua sendo apenas auxiliar em
    servico `rootDir=backend`.
@@ -209,8 +209,16 @@ detalhar e auditar estas linhas.
    fechou essa brecha com validacao cross-stage de `nota_final`; o smoke
    `task_57da745b8de5` confirmou relatorio Nano com JSON `66fcc132db1be96a`,
    PDF final `735896580f441e89` e `Nota final: 8.0`, enquanto o PDF anterior
-   `34e404fcd809270d` ficou `status=erro`. Haiku segue bloqueado por creditos;
-   Rio 3 esta pausado.
+   `34e404fcd809270d` ficou `status=erro`. GPT-4o completou full smoke em
+   `task_68b19146a95b`, com as 6 etapas, custo aproximado `US$ 0.314369` e
+   JSON/PDF de correcao e relatorio coerentes na fixture Diana. Gemini 2.5
+   Flash completou as tres extracoes em `task_f1f1511f21d5`; `854cec7`
+   corrigiu a falta de tool-use Google com `toolConfig.functionCallingConfig`
+   e fases JSON/PDF; `b07472f` removeu falso bloqueio de feedback por
+   parafrase coerente; porem os reruns `task_6bba32964706` e
+   `task_f9b76153875a` bateram quota Google `429`, entao tools Gemini 2.5
+   Flash seguem bloqueadas para revalidacao final, nao confirmadas. Haiku segue
+   bloqueado por creditos; Rio 3 esta pausado.
 10. O proximo eixo correto e aplicar `backend/migrations/002_create_token_usage.sql`
     no Supabase, ampliar a revalidacao por etapa/provider e endurecer o contrato
     contra schema ruim. Enquanto a migration nao for aplicada, `460643f` faz
@@ -222,12 +230,12 @@ detalhar e auditar estas linhas.
 | Frente | Temos hoje | Limite da afirmacao |
 |---|---|---|
 | Documentacao | Doc 09 como painel curto; Doc 14 como auditoria mestre; Doc 05/12 com notas de status | Manter Doc 09 curto e Doc 14 detalhado; registrar novos ciclos sem criar doc extra. |
-| Git/GitHub | `/api/deploy-info` confirmou runtime `54d083e`; `origin/main` esta alinhado com o fix que torna custo nao duravel visivel no dashboard | Nao usar somente marker HTML como gate quando Render `rootDir=backend` ignora commits sem backend; combinar `/api/deploy-info`, deploy list quando disponivel e comportamento live. |
+| Git/GitHub | `/api/deploy-info` confirmou runtime `b07472f`; `origin/main` esta alinhado com os fixes de dashboard de custo, tool-use Google faseado e consistencia PDF/JSON por feedback coerente | Nao usar somente marker HTML como gate quando Render `rootDir=backend` ignora commits sem backend; combinar `/api/deploy-info`, deploy list quando disponivel e comportamento live. |
 | Pipeline P4 | Bloqueio de extracao de respostas sem prova valida esta no codigo publicado | Precisa smoke dedicado apenas se P4 voltar a ser alvo. |
 | Pipeline P5/P6 | Contencao de nota e preservacao de `_documentos_faltantes` | `N/A` ainda e fallback proibido como estado final. |
 | Schema/avisos | Defaults `_avisos_*`, visualizador melhorado e schemas mais permissivos | Permissividade nao e contrato forte; pode aceitar legado demais. |
 | Tokens/custos | Split input/output; metadata de documento; endpoints `/api/custos/status` e `/api/custos/resumo` respondendo live; resumo agrega por `cost_run_id`; `TokenUsageRecord` local cobre falha sem documento enquanto o filesystem vive; codigo Supabase e migration dedicada `b2dc88b` existem; diagnostico live mostra `PGRST205`; smoke full GPT-5.4 Mini `task_a5f0d734f0b3` mediu custo por etapa e total aproximado `US$ 0.079110`; smoke Nano `task_57da745b8de5` registrou `29067/6701` tokens em documentos de relatorio; `/api/custos/status?limit=80` mostrou `runs_precificados=37`, `runs_bloqueados=0`, `ok=false`, `custos_persistencia_status=parcial_sem_token_usage_duravel` e alerta bloqueante `token_usage_not_durable`; dashboard live em `54d083e` mostra "Custos não duráveis" | Falta aplicar `backend/migrations/002_create_token_usage.sql` no Supabase. |
-| Providers | Gemini 2.5 Flash passou nas tres extracoes da fixture Diana, mas falhou alto em `corrigir` por tools incompletas; Gemini 3 Flash passou em chat simples live, `extrair_questoes`, `extrair_respostas` e nas tres etapas finais, mas segue bloqueado por quota `429` para revalidacao full; `extrair_gabarito` Gemini foi reclassificado como invalido por tudo `MISSING_CONTENT` e depois revalidado na fixture simples; GPT-5 Nano passou em chat simples live, `extrair_questoes`, `extrair_gabarito` pos-`5527e26` e `gerar_relatorio` pos-`392ec7c`, mas `extrair_respostas` Nano continua parcial por historico de qualidade em dataset maior; GPT-5.4 Mini passou `extrair_respostas` em amostras e completou um smoke full oficial simples em `task_a5f0d734f0b3` com inspeção semantica inicial coerente; re-smoke `task_605512496b0d` no patch `0ac92f0` completou, mas PDFs divergiram dos JSONs; `2052a01` bloqueou isso com falha alta em `task_857c0c3657ef`; `3a77a17` passou no smoke reduzido `task_e389f360b812` com retry PDF/JSON; `392ec7c` passou no smoke Nano de relatorio `task_57da745b8de5`; GPT-4o completou full smoke `task_68b19146a95b` em `54d083e`, com custo aproximado `US$ 0.314369` | Revalidar matriz por provider e corrigir/decidir tool-use Gemini. |
+| Providers | Gemini 2.5 Flash passou nas tres extracoes da fixture Diana; `854cec7` corrigiu o bug de tools incompletas com tool-use Google forcado/faseado; `b07472f` corrigiu falso bloqueio de feedback parafraseado; a revalidacao final agora esta bloqueada por quota Google `429`; Gemini 3 Flash passou em chat simples live, `extrair_questoes`, `extrair_respostas` e nas tres etapas finais, mas segue bloqueado por quota `429` para revalidacao full; `extrair_gabarito` Gemini foi reclassificado como invalido por tudo `MISSING_CONTENT` e depois revalidado na fixture simples; GPT-5 Nano passou em chat simples live, `extrair_questoes`, `extrair_gabarito` pos-`5527e26` e `gerar_relatorio` pos-`392ec7c`, mas `extrair_respostas` Nano continua parcial por historico de qualidade em dataset maior; GPT-5.4 Mini passou `extrair_respostas` em amostras e completou um smoke full oficial simples em `task_a5f0d734f0b3` com inspeção semantica inicial coerente; re-smoke `task_605512496b0d` no patch `0ac92f0` completou, mas PDFs divergiram dos JSONs; `2052a01` bloqueou isso com falha alta em `task_857c0c3657ef`; `3a77a17` passou no smoke reduzido `task_e389f360b812` com retry PDF/JSON; `392ec7c` passou no smoke Nano de relatorio `task_57da745b8de5`; GPT-4o completou full smoke `task_68b19146a95b` em `54d083e`, com custo aproximado `US$ 0.314369` | Revalidar matriz por provider, mas nao rerodar Gemini enquanto quota Google estiver saturada. |
 | Seguranca Rio | Regra de nao usar chave em chat e Rio pausado | Arquivos Rio/untracked continuam fora do ciclo ativo. |
 
 ### O Que Falta
@@ -248,7 +256,7 @@ detalhar e auditar estas linhas.
 
 | Item | Estado | Acao correta |
 |---|---|---|
-| Render/site oficial | `/api/deploy-info` confirmou `54d083e` como deploy live no patch de dashboard de custos nao duraveis | Tratar HTML marker como auxiliar; usar smoke real para aceite. |
+| Render/site oficial | `/api/deploy-info` confirmou `b07472f` como deploy live no patch de tool-use Google/feedback coerente | Tratar HTML marker como auxiliar; usar smoke real para aceite. |
 | Guard `5527e26` | Runtime confirmado por Render MCP; smoke Nano `extrair_gabarito` pos-guard passou com 7 respostas reais | Guard publicado; falta rerodar Gemini. |
 | Respostas tudo ilegivel/vazio/inferidas | Nano ja produziu `extrair_respostas` com todas as respostas sem conteudo, depois conteudo so de Q7, depois conteudo suspeito inferido do enunciado, depois JSON verde inconsistente; o PDF de Eric tem paginas manuscritas e texto extraivel de Q7 | Desde `1ce3d23`, o caso final falha alto no executor e registra custo sem documento. Agora falta corrigir prompt/entrada/modelo para extrair conteudo real ou marcar Nano como inadequado para prova manuscrita. |
 | Gemini quota | Pipeline sequencial `task_5e97bbee896e` falhou em `corrigir` por `429 RESOURCE_EXHAUSTED`, limite free tier `20` para `gemini-3-flash` | Nao rerodar de imediato; tratar como bloqueio de provider/quota, nao como sucesso nem como falha silenciosa. |
@@ -2498,8 +2506,8 @@ Fila minima para custo real:
 | GPT-5 Nano | Chat OK; `extrair_questoes`, `extrair_gabarito` e `corrigir` OK no smoke integrado pos-`f2211bb`; etapas finais tem sucesso individual historico; `extrair_respostas` falhou conteudo e agora falha alto desde `1ce3d23`; falta pipeline completa propria do Nano | Smoke integrado `task_19ee59ac1881`: `extrair_questoes` `d50f3b909e6773e7` (`US$ 0.003580`), `extrair_gabarito` `8dd414ee1617c3a5` (`US$ 0.002545`), `corrigir` JSON/PDF `f0302debf41ae58f`/`31794fc784905c00` (`US$ 0.002807`), falha em `analisar_habilidades` com doc erro `b5f17f2d1a980a3d` (`US$ 0.004213`). Historico: `extrair_respostas` falhou em `task_3d5feaf0da71`; analise individual ja passou em `task_020ba25bdb2b`; relatorio individual ja passou em `task_aec830b85c03`. | Manter Nano fora de `extrair_respostas`; revalidar etapas finais em run integrado apenas se Nano voltar a ser alvo. |
 | GPT-5.4 Mini | `extrair_respostas` OK em amostras avulsas e smoke integrado; full smoke oficial simples completou as 6 etapas; etapas finais revalidadas com retry PDF/JSON | Smoke usou cadastro efemero `04b31001cf81`; teste de conexao retornou `OK`; `task_9c10e3752bcb` criou JSON `a39d26fcc621c7a8`, 4/7 respostas com conteudo real, 3/7 `MISSING_CONTENT`, tokens `97004/1942`, custo `US$ 0.081492`; depois `gpt54mini001` entrou em `backend/data/models.json`; `task_706931a94555` criou `fec100a2e41eabcf`, tokens `97004/1737`, custo `US$ 0.080570`; `task_19062336eb8b` criou `4a82ddf1d2118ff0`, 7/7 respostas reais, tokens `90588/2813`, custo `US$ 0.0806`; no smoke integrado `task_19ee59ac1881`, `gpt54mini001` criou `1e5db36f3ab9aa0e`, tokens `18176/2081`, custo `US$ 0.022996`; no smoke full `task_a5f0d734f0b3` completou as 6 etapas no Render `2cad38a`, com custo total aproximado `US$ 0.079110` e JSONs coerentes; re-smoke `task_605512496b0d` no Render `0ac92f0` completou as 6 etapas, mas PDF de correcao divergiu (`9.0`/Q3 `2.0` contra JSON `8`/Q3 `0`) e PDF de relatorio mostrou `Nota final: N/A` contra JSON `8`; `task_857c0c3657ef` no Render `2052a01` falhou alto em `corrigir` e registrou custo `US$ 0.024458` (`16116/2749`); `task_e389f360b812` no Render `3a77a17` completou etapas finais, com `corrigir` PDF/JSON `b9fbaf4dc24b4a75`/`dd79a9c3f369fc09`, Q3 `0.0/2.0`, `gerar_relatorio` PDF/JSON `3bc1b11467f885ce`/`ce538fb798f1230e`, custo das etapas finais `US$ 0.032536`, `US$ 0.021490`, `US$ 0.019338`. | Confirmado nessa fixture simples; repetir em datasets maiores e nos demais providers. |
 | Claude Haiku 4.5 | Bloqueado | Creditos Anthropic insuficientes | Recarregar creditos e testar sem trocar provider. |
-| GPT-4o | Parcial/referencia historica | Gerou 3 etapas, mas schema antigo e sem avisos | Revalidar como modelo explicito, nao fallback. |
-| Gemini 2.5 Flash/Lite | Incerto | Catalogo/flags historicamente inconsistentes | Validar capabilities antes de pipeline. |
+| GPT-4o | Confirmado na fixture simples Diana para pipeline completa | Full smoke `task_68b19146a95b` em `54d083e`: `extrair_questoes` `5adf51fcd1adc4c0`, `extrair_gabarito` `7c097774fce46472`, `extrair_respostas` `9e6d562d51a6f6e4`, `corrigir` JSON/PDF `b2abc9a73c8dc3a8`/`8911e1a3acae4ad2`, `analisar_habilidades` JSON/PDF `21f2d7d065aeafe5`/`72203996b8960b50`, `gerar_relatorio` JSON/PDF `bbc5963d712a7f1e`/`f12312b96e3725a3`; custo aproximado `US$ 0.314369`; inspeção semantica: 4 questoes, nota `8.0`, PDFs de correcao/relatorio com `Nota Final: 8.0`. | Repetir em dataset maior e confirmar UI/metadata/custo persistido, mas nao tratar mais como fallback historico. |
+| Gemini 2.5 Flash/Lite | Flash confirmado para extracoes; tools corrigidas no codigo, mas revalidacao bloqueada por quota; Lite apenas conexao OK | `task_f1f1511f21d5` em `54d083e` completou `extrair_questoes` `4d5c5abdc1203f2b`, `extrair_gabarito` `d27793f610a3696c` e `extrair_respostas` `ffed15b8003145e9`; falhou alto em `corrigir` por tools incompletas. `854cec7` passou a enviar `toolConfig.functionCallingConfig.mode=ANY` e `allowedFunctionNames` para Google e a fasear JSON/PDF; `task_cdef8694893e` provou que Google passou a chamar tools, mas revelou bloqueio de consistencia de feedback. `b07472f` aceitou parafrase coerente sem aceitar feedback truncado. Reruns `task_6bba32964706` e `task_f9b76153875a` falharam por quota Google `429`. | Nao rerodar enquanto quota estiver saturada; quando liberar, repetir `corrigir`/pipeline e atualizar status para confirmado ou falhou alto. |
 | Ollama/local | Fora do pipeline real atual | Sem multimodal/tools suficientes | Nao promover sem testes. |
 | OpenRouter/Groq/Mistral/etc | Nao testado ou parcial | Catalogo/sugestoes | So entram apos contrato de tools/vision claro. |
 
@@ -2523,6 +2531,9 @@ Erros conhecidos por provider/rota:
 | Gemini 3 Flash | `pipeline-completo` pos-fix `extrair_gabarito` | Task `task_094c921eb038` completou; resposta inicial retornou `task_id` em 1.155s e `/api/health` ficou saudavel nos 20 polls, mas o JSON marcou todas as questoes como `MISSING_CONTENT` apesar de existir texto de Q5 no PDF base | Reclassificado como falha de conteudo historica; rerun posterior `task_c08f3d478aad` corrigiu a fixture Diana. |
 | Gemini 3 Flash | `pipeline-completo` pos-fix `extrair_respostas` | Task `task_7d357943288d` completou; resposta inicial retornou `task_id` em 1.002s e `/api/health` ficou saudavel | Confirmado para conteudo/custo de `extrair_respostas`; as 6 etapas individuais estao OK. |
 | Gemini 3 Flash | `pipeline-completo` sequencial pos-runner | Task `task_5e97bbee896e` completou as tres extracoes, manteve health saudavel, mas falhou alto em `corrigir` por quota `429`; correcoes parciais ficaram `status=erro` e custo bloqueado por `token_split_missing` | Bloqueado por quota provider; nao promover como pipeline completa validada. |
+| Gemini 2.5 Flash | `pipeline-completo` em `54d083e` | Task `task_f1f1511f21d5` completou as tres extracoes, mas falhou alto em `corrigir` por saida obrigatoria incompleta: sem JSON via `create_document` e PDF via `execute_python_code` | Falha correta antes de `854cec7`; nao criou PDF/JSON inventado. |
+| Gemini 2.5 Flash | `pipeline-completo` em `854cec7` | Task `task_cdef8694893e` provou que Google passou a chamar tools depois de `toolConfig.functionCallingConfig`, mas o PDF foi marcado `status=erro` por consistencia de feedback geral | Bug de tool-use corrigido; validador de feedback estava estrito demais para parafrase coerente. |
+| Gemini 2.5 Flash | `pipeline-completo` e `corrigir` isolado em `b07472f` | Tasks `task_6bba32964706` e `task_f9b76153875a` falharam por quota Google `429`; documento parcial `338b25f9c0f74415` ficou `status=erro` e nao conta como sucesso | Bloqueado por quota; repetir quando quota liberar, sem trocar provider/modelo e sem aceitar parcial verde. |
 | GPT-5 Nano | `pipeline-completo` pos-fix `corrigir` | Task `task_49b7ada546d4` falhou alto por saida obrigatoria incompleta | Falha correta, sem fallback. |
 | GPT-5 Nano | `pipeline-completo` pos-fix `corrigir` | Task `task_edb822810ddc` completou com PDF, mas JSON invalido | Corrigido por `39aa50a`; JSON invalido nao deve entrar no storage. |
 | GPT-5 Nano | `pipeline-completo` pos-fix `corrigir` | Task `task_1a7857360267` completou com JSON parseavel, PDF via execute e custo | Confirmado para `corrigir`; nao para pipeline completa. |
@@ -3209,6 +3220,45 @@ Interpretação:
 - O comportamento atual do executor esta correto: falha alta, sem PDF/JSON
   inventado, sem trocar provider.
 
+## Atualizacao 2026-05-17 -- Gemini 2.5 Flash: Tool-use Corrigido, Quota Bloqueia Revalidacao
+
+O ciclo seguinte atacou o erro real, nao o contornou:
+
+- Fonte tecnica usada: documentacao oficial Google Gemini Function Calling,
+  especialmente `toolConfig.functionCallingConfig.mode=ANY` e
+  `allowedFunctionNames`:
+  `https://ai.google.dev/gemini-api/docs/function-calling`.
+- Commit `854cec7`: o `ChatService` passou a enviar `toolConfig` para Google na
+  primeira iteracao de tools; o executor passou a usar o mesmo fluxo faseado de
+  OpenAI para Google: primeiro `create_document`, depois `execute_python_code`.
+- Testes do ciclo `854cec7`: `test_d_t2_google_tool_use.py`,
+  `test_e_t2_retry_partial_output.py`, `test_cost_tracking.py` e
+  `test_stage_tool_pdf_quality.py` passaram.
+- Deploy: `/api/deploy-info` confirmou `854cec7`.
+- Smoke `task_cdef8694893e`: Gemini 2.5 Flash passou a chamar tools e criou
+  JSON/PDF de correcao; o bloqueio restante virou consistencia PDF/JSON de
+  feedback, nao mais ausencia de tools.
+- Commit `b07472f`: o validador de consistencia aceitou `Feedback Geral`
+  substantivo e parafraseado quando ele cobre semanticamente o JSON e nao esta
+  truncado; feedback curto/truncado continua bloqueado.
+- Testes do ciclo `b07472f`: `test_stage_tool_pdf_quality.py`,
+  `test_d_t2_google_tool_use.py`, `test_e_t2_retry_partial_output.py` e
+  `test_cost_tracking.py` passaram.
+- Deploy: `/api/deploy-info` confirmou `b07472f`.
+- Rerun full `task_6bba32964706`: chegou novamente a `corrigir`, mas falhou por
+  Google `429 RESOURCE_EXHAUSTED`.
+- Rerun isolado `task_f9b76153875a`: tambem falhou por Google `429`; o JSON
+  parcial `338b25f9c0f74415` ficou `status=erro` e nao pode ser contado como
+  etapa concluida.
+
+Interpretação atualizada:
+
+- O bug de "Gemini nao chama tools" foi corrigido no codigo e publicado.
+- A matriz ainda nao pode marcar Gemini 2.5 Flash como pipeline-ready, porque a
+  revalidacao final de `CORRIGIR`/tools foi bloqueada por quota.
+- O comportamento correto enquanto isso e registrar bloqueio de provider/quota,
+  nao rerodar em loop cego e nao trocar para outro modelo em silencio.
+
 ## Trabalho Aberto Desta Auditoria
 
 Esta auditoria nao encerra o loop tecnico. Ela deixa o proximo trabalho mais
@@ -3219,7 +3269,7 @@ claro. O que ainda existe para fazer:
 | Ciclo anti-fallback | Codigo/testes | PDF auto-fallback, `nota_final=N/A`, regex/Markdown e parciais como sucesso ainda precisam tratamento. |
 | Settings de modelos | Codigo/testes/deploy | `from-catalog` deu 500 e create ignorou capabilities no site live; patch `b16e051` ja foi deployado e retestado; cadastro por API sumiu no deploy, mas o modelo versionado `gpt54mini001` apareceu no site em `be19b7e` e passou teste de conexao. |
 | Metadata/custo real | Codigo/testes/deploy | Metadata e endpoints existem no site; full smoke GPT-5.4 Mini mediu custo por etapa, mas Supabase `token_usage` segue ausente (`PGRST205`), `local_record_count=0` depois de deploy e custo de falha sem documento ainda nao e duravel. |
-| Provider revalidation | Smoke/producao | Matriz Doc 12 registra GPT-5.4 Mini full smoke em fixture simples e GPT-4o nas tres etapas finais (`task_386f96bbf158`), mas continua incompleta ate novos smokes por provider/rota/dataset. |
+| Provider revalidation | Smoke/producao | Matriz Doc 12 registra GPT-5.4 Mini full smoke em fixture simples, GPT-4o full smoke (`task_68b19146a95b`) e Gemini 2.5 Flash com extracoes OK/tool-use corrigido mas bloqueado por quota; continua incompleta ate novos smokes por provider/rota/dataset. |
 | PDFs/UI GPT-5.4 Mini/GPT-4o | Codigo/testes/deploy/smoke | `task_a5f0d734f0b3` completou 6 etapas, JSONs passaram inspeção semantica inicial e PDFs existem; `0ac92f0` corrigiu parte do layout, mas `task_605512496b0d` provou divergencia PDF/JSON; `2052a01` transformou essa divergencia em erro alto; `3a77a17` validou retry explicito do PDF; `3e6be20` bloqueia Feedback Geral truncado e GPT-4o passou as etapas finais com artefatos ruins marcados como erro. | Repetir em datasets maiores e melhorar UI de erro para o usuario final. |
 | Gabarito incompleto bloqueia correção | Codigo/testes/deploy/smoke | `3a7dfea` bloqueia `CORRIGIR` com `MISSING_CONTENT` no gabarito; continua importante para datasets como Lista0, embora a fixture Diana tenha completado. |
 | UI de erros | Produto/frontend | Usuario precisa ver aluno, etapa, provider e causa sem terminal. |

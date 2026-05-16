@@ -15,7 +15,8 @@
 `5527e26`, `2792d89`, `23282d7`, `7d0c874`, `8dd6c54`, `c1598b9`,
 `01fb04c`, `6b57ef1`, `3b9eedc`, `b8b8693`, `283e8c6`, `1ce3d23`,
 `2d72c6b`, `f2211bb`, `5a3daca`, `92bd095`, `f6b040c`, `2cad38a`,
-`2885da7`, `99b8c3c`, `392ec7c`, `460643f`, `54d083e`
+`2885da7`, `99b8c3c`, `392ec7c`, `460643f`, `54d083e`,
+`854cec7`, `b07472f`
 
 ## Status Oficial De Deploy
 
@@ -93,7 +94,7 @@
 | Provider/Modelo | EXTRAIR_QUESTOES | EXTRAIR_GABARITO | EXTRAIR_RESPOSTAS | CORRIGIR | ANALISAR_HABILIDADES | GERAR_RELATORIO |
 |-----------------|:---:|:---:|:---:|:---:|:---:|:---:|
 | **Claude Haiku 4.5** (`588f3efe7975`) | ⏸️ | ⏸️ | ⏸️ | 🚫 | 🚫 | 🚫 |
-| **Gemini 2.5 Flash** (`gem25flash001`) | ✅ | ✅ | ✅ | ❌ | ⏸️ | ⏸️ |
+| **Gemini 2.5 Flash** (`gem25flash001`) | ✅ | ✅ | ✅ | 🚫 | ⏸️ | ⏸️ |
 | **Gemini 3 Flash** (`gem3flash001`) | ✅ | ✅ | ✅ | ⚠️ | ⚠️ | ⚠️ |
 | **GPT-5 Nano** (`gpt5nano001`) | ✅ | ✅ | ⚠️ | ⚠️ | ⚠️ | ✅ |
 | **GPT-5.4 Mini** (`gpt54mini001`) | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
@@ -133,7 +134,15 @@ pipeline full `task_f1f1511f21d5`, runtime `54d083e`, falhou alto em
 `extrair_respostas` `ffed15b8003145e9` (`2456/336`, `US$ 0.000570`). A falha
 foi: `tools: Saída obrigatória incompleta: JSON via create_document, PDF via
 execute_python_code`; portanto tools Gemini 2.5 Flash ainda nao estao
-pipeline-ready nesse executor.
+pipeline-ready nesse executor. O commit `854cec7` passou a forcar tool-use
+Google com `toolConfig.functionCallingConfig.mode=ANY` e `allowedFunctionNames`,
+alem de fasear JSON/PDF como OpenAI. O commit `b07472f` passou a aceitar
+parafrase coerente de `feedback_geral` no PDF sem aceitar corte/truncamento. No
+runtime `b07472f`, o rerun full `task_6bba32964706` chegou novamente a
+`corrigir`, mas falhou por Google `429` antes de validar a etapa; a tentativa
+isolada `task_f9b76153875a` tambem falhou por `429`. Um JSON parcial
+`338b25f9c0f74415` foi marcado `status=erro`, como esperado. Status atual:
+extracoes ✅, tools bloqueadas por quota para revalidacao.
 Nota Nano/relatorio: a full Nano `task_f0c0f15a2f27`, no runtime `99b8c3c`,
 completou as 6 etapas, mas revelou falso verde em `GERAR_RELATORIO`: correcao
 JSON `cff76af34d9248a6` tinha `nota_final=8.0` e o relatorio JSON/PDF

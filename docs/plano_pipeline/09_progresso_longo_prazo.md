@@ -121,7 +121,12 @@ Google `429`. Em seguida, a task `task_f1f1511f21d5` rodou full smoke com
 `corrigir` falhou alto por saida obrigatoria incompleta de tools
 (`create_document` JSON + `execute_python_code` PDF). Status correto: Google
 Gemini 2.5 Flash funciona para extracoes na fixture simples, mas nao esta
-pipeline-ready para tools.
+pipeline-ready para tools. Os commits `854cec7` e `b07472f` atacaram esse
+ponto: primeiro forcaram tool-use Google faseado (`create_document` depois
+`execute_python_code`), depois aceitaram paráfrase coerente de `feedback_geral`
+sem aceitar feedback truncado. A revalidacao em `b07472f` chegou a criar JSON
+de correcao, mas parou em Google `429`; `task_6bba32964706` e a tentativa
+isolada `task_f9b76153875a` ficam como bloqueio de quota, nao como falso verde.
 
 A sequencia que destravou esse ponto foi:
 
@@ -241,7 +246,7 @@ Estabilizar o NOVO CR para que a pipeline:
 | Frente | Estado | Proximo passo |
 |--------|--------|---------------|
 | Docs e plano | Sprint 0 concluida | Manter este painel como fonte oficial e anexos fora do fluxo diario |
-| Pipeline | GPT-5.4 Mini (`gpt54mini001`) completou as 6 etapas no site oficial em `task_a5f0d734f0b3`, Render hash `2cad38a`, com documentos, custos e inspeção semantica inicial coerente nos JSONs; re-smoke no Render `0ac92f0` (`task_605512496b0d`) completou as 6 etapas, mas expôs divergencia P0 entre JSON e PDF em `corrigir` e `gerar_relatorio`; `2052a01` bloqueou PDF inconsistente com falha alta em `task_857c0c3657ef`; `3a77a17` adicionou retry PDF/JSON e `task_e389f360b812` completou as etapas finais com PDF/JSON coerentes na fixture simples; `392ec7c` bloqueou relatorio que muda `nota_final` em relacao a correcao oficial e o smoke Nano `task_57da745b8de5` confirmou JSON/PDF de relatorio com `nota_final=8.0`; GPT-4o completou full smoke `task_68b19146a95b` em `54d083e` com custo aproximado `US$ 0.314369`; Gemini 2.5 Flash completou extracoes mas falhou alto em `corrigir` por tools incompletas; Gemini 3 Flash segue validado em etapas individuais, mas pipeline sequencial bateu quota `429`; GPT-5 Nano segue parcial em `extrair_respostas` por historico de qualidade/datasets maiores | Revalidar matriz por provider/modelo e manter bloqueio P0: nao aceitar `completed` sem documento, schema, custo, conteudo minimo, nota cross-stage e artefatos coerentes entre si |
+| Pipeline | GPT-5.4 Mini (`gpt54mini001`) completou as 6 etapas no site oficial em `task_a5f0d734f0b3`, Render hash `2cad38a`, com documentos, custos e inspeção semantica inicial coerente nos JSONs; re-smoke no Render `0ac92f0` (`task_605512496b0d`) completou as 6 etapas, mas expôs divergencia P0 entre JSON e PDF em `corrigir` e `gerar_relatorio`; `2052a01` bloqueou PDF inconsistente com falha alta em `task_857c0c3657ef`; `3a77a17` adicionou retry PDF/JSON e `task_e389f360b812` completou as etapas finais com PDF/JSON coerentes na fixture simples; `392ec7c` bloqueou relatorio que muda `nota_final` em relacao a correcao oficial e o smoke Nano `task_57da745b8de5` confirmou JSON/PDF de relatorio com `nota_final=8.0`; GPT-4o completou full smoke `task_68b19146a95b` em `54d083e` com custo aproximado `US$ 0.314369`; Gemini 2.5 Flash completou extracoes, `854cec7` corrigiu falta de tool-use e `b07472f` removeu falso bloqueio por paráfrase, mas revalidacao de `corrigir` esta bloqueada por Google `429`; Gemini 3 Flash segue validado em etapas individuais, mas pipeline sequencial bateu quota `429`; GPT-5 Nano segue parcial em `extrair_respostas` por historico de qualidade/datasets maiores | Revalidar matriz por provider/modelo e manter bloqueio P0: nao aceitar `completed` sem documento, schema, custo, conteudo minimo, nota cross-stage e artefatos coerentes entre si |
 | Schema e avisos | Sprint 2 concluida localmente | Manter schema oficial, defaults e visualizador cobertos por testes |
 | Custos/tokens | Metadata de documento, endpoints live, resumo por `cost_run_id`, `TokenUsageRecord` local, migration Supabase dedicada `b2dc88b`; smoke full GPT-5.4 Mini `task_a5f0d734f0b3` registrou custo medido por etapa: `US$ 0.002312`, `US$ 0.002759`, `US$ 0.002657`, `US$ 0.026149`, `US$ 0.017470` e `US$ 0.027763`, total aproximado `US$ 0.079110`; smoke Nano `task_57da745b8de5` registrou `29067/6701` tokens no `cost_run_id=tool_8feb2ba8dfca`, incluindo PDF em erro e retry concluido; `460643f` faz `/api/custos/status` retornar `ok=false` e alerta bloqueante enquanto `PGRST205`, `durable=false` e `local_record_count=0` persistirem; `54d083e` mostra esse bloqueio no dashboard oficial | Aplicar `backend/migrations/002_create_token_usage.sql` no Supabase; revalidar ate `token_usage_backend.durable=true`; depois persistir custos de falhas sem documento |
 | UI de erros | Dashboard oficial mostra bloqueio de custos nao duraveis no commit `54d083e`; falhas por aluno/etapa ainda estao pendentes | Mostrar falha por aluno/etapa sem depender de terminal |
@@ -1923,6 +1928,36 @@ Critério de pronto: lista de limpeza segura e revisada.
 - Proximo alvo possivel: corrigir contrato/prompt/tool-use Gemini para
   `CORRIGIR`, ou manter Gemini 2.5 Flash como ✅ extracoes/❌ tools enquanto o
   foco passa para UI de erros por etapa.
+
+### 2026-05-17 -- Gemini 2.5 Flash tool-use corrigido, revalidacao bloqueada por quota
+
+- Alvo: corrigir a falha real do smoke anterior, em que Gemini 2.5 Flash nao
+  produziu os dois artefatos obrigatorios de `CORRIGIR`.
+- Base tecnica: a doc oficial Gemini descreve
+  `toolConfig.functionCallingConfig.mode=ANY` com `allowedFunctionNames` para
+  forcar chamada de função. O commit `854cec7` passou a enviar esse controle e
+  fasear Google como OpenAI: primeira chamada força `create_document`; chamada
+  seguinte força `execute_python_code`.
+- Validador: `b07472f` ajustou a consistencia PDF/JSON para aceitar
+  paráfrase substantiva de `feedback_geral` quando o PDF tem seção longa,
+  pontuação final e overlap de conceitos, sem aceitar feedback curto/truncado.
+- Testes locais: `py_compile` dos arquivos alterados; `git diff --check`;
+  `test_d_t2_google_tool_use.py`, `test_e_t2_retry_partial_output.py`,
+  `test_stage_tool_pdf_quality.py` e `test_cost_tracking.py` passaram.
+- Deploy: `/api/deploy-info` confirmou `854cec7` e depois `b07472f`;
+  `/api/health` permaneceu `healthy`.
+- Smokes: `task_cdef8694893e` em `854cec7` provou que Google passou a chamar
+  tools, mas o PDF foi barrado por consistencia de feedback. Em `b07472f`,
+  `task_6bba32964706` chegou a `corrigir`, mas falhou por Google `429`
+  (`generate_content_free_tier_requests`, limite `20`, modelo
+  `gemini-2.5-flash`). A tentativa isolada `task_f9b76153875a` tambem falhou
+  por `429`.
+- Evidencia de erro seguro: o JSON parcial `338b25f9c0f74415` foi marcado
+  `status=erro`; a task nao virou `completed`. `/api/custos/status?limit=160`
+  retornou `runs_bloqueados=1`, `custo_usd=None` e ainda
+  `custos_persistencia_status=parcial_sem_token_usage_duravel`.
+- Status: bloqueado por quota para concluir `CORRIGIR`/tools Gemini 2.5 Flash.
+  Nao e aceito como full smoke, mas a falha silenciosa anterior foi corrigida.
 
 ## Riscos Abertos
 
