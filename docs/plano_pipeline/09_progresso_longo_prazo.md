@@ -115,6 +115,17 @@ do run `tool_37b678de7e7d` ficaram `status=erro`; custo rastreavel
 `55975/9221` tokens, `US$ 0.006487`. Status correto: Nano nao esta confirmado
 para `corrigir` nesse runtime, mas a pipeline bloqueia o falso verde.
 
+Atualizacao GPT-4.1 em 2026-05-17 no runtime `0f84552`: smoke
+`task_714dab24c41a`, modelo `ffae9accf68e`, `selected_steps=["corrigir"]`,
+completou no site oficial. A inspeção manual baixou JSON `d921c575837e38d7` e
+PDF final `a7669eb5352e3d9d`; ambos registram `nota_final=8.0`, Q1/Q2/Q4
+corretas, Q3 errada por `25` vs `30`, e feedback geral coerente. O PDF
+intermediario `b18662384cdac7c6` foi marcado `status=erro` por consistencia
+antes do retry; o artefato final ficou `concluido`. Custo calculado pelo
+endpoint `/api/custos/resumo`: run `tool_9d63d57a7b83`, `24217/4005` tokens,
+`US$ 0.080474`, `custo_status=ok`. Status: `CORRIGIR` confirmado para GPT-4.1
+nessa fixture simples, com retry explicito e sem fallback.
+
 Atualizacao de 2026-05-17 no runtime `700b088`: o ciclo `f40acf3` alinhou
 `PROMPTS_PADRAO` e `STAGE_TOOL_INSTRUCTIONS` para `CORRIGIR`,
 `ANALISAR_HABILIDADES` e `GERAR_RELATORIO`, e tornou obrigatorios campos de

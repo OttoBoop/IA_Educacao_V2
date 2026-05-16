@@ -133,6 +133,7 @@
 | **GPT-5 Nano** (`gpt5nano001`) | ✅ | ✅ | ⚠️ | ❌ | ⚠️ | ✅ |
 | **GPT-5.4 Mini** (`gpt54mini001`) | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | **GPT-4o** (`180b8298a279`) — referencia | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| **GPT-4.1** (`ffae9accf68e`) | ⏸️ | ⏸️ | ⏸️ | ✅ | ⏸️ | ⏸️ |
 
 Nota de leitura: os checks da tabela acima sao por etapa individual validada.
 Eles nao significam que a pipeline completa de 6 etapas passou em uma unica
@@ -219,6 +220,12 @@ Nota Nano/corrigir: no runtime `0f84552`, o smoke `task_90eb0936b7ce` com
 `tool_37b678de7e7d`, `55975/9221`, `US$ 0.006487`. Portanto `CORRIGIR` volta a
 ❌ para Nano nesse runtime, embora a falha esteja corretamente bloqueada e
 custeada.
+Nota GPT-4.1/corrigir: no runtime `0f84552`, o smoke `task_714dab24c41a` com
+`selected_steps=["corrigir"]` completou no site oficial. JSON
+`d921c575837e38d7` e PDF final `a7669eb5352e3d9d` ficaram coerentes:
+`nota_final=8.0`, Q3 errada por `25` vs `30`, e feedback geral presente. O PDF
+intermediario `b18662384cdac7c6` ficou `status=erro` antes do retry explicito.
+Custo: `tool_9d63d57a7b83`, `24217/4005`, `US$ 0.080474`.
 Nota P0 atualizada: `extrair_gabarito` Gemini era ❌ porque o output historico
 retornou todas as respostas como `MISSING_CONTENT`, embora o PDF base tivesse
 texto extraivel de "Exercicio 5". Em 2026-05-17, o smoke
