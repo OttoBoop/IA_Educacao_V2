@@ -39,12 +39,13 @@ import pytest
 import sys
 import json
 from pathlib import Path
+from types import SimpleNamespace
 from unittest.mock import MagicMock, AsyncMock, patch, call
 
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
 from executor import PipelineExecutor, ResultadoExecucao, EtapaProcessamento
-from models import TipoDocumento
+from models import StatusProcessamento, TipoDocumento
 
 
 # ============================================================
@@ -1049,3 +1050,149 @@ class TestSingleToolNoDualCheck:
             f"retry expected on partial output. Got call_count={call_count}. "
             "Current code never retries — this is the bug E-T2 must fix."
         )
+
+
+@pytest.mark.asyncio
+async def test_pdf_execution_error_triggers_same_model_code_repair(monkeypatch, tmp_path):
+    """A failed execute_python_code PDF attempt gets one explicit same-model repair."""
+    import chat_service
+    import fitz
+    from chat_service import ProviderType
+
+    feedback = "A aluna demonstrou bom dominio geral, mas precisa revisar porcentagem."
+    json_path = tmp_path / "correcao.json"
+    json_path.write_text(
+        json.dumps(
+            {
+                "nota_final": 8,
+                "questoes": [
+                    {
+                        "numero": 1,
+                        "resposta_aluno": "x = 5",
+                        "resposta_correta": "x = 5",
+                        "nota": 8,
+                        "nota_maxima": 8,
+                        "acerto": True,
+                        "feedback": "Bom desempenho.",
+                    }
+                ],
+                "total_acertos": 1,
+                "total_erros": 0,
+                "feedback_geral": feedback,
+                "_avisos_documento": [],
+                "_avisos_questao": [],
+            }
+        ),
+        encoding="utf-8",
+    )
+    pdf_path = tmp_path / "correcao.pdf"
+    pdf = fitz.open()
+    page = pdf.new_page()
+    page.insert_textbox(
+        fitz.Rect(40, 40, 560, 800),
+        "Aluno: Ada\n"
+        "Matéria: Matemática\n"
+        "Atividade: Prova 1\n"
+        "Data: 2026-05-17\n"
+        "Nota final: 8.0\n"
+        "Questão 1 — Nota: 8.0\n"
+        f"Feedback Geral: {feedback}\n",
+        fontsize=11,
+    )
+    pdf.save(str(pdf_path))
+    pdf.close()
+
+    docs = {
+        "doc-json": SimpleNamespace(
+            id="doc-json",
+            extensao=".json",
+            metadata={"tool": "create_document"},
+            status=StatusProcessamento.CONCLUIDO,
+        ),
+        "doc-pdf": SimpleNamespace(
+            id="doc-pdf",
+            extensao=".pdf",
+            metadata={"tool": "execute_python_code"},
+            status=StatusProcessamento.CONCLUIDO,
+        ),
+    }
+    paths = {"doc-json": json_path, "doc-pdf": pdf_path}
+
+    class FakeStorage:
+        atualizar_documento_processamento = MagicMock()
+
+        def get_documento(self, doc_id):
+            return docs.get(doc_id)
+
+        def resolver_caminho_documento(self, doc):
+            return paths[doc.id]
+
+    model = SimpleNamespace(
+        id="gemini-lite",
+        tipo=ProviderType.GOOGLE,
+        modelo="gemini-2.5-flash-lite",
+        api_key_id=None,
+        suporta_function_calling=True,
+        max_tokens=1024,
+        temperature=0,
+        suporta_temperature=False,
+    )
+    monkeypatch.setattr(chat_service.model_manager, "get", lambda _model_id: model)
+    monkeypatch.setattr(chat_service.api_key_manager, "get", lambda _key_id: None)
+    monkeypatch.setattr(
+        chat_service.api_key_manager,
+        "get_por_empresa",
+        lambda _provider: SimpleNamespace(api_key="test-key"),
+    )
+
+    calls = []
+
+    class DummyClient:
+        def __init__(self, model_config, api_key):
+            pass
+
+        async def chat_with_tools(self, **kwargs):
+            calls.append(kwargs)
+            context = kwargs["context"]
+            if len(calls) == 1:
+                context.created_document_ids.append("doc-json")
+                return _tool_response(["create_document"])
+            if len(calls) == 2:
+                return {
+                    "content": "",
+                    "tokens": 20,
+                    "input_tokens": 15,
+                    "output_tokens": 5,
+                    "modelo": "gemini-2.5-flash-lite",
+                    "provider": "google",
+                    "tool_calls": [
+                        {
+                            "name": "execute_python_code",
+                            "is_error": True,
+                            "error_content": "[E2B_ERROR] IndentationError: unexpected indent",
+                        }
+                    ],
+                }
+            context.created_document_ids.append("doc-pdf")
+            return _tool_response(["execute_python_code"])
+
+    monkeypatch.setattr(chat_service, "ChatClient", DummyClient)
+
+    executor = PipelineExecutor()
+    executor.storage = FakeStorage()
+    result = await executor.executar_com_tools(
+        mensagem="Gere analise de habilidades.",
+        atividade_id="atividade-1",
+        aluno_id="aluno-1",
+        provider_id="gemini-lite",
+        tools_to_use=["create_document", "execute_python_code"],
+        expected_document_type=TipoDocumento.CORRECAO,
+    )
+
+    assert result.sucesso is True
+    assert result.tentativas == 3
+    assert len(calls) == 3
+    assert calls[2]["tools"][0]["name"] == "execute_python_code"
+    assert "tentativa anterior" in calls[2]["mensagem"].lower()
+    assert "IndentationError" in calls[2]["mensagem"]
+    assert "Nao chame create_document" in calls[2]["mensagem"]

@@ -3867,6 +3867,53 @@ Seja preciso, educativo e construtivo em suas análises."""
                     + contexto_retry
                 )
 
+            def _retry_pdf_execution_error_message(state: Dict[str, Any]) -> str:
+                pdf_filename = f"{expected_document_type.value if expected_document_type else 'relatorio'}.pdf"
+                json_doc = _latest_tool_doc(state, "create_document", ".json")
+                json_content = ""
+                if json_doc is not None:
+                    try:
+                        json_content = _read_doc_text_for_retry(json_doc)
+                    except Exception as exc:
+                        json_content = f"[JSON indisponivel para leitura no retry: {exc}]"
+
+                contexto_original = str(mensagem or "").strip()
+                if len(contexto_original) > 6000:
+                    contexto_original = contexto_original[:6000] + "\n...[contexto truncado para retry de codigo PDF]..."
+
+                errored_details = [
+                    detail
+                    for detail in state.get("errored_tool_details", [])
+                    if detail.startswith("execute_python_code:")
+                ]
+                erro_anterior = "\n".join(f"- {detail}" for detail in errored_details) or "- execute_python_code falhou sem detalhe estruturado."
+
+                return (
+                    "A tentativa anterior de gerar o PDF com execute_python_code falhou. "
+                    "Isto e uma tentativa explicita de reparo no MESMO modelo; nao ha "
+                    "fallback automatico.\n"
+                    "Nesta chamada, a unica ferramenta disponivel e execute_python_code. "
+                    "Nao chame create_document, nao altere o JSON, nao recalcule notas e "
+                    "nao invente valores. Corrija somente o codigo Python do PDF.\n"
+                    f"Preencha output_files com ['{pdf_filename}'] e salve exatamente esse "
+                    "arquivo com reportlab. "
+                    + PDF_SANDBOX_RULES
+                    + "\n\nERRO DA TENTATIVA ANTERIOR:\n"
+                    + erro_anterior
+                    + "\n\nCONTEXTO ORIGINAL DA ETAPA:\n```\n"
+                    + contexto_original
+                    + "\n```\n"
+                    + "\n\nJSON OFICIAL JA PERSISTIDO:\n```json\n"
+                    + json_content
+                    + "\n```\n"
+                )
+
+            def _has_execute_python_code_error(state: Dict[str, Any]) -> bool:
+                return any(
+                    detail.startswith("execute_python_code:")
+                    for detail in state.get("errored_tool_details", [])
+                )
+
             def _retry_tools_for_state(state: Dict[str, Any]) -> List[Dict[str, Any]]:
                 missing_names = []
                 if not state["has_json"]:
@@ -4730,6 +4777,19 @@ Seja preciso, educativo e construtivo em suas análises."""
                     if state["has_json"] and not state["has_pdf"]:
                         resposta = await client.chat_with_tools(
                             mensagem=_retry_message_for_state(state),
+                            tools=_tools_by_names(["execute_python_code"]),
+                            tool_registry=registry,
+                            system_prompt=system_prompt,
+                            context=context,
+                            tool_choice=_forced_openai_tool("execute_python_code"),
+                        )
+                        respostas_tool.append(resposta)
+                        tentativas += 1
+                        state = _dual_output_state(respostas_tool)
+
+                    if state["has_json"] and not state["has_pdf"] and _has_execute_python_code_error(state):
+                        resposta = await client.chat_with_tools(
+                            mensagem=_retry_pdf_execution_error_message(state),
                             tools=_tools_by_names(["execute_python_code"]),
                             tool_registry=registry,
                             system_prompt=system_prompt,
