@@ -413,6 +413,16 @@ documento verde. Portanto:
   `error.provider=Anthropic`, `error.provider_status_code=400`,
   `error.retryable=false`.
 
+**Teste live de conexao em 2026-05-17 (`0f84552`):**
+- OpenAI OK: `180b8298a279` (`gpt-4o`), `ffae9accf68e` (GPT-4.1),
+  `gpt5nano001` e `gpt54mini001`.
+- Anthropic bloqueado por credito: Haiku 4.5 e Sonnet 4.5 retornam saldo
+  insuficiente.
+- Google saturado: Gemini 2.5 Pro, Gemini 2.5 Flash e Gemini 3 Flash retornam
+  `429`. Gemini 2.5 Flash Lite conecta, mas o ultimo smoke de `corrigir`
+  falhou alto por JSON/PDF divergentes.
+- Ollama local falha conexao no Render.
+
 **Smoke live de pipeline em 2026-05-15:**
 - Gemini 3 Flash (`gem3flash001`) em `pipeline-completo`, aluno Eric,
   `selected_steps=["corrigir"]`, task `task_e22dbdbffe4d`: terminou `failed`,

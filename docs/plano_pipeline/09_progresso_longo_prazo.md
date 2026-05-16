@@ -162,6 +162,17 @@ por consistencia antes do retry. Custos por etapa: `US$ 0.006134`,
 `0.007068`, `0.006862`, `0.080190`, `0.075614`, `0.046988`; total aproximado
 `US$ 0.222856`. Status: GPT-4.1 confirmado como full smoke na fixture simples.
 
+Atualizacao de disponibilidade de providers em 2026-05-17 no runtime
+`0f84552`: teste live de conexao em `/api/settings/models/{id}/testar`.
+OpenAI OK: `gpt-4o`, GPT-4.1, GPT-5 Nano e GPT-5.4 Mini. Anthropic bloqueado:
+Haiku 4.5 e Sonnet 4.5 retornam credito insuficiente. Google: Gemini 2.5 Pro,
+Gemini 2.5 Flash e Gemini 3 Flash retornam `429`; Gemini 2.5 Flash Lite
+conecta (`success=true`), mas segue falhando em `corrigir` por qualidade/artefato
+no smoke anterior. Ollama local falha conexao no Render. Regra operacional:
+nao rerodar Anthropic sem credito nem Google pesado enquanto a quota estiver
+saturada; priorizar OpenAI/GPT-4.1 ou fixes internos sem trocar provider por
+baixo.
+
 Atualizacao de 2026-05-17 no runtime `700b088`: o ciclo `f40acf3` alinhou
 `PROMPTS_PADRAO` e `STAGE_TOOL_INSTRUCTIONS` para `CORRIGIR`,
 `ANALISAR_HABILIDADES` e `GERAR_RELATORIO`, e tornou obrigatorios campos de
