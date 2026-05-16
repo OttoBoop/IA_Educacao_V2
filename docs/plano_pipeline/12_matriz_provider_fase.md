@@ -152,7 +152,15 @@ completo, 4 respostas da aluna, correcao `8/10` por erro na porcentagem da Q3,
 analise e relatorio alinhados. PDFs baixaram com HTTP 200 e texto extraivel;
 houve achados de qualidade no layout/metricas: feedback cortado no PDF de
 correcao e `8/10` apresentado junto de `75% de proficiencia geral`. O patch
-local endurece as instrucoes de PDF para wrap de texto e metricas separadas.
+`0ac92f0` endureceu as instrucoes de PDF para wrap de texto e metricas
+separadas e ficou live no Render. O re-smoke `task_605512496b0d` completou as
+6 etapas, mas revelou divergencia P0 entre artefatos: JSON de correcao
+`a899697b81e7e10d` trouxe `nota_final=8` e Q3 `0`, enquanto PDF
+`2114140f8d5aaf61` trouxe `Nota final: 9.0` e Q3 `2.0`; JSON de relatorio
+`680aa0c4bf6183ec` trouxe `nota_final=8`, enquanto PDF `dde1d63db71f2a5b`
+trouxe `Nota final: N/A`. Patch local seguinte adiciona guarda PDF/JSON no
+executor: a matriz so deve voltar a ✅ plena nessa fixture se o smoke produzir
+artefatos coerentes ou falhar alto antes de marcar sucesso.
 
 Nota de pipeline per-phase: antes de `f2211bb`, o smoke
 `task_ea1ac75c9459` falhou alto em `extrair_gabarito` porque Nano retornou tudo
@@ -546,6 +554,9 @@ Ver [teste_gpt5nano_pipeline_completo.md](arquivo_2026_04_17/teste_gpt5nano_pipe
 - [x] Validar GPT-5.4 Mini (`gpt54mini001`) nas 6 etapas em uma fixture simples
       oficial: `task_a5f0d734f0b3`, Render `2cad38a`, documentos e custos
       registrados
+- [ ] Revalidar GPT-5.4 Mini apos guarda PDF/JSON: re-smoke `task_605512496b0d`
+      no Render `0ac92f0` completou as 6 etapas, mas PDFs divergiram dos JSONs;
+      proximo runtime deve falhar alto ou produzir artefatos coerentes
 - [x] Preparar codigo para persistir `TokenUsageRecord` em Supabase quando a
       tabela existir
 - [x] Criar registro local mensal de custo de falhas sem documento final
@@ -604,7 +615,7 @@ Ver [teste_gpt5nano_pipeline_completo.md](arquivo_2026_04_17/teste_gpt5nano_pipe
   extracao real de respostas, corrigir `analisar_habilidades` no run integrado,
   rodar pipeline completa de 6 etapas, schema minimo por etapa e custo duravel
   de falhas sem documento final.
-- ✅ **GPT-5.4 Mini candidato OCR/pipeline simples:** `extrair_respostas` passou em uma amostra
+- ⚠️ **GPT-5.4 Mini candidato OCR/pipeline simples:** `extrair_respostas` passou em uma amostra
   oficial primeiro como cadastro efemero (`task_9c10e3752bcb`, doc
   `a39d26fcc621c7a8`, custo `US$ 0.081492`) e depois como modelo versionado
   `gpt54mini001` (`task_706931a94555`, doc `fec100a2e41eabcf`, custo
@@ -615,17 +626,22 @@ Ver [teste_gpt5nano_pipeline_completo.md](arquivo_2026_04_17/teste_gpt5nano_pipe
   portanto ele fica confirmado em `extrair_respostas` e parcial em
   `extrair_gabarito` para aquela Lista0. Depois de `2cad38a`, a fixture simples
   `task_a5f0d734f0b3` completou as 6 etapas com `gpt54mini001`, documentos
-  persistidos e custo aproximado `US$ 0.079110`.
+  persistidos e custo aproximado `US$ 0.079110`. Depois de `0ac92f0`, o
+  re-smoke `task_605512496b0d` tambem completou as 6 etapas, mas mostrou P0 de
+  artefato: JSONs coerentes e PDFs divergentes em `corrigir` e
+  `gerar_relatorio`. Ate o deploy/smoke da guarda PDF/JSON, a confirmacao plena
+  fica rebaixada para parcial.
 - ⏸️ **Claude Haiku 4.5:** Aguardando creditos.
 - 📊 **Confiabilidade Gemini 3 Flash:** etapas individuais OK, mas a primeira
   pipeline sequencial pos-runner bateu quota `429` em `corrigir`. Precisa duas
   execucoes completas quando quota/credito permitir.
 
-**Marco 1 atingido para uma fixture simples, nao para a matriz inteira:** o site
-oficial completou 6 etapas com GPT-5.4 Mini, custo/metadata, deploy confirmado
-e inspeção semantica inicial coerente dos JSONs. PDFs existem e têm texto, mas
-o patch de qualidade PDF ainda precisa deploy/re-smoke. Ainda falta repetir por
-provider relevante e manter erro alto quando faltar insumo.
+**Marco 1 parcialmente atingido para uma fixture simples, nao para a matriz
+inteira:** o site oficial completou 6 etapas com GPT-5.4 Mini, custo/metadata,
+deploy confirmado e inspeção semantica inicial coerente dos JSONs. O re-smoke
+pos-`0ac92f0` provou que PDF existente nao basta: JSON e PDF precisam concordar.
+O proximo gate e deployar a guarda PDF/JSON e aceitar apenas sucesso coerente ou
+erro alto.
 
 **Bugs criticos descobertos nesta sessao:**
 1. GPT-5 Nano tool-use historico: multiplas chamadas `create_document`, nomes alucinados, sem validacao de schema
@@ -635,11 +651,11 @@ provider relevante e manter erro alto quando faltar insumo.
 
 **Proximos passos:**
 1. Manter deploy oficial confirmado por `/api/deploy-info` antes de cada smoke
-   novo; o runtime atual confirmado e `2cad38a`.
+   novo; o runtime atual confirmado do patch PDF e `0ac92f0`.
 2. Aplicar/validar a migration Supabase `token_usage` antes de chamar custo de
    falha sem documento de duravel.
-3. Deployar/revalidar o patch de qualidade PDF que impede feedback cortado e
-   separa nota de proficiencia.
+3. Deployar/revalidar a guarda PDF/JSON que bloqueia PDF semanticamente
+   divergente do JSON.
 4. Revalidar Gemini/Nano/GPT-4o por provider/modelo; GPT-5 Nano permanece ❌ em
    `extrair_respostas`.
 5. Aplicar `backend/migrations/002_create_token_usage.sql` no Supabase para

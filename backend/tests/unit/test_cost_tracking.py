@@ -485,7 +485,7 @@ async def test_executar_com_tools_falha_quando_execute_code_nao_persiste_pdf(mon
 
 
 @pytest.mark.asyncio
-async def test_executar_com_tools_repara_pdf_nao_persistido_com_retry(monkeypatch):
+async def test_executar_com_tools_repara_pdf_nao_persistido_com_retry(monkeypatch, tmp_path):
     import chat_service
     from executor import PipelineExecutor
     from chat_service import ProviderType
@@ -566,6 +566,17 @@ async def test_executar_com_tools_repara_pdf_nao_persistido_com_retry(monkeypatc
 
     monkeypatch.setattr(chat_service, "ChatClient", DummyClient)
 
+    json_path = tmp_path / "correcao.json"
+    pdf_path = tmp_path / "correcao.pdf"
+    json_path.write_text('{"nota_final": 7}', encoding="utf-8")
+    import fitz
+
+    pdf = fitz.open()
+    page = pdf.new_page()
+    page.insert_text((40, 80), "Nota final: 7.0 / 10.0", fontsize=11)
+    pdf.save(str(pdf_path))
+    pdf.close()
+
     docs = {
         "doc-json": SimpleNamespace(
             id="doc-json",
@@ -583,6 +594,9 @@ async def test_executar_com_tools_repara_pdf_nao_persistido_com_retry(monkeypatc
 
     executor = PipelineExecutor()
     executor.storage.get_documento = MagicMock(side_effect=lambda doc_id: docs[doc_id])
+    executor.storage.resolver_caminho_documento = MagicMock(
+        side_effect=lambda doc: {"doc-json": json_path, "doc-pdf": pdf_path}[doc.id]
+    )
     executor.storage.atualizar_documento_processamento = MagicMock()
 
     resultado = await executor.executar_com_tools(

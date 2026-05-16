@@ -192,8 +192,13 @@ detalhar e auditar estas linhas.
    aproximado `US$ 0.079110` e inspeção semantica inicial coerente dos JSONs.
    PDFs baixaram e têm texto, mas revelaram problemas de qualidade: feedback
    cortado em correção e nota/proficiência misturadas no relatório. Isso valida
-   essa fixture com ressalva de PDF, nao a matriz inteira. Haiku segue bloqueado
-   por creditos; Rio 3 esta pausado.
+   essa fixture com ressalva de PDF, nao a matriz inteira. O patch `0ac92f0`
+   ficou live e o re-smoke `task_605512496b0d` completou as 6 etapas, mas
+   revelou outro P0: JSONs coerentes e PDFs semanticamente divergentes
+   (`corrigir` PDF `9.0`/Q3 `2.0` contra JSON `8`/Q3 `0`; `gerar_relatorio`
+   PDF `Nota final: N/A` contra JSON `8`). O proximo patch deve bloquear essa
+   divergencia no executor. Haiku segue bloqueado por creditos; Rio 3 esta
+   pausado.
 10. O proximo eixo correto e aplicar `backend/migrations/002_create_token_usage.sql`
     no Supabase, ampliar a revalidacao por etapa/provider e endurecer o contrato
     contra schema ruim.
@@ -208,7 +213,7 @@ detalhar e auditar estas linhas.
 | Pipeline P5/P6 | Contencao de nota e preservacao de `_documentos_faltantes` | `N/A` ainda e fallback proibido como estado final. |
 | Schema/avisos | Defaults `_avisos_*`, visualizador melhorado e schemas mais permissivos | Permissividade nao e contrato forte; pode aceitar legado demais. |
 | Tokens/custos | Split input/output; metadata de documento; endpoints `/api/custos/status` e `/api/custos/resumo` respondendo live; resumo agrega por `cost_run_id`; `TokenUsageRecord` local cobre falha sem documento enquanto o filesystem vive; codigo Supabase e migration dedicada `b2dc88b` existem; diagnostico live mostra `PGRST205`; smoke full GPT-5.4 Mini `task_a5f0d734f0b3` mediu custo por etapa e total aproximado `US$ 0.079110`; `/api/custos/resumo?limit=8` mostrou `runs_precificados=5`, `runs_bloqueados=0`, `custo_usd=0.076798`; `durable=false` | Falta aplicar `backend/migrations/002_create_token_usage.sql` no Supabase. |
-| Providers | Gemini passou em chat simples live, `extrair_questoes`, `extrair_respostas` e nas tres etapas finais; `extrair_gabarito` Gemini foi reclassificado como invalido por tudo `MISSING_CONTENT`; GPT-5 Nano passou em chat simples live, `extrair_questoes`, `extrair_gabarito` pos-`5527e26` e nas tres etapas finais, mas `extrair_respostas` Nano continua ❌; GPT-5.4 Mini passou `extrair_respostas` em amostras e completou um smoke full oficial simples em `task_a5f0d734f0b3` com inspeção semantica inicial coerente; PDFs existem, mas exigiram patch de qualidade; runner destacado e bloqueio de rotas legadas ja tiveram comportamento observado no backend live | Deployar/revalidar patch PDF, revalidar matriz por provider e repetir Gemini quando quota/decisao permitir. |
+| Providers | Gemini passou em chat simples live, `extrair_questoes`, `extrair_respostas` e nas tres etapas finais; `extrair_gabarito` Gemini foi reclassificado como invalido por tudo `MISSING_CONTENT`; GPT-5 Nano passou em chat simples live, `extrair_questoes`, `extrair_gabarito` pos-`5527e26` e nas tres etapas finais, mas `extrair_respostas` Nano continua ❌; GPT-5.4 Mini passou `extrair_respostas` em amostras e completou um smoke full oficial simples em `task_a5f0d734f0b3` com inspeção semantica inicial coerente; re-smoke `task_605512496b0d` no patch `0ac92f0` completou, mas PDFs divergiram dos JSONs, entao a confirmacao plena fica parcial ate a guarda PDF/JSON | Deployar/revalidar guarda PDF/JSON, revalidar matriz por provider e repetir Gemini quando quota/decisao permitir. |
 | Seguranca Rio | Regra de nao usar chave em chat e Rio pausado | Arquivos Rio/untracked continuam fora do ciclo ativo. |
 
 ### O Que Falta
@@ -223,13 +228,13 @@ detalhar e auditar estas linhas.
 | Providers | Revalidar Gemini, Nano, Haiku e GPT-4o nas etapas restantes, especialmente extracoes e pipeline completa | Resultado historico ou schema parseavel nao prova qualidade de conteudo. |
 | UI de erro | Mostrar aluno, etapa, provider, causa e artefato real/parcial/erro | Backend falhar alto nao basta se a UI traduz mal. |
 | Dados | Reclassificar "fantasmas" sem deletar PDF valido por `/conteudo=null` | Evita apagar prova respondida real. |
-| Git/deploy | Commit `2d72c6b` adicionou `/api/deploy-info`; o runtime atual confirmado e `2cad38a` | Usar `/api/deploy-info` antes de novos smokes; marker HTML e apenas auxiliar. |
+| Git/deploy | Commit `2d72c6b` adicionou `/api/deploy-info`; o runtime atual confirmado para o patch PDF e `0ac92f0` | Usar `/api/deploy-info` antes de novos smokes; marker HTML e apenas auxiliar. |
 
 ### Bloqueios E Alertas
 
 | Item | Estado | Acao correta |
 |---|---|---|
-| Render/site oficial | `/api/deploy-info` confirma `2cad38a` como deploy live | Tratar HTML marker como auxiliar; usar smoke real para aceite. |
+| Render/site oficial | `/api/deploy-info` confirmou `0ac92f0` como deploy live no re-smoke PDF | Tratar HTML marker como auxiliar; usar smoke real para aceite. |
 | Guard `5527e26` | Runtime confirmado por Render MCP; smoke Nano `extrair_gabarito` pos-guard passou com 7 respostas reais | Guard publicado; falta rerodar Gemini. |
 | Respostas tudo ilegivel/vazio/inferidas | Nano ja produziu `extrair_respostas` com todas as respostas sem conteudo, depois conteudo so de Q7, depois conteudo suspeito inferido do enunciado, depois JSON verde inconsistente; o PDF de Eric tem paginas manuscritas e texto extraivel de Q7 | Desde `1ce3d23`, o caso final falha alto no executor e registra custo sem documento. Agora falta corrigir prompt/entrada/modelo para extrair conteudo real ou marcar Nano como inadequado para prova manuscrita. |
 | Gemini quota | Pipeline sequencial `task_5e97bbee896e` falhou em `corrigir` por `429 RESOURCE_EXHAUSTED`, limite free tier `20` para `gemini-3-flash` | Nao rerodar de imediato; tratar como bloqueio de provider/quota, nao como sucesso nem como falha silenciosa. |
@@ -241,9 +246,8 @@ detalhar e auditar estas linhas.
 
 ### Ordem Correta Agora
 
-1. Deployar/revalidar o patch PDF: impedir feedback cortado e separar
-   `nota_final` de `proficiencia_geral`; os JSONs ja passaram na inspeção
-   semantica inicial.
+1. Deployar/revalidar a guarda PDF/JSON: impedir que PDF de `CORRIGIR` ou
+   `GERAR_RELATORIO` divirja da nota e das notas por questao do JSON.
 2. Aplicar a migration `backend/migrations/002_create_token_usage.sql` no
    Supabase e revalidar `/api/custos/status` ate `durable=true`.
 3. Rerodar matriz de providers: Gemini quando quota permitir, Nano mantendo
@@ -2479,7 +2483,7 @@ Fila minima para custo real:
 |---|---|---|---|
 | Gemini 3 Flash | Chat OK; `extrair_questoes`, `extrair_respostas` e etapas finais OK com custo; `extrair_gabarito` reclassificado como invalido; pipeline sequencial pos-runner bloqueada por quota em `corrigir` | `extrair_questoes`: task `task_737c8d45befc`, JSONs `3f1ca7eed14f5d37`/`9d61dcb36e6ca4b5`, custos `US$ 0.002806`/`US$ 0.002801`; `extrair_gabarito`: task `task_094c921eb038`, JSON `36d1fdd0a453e2f5`, custo `US$ 0.020378`, mas tudo `MISSING_CONTENT`; `extrair_respostas`: task `task_7d357943288d`, JSON `59cb3e341515d745`, custo `US$ 0.023273`; `corrigir`: task `task_8f53987c57c4`, custo `US$ 0.007931`; `analisar_habilidades`: task `task_a78369e23e5c`, JSON `7904a6a1aa34131f`, PDF `245970da4cc42c02`, custo `US$ 0.009447`; `gerar_relatorio`: task `task_58fb48fc8324`, JSON `fe6ad549481a0ed9`, PDF `b815d1faa5aeab77`, custo `US$ 0.006120`; sequencial `task_5e97bbee896e`: extracoes `025e065ceca92237`, `9188bd504796f767`, `ea25e7d9d9a0f9a0`, falha `429` em `corrigir` | Rerodar `extrair_gabarito` apos guard; repetir pipeline sequencial completa quando quota/credito permitir, sem trocar modelo e sem retry cego. |
 | GPT-5 Nano | Chat OK; `extrair_questoes`, `extrair_gabarito` e `corrigir` OK no smoke integrado pos-`f2211bb`; etapas finais tem sucesso individual historico; `extrair_respostas` falhou conteudo e agora falha alto desde `1ce3d23`; falta pipeline completa propria do Nano | Smoke integrado `task_19ee59ac1881`: `extrair_questoes` `d50f3b909e6773e7` (`US$ 0.003580`), `extrair_gabarito` `8dd414ee1617c3a5` (`US$ 0.002545`), `corrigir` JSON/PDF `f0302debf41ae58f`/`31794fc784905c00` (`US$ 0.002807`), falha em `analisar_habilidades` com doc erro `b5f17f2d1a980a3d` (`US$ 0.004213`). Historico: `extrair_respostas` falhou em `task_3d5feaf0da71`; analise individual ja passou em `task_020ba25bdb2b`; relatorio individual ja passou em `task_aec830b85c03`. | Manter Nano fora de `extrair_respostas`; revalidar etapas finais em run integrado apenas se Nano voltar a ser alvo. |
-| GPT-5.4 Mini | `extrair_respostas` OK em amostras avulsas e smoke integrado; full smoke oficial simples completo nas 6 etapas | Smoke usou cadastro efemero `04b31001cf81`; teste de conexao retornou `OK`; `task_9c10e3752bcb` criou JSON `a39d26fcc621c7a8`, 4/7 respostas com conteudo real, 3/7 `MISSING_CONTENT`, tokens `97004/1942`, custo `US$ 0.081492`; depois `gpt54mini001` entrou em `backend/data/models.json`; `task_706931a94555` criou `fec100a2e41eabcf`, tokens `97004/1737`, custo `US$ 0.080570`; `task_19062336eb8b` criou `4a82ddf1d2118ff0`, 7/7 respostas reais, tokens `90588/2813`, custo `US$ 0.0806`; no smoke integrado `task_19ee59ac1881`, `gpt54mini001` criou `1e5db36f3ab9aa0e`, tokens `18176/2081`, custo `US$ 0.022996`; no smoke full `task_a5f0d734f0b3` completou as 6 etapas no Render `2cad38a`, com custo total aproximado `US$ 0.079110` e JSONs coerentes; PDFs existem, mas o patch local corrige instrucoes de layout/metricas. | Deployar/revalidar patch PDF e repetir em datasets reais/maiores antes de chamar de padrao definitivo. |
+| GPT-5.4 Mini | `extrair_respostas` OK em amostras avulsas e smoke integrado; full smoke oficial simples completou as 6 etapas, mas ficou parcial por divergencia PDF/JSON | Smoke usou cadastro efemero `04b31001cf81`; teste de conexao retornou `OK`; `task_9c10e3752bcb` criou JSON `a39d26fcc621c7a8`, 4/7 respostas com conteudo real, 3/7 `MISSING_CONTENT`, tokens `97004/1942`, custo `US$ 0.081492`; depois `gpt54mini001` entrou em `backend/data/models.json`; `task_706931a94555` criou `fec100a2e41eabcf`, tokens `97004/1737`, custo `US$ 0.080570`; `task_19062336eb8b` criou `4a82ddf1d2118ff0`, 7/7 respostas reais, tokens `90588/2813`, custo `US$ 0.0806`; no smoke integrado `task_19ee59ac1881`, `gpt54mini001` criou `1e5db36f3ab9aa0e`, tokens `18176/2081`, custo `US$ 0.022996`; no smoke full `task_a5f0d734f0b3` completou as 6 etapas no Render `2cad38a`, com custo total aproximado `US$ 0.079110` e JSONs coerentes; re-smoke `task_605512496b0d` no Render `0ac92f0` completou as 6 etapas, mas PDF de correcao divergiu (`9.0`/Q3 `2.0` contra JSON `8`/Q3 `0`) e PDF de relatorio mostrou `Nota final: N/A` contra JSON `8`. | Deployar/revalidar guarda PDF/JSON; so chamar de confirmado quando artefatos concordarem ou a etapa falhar alto. |
 | Claude Haiku 4.5 | Bloqueado | Creditos Anthropic insuficientes | Recarregar creditos e testar sem trocar provider. |
 | GPT-4o | Parcial/referencia historica | Gerou 3 etapas, mas schema antigo e sem avisos | Revalidar como modelo explicito, nao fallback. |
 | Gemini 2.5 Flash/Lite | Incerto | Catalogo/flags historicamente inconsistentes | Validar capabilities antes de pipeline. |
@@ -2833,7 +2837,8 @@ Total aproximado das 6 etapas: `US$ 0.079110`.
 
 Novo movimento correto:
 
-1. Deployar/revalidar o patch PDF de `task_a5f0d734f0b3`.
+1. Deployar/revalidar a guarda PDF/JSON descoberta a partir de
+   `task_605512496b0d`.
 2. Aplicar `backend/migrations/002_create_token_usage.sql` no Supabase para
    tornar duravel o registro de falhas sem documento.
 3. Revalidar matriz de providers: Gemini quando quota permitir, Nano sem
@@ -2851,7 +2856,7 @@ claro. O que ainda existe para fazer:
 | Settings de modelos | Codigo/testes/deploy | `from-catalog` deu 500 e create ignorou capabilities no site live; patch `b16e051` ja foi deployado e retestado; cadastro por API sumiu no deploy, mas o modelo versionado `gpt54mini001` apareceu no site em `be19b7e` e passou teste de conexao. |
 | Metadata/custo real | Codigo/testes/deploy | Metadata e endpoints existem no site; full smoke GPT-5.4 Mini mediu custo por etapa, mas Supabase `token_usage` segue ausente (`PGRST205`), `local_record_count=0` depois de deploy e custo de falha sem documento ainda nao e duravel. |
 | Provider revalidation | Smoke/producao | Matriz Doc 12 registra GPT-5.4 Mini full smoke em fixture simples, mas continua incompleta ate novos smokes por provider/rota/dataset. |
-| PDFs/UI GPT-5.4 Mini | Codigo/testes/deploy/smoke | `task_a5f0d734f0b3` completou 6 etapas, JSONs passaram inspeção semantica inicial e PDFs existem; patch local corrige instrucoes para feedback nao cortado e nota/proficiencia separadas. Falta deploy/re-smoke. |
+| PDFs/UI GPT-5.4 Mini | Codigo/testes/deploy/smoke | `task_a5f0d734f0b3` completou 6 etapas, JSONs passaram inspeção semantica inicial e PDFs existem; `0ac92f0` corrigiu parte do layout, mas `task_605512496b0d` provou divergencia PDF/JSON. Patch local atual transforma essa divergencia em erro alto. Falta deploy/re-smoke. |
 | Gabarito incompleto bloqueia correção | Codigo/testes/deploy/smoke | `3a7dfea` bloqueia `CORRIGIR` com `MISSING_CONTENT` no gabarito; continua importante para datasets como Lista0, embora a fixture Diana tenha completado. |
 | UI de erros | Produto/frontend | Usuario precisa ver aluno, etapa, provider e causa sem terminal. |
 | Limpeza de dados | Dados | "Fantasmas" precisam reclassificacao; PDF com `/conteudo=null` nao pode ser deletado. |

@@ -403,6 +403,128 @@ class PipelineExecutor:
         self.prompt_manager = prompt_manager
         self.storage = storage
         self.preparador = PreparadorArquivos() if HAS_MULTIMODAL else None
+
+    def _validar_consistencia_pdf_json_tool_outputs(
+        self,
+        docs_by_tool: Dict[str, List[Any]],
+        expected_document_type: Optional[TipoDocumento],
+    ) -> List[str]:
+        """Validate minimum consistency between persisted JSON and PDF artifacts."""
+        if expected_document_type not in {TipoDocumento.CORRECAO, TipoDocumento.RELATORIO_FINAL}:
+            return []
+
+        json_docs = [
+            doc for doc in docs_by_tool.get("create_document", [])
+            if (getattr(doc, "extensao", "") or "").lower() == ".json"
+        ]
+        pdf_docs = [
+            doc for doc in docs_by_tool.get("execute_python_code", [])
+            if (getattr(doc, "extensao", "") or "").lower() == ".pdf"
+        ]
+        if not json_docs or not pdf_docs:
+            return []
+
+        errors: List[str] = []
+        json_doc = json_docs[-1]
+        pdf_doc = pdf_docs[-1]
+        json_label = getattr(json_doc, "id", None) or getattr(json_doc, "nome_arquivo", "json")
+        pdf_label = getattr(pdf_doc, "id", None) or getattr(pdf_doc, "nome_arquivo", "pdf")
+
+        try:
+            json_path = self.storage.resolver_caminho_documento(json_doc)
+            with open(json_path, "r", encoding="utf-8") as fh:
+                json_data = json.load(fh)
+        except Exception as exc:
+            return [f"JSON {json_label} não pôde ser lido para comparar com PDF: {exc}"]
+
+        try:
+            pdf_path = self.storage.resolver_caminho_documento(pdf_doc)
+            with fitz.open(str(pdf_path)) as pdf:
+                pdf_text = "\n".join(page.get_text("text") for page in pdf)
+        except Exception as exc:
+            return [f"PDF {pdf_label} não pôde ser lido para comparar com JSON: {exc}"]
+
+        text = (pdf_text or "").replace(",", ".")
+
+        def _as_float(value: Any) -> Optional[float]:
+            if value is None:
+                return None
+            if isinstance(value, (int, float)):
+                if math.isfinite(float(value)):
+                    return float(value)
+                return None
+            if isinstance(value, str):
+                cleaned = value.strip().replace(",", ".")
+                if cleaned.upper() in {"N/A", "NA", ""}:
+                    return None
+                try:
+                    return float(cleaned)
+                except ValueError:
+                    return None
+            return None
+
+        def _format_num(value: float) -> str:
+            if float(value).is_integer():
+                return str(int(value))
+            return f"{value:.2f}".rstrip("0").rstrip(".")
+
+        expected_grade = _as_float(json_data.get("nota_final") if isinstance(json_data, dict) else None)
+        if expected_grade is not None:
+            grade_match = re.search(
+                r"nota\s*final\s*[:\-]?\s*(n/?a|[0-9]+(?:\.[0-9]+)?)",
+                text,
+                flags=re.IGNORECASE,
+            )
+            if not grade_match:
+                errors.append(f"PDF {pdf_label} sem nota_final verificável para JSON {json_label}")
+            else:
+                grade_raw = grade_match.group(1)
+                if grade_raw.lower().replace("/", "") in {"na", "n/a"}:
+                    errors.append(
+                        f"PDF {pdf_label} mostra nota_final N/A, mas JSON {json_label} tem "
+                        f"nota_final {_format_num(expected_grade)}"
+                    )
+                else:
+                    pdf_grade = _as_float(grade_raw)
+                    if pdf_grade is None or abs(pdf_grade - expected_grade) > 0.01:
+                        errors.append(
+                            f"PDF {pdf_label} mostra nota_final {grade_raw}, mas JSON "
+                            f"{json_label} tem nota_final {_format_num(expected_grade)}"
+                        )
+
+            if re.search(r"nota\s*final[^\n]{0,100}\([^\)]*%", text, flags=re.IGNORECASE):
+                errors.append(
+                    f"PDF {pdf_label} mistura nota_final com percentual/proficiência no mesmo rótulo"
+                )
+
+        if expected_document_type == TipoDocumento.CORRECAO and isinstance(json_data, dict):
+            checked_questions = 0
+            for question in json_data.get("questoes") or []:
+                if not isinstance(question, dict):
+                    continue
+                numero = question.get("numero")
+                expected_note = _as_float(question.get("nota"))
+                if numero is None or expected_note is None:
+                    continue
+                question_match = re.search(
+                    rf"quest(?:a|ã)o\s*{re.escape(str(numero))}\b.*?nota\s*[:\-]?\s*([0-9]+(?:\.[0-9]+)?)",
+                    text,
+                    flags=re.IGNORECASE | re.DOTALL,
+                )
+                if not question_match:
+                    continue
+                checked_questions += 1
+                pdf_note_raw = question_match.group(1)
+                pdf_note = _as_float(pdf_note_raw)
+                if pdf_note is None or abs(pdf_note - expected_note) > 0.01:
+                    errors.append(
+                        f"PDF {pdf_label} mostra nota {pdf_note_raw} na questão {numero}, "
+                        f"mas JSON {json_label} tem nota {_format_num(expected_note)}"
+                    )
+            if json_data.get("questoes") and checked_questions == 0:
+                errors.append(f"PDF {pdf_label} sem notas por questão verificáveis para CORRIGIR")
+
+        return errors
     
     # ============================================================
     # MÉTODOS AUXILIARES PARA OBTER PROVIDER
@@ -3826,6 +3948,12 @@ Seja preciso, educativo e construtivo em suas análises."""
             tokens_total = tokens_entrada + tokens_saida
 
             validation_errors = _validate_json_artifacts(final_state)
+            validation_errors.extend(
+                self._validar_consistencia_pdf_json_tool_outputs(
+                    final_state.get("docs_by_tool", {}),
+                    expected_document_type,
+                )
+            )
             if validation_errors:
                 erro_msg = (
                     "Saída obrigatória inválida: "

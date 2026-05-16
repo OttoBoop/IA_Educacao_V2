@@ -56,13 +56,16 @@ Rio 3 segue pausado. O loop ativo e pipeline oficial, providers existentes,
 custos, erro alto e deploy confirmado. A checagem dos PDFs confirmou download
 HTTP 200 e texto extraivel, mas achou dois ajustes: o PDF de correcao pode
 cortar feedback longo em tabela estreita, e o relatorio misturou `8/10` com
-`75% de proficiencia geral` de modo potencialmente confuso. O patch local
-reforca as instrucoes de `execute_python_code` para PDFs nao truncarem texto e
-para nota/proficiencia serem metricas separadas. Proximos alvos reais:
-aplicar/validar `token_usage` duravel; revalidar matriz de providers (Gemini,
-Nano, Haiku quando houver credito, GPT-4o explicito); deployar/revalidar o patch
-PDF; e melhorar UI de erros para que o usuario veja aluno, etapa, provider,
-custo e causa sem abrir terminal.
+`75% de proficiencia geral` de modo potencialmente confuso. O patch
+`0ac92f0` foi deployado e o re-smoke `task_605512496b0d` completou as 6 etapas,
+mas revelou um P0 novo: os JSONs ficaram coerentes (`nota_final=8`, Q3 `0`),
+enquanto o PDF de correcao mostrou `Nota final: 9.0` e Q3 `2.0`; o PDF de
+relatorio mostrou `Nota final: N/A` apesar do JSON ter `nota_final=8`. Patch
+local atual adiciona validação PDF/JSON no executor para transformar essa
+divergencia em erro alto, sem aceitar PDF semanticamente diferente do JSON.
+Proximos alvos reais: commitar/deployar essa guarda PDF/JSON; aplicar/validar
+`token_usage` duravel; revalidar matriz de providers; e melhorar UI de erros
+para que o usuario veja aluno, etapa, provider, custo e causa sem abrir terminal.
 
 Este e o ponto de entrada do plano. O objetivo deste arquivo e dizer, em poucas
 linhas, onde estamos, qual e a proxima fila e quais frentes estao pausadas.
@@ -100,7 +103,7 @@ Estabilizar o NOVO CR para que a pipeline:
 | Frente | Estado | Proximo passo |
 |--------|--------|---------------|
 | Docs e plano | Sprint 0 concluida | Manter este painel como fonte oficial e anexos fora do fluxo diario |
-| Pipeline | GPT-5.4 Mini (`gpt54mini001`) completou as 6 etapas no site oficial em `task_a5f0d734f0b3`, Render hash `2cad38a`, com documentos, custos e inspeção semantica inicial coerente nos JSONs; PDFs baixam e têm texto, mas o patch local endurece layout/metricas; Gemini 3 Flash segue validado em etapas individuais, mas pipeline sequencial bateu quota `429`; GPT-5 Nano segue validado em `extrair_questoes`, `extrair_gabarito` e smokes de etapas finais, mas `extrair_respostas` Nano continua ❌ por qualidade; `task_bc6cc84d10ef` permanece evidencia historica de que `completed` pode ser semanticamente invalido se gabarito/conteudo falhar | Deployar/revalidar patch PDF, repetir matriz por provider/modelo e manter bloqueio P0: nao aceitar `completed` sem documento, schema, custo e conteudo minimo |
+| Pipeline | GPT-5.4 Mini (`gpt54mini001`) completou as 6 etapas no site oficial em `task_a5f0d734f0b3`, Render hash `2cad38a`, com documentos, custos e inspeção semantica inicial coerente nos JSONs; re-smoke no Render `0ac92f0` (`task_605512496b0d`) completou as 6 etapas, mas expôs divergencia P0 entre JSON e PDF em `corrigir` e `gerar_relatorio`; patch local atual passa a validar consistencia PDF/JSON e falhar alto; Gemini 3 Flash segue validado em etapas individuais, mas pipeline sequencial bateu quota `429`; GPT-5 Nano segue validado em `extrair_questoes`, `extrair_gabarito` e smokes de etapas finais, mas `extrair_respostas` Nano continua ❌ por qualidade; `task_bc6cc84d10ef` permanece evidencia historica de que `completed` pode ser semanticamente invalido se gabarito/conteudo falhar | Commitar/deployar guarda PDF/JSON, repetir smoke oficial e manter bloqueio P0: nao aceitar `completed` sem documento, schema, custo, conteudo minimo e artefatos coerentes entre si |
 | Schema e avisos | Sprint 2 concluida localmente | Manter schema oficial, defaults e visualizador cobertos por testes |
 | Custos/tokens | Metadata de documento, endpoints live, resumo por `cost_run_id`, `TokenUsageRecord` local, migration Supabase dedicada `b2dc88b`; smoke full GPT-5.4 Mini `task_a5f0d734f0b3` registrou custo medido por etapa: `US$ 0.002312`, `US$ 0.002759`, `US$ 0.002657`, `US$ 0.026149`, `US$ 0.017470` e `US$ 0.027763`, total aproximado `US$ 0.079110`; `/api/custos/resumo?limit=8` mostrou `runs_precificados=5`, `runs_bloqueados=0`, `tokens_entrada=49208`, `tokens_saida=8865`, `custo_usd=0.076798`; diagnostico live ainda acusa `PGRST205`, `durable=false` e `local_record_count=0`, provando que o fallback local de `TokenUsageRecord` nao sobrevive deploy | Aplicar `backend/migrations/002_create_token_usage.sql` no Supabase; revalidar ate `token_usage_backend.durable=true`; depois persistir custos de falhas sem documento |
 | UI de erros | Pendente | Mostrar falha por aluno/etapa sem depender de terminal |
@@ -1538,8 +1541,29 @@ Critério de pronto: lista de limpeza segura e revisada.
   `test_stage_tool_pdf_quality.py`, `test_f_t1_corrigir_tool_migration.py`,
   `test_f_t2_analisar_tool_use.py` e `test_f_t3_relatorio_tool_migration.py`
   com `41 passed` e o aviso conhecido de pytest `timeout`.
-- Proximo alvo: commitar/deployar o patch PDF, aplicar `token_usage` duravel,
-  revalidar providers restantes e atacar UI de erros.
+- Deploy/re-smoke do patch PDF: commit `0ac92f0` ficou live no Render; re-smoke
+  full `task_605512496b0d` completou as 6 etapas, mas revelou P0 de
+  consistencia: JSON de correcao `a899697b81e7e10d` manteve `nota_final=8` e
+  Q3 `0`, enquanto PDF `2114140f8d5aaf61` mostrou `Nota final: 9.0` e Q3
+  `2.0`; JSON de relatorio `680aa0c4bf6183ec` manteve `nota_final=8`, enquanto
+  PDF `dde1d63db71f2a5b` mostrou `Nota final: N/A`.
+- Patch local seguinte: `backend/executor.py` valida consistencia minima entre
+  JSON e PDF de `CORRIGIR`/`GERAR_RELATORIO`; se o PDF divergir em `nota_final`,
+  misturar nota com percentual, ou mostrar nota por questao diferente do JSON,
+  a etapa vira "Saida obrigatoria invalida" e os documentos do run sao marcados
+  como erro.
+- Validações locais da guarda PDF/JSON: `python -m py_compile
+  backend/executor.py backend/tests/unit/test_stage_tool_pdf_quality.py
+  backend/tests/unit/test_cost_tracking.py`; `git diff --check`;
+  `PYTHONPATH=backend /home/otavio/Documents/vscode/.venv/bin/python -m pytest
+  backend/tests/unit/test_stage_tool_pdf_quality.py
+  backend/tests/unit/test_e_t2_retry_partial_output.py
+  backend/tests/unit/test_cost_tracking.py -q` com `42 passed` e o aviso
+  conhecido de pytest `timeout`.
+- Proximo alvo: commitar/deployar a guarda PDF/JSON, rodar smoke oficial e
+  aceitar apenas dois resultados: documentos coerentes ou erro alto explicito.
+  Depois, aplicar `token_usage` duravel, revalidar providers restantes e atacar
+  UI de erros.
 
 ## Riscos Abertos
 
