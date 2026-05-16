@@ -26,7 +26,8 @@ import fitz  # PyMuPDF — extract text from binary PDFs (RELATORIO_FINAL)
 
 from models import (
     TipoDocumento, Documento, StatusProcessamento, criar_erro_pipeline,
-    ERRO_DOCUMENTO_FALTANTE, ERRO_QUESTOES_FALTANTES, SeveridadeErro,
+    ERRO_DOCUMENTO_FALTANTE, ERRO_QUESTOES_FALTANTES,
+    ERRO_NOTA_FINAL_INDETERMINADA, SeveridadeErro,
 )
 from prompts import PromptManager, PromptTemplate, EtapaProcessamento, prompt_manager
 from storage import StorageManager, storage
@@ -2085,6 +2086,56 @@ Regras obrigatórias:
 
         variaveis.update(contexto_json)
 
+        nota_final = self._nota_final_top_level(variaveis.get("nota_final"))
+        if nota_final is None:
+            nota_final = self._calcular_nota_final_de_correcoes(
+                variaveis.get("correcoes")
+            )
+        if nota_final is None:
+            mensagem = (
+                "Não foi possível determinar uma nota_final numérica e confiável "
+                "para gerar relatório. A etapa foi bloqueada para evitar relatório "
+                "com nota inventada ou N/A."
+            )
+            erro_pipeline = criar_erro_pipeline(
+                tipo=ERRO_NOTA_FINAL_INDETERMINADA,
+                mensagem=mensagem,
+                severidade=SeveridadeErro.CRITICO,
+                etapa=EtapaProcessamento.GERAR_RELATORIO.value,
+            )
+            erro_content = {
+                "_erro_pipeline": erro_pipeline,
+                "_documentos_carregados": documentos_carregados,
+            }
+            documento_id = None
+            if salvar_erro_documento:
+                documento_id = await self._salvar_resultado(
+                    EtapaProcessamento.GERAR_RELATORIO,
+                    atividade_id,
+                    aluno_id,
+                    "",
+                    erro_content,
+                    provider_id or "",
+                    "",
+                    prompt.id,
+                    0,
+                    0,
+                    gerar_formatos_extras=False,
+                )
+            return ResultadoExecucao(
+                sucesso=False,
+                etapa=EtapaProcessamento.GERAR_RELATORIO,
+                prompt_usado="",
+                prompt_id=prompt.id,
+                provider=provider_id or "",
+                modelo="",
+                erro=mensagem,
+                resposta_parsed=erro_content,
+                documento_id=documento_id,
+            )
+
+        variaveis["nota_final"] = nota_final
+
         # Render prompt
         prompt_renderizado = prompt.render(**variaveis)
         prompt_sistema_raw = prompt.render_sistema(**variaveis)
@@ -2288,14 +2339,14 @@ Regras obrigatórias:
             return None
         return str(total)
 
-    def _calcular_nota_final_de_correcoes(self, correcoes: Any) -> str:
+    def _calcular_nota_final_de_correcoes(self, correcoes: Any) -> Optional[str]:
         """Calcula nota_final para GERAR_RELATORIO sem inventar nota silenciosa."""
         dados = correcoes
         if isinstance(correcoes, str):
             try:
                 dados = json.loads(correcoes)
             except json.JSONDecodeError:
-                return "N/A"
+                return None
 
         if isinstance(dados, dict):
             for chave in ("nota_final", "nota"):
@@ -2313,7 +2364,7 @@ Regras obrigatórias:
             if nota is not None:
                 return nota
 
-        return "N/A"
+        return None
 
     def _nota_final_correcao_oficial(
         self,
@@ -2510,8 +2561,9 @@ Regras obrigatórias:
                 variaveis["correcoes"]
             )
 
-        # Campo obrigatório do template; N/A deixa a ausência visível no texto.
-        if "nota_final" not in variaveis:
+        # Compatibilidade para etapas antigas; GERAR_RELATORIO valida nota antes
+        # de renderizar e nao pode receber N/A como fallback.
+        if "nota_final" not in variaveis and etapa != EtapaProcessamento.GERAR_RELATORIO:
             variaveis["nota_final"] = "N/A"
 
         return variaveis

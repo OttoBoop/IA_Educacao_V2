@@ -1758,8 +1758,8 @@ class TestP4ProvaRespondidaGate:
 # P5/P6: Robust nota_final and missing-doc preservation
 # ============================================================
 
-class TestP5NotaFinalFallback:
-    """P5: GERAR_RELATORIO must get a robust nota_final from correction JSON."""
+class TestP5NotaFinalExplicitError:
+    """P5: GERAR_RELATORIO must never invent nota_final with silent N/A fallback."""
 
     @pytest.fixture
     def executor(self):
@@ -1786,9 +1786,9 @@ class TestP5NotaFinalFallback:
 
         assert executor._calcular_nota_final_de_correcoes(data) == "5.75"
 
-    def test_invalid_json_or_no_numeric_grade_returns_na(self, executor):
-        assert executor._calcular_nota_final_de_correcoes("{json inválido") == "N/A"
-        assert executor._calcular_nota_final_de_correcoes({"feedback": "sem nota"}) == "N/A"
+    def test_invalid_json_or_no_numeric_grade_returns_none(self, executor):
+        assert executor._calcular_nota_final_de_correcoes("{json inválido") is None
+        assert executor._calcular_nota_final_de_correcoes({"feedback": "sem nota"}) is None
 
 
 class TestP6GerarRelatorioDocumentosFaltantes:
@@ -1879,6 +1879,69 @@ class TestP6GerarRelatorioDocumentosFaltantes:
         )
 
         assert resultados["_pipeline_erro"]["documentos_faltantes"] == ["correcoes"]
+
+
+class TestGerarRelatorioNotaFinalBloqueante:
+    """GERAR_RELATORIO must fail high when nota_final is not reliable."""
+
+    @pytest.fixture
+    def executor_relatorio_sem_nota(self):
+        from executor import PipelineExecutor
+
+        executor = PipelineExecutor.__new__(PipelineExecutor)
+        executor.storage = MagicMock()
+        executor.prompt_manager = MagicMock()
+        executor.preparador = MagicMock()
+
+        atividade = MagicMock()
+        atividade.turma_id = "turma-test"
+        turma = MagicMock()
+        turma.materia_id = "materia-test"
+        materia = MagicMock()
+        materia.id = "materia-test"
+        prompt = MagicMock()
+        prompt.id = "prompt-gerar-relatorio"
+        prompt.render = MagicMock(return_value="prompt")
+        prompt.render_sistema = MagicMock(return_value="system")
+
+        executor.storage.get_atividade = MagicMock(return_value=atividade)
+        executor.storage.get_turma = MagicMock(return_value=turma)
+        executor.storage.get_materia = MagicMock(return_value=materia)
+        executor.prompt_manager.get_prompt_padrao = MagicMock(return_value=prompt)
+        executor._preparar_variaveis_texto = MagicMock(return_value={
+            "correcoes": '{"feedback": "sem nota"}',
+        })
+        executor._preparar_contexto_json = MagicMock(return_value={
+            "_documentos_faltantes": [],
+            "_documentos_carregados": ["correcoes", "analise_habilidades"],
+            "correcoes": {"feedback": "sem nota"},
+        })
+        executor._salvar_resultado = AsyncMock(return_value="doc-erro-nota")
+        executor.executar_com_tools = AsyncMock()
+        return executor
+
+    @pytest.mark.asyncio
+    async def test_gerar_relatorio_sem_nota_final_falha_sem_chamar_ia(self, executor_relatorio_sem_nota):
+        resultado = await executor_relatorio_sem_nota.gerar_relatorio("ativ-test", "aluno-test")
+
+        assert resultado.sucesso is False
+        assert resultado.resposta_parsed["_erro_pipeline"]["tipo"] == "NOTA_FINAL_INDETERMINADA"
+        assert "nota_final" in resultado.erro
+        assert "N/A" in resultado.erro
+        executor_relatorio_sem_nota.executar_com_tools.assert_not_called()
+        executor_relatorio_sem_nota._salvar_resultado.assert_not_called()
+
+    @pytest.mark.asyncio
+    async def test_gerar_relatorio_sem_nota_pode_salvar_json_de_erro(self, executor_relatorio_sem_nota):
+        resultado = await executor_relatorio_sem_nota.gerar_relatorio(
+            "ativ-test",
+            "aluno-test",
+            salvar_erro_documento=True,
+        )
+
+        assert resultado.sucesso is False
+        assert resultado.documento_id == "doc-erro-nota"
+        executor_relatorio_sem_nota._salvar_resultado.assert_awaited_once()
 
 
 # ============================================================

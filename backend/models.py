@@ -122,6 +122,7 @@ class StatusProcessamento(Enum):
 # Constantes de tipo de erro (extensível — adicionar novas strings para novos tipos)
 ERRO_DOCUMENTO_FALTANTE = "DOCUMENTO_FALTANTE"
 ERRO_QUESTOES_FALTANTES = "QUESTOES_FALTANTES"
+ERRO_NOTA_FINAL_INDETERMINADA = "NOTA_FINAL_INDETERMINADA"
 
 
 class SeveridadeErro(Enum):
