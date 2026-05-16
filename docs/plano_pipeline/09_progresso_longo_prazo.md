@@ -5,9 +5,9 @@
 **Status geral:** o servico oficial Render
 `srv-d5t8gbh4tr6s738fr3s0` (`IA_Educacao_V2`, branch `main`, URL
 `https://ia-educacao-v2.onrender.com`) tem como codigo funcional mais recente
-confirmado o commit `22f6f31` (`fix: default to confirmed openai model`),
+confirmado o commit `48407f2` (`fix: summarize provider cost errors`),
 validado por `/api/deploy-info`, `/api/health` e
-`./scripts/check_deploy.sh 22f6f315a12e34d0a15597eca82743f09314046f`. Se
+`./scripts/check_deploy.sh 48407f2be70b538ad38550366fcef0be33c1dc90`. Se
 `/api/deploy-info` apontar commit documental posterior, comparar com este hash
 funcional antes de concluir que houve nova mudanca de runtime. O ciclo
 publicado faz resultado, historico, pendencias e status de pipeline obedecerem
@@ -22,6 +22,10 @@ ao reaproveitar ranking em lote, sem reabilitar resultados sem itens avaliaveis.
 O ciclo `22f6f31` trocou o modelo padrao versionado de Claude Haiku 4.5
 (bloqueado por credito Anthropic) para GPT-5.4 Mini (`gpt54mini001`) e confirmou
 o default vivo em `/api/settings/status` e `/api/settings/models`.
+O ciclo `48407f2` adicionou resumo estruturado para erros de provider em
+`/api/custos/resumo`, expondo `erro_codigo`, `erro_provider_status`,
+`erro_provider_modelo`, `erro_categoria` e `erro_resumo` curto sem depender do
+JSON bruto gigante.
 GPT-4.1, GPT-5.4 Mini e GPT-4o seguem referencias de pipeline confirmadas na
 fixture Diana; Google esta limitado por quota `429` nos smokes recentes,
 Anthropic segue bloqueado por credito, e Supabase `token_usage` continua ausente
@@ -2770,6 +2774,36 @@ Critério de pronto: lista de limpeza segura e revisada.
 - Status: publicado e smokeado no site oficial. Proximo alvo do loop: custo
   duravel (`token_usage` no Supabase) ou smoke minimo de provider escolhido por
   evidencia, sem usar Rio 3 e sem aceitar fallback silencioso.
+
+### 2026-05-17 -- Custos: resumo estruturado de erro de provider
+
+- Alvo: deixar o resumo de custos legivel quando provider falha, sem depender
+  de JSON bruto enorme de erro.
+- Achado live: `/api/custos/resumo?limit=80` ja media custos, mas amostras de
+  erro Google `429` carregavam blocos longos de `erro_execucao`; isso dificultava
+  UI, docs e agentes entenderem rapidamente se era quota, schema, provider ou
+  custo ausente.
+- Mudanca: `cost_tracking.py` agora adiciona campos derivados:
+  `erro_resumo` truncado, `erro_codigo`, `erro_provider_status`,
+  `erro_provider_modelo` e `erro_categoria` (`quota_exhausted` quando detecta
+  quota/`RESOURCE_EXHAUSTED`). O erro bruto continua por compatibilidade, mas o
+  caminho recomendado para UI/docs passa a ser o resumo estruturado.
+- Validacoes locais: `py_compile` de `cost_tracking.py`; `git diff --check`;
+  `test_cost_tracking.py` passou com `26 passed`.
+- Commit/deploy: `48407f2` (`fix: summarize provider cost errors`) publicado
+  em `origin/main`; Render confirmou
+  `48407f2be70b538ad38550366fcef0be33c1dc90` em 150s por
+  `./scripts/wait_deploy.sh`, `./scripts/check_deploy.sh`, `/api/deploy-info`
+  e `/api/health`.
+- Smoke live sem nova IA: `/api/custos/resumo?limit=80` retornou
+  `runs_analisados=44`, `runs_precificados=42`, `runs_bloqueados=2`,
+  `custo_usd=1.033313`, `token_usage_durable=false`; encontrou `4` amostras de
+  quota com `erro_codigo=429`, `erro_provider_status=RESOURCE_EXHAUSTED`,
+  `erro_provider_modelo=gemini-2.5-flash-lite` e
+  `erro_categoria=quota_exhausted`.
+- Status: publicado e smokeado no site oficial. Bloqueio remanescente:
+  `public.token_usage` segue ausente no Supabase (`PGRST205`), entao falhas sem
+  documento final ainda nao tem persistencia duravel.
 
 ## Riscos Abertos
 
