@@ -374,12 +374,12 @@ detalhar e auditar estas linhas.
 | Frente | Temos hoje | Limite da afirmacao |
 |---|---|---|
 | Documentacao | Doc 09 como painel curto; Doc 14 como auditoria mestre; Doc 05/12 com notas de status | Manter Doc 09 curto e Doc 14 detalhado; registrar novos ciclos sem criar doc extra. |
-| Git/GitHub | `/api/deploy-info` confirmou runtime `ae04982`; `origin/main` esta alinhado com os fixes de dashboard de custo, tool-use Google faseado, consistencia PDF/JSON por feedback coerente, erro por aluno/etapa na sidebar, bloqueio anti-`nota_final=N/A`, guarda contra PDF auto-fallback, rejeicao de JSON embrulhado em Markdown/prosa, retorno Path 2 com etapa real/JSON parseado, schema minimo runtime, cobertura anti-regressao para etapas tardias, cobertura de PDF stale, contrato de prompts tardios, rastreabilidade semantica de correcao, cabecalho PDF real, consistencia interna de notas, contrato de erro/chat por provider/UI, resultado parcial obedecendo `status=erro`, correcao sem itens avaliaveis bloqueada, rotas agregadas protegidas, media zero preservada, agregados em lote, default OpenAI confirmado, resumo estruturado de erro de provider, diagnostico explicito da migration `token_usage` ausente, alerta de custo visivel no dashboard e agregado `por_etapa` | Nao usar somente marker HTML como gate quando Render `rootDir=backend` ignora commits sem backend; combinar `/api/deploy-info`, deploy list quando disponivel e comportamento live. |
+| Git/GitHub | `/api/deploy-info` confirmou runtime `ed592de`; `origin/main` esta alinhado com os fixes de dashboard de custo, tool-use Google faseado, consistencia PDF/JSON por feedback coerente, erro por aluno/etapa na sidebar, bloqueio anti-`nota_final=N/A`, guarda contra PDF auto-fallback, rejeicao de JSON embrulhado em Markdown/prosa, retorno Path 2 com etapa real/JSON parseado, schema minimo runtime, cobertura anti-regressao para etapas tardias, cobertura de PDF stale, contrato de prompts tardios, rastreabilidade semantica de correcao, cabecalho PDF real, consistencia interna de notas, contrato de erro/chat por provider/UI, resultado parcial obedecendo `status=erro`, correcao sem itens avaliaveis bloqueada, rotas agregadas protegidas, media zero preservada, agregados em lote, default OpenAI confirmado, resumo estruturado de erro de provider, diagnostico explicito da migration `token_usage` ausente, alerta de custo visivel no dashboard, agregado `por_etapa` e rejeicao de codigos compostos em `_avisos_*` | Nao usar somente marker HTML como gate quando Render `rootDir=backend` ignora commits sem backend; combinar `/api/deploy-info`, deploy list quando disponivel e comportamento live. |
 | Pipeline P4 | Bloqueio de extracao de respostas sem prova valida esta no codigo publicado | Precisa smoke dedicado apenas se P4 voltar a ser alvo. |
 | Pipeline P5/P6 | Preservacao de `_documentos_faltantes`; `ad7e00e` bloqueia `GERAR_RELATORIO` sem `nota_final` numerica confiavel | Ainda falta caçar outros fallbacks antigos, mas `nota_final=N/A` nao e mais aceite final no executor de relatório. |
-| Schema/avisos | Defaults `_avisos_*`, visualizador melhorado, `f40acf3` alinhando prompts/tool instructions de `CORRIGIR`, `ANALISAR_HABILIDADES` e `GERAR_RELATORIO`; `700b088` exigindo rastreabilidade de resposta/gabarito em `CORRIGIR`; `1307909`/`bed0c08`/`feaf5d0` bloqueando literal divergente, cabecalho PDF fake e totais incoerentes | Ainda falta distinguir default de output real do modelo e ampliar checagens semanticas para respostas mais abertas/datasets maiores. |
+| Schema/avisos | Defaults `_avisos_*`, visualizador melhorado, `f40acf3` alinhando prompts/tool instructions de `CORRIGIR`, `ANALISAR_HABILIDADES` e `GERAR_RELATORIO`; `700b088` exigindo rastreabilidade de resposta/gabarito em `CORRIGIR`; `1307909`/`bed0c08`/`feaf5d0` bloqueando literal divergente, cabecalho PDF fake e totais incoerentes; `ed592de` removeu exemplos `A|B|C` e rejeita codigo composto em `_avisos_documento`/`_avisos_questao` | Ainda falta distinguir default de output real do modelo e ampliar checagens semanticas para respostas mais abertas/datasets maiores. |
 | Tokens/custos | Split input/output; metadata de documento; endpoints `/api/custos/status` e `/api/custos/resumo` respondendo live; resumo agrega por `cost_run_id` e, desde `ae04982`, tambem por `por_etapa`; `48407f2` adicionou `erro_resumo`, `erro_codigo`, `erro_provider_status`, `erro_provider_modelo` e `erro_categoria` para erros de provider; `50fb1d7` faz `/api/custos/status` retornar `error_code=PGRST205`, `missing_migration=true` e `migration_path=backend/migrations/002_create_token_usage.sql`; `e2260d2` faz o dashboard ler `token_usage_backend.supabase` e exibir esse codigo/caminho ao usuario; `TokenUsageRecord` local cobre falha sem documento enquanto o filesystem vive; codigo Supabase e migration dedicada `b2dc88b` existem; diagnostico live mostra `PGRST205`; smoke full GPT-5.4 Mini `task_a1f7521077a5` completou 6 etapas em `e2260d2`; `/api/custos/resumo?limit=120` em `ae04982` mostrou `US$ 1.404252`, `57` runs precificados, `2` bloqueados e `por_etapa` com `correcao` como maior custo; `token_usage` segue nao duravel | Falta aplicar `backend/migrations/002_create_token_usage.sql` no Supabase. |
-| Providers | Sweep live pos-`e2260d2` confirmou conexao OpenAI OK para `gpt-4o`, `o3-mini`, `gpt-4.1`, `o4-mini`, `gpt-5-nano` e `gpt-5.4-mini`; Google OK em conexao para `gemini-2.5-flash`, `gemini-2.5-flash-lite` e `gemini-3-flash-preview`; `gemini-2.5-pro` bloqueado por quota `429`; Claude Haiku/Sonnet 4.5 bloqueados por credito Anthropic; Ollama indisponivel no Render. Historico: GPT-5.4 Mini completou smoke full em `task_a1f7521077a5`; GPT-5 Nano passou `extrair_respostas` em `task_0818b99194aa` (`US$ 0.000914`), `corrigir` em `task_960c0a287a13` (`US$ 0.005149`) e etapas finais em `task_fa50cb3ffc16` (`US$ 0.002282` + `US$ 0.001912`) na fixture simples, com ressalva de aviso composto; Nano ainda segue parcial em dataset maior/schema de avisos; Gemini 2.5 Flash falhou alto em pipeline `corrigir` na `task_41c45d7939b5` com Google `429 RESOURCE_EXHAUSTED`; GPT-4o completou full smoke `task_68b19146a95b`; Gemini tem historicos parciais e falhas por quota/conteudo | Revalidar matriz por provider em pipeline, nao apenas conexao; priorizar modelos com conexao OK e custo aceitavel, sem trocar provider em silencio. |
+| Providers | Sweep live pos-`e2260d2` confirmou conexao OpenAI OK para `gpt-4o`, `o3-mini`, `gpt-4.1`, `o4-mini`, `gpt-5-nano` e `gpt-5.4-mini`; Google OK em conexao para `gemini-2.5-flash`, `gemini-2.5-flash-lite` e `gemini-3-flash-preview`; `gemini-2.5-pro` bloqueado por quota `429`; Claude Haiku/Sonnet 4.5 bloqueados por credito Anthropic; Ollama indisponivel no Render. Historico: GPT-5.4 Mini completou smoke full em `task_a1f7521077a5`; GPT-5 Nano passou `extrair_respostas` em `task_0818b99194aa` (`US$ 0.000914`), `corrigir` em `task_960c0a287a13` (`US$ 0.005149`), etapas finais em `task_fa50cb3ffc16` (`US$ 0.002282` + `US$ 0.001912`) e rerun `gerar_relatorio` pos-`ed592de` em `task_0c7339f48aec` (`US$ 0.006012`) na fixture simples; a ressalva de aviso composto foi corrigida nessa fixture, mas Nano ainda segue parcial em dataset maior; Gemini 2.5 Flash falhou alto em pipeline `corrigir` na `task_41c45d7939b5` com Google `429 RESOURCE_EXHAUSTED`; GPT-4o completou full smoke `task_68b19146a95b`; Gemini tem historicos parciais e falhas por quota/conteudo | Revalidar matriz por provider em pipeline, nao apenas conexao; priorizar modelos com conexao OK e custo aceitavel, sem trocar provider em silencio. |
 | Seguranca Rio | Regra de nao usar chave em chat e Rio pausado | Arquivos Rio/untracked continuam fora do ciclo ativo. |
 
 ### O Que Falta
@@ -3780,6 +3780,48 @@ Atualizacao deste ciclo:
 - Falta: a tabela Supabase `public.token_usage` ainda nao existe (`PGRST205`).
   Portanto custo de falhas sem documento final continua nao duravel ate aplicar
   `backend/migrations/002_create_token_usage.sql`.
+
+### Schema/Avisos: Codigo Composto Nao Pode Ser Sucesso
+
+Atualizacao deste ciclo:
+
+- Achado live: no smoke `task_fa50cb3ffc16`, GPT-5 Nano completou
+  `GERAR_RELATORIO`, mas o JSON trouxe `_avisos_questao.codigo` como string
+  composta `ILLEGIBLE_QUESTION|MISSING_CONTENT|LOW_CONFIDENCE`. Isso nao deve
+  ser considerado schema bom, porque a UI e a auditoria esperam um codigo por
+  aviso.
+- Patch: `ed592de` removeu exemplos `A|B|C` de `backend/executor.py` e
+  `backend/prompts.py`, adicionou instrucao de um codigo por aviso, e passou a
+  validar os codigos em `backend/pipeline_validation.py` e no caminho runtime de
+  `executar_com_tools`.
+- Regra registrada: `_avisos_documento` aceita apenas `ILLEGIBLE_DOCUMENT`,
+  `MISSING_CONTENT` ou `LOW_CONFIDENCE`; `_avisos_questao` aceita apenas
+  `ILLEGIBLE_QUESTION`, `MISSING_CONTENT` ou `LOW_CONFIDENCE`. Quando houver
+  varios problemas, o modelo deve criar varios itens de aviso, nao concatenar
+  codigos com `|`.
+- Validacao local: `py_compile`, `git diff --check` e testes focados
+  (`test_pipeline_validation.py`, `test_warning_system.py`,
+  `test_e_t2_retry_partial_output.py`) com `141 passed`, `3 skipped`.
+- Deploy/smoke oficial: Render confirmou
+  `ed592de1f2a04523a54b8d0662fe8ed29069d08b`; `task_0c7339f48aec` rodou
+  `selected_steps=["gerar_relatorio"]` com `gpt5nano001` na fixture Diana e
+  completou sem `stage_errors`.
+- Artefatos do smoke: JSON `e0bd0926113e66bd` e PDF `170ce2985e0356e7`,
+  `status=concluido`, `openai/gpt-5-nano`, `tokens_entrada=66621`,
+  `tokens_saida=6703`, `tokens_total=73324`, `cost_run_id=tool_c491ce8289ee`.
+- Evidencia de conteudo: o JSON novo manteve `nota_final=8.0`, fontes
+  `CORRIGIR` e `ANALISAR_HABILIDADES`, e `_avisos_questao[0].codigo` veio como
+  `ILLEGIBLE_QUESTION`, sem pipe.
+- Custo medido: `/api/custos/resumo?limit=240` precificou
+  `tool_c491ce8289ee` em `US$ 0.006012`; agregado `relatorio_final` ficou com
+  `15` runs, `375223` input tokens, `54884` output tokens e `US$ 0.687618`.
+- Bloqueio mantido: `/api/custos/status?limit=80` segue `ok=false` porque
+  `public.token_usage` nao existe no Supabase (`PGRST205`). Custo de documentos
+  concluidos esta medido por metadata, mas falhas sem documento ainda nao tem
+  persistencia duravel.
+- Interpretacao para o plano: a ressalva anterior do Nano em aviso composto foi
+  fechada para a fixture simples, mas Nano continua parcial fora dela ate smokes
+  maiores provarem qualidade e custo por provider/etapa.
 
 Regra de continuidade:
 

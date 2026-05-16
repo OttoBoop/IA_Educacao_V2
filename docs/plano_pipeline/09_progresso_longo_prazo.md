@@ -3003,6 +3003,51 @@ Critério de pronto: lista de limpeza segura e revisada.
 - Status: Nano fica confirmado nas etapas finais da fixture simples, com
   ressalva aberta para normalizar codigos de aviso.
 
+### 2026-05-17 -- Schema/avisos: codigo composto virou erro alto e smoke passou
+
+- Alvo: corrigir a ressalva do smoke Nano em que `_avisos_questao.codigo`
+  apareceu como `ILLEGIBLE_QUESTION|MISSING_CONTENT|LOW_CONFIDENCE`.
+- Mudanca: commit `ed592de` removeu exemplos `A|B|C` de `executor.py` e
+  `prompts.py`, adicionou instrucao explicita de um codigo por aviso, e passou
+  a validar codigos em `pipeline_validation.py` e no caminho runtime de
+  `executar_com_tools`.
+- Regra agora: `_avisos_documento` aceita somente `ILLEGIBLE_DOCUMENT`,
+  `MISSING_CONTENT` ou `LOW_CONFIDENCE`; `_avisos_questao` aceita somente
+  `ILLEGIBLE_QUESTION`, `MISSING_CONTENT` ou `LOW_CONFIDENCE`. Codigo composto
+  com `|` deve falhar alto ou acionar retry explicito no mesmo modelo.
+- Validacao local: `py_compile` dos arquivos tocados, `git diff --check` e
+  `pytest` focado em `test_pipeline_validation.py`, `test_warning_system.py` e
+  `test_e_t2_retry_partial_output.py`: `141 passed`, `3 skipped`, `1 warning`
+  de config `timeout`.
+- Deploy oficial: `origin/main` e Render chegaram a
+  `ed592de1f2a04523a54b8d0662fe8ed29069d08b`; `wait_deploy.sh` achou o hash
+  em 150s; `check_deploy.sh` e `/api/health` passaram.
+- Smoke oficial pos-fix: `task_0c7339f48aec`, runtime `ed592de`, atividade
+  `f68d57a9a339081f`, aluna `10d9fa4f4303ea1f`, modelo `gpt5nano001`,
+  `selected_steps=["gerar_relatorio"]`, `force_rerun=true`.
+- Resultado: task `completed`; `gerar_relatorio=completed`; sem
+  `stage_errors`.
+- Artefatos oficiais: JSON `e0bd0926113e66bd` e PDF `170ce2985e0356e7`,
+  ambos `status=concluido`, provider/modelo `openai/gpt-5-nano`,
+  `cost_run_id=tool_c491ce8289ee`, `tokens_entrada=66621`,
+  `tokens_saida=6703`, `tokens_total=73324`.
+- Conteudo verificado: relatorio manteve `nota_final=8.0`, fontes
+  `CORRIGIR` e `ANALISAR_HABILIDADES`, e `_avisos_questao[0].codigo` veio como
+  `ILLEGIBLE_QUESTION`, sem `|`.
+- Custo live: `/api/custos/resumo?limit=240` precificou o run
+  `tool_c491ce8289ee` em `US$ 0.006012`; o agregado `relatorio_final` ficou
+  com `15` runs, `tokens_entrada=375223`, `tokens_saida=54884`,
+  `custo_usd=0.687618`. O total geral observado ficou em
+  `runs_analisados=102`, `runs_precificados=100`, `runs_bloqueados=2`,
+  `custo_usd=2.694486`.
+- Bloqueio que permanece: `/api/custos/status?limit=80` ainda retorna
+  `ok=false`, `token_usage_backend.durable=false` e Supabase `PGRST205` para
+  `public.token_usage`; aplicar `backend/migrations/002_create_token_usage.sql`
+  continua sendo gate externo para custo duravel de falhas sem documento.
+- Proximo alvo: continuar a matriz por provider/custo. Gemini segue bloqueado
+  por quota `429`, Anthropic por credito, e Nano/GPT-5.4 Mini precisam de
+  smokes em datasets menos simples antes de virarem pipeline-ready geral.
+
 ## Riscos Abertos
 
 1. Creditos Anthropic insuficientes ainda bloqueiam validacao Haiku.

@@ -4,8 +4,8 @@
 **Atividades de teste principais:** Lista0 — Algebra Linear Avancada
 (`126e8b5ad7dd6d59`) e smoke simples oficial `Smoke Paulo Pipeline 2026-05-16`
 (`f68d57a9a339081f`)
-**Runtime oficial atual:** backend Render em `ae04982`; `origin/main` recebeu o
-ciclo funcional `ae04982` e pode receber registro documental posterior. Use
+**Runtime oficial atual:** backend Render em `ed592de`; `origin/main` recebeu o
+ciclo funcional `ed592de` para rejeitar codigos compostos em `_avisos_*`. Use
 `/api/deploy-info` como gate de codigo live.
 **Commits aplicados/observados:** `a632883`, `5737611`, `50935ea`, `479b77d`,
 `b12be9a`, `301eba6`, `f67055c`, `462ea1d`, `b4d7ee6`, `99483d1`,
@@ -23,16 +23,16 @@ ciclo funcional `ae04982` e pode receber registro documental posterior. Use
 `4094bda`, `4d8f73d`, `f40acf3`, `700b088`, `1307909`, `bed0c08`, `feaf5d0`,
 `d47d748`, `c53fae6`, `9ab53df`, `1454e68`, `3fce335`, `33fb7d5`, `0f84552`,
 `974f040`, `11a396b`, `c094fba`, `d799165`, `6b43016`, `8c77cc4`, `29a4b7e`,
-`fdf0cbd`, `e2260d2`, `ae04982`
+`fdf0cbd`, `e2260d2`, `ae04982`, `ed592de`
 
 ## Status Oficial De Deploy
 
 - O servico oficial em 2026-05-17 e
   `srv-d5t8gbh4tr6s738fr3s0` (`IA_Educacao_V2`), branch `main`,
   `rootDir=backend`, URL `https://ia-educacao-v2.onrender.com`.
-- `/api/deploy-info` confirmou o runtime backend `ae04982` com
+- `/api/deploy-info` confirmou o runtime backend `ed592de` com
   `source=RENDER_GIT_COMMIT`; esse e o gate primario atual para codigo live.
-- `origin/main` esta alinhado com o codigo funcional `ae04982`; commits
+- `origin/main` esta alinhado com o codigo funcional `ed592de`; commits
   documentais posteriores podem mudar o hash sem mudar comportamento de
   provider/pipeline.
 - `e2260d2` tornou o bloqueio de migration `token_usage` visivel no dashboard.
@@ -58,6 +58,12 @@ ciclo funcional `ae04982` e pode receber registro documental posterior. Use
   e `gerar_relatorio` na fixture Diana; custos `US$ 0.002282` e `US$ 0.001912`.
   Ressalva: o relatorio trouxe `_avisos_questao.codigo` composto
   `ILLEGIBLE_QUESTION|MISSING_CONTENT|LOW_CONFIDENCE`, alvo de schema/avisos.
+- Schema/avisos pos-fix: `ed592de` removeu exemplos `A|B|C` de prompts e
+  tool-instructions, rejeita codigo composto em Pydantic e no runtime de
+  `executar_com_tools`, e foi confirmado no Render. Smoke
+  `task_0c7339f48aec` (`selected_steps=["gerar_relatorio"]`, `gpt5nano001`)
+  concluiu com JSON `e0bd0926113e66bd`, PDF `170ce2985e0356e7`,
+  `_avisos_questao[0].codigo=ILLEGIBLE_QUESTION`, custo `US$ 0.006012`.
 - O commit `fdf0cbd` mudou backend/frontend para catalogo OpenAI GPT-5.x e foi
   publicado no GitHub; Render confirmou `fdf0cbd` por `/api/deploy-info`,
   `wait_deploy.sh` e `check_deploy.sh`.
