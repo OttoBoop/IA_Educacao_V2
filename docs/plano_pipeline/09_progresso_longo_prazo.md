@@ -4,11 +4,11 @@
 **Responsavel operacional:** Paulo
 **Status geral:** o servico oficial Render
 `srv-d5t8gbh4tr6s738fr3s0` (`IA_Educacao_V2`, branch `main`, URL
-`https://ia-educacao-v2.onrender.com`) esta em `0d5ab9d`, confirmado por
-`/api/deploy-info` com `source=RENDER_GIT_COMMIT`. O commit `0d5ab9d` endurece
-o parser das etapas: quando ha `stage`, JSON dentro de Markdown/prosa vira erro
-alto (`invalid_json_envelope`) e array na raiz vira `invalid_json_root`; a
-pipeline exige JSON cru na raiz. O primeiro marco full
+`https://ia-educacao-v2.onrender.com`) esta em `c870ed4`, confirmado por
+`/api/deploy-info` com `source=RENDER_GIT_COMMIT`. O commit `c870ed4` melhora o
+contrato de sucesso do Path 2: `executar_com_tools()` passa a retornar a etapa
+real derivada de `expected_document_type`, `resposta_parsed` do JSON principal e
+`documento_id` quando ha JSON persistido. O primeiro marco full
 recente continua sendo o smoke de 6 etapas com GPT-5.4 Mini (`gpt54mini001`) na
 atividade `Smoke Paulo Pipeline 2026-05-16`: task `task_a5f0d734f0b3`, aluna
 Diana Omega, hash live `2cad38a`, etapas `extrair_questoes`,
@@ -2073,6 +2073,30 @@ Critério de pronto: lista de limpeza segura e revisada.
   falta fechar o contrato Path 2: `executar_com_tools()` retornar etapa real,
   `resposta_parsed` e `documento_id` principal, alem de validar schema minimo
   de cada etapa antes do sucesso.
+
+### 2026-05-17 -- Path 2 retorna etapa real e JSON parseado
+
+- Alvo: fechar parte do contrato D02-2, em que `executar_com_tools()` ainda
+  retornava sucesso como etapa `"tools"` e sem `resposta_parsed`/documento
+  principal no `ResultadoExecucao`.
+- Commit funcional: `c870ed4`.
+- Mudancas: sucesso de tool-use agora mapeia `TipoDocumento.CORRECAO` para
+  `EtapaProcessamento.CORRIGIR`, `ANALISE_HABILIDADES` para
+  `ANALISAR_HABILIDADES`, `RELATORIO_FINAL` para `GERAR_RELATORIO` e relatorios
+  agregados para suas etapas reais. O executor carrega o JSON oficial
+  persistido como `resposta_parsed` e `documento_id`; em testes sem storage,
+  extrai o JSON do `create_document` da chamada de tool.
+- Testes locais: `python -m py_compile backend/executor.py
+  backend/tests/unit/test_e_t2_retry_partial_output.py`; `git diff --check`;
+  suite dual-output/custo/PDF com `60 passed`; suite de migracao
+  `corrigir`/`analisar_habilidades`/`gerar_relatorio` + erro/schema com
+  `158 passed, 3 skipped`.
+- Deploy: `git push origin HEAD:main`; `./scripts/wait_deploy.sh c870ed4`
+  encontrou o hash apos 150s; `./scripts/check_deploy.sh c870ed4` passou;
+  `/api/health` respondeu `healthy`.
+- Status: D02-2 saiu de aberto puro para parcial melhorado. Ainda falta
+  garantir schema minimo por etapa no objeto retornado e tratar todo parcial
+  parseavel como erro alto antes de sucesso.
 
 ## Riscos Abertos
 
