@@ -4,20 +4,23 @@
 **Responsavel operacional:** Paulo
 **Status geral:** o servico oficial Render
 `srv-d5t8gbh4tr6s738fr3s0` (`IA_Educacao_V2`, branch `main`, URL
-`https://ia-educacao-v2.onrender.com`) esta em `700b088`, confirmado por
-`/api/deploy-info`, `/api/health` e `./scripts/check_deploy.sh 700b088`. O
-estado oficial mais recente nao e apenas "pipeline completou": o smoke
-`task_cc22b6c239d0` comprovou `corrigir`, `analisar_habilidades` e
-`gerar_relatorio` com GPT-5.4 Mini na fixture Diana Omega, preservando a resposta
-do aluno na correcao. Q3 ficou `25` vs gabarito `30`, `nota=0.0/2.0`,
-`nota_final=8.0`, PDFs finais coerentes por `pdftotext`, custo
-`56891/9827` tokens e `US$ 0.086890`. O custo ainda nao e duravel porque
-`/api/custos/status?limit=80` segue com `token_usage_not_durable` ate aplicar
-`backend/migrations/002_create_token_usage.sql` no Supabase. O primeiro marco
-full recente continua sendo o smoke de 6 etapas com GPT-5.4 Mini
-(`task_a5f0d734f0b3`), mas os ciclos posteriores endureceram PDF/JSON, schema
-runtime, avisos, linhagem e rastreabilidade semantica. Esse marco nao substitui
-a matriz completa de providers nem valida todos os datasets reais.
+`https://ia-educacao-v2.onrender.com`) esta em `feaf5d0`, confirmado por
+`/api/deploy-info`, `/api/health` e `./scripts/check_deploy.sh feaf5d0`. O
+estado oficial mais recente endurece `CORRIGIR` contra tres falsos verdes:
+troca/contradicao de resposta, PDF com cabecalho placeholder e JSON com
+`nota_final` que nao bate com a soma de `questoes[].nota`. O smoke oficial
+`task_ec7acffbb6d4` com GPT-5.4 Mini (`gpt54mini001`) provou o guard: a primeira
+tentativa JSON `a6e92125cee2b4d4` foi marcada `status=erro` porque tinha
+`nota_final=10` e soma 8; depois o retry gerou JSON `51f5a6a4536b60e7` e PDF
+`db4903bda7b4d2c0` coerentes, com cabecalho real, Q3 `25` vs `30`,
+`nota=0/2`, `nota_final=8`, custo `41137/5962` tokens e `US$ 0.057682`. O custo
+ainda nao e duravel porque `/api/custos/status?limit=80` segue com
+`token_usage_not_durable` ate aplicar `backend/migrations/002_create_token_usage.sql`
+no Supabase. O primeiro marco full recente continua sendo o smoke de 6 etapas
+com GPT-5.4 Mini (`task_a5f0d734f0b3`), mas os ciclos posteriores endureceram
+PDF/JSON, schema runtime, avisos, linhagem, rastreabilidade semantica e
+consistencia interna de notas. Esse marco nao substitui a matriz completa de
+providers nem valida todos os datasets reais.
 
 Atualizacao de 2026-05-17 no runtime `700b088`: o ciclo `f40acf3` alinhou
 `PROMPTS_PADRAO` e `STAGE_TOOL_INSTRUCTIONS` para `CORRIGIR`,
@@ -2291,6 +2294,51 @@ Critério de pronto: lista de limpeza segura e revisada.
 - Status: GPT-5.4 Mini esta confirmado para as etapas finais nessa fixture
   simples pos-`700b088`. O proximo alvo real e ampliar a checagem semantica para
   mais tipos de resposta/datasets e resolver persistencia duravel de custos.
+
+### 2026-05-17 -- CORRIGIR sem falso verde de literal, cabecalho e totais
+
+- Alvo: continuar o loop depois do smoke `700b088`, sem tratar verde superficial
+  como pronto.
+- Commits:
+  - `1307909`: bloqueia correcao que marca acerto/nota maxima quando
+    `resposta_aluno` literal simples diverge de `resposta_correta` (ex.: `B`
+    contra `C`).
+  - `bed0c08`: adiciona metadados de aluno/materia/atividade ao prompt de
+    `CORRIGIR` e bloqueia PDF de correcao que usa placeholder no cabecalho
+    (`—`, `?`, `N/A`, `Nao informado`).
+  - `feaf5d0`: bloqueia JSON de correcao cuja `nota_final` nao bate com a soma
+    de `questoes[].nota`, ou cujos `total_acertos`/`total_erros` nao batem com
+    `questoes[].acerto`.
+- Validacoes locais:
+  - `py_compile` dos arquivos Python tocados.
+  - `git diff --check`.
+  - `backend/tests/unit/test_cost_tracking.py`,
+    `backend/tests/unit/test_stage_tool_pdf_quality.py`,
+    `backend/tests/unit/test_e_t2_retry_partial_output.py`: `69 passed`.
+  - `backend/tests/unit/test_erro_pipeline.py`: `73 passed`.
+- Deploy:
+  - `1307909`, `bed0c08` e `feaf5d0` foram publicados em `origin/main`.
+  - `./scripts/wait_deploy.sh feaf5d0` encontrou o runtime apos 150s;
+    `./scripts/check_deploy.sh feaf5d0`, `/api/deploy-info` e `/api/health`
+    confirmaram o site oficial.
+- Smokes oficiais:
+  - `task_8f66a773d51a` em `1307909`: `corrigir` completou com Q3 errada e
+    nota 8; custo `20598/3837`, `US$ 0.032715`.
+  - `task_8905598b5ee7` em `bed0c08`: cabecalho real foi corrigido, mas o
+    smoke revelou novo falso verde interno: JSON `6fb8bb49a07a8c9b` tinha
+    `nota_final=9` apesar de as questoes somarem 8.
+  - `task_ec7acffbb6d4` em `feaf5d0`: o primeiro JSON inconsistente
+    `a6e92125cee2b4d4` foi marcado `status=erro` com
+    `json_schema_validation`; o retry produziu JSON oficial
+    `51f5a6a4536b60e7` e PDF `db4903bda7b4d2c0`, ambos coerentes:
+    cabecalho `Diana Omega`/`Matemática-V`/atividade/data, `nota_final=8`,
+    Q3 `25` vs `30`, `nota=0/2`.
+- Custos: o run final `tool_a4afb35132b0` registrou `41137/5962` tokens,
+  `US$ 0.057682`. `/api/custos/status?limit=80` segue `ok=false` por
+  `token_usage_not_durable`/Supabase `PGRST205`.
+- Status: `CORRIGIR` esta mais protegido para a fixture Diana em GPT-5.4 Mini.
+  Proximos alvos continuam: persistencia duravel de custos, UI/historico de
+  erro e revalidacao por provider/dataset maior.
 
 ## Riscos Abertos
 

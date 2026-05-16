@@ -17,14 +17,14 @@
 `2d72c6b`, `f2211bb`, `5a3daca`, `92bd095`, `f6b040c`, `2cad38a`,
 `2885da7`, `99b8c3c`, `392ec7c`, `460643f`, `54d083e`,
 `854cec7`, `b07472f`, `dc5884f`, `0d5ab9d`, `c870ed4`, `45f5cf8`,
-`4094bda`, `4d8f73d`, `f40acf3`, `700b088`
+`4094bda`, `4d8f73d`, `f40acf3`, `700b088`, `1307909`, `bed0c08`, `feaf5d0`
 
 ## Status Oficial De Deploy
 
 - O servico oficial em 2026-05-17 e
   `srv-d5t8gbh4tr6s738fr3s0` (`IA_Educacao_V2`), branch `main`,
   `rootDir=backend`, URL `https://ia-educacao-v2.onrender.com`.
-- `/api/deploy-info` confirmou o runtime backend `700b088` com
+- `/api/deploy-info` confirmou o runtime backend `feaf5d0` com
   `source=RENDER_GIT_COMMIT`; esse e o gate primario atual.
 - O HTML marker pode ficar stale e nao prova runtime antigo: commits de
   frontend/docs/marker podem nao disparar deploy quando o servico Render usa
@@ -70,9 +70,9 @@
 - `origin/main` tambem contem a migration dedicada `b2dc88b`
   (`backend/migrations/002_create_token_usage.sql`), ainda nao aplicada ao
   Supabase de producao.
-- Render live agora chegou a `700b088` por `/api/deploy-info`; marker HTML segue
-  apenas auxiliar. O smoke `task_cc22b6c239d0` validou as tres etapas finais
-  com GPT-5.4 Mini depois da guarda semantica de correcao.
+- Render live agora chegou a `feaf5d0` por `/api/deploy-info`; marker HTML segue
+  apenas auxiliar. O smoke `task_ec7acffbb6d4` validou `corrigir` com GPT-5.4
+  Mini depois das guardas de literal, cabecalho PDF e soma/totais de nota.
 - Docs antigos registram que auto-deploy Git nao funciona de forma confiavel; o
   ciclo usou deploy via API Render com token local seguro, sem imprimir segredo.
 - Smokes live anteriores continuam citados com seus markers; smokes de
@@ -791,7 +791,13 @@ na fixture simples. Ainda falta pipeline completa de 6 etapas e datasets maiores
   `task_cc22b6c239d0` passou no runtime `700b088`: JSON de correcao
   `c3c680d099f781f7`, PDF `9814e0d8107b4d44`, Q3 `25` vs `30`,
   `nota_final=8.0`; relatorio JSON/PDF `9bf0e1dac90a58c1`/
-  `a6f80bac65611376`; custo `56891/9827` tokens, `US$ 0.086890`.
+  `a6f80bac65611376`; custo `56891/9827` tokens, `US$ 0.086890`. Depois,
+  `1307909` bloqueou acerto literal divergente, `bed0c08` bloqueou cabecalho
+  PDF com placeholder e `feaf5d0` bloqueou `nota_final`/totais incoerentes. O
+  smoke `task_ec7acffbb6d4` no runtime `feaf5d0` marcou o JSON inconsistente
+  `a6e92125cee2b4d4` como erro (`nota_final=10`, soma 8) e aceitou o retry:
+  JSON `51f5a6a4536b60e7`, PDF `db4903bda7b4d2c0`, cabecalho real,
+  Q3 `25` vs `30`, `nota_final=8`, custo `41137/5962`, `US$ 0.057682`.
 - ⏸️ **Claude Haiku 4.5:** Aguardando creditos.
 - 📊 **Confiabilidade Gemini 3 Flash:** extracoes OK; etapas finais ficaram
   ⚠️ depois que `aff2180` endureceu `feedback_geral` em `CORRIGIR`. A
@@ -812,7 +818,7 @@ nem datasets maiores.
 
 **Proximos passos:**
 1. Manter deploy oficial confirmado por `/api/deploy-info` antes de cada smoke
-   novo; o runtime atual confirmado e `700b088`.
+   novo; o runtime atual confirmado e `feaf5d0`.
 2. Aplicar/validar a migration Supabase `token_usage` antes de chamar custo de
    falha sem documento de duravel.
 3. Revalidar matriz por provider/modelo; GPT-5.4 Mini passou 6 etapas em

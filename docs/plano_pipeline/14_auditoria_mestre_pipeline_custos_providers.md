@@ -10,20 +10,18 @@ um deve ser lido, o que ainda vale, o que ficou historico, e quais fatos precisa
 guiar os proximos ciclos.
 
 Atualizacao de controle de 2026-05-17: o site oficial esta em runtime backend
-`700b088` por `/api/deploy-info`, `/api/health` e `check_deploy.sh`. Os commits
-recentes fecharam mais uma classe de falso verde: `f40acf3` alinhou prompts e
-contratos de tool-use nas etapas tardias, mas o smoke `task_9671e072f42c`
-revelou que schema correto ainda podia esconder erro pedagogico; Q3 tinha
-resposta do aluno `25`, gabarito `30`, e a correcao marcou acerto/nota 10. O
-commit `700b088` tornou a rastreabilidade de `CORRIGIR` obrigatoria: cada
-questao precisa carregar `resposta_aluno` e `resposta_correta` vindas dos
-documentos upstream, e divergencia numerica nao pode receber acerto/nota maxima.
-O re-smoke `task_cc22b6c239d0` passou com GPT-5.4 Mini (`gpt54mini001`) na
-fixture Diana Omega: correcao JSON `c3c680d099f781f7`, PDF
-`9814e0d8107b4d44`, Q3 `25` vs `30`, `nota_final=8.0`; analise JSON/PDF
-`aabad9f809a388a3`/`17575cac06b3e8f7`; relatorio JSON/PDF
-`9bf0e1dac90a58c1`/`a6f80bac65611376`; split `56891/9827` e custo
-`US$ 0.086890`. O bloqueio de custo duravel segue:
+`feaf5d0` por `/api/deploy-info`, `/api/health` e `check_deploy.sh`. Os commits
+recentes fecharam mais classes de falso verde em `CORRIGIR`: `f40acf3` alinhou
+prompts e contratos de tool-use; `700b088` exigiu rastreabilidade de
+`resposta_aluno`/`resposta_correta`; `1307909` bloqueou acerto literal
+divergente; `bed0c08` bloqueou PDF com cabecalho placeholder; `feaf5d0`
+bloqueou `nota_final`, `total_acertos` e `total_erros` incoerentes com
+`questoes[]`. O smoke `task_ec7acffbb6d4` passou com GPT-5.4 Mini
+(`gpt54mini001`) na fixture Diana Omega depois de um retry explicito: o JSON
+inicial `a6e92125cee2b4d4` virou `status=erro` por `nota_final=10` com soma 8;
+o JSON oficial `51f5a6a4536b60e7` e o PDF `db4903bda7b4d2c0` ficaram coerentes,
+com cabecalho real, Q3 `25` vs `30`, `nota=0/2`, `nota_final=8`, split
+`41137/5962` e custo `US$ 0.057682`. O bloqueio de custo duravel segue:
 `/api/custos/status?limit=80` retorna `ok=false` por Supabase `PGRST205` em
 `public.token_usage`.
 
@@ -257,12 +255,15 @@ detalhar e auditar estas linhas.
    que isso ainda nao bastava porque Q3 `25` vs `30` foi marcada como correta.
    O commit `700b088` adicionou guarda semantica de rastreabilidade em
    `CORRIGIR`, e o re-smoke `task_cc22b6c239d0` confirmou Q3 errada,
-   `nota_final=8.0` e PDFs finais coerentes.
+   `nota_final=8.0` e PDFs finais coerentes. Depois, `1307909`, `bed0c08` e
+   `feaf5d0` fecharam acerto literal divergente, cabecalho PDF placeholder e
+   `nota_final`/totais incoerentes; `task_ec7acffbb6d4` confirmou retry
+   explicito ate JSON/PDF coerentes.
 10. O proximo eixo correto e aplicar `backend/migrations/002_create_token_usage.sql`
     no Supabase, ampliar a revalidacao por etapa/provider e endurecer o contrato
     contra schema ruim. Enquanto a migration nao for aplicada, `460643f` faz
     `/api/custos/status` gritar `ok=false` e alerta `token_usage_not_durable`, e
-    `54d083e` mostra esse bloqueio no dashboard oficial; em `700b088`, o live
+    `54d083e` mostra esse bloqueio no dashboard oficial; em `feaf5d0`, o live
     ainda retorna `custos_persistencia_status=parcial_sem_token_usage_duravel`.
 
 ### O Que Temos
@@ -270,11 +271,11 @@ detalhar e auditar estas linhas.
 | Frente | Temos hoje | Limite da afirmacao |
 |---|---|---|
 | Documentacao | Doc 09 como painel curto; Doc 14 como auditoria mestre; Doc 05/12 com notas de status | Manter Doc 09 curto e Doc 14 detalhado; registrar novos ciclos sem criar doc extra. |
-| Git/GitHub | `/api/deploy-info` confirmou runtime `700b088`; `origin/main` esta alinhado com os fixes de dashboard de custo, tool-use Google faseado, consistencia PDF/JSON por feedback coerente, erro por aluno/etapa na sidebar, bloqueio anti-`nota_final=N/A`, guarda contra PDF auto-fallback, rejeicao de JSON embrulhado em Markdown/prosa, retorno Path 2 com etapa real/JSON parseado, schema minimo runtime, cobertura anti-regressao para etapas tardias, cobertura de PDF stale, contrato de prompts tardios e rastreabilidade semantica de correcao | Nao usar somente marker HTML como gate quando Render `rootDir=backend` ignora commits sem backend; combinar `/api/deploy-info`, deploy list quando disponivel e comportamento live. |
+| Git/GitHub | `/api/deploy-info` confirmou runtime `feaf5d0`; `origin/main` esta alinhado com os fixes de dashboard de custo, tool-use Google faseado, consistencia PDF/JSON por feedback coerente, erro por aluno/etapa na sidebar, bloqueio anti-`nota_final=N/A`, guarda contra PDF auto-fallback, rejeicao de JSON embrulhado em Markdown/prosa, retorno Path 2 com etapa real/JSON parseado, schema minimo runtime, cobertura anti-regressao para etapas tardias, cobertura de PDF stale, contrato de prompts tardios, rastreabilidade semantica de correcao, cabecalho PDF real e consistencia interna de notas | Nao usar somente marker HTML como gate quando Render `rootDir=backend` ignora commits sem backend; combinar `/api/deploy-info`, deploy list quando disponivel e comportamento live. |
 | Pipeline P4 | Bloqueio de extracao de respostas sem prova valida esta no codigo publicado | Precisa smoke dedicado apenas se P4 voltar a ser alvo. |
 | Pipeline P5/P6 | Preservacao de `_documentos_faltantes`; `ad7e00e` bloqueia `GERAR_RELATORIO` sem `nota_final` numerica confiavel | Ainda falta caçar outros fallbacks antigos, mas `nota_final=N/A` nao e mais aceite final no executor de relatório. |
-| Schema/avisos | Defaults `_avisos_*`, visualizador melhorado, `f40acf3` alinhando prompts/tool instructions de `CORRIGIR`, `ANALISAR_HABILIDADES` e `GERAR_RELATORIO`, e `700b088` exigindo rastreabilidade de resposta/gabarito em `CORRIGIR` | Ainda falta distinguir default de output real do modelo e ampliar checagens semanticas para respostas nao numericas/multivalor. |
-| Tokens/custos | Split input/output; metadata de documento; endpoints `/api/custos/status` e `/api/custos/resumo` respondendo live; resumo agrega por `cost_run_id`; `TokenUsageRecord` local cobre falha sem documento enquanto o filesystem vive; codigo Supabase e migration dedicada `b2dc88b` existem; diagnostico live mostra `PGRST205`; smoke full GPT-5.4 Mini `task_a5f0d734f0b3` mediu custo por etapa e total aproximado `US$ 0.079110`; smoke Nano `task_57da745b8de5` registrou `29067/6701` tokens em documentos de relatorio; smoke reduzido GPT-5.4 Mini `task_42e3b303c39a` registrou `26251/4582`, `US$ 0.040307`; re-smoke `task_cc22b6c239d0` registrou `56891/9827`, `US$ 0.086890`; `/api/custos/status?limit=80` em `700b088` segue `ok=false`, `custos_persistencia_status=parcial_sem_token_usage_duravel` e alerta bloqueante `token_usage_not_durable`; dashboard live em `54d083e` mostra "Custos não duráveis" | Falta aplicar `backend/migrations/002_create_token_usage.sql` no Supabase. |
+| Schema/avisos | Defaults `_avisos_*`, visualizador melhorado, `f40acf3` alinhando prompts/tool instructions de `CORRIGIR`, `ANALISAR_HABILIDADES` e `GERAR_RELATORIO`; `700b088` exigindo rastreabilidade de resposta/gabarito em `CORRIGIR`; `1307909`/`bed0c08`/`feaf5d0` bloqueando literal divergente, cabecalho PDF fake e totais incoerentes | Ainda falta distinguir default de output real do modelo e ampliar checagens semanticas para respostas mais abertas/datasets maiores. |
+| Tokens/custos | Split input/output; metadata de documento; endpoints `/api/custos/status` e `/api/custos/resumo` respondendo live; resumo agrega por `cost_run_id`; `TokenUsageRecord` local cobre falha sem documento enquanto o filesystem vive; codigo Supabase e migration dedicada `b2dc88b` existem; diagnostico live mostra `PGRST205`; smoke full GPT-5.4 Mini `task_a5f0d734f0b3` mediu custo por etapa e total aproximado `US$ 0.079110`; smoke Nano `task_57da745b8de5` registrou `29067/6701` tokens em documentos de relatorio; smoke reduzido GPT-5.4 Mini `task_42e3b303c39a` registrou `26251/4582`, `US$ 0.040307`; re-smoke `task_cc22b6c239d0` registrou `56891/9827`, `US$ 0.086890`; smoke `task_ec7acffbb6d4` registrou `41137/5962`, `US$ 0.057682`; `/api/custos/status?limit=80` em `feaf5d0` segue `ok=false`, `custos_persistencia_status=parcial_sem_token_usage_duravel` e alerta bloqueante `token_usage_not_durable`; dashboard live em `54d083e` mostra "Custos não duráveis" | Falta aplicar `backend/migrations/002_create_token_usage.sql` no Supabase. |
 | Providers | Gemini 2.5 Flash passou nas tres extracoes da fixture Diana; `854cec7` corrigiu o bug de tools incompletas com tool-use Google forcado/faseado; `b07472f` corrigiu falso bloqueio de feedback parafraseado; a revalidacao final agora esta bloqueada por quota Google `429`; em `4d8f73d`, conexao Gemini 2.5 Flash voltou `success=true`, mas o smoke `corrigir` `task_e99a2c20be17` falhou alto por `429 RESOURCE_EXHAUSTED`, sem novo documento verde; Gemini 3 Flash passou em chat simples live, `extrair_questoes`, `extrair_respostas` e nas tres etapas finais, mas segue bloqueado por quota `429` para revalidacao full; `extrair_gabarito` Gemini foi reclassificado como invalido por tudo `MISSING_CONTENT` e depois revalidado na fixture simples; GPT-5 Nano passou em chat simples live, `extrair_questoes`, `extrair_gabarito` pos-`5527e26` e `gerar_relatorio` pos-`392ec7c`, mas `extrair_respostas` Nano continua parcial por historico de qualidade em dataset maior; GPT-5.4 Mini passou `extrair_respostas` em amostras e completou um smoke full oficial simples em `task_a5f0d734f0b3` com inspeção semantica inicial coerente; re-smoke `task_605512496b0d` no patch `0ac92f0` completou, mas PDFs divergiram dos JSONs; `2052a01` bloqueou isso com falha alta em `task_857c0c3657ef`; `3a77a17` passou no smoke reduzido `task_e389f360b812` com retry PDF/JSON; `45f5cf8` passou no smoke reduzido `task_42e3b303c39a` de `corrigir`, com JSON/PDF final coerentes e PDF intermediario em erro; `f40acf3` alinhou prompts tardios, mas `task_9671e072f42c` revelou falso verde semantico; `700b088` passou no re-smoke `task_cc22b6c239d0` com Q3 corrigida como erro e `nota_final=8.0`; `392ec7c` passou no smoke Nano de relatorio `task_57da745b8de5`; GPT-4o completou full smoke `task_68b19146a95b` em `54d083e`, com custo aproximado `US$ 0.314369`; `98fafc9` nao muda provider, mas torna falhas por etapa visiveis na sidebar | Revalidar matriz por provider, mas nao rerodar Gemini enquanto quota Google estiver saturada. |
 | Seguranca Rio | Regra de nao usar chave em chat e Rio pausado | Arquivos Rio/untracked continuam fora do ciclo ativo. |
 
@@ -290,7 +291,7 @@ detalhar e auditar estas linhas.
 | Providers | Revalidar Gemini, Nano, Haiku e GPT-4o nas etapas restantes, especialmente extracoes e pipeline completa | Resultado historico ou schema parseavel nao prova qualidade de conteudo. |
 | UI de erro | `98fafc9` publica `stage_errors` por aluno/etapa no task-progress e renderiza a causa na sidebar; falta expandir o mesmo padrao para resultado/historico | Backend falhar alto nao basta se a UI traduz mal. |
 | Dados | Reclassificar "fantasmas" sem deletar PDF valido por `/conteudo=null` | Evita apagar prova respondida real. |
-| Git/deploy | Commit `2d72c6b` adicionou `/api/deploy-info`; o runtime atual confirmado e `700b088` | Usar `/api/deploy-info` antes de novos smokes; marker HTML e apenas auxiliar. |
+| Git/deploy | Commit `2d72c6b` adicionou `/api/deploy-info`; o runtime atual confirmado e `feaf5d0` | Usar `/api/deploy-info` antes de novos smokes; marker HTML e apenas auxiliar. |
 
 ### Bloqueios E Alertas
 
@@ -404,10 +405,10 @@ fila de tarefas. Cada item abaixo deve ser entendido como contrato herdado.
 
 | # | Tarefa clara herdada do Doc 02 | Status real | Evidencia/observacao | Proximo ciclo/teste |
 |---|---|---|---|---|
-| D02-1 | Path 2 deve parsear e validar JSON de `create_document` antes de sucesso | Parcial forte | JSON invalido agora falha antes do storage (`39aa50a`); `0d5ab9d` rejeita JSON de etapa quando ele vem embrulhado em Markdown/prosa ou array na raiz; `45f5cf8` aplica schema minimo tambem ao payload runtime de `create_document`; `4094bda` cobre `ANALISAR_HABILIDADES`/`GERAR_RELATORIO` runtime fora do schema; `700b088` prova que schema nao basta e adiciona validacao semantica de resposta/gabarito em `CORRIGIR` | Proximo teste: ampliar semantica para respostas textuais/multivalor e smoke provider/site em dataset maior. |
+| D02-1 | Path 2 deve parsear e validar JSON de `create_document` antes de sucesso | Parcial forte | JSON invalido agora falha antes do storage (`39aa50a`); `0d5ab9d` rejeita JSON de etapa quando ele vem embrulhado em Markdown/prosa ou array na raiz; `45f5cf8` aplica schema minimo tambem ao payload runtime de `create_document`; `4094bda` cobre `ANALISAR_HABILIDADES`/`GERAR_RELATORIO` runtime fora do schema; `700b088` prova que schema nao basta e adiciona validacao semantica de resposta/gabarito em `CORRIGIR`; `feaf5d0` bloqueia `nota_final`/totais incoerentes | Proximo teste: ampliar semantica para respostas abertas/multivalor e smoke provider/site em dataset maior. |
 | D02-2 | `executar_com_tools()` deve retornar etapa real, `resposta_parsed` e `documento_id` | Parcial forte | `c870ed4` faz sucesso de tool-use retornar etapa real por `expected_document_type`, JSON parseado e `documento_id` quando ha JSON persistido; `45f5cf8` impede sucesso com JSON runtime fora de schema minimo | Proximo teste: retorno valido com storage persistido real e smoke provider/site. |
 | D02-3 | Resolver conflito `PROMPTS_PADRAO` vs `STAGE_TOOL_INSTRUCTIONS` | Feito/parcial forte | `f40acf3` alinhou os contratos ativos de `CORRIGIR`, `ANALISAR_HABILIDADES` e `GERAR_RELATORIO` e adicionou teste garantindo que prompts/tool instructions compartilham avisos e linhagem | Proximo teste: rodar dataset maior para provar que modelos pequenos seguem o contrato sem degradar conteudo. |
-| D02-4 | `_avisos_documento`, `_avisos_questao`, `_avisos_stage` devem ser confiaveis | Parcial forte | Defaults foram injetados; visualizador melhorou; `f40acf3` exige `_avisos_*` em etapas tardias; `700b088` complementa avisos com campos rastreaveis de resposta/gabarito em `CORRIGIR` | Teste: ausencia real de `_avisos_*` ou de rastreio upstream deve gerar alerta/falha, nao sucesso silencioso. |
+| D02-4 | `_avisos_documento`, `_avisos_questao`, `_avisos_stage` devem ser confiaveis | Parcial forte | Defaults foram injetados; visualizador melhorou; `f40acf3` exige `_avisos_*` em etapas tardias; `700b088` complementa avisos com campos rastreaveis de resposta/gabarito em `CORRIGIR`; `bed0c08`/`feaf5d0` mostraram que cabecalho e totais tambem precisam virar erro visivel | Teste: ausencia real de `_avisos_*`, rastreio upstream, metadado ou total coerente deve gerar alerta/falha, nao sucesso silencioso. |
 | D02-5 | Tokens do Path 2 precisam de input/output separados | Feito live para smokes recentes | Gemini e Nano em `corrigir` registraram `tokens_entrada`/`tokens_saida`; manter cobertura | Revalidar nas etapas `analisar_habilidades` e `gerar_relatorio`. |
 | D02-6 | Tokens precisam virar custo persistido por contexto educacional | Parcial | Endpoints `/api/custos/*` respondem, precificam runs com split, agrupam JSON+PDF por `cost_run_id`; `TokenUsageRecord` local e codigo/migration Supabase existem; live confirma `PGRST205` | Teste: aplicar tabela Supabase `token_usage` e falha depois de consumir tokens cria registro duravel. |
 | D02-7 | Metadata dos documentos deve ter provider/modelo/tokens/tempo | Parcial live | Documentos recentes de Gemini/Nano carregam provider/modelo/tokens/custo; falta cobrir todas as etapas e falhas | Teste: documento gerado por IA tem `ia_provider`, `ia_modelo`, `tokens_usados`, `tempo_processamento_ms` em cada etapa. |
@@ -3395,7 +3396,7 @@ claro. O que ainda existe para fazer:
 
 | Item | Tipo | Por que ainda falta |
 |---|---|---|
-| Ciclo anti-fallback | Codigo/testes | `nota_final=N/A` em relatório foi fechado em `ad7e00e`; PDF auto-fallback foi reclassificado como guardado em `dc5884f`; JSON embrulhado em Markdown/prosa foi bloqueado em `0d5ab9d`; retorno Path 2 basico foi melhorado em `c870ed4`; schema minimo runtime de `CORRIGIR` foi bloqueado em `45f5cf8`; smoke oficial `task_42e3b303c39a` confirmou sucesso real de `corrigir` com PDF intermediario inconsistente marcado como erro; `4094bda` adicionou cobertura para `ANALISAR_HABILIDADES`/`GERAR_RELATORIO` runtime fora do schema; `4d8f73d` adicionou cobertura para PDF stale; `f40acf3` alinhou prompts/tool instructions; `700b088` adicionou guarda semantica contra correcao que troca resposta do aluno ou marca acerto para divergencia numerica; ainda restam smokes de matriz, semantica nao numerica e UI/historico obedecendo `status=erro`. |
+| Ciclo anti-fallback | Codigo/testes | `nota_final=N/A` em relatório foi fechado em `ad7e00e`; PDF auto-fallback foi reclassificado como guardado em `dc5884f`; JSON embrulhado em Markdown/prosa foi bloqueado em `0d5ab9d`; retorno Path 2 basico foi melhorado em `c870ed4`; schema minimo runtime de `CORRIGIR` foi bloqueado em `45f5cf8`; smoke oficial `task_42e3b303c39a` confirmou sucesso real de `corrigir` com PDF intermediario inconsistente marcado como erro; `4094bda` adicionou cobertura para `ANALISAR_HABILIDADES`/`GERAR_RELATORIO` runtime fora do schema; `4d8f73d` adicionou cobertura para PDF stale; `f40acf3` alinhou prompts/tool instructions; `700b088` adicionou guarda semantica contra correcao que troca resposta do aluno ou marca acerto para divergencia numerica; `1307909` cobre literal divergente; `bed0c08` cobre cabecalho PDF placeholder; `feaf5d0` cobre totais incoerentes e o smoke `task_ec7acffbb6d4` provou retry ate JSON/PDF coerentes; ainda restam smokes de matriz, semantica aberta e UI/historico obedecendo `status=erro`. |
 | Settings de modelos | Codigo/testes/deploy | `from-catalog` deu 500 e create ignorou capabilities no site live; patch `b16e051` ja foi deployado e retestado; cadastro por API sumiu no deploy, mas o modelo versionado `gpt54mini001` apareceu no site em `be19b7e` e passou teste de conexao. |
 | Metadata/custo real | Codigo/testes/deploy | Metadata e endpoints existem no site; full smoke GPT-5.4 Mini mediu custo por etapa; smoke `task_42e3b303c39a` mediu `26251/4582` tokens e `US$ 0.040307`; re-smoke `task_cc22b6c239d0` mediu `56891/9827` tokens e `US$ 0.086890`; Supabase `token_usage` segue ausente (`PGRST205`), `local_record_count=0` depois de deploy e custo de falha sem documento ainda nao e duravel. |
 | Provider revalidation | Smoke/producao | Matriz Doc 12 registra GPT-5.4 Mini full smoke em fixture simples, GPT-4o full smoke (`task_68b19146a95b`) e Gemini 2.5 Flash com extracoes OK/tool-use corrigido mas bloqueado por quota; continua incompleta ate novos smokes por provider/rota/dataset. |
