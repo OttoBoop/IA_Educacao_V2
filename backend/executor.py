@@ -4008,7 +4008,7 @@ Seja preciso, educativo e construtivo em suas análises."""
                 )
 
             docs_marked_error: set[str] = set()
-            correcao_trace_cache: Optional[Dict[str, Dict[Any, str]]] = None
+            correcao_trace_cache: Optional[Dict[str, Dict[Any, Any]]] = None
 
             def _doc_status_value(doc: Any) -> str:
                 status = getattr(doc, "status", "") or ""
@@ -4042,16 +4042,27 @@ Seja preciso, educativo e construtivo em suas análises."""
                     text = str(value or "").strip()
                     return text or None
 
-            def _correcao_trace_maps() -> Dict[str, Dict[Any, str]]:
+            def _correcao_trace_maps() -> Dict[str, Dict[Any, Any]]:
                 """Load upstream answers used to detect correction hallucinations."""
                 nonlocal correcao_trace_cache
                 if correcao_trace_cache is not None:
                     return correcao_trace_cache
 
-                maps: Dict[str, Dict[Any, str]] = {"respostas_aluno": {}, "gabarito": {}}
+                maps: Dict[str, Dict[Any, Any]] = {
+                    "respostas_aluno": {},
+                    "respostas_aluno_flags": {},
+                    "gabarito": {},
+                }
                 correcao_trace_cache = maps
                 if expected_document_type != TipoDocumento.CORRECAO:
                     return maps
+
+                def _truthy_flag(value: Any) -> bool:
+                    if isinstance(value, bool):
+                        return value
+                    if isinstance(value, str):
+                        return value.strip().lower() in {"1", "true", "sim", "yes"}
+                    return bool(value)
 
                 try:
                     docs_base_raw = self.storage.listar_documentos(atividade_id)
@@ -4081,6 +4092,11 @@ Seja preciso, educativo e construtivo em suas análises."""
                         key = _question_key(item.get("questao_numero"))
                         if key is not None and item.get("resposta_aluno") is not None:
                             maps["respostas_aluno"][key] = str(item.get("resposta_aluno"))
+                        if key is not None:
+                            maps["respostas_aluno_flags"][key] = {
+                                "em_branco": _truthy_flag(item.get("em_branco")),
+                                "ilegivel": _truthy_flag(item.get("ilegivel")),
+                            }
 
                 gabarito_doc = self._documento_json_da_ultima_execucao(
                     docs_base,
@@ -4246,7 +4262,9 @@ Seja preciso, educativo e construtivo em suas análises."""
                     _validate_avisos()
                     if isinstance(questoes, list):
                         trace_maps = _correcao_trace_maps()
-                        has_respostas = bool(trace_maps["respostas_aluno"])
+                        has_respostas = bool(trace_maps["respostas_aluno"]) or bool(
+                            trace_maps.get("respostas_aluno_flags")
+                        )
                         has_gabarito = bool(trace_maps["gabarito"])
                         soma_notas = 0.0
                         notas_validas = 0
@@ -4281,11 +4299,24 @@ Seja preciso, educativo e construtivo em suas análises."""
 
                             if has_respostas:
                                 resposta_aluno = item.get("resposta_aluno")
-                                if resposta_aluno is None or not str(resposta_aluno).strip():
+                                upstream = trace_maps["respostas_aluno"].get(numero)
+                                upstream_flags = trace_maps.get("respostas_aluno_flags", {}).get(
+                                    numero,
+                                    {},
+                                )
+                                upstream_em_branco = (
+                                    upstream_flags.get("em_branco") is True
+                                    or upstream_flags.get("ilegivel") is True
+                                    or (
+                                        numero in trace_maps["respostas_aluno"]
+                                        and not str(upstream or "").strip()
+                                    )
+                                )
+                                resposta_vazia = resposta_aluno is None or not str(resposta_aluno).strip()
+                                if resposta_vazia and not upstream_em_branco:
                                     errors.append(
                                         f"JSON {doc_label} questão {questao_label} sem resposta_aluno rastreável"
                                     )
-                                upstream = trace_maps["respostas_aluno"].get(numero)
                                 if (
                                     upstream is not None
                                     and resposta_aluno is not None

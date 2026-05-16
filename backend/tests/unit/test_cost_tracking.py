@@ -1636,6 +1636,193 @@ async def test_executar_com_tools_rejeita_correcao_que_troca_resposta_do_aluno(
 
 
 @pytest.mark.asyncio
+async def test_executar_com_tools_aceita_correcao_de_resposta_em_branco_rastreavel(
+    monkeypatch,
+    tmp_path,
+):
+    import fitz
+    import chat_service
+    from executor import PipelineExecutor
+    from chat_service import ProviderType
+
+    model = SimpleNamespace(
+        id="gpt54mini",
+        tipo=ProviderType.OPENAI,
+        modelo="gpt-5.4-mini",
+        api_key_id=None,
+        suporta_function_calling=True,
+        max_tokens=1024,
+        temperature=0,
+        suporta_temperature=True,
+    )
+
+    monkeypatch.setattr(chat_service.model_manager, "get", lambda model_id: model)
+    monkeypatch.setattr(chat_service.api_key_manager, "get", lambda key_id: None)
+    monkeypatch.setattr(
+        chat_service.api_key_manager,
+        "get_por_empresa",
+        lambda provider: SimpleNamespace(api_key="test-key"),
+    )
+
+    respostas_path = tmp_path / "respostas.json"
+    gabarito_path = tmp_path / "gabarito.json"
+    correcao_path = tmp_path / "correcao.json"
+    pdf_path = tmp_path / "correcao.pdf"
+    respostas_path.write_text(
+        json.dumps(
+            {
+                "respostas": [
+                    {
+                        "questao_numero": 2,
+                        "resposta_aluno": "",
+                        "em_branco": True,
+                    }
+                ]
+            }
+        ),
+        encoding="utf-8",
+    )
+    gabarito_path.write_text(
+        json.dumps({"respostas": [{"questao_numero": 2, "resposta_correta": "Área = 20 cm²"}]}),
+        encoding="utf-8",
+    )
+    correcao = {
+        "nota_final": 0,
+        "questoes": [
+            {
+                "numero": 2,
+                "resposta_aluno": "",
+                "resposta_correta": "Área = 20 cm²",
+                "nota": 0,
+                "nota_maxima": 2,
+                "acerto": False,
+                "feedback": "Resposta em branco registrada corretamente.",
+            }
+        ],
+        "total_acertos": 0,
+        "total_erros": 1,
+        "feedback_geral": "Questão em branco identificada e corrigida sem inventar resposta.",
+        "_avisos_documento": [],
+        "_avisos_questao": [],
+    }
+    correcao_path.write_text(json.dumps(correcao), encoding="utf-8")
+
+    pdf = fitz.open()
+    page = pdf.new_page()
+    page.insert_textbox(
+        fitz.Rect(40, 40, 560, 800),
+        "Correção\nNota final: 0.0 / 10.0\nQuestão 2 — Erro | Nota: 0.0\nFeedback Geral\n"
+        "Questão em branco identificada e corrigida sem inventar resposta.",
+        fontsize=11,
+    )
+    pdf.save(str(pdf_path))
+    pdf.close()
+
+    class DummyClient:
+        def __init__(self, model_config, api_key):
+            self.model_config = model_config
+            self.api_key = api_key
+
+        async def chat_with_tools(self, **kwargs):
+            context = kwargs["context"]
+            context.created_document_ids.extend(["doc-json", "doc-pdf"])
+            return {
+                "content": "",
+                "tokens": 10,
+                "input_tokens": 8,
+                "output_tokens": 2,
+                "tool_calls": [
+                    {
+                        "id": "json-ok",
+                        "name": "create_document",
+                        "input": {
+                            "documents": [
+                                {
+                                    "filename": "correcao.json",
+                                    "content": correcao_path.read_text(encoding="utf-8"),
+                                }
+                            ]
+                        },
+                        "is_error": False,
+                        "files_generated": [],
+                    },
+                    {
+                        "id": "pdf-ok",
+                        "name": "execute_python_code",
+                        "input": {"output_files": ["correcao.pdf"]},
+                        "is_error": False,
+                        "files_generated": [{"filename": "correcao.pdf", "size_bytes": 128}],
+                    },
+                ],
+            }
+
+    monkeypatch.setattr(chat_service, "ChatClient", DummyClient)
+
+    docs_base = [
+        SimpleNamespace(
+            id="gabarito-json",
+            tipo=TipoDocumento.EXTRACAO_GABARITO,
+            extensao=".json",
+            criado_em="2026-05-17T10:00:00",
+            metadata={},
+        )
+    ]
+    docs_aluno = [
+        SimpleNamespace(
+            id="respostas-json",
+            tipo=TipoDocumento.EXTRACAO_RESPOSTAS,
+            extensao=".json",
+            criado_em="2026-05-17T10:01:00",
+            metadata={},
+        )
+    ]
+    docs = {
+        "doc-json": SimpleNamespace(
+            id="doc-json",
+            nome_arquivo="correcao.json",
+            extensao=".json",
+            metadata={"tool": "create_document"},
+            criado_por="pipeline_tool",
+        ),
+        "doc-pdf": SimpleNamespace(
+            id="doc-pdf",
+            nome_arquivo="correcao.pdf",
+            extensao=".pdf",
+            metadata={"tool": "execute_python_code"},
+            criado_por="ia_execute_python_code",
+        ),
+    }
+    paths = {
+        "gabarito-json": gabarito_path,
+        "respostas-json": respostas_path,
+        "doc-json": correcao_path,
+        "doc-pdf": pdf_path,
+    }
+
+    executor = PipelineExecutor()
+    executor.storage.get_documento = MagicMock(side_effect=lambda doc_id: docs[doc_id])
+    executor.storage.listar_documentos = MagicMock(
+        side_effect=lambda _atividade_id, aluno_id=None: docs_aluno if aluno_id else docs_base
+    )
+    executor.storage.resolver_caminho_documento = MagicMock(side_effect=lambda doc: paths[doc.id])
+    executor.storage.atualizar_documento_processamento = MagicMock()
+
+    resultado = await executor.executar_com_tools(
+        mensagem="corrija",
+        atividade_id="ativ-1",
+        aluno_id="aluno-1",
+        provider_id="gpt54mini",
+        tools_to_use=["create_document", "execute_python_code"],
+        expected_document_type=TipoDocumento.CORRECAO,
+        prompt_id="prompt-1",
+    )
+
+    assert resultado.sucesso is True
+    assert resultado.resposta_parsed["questoes"][0]["resposta_aluno"] == ""
+    assert "sem resposta_aluno rastreável" not in (resultado.erro or "")
+
+
+@pytest.mark.asyncio
 async def test_executar_com_tools_rejeita_acerto_literal_divergente_do_gabarito(
     monkeypatch,
     tmp_path,
