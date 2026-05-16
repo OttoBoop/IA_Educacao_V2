@@ -4,7 +4,7 @@
 **Responsavel operacional:** Paulo
 **Status geral:** o servico oficial Render
 `srv-d5t8gbh4tr6s738fr3s0` (`IA_Educacao_V2`, branch `main`, URL
-`https://ia-educacao-v2.onrender.com`) esta em `460643f`, confirmado por
+`https://ia-educacao-v2.onrender.com`) esta em `54d083e`, confirmado por
 `/api/deploy-info` com `source=RENDER_GIT_COMMIT`. O primeiro marco full
 recente continua sendo o smoke de 6 etapas com GPT-5.4 Mini (`gpt54mini001`) na
 atividade `Smoke Paulo Pipeline 2026-05-16`: task `task_a5f0d734f0b3`, aluna
@@ -90,6 +90,16 @@ agora retorna `ok=false`, `custos_persistencia_status=parcial_sem_token_usage_du
 e alerta bloqueante `token_usage_not_durable`, mantendo `PGRST205` visivel. Isso
 deixa claro que custos em documentos com metadata estao medidos, mas falhas sem
 documento final ainda nao tem persistencia duravel ate a tabela Supabase existir.
+
+Atualizacao UI custos de 2026-05-17: o commit `54d083e` levou esse bloqueio
+para o dashboard oficial. O HTML live agora busca `/api/custos/status?limit=80`
+e mostra alerta "Custos não duráveis" quando `token_usage_backend.durable=false`,
+`custos_persistencia_status=parcial_sem_token_usage_duravel` ou alerta
+`token_usage_not_durable` aparecerem. Smokes oficiais: `check_deploy.sh 54d083e`
+passou, `/api/health` retornou `healthy`, `/api/custos/status?limit=80`
+retornou `ok=false`, `runs_precificados=37`, `runs_bloqueados=0`,
+`durable=false`, e o HTML servido continha `dashboard-cost-alerts` e a chamada
+`/custos/status?limit=80`.
 
 A sequencia que destravou esse ponto foi:
 
@@ -211,8 +221,8 @@ Estabilizar o NOVO CR para que a pipeline:
 | Docs e plano | Sprint 0 concluida | Manter este painel como fonte oficial e anexos fora do fluxo diario |
 | Pipeline | GPT-5.4 Mini (`gpt54mini001`) completou as 6 etapas no site oficial em `task_a5f0d734f0b3`, Render hash `2cad38a`, com documentos, custos e inspeção semantica inicial coerente nos JSONs; re-smoke no Render `0ac92f0` (`task_605512496b0d`) completou as 6 etapas, mas expôs divergencia P0 entre JSON e PDF em `corrigir` e `gerar_relatorio`; `2052a01` bloqueou PDF inconsistente com falha alta em `task_857c0c3657ef`; `3a77a17` adicionou retry PDF/JSON e `task_e389f360b812` completou as etapas finais com PDF/JSON coerentes na fixture simples; `392ec7c` bloqueou relatorio que muda `nota_final` em relacao a correcao oficial e o smoke Nano `task_57da745b8de5` confirmou JSON/PDF de relatorio com `nota_final=8.0`; Gemini 3 Flash segue validado em etapas individuais, mas pipeline sequencial bateu quota `429`; GPT-5 Nano segue parcial em `extrair_respostas` por historico de qualidade/datasets maiores | Revalidar matriz por provider/modelo e manter bloqueio P0: nao aceitar `completed` sem documento, schema, custo, conteudo minimo, nota cross-stage e artefatos coerentes entre si |
 | Schema e avisos | Sprint 2 concluida localmente | Manter schema oficial, defaults e visualizador cobertos por testes |
-| Custos/tokens | Metadata de documento, endpoints live, resumo por `cost_run_id`, `TokenUsageRecord` local, migration Supabase dedicada `b2dc88b`; smoke full GPT-5.4 Mini `task_a5f0d734f0b3` registrou custo medido por etapa: `US$ 0.002312`, `US$ 0.002759`, `US$ 0.002657`, `US$ 0.026149`, `US$ 0.017470` e `US$ 0.027763`, total aproximado `US$ 0.079110`; smoke Nano `task_57da745b8de5` registrou `29067/6701` tokens no `cost_run_id=tool_8feb2ba8dfca`, incluindo PDF em erro e retry concluido; `460643f` faz `/api/custos/status` retornar `ok=false` e alerta bloqueante enquanto `PGRST205`, `durable=false` e `local_record_count=0` persistirem | Aplicar `backend/migrations/002_create_token_usage.sql` no Supabase; revalidar ate `token_usage_backend.durable=true`; depois persistir custos de falhas sem documento |
-| UI de erros | Pendente | Mostrar falha por aluno/etapa sem depender de terminal |
+| Custos/tokens | Metadata de documento, endpoints live, resumo por `cost_run_id`, `TokenUsageRecord` local, migration Supabase dedicada `b2dc88b`; smoke full GPT-5.4 Mini `task_a5f0d734f0b3` registrou custo medido por etapa: `US$ 0.002312`, `US$ 0.002759`, `US$ 0.002657`, `US$ 0.026149`, `US$ 0.017470` e `US$ 0.027763`, total aproximado `US$ 0.079110`; smoke Nano `task_57da745b8de5` registrou `29067/6701` tokens no `cost_run_id=tool_8feb2ba8dfca`, incluindo PDF em erro e retry concluido; `460643f` faz `/api/custos/status` retornar `ok=false` e alerta bloqueante enquanto `PGRST205`, `durable=false` e `local_record_count=0` persistirem; `54d083e` mostra esse bloqueio no dashboard oficial | Aplicar `backend/migrations/002_create_token_usage.sql` no Supabase; revalidar ate `token_usage_backend.durable=true`; depois persistir custos de falhas sem documento |
+| UI de erros | Dashboard oficial mostra bloqueio de custos nao duraveis no commit `54d083e`; falhas por aluno/etapa ainda estao pendentes | Mostrar falha por aluno/etapa sem depender de terminal |
 | Limpeza de dados | Pendente | Reclassificar "fantasmas" antes de qualquer delecao |
 | Rio 3 | Pausada | Nao pedir chave, nao rodar smoke, nao deployar Rio sem nova decisao |
 
@@ -263,19 +273,21 @@ Estabilizar o NOVO CR para que a pipeline:
 - Commit funcional de alerta bloqueante para custos nao duraveis:
   `460643f` (`/api/custos/status.ok=false` enquanto `public.token_usage` nao
   existir no Supabase).
+- Commit funcional de alerta de custo nao duravel no dashboard:
+  `54d083e` (`dashboard-cost-alerts` consulta `/api/custos/status?limit=80`).
 - Marker mais novo publicado no GitHub para runtime: `a7dead3`
   (`chore: mark deploy e6060e1`).
 - Marker mais novo publicado no GitHub para o guard: `2792d89`
   (`chore: mark deploy 5527e26`).
 - Render em 2026-05-17: servico oficial `srv-d5t8gbh4tr6s738fr3s0`, branch
   `main`, repo `https://github.com/OttoBoop/IA_Educacao_V2`, `rootDir=backend`,
-  autoDeploy `yes`; `/api/deploy-info` confirmou `460643f` com
+  autoDeploy `yes`; `/api/deploy-info` confirmou `54d083e` com
   `source=RENDER_GIT_COMMIT`.
 - Marker HTML pode ficar atrasado em commits de docs/frontend; o gate oficial
   para backend agora e `/api/deploy-info` + smoke live, nao apenas marcador HTML.
-- GitHub `origin/main`: alinhado com `460643f` antes do ciclo documental atual.
+- GitHub `origin/main`: alinhado com `54d083e` no ciclo UI de custos.
 - Render live observado: saiu de `2e1098f` para `b12be9a` e depois confirmou
-  marcadores/fixes sucessivos ate `460643f`.
+  marcadores/fixes sucessivos ate `54d083e`.
 - `/api/custos/status` no Render: HTTP 200, confirmando endpoints de custo live.
 - GitHub Actions: sem runs recentes observaveis.
 - GitHub webhooks/deployments via `gh api`: sem entradas visiveis.
@@ -1812,6 +1824,34 @@ Critério de pronto: lista de limpeza segura e revisada.
   `extrair_questoes` `69dd5c07acb2ff52`, `extrair_gabarito`
   `98dbaf8613ec9fc3`, `extrair_respostas` `8019a2a2c5fc3cea`; custo total das
   tres extracoes `US$ 0.022009`.
+
+### 2026-05-17 -- Dashboard mostra bloqueio de custos nao duraveis
+
+- Alvo: impedir que o usuario precise abrir terminal ou endpoint cru para saber
+  que custos ainda nao tem persistencia duravel de `token_usage`.
+- Commit/deploy: `54d083e` publicado em `origin/main` e confirmado no Render por
+  `/api/deploy-info` com `source=RENDER_GIT_COMMIT`.
+- Mudanca: `frontend/index_v2.html` agora cria `dashboard-cost-alerts`, consulta
+  `/api/custos/status?limit=80` no dashboard e mostra alerta "Custos não
+  duráveis" quando `token_usage_backend.durable=false`,
+  `custos_persistencia_status=parcial_sem_token_usage_duravel` ou
+  `token_usage_not_durable` aparecerem. Falha ao consultar custos tambem gera
+  alerta visivel, nao silencio.
+- Testes locais: `python -m py_compile
+  backend/tests/unit/test_frontend_cost_status_ui.py`; `git diff --check`;
+  `PYTHONPATH=backend /home/otavio/Documents/vscode/.venv/bin/python -m pytest
+  backend/tests/unit/test_frontend_health_banner.py
+  backend/tests/unit/test_frontend_cost_status_ui.py -q` com `11 passed` e o
+  aviso conhecido de `timeout`.
+- Smoke oficial: `./scripts/check_deploy.sh 54d083e` passou; `/api/health`
+  retornou `{"status":"healthy","supabase":true}`; `/api/custos/status?limit=80`
+  retornou `ok=false`, `custos_persistencia_status=parcial_sem_token_usage_duravel`,
+  `runs_precificados=37`, `runs_bloqueados=0`, `durable=false` e alerta
+  `token_usage_not_durable`; o HTML live contem `dashboard-cost-alerts` e
+  `/custos/status?limit=80`.
+- Proximo alvo: aplicar a migration Supabase `002_create_token_usage.sql` quando
+  houver credencial/admin, ou continuar a matriz provider sem depender desse
+  segredo.
 
 ## Riscos Abertos
 

@@ -158,7 +158,7 @@ detalhar e auditar estas linhas.
    por tool-use, alem de relatorios agregados.
 3. O Doc 02 mostrou que o maior risco arquitetural esta no Path 2: schemas
    conflitantes, JSON opaco, avisos/metadata/tokens incompletos e tools parciais.
-4. Os fixes principais ja chegaram ao site oficial ate `460643f`: `/api/deploy-info`
+4. Os fixes principais ja chegaram ao site oficial ate `54d083e`: `/api/deploy-info`
    confirma o servico `srv-d5t8gbh4tr6s738fr3s0` com
    `source=RENDER_GIT_COMMIT`. O marker HTML continua sendo apenas auxiliar em
    servico `rootDir=backend`.
@@ -214,18 +214,19 @@ detalhar e auditar estas linhas.
 10. O proximo eixo correto e aplicar `backend/migrations/002_create_token_usage.sql`
     no Supabase, ampliar a revalidacao por etapa/provider e endurecer o contrato
     contra schema ruim. Enquanto a migration nao for aplicada, `460643f` faz
-    `/api/custos/status` gritar `ok=false` e alerta `token_usage_not_durable`.
+    `/api/custos/status` gritar `ok=false` e alerta `token_usage_not_durable`, e
+    `54d083e` mostra esse bloqueio no dashboard oficial.
 
 ### O Que Temos
 
 | Frente | Temos hoje | Limite da afirmacao |
 |---|---|---|
 | Documentacao | Doc 09 como painel curto; Doc 14 como auditoria mestre; Doc 05/12 com notas de status | Manter Doc 09 curto e Doc 14 detalhado; registrar novos ciclos sem criar doc extra. |
-| Git/GitHub | `/api/deploy-info` confirmou runtime `460643f`; `origin/main` esta alinhado com o fix que torna custo nao duravel um alerta bloqueante | Nao usar somente marker HTML como gate quando Render `rootDir=backend` ignora commits sem backend; combinar `/api/deploy-info`, deploy list quando disponivel e comportamento live. |
+| Git/GitHub | `/api/deploy-info` confirmou runtime `54d083e`; `origin/main` esta alinhado com o fix que torna custo nao duravel visivel no dashboard | Nao usar somente marker HTML como gate quando Render `rootDir=backend` ignora commits sem backend; combinar `/api/deploy-info`, deploy list quando disponivel e comportamento live. |
 | Pipeline P4 | Bloqueio de extracao de respostas sem prova valida esta no codigo publicado | Precisa smoke dedicado apenas se P4 voltar a ser alvo. |
 | Pipeline P5/P6 | Contencao de nota e preservacao de `_documentos_faltantes` | `N/A` ainda e fallback proibido como estado final. |
 | Schema/avisos | Defaults `_avisos_*`, visualizador melhorado e schemas mais permissivos | Permissividade nao e contrato forte; pode aceitar legado demais. |
-| Tokens/custos | Split input/output; metadata de documento; endpoints `/api/custos/status` e `/api/custos/resumo` respondendo live; resumo agrega por `cost_run_id`; `TokenUsageRecord` local cobre falha sem documento enquanto o filesystem vive; codigo Supabase e migration dedicada `b2dc88b` existem; diagnostico live mostra `PGRST205`; smoke full GPT-5.4 Mini `task_a5f0d734f0b3` mediu custo por etapa e total aproximado `US$ 0.079110`; smoke Nano `task_57da745b8de5` registrou `29067/6701` tokens em documentos de relatorio; `/api/custos/status?limit=80` mostrou `runs_precificados=37`, `runs_bloqueados=0`, `ok=false`, `custos_persistencia_status=parcial_sem_token_usage_duravel` e alerta bloqueante `token_usage_not_durable` | Falta aplicar `backend/migrations/002_create_token_usage.sql` no Supabase. |
+| Tokens/custos | Split input/output; metadata de documento; endpoints `/api/custos/status` e `/api/custos/resumo` respondendo live; resumo agrega por `cost_run_id`; `TokenUsageRecord` local cobre falha sem documento enquanto o filesystem vive; codigo Supabase e migration dedicada `b2dc88b` existem; diagnostico live mostra `PGRST205`; smoke full GPT-5.4 Mini `task_a5f0d734f0b3` mediu custo por etapa e total aproximado `US$ 0.079110`; smoke Nano `task_57da745b8de5` registrou `29067/6701` tokens em documentos de relatorio; `/api/custos/status?limit=80` mostrou `runs_precificados=37`, `runs_bloqueados=0`, `ok=false`, `custos_persistencia_status=parcial_sem_token_usage_duravel` e alerta bloqueante `token_usage_not_durable`; dashboard live em `54d083e` mostra "Custos não duráveis" | Falta aplicar `backend/migrations/002_create_token_usage.sql` no Supabase. |
 | Providers | Gemini passou em chat simples live, `extrair_questoes`, `extrair_respostas` e nas tres etapas finais; `extrair_gabarito` Gemini foi reclassificado como invalido por tudo `MISSING_CONTENT` e depois revalidado na fixture simples; GPT-5 Nano passou em chat simples live, `extrair_questoes`, `extrair_gabarito` pos-`5527e26` e `gerar_relatorio` pos-`392ec7c`, mas `extrair_respostas` Nano continua parcial por historico de qualidade em dataset maior; GPT-5.4 Mini passou `extrair_respostas` em amostras e completou um smoke full oficial simples em `task_a5f0d734f0b3` com inspeção semantica inicial coerente; re-smoke `task_605512496b0d` no patch `0ac92f0` completou, mas PDFs divergiram dos JSONs; `2052a01` bloqueou isso com falha alta em `task_857c0c3657ef`; `3a77a17` passou no smoke reduzido `task_e389f360b812` com retry PDF/JSON; `392ec7c` passou no smoke Nano de relatorio `task_57da745b8de5` | Revalidar matriz por provider e repetir Gemini quando quota/decisao permitir. |
 | Seguranca Rio | Regra de nao usar chave em chat e Rio pausado | Arquivos Rio/untracked continuam fora do ciclo ativo. |
 
@@ -247,7 +248,7 @@ detalhar e auditar estas linhas.
 
 | Item | Estado | Acao correta |
 |---|---|---|
-| Render/site oficial | `/api/deploy-info` confirmou `460643f` como deploy live no patch de custos nao duraveis | Tratar HTML marker como auxiliar; usar smoke real para aceite. |
+| Render/site oficial | `/api/deploy-info` confirmou `54d083e` como deploy live no patch de dashboard de custos nao duraveis | Tratar HTML marker como auxiliar; usar smoke real para aceite. |
 | Guard `5527e26` | Runtime confirmado por Render MCP; smoke Nano `extrair_gabarito` pos-guard passou com 7 respostas reais | Guard publicado; falta rerodar Gemini. |
 | Respostas tudo ilegivel/vazio/inferidas | Nano ja produziu `extrair_respostas` com todas as respostas sem conteudo, depois conteudo so de Q7, depois conteudo suspeito inferido do enunciado, depois JSON verde inconsistente; o PDF de Eric tem paginas manuscritas e texto extraivel de Q7 | Desde `1ce3d23`, o caso final falha alto no executor e registra custo sem documento. Agora falta corrigir prompt/entrada/modelo para extrair conteudo real ou marcar Nano como inadequado para prova manuscrita. |
 | Gemini quota | Pipeline sequencial `task_5e97bbee896e` falhou em `corrigir` por `429 RESOURCE_EXHAUSTED`, limite free tier `20` para `gemini-3-flash` | Nao rerodar de imediato; tratar como bloqueio de provider/quota, nao como sucesso nem como falha silenciosa. |
@@ -3083,6 +3084,45 @@ Interpretação:
 
 - Claude Haiku 4.5 continua 🚫 bloqueado por crédito externo.
 - Nao faz sentido rodar pipeline Haiku ate a conta Anthropic ser recarregada.
+
+## Atualizacao 2026-05-17 -- Dashboard Grita Custos Nao Duraveis
+
+O backend ja tinha sido corrigido em `460643f` para responder
+`/api/custos/status` com `ok=false` enquanto `public.token_usage` nao existir no
+Supabase. O problema seguinte era de produto: o usuario ainda precisava abrir
+endpoint/terminal para perceber o bloqueio.
+
+Correção publicada:
+
+- Commit: `54d083e`
+- Deploy: `/api/deploy-info` confirmou `54d083e` com
+  `source=RENDER_GIT_COMMIT`.
+- Frontend: `frontend/index_v2.html` criou `dashboard-cost-alerts`, consulta
+  `/api/custos/status?limit=80` no dashboard e mostra "Custos não duráveis"
+  quando `token_usage_backend.durable=false`,
+  `custos_persistencia_status=parcial_sem_token_usage_duravel` ou alerta
+  `token_usage_not_durable` aparecerem.
+- Teste: `backend/tests/unit/test_frontend_cost_status_ui.py` trava a presença
+  do endpoint, do container, dos checks de durabilidade e da mensagem visivel.
+
+Smokes oficiais:
+
+- `./scripts/check_deploy.sh 54d083e`: passou.
+- `/api/health`: `healthy`, `supabase=true`.
+- `/api/custos/status?limit=80`: `ok=false`,
+  `custos_persistencia_status=parcial_sem_token_usage_duravel`,
+  `runs_precificados=37`, `runs_bloqueados=0`, `durable=false`, alerta
+  `token_usage_not_durable`.
+- HTML live: contem `dashboard-cost-alerts`, `/custos/status?limit=80`,
+  `Custos não duráveis` e `parcial_sem_token_usage_duravel`.
+
+Interpretação:
+
+- O bloqueio de custo ainda nao foi resolvido: a migration Supabase continua
+  faltando.
+- O erro deixou de ser invisivel na interface principal. Isso fecha uma parte
+  da UI de erros, mas nao substitui os alertas por aluno/etapa/provider que
+  ainda faltam.
 
 ## Trabalho Aberto Desta Auditoria
 
