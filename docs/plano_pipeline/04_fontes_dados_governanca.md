@@ -307,7 +307,7 @@ Arquivo: `backend/data/models.json`
 }
 ```
 
-### 2.2 Modelos Ativos (13 modelos, todos com ativo: true)
+### 2.2 Modelos Ativos (14 modelos, todos com ativo: true)
 
 | ID | Nome | Tipo | Modelo API | is_default | temp | vision | fn_call | Notas |
 |----|------|------|-----------|------------|------|--------|---------|-------|
@@ -316,7 +316,8 @@ Arquivo: `backend/data/models.json`
 | ffae9accf68e | GPT-4.1 | openai | gpt-4.1 | false | 0.7 | sim | sim | -- |
 | 9f6b2b61b6c3 | o4 Mini | openai | o4-mini | false | null | nao | nao | reasoning_effort=high |
 | gpt5nano001 | GPT-5 Nano | openai | gpt-5-nano | false | null | nao | sim | reasoning_effort=low |
-| 588f3efe7975 | Claude Haiku 4.5 | anthropic | claude-haiku-4-5-20251001 | **true** | 0.7 | sim | sim | MODELO DEFAULT |
+| gpt54mini001 | GPT-5.4 Mini OCR candidato | openai | gpt-5.4-mini | **true** | null | sim | sim | MODELO DEFAULT desde `22f6f31`; reasoning_effort=low |
+| 588f3efe7975 | Claude Haiku 4.5 | anthropic | claude-haiku-4-5-20251001 | false | 0.7 | sim | sim | Bloqueado por credito Anthropic nos smokes recentes |
 | 4eaeb5105f5d | Claude Sonnet 4.5 | anthropic | claude-sonnet-4-5-20250929 | false | 0.7 | sim | **nao** | -- |
 | c489f094083c | o3 Mini | openai | o3-mini | false | null | nao | nao | reasoning_effort=medium |
 | e251747cd7a2 | Gemini 2.5 Pro | google | gemini-2.5-pro | false | 0.7 | sim | sim | Tem system_prompt customizado |

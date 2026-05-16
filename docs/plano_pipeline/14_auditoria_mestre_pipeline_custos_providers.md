@@ -10,10 +10,12 @@ um deve ser lido, o que ainda vale, o que ficou historico, e quais fatos precisa
 guiar os proximos ciclos.
 
 Atualizacao de controle de 2026-05-17: o codigo funcional mais recente
-confirmado no site oficial e `147296d`, validado por `/api/deploy-info`,
+confirmado no site oficial e `22f6f31`, validado por `/api/deploy-info`,
 `/api/health`, `check_deploy.sh` e smoke live de HTML/documentos/ranking/
 dashboard. O ciclo `147296d` tambem reduziu o dashboard da turma Lista0 de
-cerca de 85s para 1.4s ao trocar agregados N+1 por ranking em lote. Commits
+cerca de 85s para 1.4s ao trocar agregados N+1 por ranking em lote. O ciclo
+`22f6f31` trocou o default vivo de Haiku bloqueado por credito para
+GPT-5.4 Mini (`gpt54mini001`). Commits
 documentais posteriores podem alterar o hash de
 `/api/deploy-info` sem mudar o comportamento de pipeline; para diagnostico
 tecnico, comparar sempre com o ultimo hash funcional registrado. A auditoria da
@@ -357,7 +359,7 @@ detalhar e auditar estas linhas.
 | Frente | Temos hoje | Limite da afirmacao |
 |---|---|---|
 | Documentacao | Doc 09 como painel curto; Doc 14 como auditoria mestre; Doc 05/12 com notas de status | Manter Doc 09 curto e Doc 14 detalhado; registrar novos ciclos sem criar doc extra. |
-| Git/GitHub | `/api/deploy-info` confirmou runtime `147296d`; `origin/main` esta alinhado com os fixes de dashboard de custo, tool-use Google faseado, consistencia PDF/JSON por feedback coerente, erro por aluno/etapa na sidebar, bloqueio anti-`nota_final=N/A`, guarda contra PDF auto-fallback, rejeicao de JSON embrulhado em Markdown/prosa, retorno Path 2 com etapa real/JSON parseado, schema minimo runtime, cobertura anti-regressao para etapas tardias, cobertura de PDF stale, contrato de prompts tardios, rastreabilidade semantica de correcao, cabecalho PDF real, consistencia interna de notas, contrato de erro/chat por provider/UI, resultado parcial obedecendo `status=erro`, correcao sem itens avaliaveis bloqueada, rotas agregadas protegidas, media zero preservada e agregados em lote | Nao usar somente marker HTML como gate quando Render `rootDir=backend` ignora commits sem backend; combinar `/api/deploy-info`, deploy list quando disponivel e comportamento live. |
+| Git/GitHub | `/api/deploy-info` confirmou runtime `22f6f31`; `origin/main` esta alinhado com os fixes de dashboard de custo, tool-use Google faseado, consistencia PDF/JSON por feedback coerente, erro por aluno/etapa na sidebar, bloqueio anti-`nota_final=N/A`, guarda contra PDF auto-fallback, rejeicao de JSON embrulhado em Markdown/prosa, retorno Path 2 com etapa real/JSON parseado, schema minimo runtime, cobertura anti-regressao para etapas tardias, cobertura de PDF stale, contrato de prompts tardios, rastreabilidade semantica de correcao, cabecalho PDF real, consistencia interna de notas, contrato de erro/chat por provider/UI, resultado parcial obedecendo `status=erro`, correcao sem itens avaliaveis bloqueada, rotas agregadas protegidas, media zero preservada, agregados em lote e default OpenAI confirmado | Nao usar somente marker HTML como gate quando Render `rootDir=backend` ignora commits sem backend; combinar `/api/deploy-info`, deploy list quando disponivel e comportamento live. |
 | Pipeline P4 | Bloqueio de extracao de respostas sem prova valida esta no codigo publicado | Precisa smoke dedicado apenas se P4 voltar a ser alvo. |
 | Pipeline P5/P6 | Preservacao de `_documentos_faltantes`; `ad7e00e` bloqueia `GERAR_RELATORIO` sem `nota_final` numerica confiavel | Ainda falta caçar outros fallbacks antigos, mas `nota_final=N/A` nao e mais aceite final no executor de relatório. |
 | Schema/avisos | Defaults `_avisos_*`, visualizador melhorado, `f40acf3` alinhando prompts/tool instructions de `CORRIGIR`, `ANALISAR_HABILIDADES` e `GERAR_RELATORIO`; `700b088` exigindo rastreabilidade de resposta/gabarito em `CORRIGIR`; `1307909`/`bed0c08`/`feaf5d0` bloqueando literal divergente, cabecalho PDF fake e totais incoerentes | Ainda falta distinguir default de output real do modelo e ampliar checagens semanticas para respostas mais abertas/datasets maiores. |
@@ -375,15 +377,15 @@ detalhar e auditar estas linhas.
 | Custos | Registrar falhas que consomem tokens sem documento final | Sucesso com documento ja tem custo medido; falha ainda pode sumir. |
 | Metadata | Revalidar provider/modelo/tokens/tempo nas rotas e providers restantes | GPT-5.4 Mini ja mostrou metadata e conteudo JSON coerente nas 6 etapas da fixture simples; Gemini/Nano/Haiku/GPT-4o ainda precisam matriz atualizada. |
 | Providers | Revalidar Gemini, Nano, Haiku e GPT-4o nas etapas restantes, especialmente extracoes e pipeline completa | Resultado historico ou schema parseavel nao prova qualidade de conteudo. |
-| UI de erro | `98fafc9` publica `stage_errors` por aluno/etapa no task-progress e renderiza a causa na sidebar; `9ab53df` normaliza erro estruturado e mostra provider/codigo/retry em API errors e stage errors; `b8e14db` faz resultado parcial e cards de documento obedecerem `status=erro`; `325c200` bloqueia `completo=true` para correcao sem itens avaliaveis e atualiza historico/pendencias/status; `148d8b3` faz ranking/estatisticas/dashboard obedecerem rota correta e media `0.0`; `147296d` reduz agregados N+1 | Falta melhorar mensagens finais de provider/custo. |
+| UI de erro | `98fafc9` publica `stage_errors` por aluno/etapa no task-progress e renderiza a causa na sidebar; `9ab53df` normaliza erro estruturado e mostra provider/codigo/retry em API errors e stage errors; `b8e14db` faz resultado parcial e cards de documento obedecerem `status=erro`; `325c200` bloqueia `completo=true` para correcao sem itens avaliaveis e atualiza historico/pendencias/status; `148d8b3` faz ranking/estatisticas/dashboard obedecerem rota correta e media `0.0`; `147296d` reduz agregados N+1; `22f6f31` impede default em provider bloqueado | Falta melhorar mensagens finais de provider/custo. |
 | Dados | Reclassificar "fantasmas" sem deletar PDF valido por `/conteudo=null` | Evita apagar prova respondida real. |
-| Git/deploy | Commit `2d72c6b` adicionou `/api/deploy-info`; o codigo funcional mais recente confirmado e `147296d` | Usar `/api/deploy-info` antes de novos smokes; marker HTML e apenas auxiliar; commits documentais podem mudar o hash sem mudar comportamento. |
+| Git/deploy | Commit `2d72c6b` adicionou `/api/deploy-info`; o codigo funcional mais recente confirmado e `22f6f31` | Usar `/api/deploy-info` antes de novos smokes; marker HTML e apenas auxiliar; commits documentais podem mudar o hash sem mudar comportamento. |
 
 ### Bloqueios E Alertas
 
 | Item | Estado | Acao correta |
 |---|---|---|
-| Render/site oficial | `/api/deploy-info` confirmou `147296d` como deploy live no patch de resultado parcial/historico/status obedecendo `status=erro`, itens avaliaveis, rotas agregadas protegidas, media zero e agregados em lote | Tratar HTML marker como auxiliar; usar smoke real para aceite; se doc-only posterior mudar hash, preservar `147296d` como ultimo codigo funcional validado. |
+| Render/site oficial | `/api/deploy-info` confirmou `22f6f31` como deploy live no patch de resultado parcial/historico/status obedecendo `status=erro`, itens avaliaveis, rotas agregadas protegidas, media zero, agregados em lote e default GPT-5.4 Mini | Tratar HTML marker como auxiliar; usar smoke real para aceite; se doc-only posterior mudar hash, preservar `22f6f31` como ultimo codigo funcional validado. |
 | Guard `5527e26` | Runtime confirmado por Render MCP; smoke Nano `extrair_gabarito` pos-guard passou com 7 respostas reais | Guard publicado; falta rerodar Gemini. |
 | Respostas tudo ilegivel/vazio/inferidas | Nano ja produziu `extrair_respostas` com todas as respostas sem conteudo, depois conteudo so de Q7, depois conteudo suspeito inferido do enunciado, depois JSON verde inconsistente; o PDF de Eric tem paginas manuscritas e texto extraivel de Q7 | Desde `1ce3d23`, o caso final falha alto no executor e registra custo sem documento. Agora falta corrigir prompt/entrada/modelo para extrair conteudo real ou marcar Nano como inadequado para prova manuscrita. |
 | Gemini quota | Pipeline sequencial `task_5e97bbee896e` falhou em `corrigir` por `429 RESOURCE_EXHAUSTED`, limite free tier `20` para `gemini-3-flash` | Nao rerodar de imediato; tratar como bloqueio de provider/quota, nao como sucesso nem como falha silenciosa. |
@@ -3670,12 +3672,12 @@ claro. O que ainda existe para fazer:
 | Item | Tipo | Por que ainda falta |
 |---|---|---|
 | Ciclo anti-fallback | Codigo/testes | `nota_final=N/A` em relatório foi fechado em `ad7e00e`; PDF auto-fallback foi reclassificado como guardado em `dc5884f`; JSON embrulhado em Markdown/prosa foi bloqueado em `0d5ab9d`; retorno Path 2 basico foi melhorado em `c870ed4`; schema minimo runtime de `CORRIGIR` foi bloqueado em `45f5cf8`; smoke oficial `task_42e3b303c39a` confirmou sucesso real de `corrigir` com PDF intermediario inconsistente marcado como erro; `4094bda` adicionou cobertura para `ANALISAR_HABILIDADES`/`GERAR_RELATORIO` runtime fora do schema; `4d8f73d` adicionou cobertura para PDF stale; `f40acf3` alinhou prompts/tool instructions; `700b088` adicionou guarda semantica contra correcao que troca resposta do aluno ou marca acerto para divergencia numerica; `1307909` cobre literal divergente; `bed0c08` cobre cabecalho PDF placeholder; `feaf5d0` cobre totais incoerentes e o smoke `task_ec7acffbb6d4` provou retry ate JSON/PDF coerentes; `974f040`/`11a396b` corrigiram falso negativo do guard para headings de feedback geral em PDFs coerentes; ainda restam smokes de matriz, semantica aberta e UI/historico obedecendo `status=erro`. |
-| Settings de modelos | Codigo/testes/deploy | `from-catalog` deu 500 e create ignorou capabilities no site live; patch `b16e051` ja foi deployado e retestado; cadastro por API sumiu no deploy, mas o modelo versionado `gpt54mini001` apareceu no site em `be19b7e` e passou teste de conexao. |
+| Settings de modelos | Codigo/testes/deploy | `from-catalog` deu 500 e create ignorou capabilities no site live; patch `b16e051` ja foi deployado e retestado; cadastro por API sumiu no deploy, mas o modelo versionado `gpt54mini001` apareceu no site em `be19b7e`, passou teste de conexao e virou default confirmado no site em `22f6f31`. |
 | Metadata/custo real | Codigo/testes/deploy | Metadata e endpoints existem no site; full smoke GPT-5.4 Mini mediu custo por etapa; smoke `task_42e3b303c39a` mediu `26251/4582` tokens e `US$ 0.040307`; re-smoke `task_cc22b6c239d0` mediu `56891/9827` tokens e `US$ 0.086890`; `1454e68`/`3fce335` cobrem tokens parciais em erro de provider depois de tool-use; `33fb7d5` manteve erro Gemini Lite custeavel (`ea407d2ce87fb99a`, `14772/1805`, `US$ 0.001649`); `0f84552` manteve artefatos invalidos Gemini Lite custeaveis (`tool_44dd029b1954`, `18748/1934`, `US$ 0.001986`); GPT-4.1 mediu `US$ 0.005830`, `US$ 0.007312`, `US$ 0.006788`, `US$ 0.080474`, `US$ 0.042836` e `US$ 0.044898` nas 6 etapas por grupo, e `US$ 0.222856` em full smoke unico; Supabase `token_usage` segue ausente (`PGRST205`), `local_record_count=0` depois de deploy e custo de falha sem documento ainda nao e duravel. |
 | Provider revalidation | Smoke/producao | Matriz Doc 12 registra GPT-5.4 Mini full smoke em fixture simples, GPT-4o full smoke (`task_68b19146a95b`) e Gemini 2.5 Flash com extracoes OK/tool-use corrigido mas bloqueado por quota; smoke `task_81f274a6f510` em `3fce335` confirma erro alto Google `429` sem novo falso verde; Gemini 2.5 Flash Lite `task_52e5fa9020a0` confirmou caminho Google Lite com erro alto de PDF/codigo, e `task_124bf0e8d7bf` em `0f84552` confirmou erro alto de JSON/PDF divergentes; GPT-5 Nano `task_90eb0936b7ce` confirmou `corrigir` como falha alta por PDF/JSON divergentes; GPT-4.1 `task_f6851ed535b8` confirmou full pipeline unico com JSON/PDF coerentes e custos medidos. Continua incompleta ate novos smokes por provider/rota/dataset. |
 | PDFs/UI GPT-5.4 Mini/GPT-4o | Codigo/testes/deploy/smoke | `task_a5f0d734f0b3` completou 6 etapas, JSONs passaram inspeção semantica inicial e PDFs existem; `0ac92f0` corrigiu parte do layout, mas `task_605512496b0d` provou divergencia PDF/JSON; `2052a01` transformou essa divergencia em erro alto; `3a77a17` validou retry explicito do PDF; `3e6be20` bloqueia Feedback Geral truncado; GPT-4o passou as etapas finais com artefatos ruins marcados como erro; `task_42e3b303c39a` confirmou PDF final coerente em `corrigir`. Ainda falta repetir em datasets maiores e melhorar UI de erro para o usuario final. |
 | Gabarito incompleto bloqueia correção | Codigo/testes/deploy/smoke | `3a7dfea` bloqueia `CORRIGIR` com `MISSING_CONTENT` no gabarito; continua importante para datasets como Lista0, embora a fixture Diana tenha completado. |
-| UI de erros | Produto/frontend | Sidebar ja mostra a causa por aluno/etapa desde `98fafc9`; resultado parcial agora distingue `status=erro` de progresso concluido e mostra banner/documento em erro; `b8e14db` foi deployado e smoke live confirmou HTML e documento em erro visivel na fixture Diana; `325c200` corrigiu historico rapido, comparativo, atividades pendentes e status pipeline para ignorarem documentos `status=erro`/sem itens avaliaveis; `148d8b3` corrigiu ranking/estatisticas/dashboard para nao mascararem rota dinamica nem media zero; `147296d` reduziu dashboard/ranking agregados para leitura em lote. |
+| UI de erros | Produto/frontend | Sidebar ja mostra a causa por aluno/etapa desde `98fafc9`; resultado parcial agora distingue `status=erro` de progresso concluido e mostra banner/documento em erro; `b8e14db` foi deployado e smoke live confirmou HTML e documento em erro visivel na fixture Diana; `325c200` corrigiu historico rapido, comparativo, atividades pendentes e status pipeline para ignorarem documentos `status=erro`/sem itens avaliaveis; `148d8b3` corrigiu ranking/estatisticas/dashboard para nao mascararem rota dinamica nem media zero; `147296d` reduziu dashboard/ranking agregados para leitura em lote; `22f6f31` trocou default bloqueado por GPT-5.4 Mini. |
 | Limpeza de dados | Dados | "Fantasmas" precisam reclassificacao; PDF com `/conteudo=null` nao pode ser deletado. |
 
 ### Agregado: Ranking/Dashboard
@@ -3715,6 +3717,28 @@ Atualizacao deste ciclo:
 - Falta: voltar ao eixo provider/custo/pipeline. O proximo ciclo nao deve gastar
   IA antes de escolher um smoke que produza evidencia de provider, erro ou custo
   medido.
+
+### Settings: Default De Modelo
+
+Atualizacao deste ciclo:
+
+- Achado live: `/api/settings/status` ainda apontava Claude Haiku 4.5
+  (`588f3efe7975`, Anthropic) como default, enquanto Haiku esta bloqueado por
+  credito nos smokes recentes. Isso fazia o fluxo sem escolha explicita tender a
+  falhar em provider ja conhecido como bloqueado.
+- Patch: `backend/data/models.json` agora marca `gpt54mini001`
+  (`gpt-5.4-mini`) como unico default. `ModelManager._ensure_single_default()`
+  deixou de preferir Haiku ao reparar config corrompida e passou a preferir
+  OpenAI operacional confirmado.
+- Validacao local: `py_compile`, `git diff --check`, `test_model_manager.py` +
+  `test_gpt5_nano_registration.py` com `63 passed`.
+- Deploy/smoke oficial: Render confirmou
+  `22f6f315a12e34d0a15597eca82743f09314046f` em 180s; `check_deploy.sh`,
+  `/api/deploy-info` e `/api/health` passaram. `/api/settings/status` e
+  `/api/settings/models` confirmaram `total_modelos=14` e unico default
+  `gpt54mini001`, `tipo=openai`, `modelo=gpt-5.4-mini`.
+- Falta: escolher o proximo smoke de provider/custo com evidencia clara. Nao
+  usar Haiku ate credito Anthropic ser recarregado e validado.
 
 Regra de continuidade:
 

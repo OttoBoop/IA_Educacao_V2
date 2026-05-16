@@ -5,9 +5,9 @@
 **Status geral:** o servico oficial Render
 `srv-d5t8gbh4tr6s738fr3s0` (`IA_Educacao_V2`, branch `main`, URL
 `https://ia-educacao-v2.onrender.com`) tem como codigo funcional mais recente
-confirmado o commit `147296d` (`fix: batch ranking dashboard aggregates`),
+confirmado o commit `22f6f31` (`fix: default to confirmed openai model`),
 validado por `/api/deploy-info`, `/api/health` e
-`./scripts/check_deploy.sh 147296d5f3c93a7687c76ce11e09c2c6d1a60f40`. Se
+`./scripts/check_deploy.sh 22f6f315a12e34d0a15597eca82743f09314046f`. Se
 `/api/deploy-info` apontar commit documental posterior, comparar com este hash
 funcional antes de concluir que houve nova mudanca de runtime. O ciclo
 publicado faz resultado, historico, pendencias e status de pipeline obedecerem
@@ -19,6 +19,9 @@ agregadas de ranking/estatisticas, que antes eram capturadas pela rota dinamica
 de aluno, e preservou medias legitimas `0.0` no dashboard/historico/comparativos.
 O ciclo seguinte reduziu o dashboard da turma Lista0 de cerca de 85s para 1.4s
 ao reaproveitar ranking em lote, sem reabilitar resultados sem itens avaliaveis.
+O ciclo `22f6f31` trocou o modelo padrao versionado de Claude Haiku 4.5
+(bloqueado por credito Anthropic) para GPT-5.4 Mini (`gpt54mini001`) e confirmou
+o default vivo em `/api/settings/status` e `/api/settings/models`.
 GPT-4.1, GPT-5.4 Mini e GPT-4o seguem referencias de pipeline confirmadas na
 fixture Diana; Google esta limitado por quota `429` nos smokes recentes,
 Anthropic segue bloqueado por credito, e Supabase `token_usage` continua ausente
@@ -2737,6 +2740,36 @@ Critério de pronto: lista de limpeza segura e revisada.
 - Status: publicado e smokeado no site oficial. Proximo alvo do loop: voltar
   para provider/custo/pipeline, priorizando falhas ainda abertas de mensagens
   provider/custo e persistencia duravel de `token_usage`.
+
+### 2026-05-17 -- Modelo padrao: sair de provider bloqueado
+
+- Alvo: evitar que execucoes sem escolha explicita de modelo usem Claude Haiku
+  4.5 enquanto Anthropic segue bloqueado por credito.
+- Achado live sem gastar IA: `/api/settings/status` mostrava
+  `modelo_padrao.id=588f3efe7975`, `tipo=anthropic`,
+  `modelo=claude-haiku-4-5-20251001`, apesar dos smokes/documentos marcarem
+  Haiku como bloqueado por credito. Isso criava falha previsivel para fluxo
+  default.
+- Mudanca: `backend/data/models.json` passou a marcar `gpt54mini001`
+  (`gpt-5.4-mini`) como unico default e Haiku como nao default.
+- Mudanca: `ModelManager._ensure_single_default()` deixou de preferir Haiku ao
+  corrigir defaults corrompidos e passou a preferir modelo OpenAI operacional
+  conhecido (`gpt54mini001`, depois GPT-4.1/GPT-4o, depois outro OpenAI ativo).
+- Validacoes locais: `py_compile` de `chat_service.py` e testes de modelo;
+  `git diff --check`; `test_model_manager.py` +
+  `test_gpt5_nano_registration.py` passaram com `63 passed`.
+- Commit/deploy: `22f6f31` (`fix: default to confirmed openai model`)
+  publicado em `origin/main`; Render confirmou
+  `22f6f315a12e34d0a15597eca82743f09314046f` em 180s por
+  `./scripts/wait_deploy.sh`, `./scripts/check_deploy.sh`, `/api/deploy-info`
+  e `/api/health`.
+- Smoke live sem nova IA: `/api/settings/status` e `/api/settings/models`
+  retornaram `total_modelos=14` e um unico default:
+  `id=gpt54mini001`, `tipo=openai`, `modelo=gpt-5.4-mini`,
+  `suporta_function_calling=true`.
+- Status: publicado e smokeado no site oficial. Proximo alvo do loop: custo
+  duravel (`token_usage` no Supabase) ou smoke minimo de provider escolhido por
+  evidencia, sem usar Rio 3 e sem aceitar fallback silencioso.
 
 ## Riscos Abertos
 

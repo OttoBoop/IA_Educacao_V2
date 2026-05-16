@@ -984,7 +984,7 @@ nem datasets maiores.
 
 **Proximos passos:**
 1. Manter deploy oficial confirmado por `/api/deploy-info` antes de cada smoke
-   novo; o codigo funcional mais recente confirmado e `147296d`. Commits
+   novo; o codigo funcional mais recente confirmado e `22f6f31`. Commits
    documentais posteriores podem mudar o hash de `/api/deploy-info` sem alterar
    comportamento de pipeline.
 2. Aplicar/validar a migration Supabase `token_usage` antes de chamar custo de
@@ -1006,4 +1006,6 @@ nem datasets maiores.
    quando a correcao nao tem questao/correcao avaliavel; `148d8b3` confirmou
    ranking/estatisticas/dashboard com rota correta e media zero preservada;
    `147296d` confirmou agregados em lote com dashboard da Lista0 em `1.433s`.
-   Falta mensagens finais de provider/custo e proxima revalidacao de provider.
+   `22f6f31` confirmou default vivo em `gpt54mini001`/GPT-5.4 Mini, removendo
+   Haiku bloqueado do caminho default. Falta mensagens finais de provider/custo
+   e proxima revalidacao de provider.
