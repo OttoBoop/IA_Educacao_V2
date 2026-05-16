@@ -69,3 +69,10 @@ class TestGPT54MiniRegistration:
         assert model["temperature"] is None
         assert model["parametros"]["reasoning_effort"] == "low"
         assert model["ativo"] is True
+
+    def test_gpt54mini_is_default_while_anthropic_credit_is_blocked(self, models):
+        """Default model must be an already-confirmed provider, not blocked Haiku."""
+        defaults = [model for model in models if model.get("is_default")]
+        assert len(defaults) == 1
+        assert defaults[0]["id"] == "gpt54mini001"
+        assert defaults[0]["modelo"] == "gpt-5.4-mini"

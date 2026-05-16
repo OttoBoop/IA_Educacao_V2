@@ -614,11 +614,35 @@ class ModelManager:
             names = [m.nome for m in self.models.values()]
             print(f"[ModelManager] Auto-initialized from env: {', '.join(names)}")
 
+    def _preferred_default_model(self) -> Optional[ModelConfig]:
+        """Escolhe um default operacional e deterministico para recuperar config."""
+        active_models = [m for m in self.models.values() if m.ativo]
+        if not active_models:
+            return None
+
+        preferred_ids = ("gpt54mini001", "ffae9accf68e", "180b8298a279")
+        for model_id in preferred_ids:
+            model = self.models.get(model_id)
+            if model and model.ativo:
+                return model
+
+        openai_model = next(
+            (
+                m for m in active_models
+                if m.tipo == ProviderType.OPENAI and m.modelo.lower().startswith("gpt")
+            ),
+            None,
+        )
+        if openai_model:
+            return openai_model
+
+        return active_models[0]
+
     def _ensure_single_default(self):
         """Garante que apenas um modelo seja marcado como padrao.
 
         Corrige automaticamente se multiplos defaults ou nenhum existir.
-        Prefere manter Haiku como default quando possivel.
+        Prefere modelo OpenAI confirmado antes de providers bloqueados por credito.
         """
         defaults = [m for m in self.models.values() if m.is_default]
 
@@ -628,9 +652,7 @@ class ModelManager:
             print(f"[WARN] {len(defaults)} modelos marcados como padrao: {nomes}")
             print("       Corrigindo automaticamente...")
 
-            # Manter Haiku (se existir) ou o primeiro
-            haiku = next((m for m in defaults if "haiku" in m.nome.lower()), None)
-            keep = haiku if haiku else defaults[0]
+            keep = self._preferred_default_model() or defaults[0]
 
             for m in self.models.values():
                 m.is_default = (m.id == keep.id)
@@ -639,13 +661,13 @@ class ModelManager:
             self._save()  # Persistir correcao
 
         elif len(defaults) == 0 and self.models:
-            # Nenhum default: definir Haiku ou primeiro
+            # Nenhum default: definir candidato operacional conhecido
             print("[WARN] Nenhum modelo padrao encontrado. Definindo automaticamente...")
-            haiku = next((m for m in self.models.values() if "haiku" in m.nome.lower()), None)
-            default = haiku if haiku else next(iter(self.models.values()))
-            default.is_default = True
-            print(f"       Modelo padrao definido: {default.nome}")
-            self._save()
+            default = self._preferred_default_model()
+            if default:
+                default.is_default = True
+                print(f"       Modelo padrao definido: {default.nome}")
+                self._save()
     
     def _save(self):
         data = {"models": [m.to_dict() for m in self.models.values()]}

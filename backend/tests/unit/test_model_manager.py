@@ -9,7 +9,7 @@ BUG DOCUMENTADO: Multiplos Modelos Padrao (2026-01-30)
 
 PROBLEMA DETECTADO:
     O arquivo models.json tinha DOIS modelos com is_default: true:
-    - Linha 119: Claude Haiku 4.5 (is_default: true) - CORRETO
+    - Linha 119: Claude Haiku 4.5 (is_default: true) - era o default historico
     - Linha 259: Llama 3.2 Local (is_default: true) - ERRO!
 
 CAUSA RAIZ:
@@ -30,7 +30,7 @@ IMPACTO:
 SOLUCAO IMPLEMENTADA:
     1. Adicionado metodo _ensure_single_default() em chat_service.py
     2. Chamado automaticamente no final de _load()
-    3. Auto-corrige dados corrompidos, preferindo Haiku como default
+    3. Auto-corrige dados corrompidos, preferindo modelo OpenAI operacional
     4. Persiste a correcao no arquivo JSON
 
 VERIFICACAO:
@@ -88,7 +88,7 @@ def model_manager_with_multiple_defaults():
                     "tipo": "anthropic",
                     "modelo": "claude-haiku-4-5-20251001",
                     "ativo": True,
-                    "is_default": True  # CORRETO
+                    "is_default": True  # Default historico, hoje bloqueado por credito
                 },
                 {
                     "id": "gpt-456",
@@ -138,18 +138,20 @@ class TestDefaultModelUniqueness:
 
         assert len(defaults) == 1, f"Deveria ter exatamente 1 modelo default, mas tem {len(defaults)}: {[m.nome for m in defaults]}"
 
-    def test_haiku_preferred_as_default(self, model_manager_with_multiple_defaults):
+    def test_openai_preferred_as_default(self, model_manager_with_multiple_defaults):
         """
-        Quando multiplos defaults existem, Haiku deve ser mantido.
+        Quando multiplos defaults existem, um OpenAI operacional deve ser escolhido.
 
-        Regra de negocio: Haiku e o modelo preferido como default
+        Regra de negocio: provider bloqueado por credito nao deve vencer
+        recuperacao automatica de default.
         """
         manager = model_manager_with_multiple_defaults
 
         default = manager.get_default()
 
         assert default is not None, "Deve haver um modelo default"
-        assert "haiku" in default.nome.lower(), f"Haiku deveria ser o default, mas e {default.nome}"
+        assert default.tipo.value == "openai", f"OpenAI deveria ser o default, mas e {default.nome}"
+        assert default.id == "gpt-456"
 
     def test_set_default_removes_previous_default(self, model_manager_instance):
         """
