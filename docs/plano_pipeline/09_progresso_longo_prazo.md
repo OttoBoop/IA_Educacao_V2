@@ -188,6 +188,15 @@ intermediario `status=erro`; custo `14617/2400`, `US$ 0.048434`. Status: retry
 artificial removido para esse formato de PDF live, mantendo erro alto para PDF
 realmente inconsistente.
 
+Atualizacao Gemini 2.5 Flash Lite em 2026-05-17 no runtime `11a396b`: smoke
+`task_5850e9adf001`, `selected_steps=["corrigir"]`, falhou alto por quota
+Google `429 RESOURCE_EXHAUSTED`, `provider=Google`, `retryable=true`, sem
+promover sucesso nem trocar provider. Houve documentos de erro custeaveis:
+`494856278a41ff57` (`6408/208`, `US$ 0.000543`) e `badbaadbe86ce541`
+(`3029/515`, `US$ 0.000382`), ambos `status=erro`. Status: Gemini Lite continua
+❌/bloqueado em `CORRIGIR`; neste run o bloqueio observado foi quota, nao mais o
+erro antigo de ids server-side nem falso verde.
+
 Atualizacao de 2026-05-17 no runtime `700b088`: o ciclo `f40acf3` alinhou
 `PROMPTS_PADRAO` e `STAGE_TOOL_INSTRUCTIONS` para `CORRIGIR`,
 `ANALISAR_HABILIDADES` e `GERAR_RELATORIO`, e tornou obrigatorios campos de

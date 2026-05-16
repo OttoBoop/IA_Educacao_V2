@@ -45,7 +45,10 @@ um falso negativo do guard PDF/JSON em `CORRIGIR`: rotulos live
 quando nota, questoes e feedback continuam consistentes. O re-smoke
 `task_92c4b74494f7` gerou apenas JSON `a05a2a4faeab71d1` e PDF
 `dc9fe13dc6b8b994`, sem PDF intermediario `status=erro`; custo caiu para
-`US$ 0.048434`. Antes disso, o site oficial
+`US$ 0.048434`. O smoke Gemini 2.5 Flash Lite `task_5850e9adf001` falhou alto
+por quota Google `429`, com `provider=Google`/`retryable=true`, e registrou
+documentos de erro custeaveis `494856278a41ff57` (`US$ 0.000543`) e
+`badbaadbe86ce541` (`US$ 0.000382`). Antes disso, o site oficial
 estava em runtime backend `33fb7d5` por `/api/deploy-info`, `/api/health`,
 Render MCP (`dep-d84ua8flk1mc73em0f60`) e `check_deploy.sh 33fb7d5`. O commit
 `33fb7d5` corrigiu `create_document` em pipeline para usar ids server-side do

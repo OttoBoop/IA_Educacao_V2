@@ -253,6 +253,12 @@ Nota GPT-4.1 pos-guard PDF: apos `974f040` e `11a396b`, o re-smoke
 `dc9fe13dc6b8b994`, ambos `concluido`, sem PDF intermediario marcado como erro.
 Custo do run: `14617/2400`, `US$ 0.048434`. A melhoria foi no validador de
 rotulos de feedback do PDF, nao relaxamento de nota ou questoes.
+Nota Gemini Lite/corrigir: no runtime `11a396b`, `task_5850e9adf001` falhou
+alto por quota Google `429 RESOURCE_EXHAUSTED`, com `provider=Google` e
+`retryable=true`. Documentos de erro custeaveis: `494856278a41ff57`
+(`6408/208`, `US$ 0.000543`) e `badbaadbe86ce541` (`3029/515`,
+`US$ 0.000382`). Continua ❌ em `CORRIGIR`; repetir somente quando quota Google
+permitir.
 Nota P0 atualizada: `extrair_gabarito` Gemini era ❌ porque o output historico
 retornou todas as respostas como `MISSING_CONTENT`, embora o PDF base tivesse
 texto extraivel de "Exercicio 5". Em 2026-05-17, o smoke
