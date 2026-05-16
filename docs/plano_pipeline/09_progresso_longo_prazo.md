@@ -66,6 +66,18 @@ marcou o PDF intermediario `067f4db99040043b` como `status=erro` por
 `runs_precificados=42`, mas segue `ok=false` por `token_usage_not_durable` /
 Supabase `PGRST205`.
 
+Atualizacao provider sweep de 2026-05-17 no runtime `fdf0cbd`: o endpoint
+`/api/settings/models/{id}/testar` confirmou disponibilidade atual sem trocar
+modelo em silencio. OpenAI OK: `gpt54mini001` respondeu `OK`, modelo
+`gpt-5.4-mini`, `42` tokens; `gpt5nano001` respondeu `OK`, modelo
+`gpt-5-nano`, `38` tokens. Google bloqueado por quota: `gem25flash001`,
+`gem25lite001` e `gem3flash001` retornaram `success=false`, erro
+`Erro API Google: 429 - Limite de requisições atingido`. Anthropic bloqueado por
+credito: `588f3efe7975` (Haiku 4.5) e `4eaeb5105f5d` (Sonnet 4.5) retornaram
+HTTP 200 do endpoint, mas `success=false` com API Anthropic `400` e mensagem de
+saldo insuficiente. Ollama no Render segue indisponivel: `ollama-llama3`
+retornou `All connection attempts failed`.
+
 Atualizacao chat/providers de 2026-05-17 no runtime `c53fae6`: o smoke oficial
 `POST /api/chat` com GPT-5.4 Mini (`gpt54mini001`) retornou HTTP 200, JSON
 parseavel e sem marcador de debug (`tokens_used=413`). O mesmo smoke com

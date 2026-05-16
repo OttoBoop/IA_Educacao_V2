@@ -166,6 +166,12 @@ sem `stage_errors`. JSON `92737f5ba69ca2d4` e PDF `bb6522992d2fe7d4` ficaram
 `US$ 0.036719`; o PDF intermediario `067f4db99040043b` foi marcado
 `status=erro` por `pdf_json_consistency`, confirmando retry explicito sem
 fallback silencioso.
+Nota provider sweep pos-`fdf0cbd`: `/api/settings/models/{id}/testar` confirmou
+OpenAI disponivel (`gpt54mini001` OK/42 tokens, `gpt5nano001` OK/38 tokens).
+Google esta bloqueado por quota em `gem25flash001`, `gem25lite001` e
+`gem3flash001` (`Erro API Google: 429 - Limite de requisições atingido`).
+Anthropic esta bloqueado por credito em Haiku/Sonnet 4.5 (`400`, saldo
+insuficiente). Ollama local falha conexao no Render.
 Nota de dataset Lista0: a atividade `126e8b5ad7dd6d59` possui base docs
 presentes, porem a auditoria de PDF de 2026-05-17 confirmou que o enunciado
 `5dc75513e958c25b` contem os exercicios 1 a 7 enquanto o gabarito

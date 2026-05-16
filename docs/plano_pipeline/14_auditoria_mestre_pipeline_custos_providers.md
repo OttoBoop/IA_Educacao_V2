@@ -3536,6 +3536,10 @@ Validacao:
   provider/modelo `openai/gpt-5.4-mini`, `24593/4061` tokens, custo
   `US$ 0.036719`. O PDF intermediario `067f4db99040043b` ficou `status=erro`
   por `pdf_json_consistency`, mantendo a regra de retry explicito sem fallback.
+- Provider sweep por teste de conexao: OpenAI OK em `gpt54mini001` e
+  `gpt5nano001`; Google bloqueado por quota `429` em Gemini 2.5 Flash, Gemini
+  2.5 Flash Lite e Gemini 3 Flash; Anthropic bloqueado por credito `400` em
+  Haiku/Sonnet 4.5; Ollama local indisponivel no Render.
 
 Estado:
 
@@ -3543,6 +3547,9 @@ Estado:
   corrige o catalogo para que proximos smokes nao comecem com parametros
   errados. Ela tambem confirmou que o `corrigir` OpenAI/GPT-5.4 Mini segue
   operacional depois do deploy.
+- Provider-wise, o estado atual e: OpenAI utilizavel; Google nao deve ser
+  reexecutado em loop ate quota voltar; Anthropic depende de credito; Ollama
+  depende de runtime local/servico acessivel pelo Render.
 - Custo duravel segue bloqueado por Supabase: `/api/custos/status?limit=80`
   continua `ok=false`, `token_usage_not_durable`, `PGRST205` para
   `public.token_usage`; apos o smoke, `runs_analisados=44` e
