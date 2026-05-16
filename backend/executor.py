@@ -4073,6 +4073,11 @@ Seja preciso, educativo e construtivo em suas análises."""
                             return False
                     return False
 
+                def _format_schema_num(value: float) -> str:
+                    if float(value).is_integer():
+                        return str(int(value))
+                    return f"{value:.2f}".rstrip("0").rstrip(".")
+
                 def _required_list(field: str) -> None:
                     if not isinstance(data.get(field), list):
                         errors.append(f"JSON {doc_label} sem {field} como lista")
@@ -4133,12 +4138,36 @@ Seja preciso, educativo e construtivo em suas análises."""
                         trace_maps = _correcao_trace_maps()
                         has_respostas = bool(trace_maps["respostas_aluno"])
                         has_gabarito = bool(trace_maps["gabarito"])
+                        soma_notas = 0.0
+                        notas_validas = 0
+                        acertos_calculados = 0
+                        erros_calculados = 0
+                        acertos_ou_erros = 0
                         for item in questoes:
                             if not isinstance(item, dict):
                                 errors.append(f"JSON {doc_label} tem item de questoes que não é objeto")
                                 continue
                             numero = _question_key(item.get("numero"))
                             questao_label = numero if numero is not None else "?"
+                            nota_item = self._nota_como_float(item.get("nota"))
+                            if nota_item is None:
+                                errors.append(
+                                    f"JSON {doc_label} questão {questao_label} sem nota numérica"
+                                )
+                            else:
+                                soma_notas += nota_item
+                                notas_validas += 1
+
+                            if item.get("acerto") is True:
+                                acertos_calculados += 1
+                                acertos_ou_erros += 1
+                            elif item.get("acerto") is False:
+                                erros_calculados += 1
+                                acertos_ou_erros += 1
+                            else:
+                                errors.append(
+                                    f"JSON {doc_label} questão {questao_label} sem acerto booleano"
+                                )
 
                             if has_respostas:
                                 resposta_aluno = item.get("resposta_aluno")
@@ -4227,6 +4256,39 @@ Seja preciso, educativo e construtivo em suas análises."""
                                             f"JSON {doc_label} questão {questao_label} recebeu nota máxima "
                                             "apesar de resposta_aluno literal divergir do gabarito"
                                         )
+
+                        nota_final = self._nota_como_float(data.get("nota_final"))
+                        if (
+                            nota_final is not None
+                            and notas_validas == len(questoes)
+                            and abs(soma_notas - nota_final) > 0.01
+                        ):
+                            errors.append(
+                                f"JSON {doc_label} tem nota_final {_format_schema_num(nota_final)} "
+                                f"mas a soma de questoes[].nota e {_format_schema_num(soma_notas)}"
+                            )
+
+                        total_acertos = self._nota_como_float(data.get("total_acertos"))
+                        if (
+                            total_acertos is not None
+                            and acertos_ou_erros == len(questoes)
+                            and abs(total_acertos - acertos_calculados) > 0.01
+                        ):
+                            errors.append(
+                                f"JSON {doc_label} tem total_acertos {_format_schema_num(total_acertos)} "
+                                f"mas questoes[].acerto indica {acertos_calculados}"
+                            )
+
+                        total_erros = self._nota_como_float(data.get("total_erros"))
+                        if (
+                            total_erros is not None
+                            and acertos_ou_erros == len(questoes)
+                            and abs(total_erros - erros_calculados) > 0.01
+                        ):
+                            errors.append(
+                                f"JSON {doc_label} tem total_erros {_format_schema_num(total_erros)} "
+                                f"mas questoes[].acerto indica {erros_calculados}"
+                            )
 
                 if expected_document_type == TipoDocumento.ANALISE_HABILIDADES:
                     habilidades = data.get("habilidades")

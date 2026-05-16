@@ -262,8 +262,8 @@ class TestBothOutputsNoRetry:
     async def test_expected_document_type_returns_real_stage_and_parsed_json(self):
         """Tool-use success should return the pipeline stage and parsed JSON."""
         json_content = {
-            "nota_final": 8,
-            "questoes": [{"numero": 1, "nota": 3, "feedback": "Correto"}],
+            "nota_final": 3,
+            "questoes": [{"numero": 1, "nota": 3, "acerto": True, "feedback": "Correto"}],
             "total_acertos": 1,
             "total_erros": 0,
             "feedback_geral": "Bom desempenho",

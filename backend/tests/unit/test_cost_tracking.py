@@ -668,8 +668,8 @@ async def test_executar_com_tools_repara_pdf_nao_persistido_com_retry(monkeypatc
     json_path.write_text(
         json.dumps(
             {
-                "nota_final": 7,
-                "questoes": [{"numero": 1, "nota": 3}],
+                "nota_final": 3,
+                "questoes": [{"numero": 1, "nota": 3, "acerto": True}],
                 "total_acertos": 1,
                 "total_erros": 0,
                 "feedback_geral": "Bom desempenho geral.",
@@ -685,7 +685,7 @@ async def test_executar_com_tools_repara_pdf_nao_persistido_com_retry(monkeypatc
     page = pdf.new_page()
     page.insert_text(
         (40, 80),
-        "Nota final: 7.0 / 10.0\nQuestão 1 — Acerto | Nota: 3.0",
+        "Nota final: 3.0 / 10.0\nQuestão 1 — Acerto | Nota: 3.0",
         fontsize=11,
     )
     pdf.save(str(pdf_path))
@@ -769,7 +769,12 @@ async def test_executar_com_tools_repara_pdf_inconsistente_com_json(monkeypatch,
         json.dumps(
             {
                 "nota_final": 8,
-                "questoes": [{"numero": 3, "nota": 0}],
+                "questoes": [
+                    {"numero": 1, "nota": 3, "acerto": True},
+                    {"numero": 2, "nota": 3, "acerto": True},
+                    {"numero": 3, "nota": 0, "acerto": False},
+                    {"numero": 4, "nota": 2, "acerto": True},
+                ],
                 "total_acertos": 3,
                 "total_erros": 1,
                 "feedback_geral": "Bom desempenho geral.",
@@ -1107,7 +1112,12 @@ async def test_executar_com_tools_repara_correcao_json_array(monkeypatch, tmp_pa
         json.dumps(
             {
                 "nota_final": 8,
-                "questoes": [{"numero": 3, "nota": 0}],
+                "questoes": [
+                    {"numero": 1, "nota": 3, "acerto": True},
+                    {"numero": 2, "nota": 3, "acerto": True},
+                    {"numero": 3, "nota": 0, "acerto": False},
+                    {"numero": 4, "nota": 2, "acerto": True},
+                ],
                 "total_acertos": 3,
                 "total_erros": 1,
                 "feedback_geral_texto": "Campo errado: precisa ser feedback_geral.",
@@ -1121,7 +1131,12 @@ async def test_executar_com_tools_repara_correcao_json_array(monkeypatch, tmp_pa
         json.dumps(
             {
                 "nota_final": 8,
-                "questoes": [{"numero": 3, "nota": 0}],
+                "questoes": [
+                    {"numero": 1, "nota": 3, "acerto": True},
+                    {"numero": 2, "nota": 3, "acerto": True},
+                    {"numero": 3, "nota": 0, "acerto": False},
+                    {"numero": 4, "nota": 2, "acerto": True},
+                ],
                 "total_acertos": 3,
                 "total_erros": 1,
                 "feedback_geral": "Bom desempenho geral.",
@@ -1135,7 +1150,12 @@ async def test_executar_com_tools_repara_correcao_json_array(monkeypatch, tmp_pa
         json.dumps(
             {
                 "nota_final": 8,
-                "questoes": [{"numero": 3, "nota": 0}],
+                "questoes": [
+                    {"numero": 1, "nota": 3, "acerto": True},
+                    {"numero": 2, "nota": 3, "acerto": True},
+                    {"numero": 3, "nota": 0, "acerto": False},
+                    {"numero": 4, "nota": 2, "acerto": True},
+                ],
                 "total_acertos": 3,
                 "total_erros": 1,
                 "feedback_geral": "Bom desempenho geral.",
@@ -1487,6 +1507,7 @@ async def test_executar_com_tools_rejeita_correcao_que_troca_resposta_do_aluno(
 
     assert resultado.sucesso is False
     assert "resposta_aluno divergente da EXTRAIR_RESPOSTAS" in (resultado.erro or "")
+    assert "nota_final 10 mas a soma de questoes[].nota e 2" in (resultado.erro or "")
 
 
 @pytest.mark.asyncio
