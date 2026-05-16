@@ -9,6 +9,15 @@ lida de memoria. Ele nao substitui os documentos originais: ele explica como cad
 um deve ser lido, o que ainda vale, o que ficou historico, e quais fatos precisam
 guiar os proximos ciclos.
 
+Atualizacao de controle de 2026-05-17: o site oficial esta em runtime backend
+`45f5cf8` por `/api/deploy-info` e `check_deploy.sh`. O smoke reduzido
+`task_42e3b303c39a` revalidou `corrigir` com GPT-5.4 Mini (`gpt54mini001`) na
+fixture Diana Omega: JSON `776b70be01c24641`, PDF final `12dbdc65d469e982`,
+PDF intermediario `204a8a5c3f81af97` marcado `status=erro` por
+`pdf_json_consistency`, split `26251/4582` e custo `US$ 0.040307`. O bloqueio
+de custo duravel segue: `/api/custos/status?limit=80` retorna `ok=false` por
+Supabase `PGRST205` em `public.token_usage`.
+
 ## Indice
 
 Use este indice como mapa de navegacao. O valor desta auditoria nao e quantidade
@@ -219,12 +228,17 @@ detalhar e auditar estas linhas.
    parafrase coerente; porem os reruns `task_6bba32964706` e
    `task_f9b76153875a` bateram quota Google `429`, entao tools Gemini 2.5
    Flash seguem bloqueadas para revalidacao final, nao confirmadas. Haiku segue
-   bloqueado por creditos; Rio 3 esta pausado.
+   bloqueado por creditos; Rio 3 esta pausado. Depois dos fixes anti-fallback
+   `dc5884f`, `0d5ab9d`, `c870ed4` e `45f5cf8`, o smoke reduzido
+   `task_42e3b303c39a` confirmou que `corrigir` com GPT-5.4 Mini ainda passa
+   quando o JSON/PDF sao validos, e que o PDF inconsistente anterior fica como
+   erro persistido, nao sucesso silencioso.
 10. O proximo eixo correto e aplicar `backend/migrations/002_create_token_usage.sql`
     no Supabase, ampliar a revalidacao por etapa/provider e endurecer o contrato
     contra schema ruim. Enquanto a migration nao for aplicada, `460643f` faz
     `/api/custos/status` gritar `ok=false` e alerta `token_usage_not_durable`, e
-    `54d083e` mostra esse bloqueio no dashboard oficial.
+    `54d083e` mostra esse bloqueio no dashboard oficial; em `45f5cf8`, o live
+    ainda retorna `custos_persistencia_status=parcial_sem_token_usage_duravel`.
 
 ### O Que Temos
 
@@ -235,8 +249,8 @@ detalhar e auditar estas linhas.
 | Pipeline P4 | Bloqueio de extracao de respostas sem prova valida esta no codigo publicado | Precisa smoke dedicado apenas se P4 voltar a ser alvo. |
 | Pipeline P5/P6 | Preservacao de `_documentos_faltantes`; `ad7e00e` bloqueia `GERAR_RELATORIO` sem `nota_final` numerica confiavel | Ainda falta caçar outros fallbacks antigos, mas `nota_final=N/A` nao e mais aceite final no executor de relatório. |
 | Schema/avisos | Defaults `_avisos_*`, visualizador melhorado e schemas mais permissivos | Permissividade nao e contrato forte; pode aceitar legado demais. |
-| Tokens/custos | Split input/output; metadata de documento; endpoints `/api/custos/status` e `/api/custos/resumo` respondendo live; resumo agrega por `cost_run_id`; `TokenUsageRecord` local cobre falha sem documento enquanto o filesystem vive; codigo Supabase e migration dedicada `b2dc88b` existem; diagnostico live mostra `PGRST205`; smoke full GPT-5.4 Mini `task_a5f0d734f0b3` mediu custo por etapa e total aproximado `US$ 0.079110`; smoke Nano `task_57da745b8de5` registrou `29067/6701` tokens em documentos de relatorio; `/api/custos/status?limit=80` mostrou `runs_precificados=37`, `runs_bloqueados=0`, `ok=false`, `custos_persistencia_status=parcial_sem_token_usage_duravel` e alerta bloqueante `token_usage_not_durable`; dashboard live em `54d083e` mostra "Custos não duráveis" | Falta aplicar `backend/migrations/002_create_token_usage.sql` no Supabase. |
-| Providers | Gemini 2.5 Flash passou nas tres extracoes da fixture Diana; `854cec7` corrigiu o bug de tools incompletas com tool-use Google forcado/faseado; `b07472f` corrigiu falso bloqueio de feedback parafraseado; a revalidacao final agora esta bloqueada por quota Google `429`; Gemini 3 Flash passou em chat simples live, `extrair_questoes`, `extrair_respostas` e nas tres etapas finais, mas segue bloqueado por quota `429` para revalidacao full; `extrair_gabarito` Gemini foi reclassificado como invalido por tudo `MISSING_CONTENT` e depois revalidado na fixture simples; GPT-5 Nano passou em chat simples live, `extrair_questoes`, `extrair_gabarito` pos-`5527e26` e `gerar_relatorio` pos-`392ec7c`, mas `extrair_respostas` Nano continua parcial por historico de qualidade em dataset maior; GPT-5.4 Mini passou `extrair_respostas` em amostras e completou um smoke full oficial simples em `task_a5f0d734f0b3` com inspeção semantica inicial coerente; re-smoke `task_605512496b0d` no patch `0ac92f0` completou, mas PDFs divergiram dos JSONs; `2052a01` bloqueou isso com falha alta em `task_857c0c3657ef`; `3a77a17` passou no smoke reduzido `task_e389f360b812` com retry PDF/JSON; `392ec7c` passou no smoke Nano de relatorio `task_57da745b8de5`; GPT-4o completou full smoke `task_68b19146a95b` em `54d083e`, com custo aproximado `US$ 0.314369`; `98fafc9` nao muda provider, mas torna falhas por etapa visiveis na sidebar | Revalidar matriz por provider, mas nao rerodar Gemini enquanto quota Google estiver saturada. |
+| Tokens/custos | Split input/output; metadata de documento; endpoints `/api/custos/status` e `/api/custos/resumo` respondendo live; resumo agrega por `cost_run_id`; `TokenUsageRecord` local cobre falha sem documento enquanto o filesystem vive; codigo Supabase e migration dedicada `b2dc88b` existem; diagnostico live mostra `PGRST205`; smoke full GPT-5.4 Mini `task_a5f0d734f0b3` mediu custo por etapa e total aproximado `US$ 0.079110`; smoke Nano `task_57da745b8de5` registrou `29067/6701` tokens em documentos de relatorio; smoke reduzido GPT-5.4 Mini `task_42e3b303c39a` registrou `26251/4582`, `US$ 0.040307`, incluindo PDF intermediario em erro no mesmo `cost_run_id`; `/api/custos/status?limit=80` em `45f5cf8` mostrou `runs_precificados=46`, `runs_bloqueados=1`, `ok=false`, `custos_persistencia_status=parcial_sem_token_usage_duravel` e alerta bloqueante `token_usage_not_durable`; dashboard live em `54d083e` mostra "Custos não duráveis" | Falta aplicar `backend/migrations/002_create_token_usage.sql` no Supabase. |
+| Providers | Gemini 2.5 Flash passou nas tres extracoes da fixture Diana; `854cec7` corrigiu o bug de tools incompletas com tool-use Google forcado/faseado; `b07472f` corrigiu falso bloqueio de feedback parafraseado; a revalidacao final agora esta bloqueada por quota Google `429`; Gemini 3 Flash passou em chat simples live, `extrair_questoes`, `extrair_respostas` e nas tres etapas finais, mas segue bloqueado por quota `429` para revalidacao full; `extrair_gabarito` Gemini foi reclassificado como invalido por tudo `MISSING_CONTENT` e depois revalidado na fixture simples; GPT-5 Nano passou em chat simples live, `extrair_questoes`, `extrair_gabarito` pos-`5527e26` e `gerar_relatorio` pos-`392ec7c`, mas `extrair_respostas` Nano continua parcial por historico de qualidade em dataset maior; GPT-5.4 Mini passou `extrair_respostas` em amostras e completou um smoke full oficial simples em `task_a5f0d734f0b3` com inspeção semantica inicial coerente; re-smoke `task_605512496b0d` no patch `0ac92f0` completou, mas PDFs divergiram dos JSONs; `2052a01` bloqueou isso com falha alta em `task_857c0c3657ef`; `3a77a17` passou no smoke reduzido `task_e389f360b812` com retry PDF/JSON; `45f5cf8` passou no smoke reduzido `task_42e3b303c39a` de `corrigir`, com JSON/PDF final coerentes e PDF intermediario em erro; `392ec7c` passou no smoke Nano de relatorio `task_57da745b8de5`; GPT-4o completou full smoke `task_68b19146a95b` em `54d083e`, com custo aproximado `US$ 0.314369`; `98fafc9` nao muda provider, mas torna falhas por etapa visiveis na sidebar | Revalidar matriz por provider, mas nao rerodar Gemini enquanto quota Google estiver saturada. |
 | Seguranca Rio | Regra de nao usar chave em chat e Rio pausado | Arquivos Rio/untracked continuam fora do ciclo ativo. |
 
 ### O Que Falta
@@ -3352,11 +3366,11 @@ claro. O que ainda existe para fazer:
 
 | Item | Tipo | Por que ainda falta |
 |---|---|---|
-| Ciclo anti-fallback | Codigo/testes | `nota_final=N/A` em relatório foi fechado em `ad7e00e`; PDF auto-fallback foi reclassificado como guardado em `dc5884f`; JSON embrulhado em Markdown/prosa foi bloqueado em `0d5ab9d`; retorno Path 2 basico foi melhorado em `c870ed4`; schema minimo runtime de `CORRIGIR` foi bloqueado em `45f5cf8`; ainda restam parciais/duplicatas e smokes oficiais. |
+| Ciclo anti-fallback | Codigo/testes | `nota_final=N/A` em relatório foi fechado em `ad7e00e`; PDF auto-fallback foi reclassificado como guardado em `dc5884f`; JSON embrulhado em Markdown/prosa foi bloqueado em `0d5ab9d`; retorno Path 2 basico foi melhorado em `c870ed4`; schema minimo runtime de `CORRIGIR` foi bloqueado em `45f5cf8`; smoke oficial `task_42e3b303c39a` confirmou sucesso real de `corrigir` com PDF intermediario inconsistente marcado como erro; ainda restam parciais/duplicatas, ANALISAR/GERAR runtime fora do schema e smokes de matriz. |
 | Settings de modelos | Codigo/testes/deploy | `from-catalog` deu 500 e create ignorou capabilities no site live; patch `b16e051` ja foi deployado e retestado; cadastro por API sumiu no deploy, mas o modelo versionado `gpt54mini001` apareceu no site em `be19b7e` e passou teste de conexao. |
-| Metadata/custo real | Codigo/testes/deploy | Metadata e endpoints existem no site; full smoke GPT-5.4 Mini mediu custo por etapa, mas Supabase `token_usage` segue ausente (`PGRST205`), `local_record_count=0` depois de deploy e custo de falha sem documento ainda nao e duravel. |
+| Metadata/custo real | Codigo/testes/deploy | Metadata e endpoints existem no site; full smoke GPT-5.4 Mini mediu custo por etapa; smoke `task_42e3b303c39a` mediu `26251/4582` tokens e `US$ 0.040307`; Supabase `token_usage` segue ausente (`PGRST205`), `local_record_count=0` depois de deploy e custo de falha sem documento ainda nao e duravel. |
 | Provider revalidation | Smoke/producao | Matriz Doc 12 registra GPT-5.4 Mini full smoke em fixture simples, GPT-4o full smoke (`task_68b19146a95b`) e Gemini 2.5 Flash com extracoes OK/tool-use corrigido mas bloqueado por quota; continua incompleta ate novos smokes por provider/rota/dataset. |
-| PDFs/UI GPT-5.4 Mini/GPT-4o | Codigo/testes/deploy/smoke | `task_a5f0d734f0b3` completou 6 etapas, JSONs passaram inspeção semantica inicial e PDFs existem; `0ac92f0` corrigiu parte do layout, mas `task_605512496b0d` provou divergencia PDF/JSON; `2052a01` transformou essa divergencia em erro alto; `3a77a17` validou retry explicito do PDF; `3e6be20` bloqueia Feedback Geral truncado e GPT-4o passou as etapas finais com artefatos ruins marcados como erro. | Repetir em datasets maiores e melhorar UI de erro para o usuario final. |
+| PDFs/UI GPT-5.4 Mini/GPT-4o | Codigo/testes/deploy/smoke | `task_a5f0d734f0b3` completou 6 etapas, JSONs passaram inspeção semantica inicial e PDFs existem; `0ac92f0` corrigiu parte do layout, mas `task_605512496b0d` provou divergencia PDF/JSON; `2052a01` transformou essa divergencia em erro alto; `3a77a17` validou retry explicito do PDF; `3e6be20` bloqueia Feedback Geral truncado; GPT-4o passou as etapas finais com artefatos ruins marcados como erro; `task_42e3b303c39a` confirmou PDF final coerente em `corrigir`. Ainda falta repetir em datasets maiores e melhorar UI de erro para o usuario final. |
 | Gabarito incompleto bloqueia correção | Codigo/testes/deploy/smoke | `3a7dfea` bloqueia `CORRIGIR` com `MISSING_CONTENT` no gabarito; continua importante para datasets como Lista0, embora a fixture Diana tenha completado. |
 | UI de erros | Produto/frontend | Sidebar ja mostra a causa por aluno/etapa desde `98fafc9`; ainda falta resultado/historico e mensagens completas para provider/custo. |
 | Limpeza de dados | Dados | "Fantasmas" precisam reclassificacao; PDF com `/conteudo=null` nao pode ser deletado. |

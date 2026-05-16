@@ -8,7 +8,13 @@
 `/api/deploy-info` com `source=RENDER_GIT_COMMIT`. O commit `45f5cf8` fecha mais
 um pedaço P0 do Path 2: mesmo quando nao ha storage persistido no teste, JSON
 parseavel de `create_document` que esteja fora do schema minimo da etapa falha
-alto antes de sucesso. O primeiro marco full
+alto antes de sucesso. No mesmo runtime, o smoke oficial reduzido
+`task_42e3b303c39a` reexecutou `corrigir` com GPT-5.4 Mini (`gpt54mini001`) na
+fixture Diana Omega e completou com JSON oficial `776b70be01c24641`, PDF final
+`12dbdc65d469e982`, PDF intermediario `204a8a5c3f81af97` marcado como erro por
+`pdf_json_consistency`, split `26251/4582` tokens e custo `US$ 0.040307`. O PDF
+final extraido por `pdftotext` bateu com o JSON: `nota_final=8.0`, Q3
+`0.0/2.0` e feedback geral completo. O primeiro marco full
 recente continua sendo o smoke de 6 etapas com GPT-5.4 Mini (`gpt54mini001`) na
 atividade `Smoke Paulo Pipeline 2026-05-16`: task `task_a5f0d734f0b3`, aluna
 Diana Omega, hash live `2cad38a`, etapas `extrair_questoes`,
@@ -2121,6 +2127,41 @@ Critério de pronto: lista de limpeza segura e revisada.
   schema de `CORRIGIR` nao passa no caminho runtime. Proximo ciclo deve decidir
   entre smoke barato sem IA, smoke de provider existente, ou seguir para parciais
   verdes/status historico.
+
+### 2026-05-17 -- Smoke oficial reduzido confirma `corrigir` no runtime `45f5cf8`
+
+- Alvo: validar no site oficial, com provider real, que o endurecimento do Path
+  2 nao quebrou a etapa `corrigir` quando o modelo gera JSON/PDF validos, e que
+  retry inconsistente fica marcado como erro em vez de falso sucesso.
+- Fixture: atividade `f68d57a9a339081f` (`Smoke Paulo Pipeline 2026-05-16`),
+  aluna `10d9fa4f4303ea1f` (Diana Omega), modelo `gpt54mini001`, apenas
+  `selected_steps=["corrigir"]`, `force_rerun=true`.
+- Deploy: `/api/deploy-info` confirmou `45f5cf8`;
+  `./scripts/check_deploy.sh 45f5cf8` passou; `/api/health` respondeu
+  `{"status":"healthy","supabase":true}`.
+- Task: `task_42e3b303c39a` terminou `completed`, com `corrigir=completed` e
+  `stage_errors={}`.
+- Artefatos: JSON `776b70be01c24641`, PDF final `12dbdc65d469e982` e PDF
+  intermediario `204a8a5c3f81af97` marcado `status=erro` por
+  `pdf_json_consistency`. Isso e retry explicito, nao fallback: o modelo nao foi
+  trocado e o erro ficou persistido no custo/resumo.
+- Conteudo validado: JSON com `nota_final=8.0`, quatro questoes, Q3 `0.0/2.0`,
+  `total_acertos=3`, `total_erros=1`, `_avisos_documento=[]`,
+  `_avisos_questao=[]`, `_avisos_stage=CORRIGIR`. O PDF final extraido por
+  `pdftotext` repete `Nota final 8.0`, notas por questao e feedback geral.
+- Custos: `/api/custos/resumo?limit=80` agrupou o run
+  `tool_9cf805ce976a` com provider `openai`, modelo `gpt-5.4-mini`,
+  `tokens_entrada=26251`, `tokens_saida=4582`, `tokens_total=30833`,
+  `custo_usd=0.040307`.
+- Bloqueio ainda aberto: `/api/custos/status?limit=80` continua `ok=false`,
+  `custos_persistencia_status=parcial_sem_token_usage_duravel` e Supabase
+  `PGRST205` para `public.token_usage`. Custo de documento final esta medido;
+  custo de falha sem documento final ainda nao e duravel.
+- Status: GPT-5.4 Mini segue confirmado para `corrigir` nessa fixture simples
+  pos-`45f5cf8`. Proximo ciclo tecnico deve atacar um bloqueador ainda aberto,
+  nao repetir Rio 3: ou ampliar os testes de schema runtime para
+  `ANALISAR_HABILIDADES`/`GERAR_RELATORIO`, ou resolver a durabilidade
+  Supabase de `token_usage` quando houver credencial/admin.
 
 ## Riscos Abertos
 

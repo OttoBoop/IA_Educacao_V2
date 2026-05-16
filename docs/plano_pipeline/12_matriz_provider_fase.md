@@ -16,14 +16,14 @@
 `01fb04c`, `6b57ef1`, `3b9eedc`, `b8b8693`, `283e8c6`, `1ce3d23`,
 `2d72c6b`, `f2211bb`, `5a3daca`, `92bd095`, `f6b040c`, `2cad38a`,
 `2885da7`, `99b8c3c`, `392ec7c`, `460643f`, `54d083e`,
-`854cec7`, `b07472f`
+`854cec7`, `b07472f`, `dc5884f`, `0d5ab9d`, `c870ed4`, `45f5cf8`
 
 ## Status Oficial De Deploy
 
 - O servico oficial em 2026-05-17 e
   `srv-d5t8gbh4tr6s738fr3s0` (`IA_Educacao_V2`), branch `main`,
   `rootDir=backend`, URL `https://ia-educacao-v2.onrender.com`.
-- `/api/deploy-info` confirmou o runtime backend `54d083e` com
+- `/api/deploy-info` confirmou o runtime backend `45f5cf8` com
   `source=RENDER_GIT_COMMIT`; esse e o gate primario atual.
 - O HTML marker pode ficar stale e nao prova runtime antigo: commits de
   frontend/docs/marker podem nao disparar deploy quando o servico Render usa
@@ -69,7 +69,7 @@
 - `origin/main` tambem contem a migration dedicada `b2dc88b`
   (`backend/migrations/002_create_token_usage.sql`), ainda nao aplicada ao
   Supabase de producao.
-- Render live agora chegou a `54d083e` por `/api/deploy-info`; marker HTML segue
+- Render live agora chegou a `45f5cf8` por `/api/deploy-info`; marker HTML segue
   apenas auxiliar.
 - Docs antigos registram que auto-deploy Git nao funciona de forma confiavel; o
   ciclo usou deploy via API Render com token local seguro, sem imprimir segredo.
@@ -758,7 +758,12 @@ na fixture simples. Ainda falta pipeline completa de 6 etapas e datasets maiores
   Em `aff2180`, o full smoke `task_299dd8a00517` completou novamente as 6
   etapas com schema de `CORRIGIR` endurecido; `corrigir` trouxe
   `feedback_geral` real no JSON `f4f5a5d1f71a262f`, PDF `54bbdd06a48f9376` e
-  custo total aproximado de `US$ 0.094958`.
+  custo total aproximado de `US$ 0.094958`. Em `45f5cf8`, o smoke reduzido
+  `task_42e3b303c39a` revalidou `corrigir` apos as guardas anti-fallback:
+  JSON `776b70be01c24641`, PDF final `12dbdc65d469e982`, PDF intermediario
+  `204a8a5c3f81af97` marcado `status=erro` por `pdf_json_consistency`, split
+  `26251/4582` e custo `US$ 0.040307`. O PDF final bateu com o JSON
+  (`nota_final=8.0`, Q3 `0.0/2.0`, feedback geral completo).
 - ⏸️ **Claude Haiku 4.5:** Aguardando creditos.
 - 📊 **Confiabilidade Gemini 3 Flash:** extracoes OK; etapas finais ficaram
   ⚠️ depois que `aff2180` endureceu `feedback_geral` em `CORRIGIR`. A
@@ -779,7 +784,7 @@ nem datasets maiores.
 
 **Proximos passos:**
 1. Manter deploy oficial confirmado por `/api/deploy-info` antes de cada smoke
-   novo; o runtime atual confirmado e `99b8c3c`.
+   novo; o runtime atual confirmado e `45f5cf8`.
 2. Aplicar/validar a migration Supabase `token_usage` antes de chamar custo de
    falha sem documento de duravel.
 3. Revalidar matriz por provider/modelo; GPT-5.4 Mini passou 6 etapas em
