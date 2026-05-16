@@ -3807,6 +3807,16 @@ Seja preciso, educativo e construtivo em suas análises."""
                         errors.append(f"JSON {doc_label} sem nota_final numérica")
                     if not isinstance(data.get("questoes"), list) or not data.get("questoes"):
                         errors.append(f"JSON {doc_label} sem lista de questoes")
+                    if not isinstance(data.get("feedback_geral"), str) or not data.get("feedback_geral", "").strip():
+                        errors.append(f"JSON {doc_label} sem feedback_geral textual")
+                    if not _numeric(data.get("total_acertos")):
+                        errors.append(f"JSON {doc_label} sem total_acertos numérico")
+                    if not _numeric(data.get("total_erros")):
+                        errors.append(f"JSON {doc_label} sem total_erros numérico")
+                    if not isinstance(data.get("_avisos_documento"), list):
+                        errors.append(f"JSON {doc_label} sem _avisos_documento como lista")
+                    if not isinstance(data.get("_avisos_questao"), list):
+                        errors.append(f"JSON {doc_label} sem _avisos_questao como lista")
 
                 if expected_document_type == TipoDocumento.ANALISE_HABILIDADES:
                     habilidades = data.get("habilidades")

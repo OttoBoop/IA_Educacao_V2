@@ -1,5 +1,6 @@
 from types import SimpleNamespace
 from unittest.mock import MagicMock
+import json
 
 import pytest
 
@@ -602,7 +603,17 @@ async def test_executar_com_tools_repara_pdf_nao_persistido_com_retry(monkeypatc
     json_path = tmp_path / "correcao.json"
     pdf_path = tmp_path / "correcao.pdf"
     json_path.write_text(
-        '{"nota_final": 7, "questoes": [{"numero": 1, "nota": 3}]}',
+        json.dumps(
+            {
+                "nota_final": 7,
+                "questoes": [{"numero": 1, "nota": 3}],
+                "total_acertos": 1,
+                "total_erros": 0,
+                "feedback_geral": "Bom desempenho geral.",
+                "_avisos_documento": [],
+                "_avisos_questao": [],
+            }
+        ),
         encoding="utf-8",
     )
     import fitz
@@ -692,7 +703,17 @@ async def test_executar_com_tools_repara_pdf_inconsistente_com_json(monkeypatch,
     bad_pdf_path = tmp_path / "correcao_bad.pdf"
     good_pdf_path = tmp_path / "correcao_good.pdf"
     json_path.write_text(
-        '{"nota_final": 8, "questoes": [{"numero": 3, "nota": 0}]}',
+        json.dumps(
+            {
+                "nota_final": 8,
+                "questoes": [{"numero": 3, "nota": 0}],
+                "total_acertos": 3,
+                "total_erros": 1,
+                "feedback_geral": "Bom desempenho geral.",
+                "_avisos_documento": [],
+                "_avisos_questao": [],
+            }
+        ),
         encoding="utf-8",
     )
     write_pdf(
@@ -991,15 +1012,45 @@ async def test_executar_com_tools_repara_correcao_json_array(monkeypatch, tmp_pa
         encoding="utf-8",
     )
     bad_json_path_2.write_text(
-        '[{"nota_final": 8, "questoes": [{"numero": 3, "nota": 0}]}]',
+        json.dumps(
+            {
+                "nota_final": 8,
+                "questoes": [{"numero": 3, "nota": 0}],
+                "total_acertos": 3,
+                "total_erros": 1,
+                "feedback_geral_texto": "Campo errado: precisa ser feedback_geral.",
+                "_avisos_documento": [],
+                "_avisos_questao": [],
+            }
+        ),
         encoding="utf-8",
     )
     stale_json_path.write_text(
-        '{"nota_final": 8, "questoes": [{"numero": 3, "nota": 0}]}',
+        json.dumps(
+            {
+                "nota_final": 8,
+                "questoes": [{"numero": 3, "nota": 0}],
+                "total_acertos": 3,
+                "total_erros": 1,
+                "feedback_geral": "Bom desempenho geral.",
+                "_avisos_documento": [],
+                "_avisos_questao": [],
+            }
+        ),
         encoding="utf-8",
     )
     good_json_path.write_text(
-        '{"nota_final": 8, "questoes": [{"numero": 3, "nota": 0}]}',
+        json.dumps(
+            {
+                "nota_final": 8,
+                "questoes": [{"numero": 3, "nota": 0}],
+                "total_acertos": 3,
+                "total_erros": 1,
+                "feedback_geral": "Bom desempenho geral.",
+                "_avisos_documento": [],
+                "_avisos_questao": [],
+            }
+        ),
         encoding="utf-8",
     )
     pdf = fitz.open()
@@ -1145,6 +1196,11 @@ async def test_executar_com_tools_repara_correcao_json_array(monkeypatch, tmp_pa
         call.args[0] == "doc-json-bad-2"
         and call.kwargs.get("status") == StatusProcessamento.ERRO
         and call.kwargs["metadata_patch"]["erro_tipo"] == "json_schema_validation"
+        for call in executor.storage.atualizar_documento_processamento.call_args_list
+    )
+    assert any(
+        call.args[0] == "doc-json-bad-2"
+        and "feedback_geral" in call.kwargs["metadata_patch"].get("erro_pipeline", "")
         for call in executor.storage.atualizar_documento_processamento.call_args_list
     )
     assert any(
