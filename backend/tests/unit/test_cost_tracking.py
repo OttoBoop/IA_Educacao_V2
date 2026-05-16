@@ -920,7 +920,35 @@ async def test_executar_com_tools_repara_json_schema_invalido(monkeypatch, tmp_p
     good_json_path = tmp_path / "analise_good.json"
     pdf_path = tmp_path / "analise.pdf"
     bad_json_path.write_text('[{"habilidades": [{"nome": "Porcentagem"}]}]', encoding="utf-8")
-    good_json_path.write_text('{"habilidades": [{"nome": "Porcentagem"}]}', encoding="utf-8")
+    good_json_path.write_text(
+        json.dumps(
+            {
+                "habilidades": [
+                    {
+                        "nome": "Porcentagem",
+                        "nivel": "em_desenvolvimento",
+                        "evidencias": ["A questão de porcentagem concentrou o erro."],
+                        "nota": 6.0,
+                    }
+                ],
+                "indicadores": {
+                    "proficiencia_geral": 60.0,
+                    "areas_destaque": [],
+                    "areas_atencao": ["Porcentagem"],
+                },
+                "recomendacoes": [
+                    {
+                        "tipo": "revisao",
+                        "descricao": "Revisar conversão de porcentagens.",
+                        "prioridade": "alta",
+                    }
+                ],
+                "_avisos_documento": [],
+                "_avisos_questao": [],
+            }
+        ),
+        encoding="utf-8",
+    )
     pdf_path.write_bytes(b"%PDF-1.4\n")
 
     class DummyClient:
@@ -1461,7 +1489,25 @@ async def test_executar_com_tools_repara_relatorio_nota_final_divergente(
         encoding="utf-8",
     )
     good_json_path.write_text(
-        json.dumps({"nota_final": 8.0, "resumo_geral": "Resumo corrigido."}),
+        json.dumps(
+            {
+                "nota_final": 8.0,
+                "resumo_geral": "Resumo corrigido.",
+                "pontos_fortes": ["Resolveu três questões corretamente."],
+                "areas_melhoria": ["Porcentagens"],
+                "recomendacoes": [
+                    {
+                        "tipo": "revisao",
+                        "descricao": "Praticar conversão entre porcentagem e fração.",
+                        "prioridade": "alta",
+                    }
+                ],
+                "detalhamento": "A nota final segue a correção oficial.",
+                "_avisos_documento": [],
+                "_avisos_questao": [],
+                "_fontes_utilizadas": ["CORRIGIR", "ANALISAR_HABILIDADES"],
+            }
+        ),
         encoding="utf-8",
     )
 

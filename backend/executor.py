@@ -3958,6 +3958,14 @@ Seja preciso, educativo e construtivo em suas análises."""
                             return False
                     return False
 
+                def _required_list(field: str) -> None:
+                    if not isinstance(data.get(field), list):
+                        errors.append(f"JSON {doc_label} sem {field} como lista")
+
+                def _required_text(field: str) -> None:
+                    if not isinstance(data.get(field), str) or not data.get(field, "").strip():
+                        errors.append(f"JSON {doc_label} sem {field} textual")
+
                 if expected_document_type == TipoDocumento.CORRECAO:
                     if not _numeric(data.get("nota_final")):
                         errors.append(f"JSON {doc_label} sem nota_final numérica")
@@ -3969,21 +3977,30 @@ Seja preciso, educativo e construtivo em suas análises."""
                         errors.append(f"JSON {doc_label} sem total_acertos numérico")
                     if not _numeric(data.get("total_erros")):
                         errors.append(f"JSON {doc_label} sem total_erros numérico")
-                    if not isinstance(data.get("_avisos_documento"), list):
-                        errors.append(f"JSON {doc_label} sem _avisos_documento como lista")
-                    if not isinstance(data.get("_avisos_questao"), list):
-                        errors.append(f"JSON {doc_label} sem _avisos_questao como lista")
+                    _required_list("_avisos_documento")
+                    _required_list("_avisos_questao")
 
                 if expected_document_type == TipoDocumento.ANALISE_HABILIDADES:
                     habilidades = data.get("habilidades")
-                    if not habilidades:
+                    if not isinstance(habilidades, (list, dict)) or not habilidades:
                         errors.append(f"JSON {doc_label} sem lista/dicionário de habilidades")
+                    if not isinstance(data.get("indicadores"), dict):
+                        errors.append(f"JSON {doc_label} sem indicadores como objeto")
+                    _required_list("recomendacoes")
+                    _required_list("_avisos_documento")
+                    _required_list("_avisos_questao")
 
                 if expected_document_type == TipoDocumento.RELATORIO_FINAL:
                     if not _numeric(data.get("nota_final")):
                         errors.append(f"JSON {doc_label} sem nota_final numérica")
-                    if not data.get("resumo_geral"):
-                        errors.append(f"JSON {doc_label} sem resumo_geral")
+                    _required_text("resumo_geral")
+                    _required_list("pontos_fortes")
+                    _required_list("areas_melhoria")
+                    _required_list("recomendacoes")
+                    _required_text("detalhamento")
+                    _required_list("_avisos_documento")
+                    _required_list("_avisos_questao")
+                    _required_list("_fontes_utilizadas")
                     errors.extend(
                         self._validar_relatorio_nota_final_contra_correcao(
                             data,
@@ -4239,8 +4256,9 @@ Seja preciso, educativo e construtivo em suas análises."""
                         "deve ser um OBJETO JSON na raiz, nunca uma lista/array. "
                         "Campos obrigatorios na raiz: resumo_geral, pontos_fortes, "
                         "areas_melhoria, recomendacoes, nota_final, detalhamento, "
-                        "_avisos_documento, _avisos_questao. A nota_final deve ser "
-                        "exatamente a nota_final da CORRECAO oficial mais recente. "
+                        "_avisos_documento, _avisos_questao, _fontes_utilizadas. "
+                        "A nota_final deve ser exatamente a nota_final da CORRECAO "
+                        "oficial mais recente. "
                     )
 
                 return (

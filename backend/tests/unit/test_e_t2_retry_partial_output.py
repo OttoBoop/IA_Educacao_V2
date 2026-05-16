@@ -356,10 +356,46 @@ class TestBothOutputsNoRetry:
                 "sem lista/dicionário de habilidades",
             ),
             (
+                TipoDocumento.ANALISE_HABILIDADES,
+                "analise_habilidades.json",
+                {
+                    "habilidades": [
+                        {
+                            "nome": "Operações com frações",
+                            "nivel": "adequado",
+                            "evidencias": ["Resolveu 3 de 4 questões."],
+                            "nota": 8,
+                        }
+                    ],
+                    "indicadores": {
+                        "proficiencia_geral": 80,
+                        "areas_destaque": ["adição"],
+                        "areas_atencao": ["porcentagem"],
+                    },
+                    "recomendacoes": [],
+                },
+                "sem _avisos_documento como lista",
+            ),
+            (
                 TipoDocumento.RELATORIO_FINAL,
                 "relatorio_final.json",
                 {"resumo_geral": "texto sem nota"},
                 "sem nota_final",
+            ),
+            (
+                TipoDocumento.RELATORIO_FINAL,
+                "relatorio_final.json",
+                {
+                    "resumo_geral": "Diana teve bom desempenho geral.",
+                    "pontos_fortes": ["Organização"],
+                    "areas_melhoria": ["Porcentagens"],
+                    "recomendacoes": [],
+                    "nota_final": 8,
+                    "detalhamento": "Errou apenas a questão de porcentagem.",
+                    "_avisos_documento": [],
+                    "_avisos_questao": [],
+                },
+                "sem _fontes_utilizadas como lista",
             ),
         ],
     )

@@ -4,10 +4,11 @@ from types import SimpleNamespace
 import json
 
 import fitz
+import pytest
 
 from executor import PipelineExecutor, PDF_SANDBOX_RULES, STAGE_TOOL_INSTRUCTIONS
 from models import TipoDocumento
-from prompts import EtapaProcessamento
+from prompts import EtapaProcessamento, PROMPTS_PADRAO
 
 
 def test_corrigir_pdf_instructions_forbid_clipped_feedback():
@@ -52,6 +53,31 @@ def test_core_pdf_instructions_forbid_open_write_and_absolute_paths():
         assert "open(..., 'wb')" in instructions
         assert "canvas.canvas" in instructions
         assert "simpledoctemplate" in instructions
+
+
+@pytest.mark.parametrize(
+    "etapa",
+    (
+        EtapaProcessamento.CORRIGIR,
+        EtapaProcessamento.ANALISAR_HABILIDADES,
+        EtapaProcessamento.GERAR_RELATORIO,
+    ),
+)
+def test_active_stage_prompts_and_tool_instructions_share_warning_contract(etapa):
+    prompt_text = PROMPTS_PADRAO[etapa].texto.lower()
+    instructions = STAGE_TOOL_INSTRUCTIONS[etapa].lower()
+
+    for field in ("_avisos_documento", "_avisos_questao"):
+        assert field in prompt_text
+        assert field in instructions
+
+
+def test_relatorio_prompt_and_tool_instruction_require_lineage():
+    prompt_text = PROMPTS_PADRAO[EtapaProcessamento.GERAR_RELATORIO].texto.lower()
+    instructions = STAGE_TOOL_INSTRUCTIONS[EtapaProcessamento.GERAR_RELATORIO].lower()
+
+    assert "_fontes_utilizadas" in prompt_text
+    assert "_fontes_utilizadas" in instructions
 
 
 def _write_pdf(path, text):

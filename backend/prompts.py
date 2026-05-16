@@ -389,40 +389,51 @@ Princípios que guiam seu trabalho:
 - O raciocínio parcialmente correto revela mais do que a resposta final errada
 - Linguagem construtiva: critique o erro específico, nunca o aluno como pessoa
 - A narrativa não é um resumo do erro — é uma interpretação pedagógica do que aconteceu""",
-        texto="""Corrija a resposta do aluno com rigor e sensibilidade pedagógica.
+        texto="""Corrija a prova do aluno com rigor e sensibilidade pedagógica, usando os dados estruturados das etapas anteriores.
 
-**Questão:**
+**Questões extraídas:**
 {{questao}}
 
-**Resposta Esperada (gabarito):**
+**Gabarito extraído:**
 {{resposta_esperada}}
 
-**Resposta do Aluno:**
+**Respostas do aluno:**
 {{resposta_aluno}}
 
 **Critérios de Correção:**
 {{criterios}}
 
-**Nota Máxima:** {{nota_maxima}} pontos
+**Nota Máxima da atividade:** {{nota_maxima}} pontos
 
 ---
 
-**INSTRUÇÃO CRÍTICA:** Retorne APENAS JSON válido, sem texto adicional antes ou depois.
+**INSTRUÇÃO CRÍTICA:** A execução oficial desta etapa usa ferramentas. Salve a correção JSON pela ferramenta `create_document` e gere o PDF pela ferramenta `execute_python_code`. Não entregue a correção em texto livre na resposta do chat; a saída válida da etapa é o artefato persistido pela ferramenta.
 
 ```json
 {
-  "nota": 0.0,
-  "nota_maxima": {{nota_maxima}},
-  "percentual": 0,
-  "status": "correta|parcial|incorreta|em_branco",
-  "feedback": "Feedback direto e construtivo — o que o aluno fez de certo, o que errou e como melhorar",
-  "pontos_positivos": ["O que o aluno demonstrou corretamente"],
-  "pontos_melhorar": ["O que precisa melhorar, de forma específica e acionável"],
-  "erros_conceituais": ["Erros de conceito identificados, se houver"],
-  "habilidades_demonstradas": ["Habilidades que o aluno evidenciou nesta resposta"],
-  "habilidades_faltantes": ["Habilidades ausentes que explicariam a resposta correta"]
+  "nota_final": 0.0,
+  "questoes": [
+    {
+      "numero": 1,
+      "nota": 0.0,
+      "nota_maxima": 1.0,
+      "acerto": false,
+      "feedback": "Feedback completo, específico e construtivo"
+    }
+  ],
+  "total_acertos": 0,
+  "total_erros": 0,
+  "feedback_geral": "Síntese pedagógica da correção",
+  "_avisos_documento": [
+    {"codigo": "ILLEGIBLE_DOCUMENT|MISSING_CONTENT|LOW_CONFIDENCE", "explicacao": "Descrição do problema no documento"}
+  ],
+  "_avisos_questao": [
+    {"codigo": "ILLEGIBLE_QUESTION|MISSING_CONTENT|LOW_CONFIDENCE", "questao": 3, "explicacao": "Descrição do problema na questão"}
+  ]
 }
-```"""
+```
+
+Use `_avisos_documento` para problemas no documento inteiro e `_avisos_questao` para problemas em questões específicas. Se não houver avisos, envie listas vazias []."""
     ),
     
     EtapaProcessamento.ANALISAR_HABILIDADES: PromptTemplate(
@@ -459,30 +470,27 @@ Produza uma análise estruturada de habilidades para o professor.
 
 ```json
 {
-  "aluno": "{{nome_aluno}}",
-  "resumo_desempenho": "Uma frase que capture o perfil central deste aluno — não apenas a nota",
-  "nota_final": 0.0,
-  "nota_maxima": 10.0,
-  "percentual_acerto": 0,
-  "habilidades": {
-    "dominadas": [
-      {"nome": "Nome da habilidade", "evidencia": "Questões específicas que demonstram domínio"}
-    ],
-    "em_desenvolvimento": [
-      {"nome": "Nome da habilidade", "evidencia": "Questões com acerto parcial — o que foi e o que não foi"}
-    ],
-    "nao_demonstradas": [
-      {"nome": "Nome da habilidade", "evidencia": "Questões em branco ou com erro total — e a distinção: ausência de conteúdo ou erro conceitual"}
-    ]
+  "habilidades": [
+    {"nome": "Nome da habilidade", "nivel": "dominado|em_desenvolvimento|nao_demonstrado", "evidencias": ["Evidência concreta nas correções"], "nota": 0.0}
+  ],
+  "indicadores": {
+    "proficiencia_geral": 0.0,
+    "areas_destaque": ["Área com evidência forte"],
+    "areas_atencao": ["Área que precisa de intervenção"]
   },
   "recomendacoes": [
-    "Recomendação específica e acionável — não genérica",
-    "Segunda recomendação baseada em padrão identificado"
+    {"tipo": "pratica|revisao|intervencao", "descricao": "Recomendação específica e acionável", "prioridade": "alta|media|baixa"}
   ],
-  "pontos_fortes": ["Competência real demonstrada, com evidência"],
-  "areas_atencao": ["Área específica, com tipo de intervenção sugerida"]
+  "_avisos_documento": [
+    {"codigo": "ILLEGIBLE_DOCUMENT|MISSING_CONTENT|LOW_CONFIDENCE", "explicacao": "Descrição do problema no documento"}
+  ],
+  "_avisos_questao": [
+    {"codigo": "ILLEGIBLE_QUESTION|MISSING_CONTENT|LOW_CONFIDENCE", "questao": 3, "explicacao": "Descrição do problema na questão"}
+  ]
 }
-```"""
+```
+
+Use `_avisos_documento` para problemas no documento inteiro e `_avisos_questao` para problemas em questões específicas. Se não houver avisos, envie listas vazias []."""
     ),
     
     EtapaProcessamento.GERAR_RELATORIO: PromptTemplate(
@@ -520,16 +528,29 @@ Princípios inegociáveis:
 
 Produza um JSON estruturado com os dados do relatório.
 
-**INSTRUÇÃO CRÍTICA:** Retorne APENAS JSON válido, sem texto adicional antes ou depois.
+**INSTRUÇÃO CRÍTICA:** A execução oficial desta etapa usa ferramentas. Salve o relatório JSON pela ferramenta `create_document` e gere o PDF pela ferramenta `execute_python_code`. Não entregue o relatório em texto livre na resposta do chat; a saída válida da etapa é o artefato persistido pela ferramenta.
 
+```json
 {
-  "conteudo": "# Relatório de Desempenho — {{nome_aluno}}\\n\\n**{{materia}} — {{atividade}}**\\n**Nota: {{nota_final}}**\\n\\n## Resumo\\n[Síntese do desempenho]\\n\\n## Desempenho por Questão\\n[Tabela ou lista estruturada]\\n\\n## Análise de Habilidades\\n[Habilidades dominadas, em desenvolvimento, ausentes]\\n\\n## Recomendações\\n[Lista de próximos passos]",
-  "resumo_executivo": "Uma frase que captura quem é este aluno nesta prova — não apenas a nota",
-  "nota_final": "{{nota_final}}",
-  "aluno": "{{nome_aluno}}",
-  "materia": "{{materia}}",
-  "atividade": "{{atividade}}"
-}"""
+  "resumo_geral": "Síntese narrativa do desempenho do aluno",
+  "pontos_fortes": ["Competência real demonstrada"],
+  "areas_melhoria": ["Área específica que precisa de melhoria"],
+  "recomendacoes": [
+    {"tipo": "pratica|revisao|intervencao", "descricao": "Próximo passo pedagógico concreto", "prioridade": "alta|media|baixa"}
+  ],
+  "nota_final": {{nota_final}},
+  "detalhamento": "Detalhamento textual com base nas correções e na análise de habilidades",
+  "_avisos_documento": [
+    {"codigo": "ILLEGIBLE_DOCUMENT|MISSING_CONTENT|LOW_CONFIDENCE", "explicacao": "Descrição do problema no documento"}
+  ],
+  "_avisos_questao": [
+    {"codigo": "ILLEGIBLE_QUESTION|MISSING_CONTENT|LOW_CONFIDENCE", "questao": 3, "explicacao": "Descrição do problema na questão"}
+  ],
+  "_fontes_utilizadas": ["CORRIGIR", "ANALISAR_HABILIDADES"]
+}
+```
+
+Use `_avisos_documento` para problemas no documento inteiro e `_avisos_questao` para problemas em questões específicas. Se não houver avisos, envie listas vazias []. Liste em `_fontes_utilizadas` as etapas upstream realmente usadas."""
     ),
     
     EtapaProcessamento.CHAT_GERAL: PromptTemplate(
