@@ -17,14 +17,14 @@
 `2d72c6b`, `f2211bb`, `5a3daca`, `92bd095`, `f6b040c`, `2cad38a`,
 `2885da7`, `99b8c3c`, `392ec7c`, `460643f`, `54d083e`,
 `854cec7`, `b07472f`, `dc5884f`, `0d5ab9d`, `c870ed4`, `45f5cf8`,
-`4094bda`
+`4094bda`, `4d8f73d`
 
 ## Status Oficial De Deploy
 
 - O servico oficial em 2026-05-17 e
   `srv-d5t8gbh4tr6s738fr3s0` (`IA_Educacao_V2`), branch `main`,
   `rootDir=backend`, URL `https://ia-educacao-v2.onrender.com`.
-- `/api/deploy-info` confirmou o runtime backend `4094bda` com
+- `/api/deploy-info` confirmou o runtime backend `4d8f73d` com
   `source=RENDER_GIT_COMMIT`; esse e o gate primario atual.
 - O HTML marker pode ficar stale e nao prova runtime antigo: commits de
   frontend/docs/marker podem nao disparar deploy quando o servico Render usa
@@ -70,7 +70,7 @@
 - `origin/main` tambem contem a migration dedicada `b2dc88b`
   (`backend/migrations/002_create_token_usage.sql`), ainda nao aplicada ao
   Supabase de producao.
-- Render live agora chegou a `4094bda` por `/api/deploy-info`; marker HTML segue
+- Render live agora chegou a `4d8f73d` por `/api/deploy-info`; marker HTML segue
   apenas auxiliar.
 - Docs antigos registram que auto-deploy Git nao funciona de forma confiavel; o
   ciclo usou deploy via API Render com token local seguro, sem imprimir segredo.
@@ -767,7 +767,9 @@ na fixture simples. Ainda falta pipeline completa de 6 etapas e datasets maiores
   (`nota_final=8.0`, Q3 `0.0/2.0`, feedback geral completo). O commit
   `4094bda` nao muda a matriz por provider, mas adiciona cobertura unitária
   para impedir regressao do mesmo guard em `ANALISAR_HABILIDADES` e
-  `GERAR_RELATORIO`.
+  `GERAR_RELATORIO`. O commit `4d8f73d` tambem nao muda a matriz, mas cobre
+  D02-10: PDF duplicado/stale em retry dual-output deve virar
+  `status=erro`/`stale_tool_artifact`, tal como JSON stale.
 - ⏸️ **Claude Haiku 4.5:** Aguardando creditos.
 - 📊 **Confiabilidade Gemini 3 Flash:** extracoes OK; etapas finais ficaram
   ⚠️ depois que `aff2180` endureceu `feedback_geral` em `CORRIGIR`. A
@@ -788,7 +790,7 @@ nem datasets maiores.
 
 **Proximos passos:**
 1. Manter deploy oficial confirmado por `/api/deploy-info` antes de cada smoke
-   novo; o runtime atual confirmado e `4094bda`.
+   novo; o runtime atual confirmado e `4d8f73d`.
 2. Aplicar/validar a migration Supabase `token_usage` antes de chamar custo de
    falha sem documento de duravel.
 3. Revalidar matriz por provider/modelo; GPT-5.4 Mini passou 6 etapas em

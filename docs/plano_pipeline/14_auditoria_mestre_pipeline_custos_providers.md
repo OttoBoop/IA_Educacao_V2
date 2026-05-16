@@ -10,10 +10,10 @@ um deve ser lido, o que ainda vale, o que ficou historico, e quais fatos precisa
 guiar os proximos ciclos.
 
 Atualizacao de controle de 2026-05-17: o site oficial esta em runtime backend
-`4094bda` por `/api/deploy-info` e `check_deploy.sh`. O commit funcional
+`4d8f73d` por `/api/deploy-info` e `check_deploy.sh`. O commit funcional
 `45f5cf8` fechou schema runtime fora do contrato; `4094bda` publica a cobertura
-unitária anti-regressao para `ANALISAR_HABILIDADES` e `GERAR_RELATORIO`. O
-smoke reduzido
+unitária anti-regressao para `ANALISAR_HABILIDADES` e `GERAR_RELATORIO`;
+`4d8f73d` cobre PDF duplicado/stale em retry dual-output. O smoke reduzido
 `task_42e3b303c39a` revalidou `corrigir` com GPT-5.4 Mini (`gpt54mini001`) na
 fixture Diana Omega: JSON `776b70be01c24641`, PDF final `12dbdc65d469e982`,
 PDF intermediario `204a8a5c3f81af97` marcado `status=erro` por
@@ -237,7 +237,9 @@ detalhar e auditar estas linhas.
    quando o JSON/PDF sao validos, e que o PDF inconsistente anterior fica como
    erro persistido, nao sucesso silencioso. O commit `4094bda` adicionou teste
    unitário para provar que o mesmo guard falha alto em `ANALISAR_HABILIDADES`
-   sem `habilidades` e em `GERAR_RELATORIO` sem `nota_final`.
+   sem `habilidades` e em `GERAR_RELATORIO` sem `nota_final`; `4d8f73d`
+   adicionou teste para provar que PDF stale de retry dual-output tambem vira
+   `status=erro`, nao artefato oficial.
 10. O proximo eixo correto e aplicar `backend/migrations/002_create_token_usage.sql`
     no Supabase, ampliar a revalidacao por etapa/provider e endurecer o contrato
     contra schema ruim. Enquanto a migration nao for aplicada, `460643f` faz
@@ -250,7 +252,7 @@ detalhar e auditar estas linhas.
 | Frente | Temos hoje | Limite da afirmacao |
 |---|---|---|
 | Documentacao | Doc 09 como painel curto; Doc 14 como auditoria mestre; Doc 05/12 com notas de status | Manter Doc 09 curto e Doc 14 detalhado; registrar novos ciclos sem criar doc extra. |
-| Git/GitHub | `/api/deploy-info` confirmou runtime `4094bda`; `origin/main` esta alinhado com os fixes de dashboard de custo, tool-use Google faseado, consistencia PDF/JSON por feedback coerente, erro por aluno/etapa na sidebar, bloqueio anti-`nota_final=N/A`, guarda contra PDF auto-fallback, rejeicao de JSON embrulhado em Markdown/prosa, retorno Path 2 com etapa real/JSON parseado, schema minimo runtime e cobertura anti-regressao para etapas tardias | Nao usar somente marker HTML como gate quando Render `rootDir=backend` ignora commits sem backend; combinar `/api/deploy-info`, deploy list quando disponivel e comportamento live. |
+| Git/GitHub | `/api/deploy-info` confirmou runtime `4d8f73d`; `origin/main` esta alinhado com os fixes de dashboard de custo, tool-use Google faseado, consistencia PDF/JSON por feedback coerente, erro por aluno/etapa na sidebar, bloqueio anti-`nota_final=N/A`, guarda contra PDF auto-fallback, rejeicao de JSON embrulhado em Markdown/prosa, retorno Path 2 com etapa real/JSON parseado, schema minimo runtime, cobertura anti-regressao para etapas tardias e cobertura de PDF stale | Nao usar somente marker HTML como gate quando Render `rootDir=backend` ignora commits sem backend; combinar `/api/deploy-info`, deploy list quando disponivel e comportamento live. |
 | Pipeline P4 | Bloqueio de extracao de respostas sem prova valida esta no codigo publicado | Precisa smoke dedicado apenas se P4 voltar a ser alvo. |
 | Pipeline P5/P6 | Preservacao de `_documentos_faltantes`; `ad7e00e` bloqueia `GERAR_RELATORIO` sem `nota_final` numerica confiavel | Ainda falta caçar outros fallbacks antigos, mas `nota_final=N/A` nao e mais aceite final no executor de relatório. |
 | Schema/avisos | Defaults `_avisos_*`, visualizador melhorado e schemas mais permissivos | Permissividade nao e contrato forte; pode aceitar legado demais. |
@@ -384,7 +386,7 @@ fila de tarefas. Cada item abaixo deve ser entendido como contrato herdado.
 
 | # | Tarefa clara herdada do Doc 02 | Status real | Evidencia/observacao | Proximo ciclo/teste |
 |---|---|---|---|---|
-| D02-1 | Path 2 deve parsear e validar JSON de `create_document` antes de sucesso | Parcial forte | JSON invalido agora falha antes do storage (`39aa50a`); `0d5ab9d` rejeita JSON de etapa quando ele vem embrulhado em Markdown/prosa ou array na raiz; `45f5cf8` aplica schema minimo tambem ao payload runtime de `create_document` | Proximo teste: cobrir ANALISAR/GERAR runtime fora do schema e duplicatas/stale. |
+| D02-1 | Path 2 deve parsear e validar JSON de `create_document` antes de sucesso | Parcial forte | JSON invalido agora falha antes do storage (`39aa50a`); `0d5ab9d` rejeita JSON de etapa quando ele vem embrulhado em Markdown/prosa ou array na raiz; `45f5cf8` aplica schema minimo tambem ao payload runtime de `create_document`; `4094bda` cobre `ANALISAR_HABILIDADES`/`GERAR_RELATORIO` runtime fora do schema | Proximo teste: smoke provider/site e qualidade semantica, nao so schema. |
 | D02-2 | `executar_com_tools()` deve retornar etapa real, `resposta_parsed` e `documento_id` | Parcial forte | `c870ed4` faz sucesso de tool-use retornar etapa real por `expected_document_type`, JSON parseado e `documento_id` quando ha JSON persistido; `45f5cf8` impede sucesso com JSON runtime fora de schema minimo | Proximo teste: retorno valido com storage persistido real e smoke provider/site. |
 | D02-3 | Resolver conflito `PROMPTS_PADRAO` vs `STAGE_TOOL_INSTRUCTIONS` | Aberto | Validacao aceita formatos, mas prompt legado ainda pode orientar modelo ao schema errado | Teste: prompt ativo de Path 2 contem apenas contrato esperado ou marca legado como fora do caminho ativo. |
 | D02-4 | `_avisos_documento`, `_avisos_questao`, `_avisos_stage` devem ser confiaveis | Parcial | Defaults foram injetados; visualizador melhorou; ainda falta distinguir default de output real do modelo | Teste: ausencia de `_avisos_*` em JSON de IA gera alerta de schema/default, nao sucesso silencioso. |
@@ -393,7 +395,7 @@ fila de tarefas. Cada item abaixo deve ser entendido como contrato herdado.
 | D02-7 | Metadata dos documentos deve ter provider/modelo/tokens/tempo | Parcial live | Documentos recentes de Gemini/Nano carregam provider/modelo/tokens/custo; falta cobrir todas as etapas e falhas | Teste: documento gerado por IA tem `ia_provider`, `ia_modelo`, `tokens_usados`, `tempo_processamento_ms` em cada etapa. |
 | D02-8 | Provider sem tools nao pode cair em chat simples | Parcialmente fechado | `chat_service.py` agora falha explicitamente; manter contrato | Teste: provider sem function calling em etapa tool-use falha antes de criar artefato. |
 | D02-9 | PDF obrigatorio ausente nao pode virar sucesso enganoso | Feito/guardado | O executor atual falha alto quando a saida dual esta incompleta; `dc5884f` estabilizou `test_f7_t1_pdf_auto_fallback.py` para provar JSON-only sem PDF como erro, sem falso vermelho de mock | Manter teste P0 em toda mudanca de `executar_com_tools`; se provider voltar a gerar parcial verde, corrigir no ciclo. |
-| D02-10 | Retry dual-output nao pode duplicar/mascarar documentos | Parcial | Artefato extra nao-JSON foi bloqueado; duplicata JSON/retry ainda precisa auditoria | Teste: retry cria no maximo um JSON principal por etapa ou marca duplicata como erro. |
+| D02-10 | Retry dual-output nao pode duplicar/mascarar documentos | Parcial forte | Artefato extra nao-JSON foi bloqueado; JSON stale ja era marcado como erro; `4d8f73d` prova que PDF stale tambem vira `status=erro`/`stale_tool_artifact` | Proximo teste: smoke provider/site e UI/historico mostrando apenas artefatos oficiais como verdes. |
 | D02-11 | GPT-5 Nano-like output lixo deve falhar cedo | Parcial | Historico gerou lixo; fixes agora rejeitam tool ausente, JSON invalido e payload malformado | Teste fixture Nano-like fora do schema minimo falha em CORRIGIR antes de ANALISAR/GERAR. |
 | D02-12 | `GERAR_RELATORIO` precisa de schema unico e nota confiavel | Parcial | `ad7e00e` faz relatorio sem nota confiavel falhar alto; formatos legado/tool-use ainda coexistem | Proximo teste: schema ativo e unico, sem permissividade legado excessiva. |
 
@@ -3371,7 +3373,7 @@ claro. O que ainda existe para fazer:
 
 | Item | Tipo | Por que ainda falta |
 |---|---|---|
-| Ciclo anti-fallback | Codigo/testes | `nota_final=N/A` em relatório foi fechado em `ad7e00e`; PDF auto-fallback foi reclassificado como guardado em `dc5884f`; JSON embrulhado em Markdown/prosa foi bloqueado em `0d5ab9d`; retorno Path 2 basico foi melhorado em `c870ed4`; schema minimo runtime de `CORRIGIR` foi bloqueado em `45f5cf8`; smoke oficial `task_42e3b303c39a` confirmou sucesso real de `corrigir` com PDF intermediario inconsistente marcado como erro; `4094bda` adicionou cobertura para `ANALISAR_HABILIDADES`/`GERAR_RELATORIO` runtime fora do schema; ainda restam parciais/duplicatas/stale e smokes de matriz. |
+| Ciclo anti-fallback | Codigo/testes | `nota_final=N/A` em relatório foi fechado em `ad7e00e`; PDF auto-fallback foi reclassificado como guardado em `dc5884f`; JSON embrulhado em Markdown/prosa foi bloqueado em `0d5ab9d`; retorno Path 2 basico foi melhorado em `c870ed4`; schema minimo runtime de `CORRIGIR` foi bloqueado em `45f5cf8`; smoke oficial `task_42e3b303c39a` confirmou sucesso real de `corrigir` com PDF intermediario inconsistente marcado como erro; `4094bda` adicionou cobertura para `ANALISAR_HABILIDADES`/`GERAR_RELATORIO` runtime fora do schema; `4d8f73d` adicionou cobertura para PDF stale; ainda restam smokes de matriz e UI/historico obedecendo `status=erro`. |
 | Settings de modelos | Codigo/testes/deploy | `from-catalog` deu 500 e create ignorou capabilities no site live; patch `b16e051` ja foi deployado e retestado; cadastro por API sumiu no deploy, mas o modelo versionado `gpt54mini001` apareceu no site em `be19b7e` e passou teste de conexao. |
 | Metadata/custo real | Codigo/testes/deploy | Metadata e endpoints existem no site; full smoke GPT-5.4 Mini mediu custo por etapa; smoke `task_42e3b303c39a` mediu `26251/4582` tokens e `US$ 0.040307`; Supabase `token_usage` segue ausente (`PGRST205`), `local_record_count=0` depois de deploy e custo de falha sem documento ainda nao e duravel. |
 | Provider revalidation | Smoke/producao | Matriz Doc 12 registra GPT-5.4 Mini full smoke em fixture simples, GPT-4o full smoke (`task_68b19146a95b`) e Gemini 2.5 Flash com extracoes OK/tool-use corrigido mas bloqueado por quota; continua incompleta ate novos smokes por provider/rota/dataset. |
