@@ -2798,6 +2798,99 @@ Regras obrigatórias:
         ctx = context or {}
         global _validar_json_pipeline, HAS_VALIDATION
 
+        etapa_nome = ctx.get("stage")
+        if isinstance(etapa_nome, EtapaProcessamento):
+            etapa_nome = etapa_nome.value
+
+        def _json_raiz_invalida(data: Any) -> Dict[str, Any]:
+            tipo = type(data).__name__
+            _logger.warning(
+                "JSON da IA tem raiz invalida para etapa de pipeline",
+                stage=ctx.get("stage"),
+                provider=ctx.get("provider"),
+                tipo_raiz=tipo,
+                raw_response=truncate_for_log(resposta, 300),
+            )
+            return {
+                "_error": "invalid_json_root",
+                "_message": (
+                    "JSON da IA deve ser um objeto na raiz para esta etapa; "
+                    f"recebido {tipo}."
+                ),
+                "_raw": resposta[:1000],
+            }
+
+        def _json_envelopado(origem: str) -> Dict[str, Any]:
+            _logger.warning(
+                "JSON valido encontrado dentro de envelope proibido",
+                stage=ctx.get("stage"),
+                provider=ctx.get("provider"),
+                origem=origem,
+                raw_response=truncate_for_log(resposta, 300),
+            )
+            return {
+                "_error": "invalid_json_envelope",
+                "_message": (
+                    "A resposta contem JSON valido, mas veio com Markdown, "
+                    "comentarios ou texto ao redor. A etapa exige APENAS JSON "
+                    "cru, sem envelope."
+                ),
+                "_raw": resposta[:1000],
+                "_attempts": ["direct", origem],
+            }
+
+        def _finalizar_json(data: Any, origem: str, raw_fragment: str) -> Any:
+            global _validar_json_pipeline, HAS_VALIDATION
+
+            if data == {} or data == []:
+                _logger.warning(
+                    "JSON vazio retornado pela IA",
+                    stage=ctx.get("stage"),
+                    provider=ctx.get("provider"),
+                    origem=origem,
+                    raw_response=truncate_for_log(raw_fragment, 200),
+                )
+                return {"_error": "empty_json", "_message": "JSON vazio {}", "_raw": raw_fragment[:500]}
+
+            if etapa_nome and not isinstance(data, dict):
+                return _json_raiz_invalida(data)
+
+            if isinstance(data, dict) and HAS_VALIDATION and etapa_nome:
+                try:
+                    if _validar_json_pipeline is None:
+                        from pipeline_validation import validar_json_pipeline as vjp
+                        _validar_json_pipeline = vjp
+                        HAS_VALIDATION = True
+
+                    resultado_validacao = _validar_json_pipeline(etapa_nome, data)
+                    if isinstance(resultado_validacao, dict) and resultado_validacao.get("_error"):
+                        _logger.warning(
+                            "JSON parseado mas falhou na validação estrutural",
+                            stage=ctx.get("stage"),
+                            provider=ctx.get("provider"),
+                            origem=origem,
+                            validation_error=resultado_validacao.get("_message"),
+                            raw_response=truncate_for_log(raw_fragment, 300),
+                        )
+                        data["_validation_warning"] = resultado_validacao.get("_message")
+                    else:
+                        _logger.debug(
+                            "JSON validado com sucesso",
+                            stage=ctx.get("stage"),
+                            provider=ctx.get("provider"),
+                            origem=origem,
+                        )
+                except Exception as ve:
+                    _logger.warning(
+                        "Erro durante validação JSON",
+                        stage=ctx.get("stage"),
+                        origem=origem,
+                        validation_error=str(ve),
+                    )
+                    data["_validation_error"] = str(ve)
+
+            return data
+
         # Validar resposta vazia
         if not resposta:
             _logger.warning(
@@ -2820,54 +2913,7 @@ Regras obrigatórias:
         # Tentativa 1: Parsear diretamente
         try:
             data = json.loads(resposta)
-            # Validar JSON vazio
-            if data == {} or data == []:
-                _logger.warning(
-                    "JSON vazio retornado pela IA",
-                    stage=ctx.get("stage"),
-                    provider=ctx.get("provider"),
-                    raw_response=truncate_for_log(resposta, 200)
-                )
-                return {"_error": "empty_json", "_message": "JSON vazio {}", "_raw": resposta[:500]}
-
-            # Validar estrutura com Pydantic se disponível
-            if HAS_VALIDATION and ctx.get("stage"):
-                try:
-                    if _validar_json_pipeline is None:
-                        from pipeline_validation import validar_json_pipeline as vjp
-                        _validar_json_pipeline = vjp
-                        HAS_VALIDATION = True
-
-                    etapa_nome = ctx.get("stage")
-                    if isinstance(etapa_nome, EtapaProcessamento):
-                        etapa_nome = etapa_nome.value
-
-                    resultado_validacao = _validar_json_pipeline(etapa_nome, data)
-                    if isinstance(resultado_validacao, dict) and resultado_validacao.get("_error"):
-                        _logger.warning(
-                            "JSON parseado mas falhou na validação estrutural",
-                            stage=ctx.get("stage"),
-                            provider=ctx.get("provider"),
-                            validation_error=resultado_validacao.get("_message"),
-                            raw_response=truncate_for_log(resposta, 300)
-                        )
-                        # Retornar dados parseados mesmo com erro de validação, mas incluir aviso
-                        data["_validation_warning"] = resultado_validacao.get("_message")
-                    else:
-                        _logger.debug(
-                            "JSON validado com sucesso",
-                            stage=ctx.get("stage"),
-                            provider=ctx.get("provider")
-                        )
-                except Exception as ve:
-                    _logger.warning(
-                        "Erro durante validação JSON",
-                        stage=ctx.get("stage"),
-                        validation_error=str(ve)
-                    )
-                    data["_validation_error"] = str(ve)
-
-            return data
+            return _finalizar_json(data, "direct", resposta)
         except json.JSONDecodeError as e:
             _logger.debug(
                 f"Parsing direto falhou: {e.msg} na posição {e.pos}",
@@ -2881,49 +2927,9 @@ Regras obrigatórias:
             if json_str:
                 try:
                     data = json.loads(json_str)
-                    if data == {} or data == []:
-                        _logger.warning(
-                            "JSON vazio extraído de bloco de código",
-                            stage=ctx.get("stage")
-                        )
-                        return {"_error": "empty_json", "_message": "JSON vazio em bloco ```"}
-
-                    # Validar estrutura com Pydantic se disponível
-                    if HAS_VALIDATION and ctx.get("stage"):
-                        try:
-                            if _validar_json_pipeline is None:
-                                from pipeline_validation import validar_json_pipeline as vjp
-                                _validar_json_pipeline = vjp
-                                HAS_VALIDATION = True
-
-                            etapa_nome = ctx.get("stage")
-                            if isinstance(etapa_nome, EtapaProcessamento):
-                                etapa_nome = etapa_nome.value
-
-                            resultado_validacao = _validar_json_pipeline(etapa_nome, data)
-                            if isinstance(resultado_validacao, dict) and resultado_validacao.get("_error"):
-                                _logger.warning(
-                                    "JSON extraído de bloco mas falhou na validação estrutural",
-                                    stage=ctx.get("stage"),
-                                    provider=ctx.get("provider"),
-                                    validation_error=resultado_validacao.get("_message")
-                                )
-                                data["_validation_warning"] = resultado_validacao.get("_message")
-                            else:
-                                _logger.debug(
-                                    "JSON de bloco de código validado com sucesso",
-                                    stage=ctx.get("stage"),
-                                    provider=ctx.get("provider")
-                                )
-                        except Exception as ve:
-                            _logger.warning(
-                                "Erro durante validação JSON de bloco",
-                                stage=ctx.get("stage"),
-                                validation_error=str(ve)
-                            )
-                            data["_validation_error"] = str(ve)
-
-                    return data
+                    if etapa_nome:
+                        return _json_envelopado("code_block")
+                    return _finalizar_json(data, "code_block", json_str)
                 except json.JSONDecodeError as e:
                     _logger.debug(
                         f"Parsing de bloco ``` falhou: {e.msg}",
@@ -2938,43 +2944,9 @@ Regras obrigatórias:
                     data = json.loads(match.group())
                     if data == {} or data == []:
                         continue  # Tentar próximo pattern
-
-                    # Validar estrutura com Pydantic se disponível
-                    if HAS_VALIDATION and ctx.get("stage"):
-                        try:
-                            if _validar_json_pipeline is None:
-                                from pipeline_validation import validar_json_pipeline as vjp
-                                _validar_json_pipeline = vjp
-                                HAS_VALIDATION = True
-
-                            etapa_nome = ctx.get("stage")
-                            if isinstance(etapa_nome, EtapaProcessamento):
-                                etapa_nome = etapa_nome.value
-
-                            resultado_validacao = _validar_json_pipeline(etapa_nome, data)
-                            if isinstance(resultado_validacao, dict) and resultado_validacao.get("_error"):
-                                _logger.warning(
-                                    "JSON extraído por regex mas falhou na validação estrutural",
-                                    stage=ctx.get("stage"),
-                                    provider=ctx.get("provider"),
-                                    validation_error=resultado_validacao.get("_message")
-                                )
-                                data["_validation_warning"] = resultado_validacao.get("_message")
-                            else:
-                                _logger.debug(
-                                    "JSON por regex validado com sucesso",
-                                    stage=ctx.get("stage"),
-                                    provider=ctx.get("provider")
-                                )
-                        except Exception as ve:
-                            _logger.warning(
-                                "Erro durante validação JSON por regex",
-                                stage=ctx.get("stage"),
-                                validation_error=str(ve)
-                            )
-                            data["_validation_error"] = str(ve)
-
-                    return data
+                    if etapa_nome:
+                        return _json_envelopado("regex")
+                    return _finalizar_json(data, "regex", match.group())
                 except json.JSONDecodeError:
                     continue
 

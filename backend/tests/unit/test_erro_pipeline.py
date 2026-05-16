@@ -802,6 +802,44 @@ class TestF2T1_ErrorFramework:
 
         assert parsed["_error"] == "parse_failed"
 
+    def test_parsear_resposta_rejeita_json_em_markdown_com_stage(self):
+        """JSON em bloco Markdown deve falhar quando a etapa exige JSON cru."""
+        from executor import PipelineExecutor
+
+        executor = PipelineExecutor.__new__(PipelineExecutor)
+        parsed = executor._parsear_resposta(
+            '```json\n{"respostas":[{"questao_numero":1,"resposta_correta":"A"}]}\n```',
+            context={"stage": "extrair_gabarito", "provider": "teste"},
+        )
+
+        assert parsed["_error"] == "invalid_json_envelope"
+        assert "APENAS JSON cru" in parsed["_message"]
+
+    def test_parsear_resposta_rejeita_texto_ao_redor_de_json_com_stage(self):
+        """Regex nao deve transformar prosa com JSON embutido em sucesso verde."""
+        from executor import PipelineExecutor
+
+        executor = PipelineExecutor.__new__(PipelineExecutor)
+        parsed = executor._parsear_resposta(
+            'Claro, segue o JSON: {"respostas":[{"questao_numero":1,"resposta_correta":"A"}]}',
+            context={"stage": "extrair_gabarito", "provider": "teste"},
+        )
+
+        assert parsed["_error"] == "invalid_json_envelope"
+
+    def test_parsear_resposta_rejeita_array_na_raiz_com_stage_sem_crash(self):
+        """Array na raiz nao e schema de etapa e deve falhar alto sem exception."""
+        from executor import PipelineExecutor
+
+        executor = PipelineExecutor.__new__(PipelineExecutor)
+        parsed = executor._parsear_resposta(
+            '[{"nota_final": 8, "questoes": []}]',
+            context={"stage": "corrigir", "provider": "teste"},
+        )
+
+        assert parsed["_error"] == "invalid_json_root"
+        assert "objeto na raiz" in parsed["_message"]
+
     def test_criar_erro_pipeline_severidade_accepts_string(self):
         """criar_erro_pipeline() works when severidade is passed as string too."""
         from models import criar_erro_pipeline
