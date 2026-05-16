@@ -5,10 +5,9 @@
 (`126e8b5ad7dd6d59`), smoke simples oficial `Smoke Paulo Pipeline 2026-05-16`
 (`f68d57a9a339081f`) e atividade textual `Prova 1 - Equações do 1º Grau`
 (`8f58cc8b5fb75869`)
-**Runtime oficial atual:** backend Render em `0bcff27`; `origin/main` recebeu o
-ciclo funcional `0bcff27` para aceitar resposta em branco somente quando ela e
-rastreavel pela `EXTRACAO_RESPOSTAS`, e o re-smoke Beatriz
-`task_a305397df882` confirmou seis etapas no site oficial. Use
+**Runtime oficial atual:** backend Render em `9b68de1`; `origin/main` recebeu o
+ciclo funcional `9b68de1` para impedir falso `completed` em batch com falha,
+marcar etapas reaproveitadas como `skipped` e expor `summary` por task. Use
 `/api/deploy-info` com no-cache/cache-buster como gate de codigo live.
 **Commits aplicados/observados:** `a632883`, `5737611`, `50935ea`, `479b77d`,
 `b12be9a`, `301eba6`, `f67055c`, `462ea1d`, `b4d7ee6`, `99483d1`,
@@ -27,16 +26,16 @@ rastreavel pela `EXTRACAO_RESPOSTAS`, e o re-smoke Beatriz
 `d47d748`, `c53fae6`, `9ab53df`, `1454e68`, `3fce335`, `33fb7d5`, `0f84552`,
 `974f040`, `11a396b`, `c094fba`, `d799165`, `6b43016`, `8c77cc4`, `29a4b7e`,
 `fdf0cbd`, `e2260d2`, `ae04982`, `ed592de`, `2a0462d`, `dbbecfe`, `4a4caf0`,
-`0bcff27`
+`0bcff27`, `9b68de1`
 
 ## Status Oficial De Deploy
 
 - O servico oficial em 2026-05-17 e
   `srv-d5t8gbh4tr6s738fr3s0` (`IA_Educacao_V2`), branch `main`,
   `rootDir=backend`, URL `https://ia-educacao-v2.onrender.com`.
-- `/api/deploy-info` confirmou o runtime backend `0bcff27` com
+- `/api/deploy-info` confirmou o runtime backend `9b68de1` com
   `source=RENDER_GIT_COMMIT`; esse e o gate primario atual para codigo live.
-- `origin/main` esta alinhado com o codigo funcional `0bcff27`; commits
+- `origin/main` esta alinhado com o codigo funcional `9b68de1`; commits
   documentais posteriores podem mudar o hash sem mudar comportamento de
   provider/pipeline.
 - `e2260d2` tornou o bloqueio de migration `token_usage` visivel no dashboard.
@@ -185,10 +184,60 @@ rastreavel pela `EXTRACAO_RESPOSTAS`, e o re-smoke Beatriz
 - ❌ **FALHA** — Nao rodou ou retornou erro
 - ⏸️ **NAO TESTADO** — Ainda nao foi testado
 - 🚫 **BLOQUEADO** — Nao pode testar (creditos, overload, etc.)
+- 🔁 **RE-SMOKE** — Precisa repetir depois de correcao, credito/quota ou ajuste de config
+
+## Matriz Operacional Por Modelo Ativo No Site Oficial
+
+Esta e a tabela de decisao rapida. Ela cobre os 14 modelos ativos retornados por
+`/api/settings/models` no site oficial em 2026-05-17. Cada linha responde:
+qual modelo especifico do site consegue fazer qual etapa, com qual evidencia, e
+quanto custaria aproximadamente uma pipeline de uma prova/aluno.
+
+Perfil canonico de estimativa: Beatriz com GPT-5.4 Mini em
+`task_a305397df882`, `74257` tokens de entrada e `12403` tokens de saida.
+Formula: `(input_tokens * preco_input + output_tokens * preco_output) /
+1_000_000`. O custo real pode mudar por tokenizacao, retry explicito, tool-use
+e tamanho do documento; por isso a coluna "medido" vence a estimativa quando
+existe smoke oficial.
+
+Fontes de preco:
+
+- **oficial:** confirmado contra pagina oficial do provedor neste ciclo.
+- **catalogo:** valor do `backend/data/model_catalog.json`, ainda nao
+  rechecado neste ciclo.
+- **sem preco:** o catalogo nao tem linha confiavel para estimativa.
+
+| model_id site | Nome no site | Provider/modelo | Tools/Vision/Default | Preco in/out por 1M | Fonte | Q | G | R | Corr | Hab | Rel | Pipeline completa | Evidencia e custo medido | Est. perfil canonico | Proximo teste |
+|---|---|---|---|---:|---|:---:|:---:|:---:|:---:|:---:|:---:|---|---|---:|---|
+| `gpt54mini001` | GPT-5.4 Mini OCR candidato | `openai/gpt-5.4-mini` | T/V/default | `0.75/4.50` | oficial OpenAI | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | `task_a305397df882`: `US$ 0.111505`; tambem `task_0eab214f30a8`: `US$ 0.087016` | `US$ 0.111506` | Ampliar dataset e prova manuscrita. |
+| `gpt5nano001` | GPT-5 Nano | `openai/gpt-5-nano` | T/sem vision | `0.05/0.40` | catalogo | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ fixture simples | `task_cbe8568e78d6`: `US$ 0.017160`; custo real maior que estimativa por tokens gerados nessa task | `US$ 0.008674` | Repetir em dataset maior antes de chamar de pipeline-ready geral. |
+| `ffae9accf68e` | GPT-4.1 | `openai/gpt-4.1` | T/V | `2.00/8.00` | catalogo | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | `task_f6851ed535b8`: `US$ 0.222856` | `US$ 0.247738` | Repetir em dataset maior e checar qualidade visual de PDFs. |
+| `180b8298a279` | gpt-4o | `openai/gpt-4o` | T/V | `2.50/10.00` | catalogo | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | `task_68b19146a95b`: `US$ 0.314369` | `US$ 0.309673` | Manter como referencia, nao fallback silencioso. |
+| `588f3efe7975` | Claude Haiku 4.5 | `anthropic/claude-haiku-4-5-20251001` | T/V | `1.00/5.00` | oficial Anthropic | 🚫 | 🚫 | 🚫 | 🚫 | 🚫 | 🚫 | 🚫 chave/saldo | Re-smoke 2026-05-17: `/testar` e `/api/chat` retornaram Anthropic `400`, saldo baixo na chave do Render | `US$ 0.136272` | Sincronizar/rotacionar chave Anthropic do Render; depois rodar Haiku primeiro. |
+| `4eaeb5105f5d` | Claude Sonnet 4.5 | `anthropic/claude-sonnet-4-5-20250929` | T/V | `3.00/15.00` | oficial Anthropic | 🚫 | 🚫 | 🚫 | 🚫 | 🚫 | 🚫 | 🚫 chave/saldo | Sweep anterior indicou mesmo bloqueio Anthropic; nao retestado para poupar ate Haiku destravar | `US$ 0.408816` | Testar so depois de Haiku, por custo ~3x maior. |
+| `gem25flash001` | Gemini 2.5 Flash | `google/gemini-2.5-flash` | T/V | `0.30/2.50` | oficial Google | ✅ | ✅ | ✅ | 🚫 | ⏸️ | ⏸️ | 🚫 quota em `corrigir` | `task_41c45d7939b5`: falhou alto em `corrigir` por Google `429 RESOURCE_EXHAUSTED` | `US$ 0.053285` | Repetir quando quota Google permitir. |
+| `gem25lite001` | Gemini 2.5 Flash Lite | `google/gemini-2.5-flash-lite` | T/V no site; catalogo sem tools | `0.10/0.40` | oficial Google | ⏸️ | ⏸️ | ⏸️ | ❌ | ⏸️ | ⏸️ | ❌ | `task_124bf0e8d7bf`: JSON/PDF divergentes, custo `US$ 0.001986` | `US$ 0.012387` | Resolver discrepancia site/catalogo sobre tools antes de promover. |
+| `gem3flash001` | Gemini 3 Flash | `google/gemini-3-flash-preview` | T/V | `0.50/3.00` | oficial Google | ✅ | ✅ | ✅ | ⚠️ | ⚠️ | ⚠️ | 🚫 quota/revalidacao | `task_5e97bbee896e`: tres extracoes passaram; falhou alto em `corrigir` por `429` | `US$ 0.074338` | Repetir pipeline sequencial completa quando quota permitir. |
+| `e251747cd7a2` | Gemini 2.5 Pro | `google/gemini-2.5-pro` | T/V | `1.25/10.00` ate 200k prompt | oficial Google | ⏸️ | ⏸️ | ⏸️ | ⏸️ | ⏸️ | ⏸️ | 🚫 quota | Sweep live: conexao bloqueada por Google `429` | `US$ 0.216851` | Testar conexao e uma etapa quando quota permitir. |
+| `58ff5dcdff67` | o3 Mini | `openai/o3-mini` | sem tools/sem vision | `1.10/4.40` | catalogo | 🚫 | 🚫 | 🚫 | 🚫 | 🚫 | 🚫 | 🚫 config | Sem function calling no modelo configurado do site | `US$ 0.136256` | Nao usar na pipeline enquanto tools estiverem desativadas. |
+| `c489f094083c` | o3 Mini | `openai/o3-mini` | sem tools/sem vision | `1.10/4.40` | catalogo | 🚫 | 🚫 | 🚫 | 🚫 | 🚫 | 🚫 | 🚫 config | Duplicado configurado com outra `reasoning_effort`, tambem sem tools | `US$ 0.136256` | Remover duplicidade ou registrar uso fora da pipeline. |
+| `9f6b2b61b6c3` | o4 Mini | `openai/o4-mini` | sem tools/sem vision | `1.10/4.40` | catalogo | 🚫 | 🚫 | 🚫 | 🚫 | 🚫 | 🚫 | 🚫 config | Sem function calling no modelo configurado do site | `US$ 0.136256` | Nao usar na pipeline enquanto tools estiverem desativadas. |
+| `ollama-llama3` | Llama 3.2 (Local) | `ollama/llama3.2:latest` | sem tools/V | sem preco | sem preco | 🚫 | 🚫 | 🚫 | 🚫 | 🚫 | 🚫 | 🚫 infra | Render nao tem Ollama local acessivel | N/A | Fora da pipeline oficial em producao. |
+
+Achados deste ciclo:
+
+- O site oficial ainda usa uma chave Anthropic que retorna saldo baixo. Se voce
+  tem creditos Anthropic, o proximo passo nao e rodar pipeline: e garantir que
+  a chave correta esteja no Render, sem colar segredo no chat.
+- O catalogo local subestimava Gemini 2.5 Flash, Gemini 2.5 Flash Lite e Gemini
+  3 Flash. O patch do ciclo atual corrige esses precos para a tabela oficial
+  Standard da Gemini API.
+- A matriz antiga abaixo continua como historico detalhado por frente, mas a
+  tabela acima e a fonte de decisao operacional por modelo ativo.
 
 ---
 
-## Matriz Consolidada — 3 Categorias por Provider
+## Matriz Consolidada Legada — 3 Categorias por Provider
 
 ### Categoria 1: Pipeline do Aluno (6 etapas)
 
@@ -1040,7 +1089,13 @@ na fixture simples. Ainda falta pipeline completa de 6 etapas e datasets maiores
   `74257/12403`, `US$ 0.111505`. A correcao precisou de retry PDF/JSON: PDFs
   `0707c563f6da8cf7` e `f55b89f33e027a88` ficaram `status=erro`, e o PDF
   final foi verificado via `pdftotext` com cabecalho real, Q2 "Deixei em
-  branco", Q3 `1.5/3.0` e `Feedback Geral`.
+  branco", Q3 `1.5/3.0` e `Feedback Geral`. Em `9b68de1`, o batch
+  `task_ee773aefb10d` revalidou a semantica de lote: status global `failed`,
+  `summary` com `5` alunos, `30` etapas, `29` `skipped`, `1` `failed`, Helena
+  como unica `students_failed`, e custo da falha `validation_6b7e007f2be6`
+  (`5372/706`, `US$ 0.007206`). Isso corrige o falso verde global sem mudar a
+  classificacao do provider: GPT-5.4 Mini segue confirmado para essas fixtures,
+  com a entrada invalida da Helena corretamente bloqueada.
 - ⏸️ **Claude Haiku 4.5:** Aguardando creditos.
 - 📊 **Confiabilidade Gemini 3 Flash:** extracoes OK; etapas finais ficaram
   ⚠️ depois que `aff2180` endureceu `feedback_geral` em `CORRIGIR`. A
@@ -1061,7 +1116,7 @@ nem datasets maiores.
 
 **Proximos passos:**
 1. Manter deploy oficial confirmado por `/api/deploy-info` antes de cada smoke
-   novo; o codigo funcional mais recente confirmado e `0bcff27`. Commits
+   novo; o codigo funcional mais recente confirmado e `9b68de1`. Commits
    documentais posteriores podem mudar o hash de `/api/deploy-info` sem alterar
    comportamento de pipeline.
 2. Aplicar/validar a migration Supabase `token_usage` antes de chamar custo de

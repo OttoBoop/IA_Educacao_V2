@@ -5,12 +5,12 @@
 **Status geral:** o servico oficial Render
 `srv-d5t8gbh4tr6s738fr3s0` (`IA_Educacao_V2`, branch `main`, URL
 `https://ia-educacao-v2.onrender.com`) tem como codigo funcional mais recente
-confirmado o commit `0bcff27` (`fix: allow traceable blank correction answers`),
+confirmado o commit `9b68de1` (`fix: keep batch pipeline failures visible`),
 validado por `/api/deploy-info` com cache-buster, `/api/health`,
-`./scripts/check_deploy.sh 0bcff27` e re-smoke oficial full de seis etapas com
-GPT-5.4 Mini para Beatriz (`task_a305397df882`).
+`./scripts/check_deploy.sh 9b68de1` e smoke oficial de batch
+`task_ee773aefb10d`.
 `origin/main` pode estar em commit documental posterior; isso nao muda runtime
-enquanto `/api/deploy-info` com no-cache continuar apontando para `0bcff27`.
+enquanto `/api/deploy-info` com no-cache continuar apontando para `9b68de1`.
 
 Estado funcional consolidado: documentos com `status=erro` nao contam como
 progresso; correcao sem itens avaliaveis nao vira `completo=true`; ranking,
@@ -19,7 +19,8 @@ GPT-5.4 Mini (`gpt54mini001`); erros de provider aparecem estruturados em chat,
 task progress e custos; o dashboard mostra o bloqueio de migration
 `token_usage`; `/api/custos/resumo` agrega por `cost_run_id`, `por_etapa` e agora
 expõe `token_usage_durable=false` quando a persistencia de falhas sem documento
-nao e duravel.
+nao e duravel. O ciclo atual tambem transformou o Doc 12 em matriz operacional
+por `model_id` ativo, com custo medido/estimado por modelo e fonte de preco.
 
 Estado de providers: GPT-4.1, GPT-5.4 Mini, GPT-4o e GPT-5 Nano seguem
 referencias OpenAI na fixture Diana. Nano agora passou as seis etapas em uma
@@ -30,10 +31,16 @@ Mini tambem completou uma segunda fixture textual real (`task_0eab214f30a8`,
 atividade `8f58cc8b5fb75869`, aluno `ae6420679a3f2606`) com nota `10.0`,
 artefatos JSON/PDF e custo total `US$ 0.087016`; depois, Beatriz completou a
 mesma atividade em `task_a305397df882`, nota `6.5`, custo `US$ 0.111505`, apos
-patch de branco rastreavel. Gemini Flash/Flash Lite/3 Flash passam em
+patch de branco rastreavel. O batch `task_ee773aefb10d` no runtime `9b68de1`
+agora termina `failed` quando Helena falha em `extrair_respostas`, expondo
+`summary` com `29` etapas `skipped`, `1` etapa `failed` e erro global, sem
+falso verde. Gemini Flash/Flash Lite/3 Flash passam em
 conexao simples, mas `corrigir` com Gemini 2.5 Flash ainda falha alto por quota
-`429`; Gemini 2.5 Pro tambem esta bloqueado por quota, Anthropic segue bloqueado
-por credito e Ollama esta indisponivel no Render. Supabase `token_usage`
+`429`; Gemini 2.5 Pro tambem esta bloqueado por quota. Anthropic foi retestado
+com Haiku em 2026-05-17 e a chave configurada no Render ainda retornou
+`400`/saldo baixo; se ha creditos na conta correta, falta sincronizar ou
+rotacionar a chave do site oficial. Ollama esta indisponivel no Render.
+Supabase `token_usage`
 continua ausente (`PGRST205`), deixando custo duravel como gate real.
 
 Atualizacao Lista0 de 2026-05-17: a atividade real `Lista0`
@@ -3265,9 +3272,94 @@ Critério de pronto: lista de limpeza segura e revisada.
   documentos. O proximo ciclo de UI/progresso deve distinguir "batch completo"
   de "todos os alunos concluiram todas as etapas".
 
+### 2026-05-17 -- Batch status fix: falha global visivel e etapas puladas
+
+- Alvo: corrigir a falha de produto exposta por `task_b91a5fa66da9`, onde o
+  status global de uma task em lote podia acabar `completed` apesar de existir
+  aluno com etapa `failed` e aluno `pending` por reuso de documentos.
+- Patch: commit `9b68de1` (`fix: keep batch pipeline failures visible`).
+- Mudancas:
+  - `complete_pipeline_task()` agora calcula `summary` para
+    `pipeline_todos_os_alunos`.
+  - Enquanto ainda houver aluno/etapa pendente ou rodando, a task em lote fica
+    `running`, mesmo que um aluno ja tenha falhado.
+  - Ao final, se qualquer etapa ficou `failed`, o status global vira `failed`,
+    com mensagem agregada.
+  - Etapas reaproveitadas ou nao executadas deixam de ficar `pending`: o
+    executor marca `skipped` e registra o motivo em `stage_skips`.
+  - Quando uma etapa falha, etapas posteriores do mesmo aluno viram `skipped`
+    com motivo "bloqueado por falha em ...".
+  - A UI da sidebar passa a renderizar `skipped` com motivo, separado de
+    `failed`.
+- Validacao local:
+  - `python -m py_compile backend/routes_tasks.py backend/routes_prompts.py
+    backend/executor.py backend/tests/unit/test_pipeline_progress.py`.
+  - `git diff --check`.
+  - `test_pipeline_progress.py`, `test_hierarchy_rendering.py` e
+    `test_polling_integration.py`: `38 passed`.
+  - `test_erro_pipeline.py`: `81 passed`.
+- Deploy oficial: Render confirmou
+  `9b68de11c01f690e2c6843300c8cee96d2f7e3ed`; `check_deploy.sh 9b68de1`,
+  `/api/deploy-info` com no-cache e `/api/health` passaram.
+- Smoke oficial de batch: `task_ee773aefb10d`, atividade
+  `8f58cc8b5fb75869`, modelo `gpt54mini001`, `force_rerun=false`,
+  `apenas_com_prova=true`.
+- Resultado correto:
+  - Status global: `failed`, nao `completed`.
+  - `summary`: `students_total=5`, `stages_total=30`, `failed_stages=1`,
+    `skipped_stages=29`, `pending_stages=0`, `running_stages=0`,
+    `students_failed=["64bfa1c7c4e8f8ed"]`.
+  - Beatriz, Daniel, Julia e Kevin ficaram com seis etapas `skipped`, cada uma
+    com motivo "documento ja existe".
+  - Helena ficou com `extrair_respostas=failed` e downstream `skipped` por
+    bloqueio da falha anterior.
+  - Erro visivel de Helena:
+    `EXTRAIR_RESPOSTAS retornou todas as respostas sem conteudo extraido...`.
+- Custo da falha Helena: `validation_6b7e007f2be6`, `5372/706` tokens,
+  `US$ 0.007206`, `token_usage_ids=["usage_b697fdacfbfe4344"]`.
+- Bloqueio mantido: esse custo de falha apareceu no `TokenUsageRecord` local,
+  mas `token_usage_durable=false` e Supabase ainda retorna `PGRST205`; aplicar
+  `backend/migrations/002_create_token_usage.sql` continua sendo o gate para
+  custo duravel de falhas sem documento.
+
+### 2026-05-17 -- Matriz operacional por modelo, custo e Haiku bloqueado
+
+- Alvo: substituir a leitura confusa por provider generico por uma matriz
+  operacional no Doc 12: cada `model_id` ativo do site oficial mostra etapas
+  validadas, evidencia, custo medido, custo estimado e proximo teste.
+- Estado oficial confirmado antes do ciclo:
+  - Render `/api/deploy-info` com no-cache: `9b68de1`.
+  - `/api/health`: `healthy`, `supabase=true`.
+  - `/api/settings/models`: 14 modelos ativos.
+  - `/api/custos/resumo?limit=200`: `runs_analisados=102`,
+    `runs_precificados=100`, `runs_bloqueados=2`, `custo_usd=1.860940`,
+    `token_usage_durable=false`.
+- Patch de custos: `backend/data/model_catalog.json` agora usa precos oficiais
+  Google Standard para Gemini 2.5 Flash (`0.30/2.50`), Gemini 2.5 Flash Lite
+  (`0.10/0.40`) e Gemini 3 Flash (`0.50/3.00`). O teste
+  `test_catalogo_gemini_usa_precos_oficiais_standard` fixa as estimativas do
+  perfil canonico.
+- Perfil canonico de estimativa: `task_a305397df882`, Beatriz/GPT-5.4 Mini,
+  `74257/12403` tokens, `US$ 0.111505`.
+- Haiku: `/api/settings/models/588f3efe7975/testar` e `/api/chat` com
+  `model_id=588f3efe7975` retornaram Anthropic `400` com saldo baixo. Como voce
+  informou ter creditos, a interpretacao correta e: a chave/conta configurada
+  no Render nao e a que esta com credito, ou ainda nao atualizou. Haiku fica
+  `🚫 chave/saldo`, nao `❌ modelo ruim`.
+- Validacao local do patch de catalogo:
+  - `python -m py_compile backend/model_catalog.py
+    backend/tests/unit/test_cost_tracking.py`.
+  - `test_cost_tracking.py`: `30 passed`.
+- Proximo passo: commit/push/deploy do catalogo e docs; depois checar
+  `/api/custos/resumo` live para confirmar que estimativas Gemini novas estao
+  servidas pelo site. Haiku so deve ser reexecutado depois de atualizar a chave
+  Anthropic no Render.
+
 ## Riscos Abertos
 
-1. Creditos Anthropic insuficientes ainda bloqueiam validacao Haiku.
+1. Chave Anthropic configurada no Render ainda retorna saldo baixo; se existem
+   creditos em outra conta/chave, falta atualizar o segredo oficial antes de
+   validar Haiku.
 2. Schema drift pode fazer modelos gerarem formatos diferentes.
 3. Schema minimo ainda nao esta validado para todas as etapas; JSON parseavel e
    necessario, mas nao prova qualidade pedagogica.
@@ -3297,7 +3389,7 @@ Critério de pronto: lista de limpeza segura e revisada.
     `task_bc6cc84d10ef` provou falso positivo semantico, e o caso
     `task_a5f0d734f0b3` passou na inspeção JSON inicial, mas ainda precisa
     checagem de PDFs/UI e repeticao alem da fixture simples.
-13. Status global `completed` de batch nao basta; `task_b91a5fa66da9` mostrou
-    alunos concluidos, aluno com falha correta por arquivo invalido, aluno
-    travado por falso negativo corrigido depois, e aluno `pending` por reuso de
-    documentos. A UI precisa explicar esse mosaico sem esconder falhas.
+13. Status global de batch foi corrigido em `9b68de1`: `task_ee773aefb10d`
+    provou status global `failed` com `summary`, `skipped` e erro por aluno.
+    Risco residual: a UI ainda precisa ser avaliada visualmente no navegador
+    para garantir que o professor entende `skipped` sem abrir terminal.

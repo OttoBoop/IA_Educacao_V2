@@ -10,9 +10,9 @@ um deve ser lido, o que ainda vale, o que ficou historico, e quais fatos precisa
 guiar os proximos ciclos.
 
 Atualizacao de controle de 2026-05-17: o codigo funcional mais recente
-confirmado no site oficial e `0bcff27`, validado por `/api/deploy-info` com
-cache-buster/no-cache, `/api/health`, `check_deploy.sh` e re-smoke live full de
-pipeline com GPT-5.4 Mini para Beatriz (`task_a305397df882`). Smokes anteriores continuam
+confirmado no site oficial e `9b68de1`, validado por `/api/deploy-info` com
+cache-buster/no-cache, `/api/health`, `check_deploy.sh` e smoke live de batch
+`task_ee773aefb10d`. Smokes anteriores continuam
 validando documentos/ranking/dashboard nos hashes registrados em seus proprios
 ciclos. O ciclo `dbbecfe` aumentou para duas as tentativas explicitas de
 reparo PDF/JSON, mas o smoke full Nano `task_4f6296b3789d` ainda falhou alto em
@@ -34,7 +34,11 @@ JSON/PDF finais coerentes, PDF de correcao com `Feedback Geral` e custo total
 negativo de branco rastreavel em `CORRIGIR` e o re-smoke Beatriz
 `task_a305397df882` completou seis etapas na mesma atividade: nota `6.5`,
 PDF final `3d1943b61761c2f5` coerente via `pdftotext`, custo
-`74257/12403` tokens, `US$ 0.111505`. O ciclo `147296d` tambem reduziu o
+`74257/12403` tokens, `US$ 0.111505`. O ciclo `9b68de1` corrigiu a semantica
+de batch: `task_ee773aefb10d` terminou `failed`, com `summary` de `29` etapas
+`skipped`, `1` `failed`, Helena como unica falha e custo da falha
+`5372/706`, `US$ 0.007206`; antes, uma task de lote podia acabar
+`completed` apesar de falhas por aluno. O ciclo `147296d` tambem reduziu o
 dashboard da turma Lista0 de
 cerca de 85s para 1.4s ao trocar agregados N+1 por ranking em lote. O ciclo
 `22f6f31` trocou o default vivo de Haiku bloqueado por credito para
@@ -394,7 +398,7 @@ detalhar e auditar estas linhas.
 | Frente | Temos hoje | Limite da afirmacao |
 |---|---|---|
 | Documentacao | Doc 09 como painel curto; Doc 14 como auditoria mestre; Doc 05/12 com notas de status | Manter Doc 09 curto e Doc 14 detalhado; registrar novos ciclos sem criar doc extra. |
-| Git/GitHub | `/api/deploy-info` com no-cache confirmou runtime `0bcff27`; `origin/main` esta alinhado com os fixes de dashboard de custo, tool-use Google faseado, consistencia PDF/JSON por feedback coerente, erro por aluno/etapa na sidebar, bloqueio anti-`nota_final=N/A`, guarda contra PDF auto-fallback, rejeicao de JSON embrulhado em Markdown/prosa, retorno Path 2 com etapa real/JSON parseado, schema minimo runtime, cobertura anti-regressao para etapas tardias, cobertura de PDF stale, contrato de prompts tardios, rastreabilidade semantica de correcao, cabecalho PDF real, consistencia interna de notas, contrato de erro/chat por provider/UI, resultado parcial obedecendo `status=erro`, correcao sem itens avaliaveis bloqueada, rotas agregadas protegidas, media zero preservada, agregados em lote, default OpenAI confirmado, resumo estruturado de erro de provider, diagnostico explicito da migration `token_usage` ausente, alerta de custo visivel no dashboard, agregado `por_etapa`, rejeicao de codigos compostos em `_avisos_*`, secao literal `Feedback Geral` em PDFs de correcao e aceite de branco rastreavel sem fallback silencioso | Nao usar somente marker HTML como gate quando Render `rootDir=backend` ignora commits sem backend; combinar `/api/deploy-info` com cache-buster, deploy list quando disponivel e comportamento live. |
+| Git/GitHub | `/api/deploy-info` com no-cache confirmou runtime `9b68de1`; `origin/main` esta alinhado com os fixes de dashboard de custo, tool-use Google faseado, consistencia PDF/JSON por feedback coerente, erro por aluno/etapa na sidebar, bloqueio anti-`nota_final=N/A`, guarda contra PDF auto-fallback, rejeicao de JSON embrulhado em Markdown/prosa, retorno Path 2 com etapa real/JSON parseado, schema minimo runtime, cobertura anti-regressao para etapas tardias, cobertura de PDF stale, contrato de prompts tardios, rastreabilidade semantica de correcao, cabecalho PDF real, consistencia interna de notas, contrato de erro/chat por provider/UI, resultado parcial obedecendo `status=erro`, correcao sem itens avaliaveis bloqueada, rotas agregadas protegidas, media zero preservada, agregados em lote, default OpenAI confirmado, resumo estruturado de erro de provider, diagnostico explicito da migration `token_usage` ausente, alerta de custo visivel no dashboard, agregado `por_etapa`, rejeicao de codigos compostos em `_avisos_*`, secao literal `Feedback Geral` em PDFs de correcao, aceite de branco rastreavel sem fallback silencioso e status de batch sem falso `completed` | Nao usar somente marker HTML como gate quando Render `rootDir=backend` ignora commits sem backend; combinar `/api/deploy-info` com cache-buster, deploy list quando disponivel e comportamento live. |
 | Pipeline P4 | Bloqueio de extracao de respostas sem prova valida esta no codigo publicado | Precisa smoke dedicado apenas se P4 voltar a ser alvo. |
 | Pipeline P5/P6 | Preservacao de `_documentos_faltantes`; `ad7e00e` bloqueia `GERAR_RELATORIO` sem `nota_final` numerica confiavel | Ainda falta caçar outros fallbacks antigos, mas `nota_final=N/A` nao e mais aceite final no executor de relatório. |
 | Schema/avisos | Defaults `_avisos_*`, visualizador melhorado, `f40acf3` alinhando prompts/tool instructions de `CORRIGIR`, `ANALISAR_HABILIDADES` e `GERAR_RELATORIO`; `700b088` exigindo rastreabilidade de resposta/gabarito em `CORRIGIR`; `1307909`/`bed0c08`/`feaf5d0` bloqueando literal divergente, cabecalho PDF fake e totais incoerentes; `ed592de` removeu exemplos `A|B|C` e rejeita codigo composto em `_avisos_documento`/`_avisos_questao` | Ainda falta distinguir default de output real do modelo e ampliar checagens semanticas para respostas mais abertas/datasets maiores. |
@@ -414,7 +418,7 @@ detalhar e auditar estas linhas.
 | Providers | Revalidar Gemini, Nano, Haiku e GPT-4o nas etapas restantes, especialmente extracoes e pipeline completa | Resultado historico ou schema parseavel nao prova qualidade de conteudo. |
 | UI de erro | `98fafc9` publica `stage_errors` por aluno/etapa no task-progress e renderiza a causa na sidebar; `9ab53df` normaliza erro estruturado e mostra provider/codigo/retry em API errors e stage errors; `b8e14db` faz resultado parcial e cards de documento obedecerem `status=erro`; `325c200` bloqueia `completo=true` para correcao sem itens avaliaveis e atualiza historico/pendencias/status; `148d8b3` faz ranking/estatisticas/dashboard obedecerem rota correta e media `0.0`; `147296d` reduz agregados N+1; `22f6f31` impede default em provider bloqueado | Falta melhorar mensagens finais de provider/custo. |
 | Dados | Reclassificar "fantasmas" sem deletar PDF valido por `/conteudo=null` | Evita apagar prova respondida real. |
-| Git/deploy | Commit `2d72c6b` adicionou `/api/deploy-info`; o codigo funcional mais recente confirmado e `0bcff27` | Usar `/api/deploy-info` com no-cache/cache-buster antes de novos smokes; marker HTML e apenas auxiliar; commits documentais podem mudar o hash sem mudar comportamento. |
+| Git/deploy | Commit `2d72c6b` adicionou `/api/deploy-info`; o codigo funcional mais recente confirmado e `9b68de1` | Usar `/api/deploy-info` com no-cache/cache-buster antes de novos smokes; marker HTML e apenas auxiliar; commits documentais podem mudar o hash sem mudar comportamento. |
 
 ### Bloqueios E Alertas
 
@@ -3939,6 +3943,65 @@ Atualizacao deste ciclo:
   segue como melhor default operacional atual. Ainda faltam prova manuscrita,
   dataset maior e persistencia duravel de `token_usage`.
 
+### Matriz Operacional Por Modelo E Custo
+
+Atualizacao deste ciclo:
+
+- Objetivo corrigido: a pergunta operacional nao e "qual provider funciona?",
+  mas "qual `model_id` ativo do site oficial faz qual etapa da pipeline, com
+  qual evidencia e custo".
+- Fonte viva de modelos: `/api/settings/models` no Render retornou 14 modelos
+  ativos: OpenAI (`gpt-4o`, GPT-4.1, GPT-5 Nano, GPT-5.4 Mini, o3/o4 Mini),
+  Anthropic (Haiku 4.5, Sonnet 4.5), Google (Gemini 2.5 Pro/Flash/Lite,
+  Gemini 3 Flash) e Ollama local.
+- Fonte viva de custos antes do patch: `/api/custos/resumo?limit=200` retornou
+  `runs_analisados=102`, `runs_precificados=100`, `runs_bloqueados=2`,
+  `tokens_entrada=1489622`, `tokens_saida=271465`, `custo_usd=1.860940` e
+  `token_usage_durable=false`.
+- Perfil canonico de estimativa: Beatriz em `task_a305397df882`,
+  `74257/12403` tokens, custo real GPT-5.4 Mini `US$ 0.111505`.
+- Fontes oficiais usadas para reconciliar precos:
+  - OpenAI GPT-5.4 Mini: [Introducing GPT-5.4 mini and nano](https://openai.com/index/introducing-gpt-5-4-mini-and-nano/)
+    registra `US$ 0.75/1M` input e `US$ 4.50/1M` output para GPT-5.4 Mini.
+  - Anthropic: [Claude API Pricing](https://platform.claude.com/docs/en/about-claude/pricing)
+    registra Haiku 4.5 em `US$ 1/1M` input e `US$ 5/1M` output, Sonnet 4.5 em
+    `US$ 3/1M` input e `US$ 15/1M` output.
+  - Google: [Gemini API Pricing](https://ai.google.dev/gemini-api/docs/pricing)
+    registra Gemini 2.5 Pro Standard ate 200k prompt em `US$ 1.25/1M` input e
+    `US$ 10/1M` output; Gemini 2.5 Flash Standard em `US$ 0.30/1M` input e
+    `US$ 2.50/1M` output; Gemini 2.5 Flash-Lite Standard em `US$ 0.10/1M`
+    input e `US$ 0.40/1M` output; Gemini 3 Flash Standard em
+    `US$ 0.50/1M` input e `US$ 3.00/1M` output.
+- Patch de catalogo: `backend/data/model_catalog.json` foi corrigido para
+  Gemini 2.5 Flash (`0.30/2.50`), Gemini 2.5 Flash Lite (`0.10/0.40`) e Gemini
+  3 Flash (`0.50/3.00`). O valor de GPT-4o Mini foi preservado em
+  `0.15/0.60`.
+- Teste novo: `test_catalogo_gemini_usa_precos_oficiais_standard` fixa a
+  estimativa do perfil canonico em `US$ 0.053285` para Gemini 2.5 Flash,
+  `US$ 0.012387` para Flash Lite e `US$ 0.074338` para Gemini 3 Flash.
+- Revalidacao Anthropic: Haiku 4.5 (`588f3efe7975`) foi testado no site
+  oficial por `/api/settings/models/588f3efe7975/testar` e por `/api/chat`.
+  Ambos retornaram Anthropic `400`, `invalid_request_error`, saldo baixo na
+  chave configurada no Render. Isso nao prova que o usuario nao tenha creditos;
+  prova que a chave/conta ativa no site oficial ainda nao enxerga esses
+  creditos. A matriz marca Haiku como `🚫 chave/saldo`, nao como falha do
+  modelo.
+
+Interpretacao:
+
+- Doc 12 passa a ser a tela operacional: modelo ativo, etapa, evidencia, custo
+  medido, custo estimado e proximo teste.
+- Doc 14 guarda o metodo: perfil canonico, fontes de preco, diferenca entre
+  medido e estimado, e por que Haiku ainda esta bloqueado mesmo apos o usuario
+  dizer que tem creditos.
+- O custo estimado nao substitui smoke: GPT-5 Nano, por exemplo, estima
+  `US$ 0.008674` no perfil canonico, mas o full smoke real na fixture Diana
+  custou `US$ 0.017160` porque o padrao de tokens daquele run foi diferente.
+- `token_usage_durable=false` continua bloqueio estrutural. A tabela responde
+  custo medido local/metadata, mas persistencia duravel de falhas sem documento
+  ainda depende de aplicar `backend/migrations/002_create_token_usage.sql` no
+  Supabase.
+
 ### Provider: Batch Textual, Branco Rastreavel E Status Global De Batch
 
 Atualizacao deste ciclo:
@@ -4005,6 +4068,51 @@ Atualizacao deste ciclo:
   lido como "todos os alunos concluiram tudo". O painel precisa distinguir
   alunos concluidos, falhas corretas, falhas corrigiveis e skips/pending por
   reuso de documentos.
+
+### UI/Task Progress: Batch Sem Falso Verde
+
+Atualizacao deste ciclo:
+
+- Bug corrigido: a task de lote podia parar em `completed` global mesmo com
+  aluno em erro ou aluno ainda exibido como `pending` por documento reaproveitado.
+- Patch: `9b68de1` (`fix: keep batch pipeline failures visible`).
+- Contrato novo:
+  - `pipeline_todos_os_alunos` calcula `summary` com contagem de alunos,
+    etapas `completed`, `failed`, `skipped`, `pending` e `running`.
+  - Enquanto ainda houver etapa pendente/rodando de aluno nao terminal, a task
+    global fica `running`; assim o polling nao para no primeiro aluno que falha.
+  - Ao final, qualquer etapa `failed` torna a task global `failed`.
+  - Etapa reaproveitada por documento existente vira `skipped`, com motivo em
+    `stage_skips`.
+  - Etapas posteriores a uma falha viram `skipped` com motivo "bloqueado por
+    falha em ...".
+  - A sidebar passa a renderizar `skipped` separadamente de `failed`.
+- Validacao local: `py_compile`, `git diff --check`, `test_pipeline_progress.py`
+  + `test_hierarchy_rendering.py` + `test_polling_integration.py` com
+  `38 passed`, e `test_erro_pipeline.py` com `81 passed`.
+- Deploy/smoke oficial: Render confirmou `9b68de1`; `task_ee773aefb10d`
+  rodou a atividade `8f58cc8b5fb75869` em lote, `force_rerun=false`.
+- Resultado do smoke:
+  - Status global: `failed`.
+  - `summary`: `students_total=5`, `stages_total=30`,
+    `completed_stages=0`, `failed_stages=1`, `skipped_stages=29`,
+    `pending_stages=0`, `running_stages=0`,
+    `students_failed=["64bfa1c7c4e8f8ed"]`.
+  - Beatriz, Daniel, Julia e Kevin ficaram inteiramente `skipped` por
+    documentos existentes.
+  - Helena teve `extrair_respostas=failed`; `corrigir`,
+    `analisar_habilidades` e `gerar_relatorio` ficaram `skipped` por bloqueio
+    da falha anterior.
+  - Erro exposto: `EXTRAIR_RESPOSTAS retornou todas as respostas sem conteudo
+    extraido...`.
+- Custo: falha Helena registrada como `validation_6b7e007f2be6`,
+  `5372/706` tokens, `US$ 0.007206`, `token_usage_ids=["usage_b697fdacfbfe4344"]`.
+- Bloqueio residual: esse custo fica local enquanto Supabase `public.token_usage`
+  estiver ausente (`PGRST205`). O proximo ciclo estrutural de custos continua
+  sendo aplicar a migration `backend/migrations/002_create_token_usage.sql`.
+- Residual de UI: o contrato de dados esta correto, mas ainda falta uma
+  checagem visual em navegador para confirmar que o professor entende
+  `skipped` e `failed` sem ler JSON.
 
 Regra de continuidade:
 

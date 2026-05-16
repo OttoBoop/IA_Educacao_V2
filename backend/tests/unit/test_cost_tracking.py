@@ -5,6 +5,7 @@ import json
 import pytest
 
 from cost_tracking import build_cost_summary
+from model_catalog import model_catalog
 from models import NivelEnsino, StatusProcessamento, TipoDocumento
 from storage import StorageManager
 from token_usage import TokenUsageRecord, TokenUsageStore
@@ -115,6 +116,37 @@ def test_cost_summary_precifica_apenas_split_real(tmp_path):
     assert summary["tokens_entrada"] == 200
     assert summary["tokens_saida"] == 100
     assert summary["custo_usd"] > 0
+
+
+def test_catalogo_gemini_usa_precos_oficiais_standard():
+    tokens_entrada = 74_257
+    tokens_saida = 12_403
+
+    flash = model_catalog.calculate_cost(
+        "google/gemini-2.5-flash",
+        input_tokens=tokens_entrada,
+        output_tokens=tokens_saida,
+    )
+    flash_lite = model_catalog.calculate_cost(
+        "google/gemini-2.5-flash-lite",
+        input_tokens=tokens_entrada,
+        output_tokens=tokens_saida,
+    )
+    flash_3 = model_catalog.calculate_cost(
+        "google/gemini-3-flash-preview",
+        input_tokens=tokens_entrada,
+        output_tokens=tokens_saida,
+    )
+
+    assert flash["input_cost_used"] == 0.30
+    assert flash["output_cost_used"] == 2.50
+    assert flash["cost_per_request"] == 0.053285
+    assert flash_lite["input_cost_used"] == 0.10
+    assert flash_lite["output_cost_used"] == 0.40
+    assert flash_lite["cost_per_request"] == 0.012387
+    assert flash_3["input_cost_used"] == 0.50
+    assert flash_3["output_cost_used"] == 3.00
+    assert flash_3["cost_per_request"] == 0.074338
 
 
 def test_cost_summary_conta_um_run_com_json_e_pdf(tmp_path):
