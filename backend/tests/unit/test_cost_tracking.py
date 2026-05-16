@@ -1069,7 +1069,8 @@ async def test_executar_com_tools_repara_correcao_json_array(monkeypatch, tmp_pa
     bad_json_path_2 = tmp_path / "correcao_bad_2.json"
     stale_json_path = tmp_path / "correcao_stale.json"
     good_json_path = tmp_path / "correcao_good.json"
-    pdf_path = tmp_path / "correcao.pdf"
+    stale_pdf_path = tmp_path / "correcao_stale.pdf"
+    good_pdf_path = tmp_path / "correcao_good.pdf"
     bad_json_path.write_text(
         '[{"nota_final": 8, "questoes": [{"numero": 3, "nota": 0}]}]',
         encoding="utf-8",
@@ -1116,15 +1117,16 @@ async def test_executar_com_tools_repara_correcao_json_array(monkeypatch, tmp_pa
         ),
         encoding="utf-8",
     )
-    pdf = fitz.open()
-    page = pdf.new_page()
-    page.insert_textbox(
-        fitz.Rect(40, 40, 560, 800),
-        "Nota final: 8.0 / 10.0\nQuestão 3 — Erro | Nota: 0.0\n",
-        fontsize=11,
-    )
-    pdf.save(str(pdf_path))
-    pdf.close()
+    for pdf_path in (stale_pdf_path, good_pdf_path):
+        pdf = fitz.open()
+        page = pdf.new_page()
+        page.insert_textbox(
+            fitz.Rect(40, 40, 560, 800),
+            "Nota final: 8.0 / 10.0\nQuestão 3 — Erro | Nota: 0.0\n",
+            fontsize=11,
+        )
+        pdf.save(str(pdf_path))
+        pdf.close()
 
     class DummyClient:
         calls = 0
@@ -1156,7 +1158,7 @@ async def test_executar_com_tools_repara_correcao_json_array(monkeypatch, tmp_pa
                     ],
                 }
             if DummyClient.calls == 2:
-                context.created_document_ids.append("doc-pdf")
+                context.created_document_ids.append("doc-pdf-stale")
                 return {
                     "content": "",
                     "tokens": 10,
@@ -1173,7 +1175,7 @@ async def test_executar_com_tools_repara_correcao_json_array(monkeypatch, tmp_pa
                     ],
                 }
 
-            context.created_document_ids.append("doc-json-good")
+            context.created_document_ids.extend(["doc-json-good", "doc-pdf-good"])
             return {
                 "content": "",
                 "tokens": 10,
@@ -1186,7 +1188,14 @@ async def test_executar_com_tools_repara_correcao_json_array(monkeypatch, tmp_pa
                         "input": {"content": good_json_path.read_text(encoding="utf-8")},
                         "is_error": False,
                         "files_generated": [],
-                    }
+                    },
+                    {
+                        "id": "pdf-2",
+                        "name": "execute_python_code",
+                        "input": {"output_files": ["correcao.pdf"]},
+                        "is_error": False,
+                        "files_generated": [{"filename": "correcao.pdf", "size_bytes": 128}],
+                    },
                 ],
             }
 
@@ -1217,8 +1226,14 @@ async def test_executar_com_tools_repara_correcao_json_array(monkeypatch, tmp_pa
             metadata={"tool": "create_document"},
             criado_por="ia_create_document",
         ),
-        "doc-pdf": SimpleNamespace(
-            id="doc-pdf",
+        "doc-pdf-stale": SimpleNamespace(
+            id="doc-pdf-stale",
+            extensao=".pdf",
+            metadata={"tool": "execute_python_code"},
+            criado_por="ia_execute_python_code",
+        ),
+        "doc-pdf-good": SimpleNamespace(
+            id="doc-pdf-good",
             extensao=".pdf",
             metadata={"tool": "execute_python_code"},
             criado_por="ia_execute_python_code",
@@ -1229,7 +1244,8 @@ async def test_executar_com_tools_repara_correcao_json_array(monkeypatch, tmp_pa
         "doc-json-bad-2": bad_json_path_2,
         "doc-json-stale": stale_json_path,
         "doc-json-good": good_json_path,
-        "doc-pdf": pdf_path,
+        "doc-pdf-stale": stale_pdf_path,
+        "doc-pdf-good": good_pdf_path,
     }
 
     executor = PipelineExecutor()
@@ -1268,6 +1284,12 @@ async def test_executar_com_tools_repara_correcao_json_array(monkeypatch, tmp_pa
     )
     assert any(
         call.args[0] == "doc-json-stale"
+        and call.kwargs.get("status") == StatusProcessamento.ERRO
+        and call.kwargs["metadata_patch"]["erro_tipo"] == "stale_tool_artifact"
+        for call in executor.storage.atualizar_documento_processamento.call_args_list
+    )
+    assert any(
+        call.args[0] == "doc-pdf-stale"
         and call.kwargs.get("status") == StatusProcessamento.ERRO
         and call.kwargs["metadata_patch"]["erro_tipo"] == "stale_tool_artifact"
         for call in executor.storage.atualizar_documento_processamento.call_args_list
