@@ -2090,3 +2090,89 @@ async def test_executar_com_tools_preserva_503_retryable(monkeypatch):
     for call in executor.storage.atualizar_documento_processamento.call_args_list:
         assert call.kwargs["status"] == StatusProcessamento.ERRO
         assert "UNAVAILABLE" in call.kwargs["metadata_patch"]["erro_pipeline"]
+
+
+@pytest.mark.asyncio
+async def test_executar_com_tools_provider_error_preserva_tokens_de_documento_parcial(monkeypatch):
+    import chat_service
+    from executor import PipelineExecutor
+    from chat_service import ProviderAPIError, ProviderType
+
+    model = SimpleNamespace(
+        id="gemini",
+        tipo=ProviderType.GOOGLE,
+        modelo="gemini-2.5-flash",
+        api_key_id=None,
+        suporta_function_calling=True,
+        max_tokens=1024,
+        temperature=0,
+        suporta_temperature=False,
+    )
+
+    monkeypatch.setattr(chat_service.model_manager, "get", lambda model_id: model)
+    monkeypatch.setattr(chat_service.api_key_manager, "get", lambda key_id: None)
+    monkeypatch.setattr(
+        chat_service.api_key_manager,
+        "get_por_empresa",
+        lambda provider: SimpleNamespace(api_key="test-key"),
+    )
+
+    class DummyClient:
+        def __init__(self, model_config, api_key):
+            self.calls = 0
+
+        async def chat_with_tools(self, **kwargs):
+            self.calls += 1
+            if self.calls == 1:
+                kwargs["context"].created_document_ids.append("doc-json")
+                return {
+                    "content": "",
+                    "tokens": 26,
+                    "input_tokens": 20,
+                    "output_tokens": 6,
+                    "modelo": "gemini-2.5-flash",
+                    "provider": "google",
+                    "tool_calls": [{"name": "create_document", "is_error": False}],
+                }
+            raise ProviderAPIError(
+                "Google",
+                429,
+                '{"error":{"status":"RESOURCE_EXHAUSTED","message":"quota"}}',
+            )
+
+    monkeypatch.setattr(chat_service, "ChatClient", DummyClient)
+
+    executor = PipelineExecutor()
+    executor.storage.get_documento = MagicMock(
+        return_value=SimpleNamespace(
+            id="doc-json",
+            extensao=".json",
+            metadata={"tool": "create_document"},
+            status=StatusProcessamento.CONCLUIDO,
+        )
+    )
+    executor.storage.atualizar_documento_processamento = MagicMock()
+
+    resultado = await executor.executar_com_tools(
+        mensagem="corrija",
+        atividade_id="ativ-1",
+        aluno_id="aluno-1",
+        provider_id="gemini",
+        tools_to_use=["create_document", "execute_python_code"],
+        expected_document_type=TipoDocumento.CORRECAO,
+        prompt_id="prompt-1",
+    )
+
+    assert resultado.sucesso is False
+    assert resultado.erro_codigo == 429
+    assert resultado.tokens_entrada == 20
+    assert resultado.tokens_saida == 6
+
+    executor.storage.atualizar_documento_processamento.assert_called_once()
+    call = executor.storage.atualizar_documento_processamento.call_args
+    assert call.args[0] == "doc-json"
+    assert call.kwargs["tokens_usados"] == 26
+    assert call.kwargs["metadata_patch"]["tokens_entrada"] == 20
+    assert call.kwargs["metadata_patch"]["tokens_saida"] == 6
+    assert call.kwargs["metadata_patch"]["tokens_total"] == 26
+    assert call.kwargs["metadata_patch"]["custo_origem"] == "provider_error_after_partial_tool_use"

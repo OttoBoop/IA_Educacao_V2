@@ -5107,14 +5107,62 @@ Seja preciso, educativo e construtivo em suas análises."""
             
         except ProviderAPIError as e:
             created_context = locals().get("context")
+            responses_so_far = locals().get("respostas_tool", []) or []
+            sum_usage = locals().get("_sum_usage")
+            if callable(sum_usage):
+                tokens_entrada = sum_usage(responses_so_far, "input_tokens") or sum_usage(responses_so_far, "tokens")
+                tokens_saida = sum_usage(responses_so_far, "output_tokens")
+            else:
+                tokens_entrada = 0
+                tokens_saida = 0
+            tokens_total = int(tokens_entrada or 0) + int(tokens_saida or 0)
+            tempo_ms = (time.time() - inicio) * 1000
+            model_info = locals().get("model")
+            model_provider = getattr(getattr(model_info, "tipo", None), "value", getattr(model_info, "tipo", ""))
+            model_name = getattr(model_info, "modelo", "")
+            cost_run_id = getattr(created_context, "cost_run_id", None)
+            metadata_patch = {
+                "erro_pipeline": str(e),
+                "cost_run_id": cost_run_id,
+            }
+            if tokens_total > 0:
+                metadata_patch.update(
+                    {
+                        "tokens_entrada": tokens_entrada,
+                        "tokens_saida": tokens_saida,
+                        "tokens_total": tokens_total,
+                        "custo_origem": "provider_error_after_partial_tool_use",
+                    }
+                )
             for doc_id in getattr(created_context, "created_document_ids", []) or []:
                 self.storage.atualizar_documento_processamento(
                     doc_id,
+                    ia_provider=model_provider or getattr(e, "provider", ""),
+                    ia_modelo=model_name,
+                    prompt_usado=locals().get("prompt_id"),
+                    tokens_usados=tokens_total,
+                    tempo_processamento_ms=tempo_ms,
                     status=StatusProcessamento.ERRO,
-                    metadata_patch={
-                        "erro_pipeline": str(e),
-                        "cost_run_id": getattr(created_context, "cost_run_id", None),
-                    },
+                    metadata_patch=metadata_patch,
+                )
+            if not getattr(created_context, "created_document_ids", []) and tokens_total > 0:
+                record_token_usage(
+                    cost_run_id=cost_run_id or f"provider_error_{uuid.uuid4().hex[:12]}",
+                    atividade_id=atividade_id,
+                    aluno_id=aluno_id,
+                    etapa=expected_document_type.value if expected_document_type else "tools",
+                    provider=model_provider or getattr(e, "provider", ""),
+                    modelo=model_name,
+                    tokens_entrada=tokens_entrada,
+                    tokens_saida=tokens_saida,
+                    status="erro",
+                    erro=str(e),
+                    erro_codigo=e.status_code,
+                    retryable=e.retryable,
+                    tempo_ms=tempo_ms,
+                    prompt_id=locals().get("prompt_id"),
+                    source="executar_com_tools_provider_error",
+                    metadata={"erro_tipo": "provider_api_error"},
                 )
             return ResultadoExecucao(
                 sucesso=False,
@@ -5123,7 +5171,9 @@ Seja preciso, educativo e construtivo em suas análises."""
                 erro_codigo=e.status_code,
                 retryable=e.retryable,
                 provider=getattr(e, "provider", ""),
-                tempo_ms=(time.time() - inicio) * 1000,
+                tokens_entrada=tokens_entrada,
+                tokens_saida=tokens_saida,
+                tempo_ms=tempo_ms,
             )
         except Exception as e:
             return self._erro("tools", str(e))
