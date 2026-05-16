@@ -93,7 +93,7 @@
 |-----------------|:---:|:---:|:---:|:---:|:---:|:---:|
 | **Claude Haiku 4.5** (`588f3efe7975`) | ⏸️ | ⏸️ | ⏸️ | 🚫 | 🚫 | 🚫 |
 | **Gemini 3 Flash** (`gem3flash001`) | ✅ | ✅ | ✅ | ⚠️ | ⚠️ | ⚠️ |
-| **GPT-5 Nano** (`gpt5nano001`) | ✅ | ✅ | ❌ | ⚠️ | ⚠️ | ⚠️ |
+| **GPT-5 Nano** (`gpt5nano001`) | ✅ | ✅ | ⚠️ | ⚠️ | ⚠️ | ⚠️ |
 | **GPT-5.4 Mini** (`gpt54mini001`) | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | **GPT-4o** (`180b8298a279`) — referencia | ⚠️ | ⚠️ | ⚠️ | ✅ | ✅ | ✅ |
 
@@ -130,6 +130,12 @@ ainda deixou passar porque a validacao central nao estava no caminho real do
 executor (`10d1c1d9741a6273`). Desde `01fb04c`, o smoke
 `task_b511641dfa52` falha alto. A rodada posterior melhorou entrada e guards:
 `3b9eedc` criou `6b28875e8a9fdc73` com apenas Q7 real; `b8b8693` criou
+um caminho mais estrito para nao aceitar scan vazio. Em `aff2180`, Nano passou
+na fixture simples Diana: `task_ff7eeda28964` gerou JSON
+`4175e0e7476931d7` com 4 respostas reais (`x = 5`, `34`, `25`, `20 cm2`),
+`2129/2261` tokens e `US$ 0.001011`. Por isso a coluna vira ⚠️, nao ✅:
+melhorou na fixture simples, mas ainda precisa dataset maior para apagar o
+historico de falha.
 `893987838fd275bd` com conteudo demais e suspeita de inferencia; `283e8c6`
 criou `ff0882e8db71e79d`, mais honesto, mas ainda verde inconsistente; por fim
 `1ce3d23` fez `task_3d5feaf0da71` falhar alto e registrar custo sem documento
@@ -657,11 +663,13 @@ na fixture simples. Ainda falta pipeline completa de 6 etapas e datasets maiores
   `extrair_respostas` rodou varias vezes, mas foi reclassificada como falha de
   conteudo por tudo `ilegivel=true`/vazio, por inferencia suspeita do enunciado
   ou por scan majoritariamente sem conteudo. O deploy `1ce3d23` corrigiu o
-  falso sucesso final: agora esse caso falha alto, nao cria documento verde e
-  registra custo de falha (`usage_52590d55d210459e`). Ainda faltam corrigir a
-  extracao real de respostas, corrigir `analisar_habilidades` no run integrado,
-  rodar pipeline completa de 6 etapas, schema minimo por etapa e custo duravel
-  de falhas sem documento final.
+  falso sucesso final naquele caso: agora ele falha alto, nao cria documento
+  verde e registra custo de falha (`usage_52590d55d210459e`). Em `aff2180`,
+  Nano passou `extrair_respostas` na fixture simples Diana (`task_ff7eeda28964`,
+  doc `4175e0e7476931d7`, custo `US$ 0.001011`), entao a etapa esta parcial,
+  nao resolvida de forma geral. Ainda faltam dataset maior, `analisar_habilidades`
+  no run integrado, pipeline completa de 6 etapas, schema minimo por etapa e
+  custo duravel de falhas sem documento final.
 - ⚠️ **GPT-5.4 Mini candidato OCR/pipeline simples:** `extrair_respostas` passou em uma amostra
   oficial primeiro como cadastro efemero (`task_9c10e3752bcb`, doc
   `a39d26fcc621c7a8`, custo `US$ 0.081492`) e depois como modelo versionado

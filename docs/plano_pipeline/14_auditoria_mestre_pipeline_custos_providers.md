@@ -2990,6 +2990,36 @@ Interpretação:
   "Aluno: Não informado"; `extrair_respostas` incluiu uma observacao
   contraditoria na Q1 apesar de extrair `x = 5` corretamente.
 
+## Atualizacao 2026-05-17 -- Nano `extrair_respostas` Na Fixture Simples
+
+Depois do full smoke GPT-5.4 Mini, o loop reavaliou o ponto mais fraco do
+GPT-5 Nano: `extrair_respostas`.
+
+Smoke oficial:
+
+- Task: `task_ff7eeda28964`
+- Runtime Render: `aff2180`
+- Modelo: `gpt5nano001` (`openai/gpt-5-nano`)
+- Etapa: `selected_steps=["extrair_respostas"]`
+- Documento: `4175e0e7476931d7`
+- Tokens/custo: `2129/2261`, `US$ 0.001011`
+
+Inspeção:
+
+- JSON raiz e objeto.
+- `respostas` tem 4 itens reais.
+- Respostas conferidas: Q1 `x = 5`, Q2 `34`, Q3 `25`, Q4 `20 cm2`.
+- `questoes_respondidas=4`, `questoes_em_branco=0`, sem `ilegivel=true`.
+
+Interpretação:
+
+- Nano melhorou na fixture simples Diana e nao deve continuar classificado como
+  falha absoluta em `extrair_respostas`.
+- A classificacao correta ainda e parcial: o historico em PDF/lista maior teve
+  tudo `ilegivel=true`, tudo `em_branco=true`, inferencia suspeita e scan
+  majoritariamente vazio. Precisa repetir em dataset maior antes de promover a
+  etapa para ✅ geral.
+
 ## Trabalho Aberto Desta Auditoria
 
 Esta auditoria nao encerra o loop tecnico. Ela deixa o proximo trabalho mais

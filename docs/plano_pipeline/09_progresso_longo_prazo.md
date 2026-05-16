@@ -43,6 +43,14 @@ correcao veio com `feedback_geral` correto e o PDF/JSON ficaram coerentes; o
 PDF de correcao ainda mostra "Aluno: Não informado", que fica como lacuna de
 qualidade/metadata de PDF.
 
+Ainda em `aff2180`, Nano foi reavaliado no ponto historicamente fraco
+`extrair_respostas`. O smoke `task_ff7eeda28964`, com
+`selected_steps=["extrair_respostas"]`, completou e criou o JSON
+`4175e0e7476931d7` com as 4 respostas reais da fixture Diana (`x = 5`, `34`,
+`25`, `20 cm2`), `2129/2261` tokens e custo `US$ 0.001011`. Isso melhora Nano
+para a fixture simples, mas nao apaga as falhas historicas em PDFs/listas
+maiores; o status correto e parcial ate repetir em dataset mais dificil.
+
 A sequencia que destravou esse ponto foi:
 
 - `5a3daca`: alinhou prompts OpenAI para dual-output via tools.
@@ -1745,6 +1753,10 @@ Critério de pronto: lista de limpeza segura e revisada.
   embora a correcao final tenha pontuado corretamente; o PDF de correcao mostra
   "Aluno: Não informado". Esses pontos nao quebraram o smoke, mas entram na fila
   de qualidade/UX e validacao semantica mais fina.
+- Smoke Nano em `aff2180`: `task_ff7eeda28964` completou `extrair_respostas`
+  na fixture Diana, documento `4175e0e7476931d7`, respostas reais
+  `x = 5`/`34`/`25`/`20 cm2`, `2129/2261` tokens, `US$ 0.001011`. Status:
+  melhora parcial de Nano; ainda exige dataset maior antes de sair do risco.
 
 ## Riscos Abertos
 
