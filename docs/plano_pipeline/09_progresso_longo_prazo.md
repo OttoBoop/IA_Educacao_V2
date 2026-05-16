@@ -4,21 +4,20 @@
 **Responsavel operacional:** Paulo
 **Status geral:** o servico oficial Render
 `srv-d5t8gbh4tr6s738fr3s0` (`IA_Educacao_V2`, branch `main`, URL
-`https://ia-educacao-v2.onrender.com`) esta em runtime backend `fdf0cbd`,
-confirmado por `/api/deploy-info`, `/api/health` e
-`./scripts/check_deploy.sh fdf0cbd`. O ciclo publicado alinhou catalogo/modelos
-OpenAI GPT-5.x aos docs oficiais: reasoning sem `temperature`, variantes `-pro`
-sem capabilities inventadas, `gpt-5-image` removido do catalogo textual e
-limites de contexto/output corrigidos. Smoke live seguro confirmou catalogo,
-estimativa de custo e chat simples com `gpt54mini001` (`HTTP 200`, JSON valido,
-`tokens_used=409`). Smoke de pipeline pos-deploy `task_0559fc57a3cc`, fixture
-Diana Omega, rodou `selected_steps=["corrigir"]` com `gpt54mini001` e completou
-sem `stage_errors`; JSON `92737f5ba69ca2d4` e PDF `bb6522992d2fe7d4` ficaram
-coerentes (`nota_final=8.0`, Q3 errada, `24593/4061` tokens,
-`US$ 0.036719`). GPT-4.1, GPT-5.4 Mini e GPT-4o seguem referencias de pipeline
-confirmadas na fixture Diana; Google esta limitado por quota `429` nos smokes
-recentes, Anthropic segue bloqueado por credito, e Supabase `token_usage`
-continua ausente (`PGRST205`), deixando custo duravel como gate real.
+`https://ia-educacao-v2.onrender.com`) tem como codigo funcional mais recente
+confirmado o commit `b8e14db` (`fix: surface partial result error documents`),
+validado por `/api/deploy-info`, `/api/health` e
+`./scripts/check_deploy.sh b8e14db9336789f2dfa74410738a2c903bc2fc8d`. Se
+`/api/deploy-info` apontar commit documental posterior, comparar com este hash
+funcional antes de concluir que houve nova mudanca de runtime. O ciclo
+publicado faz a tela/rota de resultados obedecer `status=erro`: documento em
+erro nao conta como progresso parcial, retry concluido pode fechar a etapa sem
+esconder o erro anterior, e os documentos de erro continuam visiveis com
+provider/modelo/tokens/causa. GPT-4.1, GPT-5.4 Mini e GPT-4o seguem referencias
+de pipeline confirmadas na fixture Diana; Google esta limitado por quota `429`
+nos smokes recentes, Anthropic segue bloqueado por credito, e Supabase
+`token_usage` continua ausente (`PGRST205`), deixando custo duravel como gate
+real.
 
 Atualizacao Lista0 de 2026-05-17: a atividade real `Lista0`
 (`126e8b5ad7dd6d59`) tem documentos base cadastrados e 63 alunos
@@ -2594,9 +2593,24 @@ Critério de pronto: lista de limpeza segura e revisada.
   `test_erro_pipeline_integration.py` ainda tem 3 falhas antigas em testes que
   procuram texto dentro do PDF binario bruto do ReportLab; o recorte afetado
   por este ciclo passou.
-- Status antes do deploy: patch validado localmente. Proximo passo do ciclo e
-  commit, push, deploy oficial, smoke de `/api/resultados` e registro do hash
-  live.
+- Commit/deploy: `b8e14db` (`fix: surface partial result error documents`)
+  foi publicado em `origin/main`; `wait_deploy.sh` encontrou o runtime apos
+  `180s`; `check_deploy.sh b8e14db9336789f2dfa74410738a2c903bc2fc8d` passou;
+  `/api/deploy-info` retornou `full_commit=b8e14db9336789f2dfa74410738a2c903bc2fc8d`;
+  `/api/health` respondeu `healthy`.
+- Smoke oficial sem nova IA: HTML live em `/` contem `statusDoc`,
+  `erroPipeline` e `Pipeline com Erro`; `/api/documentos` na fixture Diana
+  (`f68d57a9a339081f`/`10d9fa4f4303ea1f`) expõe documentos `status=erro` e
+  `erro_tipo=pdf_json_consistency`; `/api/resultados` para a mesma fixture
+  segue `completo=true`, `aluno_nome=Diana Omega`, `nota_final=8.0`, porque ha
+  retry concluido valido. Esse caso confirma a regra: retry concluido fecha a
+  etapa, mas documentos de erro permanecem visiveis na lista/auditoria.
+- Limite do smoke live: nao havia no resumo de custos uma fixture recente com
+  apenas documento de erro e sem correcao concluida; essa parte do contrato foi
+  coberta localmente por teste unitario da rota parcial.
+- Status: publicado no site oficial. Proximo alvo de Sprint 4 e revisar
+  historico/ranking/agregados para impedir que documentos `status=erro` virem
+  nota/correcao valida em listas resumidas.
 
 ## Riscos Abertos
 
