@@ -157,6 +157,39 @@ def test_cost_summary_conta_um_run_com_json_e_pdf(tmp_path):
     assert set(summary["amostras"][0]["documentos_ids"]) == {doc_json.id, doc_pdf.id}
 
 
+def test_cost_summary_expoe_erro_pipeline_em_documento_precificado(tmp_path):
+    store, atividade, aluno = _seed_storage(tmp_path)
+    arquivo_pdf = tmp_path / "correcao.pdf"
+    arquivo_pdf.write_bytes(b"%PDF-1.4\n")
+
+    doc_pdf = store.salvar_documento(
+        arquivo_origem=str(arquivo_pdf),
+        tipo=TipoDocumento.CORRECAO,
+        atividade_id=atividade.id,
+        aluno_id=aluno.id,
+        ia_provider="openai",
+        ia_modelo="gpt-5-nano",
+        tokens_usados=300,
+        metadata={"tokens_entrada": 200, "tokens_saida": 100, "cost_run_id": "run-erro"},
+    )
+    updated = store.atualizar_documento_processamento(
+        doc_pdf.id,
+        status=StatusProcessamento.ERRO,
+        metadata_patch={
+            "erro_pipeline": "PDF divergiu do JSON",
+            "erro_tipo": "pdf_json_consistency",
+        },
+    )
+
+    summary = build_cost_summary([updated])
+
+    assert summary["runs_precificados"] == 1
+    documento = summary["amostras"][0]["documentos"][0]
+    assert documento["status"] == "erro"
+    assert documento["erro"] == "PDF divergiu do JSON"
+    assert documento["erro_tipo"] == "pdf_json_consistency"
+
+
 def test_cost_summary_bloqueia_run_com_metadata_conflitante(tmp_path):
     store, atividade, aluno = _seed_storage(tmp_path)
     arquivo_json = tmp_path / "correcao.json"
@@ -613,6 +646,158 @@ async def test_executar_com_tools_repara_pdf_nao_persistido_com_retry(monkeypatc
     assert resultado.tentativas == 2
     assert DummyClient.calls == 2
     assert executor.storage.atualizar_documento_processamento.call_count == 2
+
+
+@pytest.mark.asyncio
+async def test_executar_com_tools_repara_pdf_inconsistente_com_json(monkeypatch, tmp_path):
+    import fitz
+    import chat_service
+    from executor import PipelineExecutor
+    from chat_service import ProviderType
+
+    model = SimpleNamespace(
+        id="mini",
+        tipo=ProviderType.OPENAI,
+        modelo="gpt-5.4-mini",
+        api_key_id=None,
+        suporta_function_calling=True,
+        max_tokens=1024,
+        temperature=0,
+        suporta_temperature=False,
+    )
+
+    monkeypatch.setattr(chat_service.model_manager, "get", lambda model_id: model)
+    monkeypatch.setattr(chat_service.api_key_manager, "get", lambda key_id: None)
+    monkeypatch.setattr(
+        chat_service.api_key_manager,
+        "get_por_empresa",
+        lambda provider: SimpleNamespace(api_key="test-key"),
+    )
+
+    def write_pdf(path, text):
+        pdf = fitz.open()
+        page = pdf.new_page()
+        page.insert_textbox(fitz.Rect(40, 40, 560, 800), text, fontsize=11)
+        pdf.save(str(path))
+        pdf.close()
+
+    json_path = tmp_path / "correcao.json"
+    bad_pdf_path = tmp_path / "correcao_bad.pdf"
+    good_pdf_path = tmp_path / "correcao_good.pdf"
+    json_path.write_text(
+        '{"nota_final": 8, "questoes": [{"numero": 3, "nota": 0}]}',
+        encoding="utf-8",
+    )
+    write_pdf(
+        bad_pdf_path,
+        "Nota final: 8.0 / 10.0\nQuestão 3 — Erro | Nota: 3.0\n",
+    )
+    write_pdf(
+        good_pdf_path,
+        "Nota final: 8.0 / 10.0\nQuestão 3 — Erro | Nota: 0.0\n",
+    )
+
+    class DummyClient:
+        calls = 0
+
+        def __init__(self, model_config, api_key):
+            self.model_config = model_config
+            self.api_key = api_key
+
+        async def chat_with_tools(self, **kwargs):
+            DummyClient.calls += 1
+            context = kwargs["context"]
+            if DummyClient.calls == 1:
+                context.created_document_ids.append("doc-json")
+                return {
+                    "content": "",
+                    "tokens": 10,
+                    "input_tokens": 8,
+                    "output_tokens": 2,
+                    "tool_calls": [
+                        {
+                            "id": "json-1",
+                            "name": "create_document",
+                            "input": {"content": json_path.read_text(encoding="utf-8")},
+                            "is_error": False,
+                            "files_generated": [],
+                        }
+                    ],
+                }
+
+            doc_id = "doc-pdf-bad" if DummyClient.calls == 2 else "doc-pdf-good"
+            context.created_document_ids.append(doc_id)
+            return {
+                "content": "",
+                "tokens": 20,
+                "input_tokens": 15,
+                "output_tokens": 5,
+                "tool_calls": [
+                    {
+                        "id": f"pdf-{DummyClient.calls}",
+                        "name": "execute_python_code",
+                        "input": {
+                            "code": "from reportlab.pdfgen import canvas\ncanvas.Canvas('correcao.pdf').save()",
+                            "output_files": ["correcao.pdf"],
+                        },
+                        "is_error": False,
+                        "files_generated": [{"filename": "correcao.pdf", "size_bytes": 128}],
+                    }
+                ],
+            }
+
+    monkeypatch.setattr(chat_service, "ChatClient", DummyClient)
+
+    docs = {
+        "doc-json": SimpleNamespace(
+            id="doc-json",
+            extensao=".json",
+            metadata={"tool": "create_document"},
+            criado_por="ia_create_document",
+        ),
+        "doc-pdf-bad": SimpleNamespace(
+            id="doc-pdf-bad",
+            extensao=".pdf",
+            metadata={"tool": "execute_python_code"},
+            criado_por="ia_execute_python_code",
+        ),
+        "doc-pdf-good": SimpleNamespace(
+            id="doc-pdf-good",
+            extensao=".pdf",
+            metadata={"tool": "execute_python_code"},
+            criado_por="ia_execute_python_code",
+        ),
+    }
+    paths = {
+        "doc-json": json_path,
+        "doc-pdf-bad": bad_pdf_path,
+        "doc-pdf-good": good_pdf_path,
+    }
+
+    executor = PipelineExecutor()
+    executor.storage.get_documento = MagicMock(side_effect=lambda doc_id: docs[doc_id])
+    executor.storage.resolver_caminho_documento = MagicMock(side_effect=lambda doc: paths[doc.id])
+    executor.storage.atualizar_documento_processamento = MagicMock()
+
+    resultado = await executor.executar_com_tools(
+        mensagem="corrija",
+        atividade_id="ativ-1",
+        aluno_id="aluno-1",
+        provider_id="mini",
+        tools_to_use=["create_document", "execute_python_code"],
+        expected_document_type=TipoDocumento.CORRECAO,
+        prompt_id="prompt-1",
+    )
+
+    assert resultado.sucesso is True
+    assert resultado.tentativas == 3
+    assert DummyClient.calls == 3
+    assert any(
+        call.args[0] == "doc-pdf-bad"
+        and call.kwargs.get("status") == StatusProcessamento.ERRO
+        and call.kwargs["metadata_patch"]["erro_tipo"] == "pdf_json_consistency"
+        for call in executor.storage.atualizar_documento_processamento.call_args_list
+    )
 
 
 @pytest.mark.asyncio

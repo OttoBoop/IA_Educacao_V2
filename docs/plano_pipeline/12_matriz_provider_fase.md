@@ -160,7 +160,12 @@ separadas e ficou live no Render. O re-smoke `task_605512496b0d` completou as
 `680aa0c4bf6183ec` trouxe `nota_final=8`, enquanto PDF `dde1d63db71f2a5b`
 trouxe `Nota final: N/A`. Patch local seguinte adiciona guarda PDF/JSON no
 executor: a matriz so deve voltar a ✅ plena nessa fixture se o smoke produzir
-artefatos coerentes ou falhar alto antes de marcar sucesso.
+artefatos coerentes ou falhar alto antes de marcar sucesso. A guarda foi
+publicada em `2052a01`; o smoke `task_857c0c3657ef` falhou alto em `corrigir`
+porque o PDF `7559f610981995cd` mostrou Q3 `3.0` contra JSON
+`0fdcfe4d7d9b9072` com Q3 `0`. Patch local seguinte adiciona retry explicito
+para regenerar apenas o PDF a partir do JSON validado e expor `erro_pipeline`
+no resumo de custos.
 
 Nota de pipeline per-phase: antes de `f2211bb`, o smoke
 `task_ea1ac75c9459` falhou alto em `extrair_gabarito` porque Nano retornou tudo
@@ -556,7 +561,8 @@ Ver [teste_gpt5nano_pipeline_completo.md](arquivo_2026_04_17/teste_gpt5nano_pipe
       registrados
 - [ ] Revalidar GPT-5.4 Mini apos guarda PDF/JSON: re-smoke `task_605512496b0d`
       no Render `0ac92f0` completou as 6 etapas, mas PDFs divergiram dos JSONs;
-      proximo runtime deve falhar alto ou produzir artefatos coerentes
+      `2052a01` falhou alto no smoke `task_857c0c3657ef`; proximo runtime deve
+      testar retry explicito de PDF ou continuar falhando alto com erro visivel
 - [x] Preparar codigo para persistir `TokenUsageRecord` em Supabase quando a
       tabela existir
 - [x] Criar registro local mensal de custo de falhas sem documento final
@@ -629,8 +635,10 @@ Ver [teste_gpt5nano_pipeline_completo.md](arquivo_2026_04_17/teste_gpt5nano_pipe
   persistidos e custo aproximado `US$ 0.079110`. Depois de `0ac92f0`, o
   re-smoke `task_605512496b0d` tambem completou as 6 etapas, mas mostrou P0 de
   artefato: JSONs coerentes e PDFs divergentes em `corrigir` e
-  `gerar_relatorio`. Ate o deploy/smoke da guarda PDF/JSON, a confirmacao plena
-  fica rebaixada para parcial.
+  `gerar_relatorio`. Depois, `2052a01` bloqueou essa classe de falso verde:
+  `task_857c0c3657ef` falhou alto em `corrigir` por PDF/JSON divergente. Ate o
+  deploy/smoke do retry PDF/JSON, a confirmacao plena fica rebaixada para
+  parcial.
 - ⏸️ **Claude Haiku 4.5:** Aguardando creditos.
 - 📊 **Confiabilidade Gemini 3 Flash:** etapas individuais OK, mas a primeira
   pipeline sequencial pos-runner bateu quota `429` em `corrigir`. Precisa duas
@@ -640,8 +648,8 @@ Ver [teste_gpt5nano_pipeline_completo.md](arquivo_2026_04_17/teste_gpt5nano_pipe
 inteira:** o site oficial completou 6 etapas com GPT-5.4 Mini, custo/metadata,
 deploy confirmado e inspeção semantica inicial coerente dos JSONs. O re-smoke
 pos-`0ac92f0` provou que PDF existente nao basta: JSON e PDF precisam concordar.
-O proximo gate e deployar a guarda PDF/JSON e aceitar apenas sucesso coerente ou
-erro alto.
+O proximo gate e deployar o retry PDF/JSON e aceitar apenas sucesso coerente ou
+erro alto com causa visivel no resumo de custos.
 
 **Bugs criticos descobertos nesta sessao:**
 1. GPT-5 Nano tool-use historico: multiplas chamadas `create_document`, nomes alucinados, sem validacao de schema
@@ -654,8 +662,8 @@ erro alto.
    novo; o runtime atual confirmado do patch PDF e `0ac92f0`.
 2. Aplicar/validar a migration Supabase `token_usage` antes de chamar custo de
    falha sem documento de duravel.
-3. Deployar/revalidar a guarda PDF/JSON que bloqueia PDF semanticamente
-   divergente do JSON.
+3. Deployar/revalidar o retry PDF/JSON que tenta regenerar o PDF no mesmo modelo
+   e continua bloqueando divergencia se ela persistir.
 4. Revalidar Gemini/Nano/GPT-4o por provider/modelo; GPT-5 Nano permanece ❌ em
    `extrair_respostas`.
 5. Aplicar `backend/migrations/002_create_token_usage.sql` no Supabase para

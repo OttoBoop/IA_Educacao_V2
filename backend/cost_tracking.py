@@ -44,6 +44,8 @@ def _cost_for(doc: Documento, metadata: Dict[str, Any]) -> Dict[str, Any]:
         "tokens_total": total_tokens,
         "cost_run_id": metadata.get("cost_run_id") or doc.id,
         "status": doc.status.value if hasattr(doc.status, "value") else str(doc.status),
+        "erro_execucao": metadata.get("erro_pipeline") or metadata.get("erro_execucao"),
+        "erro_tipo": metadata.get("erro_tipo"),
     }
 
     if not doc.ia_provider or not doc.ia_modelo:
@@ -137,7 +139,9 @@ def _documents_for_run(rows: Iterable[Dict[str, Any]]) -> list[Dict[str, Any]]:
             "tipo": row["tipo"],
             "status": row["status"],
             "custo_status": row["custo_status"],
-            "erro": row.get("erro"),
+            "erro": row.get("erro") or row.get("erro_execucao"),
+            "erro_execucao": row.get("erro_execucao"),
+            "erro_tipo": row.get("erro_tipo"),
         }
         for row in rows
         if row.get("documento_id")

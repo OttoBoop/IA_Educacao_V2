@@ -3715,6 +3715,76 @@ Seja preciso, educativo e construtivo em suas análises."""
 
                 return errors
 
+            def _latest_tool_doc(
+                state: Dict[str, Any],
+                tool_name: str,
+                extension: str,
+            ) -> Optional[Any]:
+                docs = state.get("docs_by_tool", {}).get(tool_name, [])
+                for doc in reversed(docs):
+                    if (getattr(doc, "extensao", "") or "").lower() == extension:
+                        return doc
+                return None
+
+            def _read_doc_text_for_retry(doc: Any, max_chars: int = 16000) -> str:
+                path = self.storage.resolver_caminho_documento(doc)
+                with open(path, "r", encoding="utf-8") as fh:
+                    content = fh.read()
+                if len(content) > max_chars:
+                    return content[:max_chars] + "\n...[json truncado para retry]..."
+                return content
+
+            def _retry_pdf_consistency_message(
+                state: Dict[str, Any],
+                pdf_errors: List[str],
+            ) -> str:
+                json_doc = _latest_tool_doc(state, "create_document", ".json")
+                json_content = ""
+                if json_doc is not None:
+                    try:
+                        json_content = _read_doc_text_for_retry(json_doc)
+                    except Exception as exc:
+                        json_content = f"[JSON indisponivel para leitura no retry: {exc}]"
+
+                pdf_filename = f"{expected_document_type.value if expected_document_type else 'relatorio'}.pdf"
+                return (
+                    "O PDF gerado divergiu do JSON oficial validado. Isto e erro "
+                    "bloqueante, mas voce tem uma tentativa explicita de reparo no "
+                    "MESMO modelo.\n"
+                    "Nesta chamada, a unica ferramenta disponivel e execute_python_code. "
+                    "Nao chame create_document, nao altere o JSON, nao recalcule notas "
+                    "e nao invente valores. Gere novamente apenas o PDF usando exatamente "
+                    "os valores do JSON abaixo.\n"
+                    f"Preencha output_files com ['{pdf_filename}'] e salve um PDF real "
+                    "com reportlab. Se for CORRIGIR, cada questao exibida no PDF deve "
+                    "usar exatamente questoes[].nota do JSON; a nota final do PDF deve "
+                    "usar exatamente nota_final do JSON. Se for GERAR_RELATORIO, "
+                    "nota_final e proficiencia_geral devem aparecer como metricas "
+                    "separadas.\n\n"
+                    "ERROS DETECTADOS NO PDF ANTERIOR:\n"
+                    + "\n".join(f"- {error}" for error in pdf_errors)
+                    + "\n\nJSON OFICIAL VALIDADO:\n```json\n"
+                    + json_content
+                    + "\n```\n"
+                )
+
+            def _mark_latest_pdf_error(
+                state: Dict[str, Any],
+                erro_msg: str,
+            ) -> None:
+                pdf_doc = _latest_tool_doc(state, "execute_python_code", ".pdf")
+                if not pdf_doc:
+                    return
+                self.storage.atualizar_documento_processamento(
+                    getattr(pdf_doc, "id"),
+                    status=StatusProcessamento.ERRO,
+                    metadata_patch={
+                        "erro_pipeline": erro_msg,
+                        "erro_tipo": "pdf_json_consistency",
+                        "cost_run_id": context.cost_run_id,
+                    },
+                )
+
             initial_tool_choice = (
                 _forced_openai_tool("create_document")
                 if dual_output_expected and is_openai_provider
@@ -3947,13 +4017,52 @@ Seja preciso, educativo e construtivo em suas análises."""
             tokens_saida = _sum_usage(respostas_tool, "output_tokens")
             tokens_total = tokens_entrada + tokens_saida
 
-            validation_errors = _validate_json_artifacts(final_state)
-            validation_errors.extend(
-                self._validar_consistencia_pdf_json_tool_outputs(
+            json_validation_errors = _validate_json_artifacts(final_state)
+            pdf_json_errors = self._validar_consistencia_pdf_json_tool_outputs(
+                final_state.get("docs_by_tool", {}),
+                expected_document_type,
+            )
+            if (
+                pdf_json_errors
+                and not json_validation_errors
+                and dual_output_expected
+                and "execute_python_code" in tools_to_use
+            ):
+                repair_error_msg = (
+                    "Saida PDF/JSON inconsistente antes do retry: "
+                    + "; ".join(pdf_json_errors)
+                )
+                _mark_latest_pdf_error(final_state, repair_error_msg)
+                resposta = await client.chat_with_tools(
+                    mensagem=_retry_pdf_consistency_message(final_state, pdf_json_errors),
+                    tools=_tools_by_names(["execute_python_code"]),
+                    tool_registry=registry,
+                    system_prompt=system_prompt,
+                    context=context,
+                    tool_choice=(
+                        _forced_openai_tool("execute_python_code")
+                        if is_openai_provider
+                        else None
+                    ),
+                )
+                respostas_tool.append(resposta)
+                tentativas += 1
+                final_state = _dual_output_state(respostas_tool)
+                tokens_entrada = _sum_usage(respostas_tool, "input_tokens") or _sum_usage(respostas_tool, "tokens")
+                tokens_saida = _sum_usage(respostas_tool, "output_tokens")
+                tokens_total = tokens_entrada + tokens_saida
+                alertas.append({
+                    "tipo": "aviso",
+                    "mensagem": repair_error_msg + ". PDF regenerado por retry explicito.",
+                })
+
+                json_validation_errors = _validate_json_artifacts(final_state)
+                pdf_json_errors = self._validar_consistencia_pdf_json_tool_outputs(
                     final_state.get("docs_by_tool", {}),
                     expected_document_type,
                 )
-            )
+
+            validation_errors = json_validation_errors + pdf_json_errors
             if validation_errors:
                 erro_msg = (
                     "Saída obrigatória inválida: "
