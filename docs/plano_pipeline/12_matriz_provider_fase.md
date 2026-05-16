@@ -421,6 +421,9 @@ documento verde. Portanto:
 
 **Motivo:** Creditos Anthropic insuficientes. O smoke live de chat em
 2026-05-15 retornou erro Anthropic "Your credit balance is too low".
+Rechecagem em 2026-05-17 via `POST /api/settings/models/588f3efe7975/testar`
+tambem retornou `success=false`, erro Anthropic `invalid_request_error` e
+mensagem de saldo insuficiente.
 
 **Acao necessaria (Otavio):** Recarregar creditos na conta Anthropic. Nenhum teste possivel ate la.
 
@@ -719,7 +722,7 @@ nem datasets maiores.
 
 **Proximos passos:**
 1. Manter deploy oficial confirmado por `/api/deploy-info` antes de cada smoke
-   novo; o runtime atual confirmado e `aff2180`.
+   novo; o runtime atual confirmado e `99b8c3c`.
 2. Aplicar/validar a migration Supabase `token_usage` antes de chamar custo de
    falha sem documento de duravel.
 3. Revalidar matriz por provider/modelo; GPT-5.4 Mini passou 6 etapas em

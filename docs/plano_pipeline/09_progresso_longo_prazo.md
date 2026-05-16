@@ -4,7 +4,7 @@
 **Responsavel operacional:** Paulo
 **Status geral:** o servico oficial Render
 `srv-d5t8gbh4tr6s738fr3s0` (`IA_Educacao_V2`, branch `main`, URL
-`https://ia-educacao-v2.onrender.com`) esta em `aff2180`, confirmado por
+`https://ia-educacao-v2.onrender.com`) esta em `99b8c3c`, confirmado por
 `/api/deploy-info` com `source=RENDER_GIT_COMMIT`. O primeiro marco full
 recente continua sendo o smoke de 6 etapas com GPT-5.4 Mini (`gpt54mini001`) na
 atividade `Smoke Paulo Pipeline 2026-05-16`: task `task_a5f0d734f0b3`, aluna
@@ -62,6 +62,12 @@ especulativa em `EXTRAIR_RESPOSTAS`. O rerun `task_013ad41fd3ed` em
 `8019a2a2c5fc3cea` (`2115/292`, `US$ 0.008207`). O JSON de respostas traz
 `x = 5`, `34`, `25`, `20 cm2` e `raciocinio_parcial=null` nas quatro questoes,
 como esperado quando so ha resposta final visivel.
+
+Haiku 4.5 foi rechecado pelo endpoint oficial
+`POST /api/settings/models/588f3efe7975/testar` no mesmo ciclo e continua
+bloqueado por créditos Anthropic: HTTP 200 da API do site, `success=false`, erro
+Anthropic `invalid_request_error` com mensagem de saldo insuficiente. Nao ha
+pipeline Haiku util enquanto esse bloqueio externo persistir.
 
 A sequencia que destravou esse ponto foi:
 

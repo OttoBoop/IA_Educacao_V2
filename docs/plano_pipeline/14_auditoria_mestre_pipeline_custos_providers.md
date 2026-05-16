@@ -3065,6 +3065,21 @@ Interpretação:
 - Ainda falta uma task full de 6 etapas GPT-4o e datasets maiores. Nao promover
   para confiabilidade geral sem esses smokes.
 
+## Atualizacao 2026-05-17 -- Haiku Continua Bloqueado Por Créditos
+
+Foi feita uma verificação mínima pelo endpoint oficial de settings:
+
+- Endpoint: `POST /api/settings/models/588f3efe7975/testar`
+- Resultado HTTP do site: `200`
+- Payload: `success=false`
+- Erro Anthropic: `invalid_request_error`
+- Mensagem: saldo de créditos baixo demais para acessar a API Anthropic.
+
+Interpretação:
+
+- Claude Haiku 4.5 continua 🚫 bloqueado por crédito externo.
+- Nao faz sentido rodar pipeline Haiku ate a conta Anthropic ser recarregada.
+
 ## Trabalho Aberto Desta Auditoria
 
 Esta auditoria nao encerra o loop tecnico. Ela deixa o proximo trabalho mais
