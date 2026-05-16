@@ -106,6 +106,15 @@ enquanto o PDF `e8861f03a2980412` mostrava `8.0`. Resultado correto: todos os
 artefatos do run `tool_44dd029b1954` foram marcados `status=erro`, custo
 `18748/1934` tokens e `US$ 0.001986`, sem fallback e sem `completed` falso.
 
+Atualizacao GPT-5 Nano em 2026-05-17 no runtime `0f84552`: smoke
+`task_90eb0936b7ce`, `selected_steps=["corrigir"]`, falhou alto por divergencia
+PDF/JSON. JSON `c96bafb0c134d0bd` registrou `nota_final=8`, mas PDF
+`43450aa937013578` mostrou `nota_final=0.0`, nota `0.0` na questao 1 onde o
+JSON tinha `3`, e nao continha `feedback_geral` verificavel. Todos os artefatos
+do run `tool_37b678de7e7d` ficaram `status=erro`; custo rastreavel
+`55975/9221` tokens, `US$ 0.006487`. Status correto: Nano nao esta confirmado
+para `corrigir` nesse runtime, mas a pipeline bloqueia o falso verde.
+
 Atualizacao de 2026-05-17 no runtime `700b088`: o ciclo `f40acf3` alinhou
 `PROMPTS_PADRAO` e `STAGE_TOOL_INSTRUCTIONS` para `CORRIGIR`,
 `ANALISAR_HABILIDADES` e `GERAR_RELATORIO`, e tornou obrigatorios campos de

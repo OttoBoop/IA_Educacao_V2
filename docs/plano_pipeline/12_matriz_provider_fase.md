@@ -130,7 +130,7 @@
 | **Gemini 2.5 Flash** (`gem25flash001`) | ✅ | ✅ | ✅ | 🚫 | ⏸️ | ⏸️ |
 | **Gemini 2.5 Flash Lite** (`gem25lite001`) | ⏸️ | ⏸️ | ⏸️ | ❌ | ⏸️ | ⏸️ |
 | **Gemini 3 Flash** (`gem3flash001`) | ✅ | ✅ | ✅ | ⚠️ | ⚠️ | ⚠️ |
-| **GPT-5 Nano** (`gpt5nano001`) | ✅ | ✅ | ⚠️ | ⚠️ | ⚠️ | ✅ |
+| **GPT-5 Nano** (`gpt5nano001`) | ✅ | ✅ | ⚠️ | ❌ | ⚠️ | ✅ |
 | **GPT-5.4 Mini** (`gpt54mini001`) | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | **GPT-4o** (`180b8298a279`) — referencia | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 
@@ -212,6 +212,13 @@ oficial da ultima execucao. O smoke live `task_57da745b8de5` reexecutou apenas
 o PDF ruim `34e404fcd809270d` foi marcado `status=erro` por
 `pdf_json_consistency`; o PDF final `735896580f441e89` ficou concluido e
 `pdftotext` confirmou `Nota final: 8.0`. Tokens do run: `29067/6701`.
+Nota Nano/corrigir: no runtime `0f84552`, o smoke `task_90eb0936b7ce` com
+`selected_steps=["corrigir"]` falhou alto por PDF/JSON divergentes. JSON
+`c96bafb0c134d0bd` trouxe `nota_final=8`, mas PDF `43450aa937013578` trouxe
+`nota_final=0.0`, nota errada na Q1 e sem `feedback_geral` verificavel. Custo:
+`tool_37b678de7e7d`, `55975/9221`, `US$ 0.006487`. Portanto `CORRIGIR` volta a
+❌ para Nano nesse runtime, embora a falha esteja corretamente bloqueada e
+custeada.
 Nota P0 atualizada: `extrair_gabarito` Gemini era ❌ porque o output historico
 retornou todas as respostas como `MISSING_CONTENT`, embora o PDF base tivesse
 texto extraivel de "Exercicio 5". Em 2026-05-17, o smoke
