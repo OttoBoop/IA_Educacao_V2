@@ -51,6 +51,18 @@ Ainda em `aff2180`, Nano foi reavaliado no ponto historicamente fraco
 para a fixture simples, mas nao apaga as falhas historicas em PDFs/listas
 maiores; o status correto e parcial ate repetir em dataset mais dificil.
 
+Atualizacao GPT-4o de 2026-05-17: `task_d6506d2f2ccc` completou as tres
+extracoes em `aff2180`, mas a auditoria achou `raciocinio_parcial` avaliando
+ou especulando metodo na extração de respostas. Os commits `2885da7` e
+`99b8c3c` proibiram, respectivamente, linguagem de correção e linguagem
+especulativa em `EXTRAIR_RESPOSTAS`. O rerun `task_013ad41fd3ed` em
+`99b8c3c` completou as tres extracoes com conteúdo limpo: questoes
+`69dd5c07acb2ff52` (`1151/381`, `US$ 0.006687`), gabarito
+`98dbaf8613ec9fc3` (`1718/282`, `US$ 0.007115`) e respostas
+`8019a2a2c5fc3cea` (`2115/292`, `US$ 0.008207`). O JSON de respostas traz
+`x = 5`, `34`, `25`, `20 cm2` e `raciocinio_parcial=null` nas quatro questoes,
+como esperado quando so ha resposta final visivel.
+
 A sequencia que destravou esse ponto foi:
 
 - `5a3daca`: alinhou prompts OpenAI para dual-output via tools.
@@ -1757,6 +1769,12 @@ Critério de pronto: lista de limpeza segura e revisada.
   na fixture Diana, documento `4175e0e7476931d7`, respostas reais
   `x = 5`/`34`/`25`/`20 cm2`, `2129/2261` tokens, `US$ 0.001011`. Status:
   melhora parcial de Nano; ainda exige dataset maior antes de sair do risco.
+- Smokes GPT-4o de extracoes: `task_d6506d2f2ccc` em `aff2180` revelou
+  julgamento/especulacao em `raciocinio_parcial`; `2885da7` e `99b8c3c`
+  transformaram isso em contrato bloqueante. Rerun `task_013ad41fd3ed` passou:
+  `extrair_questoes` `69dd5c07acb2ff52`, `extrair_gabarito`
+  `98dbaf8613ec9fc3`, `extrair_respostas` `8019a2a2c5fc3cea`; custo total das
+  tres extracoes `US$ 0.022009`.
 
 ## Riscos Abertos
 

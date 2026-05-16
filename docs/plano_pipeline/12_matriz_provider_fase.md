@@ -95,15 +95,21 @@
 | **Gemini 3 Flash** (`gem3flash001`) | ✅ | ✅ | ✅ | ⚠️ | ⚠️ | ⚠️ |
 | **GPT-5 Nano** (`gpt5nano001`) | ✅ | ✅ | ⚠️ | ⚠️ | ⚠️ | ⚠️ |
 | **GPT-5.4 Mini** (`gpt54mini001`) | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
-| **GPT-4o** (`180b8298a279`) — referencia | ⚠️ | ⚠️ | ⚠️ | ✅ | ✅ | ✅ |
+| **GPT-4o** (`180b8298a279`) — referencia | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 
 Nota de leitura: os checks da tabela acima sao por etapa individual validada.
 Eles nao significam que a pipeline completa de 6 etapas passou em uma unica
 task. Em 2026-05-16, Gemini completou as tres extracoes em uma task sequencial,
 mas parou em `corrigir` por quota `429`.
 Nota GPT-4o: as tres etapas finais foram revalidadas em 2026-05-17 no smoke
-`task_386f96bbf158`; as tres extracoes seguem `⚠️` porque ainda nao foram
-retestadas pos-guards atuais nesse modelo.
+`task_386f96bbf158`. As tres extracoes foram revalidadas depois em
+`task_013ad41fd3ed`, runtime `99b8c3c`: `extrair_questoes`
+`69dd5c07acb2ff52`, `extrair_gabarito` `98dbaf8613ec9fc3` e
+`extrair_respostas` `8019a2a2c5fc3cea`. O primeiro rerun
+`task_d6506d2f2ccc` tinha exposto julgamento/especulacao em
+`raciocinio_parcial`; os commits `2885da7` e `99b8c3c` transformaram isso em
+erro bloqueante. O rerun final veio com `raciocinio_parcial=null` quando so
+havia resposta final visivel.
 Nota P0 atualizada: `extrair_gabarito` Gemini era ❌ porque o output historico
 retornou todas as respostas como `MISSING_CONTENT`, embora o PDF base tivesse
 texto extraivel de "Exercicio 5". Em 2026-05-17, o smoke
@@ -717,8 +723,8 @@ nem datasets maiores.
 2. Aplicar/validar a migration Supabase `token_usage` antes de chamar custo de
    falha sem documento de duravel.
 3. Revalidar matriz por provider/modelo; GPT-5.4 Mini passou 6 etapas em
-   fixture simples e GPT-4o passou as tres etapas finais, mas ainda faltam
-   datasets maiores.
+   fixture simples e GPT-4o passou as seis etapas individualmente, mas ainda
+   faltam datasets maiores e GPT-4o full 6 etapas em uma unica task.
 4. Revalidar Gemini/Nano/Haiku por provider/modelo; GPT-5 Nano permanece ❌ em
    `extrair_respostas` e Haiku segue bloqueado por credito.
 5. Aplicar `backend/migrations/002_create_token_usage.sql` no Supabase para

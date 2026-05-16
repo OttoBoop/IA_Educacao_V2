@@ -3020,6 +3020,51 @@ Interpretação:
   majoritariamente vazio. Precisa repetir em dataset maior antes de promover a
   etapa para ✅ geral.
 
+## Atualizacao 2026-05-17 -- GPT-4o Extracoes Sem Julgamento Em `raciocinio_parcial`
+
+O loop fechou a lacuna das tres primeiras etapas do GPT-4o.
+
+Primeiro smoke:
+
+- Task: `task_d6506d2f2ccc`
+- Runtime: `aff2180`
+- Resultado: `completed`
+- Problema encontrado: `extrair_respostas` extraiu os valores corretos, mas
+  escreveu julgamentos/especulacoes em `raciocinio_parcial`, incluindo uma
+  avaliacao errada da Q2.
+
+Correcoes:
+
+- `2885da7`: bloqueia linguagem de correcao/julgamento em
+  `raciocinio_parcial` da etapa `EXTRAIR_RESPOSTAS`.
+- `99b8c3c`: bloqueia linguagem especulativa como "provavelmente",
+  "possivelmente", "deve ter" e "parece que"; se so ha resposta final visivel,
+  `raciocinio_parcial` deve ser `null`.
+
+Rerun oficial:
+
+- Task: `task_013ad41fd3ed`
+- Runtime Render: `99b8c3c`
+- `extrair_questoes`: JSON `69dd5c07acb2ff52`, `1151/381`, `US$ 0.006687`
+- `extrair_gabarito`: JSON `98dbaf8613ec9fc3`, `1718/282`, `US$ 0.007115`
+- `extrair_respostas`: JSON `8019a2a2c5fc3cea`, `2115/292`, `US$ 0.008207`
+
+Inspeção:
+
+- Questões: 4 itens, pontuação total `10.0`.
+- Gabarito: Q1 `x = 5`, Q2 `34`, Q3 `30`, Q4 `20 cm2`.
+- Respostas da aluna: Q1 `x = 5`, Q2 `34`, Q3 `25`, Q4 `20 cm2`.
+- `raciocinio_parcial=null` nas quatro questões, correto para uma prova com
+  apenas resposta final visivel.
+
+Interpretação:
+
+- GPT-4o fica ✅ nas seis etapas individualmente para a fixture simples Diana:
+  tres etapas finais em `task_386f96bbf158` e tres extracoes em
+  `task_013ad41fd3ed`.
+- Ainda falta uma task full de 6 etapas GPT-4o e datasets maiores. Nao promover
+  para confiabilidade geral sem esses smokes.
+
 ## Trabalho Aberto Desta Auditoria
 
 Esta auditoria nao encerra o loop tecnico. Ela deixa o proximo trabalho mais
