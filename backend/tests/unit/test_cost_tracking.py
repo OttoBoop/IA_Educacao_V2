@@ -261,6 +261,69 @@ def test_cost_summary_inclui_token_usage_sem_documento():
     assert summary["amostras"][0]["token_usage_ids"] == ["usage-1"]
 
 
+def test_cost_summary_alerta_quando_token_usage_nao_e_duravel(monkeypatch):
+    import cost_tracking
+
+    class FakeTokenUsageStore:
+        def status(self):
+            return {
+                "local_path": "/tmp/token_usage",
+                "local_record_count": 0,
+                "local_error": None,
+                "supabase": {
+                    "enabled": True,
+                    "table_available": False,
+                    "record_count": None,
+                    "error": "PGRST205",
+                },
+                "durable": False,
+            }
+
+        def list_records(self, limit=None):
+            return []
+
+    monkeypatch.setattr(cost_tracking, "token_usage_store", FakeTokenUsageStore())
+
+    summary = cost_tracking.build_cost_summary([], token_usage_records=[])
+
+    assert summary["custos_persistencia_status"] == "parcial_sem_token_usage_duravel"
+    assert summary["token_usage_backend"]["durable"] is False
+    assert any(
+        alerta["tipo"] == "token_usage_not_durable"
+        and alerta["severidade"] == "bloqueante"
+        for alerta in summary["alertas"]
+    )
+
+
+@pytest.mark.asyncio
+async def test_cost_status_nao_fica_ok_sem_token_usage_duravel(monkeypatch):
+    import routes_costs
+
+    monkeypatch.setattr(
+        routes_costs,
+        "build_cost_summary",
+        lambda limit=500: {
+            "catalog_loaded": True,
+            "storage_backend": "postgresql",
+            "persistent_storage": True,
+            "custos_persistencia_status": "parcial_sem_token_usage_duravel",
+            "token_usage_backend": {"durable": False},
+            "token_usage_analisados": 0,
+            "runs_analisados": 0,
+            "runs_precificados": 0,
+            "runs_bloqueados": 0,
+            "bloqueios": {},
+            "alertas": [{"tipo": "token_usage_not_durable"}],
+        },
+    )
+
+    status = await routes_costs.get_cost_status()
+
+    assert status["ok"] is False
+    assert status["custos_persistencia_status"] == "parcial_sem_token_usage_duravel"
+    assert status["alertas"][0]["tipo"] == "token_usage_not_durable"
+
+
 def test_token_usage_store_persiste_json_mensal(tmp_path):
     store = TokenUsageStore(tmp_path, use_supabase=False)
     usage = TokenUsageRecord(

@@ -17,10 +17,11 @@ router = APIRouter()
 async def get_cost_status(limit: int = 500):
     summary = build_cost_summary(limit=limit)
     return {
-        "ok": summary["catalog_loaded"],
+        "ok": summary["catalog_loaded"] and summary["token_usage_backend"].get("durable", False),
         "storage_backend": summary["storage_backend"],
         "persistent_storage": summary["persistent_storage"],
         "catalog_loaded": summary["catalog_loaded"],
+        "custos_persistencia_status": summary["custos_persistencia_status"],
         "token_usage_backend": summary["token_usage_backend"],
         "token_usage_analisados": summary["token_usage_analisados"],
         "runs_analisados": summary["runs_analisados"],

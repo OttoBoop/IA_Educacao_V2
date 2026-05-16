@@ -268,11 +268,32 @@ def build_cost_summary(
     for provider in by_provider.values():
         provider["custo_usd"] = round(provider["custo_usd"], 6)
 
+    token_usage_backend = token_usage_store.status()
+    custos_persistencia_status = (
+        "duravel"
+        if token_usage_backend.get("durable")
+        else "parcial_sem_token_usage_duravel"
+    )
+    if not token_usage_backend.get("durable"):
+        alerts.append(
+            {
+                "tipo": "token_usage_not_durable",
+                "severidade": "bloqueante",
+                "mensagem": (
+                    "Custos de documentos com metadata estao medidos, mas falhas "
+                    "sem documento final nao tem persistencia duravel enquanto "
+                    "public.token_usage nao existir no Supabase."
+                ),
+                "acao": "Aplicar backend/migrations/002_create_token_usage.sql no Supabase.",
+            }
+        )
+
     return {
         "storage_backend": storage._backend_label(),
         "persistent_storage": storage._backend_label() == "postgresql",
         "catalog_loaded": bool(model_catalog.providers),
-        "token_usage_backend": token_usage_store.status(),
+        "custos_persistencia_status": custos_persistencia_status,
+        "token_usage_backend": token_usage_backend,
         "documentos_analisados": len(document_rows),
         "token_usage_analisados": len(usage_rows),
         "runs_analisados": len(rows_by_run),
