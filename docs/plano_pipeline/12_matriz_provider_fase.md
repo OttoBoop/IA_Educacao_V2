@@ -2,12 +2,14 @@
 
 **Atualizado:** 2026-05-17
 **Atividades de teste principais:** Lista0 — Algebra Linear Avancada
-(`126e8b5ad7dd6d59`) e smoke simples oficial `Smoke Paulo Pipeline 2026-05-16`
-(`f68d57a9a339081f`)
-**Runtime oficial atual:** backend Render em `4a4caf0`; `origin/main` recebeu o
-ciclo funcional `4a4caf0` para exigir `Feedback Geral` verificavel em PDFs de
-correcao e confirmar GPT-5 Nano numa task unica de seis etapas na fixture Diana. Use
-`/api/deploy-info` como gate de codigo live.
+(`126e8b5ad7dd6d59`), smoke simples oficial `Smoke Paulo Pipeline 2026-05-16`
+(`f68d57a9a339081f`) e atividade textual `Prova 1 - Equações do 1º Grau`
+(`8f58cc8b5fb75869`)
+**Runtime oficial atual:** backend Render em `0bcff27`; `origin/main` recebeu o
+ciclo funcional `0bcff27` para aceitar resposta em branco somente quando ela e
+rastreavel pela `EXTRACAO_RESPOSTAS`, e o re-smoke Beatriz
+`task_a305397df882` confirmou seis etapas no site oficial. Use
+`/api/deploy-info` com no-cache/cache-buster como gate de codigo live.
 **Commits aplicados/observados:** `a632883`, `5737611`, `50935ea`, `479b77d`,
 `b12be9a`, `301eba6`, `f67055c`, `462ea1d`, `b4d7ee6`, `99483d1`,
 `f505be6`, `d75b05a`, `97a7c79`, `ec95193`, `ff7b92a`, `68ebe51`,
@@ -24,16 +26,17 @@ correcao e confirmar GPT-5 Nano numa task unica de seis etapas na fixture Diana.
 `4094bda`, `4d8f73d`, `f40acf3`, `700b088`, `1307909`, `bed0c08`, `feaf5d0`,
 `d47d748`, `c53fae6`, `9ab53df`, `1454e68`, `3fce335`, `33fb7d5`, `0f84552`,
 `974f040`, `11a396b`, `c094fba`, `d799165`, `6b43016`, `8c77cc4`, `29a4b7e`,
-`fdf0cbd`, `e2260d2`, `ae04982`, `ed592de`, `2a0462d`, `dbbecfe`, `4a4caf0`
+`fdf0cbd`, `e2260d2`, `ae04982`, `ed592de`, `2a0462d`, `dbbecfe`, `4a4caf0`,
+`0bcff27`
 
 ## Status Oficial De Deploy
 
 - O servico oficial em 2026-05-17 e
   `srv-d5t8gbh4tr6s738fr3s0` (`IA_Educacao_V2`), branch `main`,
   `rootDir=backend`, URL `https://ia-educacao-v2.onrender.com`.
-- `/api/deploy-info` confirmou o runtime backend `4a4caf0` com
+- `/api/deploy-info` confirmou o runtime backend `0bcff27` com
   `source=RENDER_GIT_COMMIT`; esse e o gate primario atual para codigo live.
-- `origin/main` esta alinhado com o codigo funcional `4a4caf0`; commits
+- `origin/main` esta alinhado com o codigo funcional `0bcff27`; commits
   documentais posteriores podem mudar o hash sem mudar comportamento de
   provider/pipeline.
 - `e2260d2` tornou o bloqueio de migration `token_usage` visivel no dashboard.
@@ -1022,7 +1025,22 @@ na fixture simples. Ainda falta pipeline completa de 6 etapas e datasets maiores
   Q3 `25` vs `30`, `nota_final=8`, custo `41137/5962`, `US$ 0.057682`.
   Em `4a4caf0`, a segunda atividade textual `task_0eab214f30a8` completou
   seis etapas com nota `10.0`, PDF de correcao com `Feedback Geral`, custo
-  `59746/9379`, `US$ 0.087016`.
+  `59746/9379`, `US$ 0.087016`. No batch textual `task_b91a5fa66da9`,
+  Daniel e Julia completaram as etapas executadas; Helena falhou corretamente
+  em `extrair_respostas` por prova HTML invalida; Kevin ficou `pending` porque
+  ja havia documentos e `force_rerun=false`; Beatriz revelou falso negativo da
+  guarda de `resposta_aluno` vazia. O patch `0bcff27` permite branco rastreavel
+  somente quando a `EXTRACAO_RESPOSTAS` anterior prova que a questao existe e
+  esta vazia/`em_branco`/`ilegivel`. O re-smoke oficial Beatriz
+  `task_a305397df882` no runtime `0bcff27` completou as seis etapas:
+  questoes `2eb70c5eb4b8e8bd`, gabarito `165dba3a90840fdb`, respostas
+  `a578a7c13373f749`, correcao `1c0c25163623a194`/`3d1943b61761c2f5`,
+  habilidades `8e86b6bc316db5cc`/`297782dadd4fab9e`, relatorio
+  `ff27164cf614f5c7`/`955c54d255b95225`; nota `6.5`, custo
+  `74257/12403`, `US$ 0.111505`. A correcao precisou de retry PDF/JSON: PDFs
+  `0707c563f6da8cf7` e `f55b89f33e027a88` ficaram `status=erro`, e o PDF
+  final foi verificado via `pdftotext` com cabecalho real, Q2 "Deixei em
+  branco", Q3 `1.5/3.0` e `Feedback Geral`.
 - ⏸️ **Claude Haiku 4.5:** Aguardando creditos.
 - 📊 **Confiabilidade Gemini 3 Flash:** extracoes OK; etapas finais ficaram
   ⚠️ depois que `aff2180` endureceu `feedback_geral` em `CORRIGIR`. A
@@ -1043,7 +1061,7 @@ nem datasets maiores.
 
 **Proximos passos:**
 1. Manter deploy oficial confirmado por `/api/deploy-info` antes de cada smoke
-   novo; o codigo funcional mais recente confirmado e `4a4caf0`. Commits
+   novo; o codigo funcional mais recente confirmado e `0bcff27`. Commits
    documentais posteriores podem mudar o hash de `/api/deploy-info` sem alterar
    comportamento de pipeline.
 2. Aplicar/validar a migration Supabase `token_usage` antes de chamar custo de

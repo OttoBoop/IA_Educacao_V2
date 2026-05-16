@@ -5,13 +5,12 @@
 **Status geral:** o servico oficial Render
 `srv-d5t8gbh4tr6s738fr3s0` (`IA_Educacao_V2`, branch `main`, URL
 `https://ia-educacao-v2.onrender.com`) tem como codigo funcional mais recente
-confirmado o commit `4a4caf0` (`fix: require feedback geral in correction PDFs`),
-validado por `/api/deploy-info`, `/api/health`,
-`./scripts/check_deploy.sh 4a4caf096e979eec0ec168fa7f8faf3d6dd717ca` e
-smoke oficial full de seis etapas com GPT-5 Nano
-(`task_cbe8568e78d6`).
+confirmado o commit `0bcff27` (`fix: allow traceable blank correction answers`),
+validado por `/api/deploy-info` com cache-buster, `/api/health`,
+`./scripts/check_deploy.sh 0bcff27` e re-smoke oficial full de seis etapas com
+GPT-5.4 Mini para Beatriz (`task_a305397df882`).
 `origin/main` pode estar em commit documental posterior; isso nao muda runtime
-enquanto `/api/deploy-info` continuar apontando para `4a4caf0`.
+enquanto `/api/deploy-info` com no-cache continuar apontando para `0bcff27`.
 
 Estado funcional consolidado: documentos com `status=erro` nao contam como
 progresso; correcao sem itens avaliaveis nao vira `completo=true`; ranking,
@@ -29,7 +28,9 @@ falhar alto em `corrigir` por PDF sem `Feedback Geral` verificavel; ainda
 precisa dataset maior antes de ser chamado de pipeline-ready geral. GPT-5.4
 Mini tambem completou uma segunda fixture textual real (`task_0eab214f30a8`,
 atividade `8f58cc8b5fb75869`, aluno `ae6420679a3f2606`) com nota `10.0`,
-artefatos JSON/PDF e custo total `US$ 0.087016`. Gemini Flash/Flash Lite/3 Flash passam em
+artefatos JSON/PDF e custo total `US$ 0.087016`; depois, Beatriz completou a
+mesma atividade em `task_a305397df882`, nota `6.5`, custo `US$ 0.111505`, apos
+patch de branco rastreavel. Gemini Flash/Flash Lite/3 Flash passam em
 conexao simples, mas `corrigir` com Gemini 2.5 Flash ainda falha alto por quota
 `429`; Gemini 2.5 Pro tambem esta bloqueado por quota, Anthropic segue bloqueado
 por credito e Ollama esta indisponivel no Render. Supabase `token_usage`
@@ -3183,6 +3184,87 @@ Critério de pronto: lista de limpeza segura e revisada.
   rastreados. O bloqueio de custo duravel via Supabase `token_usage` continua
   aberto.
 
+### 2026-05-17 -- Batch textual, bug de branco rastreavel e re-smoke Beatriz
+
+- Alvo: continuar a validacao da atividade textual `8f58cc8b5fb75869` em mais
+  alunos, mantendo Rio 3 congelado e sem segredo novo.
+- Batch oficial inicial: `task_b91a5fa66da9`, rota
+  `/api/executar/pipeline-todos-os-alunos`, modelo `gpt54mini001`,
+  `force_rerun=false`, `apenas_com_prova=true`.
+- Resultado real do batch:
+  - Daniel Ribeiro (`e3a5ca1e2ef08655`) completou
+    `extrair_respostas`, `corrigir`, `analisar_habilidades` e
+    `gerar_relatorio`.
+  - Julia Fernandes Gomes (`c023ef9be2c07b3b`) completou
+    `extrair_respostas`, `corrigir`, `analisar_habilidades` e
+    `gerar_relatorio`.
+  - Kevin Nunes (`ae6420679a3f2606`) ficou como `pending` no progresso do batch
+    porque ja tinha documentos do smoke anterior e `force_rerun=false`; isso e
+    uma lacuna de representacao de progresso, nao uma nova execucao.
+  - Helena (`64bfa1c7c4e8f8ed`) falhou corretamente em
+    `extrair_respostas`: a prova respondida era HTML invalido
+    (`<html><body>Isso não é uma prova</body></html>`). Esse e um erro alto
+    esperado.
+  - Beatriz Soares (`08893c99aa53002d`) falhou em `corrigir` por um falso
+    negativo da guarda semantica: a extracao anterior registrava a questao 2
+    como resposta em branco rastreavel, mas o JSON de correcao com
+    `resposta_aluno=""` foi rejeitado como "sem resposta_aluno rastreavel".
+- Bug corrigido: commit `0bcff27` (`fix: allow traceable blank correction
+  answers`) permite `resposta_aluno` vazio em `CORRIGIR` somente quando a
+  `EXTRACAO_RESPOSTAS` anterior tem a mesma questao rastreada como vazia,
+  `em_branco=true` ou `ilegivel=true`. A guarda continua rejeitando resposta
+  vazia sem upstream rastreavel e continua rejeitando divergencia entre
+  `CORRIGIR`, `EXTRACAO_RESPOSTAS` e `EXTRACAO_GABARITO`.
+- Validacao local do patch: `python -m py_compile backend/executor.py
+  backend/tests/unit/test_cost_tracking.py`; `git diff --check`;
+  `test_cost_tracking.py -k "resposta_do_aluno or resposta_em_branco or
+  acerto_literal"` com `3 passed`; arquivo inteiro
+  `backend/tests/unit/test_cost_tracking.py` com `29 passed`.
+- Deploy oficial: `git push origin HEAD:main`; Render confirmou
+  `0bcff27c9f68140bca4ee84df4f888855bf27e72`; `check_deploy.sh 0bcff27` e
+  `/api/health` passaram. Observacao: chamadas sem cache-buster para
+  `/api/deploy-info` podem devolver hash antigo; usar `Cache-Control: no-cache`
+  ou querystring de tempo.
+- Re-smoke oficial Beatriz: `task_a305397df882`, aluno
+  `08893c99aa53002d`, modelo `gpt54mini001`, seis etapas,
+  `force_rerun=true`.
+- Resultado do re-smoke: task `completed`; todas as etapas ficaram
+  `completed`; `stage_errors={}`.
+- Artefatos oficiais do re-smoke Beatriz:
+  - `extrair_questoes`: JSON `2eb70c5eb4b8e8bd`, `1259/378` tokens,
+    `US$ 0.002645`.
+  - `extrair_gabarito`: JSON `165dba3a90840fdb`, `2159/530` tokens,
+    `US$ 0.004004`.
+  - `extrair_respostas`: JSON `a578a7c13373f749`, `2429/305` tokens,
+    `US$ 0.003194`.
+  - `corrigir`: JSON `1c0c25163623a194`, PDF final
+    `3d1943b61761c2f5`, PDFs intermediarios `0707c563f6da8cf7` e
+    `f55b89f33e027a88` marcados `status=erro` por `pdf_json_consistency`,
+    `38051/5784` tokens, `US$ 0.054566`,
+    `cost_run_id=tool_c99aac3ccbd9`.
+  - `analisar_habilidades`: JSON `8e86b6bc316db5cc` e PDF
+    `297782dadd4fab9e`, `13853/2557` tokens, `US$ 0.021896`.
+  - `gerar_relatorio`: JSON `ff27164cf614f5c7` e PDF
+    `955c54d255b95225`, `16506/2849` tokens, `US$ 0.025200`.
+- Custo total da task Beatriz pos-fix: `74257` tokens de entrada,
+  `12403` tokens de saida, `US$ 0.111505`.
+- Conteudo verificado: resultado final completo, `nota_final=6.5`,
+  `total_questoes=4`, duas corretas e duas incorretas; avisos propagados para
+  Q2 (`MISSING_CONTENT`) e Q3 (`LOW_CONFIDENCE`).
+- PDF verificado: `pdftotext` do PDF final `3d1943b61761c2f5` mostrou
+  cabecalho real, `Nota final: 6.5 / 10.0`, Q2 com "Resposta do aluno:
+  Deixei em branco", Q3 com `Nota: 1.5 / 3.0` e secao `Feedback Geral`.
+- Nuance importante: o teste unitario cobre explicitamente o caso antigo
+  `resposta_aluno=""` rastreavel. No re-smoke oficial, como houve
+  `force_rerun=true`, a nova `EXTRACAO_RESPOSTAS` registrou a Q2 como texto
+  `"Deixei em branco"` com aviso `MISSING_CONTENT`; portanto o smoke prova
+  deploy sem regressao e Beatriz concluida, enquanto o teste unitario prova o
+  bug exato de string vazia.
+- Novo risco aberto: a task de batch pode terminar com status global
+  `completed` apesar de haver alunos com falha ou alunos `pending` por reuso de
+  documentos. O proximo ciclo de UI/progresso deve distinguir "batch completo"
+  de "todos os alunos concluiram todas as etapas".
+
 ## Riscos Abertos
 
 1. Creditos Anthropic insuficientes ainda bloqueiam validacao Haiku.
@@ -3215,3 +3297,7 @@ Critério de pronto: lista de limpeza segura e revisada.
     `task_bc6cc84d10ef` provou falso positivo semantico, e o caso
     `task_a5f0d734f0b3` passou na inspeção JSON inicial, mas ainda precisa
     checagem de PDFs/UI e repeticao alem da fixture simples.
+13. Status global `completed` de batch nao basta; `task_b91a5fa66da9` mostrou
+    alunos concluidos, aluno com falha correta por arquivo invalido, aluno
+    travado por falso negativo corrigido depois, e aluno `pending` por reuso de
+    documentos. A UI precisa explicar esse mosaico sem esconder falhas.

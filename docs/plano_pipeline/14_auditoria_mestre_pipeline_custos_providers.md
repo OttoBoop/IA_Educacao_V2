@@ -10,9 +10,9 @@ um deve ser lido, o que ainda vale, o que ficou historico, e quais fatos precisa
 guiar os proximos ciclos.
 
 Atualizacao de controle de 2026-05-17: o codigo funcional mais recente
-confirmado no site oficial e `4a4caf0`, validado por `/api/deploy-info`,
-`/api/health`, `check_deploy.sh` e smoke live full de pipeline com GPT-5 Nano
-(`task_cbe8568e78d6`). Smokes anteriores continuam
+confirmado no site oficial e `0bcff27`, validado por `/api/deploy-info` com
+cache-buster/no-cache, `/api/health`, `check_deploy.sh` e re-smoke live full de
+pipeline com GPT-5.4 Mini para Beatriz (`task_a305397df882`). Smokes anteriores continuam
 validando documentos/ranking/dashboard nos hashes registrados em seus proprios
 ciclos. O ciclo `dbbecfe` aumentou para duas as tentativas explicitas de
 reparo PDF/JSON, mas o smoke full Nano `task_4f6296b3789d` ainda falhou alto em
@@ -30,7 +30,11 @@ tokens e `US$ 0.017160`; `/api/custos/resumo?limit=450` ficou em
 atividade textual (`8f58cc8b5fb75869`, `Prova 1 - Equações do 1º Grau`) e
 completou as seis etapas para o aluno `ae6420679a3f2606`: nota `10.0`,
 JSON/PDF finais coerentes, PDF de correcao com `Feedback Geral` e custo total
-`59746/9379` tokens, `US$ 0.087016`. O ciclo `147296d` tambem reduziu o
+`59746/9379` tokens, `US$ 0.087016`. O ciclo `0bcff27` corrigiu o falso
+negativo de branco rastreavel em `CORRIGIR` e o re-smoke Beatriz
+`task_a305397df882` completou seis etapas na mesma atividade: nota `6.5`,
+PDF final `3d1943b61761c2f5` coerente via `pdftotext`, custo
+`74257/12403` tokens, `US$ 0.111505`. O ciclo `147296d` tambem reduziu o
 dashboard da turma Lista0 de
 cerca de 85s para 1.4s ao trocar agregados N+1 por ranking em lote. O ciclo
 `22f6f31` trocou o default vivo de Haiku bloqueado por credito para
@@ -390,7 +394,7 @@ detalhar e auditar estas linhas.
 | Frente | Temos hoje | Limite da afirmacao |
 |---|---|---|
 | Documentacao | Doc 09 como painel curto; Doc 14 como auditoria mestre; Doc 05/12 com notas de status | Manter Doc 09 curto e Doc 14 detalhado; registrar novos ciclos sem criar doc extra. |
-| Git/GitHub | `/api/deploy-info` confirmou runtime `4a4caf0`; `origin/main` esta alinhado com os fixes de dashboard de custo, tool-use Google faseado, consistencia PDF/JSON por feedback coerente, erro por aluno/etapa na sidebar, bloqueio anti-`nota_final=N/A`, guarda contra PDF auto-fallback, rejeicao de JSON embrulhado em Markdown/prosa, retorno Path 2 com etapa real/JSON parseado, schema minimo runtime, cobertura anti-regressao para etapas tardias, cobertura de PDF stale, contrato de prompts tardios, rastreabilidade semantica de correcao, cabecalho PDF real, consistencia interna de notas, contrato de erro/chat por provider/UI, resultado parcial obedecendo `status=erro`, correcao sem itens avaliaveis bloqueada, rotas agregadas protegidas, media zero preservada, agregados em lote, default OpenAI confirmado, resumo estruturado de erro de provider, diagnostico explicito da migration `token_usage` ausente, alerta de custo visivel no dashboard, agregado `por_etapa`, rejeicao de codigos compostos em `_avisos_*` e secao literal `Feedback Geral` em PDFs de correcao | Nao usar somente marker HTML como gate quando Render `rootDir=backend` ignora commits sem backend; combinar `/api/deploy-info`, deploy list quando disponivel e comportamento live. |
+| Git/GitHub | `/api/deploy-info` com no-cache confirmou runtime `0bcff27`; `origin/main` esta alinhado com os fixes de dashboard de custo, tool-use Google faseado, consistencia PDF/JSON por feedback coerente, erro por aluno/etapa na sidebar, bloqueio anti-`nota_final=N/A`, guarda contra PDF auto-fallback, rejeicao de JSON embrulhado em Markdown/prosa, retorno Path 2 com etapa real/JSON parseado, schema minimo runtime, cobertura anti-regressao para etapas tardias, cobertura de PDF stale, contrato de prompts tardios, rastreabilidade semantica de correcao, cabecalho PDF real, consistencia interna de notas, contrato de erro/chat por provider/UI, resultado parcial obedecendo `status=erro`, correcao sem itens avaliaveis bloqueada, rotas agregadas protegidas, media zero preservada, agregados em lote, default OpenAI confirmado, resumo estruturado de erro de provider, diagnostico explicito da migration `token_usage` ausente, alerta de custo visivel no dashboard, agregado `por_etapa`, rejeicao de codigos compostos em `_avisos_*`, secao literal `Feedback Geral` em PDFs de correcao e aceite de branco rastreavel sem fallback silencioso | Nao usar somente marker HTML como gate quando Render `rootDir=backend` ignora commits sem backend; combinar `/api/deploy-info` com cache-buster, deploy list quando disponivel e comportamento live. |
 | Pipeline P4 | Bloqueio de extracao de respostas sem prova valida esta no codigo publicado | Precisa smoke dedicado apenas se P4 voltar a ser alvo. |
 | Pipeline P5/P6 | Preservacao de `_documentos_faltantes`; `ad7e00e` bloqueia `GERAR_RELATORIO` sem `nota_final` numerica confiavel | Ainda falta caçar outros fallbacks antigos, mas `nota_final=N/A` nao e mais aceite final no executor de relatório. |
 | Schema/avisos | Defaults `_avisos_*`, visualizador melhorado, `f40acf3` alinhando prompts/tool instructions de `CORRIGIR`, `ANALISAR_HABILIDADES` e `GERAR_RELATORIO`; `700b088` exigindo rastreabilidade de resposta/gabarito em `CORRIGIR`; `1307909`/`bed0c08`/`feaf5d0` bloqueando literal divergente, cabecalho PDF fake e totais incoerentes; `ed592de` removeu exemplos `A|B|C` e rejeita codigo composto em `_avisos_documento`/`_avisos_questao` | Ainda falta distinguir default de output real do modelo e ampliar checagens semanticas para respostas mais abertas/datasets maiores. |
@@ -410,7 +414,7 @@ detalhar e auditar estas linhas.
 | Providers | Revalidar Gemini, Nano, Haiku e GPT-4o nas etapas restantes, especialmente extracoes e pipeline completa | Resultado historico ou schema parseavel nao prova qualidade de conteudo. |
 | UI de erro | `98fafc9` publica `stage_errors` por aluno/etapa no task-progress e renderiza a causa na sidebar; `9ab53df` normaliza erro estruturado e mostra provider/codigo/retry em API errors e stage errors; `b8e14db` faz resultado parcial e cards de documento obedecerem `status=erro`; `325c200` bloqueia `completo=true` para correcao sem itens avaliaveis e atualiza historico/pendencias/status; `148d8b3` faz ranking/estatisticas/dashboard obedecerem rota correta e media `0.0`; `147296d` reduz agregados N+1; `22f6f31` impede default em provider bloqueado | Falta melhorar mensagens finais de provider/custo. |
 | Dados | Reclassificar "fantasmas" sem deletar PDF valido por `/conteudo=null` | Evita apagar prova respondida real. |
-| Git/deploy | Commit `2d72c6b` adicionou `/api/deploy-info`; o codigo funcional mais recente confirmado e `ae04982` | Usar `/api/deploy-info` antes de novos smokes; marker HTML e apenas auxiliar; commits documentais podem mudar o hash sem mudar comportamento. |
+| Git/deploy | Commit `2d72c6b` adicionou `/api/deploy-info`; o codigo funcional mais recente confirmado e `0bcff27` | Usar `/api/deploy-info` com no-cache/cache-buster antes de novos smokes; marker HTML e apenas auxiliar; commits documentais podem mudar o hash sem mudar comportamento. |
 
 ### Bloqueios E Alertas
 
@@ -3934,6 +3938,73 @@ Atualizacao deste ciclo:
 - Interpretacao: GPT-5.4 Mini ganha evidencia oficial alem da fixture Diana e
   segue como melhor default operacional atual. Ainda faltam prova manuscrita,
   dataset maior e persistencia duravel de `token_usage`.
+
+### Provider: Batch Textual, Branco Rastreavel E Status Global De Batch
+
+Atualizacao deste ciclo:
+
+- Batch oficial: `task_b91a5fa66da9` rodou
+  `/api/executar/pipeline-todos-os-alunos` na atividade textual
+  `8f58cc8b5fb75869`, modelo `gpt54mini001`, `force_rerun=false`,
+  `apenas_com_prova=true`.
+- Resultado por aluno:
+  - Daniel Ribeiro completou as etapas executadas e gerou relatorio final.
+  - Julia Fernandes Gomes completou as etapas executadas e gerou relatorio
+    final.
+  - Helena falhou alto em `extrair_respostas`; a prova era HTML invalido, entao
+    o erro e correto e nao deve virar sucesso verde.
+  - Kevin ficou `pending` no progresso do batch porque ja tinha documentos do
+    smoke anterior e a task nao forçou reexecucao.
+  - Beatriz falhou em `corrigir` por falso negativo: a guarda exigia
+    `resposta_aluno` textual na correcao mesmo quando a extracao anterior tinha
+    a questao rastreada como branco.
+- Patch: `0bcff27` (`fix: allow traceable blank correction answers`) alterou a
+  validação de `CORRIGIR`. Agora `resposta_aluno=""` so e aceito se a questao
+  existe na `EXTRACAO_RESPOSTAS` e esta vazia, `em_branco=true` ou
+  `ilegivel=true`; sem esse upstream, continua erro alto. A comparacao contra
+  `EXTRACAO_RESPOSTAS` e `EXTRACAO_GABARITO` continua ativa para impedir troca
+  de resposta, acerto alucinado ou nota maxima indevida.
+- Validacao local: `py_compile` de `backend/executor.py` e
+  `backend/tests/unit/test_cost_tracking.py`, `git diff --check`, teste
+  focado com `3 passed` e arquivo inteiro `test_cost_tracking.py` com
+  `29 passed`.
+- Deploy oficial: Render confirmou
+  `0bcff27c9f68140bca4ee84df4f888855bf27e72`; `check_deploy.sh 0bcff27` e
+  `/api/health` passaram. Observacao de auditoria: `/api/deploy-info` sem
+  cache-buster pode devolver valor antigo; usar `Cache-Control: no-cache` ou
+  querystring.
+- Re-smoke oficial Beatriz: `task_a305397df882`, aluno
+  `08893c99aa53002d`, modelo `gpt54mini001`, seis etapas,
+  `force_rerun=true`.
+- Artefatos e custo do re-smoke:
+  - `extrair_questoes`: `2eb70c5eb4b8e8bd`, `1259/378`, `US$ 0.002645`.
+  - `extrair_gabarito`: `165dba3a90840fdb`, `2159/530`, `US$ 0.004004`.
+  - `extrair_respostas`: `a578a7c13373f749`, `2429/305`, `US$ 0.003194`.
+  - `corrigir`: JSON `1c0c25163623a194`, PDF final
+    `3d1943b61761c2f5`, PDFs intermediarios `0707c563f6da8cf7` e
+    `f55b89f33e027a88` em `status=erro`, `38051/5784`,
+    `US$ 0.054566`.
+  - `analisar_habilidades`: `8e86b6bc316db5cc`/`297782dadd4fab9e`,
+    `13853/2557`, `US$ 0.021896`.
+  - `gerar_relatorio`: `ff27164cf614f5c7`/`955c54d255b95225`,
+    `16506/2849`, `US$ 0.025200`.
+- Custo total Beatriz pos-fix: `74257` tokens de entrada, `12403` tokens de
+  saida, `US$ 0.111505`.
+- Conteudo verificado: resultado completo com `nota_final=6.5`; Q2 registrada
+  como "Deixei em branco" e aviso `MISSING_CONTENT`; Q3 com resposta parcial,
+  nota `1.5/3.0` e aviso `LOW_CONFIDENCE`.
+- PDF verificado: `pdftotext` do PDF final mostrou cabecalho real, nota
+  `6.5 / 10.0`, Q2 com "Resposta do aluno: Deixei em branco", Q3 com
+  `Nota: 1.5 / 3.0` e secao `Feedback Geral`.
+- Nuance de prova: o teste unitario cobre o bug exato de string vazia
+  rastreavel. O re-smoke oficial usou `force_rerun=true`, e a nova
+  `EXTRACAO_RESPOSTAS` escreveu literalmente "Deixei em branco"; portanto o
+  smoke prova deploy e fluxo oficial sem regressao, enquanto a cobertura local
+  prova o caso antigo.
+- Nova tarefa de produto/UI: status global `completed` em batch nao pode ser
+  lido como "todos os alunos concluiram tudo". O painel precisa distinguir
+  alunos concluidos, falhas corretas, falhas corrigiveis e skips/pending por
+  reuso de documentos.
 
 Regra de continuidade:
 
