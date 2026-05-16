@@ -26,7 +26,10 @@ Estado de providers: GPT-4.1, GPT-5.4 Mini, GPT-4o e GPT-5 Nano seguem
 referencias OpenAI na fixture Diana. Nano agora passou as seis etapas em uma
 unica task oficial nessa fixture simples (`task_cbe8568e78d6`) depois de
 falhar alto em `corrigir` por PDF sem `Feedback Geral` verificavel; ainda
-precisa dataset maior antes de ser chamado de pipeline-ready geral. Gemini Flash/Flash Lite/3 Flash passam em
+precisa dataset maior antes de ser chamado de pipeline-ready geral. GPT-5.4
+Mini tambem completou uma segunda fixture textual real (`task_0eab214f30a8`,
+atividade `8f58cc8b5fb75869`, aluno `ae6420679a3f2606`) com nota `10.0`,
+artefatos JSON/PDF e custo total `US$ 0.087016`. Gemini Flash/Flash Lite/3 Flash passam em
 conexao simples, mas `corrigir` com Gemini 2.5 Flash ainda falha alto por quota
 `429`; Gemini 2.5 Pro tambem esta bloqueado por quota, Anthropic segue bloqueado
 por credito e Ollama esta indisponivel no Render. Supabase `token_usage`
@@ -498,7 +501,7 @@ Estabilizar o NOVO CR para que a pipeline:
 | Frente | Estado | Proximo passo |
 |--------|--------|---------------|
 | Docs e plano | Sprint 0 concluida | Manter este painel como fonte oficial e anexos fora do fluxo diario |
-| Pipeline | GPT-4.1 (`ffae9accf68e`) tem full smoke unico confirmado em `task_f6851ed535b8` e re-smoke `corrigir` pos-guard `task_92c4b74494f7` sem retry artificial; GPT-5.4 Mini (`gpt54mini001`) completou 6 etapas em `task_a5f0d734f0b3` e `task_a1f7521077a5`; GPT-4o completou full smoke `task_68b19146a95b`; GPT-5 Nano passou as 6 etapas numa task unica na fixture Diana em `task_cbe8568e78d6` no runtime `4a4caf0`, com retry explicito em `corrigir` e artefatos/custos rastreados; Gemini 2.5 Flash/Gemini 3/Gemini Lite estao bloqueados por quota Google `429` nos smokes recentes, embora tenham historicos parciais | Revalidar matriz por provider/modelo quando quota/credito permitir, ampliar dataset alem da fixture simples e manter P0: nao aceitar `completed` sem documento, schema, custo, conteudo minimo, nota cross-stage e artefatos coerentes entre si |
+| Pipeline | GPT-4.1 (`ffae9accf68e`) tem full smoke unico confirmado em `task_f6851ed535b8` e re-smoke `corrigir` pos-guard `task_92c4b74494f7` sem retry artificial; GPT-5.4 Mini (`gpt54mini001`) completou 6 etapas em `task_a5f0d734f0b3`, `task_a1f7521077a5` e agora `task_0eab214f30a8` em uma segunda atividade textual; GPT-4o completou full smoke `task_68b19146a95b`; GPT-5 Nano passou as 6 etapas numa task unica na fixture Diana em `task_cbe8568e78d6` no runtime `4a4caf0`, com retry explicito em `corrigir` e artefatos/custos rastreados; Gemini 2.5 Flash/Gemini 3/Gemini Lite estao bloqueados por quota Google `429` nos smokes recentes, embora tenham historicos parciais | Revalidar matriz por provider/modelo quando quota/credito permitir, ampliar dataset alem da fixture simples e manter P0: nao aceitar `completed` sem documento, schema, custo, conteudo minimo, nota cross-stage e artefatos coerentes entre si |
 | Schema e avisos | Sprint 2 concluida localmente | Manter schema oficial, defaults e visualizador cobertos por testes |
 | Custos/tokens | Metadata de documento, endpoints live, resumo por `cost_run_id`, `por_etapa` e `token_usage_durable`; `TokenUsageRecord` local e migration Supabase dedicada `b2dc88b`; GPT-4.1 full smoke `task_f6851ed535b8` mediu total aproximado `US$ 0.222856`; GPT-5.4 Mini e Nano tem custos por etapa registrados; Gemini Lite quota registrou documentos de erro custeaveis; `/api/custos/status` e `/api/custos/resumo` deixam claro `PGRST205`, `durable=false` e `token_usage_durable=false` enquanto a tabela Supabase nao existir | Aplicar `backend/migrations/002_create_token_usage.sql` no Supabase; revalidar ate `token_usage_backend.durable=true`; depois persistir custos de falhas sem documento |
 | UI de erros | Dashboard oficial mostra bloqueio de custos nao duraveis no commit `54d083e`; `98fafc9` adicionou `stage_errors` por aluno/etapa em `/api/task-progress` e a sidebar renderiza a causa abaixo da etapa falha; smoke live `task_7362d0fb1939` confirmou erro de `extrair_respostas` sem prova antes de chamar IA | Ampliar para telas de resultado/historico e garantir que erros de provider/custo apareçam com a mesma clareza |
@@ -3137,6 +3140,48 @@ Critério de pronto: lista de limpeza segura e revisada.
   unica de seis etapas. Isso nao vale como pipeline-ready geral; o proximo loop
   precisa repetir em dataset maior/mais realista e aplicar a migration de
   `token_usage`.
+
+### 2026-05-17 -- Provider: GPT-5.4 Mini full smoke em segunda atividade textual
+
+- Alvo: sair da fixture Diana sem depender de segredo novo, quota Google ou dado
+  invalido da Lista0. A atividade escolhida foi `8f58cc8b5fb75869`
+  (`Prova 1 - Equações do 1º Grau`), que tem enunciado, gabarito e cinco provas
+  respondidas em `.txt`; auditoria previa confirmou que gabarito e enunciado
+  cobrem as mesmas quatro questoes.
+- Smoke oficial: `task_0eab214f30a8`, aluno `ae6420679a3f2606`, modelo
+  `gpt54mini001`, `force_rerun=true`, seis etapas selecionadas.
+- Resultado: task `completed`; todas as etapas ficaram `completed` e sem
+  `stage_errors`.
+- Artefatos oficiais por etapa:
+  - `extrair_questoes`: JSON `5b30b0cb85bbdc1f`, `1259/351` tokens,
+    `US$ 0.002524`.
+  - `extrair_gabarito`: JSON `c125867404d7836b`, `2097/318` tokens,
+    `US$ 0.003004`.
+  - `extrair_respostas`: JSON `d42ece0cc1eb1ff0`, `2370/242` tokens,
+    `US$ 0.002867`.
+  - `corrigir`: JSON `cdce8de07a2bb15b`, PDF final
+    `66db8692751ad805`, PDF intermediario `88b21a1af21ace1c` em
+    `status=erro`, `25576/3680` tokens, `US$ 0.035742`,
+    `cost_run_id=tool_fb78f79bd548`.
+  - `analisar_habilidades`: JSON `8ff2eb65f7e99fef` e PDF
+    `6da8d45232467e31`, `12900/2170` tokens, `US$ 0.019440`.
+  - `gerar_relatorio`: JSON `493808318d3c83d2` e PDF
+    `3434e5dbed213e45`, `15544/2618` tokens, `US$ 0.023439`.
+- Conteudo verificado: `corrigir` deu `nota_final=10.0`, `total_acertos=4`,
+  `total_erros=0`; `gerar_relatorio` preservou `nota_final=10.0`; avisos
+  `_avisos_documento` e `_avisos_questao` vieram vazios.
+- Inspecao extra: o PDF final de correcao foi baixado fora do repo e convertido
+  com `pdftotext`; ele contem `Nota final: 10.0/10.0`, as quatro questoes e a
+  secao `Feedback Geral`.
+- Custo total da task: `59746` tokens de entrada, `9379` tokens de saida,
+  `US$ 0.087016` somando os seis runs. `/api/custos/resumo?limit=500` apos o
+  smoke retornou `runs_analisados=282`, `runs_precificados=231`,
+  `runs_bloqueados=51`, `custo_usd=4.602576`,
+  `token_usage_durable=false`.
+- Interpretacao: GPT-5.4 Mini fica mais forte como default operacional: passou
+  outra atividade textual completa no site oficial, com custo medido e artefatos
+  rastreados. O bloqueio de custo duravel via Supabase `token_usage` continua
+  aberto.
 
 ## Riscos Abertos
 

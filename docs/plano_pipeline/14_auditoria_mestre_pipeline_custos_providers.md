@@ -25,7 +25,12 @@ convertido por `pdftotext`, confirmando a secao `Feedback Geral` com o mesmo
 paragrafo do JSON `728fcc2e2722c486`. Custo total dessa task: `125683/27190`
 tokens e `US$ 0.017160`; `/api/custos/resumo?limit=450` ficou em
 `runs_analisados=236`, `runs_precificados=225`, `runs_bloqueados=11`,
-`custo_usd=4.515560`, `token_usage_durable=false`. O ciclo `147296d` tambem reduziu o
+`custo_usd=4.515560`, `token_usage_durable=false`. Em seguida, o smoke
+`task_0eab214f30a8` rodou GPT-5.4 Mini (`gpt54mini001`) em uma segunda
+atividade textual (`8f58cc8b5fb75869`, `Prova 1 - Equações do 1º Grau`) e
+completou as seis etapas para o aluno `ae6420679a3f2606`: nota `10.0`,
+JSON/PDF finais coerentes, PDF de correcao com `Feedback Geral` e custo total
+`59746/9379` tokens, `US$ 0.087016`. O ciclo `147296d` tambem reduziu o
 dashboard da turma Lista0 de
 cerca de 85s para 1.4s ao trocar agregados N+1 por ranking em lote. O ciclo
 `22f6f31` trocou o default vivo de Haiku bloqueado por credito para
@@ -390,7 +395,7 @@ detalhar e auditar estas linhas.
 | Pipeline P5/P6 | Preservacao de `_documentos_faltantes`; `ad7e00e` bloqueia `GERAR_RELATORIO` sem `nota_final` numerica confiavel | Ainda falta caçar outros fallbacks antigos, mas `nota_final=N/A` nao e mais aceite final no executor de relatório. |
 | Schema/avisos | Defaults `_avisos_*`, visualizador melhorado, `f40acf3` alinhando prompts/tool instructions de `CORRIGIR`, `ANALISAR_HABILIDADES` e `GERAR_RELATORIO`; `700b088` exigindo rastreabilidade de resposta/gabarito em `CORRIGIR`; `1307909`/`bed0c08`/`feaf5d0` bloqueando literal divergente, cabecalho PDF fake e totais incoerentes; `ed592de` removeu exemplos `A|B|C` e rejeita codigo composto em `_avisos_documento`/`_avisos_questao` | Ainda falta distinguir default de output real do modelo e ampliar checagens semanticas para respostas mais abertas/datasets maiores. |
 | Tokens/custos | Split input/output; metadata de documento; endpoints `/api/custos/status` e `/api/custos/resumo` respondendo live; resumo agrega por `cost_run_id` e, desde `ae04982`, tambem por `por_etapa`; `2a0462d` expoe `token_usage_durable` no resumo; `48407f2` adicionou `erro_resumo`, `erro_codigo`, `erro_provider_status`, `erro_provider_modelo` e `erro_categoria` para erros de provider; `50fb1d7` faz `/api/custos/status` retornar `error_code=PGRST205`, `missing_migration=true` e `migration_path=backend/migrations/002_create_token_usage.sql`; `e2260d2` faz o dashboard ler `token_usage_backend.supabase` e exibir esse codigo/caminho ao usuario; `TokenUsageRecord` local cobre falha sem documento enquanto o filesystem vive; codigo Supabase e migration dedicada `b2dc88b` existem; diagnostico live mostra `PGRST205`; smoke full GPT-5.4 Mini `task_a1f7521077a5` completou 6 etapas em `e2260d2`; `/api/custos/resumo?limit=120` em `ae04982` mostrou `US$ 1.404252`, `57` runs precificados, `2` bloqueados e `por_etapa` com `correcao` como maior custo; `token_usage` segue nao duravel | Falta aplicar `backend/migrations/002_create_token_usage.sql` no Supabase. |
-| Providers | Sweep live pos-`e2260d2` confirmou conexao OpenAI OK para `gpt-4o`, `o3-mini`, `gpt-4.1`, `o4-mini`, `gpt-5-nano` e `gpt-5.4-mini`; Google OK em conexao para `gemini-2.5-flash`, `gemini-2.5-flash-lite` e `gemini-3-flash-preview`; `gemini-2.5-pro` bloqueado por quota `429`; Claude Haiku/Sonnet 4.5 bloqueados por credito Anthropic; Ollama indisponivel no Render. Historico: GPT-5.4 Mini completou smoke full em `task_a1f7521077a5`; GPT-5 Nano passou `extrair_respostas` em `task_0818b99194aa` (`US$ 0.000914`), `corrigir` em `task_960c0a287a13` (`US$ 0.005149`), etapas finais em `task_fa50cb3ffc16` (`US$ 0.002282` + `US$ 0.001912`) e rerun `gerar_relatorio` pos-`ed592de` em `task_0c7339f48aec` (`US$ 0.006012`) na fixture simples; a ressalva de aviso composto foi corrigida nessa fixture, mas Nano ainda segue parcial em dataset maior; Gemini 2.5 Flash falhou alto em pipeline `corrigir` na `task_41c45d7939b5` com Google `429 RESOURCE_EXHAUSTED`; GPT-4o completou full smoke `task_68b19146a95b`; Gemini tem historicos parciais e falhas por quota/conteudo | Revalidar matriz por provider em pipeline, nao apenas conexao; priorizar modelos com conexao OK e custo aceitavel, sem trocar provider em silencio. |
+| Providers | Sweep live pos-`e2260d2` confirmou conexao OpenAI OK para `gpt-4o`, `o3-mini`, `gpt-4.1`, `o4-mini`, `gpt-5-nano` e `gpt-5.4-mini`; Google OK em conexao para `gemini-2.5-flash`, `gemini-2.5-flash-lite` e `gemini-3-flash-preview`; `gemini-2.5-pro` bloqueado por quota `429`; Claude Haiku/Sonnet 4.5 bloqueados por credito Anthropic; Ollama indisponivel no Render. Historico: GPT-5.4 Mini completou smoke full em `task_a1f7521077a5` e em segunda atividade textual `task_0eab214f30a8` (`US$ 0.087016`); GPT-5 Nano passou `extrair_respostas` em `task_0818b99194aa` (`US$ 0.000914`), `corrigir` em `task_960c0a287a13` (`US$ 0.005149`), etapas finais em `task_fa50cb3ffc16` (`US$ 0.002282` + `US$ 0.001912`) e full task simples pos-`4a4caf0` em `task_cbe8568e78d6` (`US$ 0.017160`); Nano ainda segue parcial em dataset maior; Gemini 2.5 Flash falhou alto em pipeline `corrigir` na `task_41c45d7939b5` com Google `429 RESOURCE_EXHAUSTED`; GPT-4o completou full smoke `task_68b19146a95b`; Gemini tem historicos parciais e falhas por quota/conteudo | Revalidar matriz por provider em pipeline, nao apenas conexao; priorizar modelos com conexao OK e custo aceitavel, sem trocar provider em silencio. |
 | Seguranca Rio | Regra de nao usar chave em chat e Rio pausado | Arquivos Rio/untracked continuam fora do ciclo ativo. |
 
 ### O Que Falta
@@ -2716,6 +2721,7 @@ Erros conhecidos por provider/rota:
 | GPT-5 Nano | `pipeline-completo` full em `4a4caf0` | Task `task_cbe8568e78d6` completou as seis etapas na fixture Diana. Correção final: JSON `728fcc2e2722c486`, PDF `c545aab82c27a698`, `Feedback Geral` confirmado por `pdftotext`; total da task `125683/27190`, `US$ 0.017160` | Confirmado para fixture simples em task unica; ainda precisa dataset maior e persistencia duravel de `token_usage`. |
 | GPT-5.4 Mini | `pipeline-completo` apenas `extrair_respostas` | Task `task_9c10e3752bcb` completou com JSON `a39d26fcc621c7a8`; 4/7 respostas extraidas, 3/7 `MISSING_CONTENT`, tokens `97004/1942`, custo `US$ 0.081492`. Task versionada `task_706931a94555` com `gpt54mini001` completou com JSON `fec100a2e41eabcf`; 5/7 respostas extraidas, Q1/Q2 `MISSING_CONTENT`, Q3 `LOW_CONFIDENCE`, tokens `97004/1737`, custo `US$ 0.080570`. Segunda amostra versionada `task_19062336eb8b` completou com JSON `4a82ddf1d2118ff0`; 7/7 respostas extraidas, Q2/Q3 `LOW_CONFIDENCE`, tokens `90588/2813`, custo `US$ 0.0806` | Primeiro candidato OpenAI que destrava conteudo real em mais de uma amostra manuscrita; ainda precisa pipeline per-phase. |
 | GPT-5.4 Mini | `pipeline-completo` full smoke pos-`2cad38a` e etapas finais pos-`3a77a17` | Task `task_a5f0d734f0b3` completou as 6 etapas com `gpt54mini001` na fixture Diana Omega: `extrair_questoes` `f65318c550a76842`, `extrair_gabarito` `70df18512be9c617`, `extrair_respostas` `14ca81d800de2648`, `corrigir` `2c7cd4cf9eb85e57`/`769744b6fff6f3b9`, `analisar_habilidades` `12b24cd992477eab`/`15579ed3ad2614be`, `gerar_relatorio` `38686372cb8ea981`/`37b0c86cee879ced`; custo aproximado `US$ 0.079110`; inspeção JSON: 4 questoes, gabarito completo, 4 respostas da aluna, nota `8/10`, erro apenas na Q3 de porcentagem, analise/relatorio coerentes; inspeção PDF inicial achou feedback cortado e metrica misturada. Depois, `task_e389f360b812` no Render `3a77a17` revalidou etapas finais com PDF/JSON coerentes. | Confirmado para essa fixture simples no site oficial; repetir por dataset/provider. |
+| GPT-5.4 Mini | `pipeline-completo` full em segunda atividade textual | Task `task_0eab214f30a8` completou seis etapas em `8f58cc8b5fb75869`, aluno `ae6420679a3f2606`: questoes `5b30b0cb85bbdc1f`, gabarito `c125867404d7836b`, respostas `d42ece0cc1eb1ff0`, correcao `cdce8de07a2bb15b`/`66db8692751ad805`, habilidades `8ff2eb65f7e99fef`/`6da8d45232467e31`, relatorio `493808318d3c83d2`/`3434e5dbed213e45`; nota `10.0`, PDF com `Feedback Geral`, custo `59746/9379`, `US$ 0.087016` | Reforca GPT-5.4 Mini como default operacional em atividade textual fora da fixture Diana; ainda falta prova manuscrita/dataset maior. |
 | GPT-5 Nano + GPT-5.4 Mini per-phase | `pipeline-completo` pos-`f2211bb` | Task `task_19ee59ac1881` passou por `extrair_questoes`, `extrair_gabarito`, `extrair_respostas` e `corrigir`; depois falhou alto em `analisar_habilidades` por tool-use incompleto. O patch `f2211bb` reduziu contaminacao de artefatos antigos: `extrair_gabarito` caiu para `6918/5497` tokens e `extrair_respostas` Mini para `18176/2081`. | Pipeline completa ainda nao validada; proximo bloqueador e `analisar_habilidades` em tool-use integrado. |
 | Claude Haiku 4.5 | `pipeline-completo` | Creditos Anthropic insuficientes; wrapper mascarou causa como modelo invalido | Bloqueado por credito; erro deve ser exposto com causa real. |
 | GPT-4o | referencia historica | Outputs em schema antigo e sem `_avisos_*` | Revalidar explicitamente; nao usar como fallback. |
@@ -3895,6 +3901,39 @@ Atualizacao deste ciclo:
   task unica. A matriz nao deve extrapolar isso para dataset maior, prova
   manuscrita dificil ou custo duravel; o proximo loop ainda precisa aplicar
   `backend/migrations/002_create_token_usage.sql` e repetir smokes de matriz.
+
+### Provider: GPT-5.4 Mini Em Segunda Atividade Textual
+
+Atualizacao deste ciclo:
+
+- Alvo: validar a pipeline fora da fixture Diana sem depender de Google/Anthropic
+  nem da Lista0, cujo gabarito cobre apenas o exercicio 5. A atividade
+  `8f58cc8b5fb75869` tem enunciado, gabarito e provas respondidas textuais; a
+  auditoria previa confirmou que enunciado e gabarito cobrem as mesmas quatro
+  questoes.
+- Smoke oficial: `task_0eab214f30a8`, aluno `ae6420679a3f2606`, modelo
+  `gpt54mini001`, seis etapas, `force_rerun=true`.
+- Resultado: task `completed`, sem `stage_errors`.
+- Artefatos principais:
+  `5b30b0cb85bbdc1f` (`extrair_questoes`),
+  `c125867404d7836b` (`extrair_gabarito`),
+  `d42ece0cc1eb1ff0` (`extrair_respostas`),
+  `cdce8de07a2bb15b`/`66db8692751ad805` (`corrigir`),
+  `8ff2eb65f7e99fef`/`6da8d45232467e31` (`analisar_habilidades`) e
+  `493808318d3c83d2`/`3434e5dbed213e45` (`gerar_relatorio`).
+- Conteudo: `nota_final=10.0`, `total_acertos=4`, `total_erros=0`, avisos
+  vazios, relatório final com `nota_final=10.0`.
+- PDF: o PDF final de correcao foi baixado fora do repo e convertido com
+  `pdftotext`; contem `Nota final: 10.0/10.0`, as quatro questoes e `Feedback
+  Geral`. O PDF intermediario `88b21a1af21ace1c` ficou `status=erro`, como
+  esperado em retry explicito.
+- Custo medido: `59746` tokens de entrada, `9379` tokens de saida,
+  `US$ 0.087016`. O resumo live depois do smoke retornou
+  `runs_analisados=282`, `runs_precificados=231`, `runs_bloqueados=51`,
+  `custo_usd=4.602576` e `token_usage_durable=false`.
+- Interpretacao: GPT-5.4 Mini ganha evidencia oficial alem da fixture Diana e
+  segue como melhor default operacional atual. Ainda faltam prova manuscrita,
+  dataset maior e persistencia duravel de `token_usage`.
 
 Regra de continuidade:
 

@@ -80,6 +80,15 @@ correcao e confirmar GPT-5 Nano numa task unica de seis etapas na fixture Diana.
   `3097c98b71535af5`, relatorio JSON/PDF `84b0858aa381b9ee` /
   `835887f36ad5f052`. Custo total medido: `125683/27190` tokens,
   `US$ 0.017160`.
+- GPT-5.4 Mini full task em segunda atividade textual: `task_0eab214f30a8`
+  completou as seis etapas com `gpt54mini001` na atividade `8f58cc8b5fb75869`
+  (`Prova 1 - Equações do 1º Grau`), aluno `ae6420679a3f2606`, sem
+  `stage_errors`. Artefatos principais: questoes `5b30b0cb85bbdc1f`,
+  gabarito `c125867404d7836b`, respostas `d42ece0cc1eb1ff0`, correcao
+  JSON/PDF `cdce8de07a2bb15b` / `66db8692751ad805`, habilidades JSON/PDF
+  `8ff2eb65f7e99fef` / `6da8d45232467e31`, relatorio JSON/PDF
+  `493808318d3c83d2` / `3434e5dbed213e45`. Custo total medido:
+  `59746/9379` tokens, `US$ 0.087016`; nota final `10.0`.
 - O commit `fdf0cbd` mudou backend/frontend para catalogo OpenAI GPT-5.x e foi
   publicado no GitHub; Render confirmou `fdf0cbd` por `/api/deploy-info`,
   `wait_deploy.sh` e `check_deploy.sh`.
@@ -219,6 +228,10 @@ sem `stage_errors`. JSON `92737f5ba69ca2d4` e PDF `bb6522992d2fe7d4` ficaram
 `US$ 0.036719`; o PDF intermediario `067f4db99040043b` foi marcado
 `status=erro` por `pdf_json_consistency`, confirmando retry explicito sem
 fallback silencioso.
+Nota GPT-5.4 Mini pos-`4a4caf0`: a task `task_0eab214f30a8` confirma que o
+modelo tambem completa uma atividade textual diferente da fixture Diana, com
+enunciado/gabarito/prova em `.txt`, nota `10.0`, PDF de correcao com
+`Feedback Geral` e custo medido.
 Nota provider sweep pos-`fdf0cbd`: `/api/settings/models/{id}/testar` confirmou
 OpenAI disponivel (`gpt54mini001` OK/42 tokens, `gpt5nano001` OK/38 tokens).
 Google esta bloqueado por quota em `gem25flash001`, `gem25lite001` e
@@ -891,9 +904,11 @@ na fixture simples. Ainda falta pipeline completa de 6 etapas e datasets maiores
       `token_usage_backend.supabase.table_available=true`
 - [x] Corrigir contaminacao por artefatos antigos em prompts/anexos; `f2211bb`
       reduziu tokens e destravou o gabarito no smoke per-phase
-- [ ] Corrigir `analisar_habilidades` em pipeline integrada: `task_19ee59ac1881`
+- [x] Corrigir `analisar_habilidades` em pipeline integrada: `task_19ee59ac1881`
       falhou alto por tool-use incompleto em GPT-5 Nano; GPT-5.4 Mini passou em
-      pipeline completa propria no smoke `task_a5f0d734f0b3`
+      pipeline completa propria no smoke `task_a5f0d734f0b3`, Nano passou a
+      full task simples em `task_cbe8568e78d6`, e GPT-5.4 Mini repetiu full
+      task textual em `task_0eab214f30a8`.
 - [x] Validar GPT-5.4 Mini (`gpt54mini001`) nas 6 etapas em uma fixture simples
       oficial: `task_a5f0d734f0b3`, Render `2cad38a`, documentos e custos
       registrados
@@ -927,13 +942,10 @@ na fixture simples. Ainda falta pipeline completa de 6 etapas e datasets maiores
 - [ ] Testar Haiku 4.5 (bloqueado ate creditos recarregarem)
 
 ### Prioridade BAIXA
-- [ ] Testar GPT-5 Nano nas 6 etapas (as etapas `extrair_questoes`,
-      `extrair_gabarito`, `corrigir`, `analisar_habilidades` e
-      `gerar_relatorio` ja passaram; `extrair_respostas` rodou mas foi
-      reclassificada como conteudo invalido por tudo `ilegivel`/vazio,
-      inferencia suspeita ou scan majoritariamente sem conteudo; desde
-      `1ce3d23`, o falso sucesso final foi bloqueado, mas ainda falta fazer a
-      etapa extrair conteudo real e depois rodar pipeline completa)
+- [x] Testar GPT-5 Nano nas 6 etapas em task unica de fixture simples:
+      `task_cbe8568e78d6` no runtime `4a4caf0` completou as seis etapas com
+      JSON/PDF e custo. Mantem-se pendente a versao mais dificil: dataset maior,
+      prova manuscrita e custo duravel de falhas sem documento.
 - [ ] Comparar qualidade dos outputs entre os 3 modelos-alvo
 
 ---
@@ -948,24 +960,15 @@ na fixture simples. Ainda falta pipeline completa de 6 etapas e datasets maiores
   `MISSING_CONTENT`.
   Pipeline sequencial completa pos-runner chegou a `corrigir` e falhou alto por
   quota `429`; falta repetir quando quota permitir.
-- ⚠️ **GPT-5 Nano via `pipeline-completo`:** `extrair_questoes`,
-  `extrair_gabarito`, `corrigir` e `gerar_relatorio` passaram em smokes
-  oficiais com JSON/PDF quando aplicavel, custo e metadata, mas o smoke full
-  `task_bc6cc84d10ef` mostrou que uma task completa ainda pode ser semanticamente
-  invalida se o gabarito estiver incompleto. Desde `3a7dfea`, `corrigir` falha
-  alto antes de chamar IA quando `gabarito_extraido` tem `MISSING_CONTENT`
-  bloqueante. `analisar_habilidades` tem sucesso individual historico, mas
-  qualquer análise baseada em correção invalidada nao conta como validação.
-  `extrair_respostas` rodou varias vezes, mas foi reclassificada como falha de
-  conteudo por tudo `ilegivel=true`/vazio, por inferencia suspeita do enunciado
-  ou por scan majoritariamente sem conteudo. O deploy `1ce3d23` corrigiu o
-  falso sucesso final naquele caso: agora ele falha alto, nao cria documento
-  verde e registra custo de falha (`usage_52590d55d210459e`). Em `aff2180`,
-  Nano passou `extrair_respostas` na fixture simples Diana (`task_ff7eeda28964`,
-  doc `4175e0e7476931d7`, custo `US$ 0.001011`), entao a etapa esta parcial,
-  nao resolvida de forma geral. Ainda faltam dataset maior, `analisar_habilidades`
-  no run integrado, pipeline completa de 6 etapas, schema minimo por etapa e
-  custo duravel de falhas sem documento final.
+- ⚠️ **GPT-5 Nano via `pipeline-completo`:** agora passou uma full task oficial
+  de seis etapas na fixture simples Diana (`task_cbe8568e78d6`, runtime
+  `4a4caf0`, custo `US$ 0.017160`) depois de falhar alto em `dbbecfe` por PDF
+  de correcao sem `Feedback Geral` verificavel. O historico em prova/lista
+  maior ainda exige cautela: `extrair_respostas` ja foi reclassificada como
+  falha de conteudo por tudo `ilegivel=true`/vazio, inferencia suspeita ou scan
+  majoritariamente sem conteudo; desde `1ce3d23`, esse caso falha alto e registra
+  custo de falha (`usage_52590d55d210459e`). Portanto Nano esta confirmado para
+  a fixture simples, mas ainda nao para dataset maior/prova manuscrita.
 - ⚠️ **GPT-5.4 Mini candidato OCR/pipeline simples:** `extrair_respostas` passou em uma amostra
   oficial primeiro como cadastro efemero (`task_9c10e3752bcb`, doc
   `a39d26fcc621c7a8`, custo `US$ 0.081492`) e depois como modelo versionado
@@ -1017,6 +1020,9 @@ na fixture simples. Ainda falta pipeline completa de 6 etapas e datasets maiores
   `a6e92125cee2b4d4` como erro (`nota_final=10`, soma 8) e aceitou o retry:
   JSON `51f5a6a4536b60e7`, PDF `db4903bda7b4d2c0`, cabecalho real,
   Q3 `25` vs `30`, `nota_final=8`, custo `41137/5962`, `US$ 0.057682`.
+  Em `4a4caf0`, a segunda atividade textual `task_0eab214f30a8` completou
+  seis etapas com nota `10.0`, PDF de correcao com `Feedback Geral`, custo
+  `59746/9379`, `US$ 0.087016`.
 - ⏸️ **Claude Haiku 4.5:** Aguardando creditos.
 - 📊 **Confiabilidade Gemini 3 Flash:** extracoes OK; etapas finais ficaram
   ⚠️ depois que `aff2180` endureceu `feedback_geral` em `CORRIGIR`. A
@@ -1037,19 +1043,17 @@ nem datasets maiores.
 
 **Proximos passos:**
 1. Manter deploy oficial confirmado por `/api/deploy-info` antes de cada smoke
-   novo; o codigo funcional mais recente confirmado e `ae04982`. Commits
+   novo; o codigo funcional mais recente confirmado e `4a4caf0`. Commits
    documentais posteriores podem mudar o hash de `/api/deploy-info` sem alterar
    comportamento de pipeline.
 2. Aplicar/validar a migration Supabase `token_usage` antes de chamar custo de
    falha sem documento de duravel.
 3. Revalidar matriz por provider/modelo; GPT-5.4 Mini passou 6 etapas em
-   fixture simples e GPT-4o passou as seis etapas individualmente, mas ainda
-   faltam datasets maiores e GPT-4o full 6 etapas em uma unica task.
+   fixture simples e segunda atividade textual, GPT-5 Nano passou full task
+   simples, e GPT-4o tem full smoke historico, mas ainda faltam datasets maiores.
 4. Revalidar Gemini/Nano/Haiku por provider/modelo; Gemini 2.5 Flash falhou
-   alto por quota `429` em `corrigir`, GPT-5 Nano passou `extrair_respostas`,
-   `corrigir`, `analisar_habilidades` e `gerar_relatorio` na fixture simples
-   mas segue parcial em dataset maior/schema de avisos, e Haiku segue bloqueado
-   por credito.
+   alto por quota `429` em `corrigir`, Nano segue parcial em dataset maior, e
+   Haiku segue bloqueado por credito.
 5. Aplicar `backend/migrations/002_create_token_usage.sql` no Supabase para
    tornar duravel o custo de falhas sem documento.
 6. Quando creditos Anthropic forem recarregados, validar Haiku 4.5 via
