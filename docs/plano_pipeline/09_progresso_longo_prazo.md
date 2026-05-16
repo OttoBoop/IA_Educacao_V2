@@ -149,6 +149,19 @@ com 4 questoes e pontuacao total `10.0` (`1151/441`, `US$ 0.005830`);
 confirmado nas 6 etapas da fixture simples, somando os smokes por grupo de
 etapas, com custo medido por etapa.
 
+Atualizacao GPT-4.1 full pipeline em 2026-05-17 no runtime `0f84552`: smoke
+`task_f6851ed535b8` executou as 6 etapas em uma unica corrida e completou sem
+`stage_errors`. Artefatos principais: questoes `79b5876544c6c2ae`, gabarito
+`bfb2a7590d943fa3`, respostas `afacce7606ab43b3`, correcao JSON/PDF
+`c186d3f6f852fb9b`/`df34a13a49ad03e5`, analise JSON/PDF
+`b8126c7d15ecee56`/`5f86f4d2dd3abe23`, relatorio JSON/PDF
+`71cf0b53fe147668`/`3490b806647c8e2a`. A inspeção confirmou Q3 `25` vs `30`,
+`nota_final=8.0`, proficiencia `8.0`, recomendacao focada em porcentagem e
+PDFs legiveis. O PDF intermediario `6edcd9f8ecd80b52` foi marcado `status=erro`
+por consistencia antes do retry. Custos por etapa: `US$ 0.006134`,
+`0.007068`, `0.006862`, `0.080190`, `0.075614`, `0.046988`; total aproximado
+`US$ 0.222856`. Status: GPT-4.1 confirmado como full smoke na fixture simples.
+
 Atualizacao de 2026-05-17 no runtime `700b088`: o ciclo `f40acf3` alinhou
 `PROMPTS_PADRAO` e `STAGE_TOOL_INSTRUCTIONS` para `CORRIGIR`,
 `ANALISAR_HABILIDADES` e `GERAR_RELATORIO`, e tornou obrigatorios campos de

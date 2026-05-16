@@ -240,6 +240,14 @@ respostas completas (`US$ 0.007312`) e `EXTRAIR_RESPOSTAS`
 `c429ee5f3276fa90` trouxe 4 respostas da Diana, Q3 `25` e
 `raciocinio_parcial=null` (`US$ 0.006788`). A cobertura GPT-4.1 fica ✅ nas 6
 etapas para a fixture simples, embora ainda falte dataset maior.
+Nota GPT-4.1 full pipeline: `task_f6851ed535b8` executou as 6 etapas em uma
+unica task no runtime `0f84552` e completou sem `stage_errors`. Documentos:
+`79b5876544c6c2ae`, `bfb2a7590d943fa3`, `afacce7606ab43b3`,
+`c186d3f6f852fb9b`/`df34a13a49ad03e5`, `b8126c7d15ecee56`/`5f86f4d2dd3abe23`,
+`71cf0b53fe147668`/`3490b806647c8e2a`. Q3 permaneceu erro por `25` vs `30`,
+nota final e proficiencia ficaram `8.0`, e custo total aproximado foi
+`US$ 0.222856`. O PDF intermediario `6edcd9f8ecd80b52` ficou `status=erro`
+antes do retry.
 Nota P0 atualizada: `extrair_gabarito` Gemini era ❌ porque o output historico
 retornou todas as respostas como `MISSING_CONTENT`, embora o PDF base tivesse
 texto extraivel de "Exercicio 5". Em 2026-05-17, o smoke
