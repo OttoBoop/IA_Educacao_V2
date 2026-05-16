@@ -2573,6 +2573,31 @@ Critério de pronto: lista de limpeza segura e revisada.
   Proximos alvos continuam: persistencia duravel de custos, UI/historico de
   erro e revalidacao por provider/dataset maior.
 
+### 2026-05-17 -- Resultado parcial nao conta `status=erro` como progresso
+
+- Alvo: fechar a lacuna de UI/resultados em que existir arquivo parcial podia
+  parecer etapa concluida mesmo quando o documento estava marcado
+  `status=erro`.
+- Mudanca: `/api/resultados/{atividade_id}/{aluno_id}` agora calcula progresso
+  apenas com documentos `concluido`; documentos `erro`, `processando` ou
+  `pendente` ficam visiveis com `status`, `erro_tipo`, `erro_execucao`,
+  provider/modelo/tokens e entram em `documentos_com_erro`.
+- Mudanca: o visualizador consolidado ignora documentos de correcao em
+  `status=erro` para nao devolver `completo=true` quando so existe falha.
+- Mudanca: a tela de resultado do aluno mostra banner de erro tambem para
+  resultado parcial, destaca etapa com erro e marca cards de documento em erro.
+- Validacoes locais: `py_compile` de `routes_resultados.py`,
+  `visualizador.py` e `test_erro_pipeline.py`; `test_erro_pipeline.py`
+  passou com `76 passed`; recorte de integracao `Visualizador or RoutesEndpoint`
+  passou com `7 passed`; `git diff --check` passou.
+- Limitacao registrada: a suite completa
+  `test_erro_pipeline_integration.py` ainda tem 3 falhas antigas em testes que
+  procuram texto dentro do PDF binario bruto do ReportLab; o recorte afetado
+  por este ciclo passou.
+- Status antes do deploy: patch validado localmente. Proximo passo do ciclo e
+  commit, push, deploy oficial, smoke de `/api/resultados` e registro do hash
+  live.
+
 ## Riscos Abertos
 
 1. Creditos Anthropic insuficientes ainda bloqueiam validacao Haiku.
@@ -2596,8 +2621,8 @@ Critério de pronto: lista de limpeza segura e revisada.
    precisam estar versionados em `backend/data/models.json` ou em storage
    duravel real.
 10. Artefatos com `status=erro` podem ter arquivo/conteudo parcial; UI e docs
-   devem ensinar o usuario a obedecer o status, nao o simples fato de existir
-   arquivo.
+    devem ensinar o usuario a obedecer o status, nao o simples fato de existir
+    arquivo.
 11. Rio 3 nao deve voltar ao fluxo ativo sem nova decisao e nova chave segura.
 12. Status `completed` da task nao basta; a correção precisa ser semanticamente
     compativel com `extracao_respostas` e `gabarito_extraido`. O caso

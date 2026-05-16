@@ -3555,6 +3555,50 @@ Estado:
   `public.token_usage`; apos o smoke, `runs_analisados=44` e
   `runs_precificados=42`.
 
+## Atualizacao 2026-05-17 -- Resultado Parcial Obedece `status=erro`
+
+Problema:
+
+- A auditoria ja dizia que UI/historico precisava obedecer `status=erro`, mas a
+  rota de resultado parcial ainda podia marcar uma etapa como completa so
+  porque havia um arquivo daquele tipo.
+- Isso era um falso verde de UI: um PDF/JSON intermediario marcado como erro
+  podia inflar progresso e fazer o usuario olhar para "arquivo existe" em vez
+  de "processamento falhou".
+
+Mudanca:
+
+- `backend/routes_resultados.py` agora separa existencia de documento de
+  sucesso de documento em erro. So `status=concluido` conta progresso.
+- A resposta parcial inclui `status`, `ia_provider`, `ia_modelo`,
+  `tokens_usados`, `erro_tipo`, `erro_execucao` e `documentos_com_erro`.
+- `backend/visualizador.py` nao monta `VisaoAluno` completa a partir de
+  correcao `status=erro`; se so existe erro, a rota cai no caminho parcial e
+  mostra falha.
+- `frontend/index_v2.html` mostra banner de erro em resultado parcial, destaca
+  a etapa com erro e marca documento em erro nos grupos do aluno/IA.
+
+Validacao local:
+
+- `python3 -m py_compile backend/routes_resultados.py backend/visualizador.py backend/tests/unit/test_erro_pipeline.py`
+- `PYTHONPATH=backend /home/otavio/Documents/vscode/.venv/bin/python -m pytest backend/tests/unit/test_erro_pipeline.py -q`
+  retornou `76 passed`.
+- Recorte afetado da integracao:
+  `test_erro_pipeline_integration.py -k 'Visualizador or RoutesEndpoint'`
+  retornou `7 passed`.
+- `git diff --check` passou.
+- A suite completa `test_erro_pipeline_integration.py` ainda falha em 3 testes
+  antigos de PDF que procuram strings no PDF binario bruto; isso fica como
+  divida de teste, nao regressao deste ciclo.
+
+Estado:
+
+- Este patch reduz uma lacuna de Sprint 4: o usuario passa a ver erro em
+  resultado parcial sem abrir terminal.
+- Ainda falta smoke oficial pos-deploy e ainda falta revisar historico/ranking
+  para garantir que outros agregados tambem nao transformem documento em erro
+  em nota/correcao valida.
+
 ## Trabalho Aberto Desta Auditoria
 
 Esta auditoria nao encerra o loop tecnico. Ela deixa o proximo trabalho mais
@@ -3568,7 +3612,7 @@ claro. O que ainda existe para fazer:
 | Provider revalidation | Smoke/producao | Matriz Doc 12 registra GPT-5.4 Mini full smoke em fixture simples, GPT-4o full smoke (`task_68b19146a95b`) e Gemini 2.5 Flash com extracoes OK/tool-use corrigido mas bloqueado por quota; smoke `task_81f274a6f510` em `3fce335` confirma erro alto Google `429` sem novo falso verde; Gemini 2.5 Flash Lite `task_52e5fa9020a0` confirmou caminho Google Lite com erro alto de PDF/codigo, e `task_124bf0e8d7bf` em `0f84552` confirmou erro alto de JSON/PDF divergentes; GPT-5 Nano `task_90eb0936b7ce` confirmou `corrigir` como falha alta por PDF/JSON divergentes; GPT-4.1 `task_f6851ed535b8` confirmou full pipeline unico com JSON/PDF coerentes e custos medidos. Continua incompleta ate novos smokes por provider/rota/dataset. |
 | PDFs/UI GPT-5.4 Mini/GPT-4o | Codigo/testes/deploy/smoke | `task_a5f0d734f0b3` completou 6 etapas, JSONs passaram inspeção semantica inicial e PDFs existem; `0ac92f0` corrigiu parte do layout, mas `task_605512496b0d` provou divergencia PDF/JSON; `2052a01` transformou essa divergencia em erro alto; `3a77a17` validou retry explicito do PDF; `3e6be20` bloqueia Feedback Geral truncado; GPT-4o passou as etapas finais com artefatos ruins marcados como erro; `task_42e3b303c39a` confirmou PDF final coerente em `corrigir`. Ainda falta repetir em datasets maiores e melhorar UI de erro para o usuario final. |
 | Gabarito incompleto bloqueia correção | Codigo/testes/deploy/smoke | `3a7dfea` bloqueia `CORRIGIR` com `MISSING_CONTENT` no gabarito; continua importante para datasets como Lista0, embora a fixture Diana tenha completado. |
-| UI de erros | Produto/frontend | Sidebar ja mostra a causa por aluno/etapa desde `98fafc9`; ainda falta resultado/historico e mensagens completas para provider/custo. |
+| UI de erros | Produto/frontend | Sidebar ja mostra a causa por aluno/etapa desde `98fafc9`; resultado parcial agora distingue `status=erro` de progresso concluido e mostra banner/documento em erro; ainda falta smoke oficial pos-deploy, historico/ranking e mensagens completas para provider/custo. |
 | Limpeza de dados | Dados | "Fantasmas" precisam reclassificacao; PDF com `/conteudo=null` nao pode ser deletado. |
 
 Regra de continuidade:

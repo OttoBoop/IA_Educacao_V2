@@ -996,3 +996,7 @@ nem datasets maiores.
    tornar duravel o custo de falhas sem documento.
 6. Quando creditos Anthropic forem recarregados, validar Haiku 4.5 via
    `pipeline-completo`.
+7. Confirmar no site oficial que telas de resultado obedecem `status=erro`:
+   documento parcial em erro nao conta como etapa concluida; retry concluido
+   pode fechar a etapa, mas o documento de erro continua visivel na lista para
+   auditoria e custo.

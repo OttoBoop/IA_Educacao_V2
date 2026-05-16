@@ -9427,6 +9427,12 @@
 
         function renderDocumentoItem(doc, options = {}) {
             const metaItems = [];
+            const statusDoc = doc.status || '';
+            const metadata = doc.metadata || {};
+            const erroTipo = doc.erro_tipo || metadata.erro_tipo;
+            const erroExecucao = doc.erro_execucao || metadata.erro_execucao || metadata.erro_pipeline?.mensagem;
+            if (statusDoc && statusDoc !== 'concluido') metaItems.push(`Status: ${statusDoc}`);
+            if (erroTipo) metaItems.push(`Erro: ${erroTipo}`);
             if (doc.criado_em) metaItems.push(`Enviado: ${formatDateTime(doc.criado_em)}`);
             if (doc.criado_por) metaItems.push(`Por: ${doc.criado_por}`);
             if (doc.ia_provider) metaItems.push(`IA: ${doc.ia_provider}`);
@@ -9435,6 +9441,7 @@
             if (doc.prompt_versao) metaItems.push(`Versão: ${doc.prompt_versao}`);
             if (doc.tokens_usados) metaItems.push(`Tokens: ${doc.tokens_usados}`);
             if (doc.tempo_processamento_ms) metaItems.push(`Tempo: ${Math.round(doc.tempo_processamento_ms)}ms`);
+            if (erroExecucao) metaItems.push(`Causa: ${erroExecucao}`);
 
             const metaHtml = metaItems.length
                 ? `<div class="doc-meta-stack">${metaItems.map(item => `<span class="doc-meta-pill">${escapeHtml(item)}</span>`).join('')}</div>`
@@ -9457,9 +9464,9 @@
                 : '';
 
             return `
-                <div class="doc-item doc-item-static" data-tipo="${doc.tipo || ''}" data-aluno-id="${doc.aluno_id || ''}">
+                <div class="doc-item doc-item-static" data-tipo="${doc.tipo || ''}" data-aluno-id="${doc.aluno_id || ''}" style="${statusDoc === 'erro' ? 'border-left: 4px solid var(--danger);' : ''}">
                     ${chatCheckbox}
-                    <div class="doc-icon">${options.icon || '📄'}</div>
+                    <div class="doc-icon">${statusDoc === 'erro' ? '⚠️' : (options.icon || '📄')}</div>
                     <div class="doc-info">
                         <div class="doc-name">${escapeHtml(doc.display_name || doc.nome_arquivo || doc.id)}</div>
                         ${metaHtml}
@@ -12629,8 +12636,9 @@
 
                 // Renderizar banner de erro se resultado tem erro_pipeline
                 let erroBanner = '';
-                if (resultado && resultado.erro_pipeline) {
-                    const erro = resultado.erro_pipeline;
+                const erroPipeline = resultado?.erro_pipeline || resultadoData?.erro_pipeline;
+                if (erroPipeline) {
+                    const erro = erroPipeline;
                     erroBanner = `
                         <div class="alert alert-danger" style="border-left: 4px solid var(--danger);">
                             <span class="alert-icon">⚠️</span>
@@ -12653,24 +12661,29 @@
                     const progresso = resultadoData.progresso || 0;
                     const etapas = resultadoData.etapas || {};
                     const dadosParciais = resultadoData.dados_parciais || {};
+                    const pipelineHasError = resultadoData.status === 'erro' || Boolean(resultadoData.erro_pipeline);
 
                     pipelineStatus = `
-                        <div class="card" style="border-left: 4px solid var(--warning);">
+                        <div class="card" style="border-left: 4px solid ${pipelineHasError ? 'var(--danger)' : 'var(--warning)'};">
                             <div class="card-header">
-                                <h3 class="card-title">⏳ Pipeline em Progresso</h3>
+                                <h3 class="card-title">${pipelineHasError ? '⚠️ Pipeline com Erro' : '⏳ Pipeline em Progresso'}</h3>
                                 <span style="font-size: 14px; color: var(--text-secondary);">${progresso}% concluído</span>
                             </div>
                             <div style="background: var(--bg); border-radius: 8px; height: 8px; margin-bottom: 16px; overflow: hidden;">
-                                <div style="background: var(--primary); height: 100%; width: ${progresso}%; transition: width 0.3s;"></div>
+                                <div style="background: ${pipelineHasError ? 'var(--danger)' : 'var(--primary)'}; height: 100%; width: ${progresso}%; transition: width 0.3s;"></div>
                             </div>
                             <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 8px;">
-                                ${Object.entries(etapas).map(([key, etapa]) => `
-                                    <div style="display: flex; align-items: center; gap: 8px; padding: 8px; background: var(--bg); border-radius: 6px;">
-                                        <span style="font-size: 16px;">${etapa.completa ? '✅' : '⏳'}</span>
-                                        <span style="font-size: 13px; ${etapa.completa ? '' : 'color: var(--text-secondary);'}">${etapa.nome}</span>
+                                ${Object.entries(etapas).map(([key, etapa]) => {
+                                    const etapaErro = etapa.status === 'erro';
+                                    const etapaIcon = etapaErro ? '⚠️' : (etapa.completa ? '✅' : '⏳');
+                                    const etapaCausa = etapa.erro_execucao || etapa.erro_pipeline?.mensagem || etapa.erro_tipo || '';
+                                    return `
+                                    <div style="display: flex; align-items: center; gap: 8px; padding: 8px; background: var(--bg); border-radius: 6px; ${etapaErro ? 'border-left: 4px solid var(--danger);' : ''}">
+                                        <span style="font-size: 16px;">${etapaIcon}</span>
+                                        <span style="font-size: 13px; ${etapa.completa ? '' : 'color: var(--text-secondary);'}">${etapa.nome}${etapaErro && etapaCausa ? `<br><small style="color: var(--danger);">${escapeHtml(etapaCausa)}</small>` : ''}</span>
                                         ${etapa.doc_id ? `<button class="btn btn-sm" onclick="visualizarDocumento('${etapa.doc_id}')" style="margin-left: auto; padding: 2px 6px;">👁️</button>` : ''}
                                     </div>
-                                `).join('')}
+                                `}).join('')}
                             </div>
                             ${Object.keys(dadosParciais).length > 0 ? `
                                 <details style="margin-top: 16px;">

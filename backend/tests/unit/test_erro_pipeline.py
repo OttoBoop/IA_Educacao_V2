@@ -2075,6 +2075,162 @@ class TestF5T1_APIPropagaErro:
         finally:
             os.unlink(temp_path)
 
+    @pytest.mark.asyncio
+    async def test_partial_result_doc_status_erro_not_counted_as_complete(self):
+        """Document marked status=erro must not inflate partial pipeline progress."""
+        from models import StatusProcessamento
+
+        erro_pipeline = {
+            "tipo": "PDF_JSON_INCONSISTENTE",
+            "mensagem": "PDF intermediario invalido",
+            "severidade": "alto",
+            "etapa": "corrigir",
+            "timestamp": "2026-05-17T12:00:00"
+        }
+        with tempfile.NamedTemporaryFile(
+            mode='w', suffix='.json', delete=False, encoding='utf-8'
+        ) as f:
+            json.dump({"_erro_pipeline": erro_pipeline}, f)
+            temp_path = f.name
+
+        try:
+            mock_doc = MagicMock()
+            mock_doc.tipo = MagicMock()
+            mock_doc.tipo.value = "correcao"
+            mock_doc.id = "doc_correcao_erro"
+            mock_doc.extensao = ".json"
+            mock_doc.aluno_id = "aluno_test"
+            mock_doc.nome_arquivo = "correcao_erro.json"
+            mock_doc.status = StatusProcessamento.ERRO
+            mock_doc.ia_provider = "openai"
+            mock_doc.ia_modelo = "gpt-5.4-mini"
+            mock_doc.tokens_usados = 123
+            mock_doc.metadata = {
+                "erro_tipo": "pdf_json_consistency",
+                "erro_pipeline": erro_pipeline,
+            }
+
+            mock_storage = MagicMock()
+            mock_storage.listar_documentos = MagicMock(
+                side_effect=lambda ativ_id, aluno_id=None: [mock_doc] if aluno_id else []
+            )
+            mock_storage.get_documento = MagicMock(return_value=mock_doc)
+            mock_storage.resolver_caminho_documento = MagicMock(return_value=Path(temp_path))
+
+            mock_visualizador = MagicMock()
+            mock_visualizador.get_resultado_aluno = MagicMock(return_value=None)
+
+            with patch("routes_resultados.visualizador", mock_visualizador), \
+                 patch("routes_resultados.storage", mock_storage):
+                from routes_resultados import get_resultado_aluno
+                response = await get_resultado_aluno("ativ_test", "aluno_test")
+
+            assert response["completo"] is False
+            assert response.get("status") == "erro"
+            assert response["etapas"]["correcao"]["completa"] is False
+            assert response["etapas"]["correcao"]["status"] == "erro"
+            assert response["progresso"] == 0
+            assert response["documentos_disponiveis"][0]["status"] == "erro"
+            assert response["documentos_com_erro"][0]["erro_tipo"] == "pdf_json_consistency"
+        finally:
+            os.unlink(temp_path)
+
+    @pytest.mark.asyncio
+    async def test_partial_result_completed_retry_wins_without_hiding_error_doc(self):
+        """If retry succeeded, etapa is complete but older error doc remains visible."""
+        from models import StatusProcessamento
+
+        with tempfile.NamedTemporaryFile(
+            mode='w', suffix='.json', delete=False, encoding='utf-8'
+        ) as f_ok, tempfile.NamedTemporaryFile(
+            mode='w', suffix='.json', delete=False, encoding='utf-8'
+        ) as f_error:
+            json.dump({"nota_final": 8.0, "questoes": []}, f_ok)
+            json.dump({"_erro_pipeline": {"tipo": "PDF_JSON_INCONSISTENTE"}}, f_error)
+            ok_path = f_ok.name
+            error_path = f_error.name
+
+        try:
+            ok_doc = MagicMock()
+            ok_doc.tipo = MagicMock()
+            ok_doc.tipo.value = "correcao"
+            ok_doc.id = "doc_correcao_ok"
+            ok_doc.extensao = ".json"
+            ok_doc.aluno_id = "aluno_test"
+            ok_doc.nome_arquivo = "correcao_ok.json"
+            ok_doc.status = StatusProcessamento.CONCLUIDO
+            ok_doc.ia_provider = "openai"
+            ok_doc.ia_modelo = "gpt-5.4-mini"
+            ok_doc.tokens_usados = 456
+            ok_doc.metadata = {}
+
+            error_doc = MagicMock()
+            error_doc.tipo = MagicMock()
+            error_doc.tipo.value = "correcao"
+            error_doc.id = "doc_correcao_erro"
+            error_doc.extensao = ".json"
+            error_doc.aluno_id = "aluno_test"
+            error_doc.nome_arquivo = "correcao_erro.json"
+            error_doc.status = StatusProcessamento.ERRO
+            error_doc.ia_provider = "openai"
+            error_doc.ia_modelo = "gpt-5.4-mini"
+            error_doc.tokens_usados = 123
+            error_doc.metadata = {"erro_tipo": "pdf_json_consistency"}
+
+            def resolver(doc):
+                return Path(ok_path if doc.id == "doc_correcao_ok" else error_path)
+
+            mock_storage = MagicMock()
+            mock_storage.listar_documentos = MagicMock(
+                side_effect=lambda ativ_id, aluno_id=None: [ok_doc, error_doc] if aluno_id else []
+            )
+            mock_storage.get_documento = MagicMock(side_effect=lambda doc_id: ok_doc if doc_id == ok_doc.id else error_doc)
+            mock_storage.resolver_caminho_documento = MagicMock(side_effect=resolver)
+
+            mock_visualizador = MagicMock()
+            mock_visualizador.get_resultado_aluno = MagicMock(return_value=None)
+
+            with patch("routes_resultados.visualizador", mock_visualizador), \
+                 patch("routes_resultados.storage", mock_storage):
+                from routes_resultados import get_resultado_aluno
+                response = await get_resultado_aluno("ativ_test", "aluno_test")
+
+            assert response.get("status") != "erro"
+            assert response["etapas"]["correcao"]["completa"] is True
+            assert response["etapas"]["correcao"]["doc_id"] == "doc_correcao_ok"
+            assert response["documentos_com_erro"][0]["id"] == "doc_correcao_erro"
+        finally:
+            os.unlink(ok_path)
+            os.unlink(error_path)
+
+    def test_visualizador_ignores_error_only_correction_as_final_result(self):
+        """A correction document with status=erro cannot produce completo=True."""
+        from models import StatusProcessamento, TipoDocumento
+        from visualizador import VisualizadorResultados
+
+        mock_atividade = MagicMock()
+        mock_atividade.nome = "Prova"
+        mock_atividade.nota_maxima = 10.0
+
+        mock_aluno = MagicMock()
+        mock_aluno.nome = "Aluno"
+
+        mock_doc = MagicMock()
+        mock_doc.tipo = TipoDocumento.CORRECAO
+        mock_doc.nome_arquivo = "correcao_erro.json"
+        mock_doc.status = StatusProcessamento.ERRO
+
+        mock_storage = MagicMock()
+        mock_storage.get_atividade = MagicMock(return_value=mock_atividade)
+        mock_storage.get_aluno = MagicMock(return_value=mock_aluno)
+        mock_storage.listar_documentos = MagicMock(return_value=[mock_doc])
+        mock_storage._log_hot_endpoint_profile = MagicMock()
+
+        vis = VisualizadorResultados()
+        vis.storage = mock_storage
+
+        assert vis.get_resultado_aluno("ativ_test", "aluno_test") is None
+
 
 # ============================================================
 # F5-T2: Visualizador includes erro_pipeline in VisaoAluno

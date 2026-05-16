@@ -167,6 +167,23 @@ class VisualizadorResultados:
         except (TypeError, ValueError):
             return default
 
+    def _status_documento(self, documento: Documento) -> str:
+        status = getattr(documento, "status", None)
+        if isinstance(status, str):
+            return status
+        value = getattr(status, "value", None)
+        if isinstance(value, str):
+            return value
+        return "concluido"
+
+    def _escolher_documento_resultado(self, documentos: List[Documento]) -> Optional[Documento]:
+        """Escolhe somente documento concluido; erro/processando nao vira resultado final."""
+        concluidos = [d for d in documentos if self._status_documento(d) == "concluido"]
+        return next(
+            (d for d in concluidos if d.nome_arquivo and d.nome_arquivo.endswith('.json')),
+            next(iter(concluidos), None)
+        )
+
     def _resumir_correcao(
         self,
         atividade_nota_maxima: float,
@@ -220,20 +237,11 @@ class VisualizadorResultados:
         
         # Encontrar correção — prefer JSON files over PDFs (pipeline creates both)
         correcao_docs = [d for d in documentos if d.tipo == TipoDocumento.CORRECAO]
-        correcao_doc = next(
-            (d for d in correcao_docs if d.nome_arquivo and d.nome_arquivo.endswith('.json')),
-            next(iter(correcao_docs), None)
-        )
+        correcao_doc = self._escolher_documento_resultado(correcao_docs)
         analise_docs = [d for d in documentos if d.tipo == TipoDocumento.ANALISE_HABILIDADES]
-        analise_doc = next(
-            (d for d in analise_docs if d.nome_arquivo and d.nome_arquivo.endswith('.json')),
-            next(iter(analise_docs), None)
-        )
+        analise_doc = self._escolher_documento_resultado(analise_docs)
         relatorio_docs = [d for d in documentos if d.tipo == TipoDocumento.RELATORIO_FINAL]
-        relatorio_doc = next(
-            (d for d in relatorio_docs if d.nome_arquivo and d.nome_arquivo.endswith('.json')),
-            next(iter(relatorio_docs), None)
-        )
+        relatorio_doc = self._escolher_documento_resultado(relatorio_docs)
         
         if not correcao_doc:
             self.storage._log_hot_endpoint_profile(

@@ -12,13 +12,100 @@ Endpoints para:
 
 from fastapi import APIRouter, HTTPException, Query
 from fastapi.responses import PlainTextResponse, JSONResponse
-from typing import Optional
+from enum import Enum
+from typing import Any, Dict, Optional
 
 from visualizador import VisualizadorResultados, visualizador
 from storage import storage
 
 
 router = APIRouter()
+
+
+def _enum_or_string_value(value: Any) -> Optional[str]:
+    """Normaliza Enums reais e mocks simples sem deixar MagicMock virar status."""
+    if value is None:
+        return None
+    if isinstance(value, Enum):
+        return str(value.value)
+    if isinstance(value, str):
+        return value
+    raw_value = getattr(value, "value", None)
+    if isinstance(raw_value, str):
+        return raw_value
+    return None
+
+
+def _documento_tipo(doc: Any) -> str:
+    tipo = _enum_or_string_value(getattr(doc, "tipo", None))
+    return tipo or str(getattr(doc, "tipo", ""))
+
+
+def _documento_status(doc: Any) -> str:
+    status = _enum_or_string_value(getattr(doc, "status", None))
+    if status in {"pendente", "processando", "concluido", "erro"}:
+        return status
+    return "concluido"
+
+
+def _documento_metadata(doc: Any) -> Dict[str, Any]:
+    metadata = getattr(doc, "metadata", {})
+    return metadata if isinstance(metadata, dict) else {}
+
+
+def _documento_resumo(doc: Any) -> Dict[str, Any]:
+    metadata = _documento_metadata(doc)
+    erro_pipeline = metadata.get("erro_pipeline")
+    erro_execucao = metadata.get("erro_execucao")
+    if isinstance(erro_execucao, dict):
+        erro_execucao = erro_execucao.get("mensagem")
+    if isinstance(erro_pipeline, dict) and not erro_execucao:
+        erro_execucao = erro_pipeline.get("mensagem")
+
+    resumo = {
+        "id": getattr(doc, "id", None),
+        "tipo": _documento_tipo(doc),
+        "nome": getattr(doc, "nome_arquivo", ""),
+        "extensao": getattr(doc, "extensao", ""),
+        "status": _documento_status(doc),
+        "ia_provider": getattr(doc, "ia_provider", None),
+        "ia_modelo": getattr(doc, "ia_modelo", None),
+        "tokens_usados": getattr(doc, "tokens_usados", 0),
+        "erro_tipo": metadata.get("erro_tipo"),
+        "erro_execucao": erro_execucao,
+    }
+    if isinstance(erro_pipeline, dict):
+        resumo["erro_pipeline"] = erro_pipeline
+    return resumo
+
+
+def _aplicar_documento_na_etapa(etapas: Dict[str, Dict[str, Any]], doc: Any) -> None:
+    tipo = _documento_tipo(doc)
+    if tipo not in etapas:
+        return
+
+    etapa = etapas[tipo]
+    if etapa["completa"]:
+        return
+
+    resumo = _documento_resumo(doc)
+    status = resumo["status"]
+    if status == "concluido":
+        etapa.update({
+            "completa": True,
+            "doc_id": resumo["id"],
+            "status": "concluido",
+        })
+        return
+
+    if etapa.get("status") in {None, "pendente"}:
+        etapa.update({
+            "doc_id": resumo["id"],
+            "status": status,
+            "erro_tipo": resumo.get("erro_tipo"),
+            "erro_execucao": resumo.get("erro_execucao"),
+            **({"erro_pipeline": resumo["erro_pipeline"]} if "erro_pipeline" in resumo else {}),
+        })
 
 
 # ============================================================
@@ -33,9 +120,7 @@ async def get_resultado_aluno(atividade_id: str, aluno_id: str):
     
     Se não houver resultado final, retorna resultados parciais (status do pipeline).
     """
-    from models import TipoDocumento
     import json
-    from pathlib import Path
     
     resultado = visualizador.get_resultado_aluno(atividade_id, aluno_id)
     
@@ -54,29 +139,23 @@ async def get_resultado_aluno(atividade_id: str, aluno_id: str):
     
     # Definir etapas do pipeline e verificar quais foram concluídas
     etapas = {
-        "enunciado": {"nome": "📄 Enunciado", "completa": False, "doc_id": None},
-        "gabarito": {"nome": "✅ Gabarito", "completa": False, "doc_id": None},
-        "extracao_questoes": {"nome": "🔍 Extração de Questões", "completa": False, "doc_id": None},
-        "prova_respondida": {"nome": "📝 Prova do Aluno", "completa": False, "doc_id": None},
-        "extracao_respostas": {"nome": "📋 Extração de Respostas", "completa": False, "doc_id": None},
-        "correcao": {"nome": "✏️ Correção", "completa": False, "doc_id": None},
-        "analise_habilidades": {"nome": "📊 Análise de Habilidades", "completa": False, "doc_id": None},
-        "relatorio_final": {"nome": "📑 Relatório Final", "completa": False, "doc_id": None},
+        "enunciado": {"nome": "📄 Enunciado", "completa": False, "doc_id": None, "status": "pendente"},
+        "gabarito": {"nome": "✅ Gabarito", "completa": False, "doc_id": None, "status": "pendente"},
+        "extracao_questoes": {"nome": "🔍 Extração de Questões", "completa": False, "doc_id": None, "status": "pendente"},
+        "extracao_gabarito": {"nome": "🧩 Extração de Gabarito", "completa": False, "doc_id": None, "status": "pendente"},
+        "prova_respondida": {"nome": "📝 Prova do Aluno", "completa": False, "doc_id": None, "status": "pendente"},
+        "extracao_respostas": {"nome": "📋 Extração de Respostas", "completa": False, "doc_id": None, "status": "pendente"},
+        "correcao": {"nome": "✏️ Correção", "completa": False, "doc_id": None, "status": "pendente"},
+        "analise_habilidades": {"nome": "📊 Análise de Habilidades", "completa": False, "doc_id": None, "status": "pendente"},
+        "relatorio_final": {"nome": "📑 Relatório Final", "completa": False, "doc_id": None, "status": "pendente"},
     }
     
-    # Verificar documentos base da atividade
-    for doc in docs_base:
-        tipo = doc.tipo.value if hasattr(doc.tipo, 'value') else str(doc.tipo)
-        if tipo in etapas:
-            etapas[tipo]["completa"] = True
-            etapas[tipo]["doc_id"] = doc.id
-    
-    # Verificar documentos do aluno
-    for doc in docs_aluno:
-        tipo = doc.tipo.value if hasattr(doc.tipo, 'value') else str(doc.tipo)
-        if tipo in etapas:
-            etapas[tipo]["completa"] = True
-            etapas[tipo]["doc_id"] = doc.id
+    docs_ordenados = docs_aluno + docs_base
+    docs_por_id = {getattr(doc, "id", None): doc for doc in docs_ordenados}
+    documentos_disponiveis = [_documento_resumo(d) for d in docs_ordenados]
+
+    for doc in docs_ordenados:
+        _aplicar_documento_na_etapa(etapas, doc)
     
     # Calcular progresso
     total_etapas = len(etapas)
@@ -85,9 +164,16 @@ async def get_resultado_aluno(atividade_id: str, aluno_id: str):
     
     # Tentar ler dados parciais (ex: nota parcial de uma correção incompleta)
     dados_parciais = {}
-    for tipo in ["correcao", "analise_habilidades"]:
+    for tipo in [
+        "extracao_questoes",
+        "extracao_gabarito",
+        "extracao_respostas",
+        "correcao",
+        "analise_habilidades",
+        "relatorio_final",
+    ]:
         if etapas[tipo]["doc_id"]:
-            doc = storage.get_documento(etapas[tipo]["doc_id"])
+            doc = docs_por_id.get(etapas[tipo]["doc_id"]) or storage.get_documento(etapas[tipo]["doc_id"])
             if doc and doc.extensao == ".json":
                 try:
                     arquivo_path = storage.resolver_caminho_documento(doc)
@@ -106,7 +192,22 @@ async def get_resultado_aluno(atividade_id: str, aluno_id: str):
     for tipo, dados in dados_parciais.items():
         if isinstance(dados, dict) and "_erro_pipeline" in dados:
             erro_pipeline = dados["_erro_pipeline"]
+            etapas[tipo].setdefault("erro_pipeline", erro_pipeline)
             break
+
+    etapas_com_erro = {
+        tipo: etapa
+        for tipo, etapa in etapas.items()
+        if etapa.get("status") == "erro" and not etapa.get("completa")
+    }
+    if not erro_pipeline and etapas_com_erro:
+        tipo_erro, etapa_erro = next(iter(etapas_com_erro.items()))
+        erro_pipeline = etapa_erro.get("erro_pipeline") or {
+            "tipo": etapa_erro.get("erro_tipo") or "DOCUMENTO_STATUS_ERRO",
+            "mensagem": etapa_erro.get("erro_execucao") or f"Etapa '{tipo_erro}' possui documento marcado como erro.",
+            "severidade": "alto",
+            "etapa": tipo_erro,
+        }
 
     response = {
         "sucesso": True,
@@ -114,15 +215,8 @@ async def get_resultado_aluno(atividade_id: str, aluno_id: str):
         "progresso": progresso,
         "etapas": etapas,
         "dados_parciais": dados_parciais,
-        "documentos_disponiveis": [
-            {
-                "id": d.id,
-                "tipo": d.tipo.value if hasattr(d.tipo, 'value') else str(d.tipo),
-                "nome": d.nome_arquivo,
-                "extensao": d.extensao
-            }
-            for d in docs_aluno + docs_base
-        ],
+        "documentos_disponiveis": documentos_disponiveis,
+        "documentos_com_erro": [d for d in documentos_disponiveis if d.get("status") == "erro"],
         "mensagem": f"Pipeline em progresso: {etapas_completas}/{total_etapas} etapas concluídas"
     }
 
