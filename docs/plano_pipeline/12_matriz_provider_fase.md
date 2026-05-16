@@ -248,6 +248,11 @@ unica task no runtime `0f84552` e completou sem `stage_errors`. Documentos:
 nota final e proficiencia ficaram `8.0`, e custo total aproximado foi
 `US$ 0.222856`. O PDF intermediario `6edcd9f8ecd80b52` ficou `status=erro`
 antes do retry.
+Nota GPT-4.1 pos-guard PDF: apos `974f040` e `11a396b`, o re-smoke
+`task_92c4b74494f7` em `corrigir` gerou apenas JSON `a05a2a4faeab71d1` e PDF
+`dc9fe13dc6b8b994`, ambos `concluido`, sem PDF intermediario marcado como erro.
+Custo do run: `14617/2400`, `US$ 0.048434`. A melhoria foi no validador de
+rotulos de feedback do PDF, nao relaxamento de nota ou questoes.
 Nota P0 atualizada: `extrair_gabarito` Gemini era ❌ porque o output historico
 retornou todas as respostas como `MISSING_CONTENT`, embora o PDF base tivesse
 texto extraivel de "Exercicio 5". Em 2026-05-17, o smoke

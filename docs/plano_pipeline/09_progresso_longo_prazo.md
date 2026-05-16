@@ -173,6 +173,21 @@ nao rerodar Anthropic sem credito nem Google pesado enquanto a quota estiver
 saturada; priorizar OpenAI/GPT-4.1 ou fixes internos sem trocar provider por
 baixo.
 
+Atualizacao de guard PDF/JSON em 2026-05-17: o full smoke GPT-4.1 revelou custo
+extra causado por validador rigido demais. PDFs de correcao com texto
+consistente eram marcados `status=erro` quando usavam rotulos como
+`Comentário pedagógico geral` ou `Feedback geral da avaliação`. Commits
+`974f040` e `11a396b` adicionaram esses aliases ao guard e testes focados.
+Validacoes: `py_compile`, `git diff --check`, `test_stage_tool_pdf_quality.py`
+e regressao curta `test_stage_tool_pdf_quality.py`, `test_e_t2_retry_partial_output.py`,
+`test_cost_tracking.py` com 74 testes. Deploy confirmado em `11a396b` por
+`check_deploy.sh`, `/api/deploy-info` e `/api/health`. Re-smoke
+`task_92c4b74494f7`, GPT-4.1 `corrigir`, gerou apenas JSON
+`a05a2a4faeab71d1` e PDF `dc9fe13dc6b8b994`, ambos `concluido`, sem PDF
+intermediario `status=erro`; custo `14617/2400`, `US$ 0.048434`. Status: retry
+artificial removido para esse formato de PDF live, mantendo erro alto para PDF
+realmente inconsistente.
+
 Atualizacao de 2026-05-17 no runtime `700b088`: o ciclo `f40acf3` alinhou
 `PROMPTS_PADRAO` e `STAGE_TOOL_INSTRUCTIONS` para `CORRIGIR`,
 `ANALISAR_HABILIDADES` e `GERAR_RELATORIO`, e tornou obrigatorios campos de
