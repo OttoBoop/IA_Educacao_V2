@@ -109,6 +109,46 @@ class TestUpdateStageProgress:
         finally:
             task_registry.pop(task_id, None)
 
+    def test_failed_stage_stores_visible_error_payload(self):
+        """A failed stage must expose its cause per student/stage for the UI."""
+        from routes_tasks import task_registry, register_pipeline_task, update_stage_progress
+
+        task_id = register_pipeline_task("pipeline-completo", "ativ-err", ["aluno-1"])
+        try:
+            update_stage_progress(
+                task_id,
+                "aluno-1",
+                "corrigir",
+                "failed",
+                error={
+                    "mensagem": "Provider recusou tool-use",
+                    "codigo": 429,
+                    "provider": "google",
+                    "modelo": "gemini-2.5-flash",
+                },
+            )
+            student = task_registry[task_id]["students"]["aluno-1"]
+            assert student["stages"]["corrigir"] == "failed"
+            assert student["stage_errors"]["corrigir"]["mensagem"] == "Provider recusou tool-use"
+            assert student["stage_errors"]["corrigir"]["codigo"] == 429
+            assert student["stage_errors"]["corrigir"]["etapa"] == "corrigir"
+        finally:
+            task_registry.pop(task_id, None)
+
+    def test_completed_stage_clears_previous_error_payload(self):
+        """A retry that succeeds must not leave a stale red stage error in the sidebar."""
+        from routes_tasks import task_registry, register_pipeline_task, update_stage_progress
+
+        task_id = register_pipeline_task("pipeline-completo", "ativ-clear", ["aluno-1"])
+        try:
+            update_stage_progress(task_id, "aluno-1", "corrigir", "failed", error="erro antigo")
+            update_stage_progress(task_id, "aluno-1", "corrigir", "completed")
+            student = task_registry[task_id]["students"]["aluno-1"]
+            assert student["stages"]["corrigir"] == "completed"
+            assert "corrigir" not in student["stage_errors"]
+        finally:
+            task_registry.pop(task_id, None)
+
     def test_does_not_affect_other_stages(self):
         """Updating one stage leaves others unchanged."""
         from routes_tasks import task_registry, register_pipeline_task, update_stage_progress

@@ -96,3 +96,17 @@ class TestRenderTarefasTreeHierarchy:
         assert "tarefa-error-message" in source, (
             "renderTarefasTree() must render a visible error message block for failed tasks."
         )
+
+    def test_function_shows_stage_error_payload(self):
+        """Failed stages must show their own stored error details, not only run-level error."""
+        source = get_render_tarefas_tree_source()
+        assert "stage_errors" in source, (
+            "renderTarefasTree() must read aluno.stage_errors so the sidebar shows "
+            "which student/stage failed and why."
+        )
+        assert "renderStageError" in source, (
+            "renderTarefasTree() must render per-stage error details."
+        )
+        assert "tarefa-stage-error" in source, (
+            "Per-stage errors must have a visible UI block under the failed stage."
+        )

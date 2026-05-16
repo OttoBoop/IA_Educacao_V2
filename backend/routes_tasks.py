@@ -102,6 +102,7 @@ def register_pipeline_task(
         students[aluno_id] = {
             "nome": names.get(aluno_id, ""),
             "stages": {stage: "pending" for stage in PIPELINE_STAGES},
+            "stage_errors": {},
         }
     task_registry[task_id] = {
         "task_id": task_id,
@@ -120,11 +121,23 @@ def register_pipeline_task(
     return task_id
 
 
-def update_stage_progress(task_id, aluno_id, stage, status):
+def update_stage_progress(task_id, aluno_id, stage, status, error=None):
     """Update a specific stage status for a student in a task."""
     task = task_registry.get(task_id)
     if task and aluno_id in task["students"]:
-        task["students"][aluno_id]["stages"][stage] = status
+        student = task["students"][aluno_id]
+        student["stages"][stage] = status
+        stage_errors = student.setdefault("stage_errors", {})
+        if status == "failed" and error:
+            if isinstance(error, dict):
+                payload = dict(error)
+            else:
+                payload = {"mensagem": str(error)}
+            payload.setdefault("etapa", stage)
+            payload.setdefault("status", status)
+            stage_errors[stage] = payload
+        elif status in {"running", "completed", "pending"}:
+            stage_errors.pop(stage, None)
 
 
 def complete_pipeline_task(task_id, status="completed", error=None, result=None):

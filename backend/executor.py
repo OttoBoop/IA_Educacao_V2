@@ -5431,6 +5431,30 @@ Crie UM documento separado para cada aluno, nomeando como "relatorio_[nome_aluno
                 detalhe = f"{detalhe} (codigo {resultado.erro_codigo})"
             return f"{etapa_val}: {detalhe}"
 
+        def _erro_stage_task(resultado):
+            etapa_val = resultado.etapa.value if hasattr(resultado.etapa, 'value') else str(resultado.etapa)
+            payload = {
+                "etapa": etapa_val,
+                "mensagem": resultado.erro or "Pipeline falhou sem detalhe do provider.",
+            }
+            if resultado.erro_codigo:
+                payload["codigo"] = resultado.erro_codigo
+            if resultado.retryable is not None:
+                payload["retryable"] = bool(resultado.retryable)
+            if resultado.provider:
+                payload["provider"] = resultado.provider
+            if resultado.modelo:
+                payload["modelo"] = resultado.modelo
+            if isinstance(resultado.resposta_parsed, dict):
+                documentos_faltantes = resultado.resposta_parsed.get("_documentos_faltantes")
+                if documentos_faltantes:
+                    payload["documentos_faltantes"] = documentos_faltantes
+                erro_pipeline = resultado.resposta_parsed.get("_erro_pipeline")
+                if isinstance(erro_pipeline, dict):
+                    payload["tipo"] = erro_pipeline.get("tipo")
+                    payload["severidade"] = erro_pipeline.get("severidade")
+            return payload
+
         def _finalizar_task_com_erro(resultado):
             if task_id:
                 complete_pipeline_task(task_id, "failed", error=_mensagem_erro_task(resultado))
@@ -5446,7 +5470,13 @@ Crie UM documento separado para cada aluno, nomeando como "relatorio_[nome_aluno
                 update_stage_progress(task_id, aluno_id, "extrair_questoes", "running")
             resultado = await _executar_com_retry(EtapaProcessamento.EXTRAIR_QUESTOES)
             if task_id:
-                update_stage_progress(task_id, aluno_id, "extrair_questoes", "completed" if resultado.sucesso else "failed")
+                update_stage_progress(
+                    task_id,
+                    aluno_id,
+                    "extrair_questoes",
+                    "completed" if resultado.sucesso else "failed",
+                    error=None if resultado.sucesso else _erro_stage_task(resultado),
+                )
             resultados["extrair_questoes"] = resultado
             logger.info(f"  -> sucesso={resultado.sucesso}, tentativas={resultado.tentativas}, erro={resultado.erro[:100] if resultado.erro else 'N/A'}")
             if not resultado.sucesso:
@@ -5468,7 +5498,13 @@ Crie UM documento separado para cada aluno, nomeando como "relatorio_[nome_aluno
                 update_stage_progress(task_id, aluno_id, "extrair_gabarito", "running")
             resultado = await _executar_com_retry(EtapaProcessamento.EXTRAIR_GABARITO)
             if task_id:
-                update_stage_progress(task_id, aluno_id, "extrair_gabarito", "completed" if resultado.sucesso else "failed")
+                update_stage_progress(
+                    task_id,
+                    aluno_id,
+                    "extrair_gabarito",
+                    "completed" if resultado.sucesso else "failed",
+                    error=None if resultado.sucesso else _erro_stage_task(resultado),
+                )
             resultados["extrair_gabarito"] = resultado
             logger.info(f"  -> sucesso={resultado.sucesso}, tentativas={resultado.tentativas}")
             if not resultado.sucesso:
@@ -5495,7 +5531,13 @@ Crie UM documento separado para cada aluno, nomeando como "relatorio_[nome_aluno
                 )
                 _marcar_erro_pipeline(resultados["extrair_respostas"])
                 if task_id:
-                    update_stage_progress(task_id, aluno_id, "extrair_respostas", "failed")
+                    update_stage_progress(
+                        task_id,
+                        aluno_id,
+                        "extrair_respostas",
+                        "failed",
+                        error=_erro_stage_task(resultados["extrair_respostas"]),
+                    )
                 _finalizar_task_com_erro(resultados["extrair_respostas"])
                 return resultados
 
@@ -5506,7 +5548,13 @@ Crie UM documento separado para cada aluno, nomeando como "relatorio_[nome_aluno
                 update_stage_progress(task_id, aluno_id, "extrair_respostas", "running")
             resultado = await _executar_com_retry(EtapaProcessamento.EXTRAIR_RESPOSTAS, aluno_id)
             if task_id:
-                update_stage_progress(task_id, aluno_id, "extrair_respostas", "completed" if resultado.sucesso else "failed")
+                update_stage_progress(
+                    task_id,
+                    aluno_id,
+                    "extrair_respostas",
+                    "completed" if resultado.sucesso else "failed",
+                    error=None if resultado.sucesso else _erro_stage_task(resultado),
+                )
             resultados["extrair_respostas"] = resultado
             logger.info(f"  -> sucesso={resultado.sucesso}, tentativas={resultado.tentativas}")
             if not resultado.sucesso:
@@ -5528,7 +5576,13 @@ Crie UM documento separado para cada aluno, nomeando como "relatorio_[nome_aluno
                 update_stage_progress(task_id, aluno_id, "corrigir", "running")
             resultado = await _executar_com_retry(EtapaProcessamento.CORRIGIR, aluno_id)
             if task_id:
-                update_stage_progress(task_id, aluno_id, "corrigir", "completed" if resultado.sucesso else "failed")
+                update_stage_progress(
+                    task_id,
+                    aluno_id,
+                    "corrigir",
+                    "completed" if resultado.sucesso else "failed",
+                    error=None if resultado.sucesso else _erro_stage_task(resultado),
+                )
             resultados["corrigir"] = resultado
             logger.info(f"  -> sucesso={resultado.sucesso}, tentativas={resultado.tentativas}")
             if not resultado.sucesso:
@@ -5550,7 +5604,13 @@ Crie UM documento separado para cada aluno, nomeando como "relatorio_[nome_aluno
                 update_stage_progress(task_id, aluno_id, "analisar_habilidades", "running")
             resultado = await _executar_com_retry(EtapaProcessamento.ANALISAR_HABILIDADES, aluno_id)
             if task_id:
-                update_stage_progress(task_id, aluno_id, "analisar_habilidades", "completed" if resultado.sucesso else "failed")
+                update_stage_progress(
+                    task_id,
+                    aluno_id,
+                    "analisar_habilidades",
+                    "completed" if resultado.sucesso else "failed",
+                    error=None if resultado.sucesso else _erro_stage_task(resultado),
+                )
             resultados["analisar_habilidades"] = resultado
             logger.info(f"  -> sucesso={resultado.sucesso}, tentativas={resultado.tentativas}")
             if not resultado.sucesso:
@@ -5572,7 +5632,13 @@ Crie UM documento separado para cada aluno, nomeando como "relatorio_[nome_aluno
                 update_stage_progress(task_id, aluno_id, "gerar_relatorio", "running")
             resultado = await _executar_com_retry(EtapaProcessamento.GERAR_RELATORIO, aluno_id)
             if task_id:
-                update_stage_progress(task_id, aluno_id, "gerar_relatorio", "completed" if resultado.sucesso else "failed")
+                update_stage_progress(
+                    task_id,
+                    aluno_id,
+                    "gerar_relatorio",
+                    "completed" if resultado.sucesso else "failed",
+                    error=None if resultado.sucesso else _erro_stage_task(resultado),
+                )
             resultados["gerar_relatorio"] = resultado
             logger.info(f"  -> sucesso={resultado.sucesso}, tentativas={resultado.tentativas}")
             if not resultado.sucesso:

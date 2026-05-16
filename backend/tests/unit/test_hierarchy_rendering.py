@@ -108,7 +108,9 @@ class TestHierarchyLevels:
         """Hierarchy items must have a collapsible toggle mechanism."""
         assert "renderTarefasTree" in html_content, "renderTarefasTree not found"
         func_pos = html_content.find("renderTarefasTree")
-        func_area = html_content[func_pos:func_pos + 5000]
+        # 15000 chars covers the full 6-level hierarchy function body plus
+        # small local helpers such as per-stage error rendering.
+        func_area = html_content[func_pos:func_pos + 15000]
         assert "toggleTarefaTree" in func_area or "tarefa-toggle" in func_area or "toggle" in func_area.lower(), (
             "Hierarchy must have a toggle mechanism for collapsing"
         )

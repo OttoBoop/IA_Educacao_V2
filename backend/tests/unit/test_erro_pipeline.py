@@ -1603,6 +1603,10 @@ class TestF3T2_PipelineOrquestracao:
             assert "corrigir" in task["error"]
             assert "Provider recusou tool-use" in task["error"]
             assert "400" in task["error"]
+            stage_error = task["students"]["aluno_test"]["stage_errors"]["corrigir"]
+            assert stage_error["mensagem"] == "Provider recusou tool-use"
+            assert stage_error["codigo"] == 400
+            assert stage_error["etapa"] == "corrigir"
         finally:
             task_registry.pop(task_id, None)
 
