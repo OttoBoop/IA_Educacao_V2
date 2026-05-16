@@ -112,6 +112,17 @@ confirmaram `Nota Final: 8.0`; custo aproximado das 6 etapas: `US$ 0.314369`.
 Houve retries explicitos: JSONs inválidos anteriores ficaram `status=erro`
 antes dos artefatos finais, sem troca silenciosa de modelo.
 
+Atualizacao Gemini 2.5 Flash de 2026-05-17: testes de conexao mostraram
+OpenAI (`gpt-4o`, GPT-4.1, GPT-5 Nano e GPT-5.4 Mini) com `success=true`;
+Gemini 2.5 Flash e Flash Lite tambem com `success=true`; Haiku/Sonnet continuam
+bloqueados por creditos Anthropic; Gemini 2.5 Pro e Gemini 3 Flash retornaram
+Google `429`. Em seguida, a task `task_f1f1511f21d5` rodou full smoke com
+`gem25flash001`: as tres extracoes passaram com conteudo correto, mas
+`corrigir` falhou alto por saida obrigatoria incompleta de tools
+(`create_document` JSON + `execute_python_code` PDF). Status correto: Google
+Gemini 2.5 Flash funciona para extracoes na fixture simples, mas nao esta
+pipeline-ready para tools.
+
 A sequencia que destravou esse ponto foi:
 
 - `5a3daca`: alinhou prompts OpenAI para dual-output via tools.
@@ -230,7 +241,7 @@ Estabilizar o NOVO CR para que a pipeline:
 | Frente | Estado | Proximo passo |
 |--------|--------|---------------|
 | Docs e plano | Sprint 0 concluida | Manter este painel como fonte oficial e anexos fora do fluxo diario |
-| Pipeline | GPT-5.4 Mini (`gpt54mini001`) completou as 6 etapas no site oficial em `task_a5f0d734f0b3`, Render hash `2cad38a`, com documentos, custos e inspeção semantica inicial coerente nos JSONs; re-smoke no Render `0ac92f0` (`task_605512496b0d`) completou as 6 etapas, mas expôs divergencia P0 entre JSON e PDF em `corrigir` e `gerar_relatorio`; `2052a01` bloqueou PDF inconsistente com falha alta em `task_857c0c3657ef`; `3a77a17` adicionou retry PDF/JSON e `task_e389f360b812` completou as etapas finais com PDF/JSON coerentes na fixture simples; `392ec7c` bloqueou relatorio que muda `nota_final` em relacao a correcao oficial e o smoke Nano `task_57da745b8de5` confirmou JSON/PDF de relatorio com `nota_final=8.0`; GPT-4o completou full smoke `task_68b19146a95b` em `54d083e` com custo aproximado `US$ 0.314369`; Gemini 3 Flash segue validado em etapas individuais, mas pipeline sequencial bateu quota `429`; GPT-5 Nano segue parcial em `extrair_respostas` por historico de qualidade/datasets maiores | Revalidar matriz por provider/modelo e manter bloqueio P0: nao aceitar `completed` sem documento, schema, custo, conteudo minimo, nota cross-stage e artefatos coerentes entre si |
+| Pipeline | GPT-5.4 Mini (`gpt54mini001`) completou as 6 etapas no site oficial em `task_a5f0d734f0b3`, Render hash `2cad38a`, com documentos, custos e inspeção semantica inicial coerente nos JSONs; re-smoke no Render `0ac92f0` (`task_605512496b0d`) completou as 6 etapas, mas expôs divergencia P0 entre JSON e PDF em `corrigir` e `gerar_relatorio`; `2052a01` bloqueou PDF inconsistente com falha alta em `task_857c0c3657ef`; `3a77a17` adicionou retry PDF/JSON e `task_e389f360b812` completou as etapas finais com PDF/JSON coerentes na fixture simples; `392ec7c` bloqueou relatorio que muda `nota_final` em relacao a correcao oficial e o smoke Nano `task_57da745b8de5` confirmou JSON/PDF de relatorio com `nota_final=8.0`; GPT-4o completou full smoke `task_68b19146a95b` em `54d083e` com custo aproximado `US$ 0.314369`; Gemini 2.5 Flash completou extracoes mas falhou alto em `corrigir` por tools incompletas; Gemini 3 Flash segue validado em etapas individuais, mas pipeline sequencial bateu quota `429`; GPT-5 Nano segue parcial em `extrair_respostas` por historico de qualidade/datasets maiores | Revalidar matriz por provider/modelo e manter bloqueio P0: nao aceitar `completed` sem documento, schema, custo, conteudo minimo, nota cross-stage e artefatos coerentes entre si |
 | Schema e avisos | Sprint 2 concluida localmente | Manter schema oficial, defaults e visualizador cobertos por testes |
 | Custos/tokens | Metadata de documento, endpoints live, resumo por `cost_run_id`, `TokenUsageRecord` local, migration Supabase dedicada `b2dc88b`; smoke full GPT-5.4 Mini `task_a5f0d734f0b3` registrou custo medido por etapa: `US$ 0.002312`, `US$ 0.002759`, `US$ 0.002657`, `US$ 0.026149`, `US$ 0.017470` e `US$ 0.027763`, total aproximado `US$ 0.079110`; smoke Nano `task_57da745b8de5` registrou `29067/6701` tokens no `cost_run_id=tool_8feb2ba8dfca`, incluindo PDF em erro e retry concluido; `460643f` faz `/api/custos/status` retornar `ok=false` e alerta bloqueante enquanto `PGRST205`, `durable=false` e `local_record_count=0` persistirem; `54d083e` mostra esse bloqueio no dashboard oficial | Aplicar `backend/migrations/002_create_token_usage.sql` no Supabase; revalidar ate `token_usage_backend.durable=true`; depois persistir custos de falhas sem documento |
 | UI de erros | Dashboard oficial mostra bloqueio de custos nao duraveis no commit `54d083e`; falhas por aluno/etapa ainda estao pendentes | Mostrar falha por aluno/etapa sem depender de terminal |
@@ -1889,6 +1900,29 @@ Critério de pronto: lista de limpeza segura e revisada.
   `json_schema_validation` antes dos JSONs finais de tools. Isso e aceitavel
   como retry no mesmo modelo, mas deve permanecer visivel na UI/custos e nunca
   virar sucesso silencioso.
+
+### 2026-05-17 -- Gemini 2.5 Flash falha alto em tools
+
+- Alvo: testar provider Google sem depender do Gemini 3 Flash, que retornou
+  quota `429` no teste de conexao.
+- Conexao de modelos: `gpt-4o`, GPT-4.1, GPT-5 Nano e GPT-5.4 Mini retornaram
+  `success=true`; Gemini 2.5 Flash e Flash Lite retornaram `success=true`;
+  Haiku/Sonnet retornaram erro Anthropic de creditos baixos; Gemini 2.5 Pro e
+  Gemini 3 Flash retornaram Google `429`.
+- Smoke oficial: `task_f1f1511f21d5`, runtime `54d083e`, modelo
+  `gem25flash001`, fixture Diana, `force_rerun=true`.
+- Resultado task: `failed`; extracoes `completed`, `corrigir=failed`,
+  `analisar_habilidades` e `gerar_relatorio` ficaram `pending`.
+- Artefatos de extracao: questoes `4d5c5abdc1203f2b` (`1188/567`,
+  `US$ 0.000518`), gabarito `d27793f610a3696c` (`2114/318`,
+  `US$ 0.000508`) e respostas `ffed15b8003145e9` (`2456/336`,
+  `US$ 0.000570`). Inspecao: 4 questoes, gabarito correto, respostas da aluna
+  coerentes e sem `ilegivel`.
+- Erro alto: `tools: Saída obrigatória incompleta: JSON via create_document,
+  PDF via execute_python_code`. Nenhum PDF/JSON foi inventado por fallback.
+- Proximo alvo possivel: corrigir contrato/prompt/tool-use Gemini para
+  `CORRIGIR`, ou manter Gemini 2.5 Flash como ✅ extracoes/❌ tools enquanto o
+  foco passa para UI de erros por etapa.
 
 ## Riscos Abertos
 

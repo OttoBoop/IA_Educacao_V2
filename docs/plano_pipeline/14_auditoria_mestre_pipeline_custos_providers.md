@@ -227,7 +227,7 @@ detalhar e auditar estas linhas.
 | Pipeline P5/P6 | Contencao de nota e preservacao de `_documentos_faltantes` | `N/A` ainda e fallback proibido como estado final. |
 | Schema/avisos | Defaults `_avisos_*`, visualizador melhorado e schemas mais permissivos | Permissividade nao e contrato forte; pode aceitar legado demais. |
 | Tokens/custos | Split input/output; metadata de documento; endpoints `/api/custos/status` e `/api/custos/resumo` respondendo live; resumo agrega por `cost_run_id`; `TokenUsageRecord` local cobre falha sem documento enquanto o filesystem vive; codigo Supabase e migration dedicada `b2dc88b` existem; diagnostico live mostra `PGRST205`; smoke full GPT-5.4 Mini `task_a5f0d734f0b3` mediu custo por etapa e total aproximado `US$ 0.079110`; smoke Nano `task_57da745b8de5` registrou `29067/6701` tokens em documentos de relatorio; `/api/custos/status?limit=80` mostrou `runs_precificados=37`, `runs_bloqueados=0`, `ok=false`, `custos_persistencia_status=parcial_sem_token_usage_duravel` e alerta bloqueante `token_usage_not_durable`; dashboard live em `54d083e` mostra "Custos não duráveis" | Falta aplicar `backend/migrations/002_create_token_usage.sql` no Supabase. |
-| Providers | Gemini passou em chat simples live, `extrair_questoes`, `extrair_respostas` e nas tres etapas finais; `extrair_gabarito` Gemini foi reclassificado como invalido por tudo `MISSING_CONTENT` e depois revalidado na fixture simples; GPT-5 Nano passou em chat simples live, `extrair_questoes`, `extrair_gabarito` pos-`5527e26` e `gerar_relatorio` pos-`392ec7c`, mas `extrair_respostas` Nano continua parcial por historico de qualidade em dataset maior; GPT-5.4 Mini passou `extrair_respostas` em amostras e completou um smoke full oficial simples em `task_a5f0d734f0b3` com inspeção semantica inicial coerente; re-smoke `task_605512496b0d` no patch `0ac92f0` completou, mas PDFs divergiram dos JSONs; `2052a01` bloqueou isso com falha alta em `task_857c0c3657ef`; `3a77a17` passou no smoke reduzido `task_e389f360b812` com retry PDF/JSON; `392ec7c` passou no smoke Nano de relatorio `task_57da745b8de5`; GPT-4o completou full smoke `task_68b19146a95b` em `54d083e`, com custo aproximado `US$ 0.314369` | Revalidar matriz por provider e repetir Gemini quando quota/decisao permitir. |
+| Providers | Gemini 2.5 Flash passou nas tres extracoes da fixture Diana, mas falhou alto em `corrigir` por tools incompletas; Gemini 3 Flash passou em chat simples live, `extrair_questoes`, `extrair_respostas` e nas tres etapas finais, mas segue bloqueado por quota `429` para revalidacao full; `extrair_gabarito` Gemini foi reclassificado como invalido por tudo `MISSING_CONTENT` e depois revalidado na fixture simples; GPT-5 Nano passou em chat simples live, `extrair_questoes`, `extrair_gabarito` pos-`5527e26` e `gerar_relatorio` pos-`392ec7c`, mas `extrair_respostas` Nano continua parcial por historico de qualidade em dataset maior; GPT-5.4 Mini passou `extrair_respostas` em amostras e completou um smoke full oficial simples em `task_a5f0d734f0b3` com inspeção semantica inicial coerente; re-smoke `task_605512496b0d` no patch `0ac92f0` completou, mas PDFs divergiram dos JSONs; `2052a01` bloqueou isso com falha alta em `task_857c0c3657ef`; `3a77a17` passou no smoke reduzido `task_e389f360b812` com retry PDF/JSON; `392ec7c` passou no smoke Nano de relatorio `task_57da745b8de5`; GPT-4o completou full smoke `task_68b19146a95b` em `54d083e`, com custo aproximado `US$ 0.314369` | Revalidar matriz por provider e corrigir/decidir tool-use Gemini. |
 | Seguranca Rio | Regra de nao usar chave em chat e Rio pausado | Arquivos Rio/untracked continuam fora do ciclo ativo. |
 
 ### O Que Falta
@@ -3170,6 +3170,44 @@ Observacao importante:
   no mesmo modelo, com erro visivel e custo registrado. Nao e fallback
   silencioso. A UI ainda precisa deixar essas tentativas visiveis por
   aluno/etapa.
+
+## Atualizacao 2026-05-17 -- Gemini 2.5 Flash: Extracoes OK, Tools Falham Alto
+
+Contexto:
+
+- Gemini 3 Flash e Gemini 2.5 Pro retornaram Google `429` no teste de conexão.
+- Gemini 2.5 Flash e Gemini 2.5 Flash Lite retornaram `success=true`.
+- Anthropic Haiku/Sonnet continuam bloqueados por crédito baixo.
+
+Smoke:
+
+- Task: `task_f1f1511f21d5`
+- Runtime: `54d083e`
+- Modelo: `gem25flash001` (`google/gemini-2.5-flash`)
+- Resultado: task `failed`; extracoes `completed`, `corrigir=failed`, etapas
+  seguintes `pending`.
+
+Evidencia das extracoes:
+
+| Etapa | Documento | Tokens | Custo | Inspecao |
+|---|---|---:|---:|---|
+| `extrair_questoes` | `4d5c5abdc1203f2b` | `1188/567` | `US$ 0.000518` | 4 questoes, pontuação `3/3/2/2` |
+| `extrair_gabarito` | `d27793f610a3696c` | `2114/318` | `US$ 0.000508` | `x = 5`, `34`, `30`, `20 cm2` |
+| `extrair_respostas` | `ffed15b8003145e9` | `2456/336` | `US$ 0.000570` | `x = 5`, `34`, `25`, `20 cm2`, sem `ilegivel` |
+
+Erro de tools:
+
+- `tools: Saída obrigatória incompleta: JSON via create_document, PDF via
+  execute_python_code. Nenhum PDF/JSON será inventado por fallback automático; o
+  modelo solicitado deve produzir os artefatos exigidos ou a etapa falha.`
+
+Interpretação:
+
+- Gemini 2.5 Flash e barato e funcionou nas extracoes da fixture simples.
+- O provider/modelo nao esta pronto para pipeline completa porque o contrato de
+  tool-use de `CORRIGIR` nao foi cumprido.
+- O comportamento atual do executor esta correto: falha alta, sem PDF/JSON
+  inventado, sem trocar provider.
 
 ## Trabalho Aberto Desta Auditoria
 

@@ -93,6 +93,7 @@
 | Provider/Modelo | EXTRAIR_QUESTOES | EXTRAIR_GABARITO | EXTRAIR_RESPOSTAS | CORRIGIR | ANALISAR_HABILIDADES | GERAR_RELATORIO |
 |-----------------|:---:|:---:|:---:|:---:|:---:|:---:|
 | **Claude Haiku 4.5** (`588f3efe7975`) | ⏸️ | ⏸️ | ⏸️ | 🚫 | 🚫 | 🚫 |
+| **Gemini 2.5 Flash** (`gem25flash001`) | ✅ | ✅ | ✅ | ❌ | ⏸️ | ⏸️ |
 | **Gemini 3 Flash** (`gem3flash001`) | ✅ | ✅ | ✅ | ⚠️ | ⚠️ | ⚠️ |
 | **GPT-5 Nano** (`gpt5nano001`) | ✅ | ✅ | ⚠️ | ⚠️ | ⚠️ | ✅ |
 | **GPT-5.4 Mini** (`gpt54mini001`) | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
@@ -124,6 +125,15 @@ Total aproximado: `US$ 0.314369`. Houve retries explicitos com JSONs inválidos
 marcados `status=erro` antes dos artefatos finais de `corrigir`,
 `analisar_habilidades` e `gerar_relatorio`; isso nao e fallback de provider,
 mas precisa continuar visivel nos custos e na UI.
+Nota Gemini 2.5 Flash: o teste de conexao respondeu `success=true`, mas a
+pipeline full `task_f1f1511f21d5`, runtime `54d083e`, falhou alto em
+`corrigir`. As tres extracoes passaram com conteudo coerente:
+`extrair_questoes` `4d5c5abdc1203f2b` (`1188/567`, `US$ 0.000518`),
+`extrair_gabarito` `d27793f610a3696c` (`2114/318`, `US$ 0.000508`) e
+`extrair_respostas` `ffed15b8003145e9` (`2456/336`, `US$ 0.000570`). A falha
+foi: `tools: Saída obrigatória incompleta: JSON via create_document, PDF via
+execute_python_code`; portanto tools Gemini 2.5 Flash ainda nao estao
+pipeline-ready nesse executor.
 Nota Nano/relatorio: a full Nano `task_f0c0f15a2f27`, no runtime `99b8c3c`,
 completou as 6 etapas, mas revelou falso verde em `GERAR_RELATORIO`: correcao
 JSON `cff76af34d9248a6` tinha `nota_final=8.0` e o relatorio JSON/PDF
