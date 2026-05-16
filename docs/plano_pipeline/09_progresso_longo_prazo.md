@@ -5,11 +5,13 @@
 **Status geral:** o servico oficial Render
 `srv-d5t8gbh4tr6s738fr3s0` (`IA_Educacao_V2`, branch `main`, URL
 `https://ia-educacao-v2.onrender.com`) tem como codigo funcional mais recente
-confirmado o commit `2a0462d` (`fix: expose token usage durability in cost summary`),
-validado por `/api/deploy-info`, `/api/health` e
-`./scripts/check_deploy.sh 2a0462ded12cd524ce68af2cb7143bde2a31f952`.
+confirmado o commit `4a4caf0` (`fix: require feedback geral in correction PDFs`),
+validado por `/api/deploy-info`, `/api/health`,
+`./scripts/check_deploy.sh 4a4caf096e979eec0ec168fa7f8faf3d6dd717ca` e
+smoke oficial full de seis etapas com GPT-5 Nano
+(`task_cbe8568e78d6`).
 `origin/main` pode estar em commit documental posterior; isso nao muda runtime
-enquanto `/api/deploy-info` continuar apontando para `2a0462d`.
+enquanto `/api/deploy-info` continuar apontando para `4a4caf0`.
 
 Estado funcional consolidado: documentos com `status=erro` nao contam como
 progresso; correcao sem itens avaliaveis nao vira `completo=true`; ranking,
@@ -21,10 +23,10 @@ expõe `token_usage_durable=false` quando a persistencia de falhas sem documento
 nao e duravel.
 
 Estado de providers: GPT-4.1, GPT-5.4 Mini, GPT-4o e GPT-5 Nano seguem
-referencias OpenAI na fixture Diana. Nano ja passou as seis etapas nessa fixture
-simples, inclusive `gerar_relatorio` pos-`ed592de` com `_avisos_questao.codigo`
-unico, mas ainda precisa dataset maior e full pipeline numa unica task antes de
-ser chamado de pipeline-ready geral. Gemini Flash/Flash Lite/3 Flash passam em
+referencias OpenAI na fixture Diana. Nano agora passou as seis etapas em uma
+unica task oficial nessa fixture simples (`task_cbe8568e78d6`) depois de
+falhar alto em `corrigir` por PDF sem `Feedback Geral` verificavel; ainda
+precisa dataset maior antes de ser chamado de pipeline-ready geral. Gemini Flash/Flash Lite/3 Flash passam em
 conexao simples, mas `corrigir` com Gemini 2.5 Flash ainda falha alto por quota
 `429`; Gemini 2.5 Pro tambem esta bloqueado por quota, Anthropic segue bloqueado
 por credito e Ollama esta indisponivel no Render. Supabase `token_usage`
@@ -496,7 +498,7 @@ Estabilizar o NOVO CR para que a pipeline:
 | Frente | Estado | Proximo passo |
 |--------|--------|---------------|
 | Docs e plano | Sprint 0 concluida | Manter este painel como fonte oficial e anexos fora do fluxo diario |
-| Pipeline | GPT-4.1 (`ffae9accf68e`) tem full smoke unico confirmado em `task_f6851ed535b8` e re-smoke `corrigir` pos-guard `task_92c4b74494f7` sem retry artificial; GPT-5.4 Mini (`gpt54mini001`) completou 6 etapas em `task_a5f0d734f0b3` e `task_a1f7521077a5`; GPT-4o completou full smoke `task_68b19146a95b`; GPT-5 Nano passou as 6 etapas na fixture Diana em smokes por etapa (`task_0818b99194aa`, `task_960c0a287a13`, `task_fa50cb3ffc16`, `task_0c7339f48aec`), mas ainda nao em dataset maior/full task unica pos-fix; Gemini 2.5 Flash/Gemini 3/Gemini Lite estao bloqueados por quota Google `429` nos smokes recentes, embora tenham historicos parciais | Revalidar matriz por provider/modelo quando quota/credito permitir e manter P0: nao aceitar `completed` sem documento, schema, custo, conteudo minimo, nota cross-stage e artefatos coerentes entre si |
+| Pipeline | GPT-4.1 (`ffae9accf68e`) tem full smoke unico confirmado em `task_f6851ed535b8` e re-smoke `corrigir` pos-guard `task_92c4b74494f7` sem retry artificial; GPT-5.4 Mini (`gpt54mini001`) completou 6 etapas em `task_a5f0d734f0b3` e `task_a1f7521077a5`; GPT-4o completou full smoke `task_68b19146a95b`; GPT-5 Nano passou as 6 etapas numa task unica na fixture Diana em `task_cbe8568e78d6` no runtime `4a4caf0`, com retry explicito em `corrigir` e artefatos/custos rastreados; Gemini 2.5 Flash/Gemini 3/Gemini Lite estao bloqueados por quota Google `429` nos smokes recentes, embora tenham historicos parciais | Revalidar matriz por provider/modelo quando quota/credito permitir, ampliar dataset alem da fixture simples e manter P0: nao aceitar `completed` sem documento, schema, custo, conteudo minimo, nota cross-stage e artefatos coerentes entre si |
 | Schema e avisos | Sprint 2 concluida localmente | Manter schema oficial, defaults e visualizador cobertos por testes |
 | Custos/tokens | Metadata de documento, endpoints live, resumo por `cost_run_id`, `por_etapa` e `token_usage_durable`; `TokenUsageRecord` local e migration Supabase dedicada `b2dc88b`; GPT-4.1 full smoke `task_f6851ed535b8` mediu total aproximado `US$ 0.222856`; GPT-5.4 Mini e Nano tem custos por etapa registrados; Gemini Lite quota registrou documentos de erro custeaveis; `/api/custos/status` e `/api/custos/resumo` deixam claro `PGRST205`, `durable=false` e `token_usage_durable=false` enquanto a tabela Supabase nao existir | Aplicar `backend/migrations/002_create_token_usage.sql` no Supabase; revalidar ate `token_usage_backend.durable=true`; depois persistir custos de falhas sem documento |
 | UI de erros | Dashboard oficial mostra bloqueio de custos nao duraveis no commit `54d083e`; `98fafc9` adicionou `stage_errors` por aluno/etapa em `/api/task-progress` e a sidebar renderiza a causa abaixo da etapa falha; smoke live `task_7362d0fb1939` confirmou erro de `extrair_respostas` sem prova antes de chamar IA | Ampliar para telas de resultado/historico e garantir que erros de provider/custo apareçam com a mesma clareza |
@@ -574,6 +576,12 @@ Estabilizar o NOVO CR para que a pipeline:
   `33fb7d5`.
 - Commit funcional de retry explicito para erro de codigo PDF:
   `0f84552`.
+- Commit funcional de segunda tentativa explicita de reparo PDF/JSON:
+  `dbbecfe` (publicado; smoke full Nano `task_4f6296b3789d` ainda falhou alto
+  em `corrigir` porque o PDF final nao tinha `feedback_geral` verificavel).
+- Commit funcional que exige secao literal `Feedback Geral` em PDFs de correcao:
+  `4a4caf0` (publicado; smoke full Nano `task_cbe8568e78d6` passou seis
+  etapas na fixture Diana, com PDF de correcao validado por texto extraido).
 - Commit funcional de guard PDF/JSON para headings reais de feedback:
   `974f040` e `11a396b` (Render live; re-smoke GPT-4.1
   `task_92c4b74494f7` sem PDF intermediario `status=erro`).
@@ -589,10 +597,10 @@ Estabilizar o NOVO CR para que a pipeline:
   `source=RENDER_GIT_COMMIT` depois de `check_deploy.sh 11a396b`.
 - Marker HTML pode ficar atrasado em commits de docs/frontend; o gate oficial
   para backend agora e `/api/deploy-info` + smoke live, nao apenas marcador HTML.
-- GitHub `origin/main`: `d799165` no ultimo registro documental observado; como
-  foi docs-only, o backend live segue em `11a396b`.
+- GitHub `origin/main`: `4a4caf0` no ultimo registro funcional observado antes
+  deste bloco documental.
 - Render live observado: saiu de `2e1098f` para `b12be9a` e depois confirmou
-  marcadores/fixes sucessivos ate `11a396b`.
+  marcadores/fixes sucessivos ate `4a4caf0`.
 - `/api/custos/status` no Render: HTTP 200, confirmando endpoints de custo live.
 - GitHub Actions: sem runs recentes observaveis.
 - GitHub webhooks/deployments via `gh api`: sem entradas visiveis.
@@ -3056,6 +3064,80 @@ Critério de pronto: lista de limpeza segura e revisada.
   continua sendo aplicar `backend/migrations/002_create_token_usage.sql` no
   Supabase para tornar duravel o custo de falhas sem documento.
 
+### 2026-05-17 -- Provider: Nano full smoke falha alto no PDF de correcao
+
+- Alvo: revalidar GPT-5 Nano numa task unica de pipeline completa depois do
+  retry extra de PDF/JSON.
+- Deploy: commit `dbbecfe` (`fix: retry pdf consistency repair twice`) chegou ao
+  Render; `check_deploy.sh` e `/api/health` passaram.
+- Smoke oficial: `task_4f6296b3789d`, fixture Diana
+  (`f68d57a9a339081f` / `10d9fa4f4303ea1f`), modelo `gpt5nano001`,
+  `force_rerun=true`, seis etapas selecionadas.
+- Resultado: falhou alto em `corrigir`; nenhuma etapa posterior foi marcada como
+  sucesso. Erro: `PDF fb0825ca9ccbec85 sem feedback_geral do JSON verificável
+  para CORRIGIR`.
+- Artefatos/custo: extracoes passaram (`de0fff56be3dd91f`,
+  `6d7ebd0aac87809c`, `a0f0ee1f5b0b65c1`). A correcao gerou JSON
+  `d1e42f90389fe1e9` com `nota_final=8.0` e `feedback_geral`, mas os PDFs
+  `f81205a80957da8e`, `b2980c0b8c87e470` e `fb0825ca9ccbec85` ficaram
+  `status=erro`. O run `tool_4c763a1b0914` consumiu `48716/9264` tokens e foi
+  precificado em `US$ 0.006141`.
+- Interpretacao: o segundo retry era correto como tentativa explicita no mesmo
+  modelo, mas insuficiente. O proximo patch precisava tornar a exigencia de
+  `Feedback Geral` literal no prompt/tool instruction e na mensagem de reparo.
+
+### 2026-05-17 -- Provider: Nano full smoke passa com `Feedback Geral` obrigatório
+
+- Alvo: corrigir o bloqueio real reproduzido no smoke anterior: PDF de
+  `CORRIGIR` sem secao `Feedback Geral` verificavel.
+- Mudanca: commit `4a4caf0` exige que o PDF de correcao contenha secao literal
+  `Feedback Geral` com o texto completo de `feedback_geral`; a mensagem de
+  retry tambem repete essa exigencia.
+- Validacao local: `py_compile` de `backend/executor.py`, `backend/prompts.py`,
+  `backend/tests/unit/test_e_t2_retry_partial_output.py` e
+  `backend/tests/unit/test_stage_tool_pdf_quality.py`; `git diff --check`;
+  testes focados de PDF/tool-use com `51 passed`.
+- Deploy oficial: `git push origin HEAD:main`; Render confirmou
+  `4a4caf096e979eec0ec168fa7f8faf3d6dd717ca` em 120s;
+  `check_deploy.sh` e `/api/health` passaram.
+- Smoke oficial: `task_cbe8568e78d6`, fixture Diana, modelo `gpt5nano001`,
+  `force_rerun=true`, seis etapas selecionadas.
+- Resultado: task `completed`; todas as etapas ficaram `completed` e sem
+  `stage_errors`.
+- Artefatos oficiais por etapa:
+  - `extrair_questoes`: JSON `8afc777cde9edfeb`, `1150/2969` tokens,
+    `US$ 0.001245`.
+  - `extrair_gabarito`: JSON `01c96fa3a0d69b19`, `1985/2069` tokens,
+    `US$ 0.000927`.
+  - `extrair_respostas`: JSON `31d3a713877dce09`, `2379/2345` tokens,
+    `US$ 0.001057`.
+  - `corrigir`: JSON final `728fcc2e2722c486` e PDF
+    `c545aab82c27a698`, `44736/10379` tokens, `US$ 0.006388`,
+    `cost_run_id=tool_486c74b6a2b1`. JSONs intermediarios
+    `842f6ea05440c3a5`, `7e198f492796ad45` e `47d4c004511b6d2a` ficaram
+    `status=erro`, preservando a rastreabilidade do retry.
+  - `analisar_habilidades`: JSON `419ef6b546babaa6` e PDF
+    `3097c98b71535af5`, `50826/5356` tokens, `US$ 0.004684`.
+  - `gerar_relatorio`: JSON `84b0858aa381b9ee` e PDF
+    `835887f36ad5f052`, `24607/4072` tokens, `US$ 0.002859`.
+- Custo total da task: `125683` tokens de entrada, `27190` tokens de saida,
+  `US$ 0.017160` somando os seis runs precificados.
+- Inspecao extra: o PDF final de correcao foi baixado fora do repo e convertido
+  com `pdftotext`; ele contem a secao literal `Feedback Geral` com o mesmo
+  paragrafo do JSON final (`feedback_geral`, 447 caracteres).
+- Custo live apos o smoke: `/api/custos/resumo?limit=450` retornou
+  `runs_analisados=236`, `runs_precificados=225`, `runs_bloqueados=11`,
+  `custo_usd=4.515560`, `token_usage_durable=false` e
+  `custos_persistencia_status=parcial_sem_token_usage_duravel`.
+- Bloqueio mantido: Supabase ainda nao tem `public.token_usage`
+  (`PGRST205`, `migration_path=backend/migrations/002_create_token_usage.sql`).
+  Logo, custo de documentos concluidos esta medido por metadata, mas custo de
+  falhas sem documento final ainda nao e duravel.
+- Interpretacao: Nano sobe para confirmado na fixture simples Diana em task
+  unica de seis etapas. Isso nao vale como pipeline-ready geral; o proximo loop
+  precisa repetir em dataset maior/mais realista e aplicar a migration de
+  `token_usage`.
+
 ## Riscos Abertos
 
 1. Creditos Anthropic insuficientes ainda bloqueiam validacao Haiku.
@@ -3073,8 +3155,9 @@ Critério de pronto: lista de limpeza segura e revisada.
    respostas viram `MISSING_CONTENT`; Nano passou no smoke pos-`5527e26`, mas
    Gemini ainda precisa rerun antes de voltar a ✅.
 8. `extrair_respostas` parseavel pode ser conteudo invalido quando as respostas
-   ficam sem conteudo, inferidas ou inconsistentes; Nano ainda e ❌ nessa etapa,
-   enquanto GPT-5.4 Mini passou em amostras e em um smoke full simples.
+   ficam sem conteudo, inferidas ou inconsistentes; Nano esta confirmado na
+   fixture simples Diana, mas o historico em prova/lista maior ainda exige
+   revalidacao antes de promover o modelo para pipeline-ready geral.
 9. Cadastro via settings no Render pode nao sobreviver deploy; modelos oficiais
    precisam estar versionados em `backend/data/models.json` ou em storage
    duravel real.

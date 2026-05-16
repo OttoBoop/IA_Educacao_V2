@@ -10,11 +10,22 @@ um deve ser lido, o que ainda vale, o que ficou historico, e quais fatos precisa
 guiar os proximos ciclos.
 
 Atualizacao de controle de 2026-05-17: o codigo funcional mais recente
-confirmado no site oficial e `ae04982`, validado por `/api/deploy-info`,
-`/api/health`, `check_deploy.sh`, smoke live de `/api/custos/status`,
-`/api/custos/resumo` e smoke do HTML oficial. Smokes anteriores continuam
+confirmado no site oficial e `4a4caf0`, validado por `/api/deploy-info`,
+`/api/health`, `check_deploy.sh` e smoke live full de pipeline com GPT-5 Nano
+(`task_cbe8568e78d6`). Smokes anteriores continuam
 validando documentos/ranking/dashboard nos hashes registrados em seus proprios
-ciclos. O ciclo `147296d` tambem reduziu o
+ciclos. O ciclo `dbbecfe` aumentou para duas as tentativas explicitas de
+reparo PDF/JSON, mas o smoke full Nano `task_4f6296b3789d` ainda falhou alto em
+`corrigir` porque o PDF final nao continha `feedback_geral` verificavel. O
+ciclo `4a4caf0` tornou essa exigencia literal em prompt, tool instruction e
+mensagem de retry: o PDF de correcao deve ter secao `Feedback Geral` com o texto
+completo do JSON. O smoke seguinte `task_cbe8568e78d6` completou as seis etapas
+com `gpt5nano001` na fixture Diana; o PDF `c545aab82c27a698` foi baixado e
+convertido por `pdftotext`, confirmando a secao `Feedback Geral` com o mesmo
+paragrafo do JSON `728fcc2e2722c486`. Custo total dessa task: `125683/27190`
+tokens e `US$ 0.017160`; `/api/custos/resumo?limit=450` ficou em
+`runs_analisados=236`, `runs_precificados=225`, `runs_bloqueados=11`,
+`custo_usd=4.515560`, `token_usage_durable=false`. O ciclo `147296d` tambem reduziu o
 dashboard da turma Lista0 de
 cerca de 85s para 1.4s ao trocar agregados N+1 por ranking em lote. O ciclo
 `22f6f31` trocou o default vivo de Haiku bloqueado por credito para
@@ -374,7 +385,7 @@ detalhar e auditar estas linhas.
 | Frente | Temos hoje | Limite da afirmacao |
 |---|---|---|
 | Documentacao | Doc 09 como painel curto; Doc 14 como auditoria mestre; Doc 05/12 com notas de status | Manter Doc 09 curto e Doc 14 detalhado; registrar novos ciclos sem criar doc extra. |
-| Git/GitHub | `/api/deploy-info` confirmou runtime `ed592de`; `origin/main` esta alinhado com os fixes de dashboard de custo, tool-use Google faseado, consistencia PDF/JSON por feedback coerente, erro por aluno/etapa na sidebar, bloqueio anti-`nota_final=N/A`, guarda contra PDF auto-fallback, rejeicao de JSON embrulhado em Markdown/prosa, retorno Path 2 com etapa real/JSON parseado, schema minimo runtime, cobertura anti-regressao para etapas tardias, cobertura de PDF stale, contrato de prompts tardios, rastreabilidade semantica de correcao, cabecalho PDF real, consistencia interna de notas, contrato de erro/chat por provider/UI, resultado parcial obedecendo `status=erro`, correcao sem itens avaliaveis bloqueada, rotas agregadas protegidas, media zero preservada, agregados em lote, default OpenAI confirmado, resumo estruturado de erro de provider, diagnostico explicito da migration `token_usage` ausente, alerta de custo visivel no dashboard, agregado `por_etapa` e rejeicao de codigos compostos em `_avisos_*` | Nao usar somente marker HTML como gate quando Render `rootDir=backend` ignora commits sem backend; combinar `/api/deploy-info`, deploy list quando disponivel e comportamento live. |
+| Git/GitHub | `/api/deploy-info` confirmou runtime `4a4caf0`; `origin/main` esta alinhado com os fixes de dashboard de custo, tool-use Google faseado, consistencia PDF/JSON por feedback coerente, erro por aluno/etapa na sidebar, bloqueio anti-`nota_final=N/A`, guarda contra PDF auto-fallback, rejeicao de JSON embrulhado em Markdown/prosa, retorno Path 2 com etapa real/JSON parseado, schema minimo runtime, cobertura anti-regressao para etapas tardias, cobertura de PDF stale, contrato de prompts tardios, rastreabilidade semantica de correcao, cabecalho PDF real, consistencia interna de notas, contrato de erro/chat por provider/UI, resultado parcial obedecendo `status=erro`, correcao sem itens avaliaveis bloqueada, rotas agregadas protegidas, media zero preservada, agregados em lote, default OpenAI confirmado, resumo estruturado de erro de provider, diagnostico explicito da migration `token_usage` ausente, alerta de custo visivel no dashboard, agregado `por_etapa`, rejeicao de codigos compostos em `_avisos_*` e secao literal `Feedback Geral` em PDFs de correcao | Nao usar somente marker HTML como gate quando Render `rootDir=backend` ignora commits sem backend; combinar `/api/deploy-info`, deploy list quando disponivel e comportamento live. |
 | Pipeline P4 | Bloqueio de extracao de respostas sem prova valida esta no codigo publicado | Precisa smoke dedicado apenas se P4 voltar a ser alvo. |
 | Pipeline P5/P6 | Preservacao de `_documentos_faltantes`; `ad7e00e` bloqueia `GERAR_RELATORIO` sem `nota_final` numerica confiavel | Ainda falta caçar outros fallbacks antigos, mas `nota_final=N/A` nao e mais aceite final no executor de relatório. |
 | Schema/avisos | Defaults `_avisos_*`, visualizador melhorado, `f40acf3` alinhando prompts/tool instructions de `CORRIGIR`, `ANALISAR_HABILIDADES` e `GERAR_RELATORIO`; `700b088` exigindo rastreabilidade de resposta/gabarito em `CORRIGIR`; `1307909`/`bed0c08`/`feaf5d0` bloqueando literal divergente, cabecalho PDF fake e totais incoerentes; `ed592de` removeu exemplos `A|B|C` e rejeita codigo composto em `_avisos_documento`/`_avisos_questao` | Ainda falta distinguir default de output real do modelo e ampliar checagens semanticas para respostas mais abertas/datasets maiores. |
@@ -965,7 +976,7 @@ Leitura geral atual:
 | Provider/modelo | Leitura curta |
 |---|---|
 | Gemini 3 Flash | Melhor evidencia positiva, mas parcial e com retry/metadata pendente. |
-| GPT-5 Nano | Falhou no pipeline-completo; deve falhar alto ou ficar bloqueado. |
+| GPT-5 Nano | Passou pipeline-completo numa task unica da fixture simples Diana em `4a4caf0`, depois de falhar alto quando o PDF de correcao nao tinha `Feedback Geral`; ainda e parcial fora dessa fixture. |
 | Claude Haiku 4.5 | Bloqueado por creditos Anthropic; erro real precisa aparecer sem wrapper enganoso. |
 | GPT-4o | Referencia historica, nao fallback automatico aceitavel. |
 | Rio 3 | Pausado; nao entra neste loop. |
@@ -2701,6 +2712,8 @@ Erros conhecidos por provider/rota:
 | GPT-5 Nano | `pipeline-completo` pos-`c1598b9` `extrair_respostas` | Task `task_6772978a20c4` completou, JSON `10d1c1d9741a6273`, ainda sem conteudo real | Validacao central correta no schema nao estava no caminho real do executor multimodal. |
 | GPT-5 Nano | `pipeline-completo` pos-`01fb04c` `extrair_respostas` | Task `task_b511641dfa52` falhou alto com erro explicito de respostas sem conteudo; nenhum novo documento verde apareceu depois de `10d1c1d9741a6273`; `/api/custos/status` mostrou `token_usage_analisados=1`, mas `durable=false` por `PGRST205` | Falso sucesso corrigido. A etapa ainda precisa extrair conteudo real antes da pipeline completa. |
 | GPT-5 Nano | `pipeline-completo` pos-`1ce3d23` `extrair_respostas` | Depois de adicionar questoes, texto extraido, imagens de paginas escaneadas e proibicao de inferencia, a task `task_3d5feaf0da71` falhou alto: 6 de 7 respostas sem conteudo com scans anexados; nao criou novo documento verde; custo de falha `usage_52590d55d210459e`, tokens `100188/8863`, `US$ 0.008555` | Produto protegido contra falso sucesso final. Qualidade real de OCR/handwriting com Nano segue ❌. |
+| GPT-5 Nano | `pipeline-completo` full em `dbbecfe` | Task `task_4f6296b3789d` passou extracoes, mas falhou alto em `corrigir`: JSON `d1e42f90389fe1e9` tinha `feedback_geral`, enquanto PDF `fb0825ca9ccbec85` nao tinha esse texto verificavel; run `tool_4c763a1b0914`, `48716/9264`, `US$ 0.006141` | Retry extra correto, mas insuficiente; nao virou sucesso verde. |
+| GPT-5 Nano | `pipeline-completo` full em `4a4caf0` | Task `task_cbe8568e78d6` completou as seis etapas na fixture Diana. Correção final: JSON `728fcc2e2722c486`, PDF `c545aab82c27a698`, `Feedback Geral` confirmado por `pdftotext`; total da task `125683/27190`, `US$ 0.017160` | Confirmado para fixture simples em task unica; ainda precisa dataset maior e persistencia duravel de `token_usage`. |
 | GPT-5.4 Mini | `pipeline-completo` apenas `extrair_respostas` | Task `task_9c10e3752bcb` completou com JSON `a39d26fcc621c7a8`; 4/7 respostas extraidas, 3/7 `MISSING_CONTENT`, tokens `97004/1942`, custo `US$ 0.081492`. Task versionada `task_706931a94555` com `gpt54mini001` completou com JSON `fec100a2e41eabcf`; 5/7 respostas extraidas, Q1/Q2 `MISSING_CONTENT`, Q3 `LOW_CONFIDENCE`, tokens `97004/1737`, custo `US$ 0.080570`. Segunda amostra versionada `task_19062336eb8b` completou com JSON `4a82ddf1d2118ff0`; 7/7 respostas extraidas, Q2/Q3 `LOW_CONFIDENCE`, tokens `90588/2813`, custo `US$ 0.0806` | Primeiro candidato OpenAI que destrava conteudo real em mais de uma amostra manuscrita; ainda precisa pipeline per-phase. |
 | GPT-5.4 Mini | `pipeline-completo` full smoke pos-`2cad38a` e etapas finais pos-`3a77a17` | Task `task_a5f0d734f0b3` completou as 6 etapas com `gpt54mini001` na fixture Diana Omega: `extrair_questoes` `f65318c550a76842`, `extrair_gabarito` `70df18512be9c617`, `extrair_respostas` `14ca81d800de2648`, `corrigir` `2c7cd4cf9eb85e57`/`769744b6fff6f3b9`, `analisar_habilidades` `12b24cd992477eab`/`15579ed3ad2614be`, `gerar_relatorio` `38686372cb8ea981`/`37b0c86cee879ced`; custo aproximado `US$ 0.079110`; inspeção JSON: 4 questoes, gabarito completo, 4 respostas da aluna, nota `8/10`, erro apenas na Q3 de porcentagem, analise/relatorio coerentes; inspeção PDF inicial achou feedback cortado e metrica misturada. Depois, `task_e389f360b812` no Render `3a77a17` revalidou etapas finais com PDF/JSON coerentes. | Confirmado para essa fixture simples no site oficial; repetir por dataset/provider. |
 | GPT-5 Nano + GPT-5.4 Mini per-phase | `pipeline-completo` pos-`f2211bb` | Task `task_19ee59ac1881` passou por `extrair_questoes`, `extrair_gabarito`, `extrair_respostas` e `corrigir`; depois falhou alto em `analisar_habilidades` por tool-use incompleto. O patch `f2211bb` reduziu contaminacao de artefatos antigos: `extrair_gabarito` caiu para `6918/5497` tokens e `extrair_respostas` Mini para `18176/2081`. | Pipeline completa ainda nao validada; proximo bloqueador e `analisar_habilidades` em tool-use integrado. |
@@ -3846,6 +3859,42 @@ Atualizacao deste ciclo:
   persistencia duravel; apenas torna o bloqueio explicito no endpoint de resumo.
   O gate externo continua sendo aplicar `backend/migrations/002_create_token_usage.sql`
   no Supabase.
+
+### Provider: GPT-5 Nano Full Task E Feedback Geral
+
+Atualizacao deste ciclo:
+
+- Achado live: o commit `dbbecfe` permitiu duas tentativas explicitas de reparo
+  PDF/JSON no mesmo modelo, mas o smoke `task_4f6296b3789d` ainda falhou em
+  `corrigir` porque o PDF final nao continha `feedback_geral` verificavel.
+  Isso foi uma falha boa do ponto de vista de produto: status alto de erro,
+  sem trocar modelo e sem promover PDF inconsistente.
+- Patch: `4a4caf0` tornou obrigatoria a secao literal `Feedback Geral` nos PDFs
+  de `CORRIGIR`, com o texto completo de `feedback_geral` do JSON oficial, e
+  repetiu essa regra na mensagem de retry.
+- Validacao local: `py_compile`, `git diff --check` e testes focados de
+  tool-use/PDF com `51 passed`.
+- Deploy/smoke oficial: Render confirmou
+  `4a4caf096e979eec0ec168fa7f8faf3d6dd717ca`; `task_cbe8568e78d6` completou
+  as seis etapas com `gpt5nano001` na fixture Diana, sem `stage_errors`.
+- Artefatos principais:
+  `8afc777cde9edfeb` (`extrair_questoes`),
+  `01c96fa3a0d69b19` (`extrair_gabarito`),
+  `31d3a713877dce09` (`extrair_respostas`),
+  `728fcc2e2722c486`/`c545aab82c27a698` (`corrigir`),
+  `419ef6b546babaa6`/`3097c98b71535af5` (`analisar_habilidades`) e
+  `84b0858aa381b9ee`/`835887f36ad5f052` (`gerar_relatorio`).
+- Custo medido da task: `125683` tokens de entrada, `27190` tokens de saida e
+  `US$ 0.017160`. O resumo live depois do smoke marcou
+  `runs_analisados=236`, `runs_precificados=225`, `runs_bloqueados=11`,
+  `custo_usd=4.515560` e `token_usage_durable=false`.
+- Inspecao manual: o PDF `c545aab82c27a698` foi baixado fora do repo e
+  convertido com `pdftotext`; ele contem a secao `Feedback Geral` com o mesmo
+  paragrafo do JSON `728fcc2e2722c486`.
+- Interpretacao para o plano: Nano esta confirmado para a fixture simples em
+  task unica. A matriz nao deve extrapolar isso para dataset maior, prova
+  manuscrita dificil ou custo duravel; o proximo loop ainda precisa aplicar
+  `backend/migrations/002_create_token_usage.sql` e repetir smokes de matriz.
 
 Regra de continuidade:
 
