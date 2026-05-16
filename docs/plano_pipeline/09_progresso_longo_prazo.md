@@ -3048,6 +3048,30 @@ Critério de pronto: lista de limpeza segura e revisada.
   por quota `429`, Anthropic por credito, e Nano/GPT-5.4 Mini precisam de
   smokes em datasets menos simples antes de virarem pipeline-ready geral.
 
+### 2026-05-17 -- Custos: resumo expõe durabilidade de `token_usage`
+
+- Alvo: reduzir ambiguidade entre `/api/custos/status` e
+  `/api/custos/resumo`.
+- Achado: `/api/custos/status` ja expunha `token_usage_backend.durable=false`,
+  mas `/api/custos/resumo` nao tinha um booleano top-level direto; agentes e UI
+  podiam precisar navegar o objeto inteiro para saber se a persistencia de
+  falhas sem documento era duravel.
+- Mudanca: commit `2a0462d` adicionou `token_usage_durable` em
+  `build_cost_summary`.
+- Validacao local: `py_compile` de `backend/cost_tracking.py` e
+  `backend/tests/unit/test_cost_tracking.py`, `git diff --check`, e
+  `test_cost_tracking.py` com `28 passed`.
+- Deploy oficial: Render confirmou
+  `2a0462ded12cd524ce68af2cb7143bde2a31f952`; `check_deploy.sh` e
+  `/api/health` passaram.
+- Smoke live: `/api/custos/resumo?limit=80` retornou
+  `token_usage_durable=false`, `custos_persistencia_status=parcial_sem_token_usage_duravel`,
+  `token_usage_backend.durable=false`, `runs_analisados=40`,
+  `runs_precificados=39`, `runs_bloqueados=1`, `custo_usd=0.946017`.
+- Status: melhoria de legibilidade/contrato de custo concluida; o bloqueio real
+  continua sendo aplicar `backend/migrations/002_create_token_usage.sql` no
+  Supabase para tornar duravel o custo de falhas sem documento.
+
 ## Riscos Abertos
 
 1. Creditos Anthropic insuficientes ainda bloqueiam validacao Haiku.

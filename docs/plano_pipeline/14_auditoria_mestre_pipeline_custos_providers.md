@@ -378,7 +378,7 @@ detalhar e auditar estas linhas.
 | Pipeline P4 | Bloqueio de extracao de respostas sem prova valida esta no codigo publicado | Precisa smoke dedicado apenas se P4 voltar a ser alvo. |
 | Pipeline P5/P6 | Preservacao de `_documentos_faltantes`; `ad7e00e` bloqueia `GERAR_RELATORIO` sem `nota_final` numerica confiavel | Ainda falta caçar outros fallbacks antigos, mas `nota_final=N/A` nao e mais aceite final no executor de relatório. |
 | Schema/avisos | Defaults `_avisos_*`, visualizador melhorado, `f40acf3` alinhando prompts/tool instructions de `CORRIGIR`, `ANALISAR_HABILIDADES` e `GERAR_RELATORIO`; `700b088` exigindo rastreabilidade de resposta/gabarito em `CORRIGIR`; `1307909`/`bed0c08`/`feaf5d0` bloqueando literal divergente, cabecalho PDF fake e totais incoerentes; `ed592de` removeu exemplos `A|B|C` e rejeita codigo composto em `_avisos_documento`/`_avisos_questao` | Ainda falta distinguir default de output real do modelo e ampliar checagens semanticas para respostas mais abertas/datasets maiores. |
-| Tokens/custos | Split input/output; metadata de documento; endpoints `/api/custos/status` e `/api/custos/resumo` respondendo live; resumo agrega por `cost_run_id` e, desde `ae04982`, tambem por `por_etapa`; `48407f2` adicionou `erro_resumo`, `erro_codigo`, `erro_provider_status`, `erro_provider_modelo` e `erro_categoria` para erros de provider; `50fb1d7` faz `/api/custos/status` retornar `error_code=PGRST205`, `missing_migration=true` e `migration_path=backend/migrations/002_create_token_usage.sql`; `e2260d2` faz o dashboard ler `token_usage_backend.supabase` e exibir esse codigo/caminho ao usuario; `TokenUsageRecord` local cobre falha sem documento enquanto o filesystem vive; codigo Supabase e migration dedicada `b2dc88b` existem; diagnostico live mostra `PGRST205`; smoke full GPT-5.4 Mini `task_a1f7521077a5` completou 6 etapas em `e2260d2`; `/api/custos/resumo?limit=120` em `ae04982` mostrou `US$ 1.404252`, `57` runs precificados, `2` bloqueados e `por_etapa` com `correcao` como maior custo; `token_usage` segue nao duravel | Falta aplicar `backend/migrations/002_create_token_usage.sql` no Supabase. |
+| Tokens/custos | Split input/output; metadata de documento; endpoints `/api/custos/status` e `/api/custos/resumo` respondendo live; resumo agrega por `cost_run_id` e, desde `ae04982`, tambem por `por_etapa`; `2a0462d` expoe `token_usage_durable` no resumo; `48407f2` adicionou `erro_resumo`, `erro_codigo`, `erro_provider_status`, `erro_provider_modelo` e `erro_categoria` para erros de provider; `50fb1d7` faz `/api/custos/status` retornar `error_code=PGRST205`, `missing_migration=true` e `migration_path=backend/migrations/002_create_token_usage.sql`; `e2260d2` faz o dashboard ler `token_usage_backend.supabase` e exibir esse codigo/caminho ao usuario; `TokenUsageRecord` local cobre falha sem documento enquanto o filesystem vive; codigo Supabase e migration dedicada `b2dc88b` existem; diagnostico live mostra `PGRST205`; smoke full GPT-5.4 Mini `task_a1f7521077a5` completou 6 etapas em `e2260d2`; `/api/custos/resumo?limit=120` em `ae04982` mostrou `US$ 1.404252`, `57` runs precificados, `2` bloqueados e `por_etapa` com `correcao` como maior custo; `token_usage` segue nao duravel | Falta aplicar `backend/migrations/002_create_token_usage.sql` no Supabase. |
 | Providers | Sweep live pos-`e2260d2` confirmou conexao OpenAI OK para `gpt-4o`, `o3-mini`, `gpt-4.1`, `o4-mini`, `gpt-5-nano` e `gpt-5.4-mini`; Google OK em conexao para `gemini-2.5-flash`, `gemini-2.5-flash-lite` e `gemini-3-flash-preview`; `gemini-2.5-pro` bloqueado por quota `429`; Claude Haiku/Sonnet 4.5 bloqueados por credito Anthropic; Ollama indisponivel no Render. Historico: GPT-5.4 Mini completou smoke full em `task_a1f7521077a5`; GPT-5 Nano passou `extrair_respostas` em `task_0818b99194aa` (`US$ 0.000914`), `corrigir` em `task_960c0a287a13` (`US$ 0.005149`), etapas finais em `task_fa50cb3ffc16` (`US$ 0.002282` + `US$ 0.001912`) e rerun `gerar_relatorio` pos-`ed592de` em `task_0c7339f48aec` (`US$ 0.006012`) na fixture simples; a ressalva de aviso composto foi corrigida nessa fixture, mas Nano ainda segue parcial em dataset maior; Gemini 2.5 Flash falhou alto em pipeline `corrigir` na `task_41c45d7939b5` com Google `429 RESOURCE_EXHAUSTED`; GPT-4o completou full smoke `task_68b19146a95b`; Gemini tem historicos parciais e falhas por quota/conteudo | Revalidar matriz por provider em pipeline, nao apenas conexao; priorizar modelos com conexao OK e custo aceitavel, sem trocar provider em silencio. |
 | Seguranca Rio | Regra de nao usar chave em chat e Rio pausado | Arquivos Rio/untracked continuam fora do ciclo ativo. |
 
@@ -3822,6 +3822,30 @@ Atualizacao deste ciclo:
 - Interpretacao para o plano: a ressalva anterior do Nano em aviso composto foi
   fechada para a fixture simples, mas Nano continua parcial fora dela ate smokes
   maiores provarem qualidade e custo por provider/etapa.
+
+### Custos: Durabilidade Explicita No Resumo
+
+Atualizacao deste ciclo:
+
+- Achado live: `/api/custos/status` ja indicava
+  `token_usage_backend.durable=false`, mas `/api/custos/resumo` nao tinha um
+  booleano top-level equivalente. Isso tornava o contrato menos direto para UI e
+  para agentes que precisam diferenciar custo medido por metadata de custo
+  duravel de falha sem documento.
+- Patch: `2a0462d` adicionou `token_usage_durable` ao retorno de
+  `build_cost_summary`.
+- Validacao local: `py_compile`, `git diff --check` e
+  `test_cost_tracking.py` com `28 passed`.
+- Deploy/smoke oficial: Render confirmou
+  `2a0462ded12cd524ce68af2cb7143bde2a31f952`; `/api/custos/resumo?limit=80`
+  retornou `token_usage_durable=false`,
+  `custos_persistencia_status=parcial_sem_token_usage_duravel`,
+  `token_usage_backend.durable=false`, `runs_analisados=40`,
+  `runs_precificados=39`, `runs_bloqueados=1`, `custo_usd=0.946017`.
+- Interpretacao para o plano: isso nao aplica a migration nem resolve
+  persistencia duravel; apenas torna o bloqueio explicito no endpoint de resumo.
+  O gate externo continua sendo aplicar `backend/migrations/002_create_token_usage.sql`
+  no Supabase.
 
 Regra de continuidade:
 
