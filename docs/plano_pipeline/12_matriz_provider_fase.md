@@ -18,14 +18,14 @@
 `2885da7`, `99b8c3c`, `392ec7c`, `460643f`, `54d083e`,
 `854cec7`, `b07472f`, `dc5884f`, `0d5ab9d`, `c870ed4`, `45f5cf8`,
 `4094bda`, `4d8f73d`, `f40acf3`, `700b088`, `1307909`, `bed0c08`, `feaf5d0`,
-`d47d748`, `c53fae6`
+`d47d748`, `c53fae6`, `9ab53df`
 
 ## Status Oficial De Deploy
 
 - O servico oficial em 2026-05-17 e
   `srv-d5t8gbh4tr6s738fr3s0` (`IA_Educacao_V2`), branch `main`,
   `rootDir=backend`, URL `https://ia-educacao-v2.onrender.com`.
-- `/api/deploy-info` confirmou o runtime backend `c53fae6` com
+- `/api/deploy-info` confirmou o runtime backend `9ab53df` com
   `source=RENDER_GIT_COMMIT`; esse e o gate primario atual.
 - O HTML marker pode ficar stale e nao prova runtime antigo: commits de
   frontend/docs/marker podem nao disparar deploy quando o servico Render usa
@@ -80,6 +80,10 @@
   retornou HTTP 200 com JSON parseavel; Gemini 3 Flash retornou HTTP 429
   estruturado por quota Google; Claude Haiku retornou HTTP 400 estruturado por
   credito Anthropic insuficiente.
+- Render live chegou a `9ab53df`: o handler global de erro agora deixa
+  `error.message` textual e preserva `provider`, `provider_status_code` e
+  `retryable` como campos proprios; o frontend servido mostra esses metadados
+  em toasts/API errors e em erros por etapa da sidebar.
 - Docs antigos registram que auto-deploy Git nao funciona de forma confiavel; o
   ciclo usou deploy via API Render com token local seguro, sem imprimir segredo.
 - Smokes live anteriores continuam citados com seus markers; smokes de
@@ -326,6 +330,15 @@ documento verde. Portanto:
 - Claude Haiku 4.5 (`588f3efe7975`): HTTP 400 com erro estruturado
   `provider_api_error`, `provider=Anthropic`, `provider_status_code=400`,
   `retryable=false`, credito insuficiente.
+
+**Re-smoke live de chat em 2026-05-17 (`9ab53df`):**
+- GPT-5.4 Mini segue HTTP 200 com JSON parseavel e 413 tokens.
+- Gemini 3 Flash segue bloqueado por quota, agora com shape normalizado:
+  `error.message` string, `error.provider=Google`,
+  `error.provider_status_code=429`, `error.retryable=true`.
+- Haiku segue bloqueado por credito, agora com shape normalizado:
+  `error.provider=Anthropic`, `error.provider_status_code=400`,
+  `error.retryable=false`.
 
 **Smoke live de pipeline em 2026-05-15:**
 - Gemini 3 Flash (`gem3flash001`) em `pipeline-completo`, aluno Eric,

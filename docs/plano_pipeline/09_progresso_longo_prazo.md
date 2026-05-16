@@ -4,10 +4,14 @@
 **Responsavel operacional:** Paulo
 **Status geral:** o servico oficial Render
 `srv-d5t8gbh4tr6s738fr3s0` (`IA_Educacao_V2`, branch `main`, URL
-`https://ia-educacao-v2.onrender.com`) esta em `c53fae6`, confirmado por
-`/api/deploy-info`, `/api/health` e `./scripts/check_deploy.sh c53fae6`. O
-estado oficial mais recente preserva status HTTP real de erro de provider no
-`POST /api/chat`, depois de `d47d748` remover o marcador
+`https://ia-educacao-v2.onrender.com`) esta em `9ab53df`, confirmado por
+`/api/deploy-info`, `/api/health` e `./scripts/check_deploy.sh 9ab53df`. O
+estado oficial mais recente normaliza erros estruturados da API para a UI:
+`error.message` agora e string, enquanto `provider`, `provider_status_code` e
+`retryable` continuam como campos proprios; o HTML live contem esses metadados
+em `formatApiErrorMessage` e `renderStageError`. Antes disso, `c53fae6`
+preservou status HTTP real de erro de provider no `POST /api/chat`, depois de
+`d47d748` remover o marcador
 `DEBUG_V3_MARKER_2026` que corrompia respostas JSON. Antes disso, `feaf5d0`
 endureceu `CORRIGIR` contra tres falsos verdes:
 troca/contradicao de resposta, PDF com cabecalho placeholder e JSON com
@@ -36,6 +40,16 @@ de provider, nao falha silenciosa nem motivo para trocar modelo. Claude Haiku
 de credito Anthropic insuficiente. A pendencia de custo duravel segue igual:
 `/api/custos/status?limit=80` continua `ok=false` por `public.token_usage`
 ausente no Supabase (`PGRST205`).
+
+Atualizacao UI/API de erro em 2026-05-17 no runtime `9ab53df`: o handler global
+de `HTTPException` nao embrulha mais `detail` estruturado como
+`error.message=<objeto>`. O smoke live de chat confirmou o novo formato:
+Gemini 3 Flash retorna HTTP 429 com `error.message` textual,
+`error.provider=Google`, `error.provider_status_code=429`, `retryable=true`;
+Haiku retorna HTTP 400 com `error.provider=Anthropic`, `retryable=false`; GPT-5.4
+Mini continua HTTP 200 com JSON parseavel. O HTML live contem
+`provider_status_code`, `retry possível`, `stageError.erro_codigo` e
+`formatApiErrorMessage`, evitando toast/erro visual com objeto cru.
 
 Atualizacao de 2026-05-17 no runtime `700b088`: o ciclo `f40acf3` alinhou
 `PROMPTS_PADRAO` e `STAGE_TOOL_INSTRUCTIONS` para `CORRIGIR`,

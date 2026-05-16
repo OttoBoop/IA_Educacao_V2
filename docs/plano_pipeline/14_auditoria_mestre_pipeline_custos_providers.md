@@ -10,8 +10,11 @@ um deve ser lido, o que ainda vale, o que ficou historico, e quais fatos precisa
 guiar os proximos ciclos.
 
 Atualizacao de controle de 2026-05-17: o site oficial esta em runtime backend
-`c53fae6` por `/api/deploy-info`, `/api/health` e `check_deploy.sh`. Os commits
-`d47d748` e `c53fae6` corrigiram o contrato de chat: respostas de `/api/chat`
+`9ab53df` por `/api/deploy-info`, `/api/health` e `check_deploy.sh`. O commit
+`9ab53df` normalizou erro estruturado para API/UI: `error.message` fica textual,
+e os metadados `provider`, `provider_status_code` e `retryable` permanecem como
+campos proprios para toast/sidebar/historico. Os commits `d47d748` e `c53fae6`
+corrigiram o contrato de chat: respostas de `/api/chat`
 nao recebem mais o marcador `DEBUG_V3_MARKER_2026`, e erros de provider
 preservam o HTTP status real em vez de virarem 500 generico. O smoke live
 confirmou GPT-5.4 Mini com JSON parseavel e sem marcador; Gemini 3 Flash agora
@@ -277,7 +280,7 @@ detalhar e auditar estas linhas.
 | Frente | Temos hoje | Limite da afirmacao |
 |---|---|---|
 | Documentacao | Doc 09 como painel curto; Doc 14 como auditoria mestre; Doc 05/12 com notas de status | Manter Doc 09 curto e Doc 14 detalhado; registrar novos ciclos sem criar doc extra. |
-| Git/GitHub | `/api/deploy-info` confirmou runtime `c53fae6`; `origin/main` esta alinhado com os fixes de dashboard de custo, tool-use Google faseado, consistencia PDF/JSON por feedback coerente, erro por aluno/etapa na sidebar, bloqueio anti-`nota_final=N/A`, guarda contra PDF auto-fallback, rejeicao de JSON embrulhado em Markdown/prosa, retorno Path 2 com etapa real/JSON parseado, schema minimo runtime, cobertura anti-regressao para etapas tardias, cobertura de PDF stale, contrato de prompts tardios, rastreabilidade semantica de correcao, cabecalho PDF real, consistencia interna de notas e contrato de erro/chat por provider | Nao usar somente marker HTML como gate quando Render `rootDir=backend` ignora commits sem backend; combinar `/api/deploy-info`, deploy list quando disponivel e comportamento live. |
+| Git/GitHub | `/api/deploy-info` confirmou runtime `9ab53df`; `origin/main` esta alinhado com os fixes de dashboard de custo, tool-use Google faseado, consistencia PDF/JSON por feedback coerente, erro por aluno/etapa na sidebar, bloqueio anti-`nota_final=N/A`, guarda contra PDF auto-fallback, rejeicao de JSON embrulhado em Markdown/prosa, retorno Path 2 com etapa real/JSON parseado, schema minimo runtime, cobertura anti-regressao para etapas tardias, cobertura de PDF stale, contrato de prompts tardios, rastreabilidade semantica de correcao, cabecalho PDF real, consistencia interna de notas e contrato de erro/chat por provider/UI | Nao usar somente marker HTML como gate quando Render `rootDir=backend` ignora commits sem backend; combinar `/api/deploy-info`, deploy list quando disponivel e comportamento live. |
 | Pipeline P4 | Bloqueio de extracao de respostas sem prova valida esta no codigo publicado | Precisa smoke dedicado apenas se P4 voltar a ser alvo. |
 | Pipeline P5/P6 | Preservacao de `_documentos_faltantes`; `ad7e00e` bloqueia `GERAR_RELATORIO` sem `nota_final` numerica confiavel | Ainda falta caçar outros fallbacks antigos, mas `nota_final=N/A` nao e mais aceite final no executor de relatório. |
 | Schema/avisos | Defaults `_avisos_*`, visualizador melhorado, `f40acf3` alinhando prompts/tool instructions de `CORRIGIR`, `ANALISAR_HABILIDADES` e `GERAR_RELATORIO`; `700b088` exigindo rastreabilidade de resposta/gabarito em `CORRIGIR`; `1307909`/`bed0c08`/`feaf5d0` bloqueando literal divergente, cabecalho PDF fake e totais incoerentes | Ainda falta distinguir default de output real do modelo e ampliar checagens semanticas para respostas mais abertas/datasets maiores. |
@@ -295,9 +298,9 @@ detalhar e auditar estas linhas.
 | Custos | Registrar falhas que consomem tokens sem documento final | Sucesso com documento ja tem custo medido; falha ainda pode sumir. |
 | Metadata | Revalidar provider/modelo/tokens/tempo nas rotas e providers restantes | GPT-5.4 Mini ja mostrou metadata e conteudo JSON coerente nas 6 etapas da fixture simples; Gemini/Nano/Haiku/GPT-4o ainda precisam matriz atualizada. |
 | Providers | Revalidar Gemini, Nano, Haiku e GPT-4o nas etapas restantes, especialmente extracoes e pipeline completa | Resultado historico ou schema parseavel nao prova qualidade de conteudo. |
-| UI de erro | `98fafc9` publica `stage_errors` por aluno/etapa no task-progress e renderiza a causa na sidebar; falta expandir o mesmo padrao para resultado/historico | Backend falhar alto nao basta se a UI traduz mal. |
+| UI de erro | `98fafc9` publica `stage_errors` por aluno/etapa no task-progress e renderiza a causa na sidebar; `9ab53df` normaliza erro estruturado e mostra provider/codigo/retry em API errors e stage errors | Falta expandir o mesmo padrao para resultado/historico e mensagens menos brutas. |
 | Dados | Reclassificar "fantasmas" sem deletar PDF valido por `/conteudo=null` | Evita apagar prova respondida real. |
-| Git/deploy | Commit `2d72c6b` adicionou `/api/deploy-info`; o runtime atual confirmado e `feaf5d0` | Usar `/api/deploy-info` antes de novos smokes; marker HTML e apenas auxiliar. |
+| Git/deploy | Commit `2d72c6b` adicionou `/api/deploy-info`; o runtime atual confirmado e `9ab53df` | Usar `/api/deploy-info` antes de novos smokes; marker HTML e apenas auxiliar. |
 
 ### Bloqueios E Alertas
 
