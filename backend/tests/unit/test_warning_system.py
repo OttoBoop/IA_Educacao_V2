@@ -95,6 +95,20 @@ class TestWarningSchemaInToolInstructions:
             "should be replaced by _avisos_documento/_avisos_questao"
         )
 
+    def test_prompt_examples_do_not_teach_composite_warning_codes(self):
+        """Prompts must show one warning code per aviso, never A|B|C."""
+        root = Path(__file__).parents[2]
+        executor_text = (root / "executor.py").read_text(encoding="utf-8")
+        prompts_text = (root / "prompts.py").read_text(encoding="utf-8")
+        combined = executor_text + "\n" + prompts_text
+
+        forbidden_examples = [
+            "ILLEGIBLE_DOCUMENT|MISSING_CONTENT|LOW_CONFIDENCE",
+            "ILLEGIBLE_QUESTION|MISSING_CONTENT|LOW_CONFIDENCE",
+        ]
+        for example in forbidden_examples:
+            assert example not in combined
+
 
 class TestWarningSchemaInPrompts:
     """F1-T1: Verify PROMPTS_PADRAO contain _avisos schema for EXTRAIR stages."""

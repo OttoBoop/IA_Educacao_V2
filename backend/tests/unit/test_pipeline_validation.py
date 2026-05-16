@@ -335,6 +335,85 @@ class TestCorrecaoPipeline:
         assert resultado.get("_error") == "validacao_falhou"
 
 
+class TestCodigosAviso:
+    """Avisos precisam ter códigos únicos para não mascarar erro de schema."""
+
+    def test_rejeita_codigo_composto_em_avisos_questao(self):
+        dados = {
+            "resumo_geral": "Aluno com lacunas pontuais.",
+            "pontos_fortes": ["Organização"],
+            "areas_melhoria": ["Justificativas"],
+            "recomendacoes": [
+                {"tipo": "pratica", "descricao": "Refazer questões", "prioridade": "media"}
+            ],
+            "nota_final": 8.0,
+            "detalhamento": "Detalhes por questão.",
+            "_fontes_utilizadas": ["CORRIGIR", "ANALISAR_HABILIDADES"],
+            "_avisos_documento": [],
+            "_avisos_questao": [
+                {
+                    "codigo": "ILLEGIBLE_QUESTION|MISSING_CONTENT|LOW_CONFIDENCE",
+                    "questao": 2,
+                    "explicacao": "Código veio como lista colada",
+                }
+            ],
+        }
+
+        resultado = validar_json_pipeline("gerar_relatorio", dados)
+
+        assert isinstance(resultado, dict)
+        assert resultado.get("_error") == "validacao_falhou"
+        assert "um unico codigo" in resultado.get("_erros", "")
+
+    def test_rejeita_codigo_de_documento_em_avisos_questao(self):
+        dados = {
+            "nota_final": 8.0,
+            "questoes": [
+                {"numero": 1, "nota": 8.0, "nota_maxima": 10.0, "acerto": True, "feedback": "ok"},
+            ],
+            "total_acertos": 1,
+            "total_erros": 0,
+            "feedback_geral": "Bom desempenho",
+            "_avisos_documento": [],
+            "_avisos_questao": [
+                {"codigo": "ILLEGIBLE_DOCUMENT", "questao": 1, "explicacao": "Campo errado"},
+            ],
+        }
+
+        resultado = validar_json_pipeline("corrigir", dados)
+
+        assert isinstance(resultado, dict)
+        assert resultado.get("_error") == "validacao_falhou"
+        assert "codigo invalido" in resultado.get("_erros", "")
+
+    def test_aceita_codigos_unicos_validos(self):
+        dados = {
+            "habilidades": [
+                {"nome": "Álgebra", "nivel": "em_desenvolvimento", "nota": 7.0}
+            ],
+            "indicadores": {
+                "proficiencia_geral": 0.7,
+                "areas_destaque": [],
+                "areas_atencao": ["Álgebra"],
+            },
+            "recomendacoes": [
+                {"tipo": "pratica", "descricao": "Revisar equações", "prioridade": "alta"}
+            ],
+            "_avisos_documento": [
+                {"codigo": "LOW_CONFIDENCE", "explicacao": "Poucas evidências"}
+            ],
+            "_avisos_questao": [
+                {"codigo": "MISSING_CONTENT", "questao": 3, "explicacao": "Resposta ausente"}
+            ],
+        }
+
+        resultado = validar_json_pipeline("analisar_habilidades", dados)
+
+        assert isinstance(resultado, AnaliseHabilidades)
+        assert resultado.avisos_documento[0]["codigo"] == "LOW_CONFIDENCE"
+        assert resultado.avisos_questao[0]["codigo"] == "MISSING_CONTENT"
+
+
 class TestAnaliseHabilidades:
     """Testes para validação de análise de habilidades"""
 

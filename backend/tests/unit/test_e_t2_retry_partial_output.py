@@ -80,6 +80,34 @@ def _tool_response(tool_names: list[str]) -> dict:
     }
 
 
+def _tool_response_with_json_content(content: dict) -> dict:
+    """Build a dual-output response whose JSON content can be schema-validated."""
+    return {
+        "content": "",
+        "input_tokens": 40,
+        "output_tokens": 12,
+        "modelo": "test-model",
+        "provider": "anthropic",
+        "tool_calls": [
+            {
+                "name": "create_document",
+                "input": {
+                    "documents": [
+                        {
+                            "filename": "relatorio_aluno.json",
+                            "content": json.dumps(content),
+                        }
+                    ]
+                },
+            },
+            {
+                "name": "execute_python_code",
+                "input": {"code": "# generate PDF\nprint('done')"},
+            },
+        ],
+    }
+
+
 def _make_mock_model(suporta_function_calling: bool = True, tipo_value: str = "anthropic"):
     """Build a minimal ModelConfig-like mock."""
     model = MagicMock()
@@ -1196,3 +1224,51 @@ async def test_pdf_execution_error_triggers_same_model_code_repair(monkeypatch, 
     assert "tentativa anterior" in calls[2]["mensagem"].lower()
     assert "IndentationError" in calls[2]["mensagem"]
     assert "Nao chame create_document" in calls[2]["mensagem"]
+
+
+@pytest.mark.asyncio
+async def test_codigo_composto_de_aviso_falha_alto_no_tool_runtime():
+    """Runtime tool output with A|B|C warning code must not be accepted."""
+    invalid_report = {
+        "resumo_geral": "Aluno com bom desempenho.",
+        "pontos_fortes": ["Organização"],
+        "areas_melhoria": ["Justificativas"],
+        "recomendacoes": [
+            {"tipo": "pratica", "descricao": "Refazer questões", "prioridade": "media"}
+        ],
+        "nota_final": 8.0,
+        "detalhamento": "Detalhes por questão.",
+        "_avisos_documento": [],
+        "_avisos_questao": [
+            {
+                "codigo": "ILLEGIBLE_QUESTION|MISSING_CONTENT|LOW_CONFIDENCE",
+                "questao": 2,
+                "explicacao": "Código composto vindo do modelo",
+            }
+        ],
+        "_fontes_utilizadas": ["CORRIGIR", "ANALISAR_HABILIDADES"],
+    }
+    repaired_report = {
+        **invalid_report,
+        "_avisos_questao": [
+            {
+                "codigo": "LOW_CONFIDENCE",
+                "questao": 2,
+                "explicacao": "Leitura com baixa confiança",
+            }
+        ],
+    }
+
+    result, mock_client = await _call_executar_com_tools(
+        chat_side_effect=[
+            _tool_response_with_json_content(invalid_report),
+            _tool_response_with_json_content(repaired_report),
+        ],
+        tools_to_use=["create_document", "execute_python_code"],
+        expected_document_type=TipoDocumento.RELATORIO_FINAL,
+    )
+
+    assert result.sucesso is False
+    assert result.tentativas == 2
+    assert mock_client.chat_with_tools.call_count == 2
+    assert "codigo composto" in result.erro

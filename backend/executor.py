@@ -182,10 +182,10 @@ Você DEVE usar as ferramentas disponíveis para produzir dois outputs:
      "total_erros": <int>,
      "feedback_geral": "<str>",
      "_avisos_documento": [
-       {"codigo": "<ILLEGIBLE_DOCUMENT|MISSING_CONTENT|LOW_CONFIDENCE>", "explicacao": "<str>"}
+       {"codigo": "<um_codigo_unico>", "explicacao": "<str>"}
      ],
      "_avisos_questao": [
-       {"codigo": "<ILLEGIBLE_QUESTION|MISSING_CONTENT|LOW_CONFIDENCE>", "questao": <int>, "explicacao": "<str>"}
+       {"codigo": "<um_codigo_unico>", "questao": <int>, "explicacao": "<str>"}
      ]
    }
 
@@ -197,6 +197,10 @@ Você DEVE usar as ferramentas disponíveis para produzir dois outputs:
 
    Use _avisos_documento para problemas no documento inteiro.
    Use _avisos_questao para problemas em questões específicas (inclua o número da questão).
+   Cada aviso deve ter exatamente um codigo. Nunca combine codigos com "|";
+   se houver mais de um problema, crie um item de aviso separado para cada codigo.
+   Codigos validos em _avisos_documento: ILLEGIBLE_DOCUMENT, MISSING_CONTENT, LOW_CONFIDENCE.
+   Codigos validos em _avisos_questao: ILLEGIBLE_QUESTION, MISSING_CONTENT, LOW_CONFIDENCE.
    Se não houver avisos, envie listas vazias [].
    Nunca substitua a resposta do aluno pela resposta correta. Cada item de
    questoes deve copiar `resposta_aluno` da extração de respostas e
@@ -237,10 +241,10 @@ Você DEVE usar as ferramentas disponíveis para produzir dois outputs:
        {"tipo": "<str>", "descricao": "<str>", "prioridade": "<str>"}
      ],
      "_avisos_documento": [
-       {"codigo": "<ILLEGIBLE_DOCUMENT|MISSING_CONTENT|LOW_CONFIDENCE>", "explicacao": "<str>"}
+       {"codigo": "<um_codigo_unico>", "explicacao": "<str>"}
      ],
      "_avisos_questao": [
-       {"codigo": "<ILLEGIBLE_QUESTION|MISSING_CONTENT|LOW_CONFIDENCE>", "questao": <int>, "explicacao": "<str>"}
+       {"codigo": "<um_codigo_unico>", "questao": <int>, "explicacao": "<str>"}
      ]
    }
 
@@ -252,6 +256,10 @@ Você DEVE usar as ferramentas disponíveis para produzir dois outputs:
 
    Use _avisos_documento para problemas no documento inteiro.
    Use _avisos_questao para problemas em questões específicas (inclua o número da questão).
+   Cada aviso deve ter exatamente um codigo. Nunca combine codigos com "|";
+   se houver mais de um problema, crie um item de aviso separado para cada codigo.
+   Codigos validos em _avisos_documento: ILLEGIBLE_DOCUMENT, MISSING_CONTENT, LOW_CONFIDENCE.
+   Codigos validos em _avisos_questao: ILLEGIBLE_QUESTION, MISSING_CONTENT, LOW_CONFIDENCE.
    Se não houver avisos, envie listas vazias [].
    Use exatamente um arquivo .json em create_document. Exemplo de chamada:
    {
@@ -298,10 +306,10 @@ Você DEVE usar as ferramentas disponíveis para produzir dois outputs:
      "nota_final": <float>,
      "detalhamento": "<str>",
      "_avisos_documento": [
-       {"codigo": "<ILLEGIBLE_DOCUMENT|MISSING_CONTENT|LOW_CONFIDENCE>", "explicacao": "<str>"}
+       {"codigo": "<um_codigo_unico>", "explicacao": "<str>"}
      ],
      "_avisos_questao": [
-       {"codigo": "<ILLEGIBLE_QUESTION|MISSING_CONTENT|LOW_CONFIDENCE>", "questao": <int>, "explicacao": "<str>"}
+       {"codigo": "<um_codigo_unico>", "questao": <int>, "explicacao": "<str>"}
      ],
      "_fontes_utilizadas": ["<lista de etapas upstream cujos dados foram consumidos, ex: EXTRAIR_QUESTOES, CORRIGIR, ANALISAR_HABILIDADES>"]
    }
@@ -314,6 +322,10 @@ Você DEVE usar as ferramentas disponíveis para produzir dois outputs:
 
    Use _avisos_documento para problemas no documento inteiro.
    Use _avisos_questao para problemas em questões específicas (inclua o número da questão).
+   Cada aviso deve ter exatamente um codigo. Nunca combine codigos com "|";
+   se houver mais de um problema, crie um item de aviso separado para cada codigo.
+   Codigos validos em _avisos_documento: ILLEGIBLE_DOCUMENT, MISSING_CONTENT, LOW_CONFIDENCE.
+   Codigos validos em _avisos_questao: ILLEGIBLE_QUESTION, MISSING_CONTENT, LOW_CONFIDENCE.
    Se não houver avisos, envie listas vazias [].
    _fontes_utilizadas: liste quais etapas do pipeline você usou como fonte de dados para gerar este relatório.
    Use extensão .json e nome descritivo.
@@ -4131,6 +4143,52 @@ Seja preciso, educativo e construtivo em suas análises."""
                     if not isinstance(data.get(field), list):
                         errors.append(f"JSON {doc_label} sem {field} como lista")
 
+                def _validate_aviso_codes(
+                    field: str,
+                    allowed_codes: set[str],
+                    label: str,
+                ) -> None:
+                    items = data.get(field)
+                    if not isinstance(items, list):
+                        return
+                    for index, aviso in enumerate(items):
+                        if not isinstance(aviso, dict):
+                            errors.append(
+                                f"JSON {doc_label} tem {field}[{index}] que não é objeto"
+                            )
+                            continue
+                        codigo = aviso.get("codigo")
+                        if not isinstance(codigo, str) or not codigo.strip():
+                            errors.append(
+                                f"JSON {doc_label} tem {field}[{index}].codigo ausente"
+                            )
+                            continue
+                        normalized = codigo.strip().upper()
+                        if "|" in normalized:
+                            errors.append(
+                                f"JSON {doc_label} tem {field}[{index}].codigo composto "
+                                f"'{codigo}'; use um aviso por codigo"
+                            )
+                            continue
+                        if normalized not in allowed_codes:
+                            allowed = ", ".join(sorted(allowed_codes))
+                            errors.append(
+                                f"JSON {doc_label} tem {field}[{index}].codigo invalido "
+                                f"'{codigo}' para {label}; codigos validos: {allowed}"
+                            )
+
+                def _validate_avisos() -> None:
+                    _validate_aviso_codes(
+                        "_avisos_documento",
+                        {"ILLEGIBLE_DOCUMENT", "MISSING_CONTENT", "LOW_CONFIDENCE"},
+                        "_avisos_documento",
+                    )
+                    _validate_aviso_codes(
+                        "_avisos_questao",
+                        {"ILLEGIBLE_QUESTION", "MISSING_CONTENT", "LOW_CONFIDENCE"},
+                        "_avisos_questao",
+                    )
+
                 def _required_text(field: str) -> None:
                     if not isinstance(data.get(field), str) or not data.get(field, "").strip():
                         errors.append(f"JSON {doc_label} sem {field} textual")
@@ -4183,6 +4241,7 @@ Seja preciso, educativo e construtivo em suas análises."""
                         errors.append(f"JSON {doc_label} sem total_erros numérico")
                     _required_list("_avisos_documento")
                     _required_list("_avisos_questao")
+                    _validate_avisos()
                     if isinstance(questoes, list):
                         trace_maps = _correcao_trace_maps()
                         has_respostas = bool(trace_maps["respostas_aluno"])
@@ -4348,6 +4407,7 @@ Seja preciso, educativo e construtivo em suas análises."""
                     _required_list("recomendacoes")
                     _required_list("_avisos_documento")
                     _required_list("_avisos_questao")
+                    _validate_avisos()
 
                 if expected_document_type == TipoDocumento.RELATORIO_FINAL:
                     if not _numeric(data.get("nota_final")):
@@ -4359,6 +4419,7 @@ Seja preciso, educativo e construtivo em suas análises."""
                     _required_text("detalhamento")
                     _required_list("_avisos_documento")
                     _required_list("_avisos_questao")
+                    _validate_avisos()
                     _required_list("_fontes_utilizadas")
                     errors.extend(
                         self._validar_relatorio_nota_final_contra_correcao(

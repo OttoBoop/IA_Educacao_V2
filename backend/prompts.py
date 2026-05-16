@@ -442,15 +442,18 @@ O PDF deve usar exatamente os metadados acima no cabeçalho: aluno, matéria e a
   "total_erros": 0,
   "feedback_geral": "Síntese pedagógica da correção",
   "_avisos_documento": [
-    {"codigo": "ILLEGIBLE_DOCUMENT|MISSING_CONTENT|LOW_CONFIDENCE", "explicacao": "Descrição do problema no documento"}
+    {"codigo": "LOW_CONFIDENCE", "explicacao": "Descrição do problema no documento"}
   ],
   "_avisos_questao": [
-    {"codigo": "ILLEGIBLE_QUESTION|MISSING_CONTENT|LOW_CONFIDENCE", "questao": 3, "explicacao": "Descrição do problema na questão"}
+    {"codigo": "ILLEGIBLE_QUESTION", "questao": 3, "explicacao": "Descrição do problema na questão"}
   ]
 }
 ```
 
 Use `_avisos_documento` para problemas no documento inteiro e `_avisos_questao` para problemas em questões específicas. Se não houver avisos, envie listas vazias [].
+Cada aviso deve ter exatamente um código. Nunca combine códigos com `|`; se houver mais de um problema, crie um item separado para cada código.
+Codigos validos em `_avisos_documento`: ILLEGIBLE_DOCUMENT, MISSING_CONTENT, LOW_CONFIDENCE.
+Codigos validos em `_avisos_questao`: ILLEGIBLE_QUESTION, MISSING_CONTENT, LOW_CONFIDENCE.
 Nunca substitua a resposta do aluno pela resposta correta: cada item em `questoes` deve carregar `resposta_aluno` da extração de respostas e `resposta_correta` do gabarito antes de atribuir nota."""
     ),
     
@@ -500,15 +503,18 @@ Produza uma análise estruturada de habilidades para o professor.
     {"tipo": "pratica|revisao|intervencao", "descricao": "Recomendação específica e acionável", "prioridade": "alta|media|baixa"}
   ],
   "_avisos_documento": [
-    {"codigo": "ILLEGIBLE_DOCUMENT|MISSING_CONTENT|LOW_CONFIDENCE", "explicacao": "Descrição do problema no documento"}
+    {"codigo": "LOW_CONFIDENCE", "explicacao": "Descrição do problema no documento"}
   ],
   "_avisos_questao": [
-    {"codigo": "ILLEGIBLE_QUESTION|MISSING_CONTENT|LOW_CONFIDENCE", "questao": 3, "explicacao": "Descrição do problema na questão"}
+    {"codigo": "ILLEGIBLE_QUESTION", "questao": 3, "explicacao": "Descrição do problema na questão"}
   ]
 }
 ```
 
-Use `_avisos_documento` para problemas no documento inteiro e `_avisos_questao` para problemas em questões específicas. Se não houver avisos, envie listas vazias []."""
+Use `_avisos_documento` para problemas no documento inteiro e `_avisos_questao` para problemas em questões específicas. Se não houver avisos, envie listas vazias [].
+Cada aviso deve ter exatamente um código. Nunca combine códigos com `|`; se houver mais de um problema, crie um item separado para cada código.
+Codigos validos em `_avisos_documento`: ILLEGIBLE_DOCUMENT, MISSING_CONTENT, LOW_CONFIDENCE.
+Codigos validos em `_avisos_questao`: ILLEGIBLE_QUESTION, MISSING_CONTENT, LOW_CONFIDENCE."""
     ),
     
     EtapaProcessamento.GERAR_RELATORIO: PromptTemplate(
@@ -559,16 +565,20 @@ Produza um JSON estruturado com os dados do relatório.
   "nota_final": {{nota_final}},
   "detalhamento": "Detalhamento textual com base nas correções e na análise de habilidades",
   "_avisos_documento": [
-    {"codigo": "ILLEGIBLE_DOCUMENT|MISSING_CONTENT|LOW_CONFIDENCE", "explicacao": "Descrição do problema no documento"}
+    {"codigo": "LOW_CONFIDENCE", "explicacao": "Descrição do problema no documento"}
   ],
   "_avisos_questao": [
-    {"codigo": "ILLEGIBLE_QUESTION|MISSING_CONTENT|LOW_CONFIDENCE", "questao": 3, "explicacao": "Descrição do problema na questão"}
+    {"codigo": "ILLEGIBLE_QUESTION", "questao": 3, "explicacao": "Descrição do problema na questão"}
   ],
   "_fontes_utilizadas": ["CORRIGIR", "ANALISAR_HABILIDADES"]
 }
 ```
 
-Use `_avisos_documento` para problemas no documento inteiro e `_avisos_questao` para problemas em questões específicas. Se não houver avisos, envie listas vazias []. Liste em `_fontes_utilizadas` as etapas upstream realmente usadas."""
+Use `_avisos_documento` para problemas no documento inteiro e `_avisos_questao` para problemas em questões específicas. Se não houver avisos, envie listas vazias [].
+Cada aviso deve ter exatamente um código. Nunca combine códigos com `|`; se houver mais de um problema, crie um item separado para cada código.
+Codigos validos em `_avisos_documento`: ILLEGIBLE_DOCUMENT, MISSING_CONTENT, LOW_CONFIDENCE.
+Codigos validos em `_avisos_questao`: ILLEGIBLE_QUESTION, MISSING_CONTENT, LOW_CONFIDENCE.
+Liste em `_fontes_utilizadas` as etapas upstream realmente usadas."""
     ),
     
     EtapaProcessamento.CHAT_GERAL: PromptTemplate(

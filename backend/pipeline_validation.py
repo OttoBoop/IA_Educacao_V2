@@ -14,6 +14,17 @@ from enum import Enum
 # ENUMS FOR VALIDATION
 # ============================================================
 
+AVISO_DOCUMENTO_CODES = frozenset({
+    "ILLEGIBLE_DOCUMENT",
+    "MISSING_CONTENT",
+    "LOW_CONFIDENCE",
+})
+AVISO_QUESTAO_CODES = frozenset({
+    "ILLEGIBLE_QUESTION",
+    "MISSING_CONTENT",
+    "LOW_CONFIDENCE",
+})
+
 class TipoQuestao(str, Enum):
     """Tipos de questões suportadas"""
     MULTIPLA_ESCOLHA = "multipla_escolha"
@@ -66,6 +77,36 @@ class PipelineModel(BaseModel):
         alias="_avisos_stage",
         description="Etapa usada para calcular severidade dos avisos",
     )
+
+    @model_validator(mode="after")
+    def _validar_codigos_de_aviso_unicos(self):
+        def _validar_lista(
+            campo: str,
+            avisos: List[Dict[str, Any]],
+            codigos_validos: frozenset[str],
+        ) -> None:
+            for index, aviso in enumerate(avisos):
+                codigo = aviso.get("codigo") if isinstance(aviso, dict) else None
+                if not isinstance(codigo, str) or not codigo.strip():
+                    raise ValueError(f"{campo}[{index}].codigo ausente")
+
+                codigo_limpo = codigo.strip()
+                if "|" in codigo_limpo:
+                    raise ValueError(
+                        f"{campo}[{index}].codigo deve ter um unico codigo; "
+                        f"recebido '{codigo}'"
+                    )
+                if codigo_limpo not in codigos_validos:
+                    validos = ", ".join(sorted(codigos_validos))
+                    raise ValueError(
+                        f"{campo}[{index}].codigo invalido '{codigo}'; "
+                        f"codigos validos: {validos}"
+                    )
+
+        _validar_lista("_avisos_documento", self.avisos_documento, AVISO_DOCUMENTO_CODES)
+        _validar_lista("_avisos_questao", self.avisos_questao, AVISO_QUESTAO_CODES)
+        return self
+
 
 class ItemQuestao(BaseModel):
     """Item de uma questão de múltipla escolha"""
