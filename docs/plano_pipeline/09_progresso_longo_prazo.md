@@ -4,11 +4,14 @@
 **Responsavel operacional:** Paulo
 **Status geral:** o servico oficial Render
 `srv-d5t8gbh4tr6s738fr3s0` (`IA_Educacao_V2`, branch `main`, URL
-`https://ia-educacao-v2.onrender.com`) esta em `45f5cf8`, confirmado por
-`/api/deploy-info` com `source=RENDER_GIT_COMMIT`. O commit `45f5cf8` fecha mais
-um pedaço P0 do Path 2: mesmo quando nao ha storage persistido no teste, JSON
-parseavel de `create_document` que esteja fora do schema minimo da etapa falha
-alto antes de sucesso. No mesmo runtime, o smoke oficial reduzido
+`https://ia-educacao-v2.onrender.com`) esta em `4094bda`, confirmado por
+`/api/deploy-info` com `source=RENDER_GIT_COMMIT`. O commit funcional `45f5cf8`
+fecha mais um pedaço P0 do Path 2: mesmo quando nao ha storage persistido no
+teste, JSON parseavel de `create_document` que esteja fora do schema minimo da
+etapa falha alto antes de sucesso. O commit `4094bda` nao muda comportamento de
+runtime, mas publica a cobertura que impede regressao desse guard tambem em
+`ANALISAR_HABILIDADES` e `GERAR_RELATORIO`. No runtime `45f5cf8`, o smoke
+oficial reduzido
 `task_42e3b303c39a` reexecutou `corrigir` com GPT-5.4 Mini (`gpt54mini001`) na
 fixture Diana Omega e completou com JSON oficial `776b70be01c24641`, PDF final
 `12dbdc65d469e982`, PDF intermediario `204a8a5c3f81af97` marcado como erro por
@@ -2162,6 +2165,28 @@ Critério de pronto: lista de limpeza segura e revisada.
   nao repetir Rio 3: ou ampliar os testes de schema runtime para
   `ANALISAR_HABILIDADES`/`GERAR_RELATORIO`, ou resolver a durabilidade
   Supabase de `token_usage` quando houver credencial/admin.
+
+### 2026-05-17 -- Cobertura anti-regressao para schema runtime tardio
+
+- Alvo: fechar a lacuna de teste do ciclo `45f5cf8`. A implementacao ja
+  validava payload runtime de `create_document` para `CORRIGIR`,
+  `ANALISAR_HABILIDADES` e `GERAR_RELATORIO`, mas o teste automatizado cobria
+  apenas `CORRIGIR`.
+- Commit: `4094bda`.
+- Mudanca: `backend/tests/unit/test_e_t2_retry_partial_output.py` ganhou teste
+  parametrizado provando que `ANALISAR_HABILIDADES` falha alto sem
+  `habilidades` e que `GERAR_RELATORIO` falha alto sem `nota_final`, mesmo que
+  `create_document` tenha JSON parseavel e `execute_python_code` exista.
+- Validacoes locais: `python -m py_compile
+  backend/tests/unit/test_e_t2_retry_partial_output.py`; `git diff --check`;
+  teste focado com `28 passed`; cesta dual-output/PDF/custos com `63 passed`;
+  cesta de migracao/schema com `158 passed, 3 skipped`.
+- Deploy: `git push origin HEAD:main`; `./scripts/wait_deploy.sh 4094bda`
+  encontrou o hash apos 150s; `./scripts/check_deploy.sh 4094bda` passou;
+  `/api/deploy-info` retornou `commit=4094bda`; `/api/health` respondeu
+  `healthy`.
+- Status: D02-1 fica mais protegido por teste, mas ainda nao fechado inteiro:
+  restam artefatos parciais/duplicados/stale e qualidade semantica por provider.
 
 ## Riscos Abertos
 
