@@ -114,8 +114,23 @@ Use
   bloqueio; a atividade `8f58cc8b5fb75869` tem 4 alunos com `RELATORIO_FINAL`
   e esta pronta para `desempenho_tarefa` quando Google sair do free-tier/rate
   limit.
-- Anthropic recheck: Haiku 4.5 ainda retorna Anthropic `400`, saldo baixo, na
-  chave oficial do Render.
+- Ciclo pos-chaves de 2026-05-18: Render aceitou novas env vars Google e
+  Anthropic com HTTP `200` e pedido de deploy/restart HTTP `201`. Haiku 4.5
+  (`588f3efe7975`) saiu de bloqueado por credito e passou conexao, chat simples
+  e `CORRIGIR` isolado: `task_1255fef385bf`, JSON `816d1927e116914c`, PDF
+  `e250407e3823c99d`, `43096/11976` tokens, `US$0.102976`. Google tambem saiu
+  do erro free-tier: Flash Lite, Flash e Gemini 3 conectaram; Flash Lite ainda
+  teve `503 high demand`. Gemini 2.5 Flash (`gem25flash001`) passou `CORRIGIR`
+  isolado: `task_f15775f0c10c`, JSON `2fb79c5a06dd091e`, PDF
+  `f53b78ceb8fd53ad`, `27368/6255` tokens, `US$0.023848`. Pipeline completa
+  Google Flash `task_1cf3a3da23b5` passou `EXTRAIR_QUESTOES` e
+  `EXTRAIR_GABARITO`, mas falhou alto em `EXTRAIR_RESPOSTAS` porque a resposta
+  veio como JSON valido dentro de Markdown; etapas finais ficaram `skipped`.
+  Patch local remove cercas ```json dos exemplos de saida dos prompts padrao e
+  precisa deploy antes do re-smoke.
+- Anthropic recheck antigo de saldo baixo foi superado apos troca de chave; o
+  status atual de Haiku 4.5 e parcial/confirmado para conexao, chat simples e
+  `CORRIGIR` isolado, pendente pipeline completa e desempenho.
 - Pipeline live GPT-5.4 Mini: `task_a1f7521077a5` completou as 6 etapas na
   fixture Diana (`f68d57a9a339081f`/`10d9fa4f4303ea1f`) sem `stage_errors`.
 - Pipeline live Gemini 2.5 Flash: `task_41c45d7939b5` em `corrigir` falhou alto

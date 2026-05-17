@@ -128,6 +128,41 @@ Gate externo, fora do codigo:
 7. So quando a mensagem parar de citar `generate_content_free_tier_requests`,
    retomar `desempenho-tarefa-sync`.
 
+### Fluxo seguro para rotacionar chaves
+
+Nao colar segredo em chat, doc, terminal ou log.
+
+Ferramenta reutilizavel criada:
+
+```bash
+python3 scripts/secure_render_env_form.py --yad
+python3 scripts/secure_render_env_form.py --open
+```
+
+Ela abre um popup nativo de senha ou um formulario local em `127.0.0.1`, recebe
+uma `RENDER_API_KEY` e as chaves de provider, chama a API oficial do Render para
+atualizar `GOOGLE_API_KEY`, `ANTHROPIC_API_KEY` e, opcionalmente,
+`OPENAI_API_KEY`, e reinicia/deploya se a caixa estiver marcada. Essa etapa de
+restart/deploy existe apenas para o processo do site carregar as env vars novas.
+A saida permitida e apenas:
+
+- status HTTP por env var;
+- preview mascarado;
+- status do pedido de deploy.
+
+Lista atual de chaves necessarias para retomar o loop:
+
+- `RENDER_API_KEY`: usada para atualizar env vars e disparar deploy
+  no servico `srv-d5t8gbh4tr6s738fr3s0`;
+- `GOOGLE_API_KEY`: chave do projeto Google que recebeu credito/billing;
+- `ANTHROPIC_API_KEY`: chave Anthropic apos recarga de creditos.
+
+Se a Render API key for permanente, trata-la como segredo de alta criticidade:
+nao colar no chat, nao registrar em docs/logs e preferir rotacao posterior pelo
+Dashboard quando fizer sentido. Nao pedir Rio 3 neste ciclo. Qualquer chave que
+ja apareceu no chat deve ser considerada exposta e nao deve virar segredo
+oficial de producao.
+
 Gate de codigo ja feito neste ciclo:
 
 - `9dbb122` preserva `retry_after`.
@@ -138,6 +173,66 @@ Gate estrutural ainda pendente:
 
 - Aplicar `backend/migrations/002_create_token_usage.sql` no Supabase para que
   falhas sem documento final tenham persistencia duravel de custo.
+
+## Atualizacao Pos-Chaves De 2026-05-18
+
+Chaves enviadas pelo fluxo seguro local, sem aparecer em chat/log/doc:
+
+- `GOOGLE_API_KEY` atualizada no Render: HTTP `200`.
+- `ANTHROPIC_API_KEY` atualizada no Render: HTTP `200`.
+- pedido de deploy/restart: HTTP `201`.
+- `/api/deploy-info` continuou em `8de0ab3` porque o redeploy foi do mesmo
+  commit; `/api/health` retornou `{"status":"healthy","supabase":true}`.
+
+Baseline pos-env em `/api/custos/resumo?limit=420`:
+
+- `runs_analisados=192`;
+- `runs_precificados=190`;
+- `custo_usd=5.106744`;
+- Google na janela: `US$0.144800`;
+- `token_usage_durable=false`, ainda por Supabase `PGRST205`.
+
+Resultados novos:
+
+- Anthropic destravou: Claude Haiku 4.5 (`588f3efe7975`) respondeu conexao
+  `success=true`, `tokens=30`.
+- Haiku em chat JSON simples respondeu HTTP 200, `tokens_used=490`, mas tambem
+  envolveu JSON em bloco Markdown. Para chat simples isso e texto; para pipeline
+  continua proibido aceitar como sucesso.
+- Haiku `CORRIGIR` isolado passou no site oficial:
+  `task_1255fef385bf`, documentos principais `816d1927e116914c` (JSON) e
+  `e250407e3823c99d` (PDF), `43096/11976` tokens, `US$0.102976`. Artefatos
+  intermediarios do mesmo run (`711ecd38d4feffda`, `fcdbeddc7f746b55`) ficaram
+  `status=erro`, sem falso verde.
+- Google saiu do bloqueio antigo de free-tier: Flash Lite, Flash e Gemini 3
+  passaram conexao no site oficial; Flash Lite ainda oscilou com `503 high
+  demand`, que e instabilidade de provider, nao quota `generate_content_free_tier_requests`.
+- Google Flash (`gem25flash001`) `CORRIGIR` isolado passou:
+  `task_f15775f0c10c`, documentos `2fb79c5a06dd091e` (JSON) e
+  `f53b78ceb8fd53ad` (PDF), `27368/6255` tokens, `US$0.023848`.
+- Google Flash pipeline completa de Beatriz falhou alto em
+  `EXTRAIR_RESPOSTAS`: `task_1cf3a3da23b5`. `EXTRAIR_QUESTOES` e
+  `EXTRAIR_GABARITO` passaram; `EXTRAIR_RESPOSTAS` retornou JSON valido dentro
+  de Markdown, e o executor bloqueou com: "A resposta contem JSON valido, mas
+  veio com Markdown, comentarios ou texto ao redor. A etapa exige APENAS JSON
+  cru, sem envelope." As etapas finais foram `skipped` por bloqueio explicito.
+
+Causa provavel do erro novo:
+
+- Os prompts padrao diziam "sem Markdown", mas exibiam exemplos de saida dentro
+  de blocos ```json. Isso induz Gemini a copiar o envelope.
+- Patch local preparado: remover cercas Markdown dos exemplos de saida JSON nas
+  seis etapas oficiais e manter a validacao bloqueante. Teste novo:
+  `backend/tests/unit/test_default_prompts_no_json_fences.py`.
+- Validacoes locais do patch: `py_compile`, `git diff --check` e pytest focado
+  com `2 passed`.
+
+Proximo gate:
+
+1. Commit/push/deploy do patch de prompts.
+2. Confirmar Render no novo hash.
+3. Repetir pipeline completa `gem25flash001` em Beatriz.
+4. So se passar, rodar `desempenho_tarefa` com Google Flash.
 
 ## Tentativas Google
 
@@ -153,6 +248,12 @@ Gate estrutural ainda pendente:
 | 8 | `gem25lite001` | `CORRIGIR` Beatriz antes do patch | Falha alta | `task_cbf8fc1a0d3e`, `corrigir=failed`, Google `429`, retry sugerido `8.610734207s` | Sem documento novo observado |
 | 9 | `gem25lite001` | `CORRIGIR` apos `9dbb122` | Falha alta | `task_3669d284c815`, `corrigir=failed`, Google `429`, retry sugerido `57.324042179s` | Documento `5df1cac02c5fb746`, `3467/366`, `US$0.000493` |
 | 10 | `gem25lite001` | `CORRIGIR` apos `8de0ab3` | Falha alta | `task_c6e0b3157990`, rodou cerca de `491s`, Google `429`, retry sugerido `59.028617387s` | Documento `91219d221a2b3aa2`, `3467/1287`, `US$0.000862` |
+| 11 | `gem25lite001` | conexao apos troca de chave | Parcial | passou 2 vezes (`tokens=20`), depois `503 high demand`; sem free-tier | Nao entra no resumo de documentos |
+| 12 | `gem25flash001` | conexao apos troca de chave | OK | 3 tentativas `success=true`, `tokens=39/84/39` | Nao entra no resumo de documentos |
+| 13 | `gem3flash001` | conexao apos troca de chave | OK | 3 tentativas `success=true`, `tokens=195/140/178` | Nao entra no resumo de documentos |
+| 14 | `gem25lite001` | `CORRIGIR` apos troca de chave | Falha alta | `task_dc80b77ffd58`, Google `503 high demand`, `retryable=true` | Sem documento final observado; custo duravel bloqueado por `token_usage` ausente |
+| 15 | `gem25flash001` | `CORRIGIR` apos troca de chave | OK | `task_f15775f0c10c`, JSON `2fb79c5a06dd091e`, PDF `f53b78ceb8fd53ad` | `27368/6255`, `US$0.023848` |
+| 16 | `gem25flash001` | pipeline completa Beatriz | Falha alta | `task_1cf3a3da23b5`; passou questoes/gabarito, falhou `EXTRAIR_RESPOSTAS` por JSON dentro de Markdown | A coletar apos patch; erro sem sucesso falso |
 
 ## Patches Publicados No Ciclo
 

@@ -172,7 +172,7 @@ Pode haver uma ou várias habilidades por questão. Use quantas o enunciado just
 
 INSTRUÇÃO CRÍTICA: Retorne APENAS o JSON válido, sem texto adicional, explicações ou formatação Markdown. O resultado deve ser um JSON parseável que começa com { e termina com }.
 
-```json
+Estrutura JSON esperada (não inclua cercas Markdown):
 {
   "questoes": [
     {
@@ -197,7 +197,6 @@ INSTRUÇÃO CRÍTICA: Retorne APENAS o JSON válido, sem texto adicional, explic
     {"codigo": "ILLEGIBLE_QUESTION", "questao": 3, "explicacao": "Descrição do problema na questão"}
   ]
 }
-```
 
 **Códigos de aviso disponíveis (use quando aplicável):**
 - ILLEGIBLE_DOCUMENT — Documento inteiro ilegível ou muito borrado para extrair questões
@@ -249,7 +248,7 @@ Se o gabarito indicar pontuação parcial (ex: 1 ponto pelo desenvolvimento + 1 
 
 INSTRUÇÃO CRÍTICA: Retorne APENAS o JSON válido, sem texto adicional, explicações ou formatação Markdown.
 
-```json
+Estrutura JSON esperada (não inclua cercas Markdown):
 {
   "respostas": [
     {
@@ -269,7 +268,6 @@ INSTRUÇÃO CRÍTICA: Retorne APENAS o JSON válido, sem texto adicional, explic
     {"codigo": "ILLEGIBLE_QUESTION", "questao": 3, "explicacao": "Descrição do problema na questão"}
   ]
 }
-```
 
 **Códigos de aviso disponíveis (use quando aplicável):**
 - ILLEGIBLE_DOCUMENT — Documento do gabarito ilegível ou muito borrado
@@ -337,7 +335,7 @@ Use `null` quando: a resposta está em branco sem rascunho, ou quando não há n
 
 INSTRUÇÃO CRÍTICA: Retorne APENAS o JSON válido, sem texto adicional, explicações ou formatação Markdown. O resultado deve ser um JSON parseável que começa com { e termina com }.
 
-```json
+Estrutura JSON esperada (não inclua cercas Markdown):
 {
   "aluno": "{{nome_aluno}}",
   "respostas": [
@@ -359,7 +357,6 @@ INSTRUÇÃO CRÍTICA: Retorne APENAS o JSON válido, sem texto adicional, explic
     {"codigo": "ILLEGIBLE_QUESTION", "questao": 3, "explicacao": "Descrição do problema na questão"}
   ]
 }
-```
 
 **Códigos de aviso disponíveis (use quando aplicável):**
 - ILLEGIBLE_DOCUMENT — Prova do aluno inteira ilegível ou muito borrada
@@ -425,7 +422,7 @@ Princípios que guiam seu trabalho:
 O PDF deve usar exatamente os metadados acima no cabeçalho: aluno, matéria e atividade. Nunca use placeholders como "—", "N/A" ou "Não informado" para campos que estão no prompt.
 O PDF deve conter uma seção literal "Feedback Geral" com o texto completo de `feedback_geral` do JSON oficial. Não resuma, não troque o rótulo e não corte esse parágrafo.
 
-```json
+Estrutura JSON esperada para o artefato de correção (não inclua cercas Markdown):
 {
   "nota_final": 0.0,
   "questoes": [
@@ -449,7 +446,6 @@ O PDF deve conter uma seção literal "Feedback Geral" com o texto completo de `
     {"codigo": "ILLEGIBLE_QUESTION", "questao": 3, "explicacao": "Descrição do problema na questão"}
   ]
 }
-```
 
 Use `_avisos_documento` para problemas no documento inteiro e `_avisos_questao` para problemas em questões específicas. Se não houver avisos, envie listas vazias [].
 Cada aviso deve ter exatamente um código. Nunca combine códigos com `|`; se houver mais de um problema, crie um item separado para cada código.
@@ -490,7 +486,7 @@ Produza uma análise estruturada de habilidades para o professor.
 
 **INSTRUÇÃO CRÍTICA:** A execução oficial desta etapa usa ferramentas. Salve a análise JSON pela ferramenta `create_document` e gere o PDF pela ferramenta `execute_python_code`. Não entregue a análise em texto livre na resposta do chat; a saída válida da etapa é o artefato persistido pela ferramenta.
 
-```json
+Estrutura JSON esperada para o artefato de análise (não inclua cercas Markdown):
 {
   "habilidades": [
     {"nome": "Nome da habilidade", "nivel": "dominado|em_desenvolvimento|nao_demonstrado", "evidencias": ["Evidência concreta nas correções"], "nota": 0.0}
@@ -510,7 +506,6 @@ Produza uma análise estruturada de habilidades para o professor.
     {"codigo": "ILLEGIBLE_QUESTION", "questao": 3, "explicacao": "Descrição do problema na questão"}
   ]
 }
-```
 
 Use `_avisos_documento` para problemas no documento inteiro e `_avisos_questao` para problemas em questões específicas. Se não houver avisos, envie listas vazias [].
 Cada aviso deve ter exatamente um código. Nunca combine códigos com `|`; se houver mais de um problema, crie um item separado para cada código.
@@ -555,7 +550,7 @@ Produza um JSON estruturado com os dados do relatório.
 
 **INSTRUÇÃO CRÍTICA:** A execução oficial desta etapa usa ferramentas. Salve o relatório JSON pela ferramenta `create_document` e gere o PDF pela ferramenta `execute_python_code`. Não entregue o relatório em texto livre na resposta do chat; a saída válida da etapa é o artefato persistido pela ferramenta.
 
-```json
+Estrutura JSON esperada para o artefato de relatório (não inclua cercas Markdown):
 {
   "resumo_geral": "Síntese narrativa do desempenho do aluno",
   "pontos_fortes": ["Competência real demonstrada"],
@@ -573,7 +568,6 @@ Produza um JSON estruturado com os dados do relatório.
   ],
   "_fontes_utilizadas": ["CORRIGIR", "ANALISAR_HABILIDADES"]
 }
-```
 
 Use `_avisos_documento` para problemas no documento inteiro e `_avisos_questao` para problemas em questões específicas. Se não houver avisos, envie listas vazias [].
 Cada aviso deve ter exatamente um código. Nunca combine códigos com `|`; se houver mais de um problema, crie um item separado para cada código.

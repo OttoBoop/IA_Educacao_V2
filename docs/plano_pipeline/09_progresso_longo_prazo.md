@@ -46,6 +46,41 @@ rotacionar a chave do site oficial. Ollama esta indisponivel no Render.
 Supabase `token_usage`
 continua ausente (`PGRST205`), deixando custo duravel como gate real.
 
+Atualizacao chaves seguras de 2026-05-18: qualquer chave colada em chat e
+tratada como exposta e nao deve ser usada para producao. O caminho operacional
+para rotacionar credenciais do site oficial agora e
+`scripts/secure_render_env_form.py`: navegador local (`--open`) ou popup nativo
+(`--yad`). Ambos ficam fora do chat; o modo navegador abre somente em
+`127.0.0.1` e o modo `yad` usa campos de senha. O fluxo recebe
+`RENDER_API_KEY`, `GOOGLE_API_KEY` e `ANTHROPIC_API_KEY`, atualiza as
+env vars do servico Render `srv-d5t8gbh4tr6s738fr3s0` pela API oficial e pode
+disparar deploy. A ferramenta nao grava arquivo, nao imprime valores completos e
+deve registrar apenas status HTTP e previews mascarados. Chaves necessarias no
+ciclo atual: Render API key para atualizar o site; Google paga/correta para
+tirar o projeto de `generate_content_free_tier_requests`; Anthropic atualizada
+apos creditos. Se a Render API key for permanente, trata-la como segredo de alta
+criticidade: nunca colar no chat, nunca registrar em docs/logs e preferir
+rotacao posterior pelo dashboard quando fizer sentido. Rio 3 continua fora deste
+ciclo.
+
+Atualizacao pos-chaves Google/Anthropic de 2026-05-18: as chaves foram enviadas
+pelo fluxo seguro local; Render aceitou `GOOGLE_API_KEY` e `ANTHROPIC_API_KEY`
+com HTTP `200` e o pedido de deploy/restart com HTTP `201`, sem segredo no chat.
+Claude Haiku 4.5 destravou: conexao `success=true`, chat JSON simples HTTP 200
+e `CORRIGIR` isolado passou em `task_1255fef385bf`, com JSON
+`816d1927e116914c`, PDF `e250407e3823c99d`, `43096/11976` tokens e
+`US$0.102976`. Google tambem saiu do bloqueio `generate_content_free_tier_requests`:
+Flash Lite, Flash e Gemini 3 conectaram; Flash Lite ainda oscilou com `503 high
+demand`. Google Flash (`gem25flash001`) passou `CORRIGIR` isolado em
+`task_f15775f0c10c`, JSON `2fb79c5a06dd091e`, PDF `f53b78ceb8fd53ad`,
+`27368/6255` tokens, `US$0.023848`. Pipeline completa Google Flash falhou alto
+em `task_1cf3a3da23b5`: `EXTRAIR_QUESTOES` e `EXTRAIR_GABARITO` passaram, mas
+`EXTRAIR_RESPOSTAS` bloqueou JSON valido dentro de Markdown. Causa provavel
+encontrada: prompts padrao proibiam Markdown, mas mostravam exemplos de saida em
+blocos ```json. Patch local preparado remove essas cercas dos exemplos de saida
+JSON, preservando a validacao bloqueante; proximo gate e commit/push/deploy e
+re-smoke da pipeline completa com `gem25flash001`.
+
 Atualizacao Lista0 de 2026-05-17: a atividade real `Lista0`
 (`126e8b5ad7dd6d59`) tem documentos base cadastrados e 63 alunos
 (`38` com prova, `34` com correcao), mas a inspeção dos PDFs mostrou um bloqueio
