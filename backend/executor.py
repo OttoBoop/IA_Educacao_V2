@@ -5538,23 +5538,6 @@ Crie UM documento separado para cada aluno, nomeando como "relatorio_[nome_aluno
             prompt_id=prompt.id,
         )
 
-        # Save result
-        if resultado.sucesso:
-            await self._salvar_resultado(
-                etapa=EtapaProcessamento.RELATORIO_DESEMPENHO_TAREFA,
-                atividade_id=atividade_id,
-                aluno_id=None,
-                resposta_raw=resultado.resposta_raw,
-                resposta_parsed=None,
-                provider=resultado.provider,
-                modelo=resultado.modelo,
-                prompt_id=prompt.id,
-                tokens=resultado.tokens_entrada + (resultado.tokens_saida or 0),
-                tempo_ms=resultado.tempo_ms,
-                tokens_entrada=resultado.tokens_entrada,
-                tokens_saida=resultado.tokens_saida,
-            )
-
         return {
             "sucesso": resultado.sucesso,
             "etapa": "relatorio_desempenho_tarefa",
@@ -5688,23 +5671,6 @@ Crie UM documento separado para cada aluno, nomeando como "relatorio_[nome_aluno
             prompt_id=prompt.id,
         )
 
-        # Save result
-        if resultado.sucesso:
-            await self._salvar_resultado(
-                etapa=EtapaProcessamento.RELATORIO_DESEMPENHO_TURMA,
-                atividade_id=atividade_ref,
-                aluno_id=None,
-                resposta_raw=resultado.resposta_raw,
-                resposta_parsed=None,
-                provider=resultado.provider,
-                modelo=resultado.modelo,
-                prompt_id=prompt.id,
-                tokens=resultado.tokens_entrada + (resultado.tokens_saida or 0),
-                tempo_ms=resultado.tempo_ms,
-                tokens_entrada=resultado.tokens_entrada,
-                tokens_saida=resultado.tokens_saida,
-            )
-
         return {
             "sucesso": resultado.sucesso,
             "etapa": "relatorio_desempenho_turma",
@@ -5829,23 +5795,6 @@ Crie UM documento separado para cada aluno, nomeando como "relatorio_[nome_aluno
             expected_document_type=TipoDocumento.RELATORIO_DESEMPENHO_MATERIA,
             prompt_id=prompt.id,
         )
-
-        # Save result
-        if resultado.sucesso:
-            await self._salvar_resultado(
-                etapa=EtapaProcessamento.RELATORIO_DESEMPENHO_MATERIA,
-                atividade_id=atividade_ref or materia_id,
-                aluno_id=None,
-                resposta_raw=resultado.resposta_raw,
-                resposta_parsed=None,
-                provider=resultado.provider,
-                modelo=resultado.modelo,
-                prompt_id=prompt.id,
-                tokens=resultado.tokens_entrada + (resultado.tokens_saida or 0),
-                tempo_ms=resultado.tempo_ms,
-                tokens_entrada=resultado.tokens_entrada,
-                tokens_saida=resultado.tokens_saida,
-            )
 
         return {
             "sucesso": resultado.sucesso,

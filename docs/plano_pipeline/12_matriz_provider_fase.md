@@ -130,7 +130,16 @@ Use
   padrao e foi confirmado no Render, mas o re-smoke `task_f7575b3d5567` ainda
   falhou alto em `EXTRAIR_GABARITO` pelo mesmo envelope Markdown. Nova causa:
   retry de validacao ainda reintroduzia cerca Markdown; patch local posterior
-  remove/sanitiza essa cerca e precisa deploy antes do proximo re-smoke.
+  remove/sanitiza essa cerca. Deploy `2d08eec` confirmou a correcao:
+  `task_ca5dd6b8b3b5` completou as seis etapas com `gem25flash001`, sem
+  `stage_errors`, custo total `117829/31691` tokens e `US$0.114578`.
+  `desempenho_tarefa-sync` com Google Flash respondeu `sucesso=true`,
+  `status=PARCIAL`, incluiu 5 alunos e excluiu 5 por arquivos narrativos
+  ilegiveis/ausentes. Leitura `/api/desempenho/tarefa/8f58cc8b5fb75869`
+  validada. Bloqueio novo: custo/artefato agregado duplicado porque os metodos
+  de desempenho salvavam via tools e depois salvavam de novo via
+  `_salvar_resultado`; patch local remove a duplicacao antes de subir para
+  `desempenho_turma`.
 - Anthropic recheck antigo de saldo baixo foi superado apos troca de chave; o
   status atual de Haiku 4.5 e parcial/confirmado para conexao, chat simples e
   `CORRIGIR` isolado, pendente pipeline completa e desempenho.

@@ -90,6 +90,23 @@ citava a sequencia literal de tres crases. Patch local posterior removeu essas
 cercas do retry, sanitizou a resposta anterior e manteve a regra de JSON cru.
 Validacoes locais: `py_compile`, `git diff --check`, pytest focado `3 passed`.
 
+Atualizacao pos-`2d08eec`: Render confirmou `2d08eec` e a pipeline completa
+Google Flash passou no site oficial. `task_ca5dd6b8b3b5` completou as seis
+etapas de Beatriz em `8f58cc8b5fb75869` sem `stage_errors`. Artefatos principais:
+questoes `1fceff5c65c98d35`, gabarito `1402391821f1ce86`, respostas
+`60700bdd1590c8f8`, correcao JSON/PDF `57967fdce60a708a` /
+`2ac3cfae72865ce3`, habilidades JSON/PDF `0c9082bdc9f3b5d6` /
+`1bcfebf4fb4153b3`, relatorio JSON/PDF `e7a5d3ac2e661360` /
+`92d59649afcf2038`. Custo medido: `117829/31691` tokens, `US$0.114578`.
+`desempenho_tarefa-sync` com `gem25flash001` tambem respondeu HTTP 200,
+`sucesso=true`, `status=PARCIAL`, incluiu 5 alunos e excluiu 5 por arquivos
+narrativos ilegiveis/ausentes; leitura validada em
+`/api/desempenho/tarefa/8f58cc8b5fb75869`. Novo bug encontrado: os agregados
+salvavam JSON/PDF via tools e depois salvavam outro JSON com os mesmos tokens,
+duplicando artefato/custo. Patch local preparado remove o `_salvar_resultado`
+extra dos tres agregados e adiciona `test_desempenho_no_duplicate_save.py`;
+validacoes locais `4 passed`.
+
 Atualizacao Lista0 de 2026-05-17: a atividade real `Lista0`
 (`126e8b5ad7dd6d59`) tem documentos base cadastrados e 63 alunos
 (`38` com prova, `34` com correcao), mas a inspeção dos PDFs mostrou um bloqueio

@@ -257,6 +257,64 @@ Nova causa encontrada:
 - Validacoes locais posteriores: `py_compile`, `git diff --check` e pytest
   focado com `3 passed`.
 
+### Re-smoke apos `2d08eec`
+
+- Commit `2d08eec` foi publicado e confirmado no Render em `150s`.
+- `/api/health` permaneceu saudavel.
+- Re-smoke Google Flash pipeline completa:
+  `task_ca5dd6b8b3b5`.
+- Resultado: as seis etapas completaram sem `stage_errors`.
+- Artefatos principais:
+  - `EXTRAIR_QUESTOES`: `1fceff5c65c98d35`, `3552/1260`,
+    `US$0.004216`;
+  - `EXTRAIR_GABARITO`: `1402391821f1ce86`, `6028/1773`,
+    `US$0.006241`;
+  - `EXTRAIR_RESPOSTAS`: `60700bdd1590c8f8`, `6160/719`,
+    `US$0.003646`;
+  - `CORRIGIR`: JSON `57967fdce60a708a`, PDF `2ac3cfae72865ce3`,
+    `19225/3112`, `US$0.013548`;
+  - `ANALISAR_HABILIDADES`: JSON `0c9082bdc9f3b5d6`, PDF
+    `1bcfebf4fb4153b3`, `36555/7240`, `US$0.029067`;
+  - `GERAR_RELATORIO`: JSON `e7a5d3ac2e661360`, PDF
+    `92d59649afcf2038`, `46309/17587`, `US$0.057860`.
+- Custo total medido da pipeline Beatriz/Google Flash:
+  `117829/31691` tokens, `US$0.114578`.
+
+### Desempenho Tarefa Google Flash
+
+- Endpoint: `/api/executar/desempenho-tarefa-sync`.
+- Provider: `gem25flash001`.
+- Resultado: HTTP 200, `sucesso=true`, `status=PARCIAL`.
+- Cobertura: `alunos_incluidos=5`, `alunos_excluidos=5`.
+- Motivo dos excluidos: arquivos narrativos ilegiveis/ausentes no storage para
+  alguns `RELATORIO_FINAL` antigos.
+- Leitura validada em `/api/desempenho/tarefa/8f58cc8b5fb75869`.
+- Artefatos lidos:
+  - JSON `6a067026f35f1ca4`;
+  - PDF `4ce97741964d5cd3`;
+  - JSON extra de tool `f2177d727031533c`.
+- Custo reportado por run: `46492/11353`, `US$0.042330`.
+
+Bug novo de custos/artefatos:
+
+- O metodo agregado chamava `executar_com_tools`, que ja salva JSON/PDF, e depois
+  chamava `_salvar_resultado` de novo com os mesmos tokens.
+- Isso gerou JSON duplicado e fez `/api/custos/resumo` aparentar contar o mesmo
+  gasto duas vezes.
+- Patch local preparado: remover `_salvar_resultado` extra de
+  `gerar_relatorio_desempenho_tarefa`, `gerar_relatorio_desempenho_turma` e
+  `gerar_relatorio_desempenho_materia`.
+- Teste novo: `backend/tests/unit/test_desempenho_no_duplicate_save.py`.
+- Validacoes locais: `py_compile`, `git diff --check`, pytest focado
+  `4 passed`.
+
+Proximo gate:
+
+1. Commit/push/deploy do patch anti-duplicacao.
+2. Repetir `desempenho_tarefa-sync` com Google Flash.
+3. Confirmar que o novo run gera apenas um par JSON/PDF oficial e um custo.
+4. So depois subir para `desempenho_turma-sync`.
+
 ## Tentativas Google
 
 | Ordem | Modelo | Alvo | Resultado | Evidencia | Custo medido |
