@@ -5711,7 +5711,7 @@ Crie UM documento separado para cada aluno, nomeando como "relatorio_[nome_aluno
         # Gather narratives across all turmas
         conteudos = []
         avisos = []
-        cobertura = {}  # turma_nome → {"narrativas": count}
+        cobertura = {}  # turma_id → {"turma": nome, "narrativas": count}
         atividade_ref = None
         for turma in turmas:
             alunos = self.storage.listar_alunos(turma.id)
@@ -5731,6 +5731,7 @@ Crie UM documento separado para cada aluno, nomeando como "relatorio_[nome_aluno
                         pdf_doc.close()
                         if texto.strip():
                             conteudos.append({
+                                "turma_id": turma.id,
                                 "turma": turma.nome,
                                 "aluno_id": doc.aluno_id,
                                 "atividade": atividade.nome,
@@ -5740,14 +5741,33 @@ Crie UM documento separado para cada aluno, nomeando como "relatorio_[nome_aluno
                         else:
                             avisos.append({
                                 "aluno_id": doc.aluno_id,
+                                "turma_id": turma.id,
                                 "motivo": "PDF sem texto extraível (página em branco ou imagem)",
                             })
                     except Exception as e:
                         avisos.append({
                             "aluno_id": doc.aluno_id,
+                            "turma_id": turma.id,
                             "motivo": f"Arquivo narrativo ilegível: {e}",
                         })
-            cobertura[turma.nome] = {"narrativas": narrativas_turma}
+            cobertura[turma.id] = {"turma": turma.nome, "narrativas": narrativas_turma}
+
+        turmas_com_resultado = {c["turma_id"] for c in conteudos}
+        if len(turmas_com_resultado) < 2:
+            return {
+                "sucesso": False,
+                "erro": (
+                    "Relatório de desempenho da matéria exige RELATORIO_FINAL legível "
+                    "em pelo menos 2 turmas distintas. "
+                    f"Turmas com resultado legível: {len(turmas_com_resultado)}."
+                ),
+                "etapa": "relatorio_desempenho_materia",
+                "total_turmas": len(turmas),
+                "narrativas_encontradas": len(conteudos),
+                "cobertura": cobertura,
+                "avisos": avisos,
+                "status": "BLOQUEADO_PREREQUISITO",
+            }
 
         if len(conteudos) < 2:
             return {
@@ -5768,10 +5788,14 @@ Crie UM documento separado para cada aluno, nomeando como "relatorio_[nome_aluno
 
         # Build variables
         relatorios_texto = "\n\n---\n\n".join([
-            f"### Turma: {c['turma']} | Aluno: {c['aluno_id']} | Atividade: {c['atividade']}\n\n{c['conteudo']}"
+            f"### Turma: {c['turma']} ({c['turma_id']}) | Aluno: {c['aluno_id']} | Atividade: {c['atividade']}\n\n{c['conteudo']}"
             for c in conteudos
         ])
-        turma_nomes = sorted(set(c["turma"] for c in conteudos))
+        turma_nomes = sorted(set(
+            f"{c['turma']} ({c['turma_id']})"
+            for c in conteudos
+            if c["turma_id"] in turmas_com_resultado
+        ))
         variaveis = {
             "relatorios_narrativos": relatorios_texto,
             "materia": materia.nome if materia else materia_id,
