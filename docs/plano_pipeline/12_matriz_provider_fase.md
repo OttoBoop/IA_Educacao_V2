@@ -99,6 +99,10 @@ Use
   `9f6b2b61b6c3`, sem `stage_errors`; custo medido `65289/20675` tokens,
   `US$ 0.162787`. Relatorio final `d6b0b0434da30d26` /
   `a4f4fbbf2d5f86b4`.
+- Recheck Google pos-o-series: Gemini 2.5 Flash e Gemini 3 Flash conectaram,
+  Flash Lite e Gemini 2.5 Pro retornaram Google `429`; `task_287db2c7f112`
+  confirmou que Gemini 2.5 Flash ainda falha alto em `corrigir` por quota
+  `429 RESOURCE_EXHAUSTED`, sem fallback e sem custo/doc novo.
 - Anthropic recheck: Haiku 4.5 ainda retorna Anthropic `400`, saldo baixo, na
   chave oficial do Render.
 - Pipeline live GPT-5.4 Mini: `task_a1f7521077a5` completou as 6 etapas na
@@ -271,7 +275,7 @@ Fontes de preco:
 | `180b8298a279` | gpt-4o | `openai/gpt-4o` | T/V | `2.50/10.00` | catalogo | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | `task_68b19146a95b`: `US$ 0.314369` | `US$ 0.309673` | Manter como referencia, nao fallback silencioso. |
 | `588f3efe7975` | Claude Haiku 4.5 | `anthropic/claude-haiku-4-5-20251001` | T/V | `1.00/5.00` | oficial Anthropic | 🚫 | 🚫 | 🚫 | 🚫 | 🚫 | 🚫 | 🚫 chave/saldo | Re-smoke 2026-05-17: `/testar` e `/api/chat` retornaram Anthropic `400`, saldo baixo; recheck pos-`c56c4b6` confirmou o mesmo bloqueio na chave do Render | `US$ 0.136272` | Sincronizar/rotacionar chave Anthropic do Render; depois rodar Haiku primeiro. |
 | `4eaeb5105f5d` | Claude Sonnet 4.5 | `anthropic/claude-sonnet-4-5-20250929` | T/V | `3.00/15.00` | oficial Anthropic | 🚫 | 🚫 | 🚫 | 🚫 | 🚫 | 🚫 | 🚫 chave/saldo | Sweep anterior indicou mesmo bloqueio Anthropic; nao retestado para poupar ate Haiku destravar | `US$ 0.408816` | Testar so depois de Haiku, por custo ~3x maior. |
-| `gem25flash001` | Gemini 2.5 Flash | `google/gemini-2.5-flash` | T/V | `0.30/2.50` | oficial Google | ✅ | ✅ | ✅ | 🚫 | ⏸️ | ⏸️ | 🚫 quota em `corrigir` | `task_41c45d7939b5`: falhou alto em `corrigir` por Google `429 RESOURCE_EXHAUSTED` | `US$ 0.053285` | Repetir quando quota Google permitir. |
+| `gem25flash001` | Gemini 2.5 Flash | `google/gemini-2.5-flash` | T/V | `0.30/2.50` | oficial Google | ✅ | ✅ | ✅ | 🚫 | ⏸️ | ⏸️ | 🚫 quota em `corrigir` | `task_287db2c7f112` e `task_41c45d7939b5`: falha alta em `corrigir` por Google `429 RESOURCE_EXHAUSTED` | `US$ 0.053285` | Repetir quando quota Google permitir. |
 | `gem25lite001` | Gemini 2.5 Flash Lite | `google/gemini-2.5-flash-lite` | T/V | `0.10/0.40` | oficial Google | ⏸️ | ⏸️ | ⏸️ | 🚫 | ⏸️ | ⏸️ | 🚫 quota | `task_817bda15b4c0`: Google `429 RESOURCE_EXHAUSTED`, erro `f5e71b8e5707790d`, custo `US$ 0.000553`; historico `task_124bf0e8d7bf` falhou por JSON/PDF divergentes | `US$ 0.012387` | Repetir `corrigir` quando quota Google permitir; tools ja alinhadas no catalogo e no site. |
 | `gem3flash001` | Gemini 3 Flash | `google/gemini-3-flash-preview` | T/V | `0.50/3.00` | oficial Google | ✅ | ✅ | ✅ | ⚠️ | ⚠️ | ⚠️ | 🚫 quota/revalidacao | `task_5e97bbee896e`: tres extracoes passaram; falhou alto em `corrigir` por `429` | `US$ 0.074338` | Repetir pipeline sequencial completa quando quota permitir. |
 | `e251747cd7a2` | Gemini 2.5 Pro | `google/gemini-2.5-pro` | T/V | `1.25/10.00` ate 200k prompt | oficial Google | ⏸️ | ⏸️ | ⏸️ | ⏸️ | ⏸️ | ⏸️ | 🚫 quota | Sweep live: conexao bloqueada por Google `429` | `US$ 0.216851` | Testar conexao e uma etapa quando quota permitir. |

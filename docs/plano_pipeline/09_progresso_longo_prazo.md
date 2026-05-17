@@ -3576,6 +3576,24 @@ Critério de pronto: lista de limpeza segura e revisada.
   completa na fixture simples Diana. Custo real ficou acima da estimativa
   canonica `US$ 0.136256`, mas abaixo da full o3-low observada.
 
+### 2026-05-17 -- Provider: Google segue bloqueado por quota em pipeline
+
+- Connection sweep Google pos-o-series:
+  - `gem25flash001` (`gemini-2.5-flash`) retornou `success=true`, `tokens=39`.
+  - `gem3flash001` (`gemini-3-flash-preview`) retornou `success=true`,
+    `tokens=110`.
+  - `gem25lite001` e `e251747cd7a2` retornaram `success=false`, Google `429`.
+- Re-smoke `corrigir` Gemini 2.5 Flash: `task_287db2c7f112`,
+  `model_id=gem25flash001`, fixture Diana, falhou alto imediatamente em
+  `corrigir` com Google `429 RESOURCE_EXHAUSTED`, `retryable=true`, limite
+  free tier `20`, sem fallback para outro modelo.
+- Custo: `/api/custos/resumo?limit=700` ficou em `runs_analisados=443`,
+  `runs_precificados=269`, `runs_bloqueados=174`, `custo_usd=6.014146`.
+  A falha Google de quota nao gerou documento/custo novo nessa chamada; o erro
+  ficou apenas no `task-progress`.
+- Status: Google continua nao pipeline-ready na configuracao atual por quota.
+  Isso e bloqueio externo, nao bug silencioso: a pipeline falha alto e para.
+
 ## Riscos Abertos
 
 1. Chave Anthropic configurada no Render ainda retorna saldo baixo; se existem

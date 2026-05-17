@@ -4079,6 +4079,12 @@ Interpretacao:
   total `65289/20675` tokens, `US$ 0.162787`. O relatorio final
   `d6b0b0434da30d26`/`a4f4fbbf2d5f86b4` trouxe nota `8/10` e fontes
   `CORRIGIR` + `ANALISAR_HABILIDADES`.
+- Google recheck pos-o-series: Gemini 2.5 Flash e Gemini 3 Flash responderam
+  conexao simples, mas Flash Lite e Gemini 2.5 Pro ja retornaram quota `429`.
+  O smoke `task_287db2c7f112` com Gemini 2.5 Flash em `corrigir` falhou alto
+  por `429 RESOURCE_EXHAUSTED`, `retryable=true`, sem fallback e sem novo
+  documento/custo. Portanto Google segue bloqueado por quota para pipeline,
+  mesmo quando o teste simples responde OK.
 - Anthropic pos-`c56c4b6`: Haiku 4.5 continua bloqueado na chave oficial do
   Render com Anthropic `400`, saldo baixo. Se ha creditos na conta do usuario,
   o proximo gate e atualizar/rotacionar a chave do Render por caminho seguro.
