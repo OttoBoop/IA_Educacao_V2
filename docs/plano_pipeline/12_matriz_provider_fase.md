@@ -5,10 +5,11 @@
 (`126e8b5ad7dd6d59`), smoke simples oficial `Smoke Paulo Pipeline 2026-05-16`
 (`f68d57a9a339081f`) e atividade textual `Prova 1 - Equações do 1º Grau`
 (`8f58cc8b5fb75869`)
-**Runtime oficial atual:** backend Render em `a3e95e8`; `origin/main` recebeu o
-ciclo `a3e95e8` para publicar a matriz operacional por modelo ativo e corrigir
-precos Gemini no catalogo de custos. O codigo funcional de batch mais recente
-continua sendo `9b68de1`, agora incluido no runtime `a3e95e8`. Use
+**Runtime oficial atual:** backend Render em `c56c4b6`; `origin/main` recebeu o
+ciclo `c56c4b6` para alinhar Gemini 2.5 Flash Lite como modelo com tools no
+catalogo, alem dos precos Gemini corrigidos em `a3e95e8`. O codigo funcional de
+batch mais recente continua sendo `9b68de1`, agora incluido no runtime atual.
+Use
 `/api/deploy-info` com no-cache/cache-buster como gate de codigo live.
 **Commits aplicados/observados:** `a632883`, `5737611`, `50935ea`, `479b77d`,
 `b12be9a`, `301eba6`, `f67055c`, `462ea1d`, `b4d7ee6`, `99483d1`,
@@ -27,21 +28,25 @@ continua sendo `9b68de1`, agora incluido no runtime `a3e95e8`. Use
 `d47d748`, `c53fae6`, `9ab53df`, `1454e68`, `3fce335`, `33fb7d5`, `0f84552`,
 `974f040`, `11a396b`, `c094fba`, `d799165`, `6b43016`, `8c77cc4`, `29a4b7e`,
 `fdf0cbd`, `e2260d2`, `ae04982`, `ed592de`, `2a0462d`, `dbbecfe`, `4a4caf0`,
-`0bcff27`, `9b68de1`, `a3e95e8`
+`0bcff27`, `9b68de1`, `a3e95e8`, `c56c4b6`
 
 ## Status Oficial De Deploy
 
 - O servico oficial em 2026-05-17 e
   `srv-d5t8gbh4tr6s738fr3s0` (`IA_Educacao_V2`), branch `main`,
   `rootDir=backend`, URL `https://ia-educacao-v2.onrender.com`.
-- `/api/deploy-info` confirmou o runtime backend `a3e95e8` com
+- `/api/deploy-info` confirmou o runtime backend `c56c4b6` com
   `source=RENDER_GIT_COMMIT`; esse e o gate primario atual para codigo live.
-- `origin/main` pode estar em commit documental posterior a `a3e95e8`; o gate
+- `origin/main` pode estar em commit documental posterior a `c56c4b6`; o gate
   de comportamento de provider/pipeline continua sendo `/api/deploy-info` com
   no-cache e os smokes live.
 - Smoke pos-deploy de catalogo: `/api/settings/model-catalog/calculate-cost`
   retornou para o perfil `74257/12403`: Gemini 2.5 Flash `US$ 0.053285`,
   Gemini 2.5 Flash Lite `US$ 0.012387`, Gemini 3 Flash `US$ 0.074338`.
+- Smoke pos-deploy `c56c4b6`: `/api/settings/model-catalog/google/gemini-2.5-flash-lite`
+  retornou `supports_tools=true`, `supports_vision=true`, descricao atualizada
+  e preco `0.1/0.4`; `/api/settings/models` confirmou `gem25lite001` com
+  `suporta_function_calling=true`.
 - Smoke pos-deploy de custos: `/api/custos/resumo?limit=200` retornou
   `runs_analisados=101`, `runs_precificados=99`, `runs_bloqueados=2`,
   `custo_usd=1.884676`, Google `US$ 0.052051`, OpenAI `US$ 1.832625` e

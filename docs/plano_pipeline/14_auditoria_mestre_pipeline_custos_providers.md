@@ -10,7 +10,7 @@ um deve ser lido, o que ainda vale, o que ficou historico, e quais fatos precisa
 guiar os proximos ciclos.
 
 Atualizacao de controle de 2026-05-17: o runtime mais recente confirmado no site
-oficial e `a3e95e8`, validado por `/api/deploy-info` com
+oficial e `c56c4b6`, validado por `/api/deploy-info` com
 cache-buster/no-cache, `/api/health`, `check_deploy.sh` e smoke live de
 catalogo/custos. O codigo funcional de batch dentro desse runtime continua
 validado por `task_ee773aefb10d`. Smokes anteriores continuam
@@ -4020,6 +4020,11 @@ Interpretacao:
   calling lista Flash-Lite como suportado, mas o catalogo local ainda dizia
   `supports_tools=false`. O patch seguinte alinha o catalogo para
   `supports_tools=true` e adiciona teste dedicado.
+- Publicacao Flash Lite tools: `c56c4b6` foi publicado e confirmado no Render.
+  O smoke live de `/api/settings/model-catalog/google/gemini-2.5-flash-lite`
+  retornou descricao atualizada, `supports_tools=true`, `supports_vision=true`
+  e preco `0.1/0.4`; `/api/settings/models` confirmou o modelo ativo
+  `gem25lite001` com `suporta_function_calling=true`.
 
 ### Provider: Batch Textual, Branco Rastreavel E Status Global De Batch
 

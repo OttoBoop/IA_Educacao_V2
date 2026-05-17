@@ -3380,8 +3380,25 @@ Critério de pronto: lista de limpeza segura e revisada.
   "Ultra economico com suporte a function calling" e usa
   `supports_tools=true`.
 - Teste novo: `test_catalogo_gemini_flash_lite_declara_tools`.
-- Proximo passo: validar local, publicar, esperar Render e confirmar
-  `/api/settings/model-catalog/google/gemini-2.5-flash-lite` no site oficial.
+- Validacao local:
+  - `python -m json.tool backend/data/model_catalog.json`.
+  - `python -m py_compile backend/model_catalog.py
+    backend/tests/unit/test_cost_tracking.py`.
+  - `test_cost_tracking.py` + `test_model_manager.py`: `86 passed`.
+  - `git diff --check`.
+- Commit/push/deploy: `c56c4b6` publicado em `origin/main`; Render confirmou
+  `c56c4b6d3f683a483b15f1f54fc4c9ff5762020d`.
+- Smoke live:
+  - `check_deploy.sh c56c4b6`, `/api/deploy-info` e `/api/health` passaram.
+  - `/api/settings/model-catalog/google/gemini-2.5-flash-lite` retornou
+    `supports_tools=true`, `supports_vision=true`, preco `0.1/0.4`.
+  - `/api/settings/models` confirmou `gem25lite001` com
+    `suporta_function_calling=true`.
+  - `/api/settings/model-catalog/calculate-cost` manteve Flash Lite em
+    `US$ 0.012387` para o perfil canonico.
+- Proximo passo: rodar connection sweep Google; se quota permitir, re-smoke de
+  `corrigir` com `gem25lite001` para saber se continua `❌` por qualidade ou
+  se evolui para parcial/validado.
 
 ## Riscos Abertos
 
