@@ -3993,7 +3993,7 @@ Seja preciso, educativo e construtivo em suas análises."""
                 )
 
             def _initial_message_for_provider() -> str:
-                if not (dual_output_expected and is_openai_provider):
+                if not (dual_output_expected and uses_phased_tool_calls):
                     return mensagem
 
                 contexto_original = str(mensagem or "").strip()

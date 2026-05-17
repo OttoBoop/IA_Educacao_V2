@@ -519,6 +519,22 @@ class TestBothOutputsNoRetry:
         assert "nao responda em texto simples" in first_message
         assert "execute_python_code" in first_message
 
+    async def test_google_initial_message_requests_create_document_only(self):
+        """The first Google dual-output request must align the prompt with the exposed tool."""
+        both_response = _tool_response(["create_document", "execute_python_code"])
+        _result, mock_client = await _call_executar_com_tools(
+            chat_side_effect=both_response,
+            tools_to_use=["create_document", "execute_python_code"],
+            tipo_value="google",
+        )
+
+        first_message = mock_client.chat_with_tools.call_args_list[0].kwargs["mensagem"].lower()
+        assert "primeira chamada" in first_message
+        assert "create_document" in first_message
+        assert "exatamente um arquivo .json" in first_message
+        assert "nao gere pdf" in first_message
+        assert "nao responda em texto simples" in first_message
+
     async def test_pipeline_create_document_description_restricts_to_json(self):
         """Pipeline create_document schema must not advertise PDF creation."""
         both_response = _tool_response(["create_document", "execute_python_code"])
