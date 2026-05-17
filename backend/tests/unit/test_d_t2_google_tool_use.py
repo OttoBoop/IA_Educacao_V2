@@ -563,6 +563,49 @@ class TestGoogleProviderErrors:
     """Google tool-use HTTP errors preserve retryability."""
 
     @pytest.mark.asyncio
+    async def test_429_with_retry_after_retries_same_google_request(
+        self, google_client, mock_tool_registry, anthropic_format_tools
+    ):
+        with (
+            patch("httpx.AsyncClient") as mock_client_cls,
+            patch("chat_service.asyncio.sleep", new_callable=AsyncMock) as mock_sleep,
+        ):
+            mock_client = AsyncMock()
+            mock_client_cls.return_value.__aenter__ = AsyncMock(return_value=mock_client)
+            mock_client_cls.return_value.__aexit__ = AsyncMock(return_value=False)
+
+            mock_r1 = MagicMock(status_code=429)
+            mock_r1.text = (
+                '{"error":{"status":"RESOURCE_EXHAUSTED",'
+                '"message":"quota. Please retry in 1.2s."}}'
+            )
+            mock_r2 = MagicMock(status_code=200)
+            mock_r2.json.return_value = make_google_final_response(
+                "ok",
+                usage={
+                    "promptTokenCount": 11,
+                    "candidatesTokenCount": 3,
+                    "totalTokenCount": 14,
+                },
+            )
+            mock_client.post = AsyncMock(side_effect=[mock_r1, mock_r2])
+
+            result = await google_client._chat_google_with_tools(
+                mensagem="Create doc",
+                historico=[],
+                system="Helper",
+                tools=anthropic_format_tools,
+                tool_registry=mock_tool_registry,
+                max_iterations=10,
+            )
+
+        assert result["content"] == "ok"
+        assert result["input_tokens"] == 11
+        assert result["output_tokens"] == 3
+        assert mock_client.post.call_count == 2
+        mock_sleep.assert_awaited_once_with(2)
+
+    @pytest.mark.asyncio
     async def test_503_is_retryable_provider_error(
         self, google_client, mock_tool_registry, anthropic_format_tools
     ):
@@ -611,10 +654,7 @@ class TestGoogleProviderErrors:
             mock_r1 = MagicMock(status_code=200)
             mock_r1.json.return_value = fc_response
             mock_r2 = MagicMock(status_code=429)
-            mock_r2.text = (
-                '{"error":{"status":"RESOURCE_EXHAUSTED",'
-                '"message":"quota. Please retry in 8.610734207s."}}'
-            )
+            mock_r2.text = '{"error":{"status":"RESOURCE_EXHAUSTED","message":"quota"}}'
             mock_client.post = AsyncMock(side_effect=[mock_r1, mock_r2])
 
             with pytest.raises(ProviderAPIError) as exc:
@@ -632,5 +672,4 @@ class TestGoogleProviderErrors:
         assert exc.value.input_tokens == 20
         assert exc.value.output_tokens == 6
         assert exc.value.total_tokens == 26
-        assert exc.value.retry_after == 9
         assert "RESOURCE_EXHAUSTED" in str(exc.value)

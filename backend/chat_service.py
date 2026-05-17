@@ -13,6 +13,7 @@ from datetime import datetime
 from typing import Optional, Dict, Any, List, Set, Tuple
 from pathlib import Path
 from enum import Enum
+import asyncio
 import json
 import os
 import re
@@ -815,6 +816,47 @@ class ChatClient:
         self.config = model_config
         self.api_key = api_key
         self.base_url = model_config.base_url or DEFAULT_URLS.get(model_config.tipo, "")
+
+    async def _post_google_generate_content(
+        self,
+        client: httpx.AsyncClient,
+        request_body: Dict[str, Any],
+        *,
+        input_tokens_so_far: int = 0,
+        output_tokens_so_far: int = 0,
+        total_tokens_so_far: int = 0,
+        max_retries: int = 2,
+    ) -> httpx.Response:
+        """POST to Gemini with same-request retry for provider-supplied quota waits."""
+        attempts = 0
+        while True:
+            response = await client.post(
+                f"{self.base_url}/models/{self.config.modelo}:generateContent",
+                params={"key": self.api_key},
+                headers={"Content-Type": "application/json"},
+                json=request_body,
+            )
+            if response.status_code == 200:
+                return response
+
+            error = ProviderAPIError(
+                "Google",
+                response.status_code,
+                response.text,
+                input_tokens=input_tokens_so_far,
+                output_tokens=output_tokens_so_far,
+                total_tokens=total_tokens_so_far,
+            )
+            if not (
+                response.status_code == 429
+                and error.retryable
+                and error.retry_after
+                and attempts < max_retries
+            ):
+                raise error
+
+            attempts += 1
+            await asyncio.sleep(min(error.retry_after, 60))
     
     async def chat(
         self,
@@ -1777,22 +1819,13 @@ class ChatClient:
                 request_body["system_instruction"] = {"parts": [{"text": system}]}
 
             async with httpx.AsyncClient(timeout=120.0) as client:
-                response = await client.post(
-                    f"{self.base_url}/models/{self.config.modelo}:generateContent",
-                    params={"key": self.api_key},
-                    headers={"Content-Type": "application/json"},
-                    json=request_body
+                response = await self._post_google_generate_content(
+                    client,
+                    request_body,
+                    input_tokens_so_far=total_input_tokens,
+                    output_tokens_so_far=total_output_tokens,
+                    total_tokens_so_far=total_tokens,
                 )
-
-                if response.status_code != 200:
-                    raise ProviderAPIError(
-                        "Google",
-                        response.status_code,
-                        response.text,
-                        input_tokens=total_input_tokens,
-                        output_tokens=total_output_tokens,
-                        total_tokens=total_tokens,
-                    )
 
                 data = response.json()
 
@@ -1907,25 +1940,7 @@ class ChatClient:
             }
 
         async with httpx.AsyncClient(timeout=120.0) as client:
-            response = await client.post(
-                f"{self.base_url}/models/{self.config.modelo}:generateContent",
-                params={"key": self.api_key},
-                headers={"Content-Type": "application/json"},
-                json=request_body
-            )
-            
-            if response.status_code != 200:
-                if response.status_code == 400:
-                    detail = f"Erro na requisição para '{self.config.modelo}'. Verifique os parâmetros."
-                elif response.status_code == 403:
-                    detail = "Chave de API sem permissão para este modelo ou região."
-                elif response.status_code == 429:
-                    detail = "Limite de requisições atingido. Aguarde alguns minutos."
-                elif response.status_code == 404:
-                    detail = f"Modelo '{self.config.modelo}' não encontrado."
-                else:
-                    detail = response.text[:300]
-                raise ProviderAPIError("Google", response.status_code, detail)
+            response = await self._post_google_generate_content(client, request_body)
 
             data = response.json()
 
