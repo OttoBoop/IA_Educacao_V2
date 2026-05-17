@@ -3552,6 +3552,30 @@ Critério de pronto: lista de limpeza segura e revisada.
   completa na fixture simples Diana. Ainda precisa dataset maior antes de virar
   default operacional.
 
+### 2026-05-17 -- Provider: o4-mini completa full pipeline na fixture Diana
+
+- Full pipeline: `task_e3bb35cfd76a`, `model_id=9f6b2b61b6c3`,
+  `force_rerun=true`, completou as seis etapas na fixture Diana, sem
+  `stage_errors`.
+- Custos full pipeline o4-mini:
+  - `EXTRAIR_QUESTOES`: `31bfc8b5a9faa785`, `1150/973`, `US$ 0.005546`.
+  - `EXTRAIR_GABARITO`: `ca76537b6cca8162`, `1817/848`, `US$ 0.005730`.
+  - `EXTRAIR_RESPOSTAS`: `17a21e750ee4e008`, `2210/1303`, `US$ 0.008164`.
+  - `CORRIGIR`: JSON `e341e68bc59920fa`, PDF `2b8076e2e9da6e1d`,
+    `17997/5064`, `US$ 0.042078`.
+  - `ANALISAR_HABILIDADES`: `bab7fda5bca9e5fa`, `25882/8415`,
+    `US$ 0.065496`.
+  - `GERAR_RELATORIO`: JSON `d6b0b0434da30d26`, PDF
+    `a4f4fbbf2d5f86b4`, `16233/4072`, `US$ 0.035773`.
+- Total medido da full pipeline o4-mini: `65289/20675` tokens,
+  `US$ 0.162787`.
+- Validacao de conteudo: relatorio final PDF extraido por `pdftotext` trouxe
+  nota final `8/10`, proficiencia `80%`, pontos fortes e recomendacoes; JSON
+  final preservou `_fontes_utilizadas=["CORRIGIR","ANALISAR_HABILIDADES"]`.
+- Status: `o4-mini` agora e `✅` para as seis etapas e `✅` para pipeline
+  completa na fixture simples Diana. Custo real ficou acima da estimativa
+  canonica `US$ 0.136256`, mas abaixo da full o3-low observada.
+
 ## Riscos Abertos
 
 1. Chave Anthropic configurada no Render ainda retorna saldo baixo; se existem

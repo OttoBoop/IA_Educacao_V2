@@ -95,6 +95,10 @@ Use
   `126159/28466` tokens, `US$ 0.264026`. O relatorio final validado foi
   `5e33e44046bb29ad`/`b8e001c46a1ce975`; artefato extra
   `bb8df355932a70c6` ficou `status=erro`.
+- Full pipeline o4-mini: `task_e3bb35cfd76a` completou as 6 etapas com
+  `9f6b2b61b6c3`, sem `stage_errors`; custo medido `65289/20675` tokens,
+  `US$ 0.162787`. Relatorio final `d6b0b0434da30d26` /
+  `a4f4fbbf2d5f86b4`.
 - Anthropic recheck: Haiku 4.5 ainda retorna Anthropic `400`, saldo baixo, na
   chave oficial do Render.
 - Pipeline live GPT-5.4 Mini: `task_a1f7521077a5` completou as 6 etapas na
@@ -273,7 +277,7 @@ Fontes de preco:
 | `e251747cd7a2` | Gemini 2.5 Pro | `google/gemini-2.5-pro` | T/V | `1.25/10.00` ate 200k prompt | oficial Google | ⏸️ | ⏸️ | ⏸️ | ⏸️ | ⏸️ | ⏸️ | 🚫 quota | Sweep live: conexao bloqueada por Google `429` | `US$ 0.216851` | Testar conexao e uma etapa quando quota permitir. |
 | `58ff5dcdff67` | o3 Mini | `openai/o3-mini` | T/sem vision | `1.10/4.40` | oficial OpenAI/catalogo | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ fixture simples | `task_f200c8d9abf4`: 6 etapas OK, `US$ 0.264026`; `task_91f7660e5013`: finais OK, `US$ 0.168651` | `US$ 0.136256` | Repetir em dataset maior; custo real desta fixture ficou acima do perfil canonico. |
 | `c489f094083c` | o3 Mini | `openai/o3-mini` | T/sem vision | `1.10/4.40` | oficial OpenAI/catalogo | ⏸️ | ⏸️ | ⏸️ | ❌ | ⏸️ | ⏸️ | ❌ nesta config | `task_07738514d159`: falha alta, JSONs sem `questoes` e PDF/JSON divergente, custo `US$ 0.196781` | `US$ 0.136256` | Reavaliar `reasoning_effort=medium`/prompt antes de novo smoke caro. |
-| `9f6b2b61b6c3` | o4 Mini | `openai/o4-mini` | T/V | `1.10/4.40` | oficial OpenAI/catalogo | ⏸️ | ⏸️ | ⏸️ | ✅ | ⏸️ | ⏸️ | ⏸️ | `task_77b382e71e94`: `corrigir` OK, JSON/PDF coerentes, custo `US$ 0.051857` | `US$ 0.136256` | Testar extracoes e etapas finais; nao promover para full pipeline ainda. |
+| `9f6b2b61b6c3` | o4 Mini | `openai/o4-mini` | T/V | `1.10/4.40` | oficial OpenAI/catalogo | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ fixture simples | `task_e3bb35cfd76a`: 6 etapas OK, `US$ 0.162787`; `task_77b382e71e94`: `corrigir` isolado `US$ 0.051857` | `US$ 0.136256` | Repetir em dataset maior; custo real desta fixture ficou acima do perfil canonico. |
 | `ollama-llama3` | Llama 3.2 (Local) | `ollama/llama3.2:latest` | sem tools/V | sem preco | sem preco | 🚫 | 🚫 | 🚫 | 🚫 | 🚫 | 🚫 | 🚫 infra | Render nao tem Ollama local acessivel | N/A | Fora da pipeline oficial em producao. |
 
 Achados deste ciclo:
