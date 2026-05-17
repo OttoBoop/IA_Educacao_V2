@@ -490,6 +490,188 @@ class ClienteAPIMultimodal:
             "contrato bloqueante de formato",
         )
         return any(marcador in texto for marcador in marcadores)
+
+    def _anthropic_json_schema_para_prompt(self, mensagem: str) -> Optional[Dict[str, Any]]:
+        """Return a strict JSON schema for known multimodal extraction prompts."""
+        texto = (mensagem or "").lower()
+
+        aviso_documento = {
+            "type": "object",
+            "additionalProperties": False,
+            "properties": {
+                "codigo": {"type": "string"},
+                "explicacao": {"type": "string"},
+            },
+            "required": ["codigo", "explicacao"],
+        }
+        aviso_questao = {
+            "type": "object",
+            "additionalProperties": False,
+            "properties": {
+                "codigo": {"type": "string"},
+                "questao": {"type": "integer"},
+                "explicacao": {"type": "string"},
+            },
+            "required": ["codigo", "questao", "explicacao"],
+        }
+        avisos = {
+            "_avisos_documento": {
+                "type": "array",
+                "items": aviso_documento,
+            },
+            "_avisos_questao": {
+                "type": "array",
+                "items": aviso_questao,
+            },
+        }
+
+        if '"questoes"' in texto and '"tipo_raciocinio"' in texto:
+            item_questao = {
+                "type": "object",
+                "additionalProperties": False,
+                "properties": {
+                    "letra": {"type": "string"},
+                    "texto": {"type": "string"},
+                },
+                "required": ["letra", "texto"],
+            }
+            return {
+                "type": "object",
+                "additionalProperties": False,
+                "properties": {
+                    "questoes": {
+                        "type": "array",
+                        "items": {
+                            "type": "object",
+                            "additionalProperties": False,
+                            "properties": {
+                                "numero": {"type": "integer"},
+                                "enunciado": {"type": "string"},
+                                "itens": {"type": "array", "items": item_questao},
+                                "tipo": {"type": "string"},
+                                "pontuacao": {"type": "number"},
+                                "habilidades": {
+                                    "type": "array",
+                                    "items": {"type": "string"},
+                                },
+                                "tipo_raciocinio": {"type": "string"},
+                            },
+                            "required": [
+                                "numero",
+                                "enunciado",
+                                "itens",
+                                "tipo",
+                                "pontuacao",
+                                "habilidades",
+                                "tipo_raciocinio",
+                            ],
+                        },
+                    },
+                    "total_questoes": {"type": "integer"},
+                    "pontuacao_total": {"type": "number"},
+                    **avisos,
+                },
+                "required": [
+                    "questoes",
+                    "total_questoes",
+                    "pontuacao_total",
+                    "_avisos_documento",
+                    "_avisos_questao",
+                ],
+            }
+
+        if '"respostas"' in texto and '"resposta_correta"' in texto:
+            criterio_parcial = {
+                "type": "object",
+                "additionalProperties": False,
+                "properties": {
+                    "descricao": {"type": "string"},
+                    "percentual": {"type": "number"},
+                },
+                "required": ["descricao", "percentual"],
+            }
+            return {
+                "type": "object",
+                "additionalProperties": False,
+                "properties": {
+                    "respostas": {
+                        "type": "array",
+                        "items": {
+                            "type": "object",
+                            "additionalProperties": False,
+                            "properties": {
+                                "questao_numero": {"type": "integer"},
+                                "resposta_correta": {"type": "string"},
+                                "justificativa": {"type": "string"},
+                                "conceito_central": {"type": "string"},
+                                "criterios_parciais": {
+                                    "type": "array",
+                                    "items": criterio_parcial,
+                                },
+                            },
+                            "required": [
+                                "questao_numero",
+                                "resposta_correta",
+                                "justificativa",
+                                "conceito_central",
+                                "criterios_parciais",
+                            ],
+                        },
+                    },
+                    **avisos,
+                },
+                "required": ["respostas", "_avisos_documento", "_avisos_questao"],
+            }
+
+        if '"respostas"' in texto and '"resposta_aluno"' in texto:
+            return {
+                "type": "object",
+                "additionalProperties": False,
+                "properties": {
+                    "aluno": {"type": "string"},
+                    "respostas": {
+                        "type": "array",
+                        "items": {
+                            "type": "object",
+                            "additionalProperties": False,
+                            "properties": {
+                                "questao_numero": {"type": "integer"},
+                                "resposta_aluno": {"type": "string"},
+                                "em_branco": {"type": "boolean"},
+                                "ilegivel": {"type": "boolean"},
+                                "observacoes": {"type": "string"},
+                                "raciocinio_parcial": {
+                                    "anyOf": [
+                                        {"type": "string"},
+                                        {"type": "null"},
+                                    ]
+                                },
+                            },
+                            "required": [
+                                "questao_numero",
+                                "resposta_aluno",
+                                "em_branco",
+                                "ilegivel",
+                                "observacoes",
+                                "raciocinio_parcial",
+                            ],
+                        },
+                    },
+                    "questoes_respondidas": {"type": "integer"},
+                    "questoes_em_branco": {"type": "integer"},
+                    **avisos,
+                },
+                "required": [
+                    "aluno",
+                    "respostas",
+                    "questoes_respondidas",
+                    "questoes_em_branco",
+                    "_avisos_documento",
+                    "_avisos_questao",
+                ],
+            }
+
+        return None
     
     async def enviar_com_anexos(
         self,
@@ -788,17 +970,16 @@ class ClienteAPIMultimodal:
             "messages": messages
         }
 
+        json_schema = self._anthropic_json_schema_para_prompt(mensagem)
         if (
-            self._anthropic_suporta_json_output_config()
+            json_schema
+            and self._anthropic_suporta_json_output_config()
             and self._mensagem_pede_json_cru(mensagem, system_prompt)
         ):
             params["output_config"] = {
                 "format": {
                     "type": "json_schema",
-                    "schema": {
-                        "type": "object",
-                        "additionalProperties": True,
-                    },
+                    "schema": json_schema,
                 }
             }
 

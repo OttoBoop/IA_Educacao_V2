@@ -48,7 +48,13 @@ async def test_anthropic_json_pipeline_prompt_uses_output_config(monkeypatch):
     resultado = await cliente._enviar_anthropic(
         mensagem=(
             "INSTRUCAO CRITICA: Retorne APENAS o JSON valido. "
-            "O resultado deve ser um JSON parseavel que comeca com { e termina com }."
+            "O resultado deve ser um JSON parseavel que comeca com { e termina com }.\n"
+            "Estrutura JSON esperada:\n"
+            '{"questoes":[{"numero":1,"enunciado":"x","itens":[],'
+            '"tipo":"dissertativa","pontuacao":1.0,"habilidades":["h"],'
+            '"tipo_raciocinio":"aplicacao"}],'
+            '"total_questoes":1,"pontuacao_total":1.0,'
+            '"_avisos_documento":[],"_avisos_questao":[]}'
         ),
         anexos=[],
         system_prompt="Voce extrai questoes.",
@@ -58,10 +64,10 @@ async def test_anthropic_json_pipeline_prompt_uses_output_config(monkeypatch):
     assert resultado.sucesso is True
     payload = _FakeAsyncClient.captured_payloads[-1]
     assert payload["output_config"]["format"]["type"] == "json_schema"
-    assert payload["output_config"]["format"]["schema"] == {
-        "type": "object",
-        "additionalProperties": True,
-    }
+    schema = payload["output_config"]["format"]["schema"]
+    assert schema["additionalProperties"] is False
+    assert "questoes" in schema["required"]
+    assert schema["properties"]["questoes"]["items"]["additionalProperties"] is False
 
 
 @pytest.mark.asyncio
@@ -82,6 +88,33 @@ async def test_anthropic_free_text_prompt_does_not_use_output_config(monkeypatch
 
     await cliente._enviar_anthropic(
         mensagem="Escreva uma explicacao curta em Markdown.",
+        anexos=[],
+        system_prompt="Voce e um assistente.",
+        historico=[],
+    )
+
+    payload = _FakeAsyncClient.captured_payloads[-1]
+    assert "output_config" not in payload
+
+
+@pytest.mark.asyncio
+async def test_anthropic_unknown_json_prompt_does_not_use_generic_schema(monkeypatch):
+    from anexos import ClienteAPIMultimodal
+
+    _FakeAsyncClient.captured_payloads.clear()
+    monkeypatch.setattr("anexos.httpx.AsyncClient", _FakeAsyncClient)
+
+    cliente = ClienteAPIMultimodal(
+        {
+            "tipo": "anthropic",
+            "api_key": "test-key",
+            "modelo": "claude-haiku-4-5-20251001",
+            "max_tokens": 128,
+        }
+    )
+
+    await cliente._enviar_anthropic(
+        mensagem="Retorne APENAS JSON valido no formato que achar melhor.",
         anexos=[],
         system_prompt="Voce e um assistente.",
         historico=[],
