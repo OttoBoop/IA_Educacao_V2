@@ -4033,6 +4033,16 @@ Interpretacao:
   troca silenciosa de modelo. O custo do erro ficou visivel em
   `/api/custos/resumo?limit=160`: documento `f5e71b8e5707790d`,
   `3314/555` tokens e `US$ 0.000553`.
+- OpenAI sem tools pos-`c56c4b6`: os modelos configurados `o3-mini`
+  (`58ff5dcdff67` e `c489f094083c`) e `o4-mini` (`9f6b2b61b6c3`) estao
+  ativos no site, mas com `suporta_function_calling=false`. Smokes oficiais
+  `task_ef461a0fb4f9`, `task_01a883e945fd` e `task_16f6789803fb` falharam
+  cedo em `corrigir` com "modelo nao suporta geracao de documentos",
+  `retryable=false`, sem custo de IA e sem fallback. Isso confirma a regra:
+  chat simples OK nao implica pipeline-ready.
+- Anthropic pos-`c56c4b6`: Haiku 4.5 continua bloqueado na chave oficial do
+  Render com Anthropic `400`, saldo baixo. Se ha creditos na conta do usuario,
+  o proximo gate e atualizar/rotacionar a chave do Render por caminho seguro.
 
 ### Provider: Batch Textual, Branco Rastreavel E Status Global De Batch
 

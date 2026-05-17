@@ -3421,6 +3421,30 @@ Critério de pronto: lista de limpeza segura e revisada.
   repetir `corrigir`; enquanto isso, atacar provedores sem bloqueio de segredo
   ou quota.
 
+### 2026-05-17 -- Provider: modelos sem tools falham alto, Anthropic ainda bloqueado
+
+- Alvo: confirmar que modelos ativos sem `suporta_function_calling` nao entram
+  em pipeline como falso sucesso nem acionam fallback.
+- Leitura do site oficial: `58ff5dcdff67` e `c489f094083c` (`o3-mini`) e
+  `9f6b2b61b6c3` (`o4-mini`) estao ativos, mas com
+  `suporta_function_calling=false`, `suporta_vision=false` e `provider=null`
+  na resposta de `/api/settings/models`.
+- Smokes oficiais em `corrigir`, fixture Diana:
+  - `task_ef461a0fb4f9` (`58ff5dcdff67`, `o3-mini`) falhou imediatamente:
+    "Este modelo nao suporta geracao de documentos", `retryable=false`,
+    `provider=openai`.
+  - `task_01a883e945fd` (`c489f094083c`, `o3-mini` duplicado) falhou com a
+    mesma mensagem.
+  - `task_16f6789803fb` (`9f6b2b61b6c3`, `o4-mini`) falhou com a mesma
+    mensagem.
+- Interpretacao: esses modelos podem continuar no site como chat/teste simples,
+  mas a matriz deve mante-los `🚫 config` para pipeline ate haver cadastro
+  com tools validado. O comportamento atual e correto: falha alta antes de
+  chamada de IA, sem custo e sem fallback.
+- Recheck Anthropic: `/api/settings/models/588f3efe7975/testar` ainda retorna
+  Anthropic `400`, "credit balance is too low". Se ha creditos Anthropic, a
+  chave/plano configurado no Render nao e o que enxerga esses creditos.
+
 ## Riscos Abertos
 
 1. Chave Anthropic configurada no Render ainda retorna saldo baixo; se existem

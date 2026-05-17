@@ -65,6 +65,12 @@ Use
   falhou alto com Google `429 RESOURCE_EXHAUSTED`, `retryable=true`, limite
   free tier `20`, sem fallback. `/api/custos/resumo?limit=160` registrou o
   documento de erro `f5e71b8e5707790d`, `3314/555` tokens, `US$ 0.000553`.
+- Pipeline live modelos OpenAI sem tools: `task_ef461a0fb4f9` (`o3-mini`),
+  `task_01a883e945fd` (`o3-mini` duplicado) e `task_16f6789803fb` (`o4-mini`)
+  falharam cedo em `corrigir` com "modelo nao suporta geracao de documentos",
+  `retryable=false`, sem fallback e sem custo de IA.
+- Anthropic recheck: Haiku 4.5 ainda retorna Anthropic `400`, saldo baixo, na
+  chave oficial do Render.
 - Pipeline live GPT-5.4 Mini: `task_a1f7521077a5` completou as 6 etapas na
   fixture Diana (`f68d57a9a339081f`/`10d9fa4f4303ea1f`) sem `stage_errors`.
 - Pipeline live Gemini 2.5 Flash: `task_41c45d7939b5` em `corrigir` falhou alto
@@ -233,15 +239,15 @@ Fontes de preco:
 | `gpt5nano001` | GPT-5 Nano | `openai/gpt-5-nano` | T/sem vision | `0.05/0.40` | catalogo | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ fixture simples | `task_cbe8568e78d6`: `US$ 0.017160`; custo real maior que estimativa por tokens gerados nessa task | `US$ 0.008674` | Repetir em dataset maior antes de chamar de pipeline-ready geral. |
 | `ffae9accf68e` | GPT-4.1 | `openai/gpt-4.1` | T/V | `2.00/8.00` | catalogo | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | `task_f6851ed535b8`: `US$ 0.222856` | `US$ 0.247738` | Repetir em dataset maior e checar qualidade visual de PDFs. |
 | `180b8298a279` | gpt-4o | `openai/gpt-4o` | T/V | `2.50/10.00` | catalogo | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | `task_68b19146a95b`: `US$ 0.314369` | `US$ 0.309673` | Manter como referencia, nao fallback silencioso. |
-| `588f3efe7975` | Claude Haiku 4.5 | `anthropic/claude-haiku-4-5-20251001` | T/V | `1.00/5.00` | oficial Anthropic | 🚫 | 🚫 | 🚫 | 🚫 | 🚫 | 🚫 | 🚫 chave/saldo | Re-smoke 2026-05-17: `/testar` e `/api/chat` retornaram Anthropic `400`, saldo baixo na chave do Render | `US$ 0.136272` | Sincronizar/rotacionar chave Anthropic do Render; depois rodar Haiku primeiro. |
+| `588f3efe7975` | Claude Haiku 4.5 | `anthropic/claude-haiku-4-5-20251001` | T/V | `1.00/5.00` | oficial Anthropic | 🚫 | 🚫 | 🚫 | 🚫 | 🚫 | 🚫 | 🚫 chave/saldo | Re-smoke 2026-05-17: `/testar` e `/api/chat` retornaram Anthropic `400`, saldo baixo; recheck pos-`c56c4b6` confirmou o mesmo bloqueio na chave do Render | `US$ 0.136272` | Sincronizar/rotacionar chave Anthropic do Render; depois rodar Haiku primeiro. |
 | `4eaeb5105f5d` | Claude Sonnet 4.5 | `anthropic/claude-sonnet-4-5-20250929` | T/V | `3.00/15.00` | oficial Anthropic | 🚫 | 🚫 | 🚫 | 🚫 | 🚫 | 🚫 | 🚫 chave/saldo | Sweep anterior indicou mesmo bloqueio Anthropic; nao retestado para poupar ate Haiku destravar | `US$ 0.408816` | Testar so depois de Haiku, por custo ~3x maior. |
 | `gem25flash001` | Gemini 2.5 Flash | `google/gemini-2.5-flash` | T/V | `0.30/2.50` | oficial Google | ✅ | ✅ | ✅ | 🚫 | ⏸️ | ⏸️ | 🚫 quota em `corrigir` | `task_41c45d7939b5`: falhou alto em `corrigir` por Google `429 RESOURCE_EXHAUSTED` | `US$ 0.053285` | Repetir quando quota Google permitir. |
 | `gem25lite001` | Gemini 2.5 Flash Lite | `google/gemini-2.5-flash-lite` | T/V | `0.10/0.40` | oficial Google | ⏸️ | ⏸️ | ⏸️ | 🚫 | ⏸️ | ⏸️ | 🚫 quota | `task_817bda15b4c0`: Google `429 RESOURCE_EXHAUSTED`, erro `f5e71b8e5707790d`, custo `US$ 0.000553`; historico `task_124bf0e8d7bf` falhou por JSON/PDF divergentes | `US$ 0.012387` | Repetir `corrigir` quando quota Google permitir; tools ja alinhadas no catalogo e no site. |
 | `gem3flash001` | Gemini 3 Flash | `google/gemini-3-flash-preview` | T/V | `0.50/3.00` | oficial Google | ✅ | ✅ | ✅ | ⚠️ | ⚠️ | ⚠️ | 🚫 quota/revalidacao | `task_5e97bbee896e`: tres extracoes passaram; falhou alto em `corrigir` por `429` | `US$ 0.074338` | Repetir pipeline sequencial completa quando quota permitir. |
 | `e251747cd7a2` | Gemini 2.5 Pro | `google/gemini-2.5-pro` | T/V | `1.25/10.00` ate 200k prompt | oficial Google | ⏸️ | ⏸️ | ⏸️ | ⏸️ | ⏸️ | ⏸️ | 🚫 quota | Sweep live: conexao bloqueada por Google `429` | `US$ 0.216851` | Testar conexao e uma etapa quando quota permitir. |
-| `58ff5dcdff67` | o3 Mini | `openai/o3-mini` | sem tools/sem vision | `1.10/4.40` | catalogo | 🚫 | 🚫 | 🚫 | 🚫 | 🚫 | 🚫 | 🚫 config | Sem function calling no modelo configurado do site | `US$ 0.136256` | Nao usar na pipeline enquanto tools estiverem desativadas. |
-| `c489f094083c` | o3 Mini | `openai/o3-mini` | sem tools/sem vision | `1.10/4.40` | catalogo | 🚫 | 🚫 | 🚫 | 🚫 | 🚫 | 🚫 | 🚫 config | Duplicado configurado com outra `reasoning_effort`, tambem sem tools | `US$ 0.136256` | Remover duplicidade ou registrar uso fora da pipeline. |
-| `9f6b2b61b6c3` | o4 Mini | `openai/o4-mini` | sem tools/sem vision | `1.10/4.40` | catalogo | 🚫 | 🚫 | 🚫 | 🚫 | 🚫 | 🚫 | 🚫 config | Sem function calling no modelo configurado do site | `US$ 0.136256` | Nao usar na pipeline enquanto tools estiverem desativadas. |
+| `58ff5dcdff67` | o3 Mini | `openai/o3-mini` | sem tools/sem vision | `1.10/4.40` | catalogo | 🚫 | 🚫 | 🚫 | 🚫 | 🚫 | 🚫 | 🚫 config | `task_ef461a0fb4f9`: falha cedo, "modelo nao suporta geracao de documentos", sem custo | `US$ 0.136256` | Nao usar na pipeline enquanto tools estiverem desativadas. |
+| `c489f094083c` | o3 Mini | `openai/o3-mini` | sem tools/sem vision | `1.10/4.40` | catalogo | 🚫 | 🚫 | 🚫 | 🚫 | 🚫 | 🚫 | 🚫 config | `task_01a883e945fd`: duplicado tambem falha cedo por falta de tools, sem custo | `US$ 0.136256` | Remover duplicidade ou registrar uso fora da pipeline. |
+| `9f6b2b61b6c3` | o4 Mini | `openai/o4-mini` | sem tools/sem vision | `1.10/4.40` | catalogo | 🚫 | 🚫 | 🚫 | 🚫 | 🚫 | 🚫 | 🚫 config | `task_16f6789803fb`: falha cedo, "modelo nao suporta geracao de documentos", sem custo | `US$ 0.136256` | Nao usar na pipeline enquanto tools estiverem desativadas. |
 | `ollama-llama3` | Llama 3.2 (Local) | `ollama/llama3.2:latest` | sem tools/V | sem preco | sem preco | 🚫 | 🚫 | 🚫 | 🚫 | 🚫 | 🚫 | 🚫 infra | Render nao tem Ollama local acessivel | N/A | Fora da pipeline oficial em producao. |
 
 Achados deste ciclo:
