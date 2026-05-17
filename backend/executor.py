@@ -1387,6 +1387,10 @@ class PipelineExecutor:
             "```",
             "[cerca Markdown removida]",
         )
+        prompt_original_referencia = (prompt_original or "").replace(
+            "```",
+            "[cerca Markdown removida do prompt original]",
+        )
         instrucoes_especificas = ""
 
         if etapa == EtapaProcessamento.EXTRAIR_GABARITO:
@@ -1410,11 +1414,16 @@ Para EXTRAIR_RESPOSTAS:
 - Não marque todas as questões como vazias/ilegíveis sem evidência visual clara.
 """
 
-        return f"""{prompt_original}
+        return f"""RETRY EXPLICITO DE VALIDACAO, NO MESMO PROVIDER E MODELO.
 
----
-
-RETRY EXPLICITO DE VALIDACAO, NO MESMO PROVIDER E MODELO.
+CONTRATO BLOQUEANTE DE FORMATO:
+- Esta mensagem substitui qualquer instrucao de formato conflitante do prompt original.
+- Retorne APENAS um objeto JSON cru e valido.
+- Nao use Markdown, comentarios, explicacoes, texto antes ou depois do JSON.
+- A primeira caractere da resposta deve ser {{ e a ultima caractere deve ser }}.
+- Nao use cercas Markdown, blocos de codigo, nem a sequencia de tres crases em qualquer ponto da resposta.
+- Use exatamente o schema solicitado no prompt original.
+- Nao invente dados; quando algo estiver ausente ou ilegivel, use os avisos estruturados do schema.
 
 A resposta anterior desta mesma etapa ({etapa_nome}) falhou na validação bloqueante:
 {erro}
@@ -1426,14 +1435,12 @@ Trecho da resposta anterior que falhou:
 
 Isto não é fallback e não troca de modelo. Refaça a extração usando os mesmos anexos originais.
 
-Regras obrigatórias:
-- Retorne APENAS JSON válido.
-- Não use Markdown, comentários, texto antes ou depois do JSON.
-- A primeira caractere da resposta deve ser {{ e a última caractere deve ser }}.
-- É proibido usar três crases consecutivas ou qualquer cerca Markdown em qualquer ponto da resposta.
-- Use exatamente o schema solicitado no prompt original.
-- Não invente dados; quando algo estiver ausente ou ilegível, use os avisos estruturados do schema.
 {instrucoes_especificas}
+
+PROMPT ORIGINAL DE REFERENCIA, APENAS PARA TAREFA E SCHEMA:
+<prompt_original_referencia_nao_copiar>
+{prompt_original_referencia}
+</prompt_original_referencia_nao_copiar>
 """
     
     def _valor_data_documento(self, documento: Any) -> str:
