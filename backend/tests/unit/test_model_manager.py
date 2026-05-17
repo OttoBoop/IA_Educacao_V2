@@ -464,6 +464,27 @@ def test_catalogo_openai_pro_capabilities_oficiais(
     assert metadata.supports_streaming is supports_streaming
 
 
+@pytest.mark.parametrize(
+    "model_id, supports_vision",
+    [
+        ("o3-mini", False),
+        ("o4-mini", True),
+    ],
+)
+def test_catalogo_openai_o_series_tools_e_vision_oficiais(model_id, supports_vision):
+    """o3-mini/o4-mini devem refletir tools oficiais sem inventar vision no o3-mini."""
+    from model_catalog import model_catalog
+
+    metadata = model_catalog.get_model_info("openai", model_id)
+
+    assert metadata is not None
+    assert metadata.supports_tools is True
+    assert metadata.supports_json_mode is True
+    assert metadata.supports_reasoning is True
+    assert metadata.supports_vision is supports_vision
+    assert metadata.requires_temperature is False
+
+
 def test_catalogo_nao_expoe_gpt5_image_slug_inexistente():
     """A lista oficial atual usa gpt-image-*, nao um slug textual gpt-5-image."""
     from model_catalog import model_catalog

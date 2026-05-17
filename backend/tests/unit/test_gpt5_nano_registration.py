@@ -24,6 +24,10 @@ def find_model(models, modelo_id):
     return next((m for m in models if m["modelo"] == modelo_id), None)
 
 
+def find_models(models, modelo_id):
+    return [m for m in models if m["modelo"] == modelo_id]
+
+
 class TestGPT5NanoRegistration:
     def test_gpt5_nano_exists_in_models(self, models):
         """gpt-5-nano must be present in models.json"""
@@ -76,3 +80,34 @@ class TestGPT54MiniRegistration:
         assert len(defaults) == 1
         assert defaults[0]["id"] == "gpt54mini001"
         assert defaults[0]["modelo"] == "gpt-5.4-mini"
+
+
+class TestOpenAIReasoningRegistration:
+    def test_o3_mini_configs_support_tools_but_not_vision(self, models):
+        """o3-mini API supports function calling, but not image input."""
+        o3_models = find_models(models, "o3-mini")
+
+        assert {model["id"] for model in o3_models} == {
+            "58ff5dcdff67",
+            "c489f094083c",
+        }
+        for model in o3_models:
+            assert model["tipo"] == "openai"
+            assert model["suporta_temperature"] is False
+            assert model["temperature"] is None
+            assert model["suporta_function_calling"] is True
+            assert model["suporta_vision"] is False
+            assert "reasoning_effort" in model["parametros"]
+
+    def test_o4_mini_config_supports_tools_and_vision(self, models):
+        """o4-mini API supports function calling and image input."""
+        model = find_model(models, "o4-mini")
+
+        assert model is not None
+        assert model["id"] == "9f6b2b61b6c3"
+        assert model["tipo"] == "openai"
+        assert model["suporta_temperature"] is False
+        assert model["temperature"] is None
+        assert model["suporta_function_calling"] is True
+        assert model["suporta_vision"] is True
+        assert model["parametros"]["reasoning_effort"] == "high"

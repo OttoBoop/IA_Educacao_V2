@@ -372,7 +372,7 @@
           "output_cost": 4.40,
           "context_window": 200000,
           "max_output": 100000,
-          "supports_vision": true,
+          "supports_vision": false,
           "supports_tools": true,
           "supports_json_mode": true,
           "supports_reasoning": true,
