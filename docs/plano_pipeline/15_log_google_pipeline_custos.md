@@ -16,9 +16,9 @@ ou chamar etapa bloqueada de sucesso continua proibido.
 
 - URL oficial: `https://ia-educacao-v2.onrender.com`.
 - Runtime inicial observado: `0411f9a`.
-- Runtime final publicado: `16afe40`.
+- Runtime final publicado: `a7f02a3`.
 - Health final: `/api/health` retornou `{"status":"healthy","supabase":true}`.
-- `origin/main` final: `16afe402465f402855bacdeb34ec7ac31d4b26b1`.
+- `origin/main` final: `a7f02a31fc04606de82e22bec3345150fff9ead6`.
 - Persistencia duravel de `token_usage`: ainda bloqueada por Supabase
   `PGRST205`, tabela `public.token_usage` ausente.
 
@@ -359,6 +359,34 @@ Bug novo de custos/artefatos:
 - Interpretação: isso e sucesso de produto no sentido P0. O sistema nao gerou
   relatorio de materia falso, nao chamou IA e explicou o dado faltante.
 
+### Re-smoke Flash Lite apos `a7f02a3`
+
+- Alvo: `gem25lite001` em `CORRIGIR` isolado para Beatriz, mesmo dado usado nos
+  smokes anteriores.
+- Antes do patch, `task_e8ae68627a05` falhou alto porque o modelo tentou salvar
+  PDF via `create_document`; documento de erro `401d50c195b34968`,
+  `56512/17776` tokens, `US$0.012762`.
+- Causa tecnica: Google ja recebia `toolConfig` forçando `create_document`, mas
+  a mensagem inicial faseada so era usada para OpenAI. O prompt completo ainda
+  pedia JSON e PDF ao mesmo tempo, incentivando o Lite a tentar PDF na unica
+  ferramenta exposta.
+- Patch publicado: `a7f02a3` (`fix: phase google dual output tool prompts`)
+  faz Google usar a mesma mensagem inicial faseada: primeira chamada salva
+  somente JSON via `create_document`; PDF fica para a chamada seguinte via
+  `execute_python_code`.
+- Validacoes locais: `py_compile`, `git diff --check` e
+  `test_e_t2_retry_partial_output.py` com `34 passed`.
+- Deploy oficial: Render confirmou `a7f02a3`; `/api/health` saudavel.
+- Re-smoke apos patch: `task_44ec067a3d82` ainda falhou alto, mas por motivo
+  melhor diagnosticado: JSON persistido via `create_document` sem schema minimo
+  (`nota_final`, `questoes`, `feedback_geral`, `total_acertos`,
+  `total_erros`). Documento de erro `8c875cf984e55e91`, JSON invalido
+  `bc878df188ec3d18`, `31602/5201` tokens, `US$0.005241`.
+- Interpretação: Flash Lite nao esta validado para `CORRIGIR`; apos o patch,
+  o bloqueio deixou de ser "tool errada" e virou "modelo nao entregou schema".
+  Isso deve ficar como falha alta do modelo nesta etapa, sem fallback para
+  Flash.
+
 ## Tentativas Google
 
 | Ordem | Modelo | Alvo | Resultado | Evidencia | Custo medido |
@@ -383,6 +411,8 @@ Bug novo de custos/artefatos:
 | 18 | `gem25flash001` | `desempenho_tarefa` apos `d7313a6` | OK parcial | `run-20260518-153754`; 5 alunos incluidos, 5 excluidos por arquivos antigos ilegiveis/ausentes | `25237/4965`, `US$0.019984` |
 | 19 | `gem25flash001` | `desempenho_turma` apos `d7313a6` | OK parcial | `run-20260518-154054`; 5 narrativas, 1 atividade coberta, lacunas em atividades | `65800/13969`, `US$0.054663` |
 | 20 | `gem25flash001` | `desempenho_materia` apos `16afe40` | Bloqueio correto | HTTP 200 com `sucesso=false`, `BLOQUEADO_PREREQUISITO`; so 1 turma tinha resultado legivel | Sem chamada IA; sem custo novo |
+| 21 | `gem25lite001` | `CORRIGIR` antes de `a7f02a3` | Falha alta | `task_e8ae68627a05`; tentou PDF via `create_document`, bloqueado sem falso verde | `56512/17776`, `US$0.012762` |
+| 22 | `gem25lite001` | `CORRIGIR` apos `a7f02a3` | Falha alta | `task_44ec067a3d82`; JSON via `create_document`, mas sem schema minimo; bloqueado | `31602/5201`, `US$0.005241` |
 
 ## Patches Publicados No Ciclo
 
@@ -411,9 +441,9 @@ Bug novo de custos/artefatos:
 - Google Flash (`gem25flash001`) esta validado no site oficial para pipeline
   individual completa da Beatriz, `desempenho_tarefa` parcial e
   `desempenho_turma` parcial, com custos medidos.
-- Google Lite (`gem25lite001`) ainda nao esta validado para pipeline: depois da
-  troca de chave, saiu do free-tier antigo, mas `CORRIGIR` isolado bateu em
-  `503 high demand`.
+- Google Lite (`gem25lite001`) ainda nao esta validado para pipeline:
+  `a7f02a3` corrigiu o prompt faseado de tools, mas o re-smoke ainda falhou
+  alto por JSON sem schema minimo.
 - `desempenho_materia` nao e falha do modelo neste momento: esta bloqueado por
   dado real ausente na segunda turma.
 - O backend agora registra melhor `retry_after`, custo parcial e erro provider;
@@ -432,15 +462,15 @@ Proximo passo honesto:
 
 1. Criar ou completar dados reais na segunda turma antes de rodar
    `desempenho_materia`.
-2. Repetir `gem25lite001` em `CORRIGIR` para saber se o `503 high demand` era
-   transitorio.
-3. Depois testar `gem3flash001` em uma escada barata, sem pular direto para Pro.
+2. Tratar `gem25lite001` como falha alta em `CORRIGIR` por schema invalido,
+   salvo se houver novo patch especifico de prompt/JSON para modelos baratos.
+3. Testar `gem3flash001` em uma escada barata, sem pular direto para Pro.
 
 ## Status Final Do Ciclo
 
-- `gem25lite001`: conexao OK, JSON simples OK com backoff, pipeline individual
-  ainda nao confirmada; ultima tentativa `CORRIGIR` falhou alto por `503 high
-  demand`.
+- `gem25lite001`: conexao OK, JSON simples OK com backoff; `CORRIGIR` falhou
+  alto apos `a7f02a3` por JSON sem schema minimo (`8c875cf984e55e91`,
+  `US$0.005241`).
 - `gem25flash001`: conexao OK, `CORRIGIR` OK, pipeline individual completa OK,
   `desempenho_tarefa` OK parcial, `desempenho_turma` OK parcial,
   `desempenho_materia` bloqueado corretamente por pre-requisito de dados.

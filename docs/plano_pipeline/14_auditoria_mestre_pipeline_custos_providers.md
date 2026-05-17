@@ -4257,13 +4257,54 @@ Estado de custos:
 
 Próximo loop recomendado:
 
-- Repetir `gem25lite001` em `CORRIGIR` para separar 503 transitório de bloqueio
-  persistente.
-- Depois testar `gem3flash001` na escada barata, sem ir direto para Pro.
+- `gem25lite001` foi repetido no ciclo seguinte e ficou classificado como falha
+  alta em `CORRIGIR`; ver atualização `a7f02a3` abaixo.
+- Testar `gem3flash001` na escada barata, sem ir direto para Pro.
 - Em paralelo, completar dados reais na segunda turma de Matemática antes de
   tentar `desempenho_materia` novamente.
 - O ciclo estrutural de custos segue bloqueado pela migration Supabase
   `002_create_token_usage.sql`.
+
+## Atualizacao 2026-05-18 -- Flash Lite Falha Alto Em Schema, Nao Em Quota
+
+Estado oficial:
+
+- Render confirmou `a7f02a3` por `/api/deploy-info` e
+  `./scripts/check_deploy.sh a7f02a3`.
+- `/api/health` retornou saudavel.
+- Validação local do patch: `py_compile`, `git diff --check` e
+  `test_e_t2_retry_partial_output.py` com `34 passed`.
+
+Motivo do patch:
+
+- O primeiro re-smoke pos-chave de `gem25lite001` em `CORRIGIR`
+  (`task_e8ae68627a05`) falhou alto porque o modelo tentou persistir PDF via
+  `create_document`.
+- O código já expunha só `create_document` na primeira chamada para Google, mas
+  a mensagem inicial faseada era aplicada apenas a OpenAI. Assim, Gemini Lite
+  lia o prompt completo pedindo JSON e PDF, mas só tinha uma ferramenta
+  disponível.
+- `a7f02a3` aplica a mensagem inicial faseada também a Google: primeira chamada
+  deve salvar apenas JSON via `create_document`; PDF fica para a chamada
+  seguinte via `execute_python_code`.
+
+Resultado do re-smoke:
+
+- `task_44ec067a3d82` com `gem25lite001` ainda falhou alto em `CORRIGIR`.
+- A falha mudou de categoria: agora houve JSON via `create_document`, mas o JSON
+  não tinha schema mínimo (`nota_final`, `questoes`, `feedback_geral`,
+  `total_acertos`, `total_erros`).
+- Evidência de custo: documento de erro `8c875cf984e55e91`, JSON inválido
+  `bc878df188ec3d18`, `31602/5201` tokens, `US$0.005241`.
+- Interpretação: Flash Lite não está validado para `CORRIGIR`; o sistema fez o
+  certo ao bloquear. Não subir para desempenho agregado com Lite sem novo patch
+  específico de prompt/schema.
+
+Próximo passo:
+
+- Continuar o loop Google com `gem3flash001` na escada barata.
+- Manter `gem25flash001` como Google validado principal até aqui.
+- Não tratar `gem25lite001` como alternativa automática ou fallback.
 
 ## Fechamento
 

@@ -5,10 +5,9 @@
 **Status geral:** o servico oficial Render
 `srv-d5t8gbh4tr6s738fr3s0` (`IA_Educacao_V2`, branch `main`, URL
 `https://ia-educacao-v2.onrender.com`) tem como codigo funcional mais recente
-confirmado o commit `16afe40` (`fix: block materia desempenho without two
-turmas`),
+confirmado o commit `a7f02a3` (`fix: phase google dual output tool prompts`),
 validado por `/api/deploy-info`, `/api/health` e
-`./scripts/check_deploy.sh 16afe40`. O codigo funcional de batch contido nesse
+`./scripts/check_deploy.sh a7f02a3`. O codigo funcional de batch contido nesse
 runtime continua sendo `9b68de1`, validado por `task_ee773aefb10d`.
 `origin/main` pode estar em commit documental posterior; isso nao muda runtime
 enquanto `/api/deploy-info` com no-cache continuar apontando para o hash
@@ -38,8 +37,10 @@ agora termina `failed` quando Helena falha em `extrair_respostas`, expondo
 `summary` com `29` etapas `skipped`, `1` etapa `failed` e erro global, sem
 falso verde. Gemini Flash/Flash Lite/3 Flash passam em
 conexao simples; Flash Lite tambem passou JSON simples com backoff manual e,
-pos-chave, saiu do erro free-tier antigo, mas `CORRIGIR` ainda falhou alto por
-Google `503 high demand`. Gemini Flash (`gem25flash001`) agora esta confirmado
+pos-chave, saiu do erro free-tier antigo, mas `CORRIGIR` ainda falhou alto. O
+patch `a7f02a3` corrigiu o prompt faseado de tools para Google; depois disso,
+Lite salvou JSON via `create_document`, mas o JSON veio sem schema minimo.
+Gemini Flash (`gem25flash001`) agora esta confirmado
 no site oficial para pipeline completa de Beatriz (`task_ca5dd6b8b3b5`,
 `US$0.114578`), `desempenho_tarefa` parcial (`US$0.019984`) e
 `desempenho_turma` parcial (`US$0.054663`). `desempenho_materia` bloqueou
@@ -129,6 +130,21 @@ pelo menos duas turmas distintas antes de chamar IA. Smoke oficial apos deploy:
 `gem25lite001` em `CORRIGIR` para diferenciar 503 transitorio de bloqueio
 persistente; em paralelo, a frente estrutural de custos continua sendo aplicar
 `backend/migrations/002_create_token_usage.sql` no Supabase.
+
+Atualizacao pos-`a7f02a3`: o smoke `gem25lite001` em `CORRIGIR` antes do patch
+(`task_e8ae68627a05`) falhou alto porque o modelo tentou salvar PDF via
+`create_document`; custo `56512/17776`, `US$0.012762`, documento de erro
+`401d50c195b34968`. O patch `a7f02a3` fez Google usar a mesma primeira chamada
+faseada de dual-output que OpenAI: primeiro apenas JSON via `create_document`,
+depois PDF via `execute_python_code`. Validacoes locais: `py_compile`,
+`git diff --check`, `test_e_t2_retry_partial_output.py` com `34 passed`.
+Render confirmou `a7f02a3` e `/api/health` saudavel. Re-smoke
+`task_44ec067a3d82`: Lite agora salvou JSON, mas o schema veio invalido
+(`nota_final`, `questoes`, `feedback_geral`, `total_acertos` e `total_erros`
+ausentes); documento de erro `8c875cf984e55e91`, JSON invalido
+`bc878df188ec3d18`, `31602/5201` tokens, `US$0.005241`. Estado: Flash Lite
+fica ❌ em `CORRIGIR`; nao subir para agregado sem novo patch especifico para
+modelo barato. Proximo alvo Google: Gemini 3 Flash em escada barata.
 
 Atualizacao Lista0 de 2026-05-17: a atividade real `Lista0`
 (`126e8b5ad7dd6d59`) tem documentos base cadastrados e 63 alunos
