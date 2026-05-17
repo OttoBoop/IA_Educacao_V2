@@ -4025,6 +4025,14 @@ Interpretacao:
   retornou descricao atualizada, `supports_tools=true`, `supports_vision=true`
   e preco `0.1/0.4`; `/api/settings/models` confirmou o modelo ativo
   `gem25lite001` com `suporta_function_calling=true`.
+- Revalidacao Google pos-`c56c4b6`: conexao simples passou para Gemini 2.5
+  Flash (`tokens=39`), Gemini 2.5 Flash Lite (`tokens=20`) e Gemini 3 Flash
+  (`tokens=111`); Gemini 2.5 Pro retornou quota `429`. O re-smoke oficial
+  Flash Lite `task_817bda15b4c0`, apenas `corrigir`, falhou alto por Google
+  `429 RESOURCE_EXHAUSTED`, `retryable=true`, limite free tier `20`; nao houve
+  troca silenciosa de modelo. O custo do erro ficou visivel em
+  `/api/custos/resumo?limit=160`: documento `f5e71b8e5707790d`,
+  `3314/555` tokens e `US$ 0.000553`.
 
 ### Provider: Batch Textual, Branco Rastreavel E Status Global De Batch
 

@@ -58,6 +58,13 @@ Use
 - Sweep live de conexao pos-`e2260d2`: OpenAI OK; Gemini 2.5 Flash, Gemini 2.5
   Flash Lite e Gemini 3 Flash OK; Gemini 2.5 Pro bloqueado por quota `429`;
   Anthropic bloqueado por credito; Ollama indisponivel no Render.
+- Sweep live Google pos-`c56c4b6`: Gemini 2.5 Flash (`tokens=39`), Gemini 2.5
+  Flash Lite (`tokens=20`) e Gemini 3 Flash (`tokens=111`) responderam
+  `success=true`; Gemini 2.5 Pro respondeu Google `429`.
+- Pipeline live Gemini 2.5 Flash Lite: `task_817bda15b4c0` em `corrigir`
+  falhou alto com Google `429 RESOURCE_EXHAUSTED`, `retryable=true`, limite
+  free tier `20`, sem fallback. `/api/custos/resumo?limit=160` registrou o
+  documento de erro `f5e71b8e5707790d`, `3314/555` tokens, `US$ 0.000553`.
 - Pipeline live GPT-5.4 Mini: `task_a1f7521077a5` completou as 6 etapas na
   fixture Diana (`f68d57a9a339081f`/`10d9fa4f4303ea1f`) sem `stage_errors`.
 - Pipeline live Gemini 2.5 Flash: `task_41c45d7939b5` em `corrigir` falhou alto
@@ -229,7 +236,7 @@ Fontes de preco:
 | `588f3efe7975` | Claude Haiku 4.5 | `anthropic/claude-haiku-4-5-20251001` | T/V | `1.00/5.00` | oficial Anthropic | 🚫 | 🚫 | 🚫 | 🚫 | 🚫 | 🚫 | 🚫 chave/saldo | Re-smoke 2026-05-17: `/testar` e `/api/chat` retornaram Anthropic `400`, saldo baixo na chave do Render | `US$ 0.136272` | Sincronizar/rotacionar chave Anthropic do Render; depois rodar Haiku primeiro. |
 | `4eaeb5105f5d` | Claude Sonnet 4.5 | `anthropic/claude-sonnet-4-5-20250929` | T/V | `3.00/15.00` | oficial Anthropic | 🚫 | 🚫 | 🚫 | 🚫 | 🚫 | 🚫 | 🚫 chave/saldo | Sweep anterior indicou mesmo bloqueio Anthropic; nao retestado para poupar ate Haiku destravar | `US$ 0.408816` | Testar so depois de Haiku, por custo ~3x maior. |
 | `gem25flash001` | Gemini 2.5 Flash | `google/gemini-2.5-flash` | T/V | `0.30/2.50` | oficial Google | ✅ | ✅ | ✅ | 🚫 | ⏸️ | ⏸️ | 🚫 quota em `corrigir` | `task_41c45d7939b5`: falhou alto em `corrigir` por Google `429 RESOURCE_EXHAUSTED` | `US$ 0.053285` | Repetir quando quota Google permitir. |
-| `gem25lite001` | Gemini 2.5 Flash Lite | `google/gemini-2.5-flash-lite` | T/V | `0.10/0.40` | oficial Google | ⏸️ | ⏸️ | ⏸️ | ❌ | ⏸️ | ⏸️ | ❌ | `task_124bf0e8d7bf`: JSON/PDF divergentes, custo `US$ 0.001986` | `US$ 0.012387` | Re-smoke de `corrigir` quando quota Google permitir; tools agora alinhadas no catalogo e no site. |
+| `gem25lite001` | Gemini 2.5 Flash Lite | `google/gemini-2.5-flash-lite` | T/V | `0.10/0.40` | oficial Google | ⏸️ | ⏸️ | ⏸️ | 🚫 | ⏸️ | ⏸️ | 🚫 quota | `task_817bda15b4c0`: Google `429 RESOURCE_EXHAUSTED`, erro `f5e71b8e5707790d`, custo `US$ 0.000553`; historico `task_124bf0e8d7bf` falhou por JSON/PDF divergentes | `US$ 0.012387` | Repetir `corrigir` quando quota Google permitir; tools ja alinhadas no catalogo e no site. |
 | `gem3flash001` | Gemini 3 Flash | `google/gemini-3-flash-preview` | T/V | `0.50/3.00` | oficial Google | ✅ | ✅ | ✅ | ⚠️ | ⚠️ | ⚠️ | 🚫 quota/revalidacao | `task_5e97bbee896e`: tres extracoes passaram; falhou alto em `corrigir` por `429` | `US$ 0.074338` | Repetir pipeline sequencial completa quando quota permitir. |
 | `e251747cd7a2` | Gemini 2.5 Pro | `google/gemini-2.5-pro` | T/V | `1.25/10.00` ate 200k prompt | oficial Google | ⏸️ | ⏸️ | ⏸️ | ⏸️ | ⏸️ | ⏸️ | 🚫 quota | Sweep live: conexao bloqueada por Google `429` | `US$ 0.216851` | Testar conexao e uma etapa quando quota permitir. |
 | `58ff5dcdff67` | o3 Mini | `openai/o3-mini` | sem tools/sem vision | `1.10/4.40` | catalogo | 🚫 | 🚫 | 🚫 | 🚫 | 🚫 | 🚫 | 🚫 config | Sem function calling no modelo configurado do site | `US$ 0.136256` | Nao usar na pipeline enquanto tools estiverem desativadas. |
@@ -261,7 +268,7 @@ Achados deste ciclo:
 |-----------------|:---:|:---:|:---:|:---:|:---:|:---:|
 | **Claude Haiku 4.5** (`588f3efe7975`) | ⏸️ | ⏸️ | ⏸️ | 🚫 | 🚫 | 🚫 |
 | **Gemini 2.5 Flash** (`gem25flash001`) | ✅ | ✅ | ✅ | 🚫 | ⏸️ | ⏸️ |
-| **Gemini 2.5 Flash Lite** (`gem25lite001`) | ⏸️ | ⏸️ | ⏸️ | ❌ | ⏸️ | ⏸️ |
+| **Gemini 2.5 Flash Lite** (`gem25lite001`) | ⏸️ | ⏸️ | ⏸️ | 🚫 | ⏸️ | ⏸️ |
 | **Gemini 3 Flash** (`gem3flash001`) | ✅ | ✅ | ✅ | ⚠️ | ⚠️ | ⚠️ |
 | **GPT-5 Nano** (`gpt5nano001`) | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | **GPT-5.4 Mini** (`gpt54mini001`) | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
@@ -302,8 +309,11 @@ enunciado/gabarito/prova em `.txt`, nota `10.0`, PDF de correcao com
 `Feedback Geral` e custo medido.
 Nota provider sweep pos-`fdf0cbd`: `/api/settings/models/{id}/testar` confirmou
 OpenAI disponivel (`gpt54mini001` OK/42 tokens, `gpt5nano001` OK/38 tokens).
-Google esta bloqueado por quota em `gem25flash001`, `gem25lite001` e
-`gem3flash001` (`Erro API Google: 429 - Limite de requisições atingido`).
+Naquele momento Google estava bloqueado por quota em `gem25flash001`,
+`gem25lite001` e `gem3flash001` (`Erro API Google: 429 - Limite de
+requisições atingido`). Sweep posterior pos-`c56c4b6` reabriu conexao simples
+para Flash, Flash Lite e Gemini 3 Flash, mas os smokes de pipeline ainda batem
+quota em `corrigir`.
 Anthropic esta bloqueado por credito em Haiku/Sonnet 4.5 (`400`, saldo
 insuficiente). Ollama local falha conexao no Render.
 Nota de dataset Lista0: a atividade `126e8b5ad7dd6d59` possui base docs

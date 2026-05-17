@@ -3396,9 +3396,30 @@ Critério de pronto: lista de limpeza segura e revisada.
     `suporta_function_calling=true`.
   - `/api/settings/model-catalog/calculate-cost` manteve Flash Lite em
     `US$ 0.012387` para o perfil canonico.
-- Proximo passo: rodar connection sweep Google; se quota permitir, re-smoke de
-  `corrigir` com `gem25lite001` para saber se continua `❌` por qualidade ou
-  se evolui para parcial/validado.
+- Connection sweep Google pos-`c56c4b6`:
+  - `gem25flash001` retornou `success=true`, `modelo=gemini-2.5-flash`,
+    `tokens=39`.
+  - `gem25lite001` retornou `success=true`,
+    `modelo=gemini-2.5-flash-lite`, `tokens=20`.
+  - `gem3flash001` retornou `success=true`,
+    `modelo=gemini-3-flash-preview`, `tokens=111`.
+  - `e251747cd7a2` retornou `success=false`, Google `429`, quota.
+- Re-smoke oficial Flash Lite: `task_817bda15b4c0`,
+  `selected_steps=["corrigir"]`, fixture Diana
+  (`f68d57a9a339081f`/`10d9fa4f4303ea1f`), `model_id=gem25lite001`.
+  A task falhou alto em `corrigir` com Google `429 RESOURCE_EXHAUSTED`,
+  `retryable=true`, limite free tier `20`; etapas nao selecionadas ficaram
+  `skipped` com motivo explicito.
+- Custos/erros do re-smoke: `/api/custos/resumo?limit=160` registrou amostra
+  `f5e71b8e5707790d`, `correcao`, `status=erro`,
+  `erro_categoria=quota_exhausted`, `3314/555` tokens, custo `US$ 0.000553`
+  usando preco Flash Lite `0.1/0.4`.
+- Status: Flash Lite continua fora de pipeline-ready no site oficial, agora por
+  quota Google atual, nao por divergencia de catalogo. O erro e alto, visivel,
+  precificado quando ha metadata e nao houve fallback para OpenAI.
+- Proximo passo: aguardar janela/quota Google ou chave/plano pago antes de
+  repetir `corrigir`; enquanto isso, atacar provedores sem bloqueio de segredo
+  ou quota.
 
 ## Riscos Abertos
 
