@@ -234,6 +234,29 @@ Proximo gate:
 3. Repetir pipeline completa `gem25flash001` em Beatriz.
 4. So se passar, rodar `desempenho_tarefa` com Google Flash.
 
+### Re-smoke apos `6921c3f`
+
+- Commit `6921c3f` foi publicado e confirmado no Render em `150s`.
+- `/api/health` permaneceu saudavel.
+- Os prompts live `default_extrair_questoes`, `default_extrair_gabarito` e
+  `default_extrair_respostas` nao continham mais cercas Markdown de JSON e continham
+  "Estrutura JSON esperada".
+- Re-smoke Google Flash pipeline completa:
+  `task_f7575b3d5567`.
+- Resultado: `EXTRAIR_QUESTOES` passou; `EXTRAIR_GABARITO` falhou alto pelo
+  mesmo motivo de JSON valido dentro de Markdown; demais etapas ficaram
+  `skipped`.
+
+Nova causa encontrada:
+
+- O prompt de retry de validação ainda mostrava a resposta anterior dentro de
+  uma cerca Markdown `text` e ainda escrevia a sequencia literal de tres crases
+  ao proibi-la.
+- Patch local posterior: sanitizar a resposta anterior removendo cercas Markdown
+  e trocar a instrucao literal por "tres crases consecutivas".
+- Validacoes locais posteriores: `py_compile`, `git diff --check` e pytest
+  focado com `3 passed`.
+
 ## Tentativas Google
 
 | Ordem | Modelo | Alvo | Resultado | Evidencia | Custo medido |

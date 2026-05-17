@@ -77,9 +77,18 @@ demand`. Google Flash (`gem25flash001`) passou `CORRIGIR` isolado em
 em `task_1cf3a3da23b5`: `EXTRAIR_QUESTOES` e `EXTRAIR_GABARITO` passaram, mas
 `EXTRAIR_RESPOSTAS` bloqueou JSON valido dentro de Markdown. Causa provavel
 encontrada: prompts padrao proibiam Markdown, mas mostravam exemplos de saida em
-blocos ```json. Patch local preparado remove essas cercas dos exemplos de saida
-JSON, preservando a validacao bloqueante; proximo gate e commit/push/deploy e
-re-smoke da pipeline completa com `gem25flash001`.
+cercas Markdown de JSON. Patch local preparado remove essas cercas dos exemplos
+de saida JSON, preservando a validacao bloqueante; proximo gate e
+commit/push/deploy e re-smoke da pipeline completa com `gem25flash001`.
+
+Atualizacao re-smoke pos-`6921c3f`: Render confirmou `6921c3f`, mas a pipeline
+Google Flash `task_f7575b3d5567` ainda falhou alto, agora em
+`EXTRAIR_GABARITO`, por JSON valido dentro de Markdown. Os prompts live ja nao
+tinham cercas Markdown de JSON, entao a nova causa provavel estava no prompt de retry de
+validacao, que ainda mostrava a resposta anterior em cerca Markdown `text` e
+citava a sequencia literal de tres crases. Patch local posterior removeu essas
+cercas do retry, sanitizou a resposta anterior e manteve a regra de JSON cru.
+Validacoes locais: `py_compile`, `git diff --check`, pytest focado `3 passed`.
 
 Atualizacao Lista0 de 2026-05-17: a atividade real `Lista0`
 (`126e8b5ad7dd6d59`) tem documentos base cadastrados e 63 alunos

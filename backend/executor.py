@@ -1383,7 +1383,10 @@ class PipelineExecutor:
     ) -> str:
         """Build an explicit same-model retry prompt after invalid extraction output."""
         etapa_nome = etapa.value if hasattr(etapa, "value") else str(etapa)
-        resposta_anterior = truncate_for_log(resposta_raw or "", 1800)
+        resposta_anterior = truncate_for_log(resposta_raw or "", 1800).replace(
+            "```",
+            "[cerca Markdown removida]",
+        )
         instrucoes_especificas = ""
 
         if etapa == EtapaProcessamento.EXTRAIR_GABARITO:
@@ -1417,15 +1420,17 @@ A resposta anterior desta mesma etapa ({etapa_nome}) falhou na validação bloqu
 {erro}
 
 Trecho da resposta anterior que falhou:
-```text
+<resposta_anterior_rejeitada_nao_copiar>
 {resposta_anterior}
-```
+</resposta_anterior_rejeitada_nao_copiar>
 
 Isto não é fallback e não troca de modelo. Refaça a extração usando os mesmos anexos originais.
 
 Regras obrigatórias:
 - Retorne APENAS JSON válido.
 - Não use Markdown, comentários, texto antes ou depois do JSON.
+- A primeira caractere da resposta deve ser {{ e a última caractere deve ser }}.
+- É proibido usar três crases consecutivas ou qualquer cerca Markdown em qualquer ponto da resposta.
 - Use exatamente o schema solicitado no prompt original.
 - Não invente dados; quando algo estiver ausente ou ilegível, use os avisos estruturados do schema.
 {instrucoes_especificas}

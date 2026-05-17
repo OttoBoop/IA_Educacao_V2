@@ -126,8 +126,11 @@ Use
   Google Flash `task_1cf3a3da23b5` passou `EXTRAIR_QUESTOES` e
   `EXTRAIR_GABARITO`, mas falhou alto em `EXTRAIR_RESPOSTAS` porque a resposta
   veio como JSON valido dentro de Markdown; etapas finais ficaram `skipped`.
-  Patch local remove cercas ```json dos exemplos de saida dos prompts padrao e
-  precisa deploy antes do re-smoke.
+  Patch `6921c3f` removeu cercas Markdown de JSON dos exemplos de saida dos prompts
+  padrao e foi confirmado no Render, mas o re-smoke `task_f7575b3d5567` ainda
+  falhou alto em `EXTRAIR_GABARITO` pelo mesmo envelope Markdown. Nova causa:
+  retry de validacao ainda reintroduzia cerca Markdown; patch local posterior
+  remove/sanitiza essa cerca e precisa deploy antes do proximo re-smoke.
 - Anthropic recheck antigo de saldo baixo foi superado apos troca de chave; o
   status atual de Haiku 4.5 e parcial/confirmado para conexao, chat simples e
   `CORRIGIR` isolado, pendente pipeline completa e desempenho.
