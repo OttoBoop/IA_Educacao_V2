@@ -5,15 +5,16 @@
 (`126e8b5ad7dd6d59`), smoke simples oficial `Smoke Paulo Pipeline 2026-05-16`
 (`f68d57a9a339081f`) e atividade textual `Prova 1 - Equações do 1º Grau`
 (`8f58cc8b5fb75869`)
-**Runtime oficial atual:** backend Render em `a7f02a3`; `origin/main` recebeu os
-ciclos `9dbb122`/`8de0ab3` para preservar `retry_after` de provider e fazer
-retry por request Google sem trocar modelo, `2d08eec` para impedir retry que
-reintroduzia Markdown em JSON, `d7313a6` para remover duplicacao de artefatos
-agregados e `16afe40` para bloquear `desempenho_materia` sem duas turmas com
-resultado real. O commit `a7f02a3` faz Google usar a mesma primeira chamada
-faseada de dual-output que OpenAI, evitando pedir PDF quando so
-`create_document` esta exposto. O codigo funcional de batch mais recente continua sendo
-`9b68de1`, incluido no runtime atual.
+**Runtime oficial atual:** backend Render em `d357960`; `origin/main` recebeu os
+ciclos Google `9dbb122`/`8de0ab3` para preservar `retry_after` de provider e
+fazer retry por request Google sem trocar modelo, `2d08eec` para impedir retry
+que reintroduzia Markdown em JSON, `d7313a6` para remover duplicacao de
+artefatos agregados, `16afe40` para bloquear `desempenho_materia` sem duas
+turmas com resultado real, `a7f02a3` para Google usar a mesma primeira chamada
+faseada de dual-output que OpenAI, e os ciclos Anthropic `334825d`, `62fa27d`,
+`e548816` e `d357960` para pedir JSON estruturado e validar schema runtime sem
+aceitar envelope Markdown. O codigo funcional de batch mais recente continua
+sendo `9b68de1`, incluido no runtime atual.
 Use
 `/api/deploy-info` com no-cache/cache-buster como gate de codigo live.
 **Commits aplicados/observados:** `a632883`, `5737611`, `50935ea`, `479b77d`,
@@ -41,7 +42,7 @@ Use
 - O servico oficial em 2026-05-17 e
   `srv-d5t8gbh4tr6s738fr3s0` (`IA_Educacao_V2`), branch `main`,
   `rootDir=backend`, URL `https://ia-educacao-v2.onrender.com`.
-- `/api/deploy-info` confirmou o runtime backend `0411f9a` com
+- `/api/deploy-info` confirmou o runtime backend `d357960` com
   `source=RENDER_GIT_COMMIT`; esse e o gate primario atual para codigo live.
 - `origin/main` pode estar em commit documental posterior a `0411f9a`; o gate
   de comportamento de provider/pipeline continua sendo `/api/deploy-info` com
@@ -61,9 +62,11 @@ Use
 - `ae04982` adicionou `por_etapa` em `/api/custos/resumo` e o smoke live
   confirmou `runs_analisados=59`, `runs_precificados=57`,
   `runs_bloqueados=2`, `custo_usd=1.404252` e custos por etapa.
-- Sweep live de conexao pos-`e2260d2`: OpenAI OK; Gemini 2.5 Flash, Gemini 2.5
-  Flash Lite e Gemini 3 Flash OK; Gemini 2.5 Pro bloqueado por quota `429`;
-  Anthropic bloqueado por credito; Ollama indisponivel no Render.
+- Sweep live de conexao pos-`e2260d2` registrou o estado historico antes das
+  chaves novas: OpenAI OK; Gemini 2.5 Flash, Gemini 2.5 Flash Lite e Gemini 3
+  Flash OK; Gemini 2.5 Pro bloqueado por quota `429`; Anthropic bloqueado por
+  credito; Ollama indisponivel no Render. Estado vivo atual: Haiku 4.5 validado
+  para pipeline individual em `d357960`; Sonnet 4.5 ainda nao foi revalidado.
 - Sweep live Google pos-`c56c4b6`: Gemini 2.5 Flash (`tokens=39`), Gemini 2.5
   Flash Lite (`tokens=20`) e Gemini 3 Flash (`tokens=111`) responderam
   `success=true`; Gemini 2.5 Pro respondeu Google `429`.
@@ -344,7 +347,7 @@ Fontes de preco:
 | `gpt5nano001` | GPT-5 Nano | `openai/gpt-5-nano` | T/sem vision | `0.05/0.40` | catalogo | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ fixture simples | `task_cbe8568e78d6`: `US$ 0.017160`; custo real maior que estimativa por tokens gerados nessa task | `US$ 0.008674` | Repetir em dataset maior antes de chamar de pipeline-ready geral. |
 | `ffae9accf68e` | GPT-4.1 | `openai/gpt-4.1` | T/V | `2.00/8.00` | catalogo | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | `task_f6851ed535b8`: `US$ 0.222856` | `US$ 0.247738` | Repetir em dataset maior e checar qualidade visual de PDFs. |
 | `180b8298a279` | gpt-4o | `openai/gpt-4o` | T/V | `2.50/10.00` | catalogo | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | `task_68b19146a95b`: `US$ 0.314369` | `US$ 0.309673` | Manter como referencia, nao fallback silencioso. |
-| `588f3efe7975` | Claude Haiku 4.5 | `anthropic/claude-haiku-4-5-20251001` | T/V | `1.00/5.00` | oficial Anthropic | ❌ | ⏸️ | ⏸️ | ✅ | ⏸️ | ⏸️ | ❌ primeira etapa | `CORRIGIR` isolado passou (`US$0.102976`), mas full `task_4520bf40103d` falhou em `EXTRAIR_QUESTOES` por JSON dentro de Markdown; erro `4237/1296`, `US$0.010717` | `US$ 0.136272` | Corrigir estratégia Anthropic de JSON cru antes de nova full pipeline. |
+| `588f3efe7975` | Claude Haiku 4.5 | `anthropic/claude-haiku-4-5-20251001` | T/V | `1.00/5.00` | oficial Anthropic | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ Beatriz | Pos-`d357960`, pipeline individual completa validada por artefatos oficiais: Q `d11486043fd2856e`, G `55bbe9f20a79d3f7`, R `fa21df6427683bca`, Corr `cf52ae50099a7623`, Hab `cff266a64d1d4256`, Rel `611f9ae8226692cf`/`60fe1cc4dfd2a1af`; `118025/32892`, `US$0.282485` | `US$ 0.136272` | Repetir em outro aluno/dataset; manter Sonnet pausado ate precisar comparar qualidade. |
 | `4eaeb5105f5d` | Claude Sonnet 4.5 | `anthropic/claude-sonnet-4-5-20250929` | T/V | `3.00/15.00` | oficial Anthropic | ❌ | ⏸️ | ⏸️ | ⏸️ | ⏸️ | ⏸️ | ❌ primeira etapa | `task_b19524abfdd5` em `EXTRAIR_QUESTOES` falhou por JSON dentro de Markdown; erro `4200/1491`, `US$0.034965` | `US$ 0.408816` | Nao gastar em full Sonnet ate resolver JSON cru nas extrações. |
 | `gem25flash001` | Gemini 2.5 Flash | `google/gemini-2.5-flash` | T/V | `0.30/2.50` | oficial Google | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ Beatriz | `task_ca5dd6b8b3b5`: seis etapas OK, `117829/31691`, `US$0.114578`; agregados: tarefa `US$0.019984`, turma `US$0.054663`; materia bloqueada corretamente por pre-requisito | `US$ 0.053285` | Repetir em outro aluno/turma; criar dados da segunda turma antes de `desempenho_materia`. |
 | `gem25lite001` | Gemini 2.5 Flash Lite | `google/gemini-2.5-flash-lite` | T/V | `0.10/0.40` | oficial Google | ⏸️ | ⏸️ | ⏸️ | ❌ | ⏸️ | ⏸️ | ❌ em `CORRIGIR` | `task_44ec067a3d82` apos `a7f02a3`: JSON salvo, mas sem schema minimo; erro `8c875cf984e55e91`, `31602/5201`, `US$0.005241` | `US$ 0.012387` | Nao subir para agregado; testar Gemini 3 Flash ou desenhar prompt menor especifico para Lite. |
@@ -358,8 +361,9 @@ Fontes de preco:
 Achados deste ciclo:
 
 - A chave Anthropic no Render foi atualizada pelo fluxo seguro; Haiku saiu de
-  bloqueado por saldo e ja tem `CORRIGIR` isolado validado. Ainda nao ha full
-  pipeline Haiku.
+  bloqueado por saldo e agora tem pipeline individual completa validada no
+  runtime `d357960`. A correção exigiu JSON estruturado nativo Anthropic,
+  schemas estritos por etapa e validação runtime ligada.
 - O catalogo local subestimava Gemini 2.5 Flash, Gemini 2.5 Flash Lite e Gemini
   3 Flash. O patch do ciclo atual corrige esses precos para a tabela oficial
   Standard da Gemini API.
@@ -391,7 +395,7 @@ nao sao a mesma coisa que `GERAR_RELATORIO` individual. Eles usam os endpoints
 
 | Provider/Modelo | EXTRAIR_QUESTOES | EXTRAIR_GABARITO | EXTRAIR_RESPOSTAS | CORRIGIR | ANALISAR_HABILIDADES | GERAR_RELATORIO |
 |-----------------|:---:|:---:|:---:|:---:|:---:|:---:|
-| **Claude Haiku 4.5** (`588f3efe7975`) | ⏸️ | ⏸️ | ⏸️ | 🚫 | 🚫 | 🚫 |
+| **Claude Haiku 4.5** (`588f3efe7975`) | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | **Gemini 2.5 Flash** (`gem25flash001`) | ✅ | ✅ | ✅ | 🚫 | ⏸️ | ⏸️ |
 | **Gemini 2.5 Flash Lite** (`gem25lite001`) | ⏸️ | ⏸️ | ⏸️ | 🚫 | ⏸️ | ⏸️ |
 | **Gemini 3 Flash** (`gem3flash001`) | ✅ | ✅ | ✅ | ⚠️ | ⚠️ | ⚠️ |
@@ -1247,7 +1251,10 @@ na fixture simples. Ainda falta pipeline completa de 6 etapas e datasets maiores
   (`5372/706`, `US$ 0.007206`). Isso corrige o falso verde global sem mudar a
   classificacao do provider: GPT-5.4 Mini segue confirmado para essas fixtures,
   com a entrada invalida da Helena corretamente bloqueada.
-- ⏸️ **Claude Haiku 4.5:** Aguardando creditos.
+- ✅ **Claude Haiku 4.5:** Credito/chave atualizados e pipeline individual
+  completa validada no site oficial em `d357960`, com artefatos oficiais das
+  seis etapas e custo total `118025/32892` tokens, `US$0.282485`. Sonnet 4.5
+  segue sem revalidacao completa e nao deve ser promovido por inferencia.
 - 📊 **Confiabilidade Gemini 3 Flash:** extracoes OK; etapas finais ficaram
   ⚠️ depois que `aff2180` endureceu `feedback_geral` em `CORRIGIR`. A
   revalidacao foi bloqueada por quota Google `429`. Precisa duas execucoes
@@ -1256,8 +1263,10 @@ na fixture simples. Ainda falta pipeline completa de 6 etapas e datasets maiores
 **Marco 1 atingido para uma fixture simples, nao para a matriz inteira:** o site
 oficial completou 6 etapas com GPT-5.4 Mini, custo/metadata e inspeção
 semantica inicial coerente dos JSONs; depois `3a77a17` validou as etapas finais
-com contrato PDF/JSON coerente. Isso ainda nao valida Gemini/Nano/Haiku/GPT-4o
-nem datasets maiores.
+com contrato PDF/JSON coerente. Ciclos posteriores tambem validaram Gemini 2.5
+Flash, Gemini 3 Flash, GPT-4o, o-series e Haiku 4.5 em escopos documentados.
+Isso ainda nao valida todos os modelos em datasets maiores nem transforma um
+modelo barato/falhante em fallback automatico.
 
 **Bugs criticos descobertos nesta sessao:**
 1. GPT-5 Nano tool-use historico: multiplas chamadas `create_document`, nomes alucinados, sem validacao de schema
@@ -1267,22 +1276,23 @@ nem datasets maiores.
 
 **Proximos passos:**
 1. Manter deploy oficial confirmado por `/api/deploy-info` antes de cada smoke
-   novo; o codigo funcional mais recente confirmado e `9b68de1`. Commits
+   novo; o codigo funcional mais recente confirmado e `d357960`. Commits
    documentais posteriores podem mudar o hash de `/api/deploy-info` sem alterar
    comportamento de pipeline.
-2. Aplicar/validar a migration Supabase `token_usage` antes de chamar custo de
-   falha sem documento de duravel.
-3. Revalidar matriz por provider/modelo; GPT-5.4 Mini passou 6 etapas em
-   fixture simples e segunda atividade textual, GPT-5 Nano passou full task
-   simples, e GPT-4o tem full smoke historico, mas ainda faltam datasets maiores.
-4. Revalidar Gemini/Nano/Haiku por provider/modelo; Gemini 2.5 Flash falhou
-   alto por quota `429` em `corrigir`, Nano segue parcial em dataset maior, e
-   Haiku segue bloqueado por credito.
-5. Aplicar `backend/migrations/002_create_token_usage.sql` no Supabase para
-   tornar duravel o custo de falhas sem documento.
-6. Quando creditos Anthropic forem recarregados, validar Haiku 4.5 via
-   `pipeline-completo`.
-7. Confirmar no site oficial que telas de resultado obedecem `status=erro`:
+2. Aplicar/validar `backend/migrations/002_create_token_usage.sql` no Supabase
+   para tornar duravel o custo de falhas sem documento; enquanto
+   `token_usage_durable=false`, custo por metadata/API e evidencia parcial, nao
+   registro oficial permanente.
+3. Revalidar matriz por provider/modelo em datasets maiores: GPT-5.4 Mini,
+   GPT-4o, GPT-4.1, o-series, Gemini 2.5 Flash, Gemini 3 Flash e Haiku 4.5
+   possuem evidencias oficiais; GPT-5 Nano e Flash Lite seguem limitados por
+   qualidade/schema; Sonnet 4.5 e Gemini Pro nao devem ser promovidos sem smoke
+   proprio.
+4. Corrigir o maior bloqueador vivo reproduzido, nao listas antigas: hoje os
+   candidatos sao custo duravel ausente, Flash Lite com JSON sem schema minimo,
+   Sonnet sem revalidacao e prerequisito real de duas turmas para
+   `desempenho_materia`.
+5. Confirmar no site oficial que telas de resultado obedecem `status=erro`:
    documento parcial em erro nao conta como etapa concluida; retry concluido
    pode fechar a etapa, mas o documento de erro continua visivel na lista para
    auditoria e custo. Status: confirmado em `b8e14db` para HTML live e fixture
@@ -1298,4 +1308,5 @@ nem datasets maiores.
    `backend/migrations/002_create_token_usage.sql`); `e2260d2` confirmou que o
    dashboard oficial mostra esse codigo e caminho da migration; `ae04982`
    confirmou custo agregado por etapa em `/api/custos/resumo`. Falta aplicar a
-   migration `token_usage` e seguir a proxima revalidacao de provider.
+   migration `token_usage`, repetir smokes em dataset maior e manter a matriz
+   por modelo sincronizada com custo medido.

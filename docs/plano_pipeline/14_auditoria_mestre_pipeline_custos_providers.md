@@ -4380,3 +4380,33 @@ O ponto central desta auditoria e simples: a pipeline nao pode parecer saudavel
 quando esta improvisando por baixo. O NOVO CR precisa errar alto, explicar onde
 errou, e so chamar de sucesso aquilo que gerou artefato correto, validado,
 rastreavel e custeavel.
+
+## Atualizacao 2026-05-18 -- Anthropic Haiku 4.5 Completa Pipeline Individual
+
+Patches publicados e validados:
+
+- `334825d` (`fix: prioritize strict json retry prompts`): colocou o contrato de JSON cru antes do prompt original no retry, sem aceitar envelope Markdown.
+- `62fa27d` (`fix: request structured json from anthropic`): passou a usar `output_config` JSON estruturado da API Anthropic quando o prompt pede JSON cru.
+- `e548816` (`fix: use strict anthropic extraction schemas`): substituiu schema generico por schemas estritos de extração.
+- `d357960` (`fix: validate pipeline schemas during parsing`): corrigiu a ordem de inferencia de schema quando `questoes` aparece apenas como contexto e religou a validação runtime lazy.
+
+Evidencia oficial no Render `d357960`:
+
+| Etapa | Documento | Tokens | Custo |
+|---|---|---:|---:|
+| `EXTRAIR_QUESTOES` | `d11486043fd2856e` | `2400/437` | `US$0.004585` |
+| `EXTRAIR_GABARITO` | `55bbe9f20a79d3f7` | `3296/848` | `US$0.007536` |
+| `EXTRAIR_RESPOSTAS` | `fa21df6427683bca` | `3677/520` | `US$0.006277` |
+| `CORRIGIR` | `cf52ae50099a7623` | `55539/13206` | `US$0.121569` |
+| `ANALISAR_HABILIDADES` | `cff266a64d1d4256` | `27858/8636` | `US$0.071038` |
+| `GERAR_RELATORIO` | `611f9ae8226692cf` / `60fe1cc4dfd2a1af` | `25255/9245` | `US$0.071480` |
+
+Total medido da pipeline Haiku Beatriz: `118025/32892` tokens, `US$0.282485`.
+
+Interpretação:
+
+- Haiku 4.5 saiu de ❌ por envelope Markdown para ✅ em pipeline individual no site oficial.
+- A validação do parser continua bloqueante; o sistema não passou a aceitar Markdown como JSON.
+- O task id da full pipeline não foi preservado pelo cliente local de polling, mas os artefatos, o runtime `d357960` e `/api/custos/resumo` confirmam o ciclo completo.
+- Haiku custa mais que Gemini 2.5 Flash neste caso (`US$0.282485` vs `US$0.114578`) e menos que alguns OpenAI/GPT-4o históricos; vale como provider funcional, não como default automático.
+- `token_usage_durable=false` segue bloqueio estrutural até aplicar `backend/migrations/002_create_token_usage.sql` no Supabase.

@@ -5,9 +5,9 @@
 **Status geral:** o servico oficial Render
 `srv-d5t8gbh4tr6s738fr3s0` (`IA_Educacao_V2`, branch `main`, URL
 `https://ia-educacao-v2.onrender.com`) tem como codigo funcional mais recente
-confirmado o commit `a7f02a3` (`fix: phase google dual output tool prompts`),
+confirmado o commit `d357960` (`fix: validate pipeline schemas during parsing`),
 validado por `/api/deploy-info`, `/api/health` e
-`./scripts/check_deploy.sh a7f02a3`. O codigo funcional de batch contido nesse
+`./scripts/check_deploy.sh d357960`. O codigo funcional de batch contido nesse
 runtime continua sendo `9b68de1`, validado por `task_ee773aefb10d`.
 `origin/main` pode estar em commit documental posterior; isso nao muda runtime
 enquanto `/api/deploy-info` com no-cache continuar apontando para o hash
@@ -46,9 +46,15 @@ no site oficial para pipeline completa de Beatriz (`task_ca5dd6b8b3b5`,
 `desempenho_turma` parcial (`US$0.054663`). `desempenho_materia` bloqueou
 corretamente em `16afe40` porque so uma das duas turmas de Matemática tem
 `RELATORIO_FINAL` legivel. Gemini 2.5 Pro nao foi retestado neste ciclo para
-poupar custo. Anthropic foi atualizado pelo fluxo seguro; Haiku 4.5 passou
-conexao, chat simples e `CORRIGIR` isolado (`task_1255fef385bf`,
-`US$0.102976`), mas ainda falta pipeline completa. Ollama esta indisponivel no Render.
+poupar custo. Anthropic foi atualizado pelo fluxo seguro; depois dos commits
+`334825d`, `62fa27d`, `e548816` e `d357960`, Haiku 4.5 passou pipeline
+individual completa no site oficial por artefatos/custos oficiais: questoes
+`d11486043fd2856e`, gabarito `55bbe9f20a79d3f7`, respostas
+`fa21df6427683bca`, correcao `cf52ae50099a7623`, habilidades
+`cff266a64d1d4256`, relatorio `611f9ae8226692cf`/`60fe1cc4dfd2a1af`,
+`118025/32892` tokens, `US$0.282485`. O task id nao foi capturado pelo cliente
+local de polling, mas o aceite fica nos artefatos oficiais, no runtime
+`d357960` e no custo em `/api/custos/resumo`. Ollama esta indisponivel no Render.
 Supabase `token_usage`
 continua ausente (`PGRST205`), deixando custo duravel como gate real.
 
@@ -167,8 +173,28 @@ pipeline `task_4520bf40103d` falhou em `EXTRAIR_QUESTOES`: a resposta tinha
 JSON valido dentro de Markdown, e o executor bloqueou corretamente; custo de
 erro `4237/1296`, `US$0.010717`. Sonnet 4.5 foi testado apenas em
 `EXTRAIR_QUESTOES` (`task_b19524abfdd5`) e falhou pelo mesmo motivo, custo
-`4200/1491`, `US$0.034965`. Estado: Anthropic nao esta pipeline-ready; nao
-gastar full Sonnet/Haiku ate corrigir a estratégia de JSON cru para Anthropic.
+`4200/1491`, `US$0.034965`. Estado historico antes de `d357960`: Anthropic
+nao estava pipeline-ready; nao gastar full Sonnet/Haiku ate corrigir a
+estratégia de JSON cru para Anthropic. A atualizacao seguinte registra a
+mudanca de estado para Haiku 4.5.
+
+Atualizacao Anthropic pos-`d357960` de 2026-05-18: o bloqueio de JSON cru foi
+corrigido para Haiku 4.5 sem afrouxar o parser. `334825d` moveu o contrato de
+retry para o inicio do prompt; `62fa27d` passou a pedir `output_config` JSON
+estruturado da API Anthropic; `e548816` trocou o schema generico por schemas
+estritos de extração; `d357960` corrigiu a inferencia de schema quando o prompt
+contém `questoes` como contexto e religou a validação runtime lazy que estava
+efetivamente desligada. Smokes oficiais no Render `d357960`: Haiku passou
+`EXTRAIR_QUESTOES`, `EXTRAIR_GABARITO`, `EXTRAIR_RESPOSTAS` e depois a pipeline
+individual completa de Beatriz por artefatos oficiais. Evidencia de custo da
+full pipeline: `EXTRAIR_QUESTOES` `2400/437`, `US$0.004585`;
+`EXTRAIR_GABARITO` `3296/848`, `US$0.007536`; `EXTRAIR_RESPOSTAS`
+`3677/520`, `US$0.006277`; `CORRIGIR` `55539/13206`, `US$0.121569`;
+`ANALISAR_HABILIDADES` `27858/8636`, `US$0.071038`; `GERAR_RELATORIO`
+`25255/9245`, `US$0.071480`; total `118025/32892`, `US$0.282485`. Status:
+Haiku 4.5 agora fica ✅ para pipeline individual Beatriz, com ressalva de custo
+maior que Gemini 2.5 Flash e custo duravel ainda bloqueado por Supabase
+`token_usage`.
 
 Atualizacao Lista0 de 2026-05-17: a atividade real `Lista0`
 (`126e8b5ad7dd6d59`) tem documentos base cadastrados e 63 alunos
@@ -3766,9 +3792,10 @@ Critério de pronto: lista de limpeza segura e revisada.
 
 ## Riscos Abertos
 
-1. Chave Anthropic configurada no Render ainda retorna saldo baixo; se existem
-   creditos em outra conta/chave, falta atualizar o segredo oficial antes de
-   validar Haiku.
+1. Anthropic nao esta mais bloqueado por credito para Haiku 4.5: a chave nova
+   entrou pelo fluxo seguro e Haiku completou pipeline individual em `d357960`.
+   Risco residual: Sonnet 4.5 nao foi revalidado e Haiku ainda precisa repetir
+   em dataset maior antes de virar default ou baseline geral.
 2. Schema drift pode fazer modelos gerarem formatos diferentes.
 3. Schema minimo ainda nao esta validado para todas as etapas; JSON parseavel e
    necessario, mas nao prova qualidade pedagogica.
@@ -3776,12 +3803,13 @@ Critério de pronto: lista de limpeza segura e revisada.
    live confirmou que ela ainda nao existe no schema cache (`PGRST205`).
 5. O gate oficial de deploy precisa continuar usando `/api/deploy-info` e smoke
    live; marker HTML pode ficar atrasado em servico `rootDir=backend`.
-6. Gemini 3 Flash bateu quota `429` em pipeline sequencial completa; nao tratar
-   isso como bug silencioso da pipeline, mas tambem nao chamar de pipeline
-   completa validada.
+6. Gemini 3 Flash foi validado em pipeline individual e `desempenho_tarefa`,
+   mas com custo/latencia maiores que Gemini 2.5 Flash. Nao promover como
+   default nem gastar turma/materia sem pergunta comparativa clara.
 7. `extrair_gabarito` parseavel pode ser conteudo invalido quando todas as
-   respostas viram `MISSING_CONTENT`; Nano passou no smoke pos-`5527e26`, mas
-   Gemini ainda precisa rerun antes de voltar a ✅.
+   respostas viram `MISSING_CONTENT`; Gemini 2.5 Flash e Haiku 4.5 ja tiveram
+   smokes melhores depois dos patches, mas Nano e Flash Lite ainda precisam
+   revalidacao em dataset maior antes de voltar a ✅ geral.
 8. `extrair_respostas` parseavel pode ser conteudo invalido quando as respostas
    ficam sem conteudo, inferidas ou inconsistentes; Nano esta confirmado na
    fixture simples Diana, mas o historico em prova/lista maior ainda exige
