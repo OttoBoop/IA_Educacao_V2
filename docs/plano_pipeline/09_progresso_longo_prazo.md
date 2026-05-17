@@ -3367,6 +3367,22 @@ Critério de pronto: lista de limpeza segura e revisada.
 - Proximo passo: Haiku so deve ser reexecutado depois de atualizar a chave
   Anthropic no Render; custo duravel segue bloqueado pela migration Supabase.
 
+### 2026-05-17 -- Gemini Flash Lite: catalogo de tools alinhado
+
+- Alvo: corrigir divergencia entre modelo ativo, catalogo e documentacao
+  oficial Google.
+- Achado: `/api/settings/models` mostrava `gem25lite001`
+  (`google/gemini-2.5-flash-lite`) com `suporta_function_calling=true`, e a
+  documentacao oficial Google de function calling lista Gemini 2.5 Flash-Lite
+  como suportado. O `backend/data/model_catalog.json`, porem, ainda dizia
+  `supports_tools=false` e descricao "sem tools".
+- Patch: `backend/data/model_catalog.json` agora descreve Flash Lite como
+  "Ultra economico com suporte a function calling" e usa
+  `supports_tools=true`.
+- Teste novo: `test_catalogo_gemini_flash_lite_declara_tools`.
+- Proximo passo: validar local, publicar, esperar Render e confirmar
+  `/api/settings/model-catalog/google/gemini-2.5-flash-lite` no site oficial.
+
 ## Riscos Abertos
 
 1. Chave Anthropic configurada no Render ainda retorna saldo baixo; se existem

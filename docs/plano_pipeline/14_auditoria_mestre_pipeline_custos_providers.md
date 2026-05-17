@@ -4013,6 +4013,13 @@ Interpretacao:
   custo medido local/metadata, mas persistencia duravel de falhas sem documento
   ainda depende de aplicar `backend/migrations/002_create_token_usage.sql` no
   Supabase.
+- Continuidade do loop: a comparacao entre `/api/settings/models` e
+  `backend/data/model_catalog.json` revelou outra divergencia relevante.
+  Gemini 2.5 Flash Lite aparecia no modelo ativo do site com
+  `suporta_function_calling=true`, e a documentacao oficial Google de function
+  calling lista Flash-Lite como suportado, mas o catalogo local ainda dizia
+  `supports_tools=false`. O patch seguinte alinha o catalogo para
+  `supports_tools=true` e adiciona teste dedicado.
 
 ### Provider: Batch Textual, Branco Rastreavel E Status Global De Batch
 

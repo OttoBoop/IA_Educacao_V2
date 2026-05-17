@@ -224,7 +224,7 @@ Fontes de preco:
 | `588f3efe7975` | Claude Haiku 4.5 | `anthropic/claude-haiku-4-5-20251001` | T/V | `1.00/5.00` | oficial Anthropic | 🚫 | 🚫 | 🚫 | 🚫 | 🚫 | 🚫 | 🚫 chave/saldo | Re-smoke 2026-05-17: `/testar` e `/api/chat` retornaram Anthropic `400`, saldo baixo na chave do Render | `US$ 0.136272` | Sincronizar/rotacionar chave Anthropic do Render; depois rodar Haiku primeiro. |
 | `4eaeb5105f5d` | Claude Sonnet 4.5 | `anthropic/claude-sonnet-4-5-20250929` | T/V | `3.00/15.00` | oficial Anthropic | 🚫 | 🚫 | 🚫 | 🚫 | 🚫 | 🚫 | 🚫 chave/saldo | Sweep anterior indicou mesmo bloqueio Anthropic; nao retestado para poupar ate Haiku destravar | `US$ 0.408816` | Testar so depois de Haiku, por custo ~3x maior. |
 | `gem25flash001` | Gemini 2.5 Flash | `google/gemini-2.5-flash` | T/V | `0.30/2.50` | oficial Google | ✅ | ✅ | ✅ | 🚫 | ⏸️ | ⏸️ | 🚫 quota em `corrigir` | `task_41c45d7939b5`: falhou alto em `corrigir` por Google `429 RESOURCE_EXHAUSTED` | `US$ 0.053285` | Repetir quando quota Google permitir. |
-| `gem25lite001` | Gemini 2.5 Flash Lite | `google/gemini-2.5-flash-lite` | T/V no site; catalogo sem tools | `0.10/0.40` | oficial Google | ⏸️ | ⏸️ | ⏸️ | ❌ | ⏸️ | ⏸️ | ❌ | `task_124bf0e8d7bf`: JSON/PDF divergentes, custo `US$ 0.001986` | `US$ 0.012387` | Resolver discrepancia site/catalogo sobre tools antes de promover. |
+| `gem25lite001` | Gemini 2.5 Flash Lite | `google/gemini-2.5-flash-lite` | T/V | `0.10/0.40` | oficial Google | ⏸️ | ⏸️ | ⏸️ | ❌ | ⏸️ | ⏸️ | ❌ | `task_124bf0e8d7bf`: JSON/PDF divergentes, custo `US$ 0.001986` | `US$ 0.012387` | Re-smoke de `corrigir` quando quota Google permitir; tools agora alinhadas no catalogo e no site. |
 | `gem3flash001` | Gemini 3 Flash | `google/gemini-3-flash-preview` | T/V | `0.50/3.00` | oficial Google | ✅ | ✅ | ✅ | ⚠️ | ⚠️ | ⚠️ | 🚫 quota/revalidacao | `task_5e97bbee896e`: tres extracoes passaram; falhou alto em `corrigir` por `429` | `US$ 0.074338` | Repetir pipeline sequencial completa quando quota permitir. |
 | `e251747cd7a2` | Gemini 2.5 Pro | `google/gemini-2.5-pro` | T/V | `1.25/10.00` ate 200k prompt | oficial Google | ⏸️ | ⏸️ | ⏸️ | ⏸️ | ⏸️ | ⏸️ | 🚫 quota | Sweep live: conexao bloqueada por Google `429` | `US$ 0.216851` | Testar conexao e uma etapa quando quota permitir. |
 | `58ff5dcdff67` | o3 Mini | `openai/o3-mini` | sem tools/sem vision | `1.10/4.40` | catalogo | 🚫 | 🚫 | 🚫 | 🚫 | 🚫 | 🚫 | 🚫 config | Sem function calling no modelo configurado do site | `US$ 0.136256` | Nao usar na pipeline enquanto tools estiverem desativadas. |
@@ -240,6 +240,9 @@ Achados deste ciclo:
 - O catalogo local subestimava Gemini 2.5 Flash, Gemini 2.5 Flash Lite e Gemini
   3 Flash. O patch do ciclo atual corrige esses precos para a tabela oficial
   Standard da Gemini API.
+- O catalogo local tambem marcava Gemini 2.5 Flash Lite como sem tools; a
+  documentacao oficial Google e o modelo ativo do site indicam function calling
+  disponivel, entao o catalogo agora usa `supports_tools=true`.
 - A matriz antiga abaixo continua como historico detalhado por frente, mas a
   tabela acima e a fonte de decisao operacional por modelo ativo.
 

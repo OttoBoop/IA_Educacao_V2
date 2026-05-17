@@ -149,6 +149,13 @@ def test_catalogo_gemini_usa_precos_oficiais_standard():
     assert flash_3["cost_per_request"] == 0.074338
 
 
+def test_catalogo_gemini_flash_lite_declara_tools():
+    flash_lite = model_catalog.get_model_info("google", "gemini-2.5-flash-lite")
+
+    assert flash_lite is not None
+    assert flash_lite.supports_tools is True
+
+
 def test_cost_summary_conta_um_run_com_json_e_pdf(tmp_path):
     store, atividade, aluno = _seed_storage(tmp_path)
     arquivo_json = tmp_path / "correcao.json"
