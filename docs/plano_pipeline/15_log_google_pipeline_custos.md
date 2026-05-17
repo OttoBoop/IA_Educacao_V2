@@ -16,9 +16,9 @@ ou chamar etapa bloqueada de sucesso continua proibido.
 
 - URL oficial: `https://ia-educacao-v2.onrender.com`.
 - Runtime inicial observado: `0411f9a`.
-- Runtime final publicado: `8de0ab3`.
+- Runtime final publicado: `16afe40`.
 - Health final: `/api/health` retornou `{"status":"healthy","supabase":true}`.
-- `origin/main` final: `8de0ab33abfb76d58c2b20960fa1fd21311a371a`.
+- `origin/main` final: `16afe402465f402855bacdeb34ec7ac31d4b26b1`.
 - Persistencia duravel de `token_usage`: ainda bloqueada por Supabase
   `PGRST205`, tabela `public.token_usage` ausente.
 
@@ -308,12 +308,56 @@ Bug novo de custos/artefatos:
 - Validacoes locais: `py_compile`, `git diff --check`, pytest focado
   `4 passed`.
 
-Proximo gate:
+### Re-smoke agregado apos `d7313a6`
 
-1. Commit/push/deploy do patch anti-duplicacao.
-2. Repetir `desempenho_tarefa-sync` com Google Flash.
-3. Confirmar que o novo run gera apenas um par JSON/PDF oficial e um custo.
-4. So depois subir para `desempenho_turma-sync`.
+- Commit `d7313a6` foi publicado e confirmado no Render.
+- Repeticao de `/api/executar/desempenho-tarefa-sync` com `gem25flash001`:
+  HTTP 200, `sucesso=true`, `status=PARCIAL`.
+- Readback em `/api/desempenho/tarefa/8f58cc8b5fb75869` mostrou run novo
+  `run-20260518-153754` com exatamente dois documentos oficiais:
+  PDF `0cfd4f362eacc903` e JSON `30dbb7e96531bf62`.
+- Custo do run novo: `25237/4965` tokens, `US$0.019984`.
+- Resultado do patch anti-duplicacao: nao apareceu novo JSON artificial de
+  sistema para o run novo; os artefatos duplicados antigos seguem no historico
+  apenas como evidencia do bug corrigido.
+
+### Desempenho Turma Google Flash
+
+- Endpoint: `/api/executar/desempenho-turma-sync`.
+- Provider: `gem25flash001`.
+- Resultado: HTTP 200 em `157.5s`, `sucesso=true`, `status=PARCIAL`.
+- Cobertura: `total_alunos=5`, `narrativas_encontradas=5`,
+  `atividades_cobertas=1`.
+- Avisos: arquivos narrativos antigos ilegiveis para alguns documentos e
+  lacunas em `Prova 1 - Equações do 1º Grau` e `Trabalho - Estatística`.
+- Readback em `/api/desempenho/turma/ec5a0ae78546c78e` mostrou run novo
+  `run-20260518-154054` com PDF `c4919dd7ac988fa2` e JSON
+  `8fe7dc2276f4f670`.
+- Custo do run: `65800/13969` tokens, `US$0.054663`.
+
+### Desempenho Materia Google Flash
+
+- Dados oficiais checados antes de gastar IA:
+  - Materia `840eefa3714d7a3e` tem duas turmas:
+    `7a4edd9e4d2af0be` e `ec5a0ae78546c78e`.
+  - A turma `7a4edd9e4d2af0be` tem uma atividade e zero documentos.
+  - A turma `ec5a0ae78546c78e` tem relatórios finais legiveis.
+- Bug encontrado: o codigo aceitava duas narrativas da mesma turma como se isso
+  bastasse para um relatorio cross-turma de materia.
+- Patch publicado: `16afe40` (`fix: block materia desempenho without two
+  turmas`) exige `RELATORIO_FINAL` legivel em pelo menos duas turmas distintas
+  antes de chamar IA.
+- Validacoes locais: `py_compile`, `git diff --check`,
+  `test_desempenho_materia_prereqs.py` e `test_desempenho_no_duplicate_save.py`
+  com `3 passed`.
+- Deploy oficial: Render confirmou `16afe40`; `/api/health` saudavel.
+- Smoke oficial:
+  `/api/executar/desempenho-materia-sync` com `gem25flash001` retornou HTTP
+  200, `sucesso=false`, `status=BLOQUEADO_PREREQUISITO`,
+  `total_turmas=2`, `narrativas_encontradas=5`, cobertura
+  `7a4edd9e4d2af0be=0` e `ec5a0ae78546c78e=5`.
+- Interpretação: isso e sucesso de produto no sentido P0. O sistema nao gerou
+  relatorio de materia falso, nao chamou IA e explicou o dado faltante.
 
 ## Tentativas Google
 
@@ -335,6 +379,10 @@ Proximo gate:
 | 14 | `gem25lite001` | `CORRIGIR` apos troca de chave | Falha alta | `task_dc80b77ffd58`, Google `503 high demand`, `retryable=true` | Sem documento final observado; custo duravel bloqueado por `token_usage` ausente |
 | 15 | `gem25flash001` | `CORRIGIR` apos troca de chave | OK | `task_f15775f0c10c`, JSON `2fb79c5a06dd091e`, PDF `f53b78ceb8fd53ad` | `27368/6255`, `US$0.023848` |
 | 16 | `gem25flash001` | pipeline completa Beatriz | Falha alta | `task_1cf3a3da23b5`; passou questoes/gabarito, falhou `EXTRAIR_RESPOSTAS` por JSON dentro de Markdown | A coletar apos patch; erro sem sucesso falso |
+| 17 | `gem25flash001` | pipeline completa Beatriz apos `2d08eec` | OK | `task_ca5dd6b8b3b5`; seis etapas sem `stage_errors` | `117829/31691`, `US$0.114578` |
+| 18 | `gem25flash001` | `desempenho_tarefa` apos `d7313a6` | OK parcial | `run-20260518-153754`; 5 alunos incluidos, 5 excluidos por arquivos antigos ilegiveis/ausentes | `25237/4965`, `US$0.019984` |
+| 19 | `gem25flash001` | `desempenho_turma` apos `d7313a6` | OK parcial | `run-20260518-154054`; 5 narrativas, 1 atividade coberta, lacunas em atividades | `65800/13969`, `US$0.054663` |
+| 20 | `gem25flash001` | `desempenho_materia` apos `16afe40` | Bloqueio correto | HTTP 200 com `sucesso=false`, `BLOQUEADO_PREREQUISITO`; so 1 turma tinha resultado legivel | Sem chamada IA; sem custo novo |
 
 ## Patches Publicados No Ciclo
 
@@ -360,43 +408,44 @@ Proximo gate:
 
 - Google nao esta sem chave: os testes de conexao funcionaram para Flash Lite,
   Flash e Gemini 3 Flash.
-- Google nao esta pipeline-ready neste momento: `CORRIGIR` com Flash Lite ainda
-  cai em quota `generate_content_free_tier_requests`, limite `20`.
-- A mensagem do provider ainda fala em `free_tier_requests`, mesmo apos o
-  credito novo. Isso sugere que o projeto/chave usada pelo Render nao esta
-  efetivamente operando com billing pago ou continua limitada por rate-limit do
-  tier gratuito.
+- Google Flash (`gem25flash001`) esta validado no site oficial para pipeline
+  individual completa da Beatriz, `desempenho_tarefa` parcial e
+  `desempenho_turma` parcial, com custos medidos.
+- Google Lite (`gem25lite001`) ainda nao esta validado para pipeline: depois da
+  troca de chave, saiu do free-tier antigo, mas `CORRIGIR` isolado bateu em
+  `503 high demand`.
+- `desempenho_materia` nao e falha do modelo neste momento: esta bloqueado por
+  dado real ausente na segunda turma.
 - O backend agora registra melhor `retry_after`, custo parcial e erro provider;
   isso melhora observabilidade, mas nao remove o bloqueio externo.
 
 ## Relatorios De Desempenho
 
-Nao executados neste ciclo.
+Executados para `gem25flash001`:
 
-Motivo: `desempenho_tarefa`, `desempenho_turma` e `desempenho_materia` usam
-tool-use e chamariam o mesmo caminho Google que falhou em `CORRIGIR`. Como a
-atividade `8f58cc8b5fb75869` ja tem insumo suficiente para `desempenho_tarefa`,
-o bloqueio atual nao e dado de teste; e quota/billing/rate-limit do provider.
+- `desempenho_tarefa`: passou, mas parcial por arquivos antigos ilegíveis.
+- `desempenho_turma`: passou, mas parcial por lacunas de atividade/documentos.
+- `desempenho_materia`: bloqueou corretamente por falta de duas turmas distintas
+  com `RELATORIO_FINAL` legivel.
 
 Proximo passo honesto:
 
-1. Confirmar no Google AI Studio/Cloud que a chave do Render esta vinculada ao
-   projeto com billing pago, nao apenas ao tier gratuito.
-2. Quando a mensagem deixar de citar `generate_content_free_tier_requests`,
-   repetir primeiro `gem25lite001` em `CORRIGIR`.
-3. Se `CORRIGIR` passar, rodar `desempenho_tarefa-sync` na atividade
-   `8f58cc8b5fb75869`.
-4. So depois subir para `desempenho_turma-sync`; `desempenho_materia-sync`
-   exige validar se ha duas turmas com finais suficientes.
+1. Criar ou completar dados reais na segunda turma antes de rodar
+   `desempenho_materia`.
+2. Repetir `gem25lite001` em `CORRIGIR` para saber se o `503 high demand` era
+   transitorio.
+3. Depois testar `gem3flash001` em uma escada barata, sem pular direto para Pro.
 
 ## Status Final Do Ciclo
 
 - `gem25lite001`: conexao OK, JSON simples OK com backoff, pipeline individual
-  bloqueada em `CORRIGIR` por quota free-tier.
-- `gem25flash001`: conexao OK; JSON simples imediato bloqueado por `429`; nao
-  foi gasto pipeline para poupar credito.
+  ainda nao confirmada; ultima tentativa `CORRIGIR` falhou alto por `503 high
+  demand`.
+- `gem25flash001`: conexao OK, `CORRIGIR` OK, pipeline individual completa OK,
+  `desempenho_tarefa` OK parcial, `desempenho_turma` OK parcial,
+  `desempenho_materia` bloqueado corretamente por pre-requisito de dados.
 - `gem3flash001`: conexao OK; JSON simples imediato bloqueado por `429`; nao
   foi gasto pipeline para poupar credito.
 - `e251747cd7a2`: nao retestado neste ciclo; Pro fica por ultimo por custo.
-- Desempenho agregado: preparado por dados, mas nao executado por bloqueio
-  Google antes da camada agregada.
+- Desempenho agregado: validado ate turma com Google Flash; materia exige dados
+  em pelo menos duas turmas distintas antes de nova chamada de IA.

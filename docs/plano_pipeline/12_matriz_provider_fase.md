@@ -5,10 +5,13 @@
 (`126e8b5ad7dd6d59`), smoke simples oficial `Smoke Paulo Pipeline 2026-05-16`
 (`f68d57a9a339081f`) e atividade textual `Prova 1 - Equações do 1º Grau`
 (`8f58cc8b5fb75869`)
-**Runtime oficial atual:** backend Render em `8de0ab3`; `origin/main` recebeu o
-ciclo `9dbb122`/`8de0ab3` para preservar `retry_after` de provider e fazer retry
-por request Google sem trocar modelo. O codigo funcional de batch mais recente
-continua sendo `9b68de1`, incluido no runtime atual.
+**Runtime oficial atual:** backend Render em `16afe40`; `origin/main` recebeu os
+ciclos `9dbb122`/`8de0ab3` para preservar `retry_after` de provider e fazer
+retry por request Google sem trocar modelo, `2d08eec` para impedir retry que
+reintroduzia Markdown em JSON, `d7313a6` para remover duplicacao de artefatos
+agregados e `16afe40` para bloquear `desempenho_materia` sem duas turmas com
+resultado real. O codigo funcional de batch mais recente continua sendo
+`9b68de1`, incluido no runtime atual.
 Use
 `/api/deploy-info` com no-cache/cache-buster como gate de codigo live.
 **Commits aplicados/observados:** `a632883`, `5737611`, `50935ea`, `479b77d`,
@@ -140,6 +143,15 @@ Use
   de desempenho salvavam via tools e depois salvavam de novo via
   `_salvar_resultado`; patch local remove a duplicacao antes de subir para
   `desempenho_turma`.
+- Ciclo Google pos-`d7313a6`/`16afe40`: `desempenho_tarefa-sync` com
+  `gem25flash001` gerou novo run sem duplicacao (`run-20260518-153754`), PDF
+  `0cfd4f362eacc903`, JSON `30dbb7e96531bf62`, `25237/4965` tokens,
+  `US$0.019984`. `desempenho_turma-sync` passou em `run-20260518-154054`,
+  PDF `c4919dd7ac988fa2`, JSON `8fe7dc2276f4f670`, `65800/13969` tokens,
+  `US$0.054663`, status `PARCIAL` por lacunas/arquivos antigos. O smoke
+  `desempenho_materia-sync` apos `16afe40` retornou `sucesso=false`,
+  `status=BLOQUEADO_PREREQUISITO`, pois apenas uma turma tinha
+  `RELATORIO_FINAL` legivel; sem chamada IA e sem custo novo.
 - Anthropic recheck antigo de saldo baixo foi superado apos troca de chave; o
   status atual de Haiku 4.5 e parcial/confirmado para conexao, chat simples e
   `CORRIGIR` isolado, pendente pipeline completa e desempenho.
@@ -311,10 +323,10 @@ Fontes de preco:
 | `gpt5nano001` | GPT-5 Nano | `openai/gpt-5-nano` | T/sem vision | `0.05/0.40` | catalogo | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ fixture simples | `task_cbe8568e78d6`: `US$ 0.017160`; custo real maior que estimativa por tokens gerados nessa task | `US$ 0.008674` | Repetir em dataset maior antes de chamar de pipeline-ready geral. |
 | `ffae9accf68e` | GPT-4.1 | `openai/gpt-4.1` | T/V | `2.00/8.00` | catalogo | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | `task_f6851ed535b8`: `US$ 0.222856` | `US$ 0.247738` | Repetir em dataset maior e checar qualidade visual de PDFs. |
 | `180b8298a279` | gpt-4o | `openai/gpt-4o` | T/V | `2.50/10.00` | catalogo | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | `task_68b19146a95b`: `US$ 0.314369` | `US$ 0.309673` | Manter como referencia, nao fallback silencioso. |
-| `588f3efe7975` | Claude Haiku 4.5 | `anthropic/claude-haiku-4-5-20251001` | T/V | `1.00/5.00` | oficial Anthropic | 🚫 | 🚫 | 🚫 | 🚫 | 🚫 | 🚫 | 🚫 chave/saldo | Re-smoke 2026-05-17: `/testar` e `/api/chat` retornaram Anthropic `400`, saldo baixo; recheck pos-`c56c4b6` confirmou o mesmo bloqueio na chave do Render | `US$ 0.136272` | Sincronizar/rotacionar chave Anthropic do Render; depois rodar Haiku primeiro. |
+| `588f3efe7975` | Claude Haiku 4.5 | `anthropic/claude-haiku-4-5-20251001` | T/V | `1.00/5.00` | oficial Anthropic | ⏸️ | ⏸️ | ⏸️ | ✅ | ⏸️ | ⏸️ | ⚠️ parcial | Pos-chave: conexao OK, chat simples HTTP 200, `CORRIGIR` isolado passou em `task_1255fef385bf`, JSON `816d1927e116914c`, PDF `e250407e3823c99d`, `43096/11976`, `US$0.102976` | `US$ 0.136272` | Rodar pipeline completa Haiku depois de fechar a rodada Google barata. |
 | `4eaeb5105f5d` | Claude Sonnet 4.5 | `anthropic/claude-sonnet-4-5-20250929` | T/V | `3.00/15.00` | oficial Anthropic | 🚫 | 🚫 | 🚫 | 🚫 | 🚫 | 🚫 | 🚫 chave/saldo | Sweep anterior indicou mesmo bloqueio Anthropic; nao retestado para poupar ate Haiku destravar | `US$ 0.408816` | Testar so depois de Haiku, por custo ~3x maior. |
-| `gem25flash001` | Gemini 2.5 Flash | `google/gemini-2.5-flash` | T/V | `0.30/2.50` | oficial Google | ✅ | ✅ | ✅ | 🚫 | ⏸️ | ⏸️ | 🚫 quota em `corrigir` | `task_287db2c7f112` e `task_41c45d7939b5`: falha alta em `corrigir`; 2026-05-18 conexao OK (`tokens=39`), JSON imediato `429` | `US$ 0.053285` | Aguardar billing/rate-limit Google antes de pipeline; nao gastar Flash enquanto Lite trava. |
-| `gem25lite001` | Gemini 2.5 Flash Lite | `google/gemini-2.5-flash-lite` | T/V | `0.10/0.40` | oficial Google | ⏸️ | ⏸️ | ⏸️ | 🚫 | ⏸️ | ⏸️ | 🚫 quota free-tier | 2026-05-18: conexao OK (`tokens=20`), JSON OK apos backoff (`tokens_used=398`), mas `task_c6e0b3157990` falhou em `CORRIGIR` por `generate_content_free_tier_requests` limite `20`; erro `91219d221a2b3aa2`, `US$ 0.000862` | `US$ 0.012387` | Corrigir billing/chave Google no Render; repetir `CORRIGIR`, depois `desempenho_tarefa`. |
+| `gem25flash001` | Gemini 2.5 Flash | `google/gemini-2.5-flash` | T/V | `0.30/2.50` | oficial Google | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ Beatriz | `task_ca5dd6b8b3b5`: seis etapas OK, `117829/31691`, `US$0.114578`; agregados: tarefa `US$0.019984`, turma `US$0.054663`; materia bloqueada corretamente por pre-requisito | `US$ 0.053285` | Repetir em outro aluno/turma; criar dados da segunda turma antes de `desempenho_materia`. |
+| `gem25lite001` | Gemini 2.5 Flash Lite | `google/gemini-2.5-flash-lite` | T/V | `0.10/0.40` | oficial Google | ⏸️ | ⏸️ | ⏸️ | 🚫 | ⏸️ | ⏸️ | 🚫 provider 503 | 2026-05-18: conexao OK (`tokens=20`), JSON OK apos backoff; pos-chave `task_dc80b77ffd58` em `CORRIGIR` falhou alto por Google `503 high demand`, sem free-tier antigo | `US$ 0.012387` | Repetir `CORRIGIR` uma vez; se novo 503, marcar como instabilidade provider e seguir para Flash/3 Flash. |
 | `gem3flash001` | Gemini 3 Flash | `google/gemini-3-flash-preview` | T/V | `0.50/3.00` | oficial Google | ✅ | ✅ | ✅ | ⚠️ | ⚠️ | ⚠️ | 🚫 quota/revalidacao | `task_5e97bbee896e`: tres extracoes passaram; falhou alto em `corrigir` por `429`; 2026-05-18 conexao OK (`tokens=84`), JSON imediato `429` | `US$ 0.074338` | Repetir pipeline sequencial so depois de Lite sair do bloqueio. |
 | `e251747cd7a2` | Gemini 2.5 Pro | `google/gemini-2.5-pro` | T/V | `1.25/10.00` ate 200k prompt | oficial Google | ⏸️ | ⏸️ | ⏸️ | ⏸️ | ⏸️ | ⏸️ | 🚫 quota | Sweep live: conexao bloqueada por Google `429` | `US$ 0.216851` | Testar conexao e uma etapa quando quota permitir. |
 | `58ff5dcdff67` | o3 Mini | `openai/o3-mini` | T/sem vision | `1.10/4.40` | oficial OpenAI/catalogo | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ fixture simples | `task_f200c8d9abf4`: 6 etapas OK, `US$ 0.264026`; `task_91f7660e5013`: finais OK, `US$ 0.168651` | `US$ 0.136256` | Repetir em dataset maior; custo real desta fixture ficou acima do perfil canonico. |
@@ -324,9 +336,9 @@ Fontes de preco:
 
 Achados deste ciclo:
 
-- O site oficial ainda usa uma chave Anthropic que retorna saldo baixo. Se voce
-  tem creditos Anthropic, o proximo passo nao e rodar pipeline: e garantir que
-  a chave correta esteja no Render, sem colar segredo no chat.
+- A chave Anthropic no Render foi atualizada pelo fluxo seguro; Haiku saiu de
+  bloqueado por saldo e ja tem `CORRIGIR` isolado validado. Ainda nao ha full
+  pipeline Haiku.
 - O catalogo local subestimava Gemini 2.5 Flash, Gemini 2.5 Flash Lite e Gemini
   3 Flash. O patch do ciclo atual corrige esses precos para a tabela oficial
   Standard da Gemini API.
@@ -345,9 +357,9 @@ nao sao a mesma coisa que `GERAR_RELATORIO` individual. Eles usam os endpoints
 
 | Modelo Google | `desempenho_tarefa` | `desempenho_turma` | `desempenho_materia` | Evidencia | Proximo passo |
 |---|:---:|:---:|:---:|---|---|
-| `gem25lite001` | 🚫 | 🚫 | 🚫 | Nao executado por economia: `CORRIGIR` ja falhou em `task_c6e0b3157990` por quota free-tier. A atividade `8f58cc8b5fb75869` tem 4 alunos com `RELATORIO_FINAL`, entao o dado esta pronto para tarefa. | Corrigir billing/rate-limit; rodar `desempenho-tarefa-sync` primeiro. |
-| `gem25flash001` | 🚫 | 🚫 | 🚫 | Conexao OK, mas JSON simples imediato `429`; nao gastar agregado enquanto Lite bloqueia no mesmo provider. | Reavaliar so depois de Lite passar `CORRIGIR`. |
-| `gem3flash001` | 🚫 | 🚫 | 🚫 | Conexao OK, mas JSON simples imediato `429`; historico de pipeline tambem bloqueou em `corrigir`. | Reavaliar apos Flash/Lite, por custo maior. |
+| `gem25lite001` | ⏸️ | ⏸️ | ⏸️ | Nao executado: `CORRIGIR` pos-chave falhou alto por `503 high demand`. | Repetir `CORRIGIR`; so subir para agregado se passar. |
+| `gem25flash001` | ✅ | ✅ | 🚫 prereq | Tarefa `run-20260518-153754` passou parcial, `US$0.019984`; turma `run-20260518-154054` passou parcial, `US$0.054663`; materia bloqueou em `16afe40` porque so uma turma tem relatorio legivel. | Completar dados reais da segunda turma, depois repetir materia. |
+| `gem3flash001` | ⏸️ | ⏸️ | ⏸️ | Conexao OK pos-chave; agregado nao testado porque Flash ja forneceu a evidencia principal e 3 Flash e mais caro. | Testar depois de Lite ou quando precisarmos comparar qualidade/custo. |
 | `e251747cd7a2` | ⏸️ | ⏸️ | ⏸️ | Pro nao foi retestado neste ciclo para poupar custo. | Testar conexao so depois de resolver billing/rate-limit dos modelos baratos. |
 
 ---

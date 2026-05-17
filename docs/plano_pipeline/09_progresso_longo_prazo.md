@@ -5,9 +5,10 @@
 **Status geral:** o servico oficial Render
 `srv-d5t8gbh4tr6s738fr3s0` (`IA_Educacao_V2`, branch `main`, URL
 `https://ia-educacao-v2.onrender.com`) tem como codigo funcional mais recente
-confirmado o commit `8de0ab3` (`fix: retry google quota waits per request`),
+confirmado o commit `16afe40` (`fix: block materia desempenho without two
+turmas`),
 validado por `/api/deploy-info`, `/api/health` e
-`./scripts/check_deploy.sh 8de0ab3`. O codigo funcional de batch contido nesse
+`./scripts/check_deploy.sh 16afe40`. O codigo funcional de batch contido nesse
 runtime continua sendo `9b68de1`, validado por `task_ee773aefb10d`.
 `origin/main` pode estar em commit documental posterior; isso nao muda runtime
 enquanto `/api/deploy-info` com no-cache continuar apontando para o hash
@@ -36,13 +37,17 @@ patch de branco rastreavel. O batch `task_ee773aefb10d` no runtime `9b68de1`
 agora termina `failed` quando Helena falha em `extrair_respostas`, expondo
 `summary` com `29` etapas `skipped`, `1` etapa `failed` e erro global, sem
 falso verde. Gemini Flash/Flash Lite/3 Flash passam em
-conexao simples; Flash Lite tambem passou JSON simples com backoff manual, mas
-`corrigir` ainda falha alto por quota Google `429` de
-`generate_content_free_tier_requests` no projeto/chave atual do Render. Gemini
-2.5 Pro nao foi retestado neste ciclo para poupar custo. Anthropic foi retestado
-com Haiku em 2026-05-17 e a chave configurada no Render ainda retornou
-`400`/saldo baixo; se ha creditos na conta correta, falta sincronizar ou
-rotacionar a chave do site oficial. Ollama esta indisponivel no Render.
+conexao simples; Flash Lite tambem passou JSON simples com backoff manual e,
+pos-chave, saiu do erro free-tier antigo, mas `CORRIGIR` ainda falhou alto por
+Google `503 high demand`. Gemini Flash (`gem25flash001`) agora esta confirmado
+no site oficial para pipeline completa de Beatriz (`task_ca5dd6b8b3b5`,
+`US$0.114578`), `desempenho_tarefa` parcial (`US$0.019984`) e
+`desempenho_turma` parcial (`US$0.054663`). `desempenho_materia` bloqueou
+corretamente em `16afe40` porque so uma das duas turmas de Matemática tem
+`RELATORIO_FINAL` legivel. Gemini 2.5 Pro nao foi retestado neste ciclo para
+poupar custo. Anthropic foi atualizado pelo fluxo seguro; Haiku 4.5 passou
+conexao, chat simples e `CORRIGIR` isolado (`task_1255fef385bf`,
+`US$0.102976`), mas ainda falta pipeline completa. Ollama esta indisponivel no Render.
 Supabase `token_usage`
 continua ausente (`PGRST205`), deixando custo duravel como gate real.
 
@@ -106,6 +111,24 @@ salvavam JSON/PDF via tools e depois salvavam outro JSON com os mesmos tokens,
 duplicando artefato/custo. Patch local preparado remove o `_salvar_resultado`
 extra dos tres agregados e adiciona `test_desempenho_no_duplicate_save.py`;
 validacoes locais `4 passed`.
+
+Atualizacao pos-`d7313a6`/`16afe40`: Render confirmou `d7313a6` e
+`desempenho_tarefa-sync` foi repetido sem duplicacao nova de artefato/custo:
+run `run-20260518-153754`, PDF `0cfd4f362eacc903`, JSON `30dbb7e96531bf62`,
+`25237/4965` tokens, `US$0.019984`. Em seguida `desempenho_turma-sync` passou
+com `gem25flash001`, status `PARCIAL`, run `run-20260518-154054`, PDF
+`c4919dd7ac988fa2`, JSON `8fe7dc2276f4f670`, `65800/13969` tokens,
+`US$0.054663`. O ciclo descobriu e corrigiu um falso-sucesso possivel em
+`desempenho_materia`: duas narrativas da mesma turma podiam ser aceitas como
+relatorio cross-turma. O commit `16afe40` exige `RELATORIO_FINAL` legivel em
+pelo menos duas turmas distintas antes de chamar IA. Smoke oficial apos deploy:
+`/api/executar/desempenho-materia-sync` retornou HTTP 200, `sucesso=false`,
+`status=BLOQUEADO_PREREQUISITO`, `total_turmas=2`,
+`narrativas_encontradas=5`, cobertura `7a4edd9e4d2af0be=0` e
+`ec5a0ae78546c78e=5`, sem custo novo. Proximo alvo Google: repetir
+`gem25lite001` em `CORRIGIR` para diferenciar 503 transitorio de bloqueio
+persistente; em paralelo, a frente estrutural de custos continua sendo aplicar
+`backend/migrations/002_create_token_usage.sql` no Supabase.
 
 Atualizacao Lista0 de 2026-05-17: a atividade real `Lista0`
 (`126e8b5ad7dd6d59`) tem documentos base cadastrados e 63 alunos

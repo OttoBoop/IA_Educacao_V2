@@ -4208,6 +4208,63 @@ Regra de continuidade:
 - O fechamento de um ciclo deve dizer explicitamente qual item fica como proximo.
 - Segredo, deploy e comando destrutivo continuam exigindo gate.
 
+## Atualizacao 2026-05-18 -- Google Flash Fechou Pipeline, Agregados E Bloqueio Honesto De Materia
+
+Estado oficial do runtime:
+
+- Render confirmou `16afe40` por `/api/deploy-info` e
+  `./scripts/check_deploy.sh 16afe40`.
+- `/api/health` retornou `{"status":"healthy","supabase":true}`.
+- `origin/main` aponta para `16afe402465f402855bacdeb34ec7ac31d4b26b1`.
+
+O que foi validado com `gem25flash001`:
+
+- Pipeline individual completa da Beatriz em `task_ca5dd6b8b3b5`: seis etapas
+  sem `stage_errors`, custo `117829/31691` tokens, `US$0.114578`.
+- `desempenho_tarefa-sync` apos correção de duplicação: run
+  `run-20260518-153754`, PDF `0cfd4f362eacc903`, JSON `30dbb7e96531bf62`,
+  `25237/4965` tokens, `US$0.019984`, status `PARCIAL` por arquivos antigos
+  ilegiveis/ausentes.
+- `desempenho_turma-sync`: run `run-20260518-154054`, PDF
+  `c4919dd7ac988fa2`, JSON `8fe7dc2276f4f670`, `65800/13969` tokens,
+  `US$0.054663`, status `PARCIAL` por lacunas de atividade/documentos.
+
+Correção sistêmica descoberta no agregado de matéria:
+
+- Antes de `16afe40`, `gerar_relatorio_desempenho_materia` podia aceitar duas
+  narrativas da mesma turma como pre-requisito de relatório cross-turma.
+- Isso violava a regra P0: o sistema poderia gerar um relatório de matéria que
+  parecia comparar turmas, mas na prática só tinha dados de uma turma.
+- O patch `16afe40` exige `RELATORIO_FINAL` legivel em pelo menos duas turmas
+  distintas antes de chamar IA.
+- Smoke oficial: `/api/executar/desempenho-materia-sync` retornou HTTP 200,
+  `sucesso=false`, `status=BLOQUEADO_PREREQUISITO`, `total_turmas=2`,
+  `narrativas_encontradas=5`, cobertura `7a4edd9e4d2af0be=0` e
+  `ec5a0ae78546c78e=5`.
+- Interpretação: não é falha do Gemini; é bloqueio correto de dado insuficiente.
+  O sistema não chamou IA, não gerou PDF falso e não registrou custo novo.
+
+Estado de custos:
+
+- `/api/custos/resumo?limit=60`: `runs_analisados=35`,
+  `runs_precificados=35`, `custo_usd=1.035141`, Google `US$0.311197`,
+  Anthropic `US$0.102976`, OpenAI `US$0.620968`.
+- `/api/custos/status`: `ok=false`, `token_usage_durable=false`,
+  `PGRST205`, tabela `public.token_usage` ausente.
+- Leitura correta: custos de documentos com metadata estão medidos; falhas sem
+  documento final ainda não têm persistência durável até aplicar
+  `backend/migrations/002_create_token_usage.sql` no Supabase.
+
+Próximo loop recomendado:
+
+- Repetir `gem25lite001` em `CORRIGIR` para separar 503 transitório de bloqueio
+  persistente.
+- Depois testar `gem3flash001` na escada barata, sem ir direto para Pro.
+- Em paralelo, completar dados reais na segunda turma de Matemática antes de
+  tentar `desempenho_materia` novamente.
+- O ciclo estrutural de custos segue bloqueado pela migration Supabase
+  `002_create_token_usage.sql`.
+
 ## Fechamento
 
 O ponto central desta auditoria e simples: a pipeline nao pode parecer saudavel
