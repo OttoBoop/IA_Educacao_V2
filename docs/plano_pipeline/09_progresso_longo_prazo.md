@@ -146,6 +146,20 @@ ausentes); documento de erro `8c875cf984e55e91`, JSON invalido
 fica ❌ em `CORRIGIR`; nao subir para agregado sem novo patch especifico para
 modelo barato. Proximo alvo Google: Gemini 3 Flash em escada barata.
 
+Atualizacao Gemini 3 Flash de 2026-05-18: `gem3flash001` passou chat JSON
+simples com HTTP 200 e `tokens_used=801`. `CORRIGIR` isolado passou em
+`task_ead090df8740`, JSON/PDF concluidos, `57750/8221` tokens, `US$0.053538`.
+Depois, a pipeline completa Beatriz (`task_24fe4d7b7ecc`) passou as seis etapas
+sem `stage_errors`; custo calculado `181550/33182`, `US$0.190321`. A etapa
+`CORRIGIR` foi o gargalo de latencia, ficando mais de 13 minutos em execução
+antes de avançar. `desempenho_tarefa-sync` com Gemini 3 tambem passou, status
+`PARCIAL`, run `run-20260518-162141`, 6 alunos incluidos, 8 excluidos por
+arquivos antigos ilegiveis, JSON extra `d372c731dd824dd4` marcado como erro,
+`108350/11191` tokens, `US$0.087748`. Estado: Gemini 3 fica validado para
+pipeline individual e desempenho de tarefa, com ressalva forte de custo/latencia
+maiores que Gemini 2.5 Flash. Nao rodar turma/materia com Gemini 3 sem motivo
+comparativo; Flash ja cobriu turma, e materia continua bloqueada por dados.
+
 Atualizacao Lista0 de 2026-05-17: a atividade real `Lista0`
 (`126e8b5ad7dd6d59`) tem documentos base cadastrados e 63 alunos
 (`38` com prova, `34` com correcao), mas a inspeção dos PDFs mostrou um bloqueio

@@ -4306,6 +4306,44 @@ Próximo passo:
 - Manter `gem25flash001` como Google validado principal até aqui.
 - Não tratar `gem25lite001` como alternativa automática ou fallback.
 
+## Atualizacao 2026-05-18 -- Gemini 3 Flash Validado, Mas Mais Caro E Lento
+
+Escada executada:
+
+- Chat JSON simples: HTTP 200, resposta JSON crua
+  `{"ok": true, "modelo": "gemini3"}`, `tokens_used=801`.
+- `CORRIGIR` isolado: `task_ead090df8740`, JSON/PDF concluidos, sem erro,
+  `57750/8221` tokens, `US$0.053538`.
+- Pipeline completa Beatriz: `task_24fe4d7b7ecc`, seis etapas concluidas sem
+  `stage_errors`.
+- `desempenho_tarefa-sync`: HTTP 200 em `110.6s`, `sucesso=true`,
+  `status=PARCIAL`, run `run-20260518-162141`.
+
+Custo da full pipeline:
+
+- `EXTRAIR_QUESTOES`: `1336/556`, `US$0.002336`.
+- `EXTRAIR_GABARITO`: `2373/684`, `US$0.003239`.
+- `EXTRAIR_RESPOSTAS`: `2589/346`, `US$0.002332`.
+- `CORRIGIR`: `93091/19722`, `US$0.105711`.
+- `ANALISAR_HABILIDADES`: `40890/7195`, `US$0.042030`.
+- `GERAR_RELATORIO`: `41271/4679`, `US$0.034673`.
+- Total calculado: `181550/33182`, `US$0.190321`.
+
+Observacoes:
+
+- `CORRIGIR` foi o gargalo: a etapa ficou mais de 13 minutos em execução antes
+  de avançar, mas acabou concluindo.
+- O desempenho de tarefa incluiu 6 alunos e excluiu 8 por arquivos antigos
+  ilegíveis. Um JSON extra (`d372c731dd824dd4`) foi marcado como erro; o PDF
+  final `48bce8bab37abdf9` ficou como artefato concluído. Custo:
+  `108350/11191`, `US$0.087748`.
+- Interpretação: Gemini 3 Flash está validado para pipeline individual e
+  `desempenho_tarefa`, mas neste dataset é mais caro e mais lento que Gemini
+  2.5 Flash. Não deve substituir Flash por fallback automático.
+- Proximo passo honesto: não rodar `desempenho_turma`/`materia` com Gemini 3
+  sem uma pergunta comparativa clara; Flash já validou turma, e matéria segue
+  bloqueada por ausência de dados em duas turmas distintas.
+
 ## Fechamento
 
 O ponto central desta auditoria e simples: a pipeline nao pode parecer saudavel

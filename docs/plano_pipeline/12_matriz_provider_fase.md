@@ -160,6 +160,13 @@ Use
   salvar JSON via `create_document`, mas ainda falhou alto por schema minimo
   ausente (`nota_final`, `questoes`, `feedback_geral`, totais). Documento de
   erro `8c875cf984e55e91`, `31602/5201`, `US$0.005241`.
+- Ciclo Gemini 3 pos-`a7f02a3`: chat JSON simples passou com HTTP 200 e
+  `tokens_used=801`; `CORRIGIR` isolado passou em `task_ead090df8740`,
+  `57750/8221`, `US$0.053538`; pipeline completa Beatriz passou em
+  `task_24fe4d7b7ecc`, sem `stage_errors`, `181550/33182`, `US$0.190321`;
+  `desempenho_tarefa-sync` passou parcial em `110.6s`, run
+  `run-20260518-162141`, `108350/11191`, `US$0.087748`. Ressalva: custo e
+  latencia ficaram maiores que Gemini 2.5 Flash.
 - Anthropic recheck antigo de saldo baixo foi superado apos troca de chave; o
   status atual de Haiku 4.5 e parcial/confirmado para conexao, chat simples e
   `CORRIGIR` isolado, pendente pipeline completa e desempenho.
@@ -335,7 +342,7 @@ Fontes de preco:
 | `4eaeb5105f5d` | Claude Sonnet 4.5 | `anthropic/claude-sonnet-4-5-20250929` | T/V | `3.00/15.00` | oficial Anthropic | 🚫 | 🚫 | 🚫 | 🚫 | 🚫 | 🚫 | 🚫 chave/saldo | Sweep anterior indicou mesmo bloqueio Anthropic; nao retestado para poupar ate Haiku destravar | `US$ 0.408816` | Testar so depois de Haiku, por custo ~3x maior. |
 | `gem25flash001` | Gemini 2.5 Flash | `google/gemini-2.5-flash` | T/V | `0.30/2.50` | oficial Google | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ Beatriz | `task_ca5dd6b8b3b5`: seis etapas OK, `117829/31691`, `US$0.114578`; agregados: tarefa `US$0.019984`, turma `US$0.054663`; materia bloqueada corretamente por pre-requisito | `US$ 0.053285` | Repetir em outro aluno/turma; criar dados da segunda turma antes de `desempenho_materia`. |
 | `gem25lite001` | Gemini 2.5 Flash Lite | `google/gemini-2.5-flash-lite` | T/V | `0.10/0.40` | oficial Google | ⏸️ | ⏸️ | ⏸️ | ❌ | ⏸️ | ⏸️ | ❌ em `CORRIGIR` | `task_44ec067a3d82` apos `a7f02a3`: JSON salvo, mas sem schema minimo; erro `8c875cf984e55e91`, `31602/5201`, `US$0.005241` | `US$ 0.012387` | Nao subir para agregado; testar Gemini 3 Flash ou desenhar prompt menor especifico para Lite. |
-| `gem3flash001` | Gemini 3 Flash | `google/gemini-3-flash-preview` | T/V | `0.50/3.00` | oficial Google | ✅ | ✅ | ✅ | ⚠️ | ⚠️ | ⚠️ | 🚫 quota/revalidacao | `task_5e97bbee896e`: tres extracoes passaram; falhou alto em `corrigir` por `429`; 2026-05-18 conexao OK (`tokens=84`), JSON imediato `429` | `US$ 0.074338` | Repetir pipeline sequencial so depois de Lite sair do bloqueio. |
+| `gem3flash001` | Gemini 3 Flash | `google/gemini-3-flash-preview` | T/V | `0.50/3.00` | oficial Google | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ Beatriz | `task_24fe4d7b7ecc`: seis etapas OK, `181550/33182`, `US$0.190321`; `desempenho_tarefa` parcial `US$0.087748` | `US$ 0.074338` | Manter como validado, mas preferir Flash quando custo/latencia importarem. |
 | `e251747cd7a2` | Gemini 2.5 Pro | `google/gemini-2.5-pro` | T/V | `1.25/10.00` ate 200k prompt | oficial Google | ⏸️ | ⏸️ | ⏸️ | ⏸️ | ⏸️ | ⏸️ | 🚫 quota | Sweep live: conexao bloqueada por Google `429` | `US$ 0.216851` | Testar conexao e uma etapa quando quota permitir. |
 | `58ff5dcdff67` | o3 Mini | `openai/o3-mini` | T/sem vision | `1.10/4.40` | oficial OpenAI/catalogo | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ fixture simples | `task_f200c8d9abf4`: 6 etapas OK, `US$ 0.264026`; `task_91f7660e5013`: finais OK, `US$ 0.168651` | `US$ 0.136256` | Repetir em dataset maior; custo real desta fixture ficou acima do perfil canonico. |
 | `c489f094083c` | o3 Mini | `openai/o3-mini` | T/sem vision | `1.10/4.40` | oficial OpenAI/catalogo | ⏸️ | ⏸️ | ⏸️ | ❌ | ⏸️ | ⏸️ | ❌ nesta config | `task_07738514d159`: falha alta, JSONs sem `questoes` e PDF/JSON divergente, custo `US$ 0.196781` | `US$ 0.136256` | Reavaliar `reasoning_effort=medium`/prompt antes de novo smoke caro. |
@@ -367,7 +374,7 @@ nao sao a mesma coisa que `GERAR_RELATORIO` individual. Eles usam os endpoints
 |---|:---:|:---:|:---:|---|---|
 | `gem25lite001` | ⏸️ | ⏸️ | ⏸️ | Nao executado: `CORRIGIR` falhou alto apos `a7f02a3` por JSON sem schema minimo. | Nao subir para agregado sem novo patch especifico para Lite. |
 | `gem25flash001` | ✅ | ✅ | 🚫 prereq | Tarefa `run-20260518-153754` passou parcial, `US$0.019984`; turma `run-20260518-154054` passou parcial, `US$0.054663`; materia bloqueou em `16afe40` porque so uma turma tem relatorio legivel. | Completar dados reais da segunda turma, depois repetir materia. |
-| `gem3flash001` | ⏸️ | ⏸️ | ⏸️ | Conexao OK pos-chave; agregado nao testado porque Flash ja forneceu a evidencia principal e 3 Flash e mais caro. | Testar depois de Lite ou quando precisarmos comparar qualidade/custo. |
+| `gem3flash001` | ✅ | ⏸️ | ⏸️ | `desempenho_tarefa` parcial em `run-20260518-162141`, `US$0.087748`; turma/materia nao rodados para conter custo, ja que Flash cobriu turma. | Rodar turma so se precisarmos comparar qualidade; materia continua bloqueada por dados. |
 | `e251747cd7a2` | ⏸️ | ⏸️ | ⏸️ | Pro nao foi retestado neste ciclo para poupar custo. | Testar conexao so depois de resolver billing/rate-limit dos modelos baratos. |
 
 ---

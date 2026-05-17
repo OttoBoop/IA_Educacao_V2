@@ -413,6 +413,10 @@ Bug novo de custos/artefatos:
 | 20 | `gem25flash001` | `desempenho_materia` apos `16afe40` | Bloqueio correto | HTTP 200 com `sucesso=false`, `BLOQUEADO_PREREQUISITO`; so 1 turma tinha resultado legivel | Sem chamada IA; sem custo novo |
 | 21 | `gem25lite001` | `CORRIGIR` antes de `a7f02a3` | Falha alta | `task_e8ae68627a05`; tentou PDF via `create_document`, bloqueado sem falso verde | `56512/17776`, `US$0.012762` |
 | 22 | `gem25lite001` | `CORRIGIR` apos `a7f02a3` | Falha alta | `task_44ec067a3d82`; JSON via `create_document`, mas sem schema minimo; bloqueado | `31602/5201`, `US$0.005241` |
+| 23 | `gem3flash001` | `/api/chat` JSON simples | OK | HTTP 200, JSON cru `{"ok": true, "modelo": "gemini3"}`, `tokens_used=801` | Nao entra no resumo de documentos |
+| 24 | `gem3flash001` | `CORRIGIR` isolado | OK | `task_ead090df8740`; JSON/PDF concluidos, sem erro | `57750/8221`, `US$0.053538` |
+| 25 | `gem3flash001` | pipeline completa Beatriz | OK lento | `task_24fe4d7b7ecc`; seis etapas concluidas, sem `stage_errors`; `CORRIGIR` demorou mais de 13min | `181550/33182`, `US$0.190321` |
+| 26 | `gem3flash001` | `desempenho_tarefa` | OK parcial | HTTP 200 em `110.6s`, run `run-20260518-162141`; 6 alunos incluidos, 8 excluidos; JSON extra marcado erro | `108350/11191`, `US$0.087748` |
 
 ## Patches Publicados No Ciclo
 
@@ -434,6 +438,16 @@ Bug novo de custos/artefatos:
 - Validacoes locais: `py_compile`, `git diff --check`, testes focados `7 passed`.
 - Deploy: Render confirmou `8de0ab3`, `/api/health` OK.
 
+### `a7f02a3` -- `fix: phase google dual output tool prompts`
+
+- Google passou a receber a primeira chamada dual-output faseada igual OpenAI:
+  `create_document` primeiro para JSON, `execute_python_code` depois para PDF.
+- O patch reduziu erro de ferramenta no Lite, mas o modelo continuou falhando
+  alto por schema JSON insuficiente.
+- Validacoes locais: `py_compile`, `git diff --check`,
+  `test_e_t2_retry_partial_output.py` com `34 passed`.
+- Deploy: Render confirmou `a7f02a3`, `/api/health` OK.
+
 ## Interpretação
 
 - Google nao esta sem chave: os testes de conexao funcionaram para Flash Lite,
@@ -444,6 +458,8 @@ Bug novo de custos/artefatos:
 - Google Lite (`gem25lite001`) ainda nao esta validado para pipeline:
   `a7f02a3` corrigiu o prompt faseado de tools, mas o re-smoke ainda falhou
   alto por JSON sem schema minimo.
+- Gemini 3 Flash (`gem3flash001`) esta validado para pipeline individual
+  completa e `desempenho_tarefa`, mas e mais caro/lento que Flash neste caso.
 - `desempenho_materia` nao e falha do modelo neste momento: esta bloqueado por
   dado real ausente na segunda turma.
 - O backend agora registra melhor `retry_after`, custo parcial e erro provider;
@@ -464,7 +480,8 @@ Proximo passo honesto:
    `desempenho_materia`.
 2. Tratar `gem25lite001` como falha alta em `CORRIGIR` por schema invalido,
    salvo se houver novo patch especifico de prompt/JSON para modelos baratos.
-3. Testar `gem3flash001` em uma escada barata, sem pular direto para Pro.
+3. Nao rodar `desempenho_turma`/`materia` com Gemini 3 sem necessidade: Flash ja
+   cobriu turma, e Gemini 3 mostrou custo/latencia maiores.
 
 ## Status Final Do Ciclo
 
@@ -474,8 +491,9 @@ Proximo passo honesto:
 - `gem25flash001`: conexao OK, `CORRIGIR` OK, pipeline individual completa OK,
   `desempenho_tarefa` OK parcial, `desempenho_turma` OK parcial,
   `desempenho_materia` bloqueado corretamente por pre-requisito de dados.
-- `gem3flash001`: conexao OK; JSON simples imediato bloqueado por `429`; nao
-  foi gasto pipeline para poupar credito.
+- `gem3flash001`: conexao OK, chat JSON OK, `CORRIGIR` OK, pipeline completa OK
+  e `desempenho_tarefa` OK parcial; manter como validado com ressalva de
+  custo/latencia.
 - `e251747cd7a2`: nao retestado neste ciclo; Pro fica por ultimo por custo.
 - Desempenho agregado: validado ate turma com Google Flash; materia exige dados
   em pelo menos duas turmas distintas antes de nova chamada de IA.
