@@ -4054,6 +4054,14 @@ Interpretacao:
   JSONs sem `questoes` e PDF/JSON divergente, com custo de falha
   `48584/32577` tokens e `US$ 0.196781`. Isso confirma a regra: capability
   correta abre a execucao, mas cada `model_id` ainda precisa evidencia propria.
+- o3-low finais pos-`0411f9a`: `task_5eed58fdf6e6` falhou alto ao tentar
+  apenas finais porque a ultima correcao oficial era o erro do `o3-mini`
+  medium; isso preserva a regra de nao voltar para artefato antigo. Em seguida,
+  `task_91f7660e5013` rodou `corrigir`, `analisar_habilidades` e
+  `gerar_relatorio` em cadeia com `58ff5dcdff67` e completou as tres etapas.
+  Custos: `CORRIGIR` `36040/7415`, `US$ 0.072270`; `ANALISAR_HABILIDADES`
+  `23040/5335`, `US$ 0.048818`; `GERAR_RELATORIO` `23407/4958`,
+  `US$ 0.047563`; total do bloco `US$ 0.168651`.
 - Anthropic pos-`c56c4b6`: Haiku 4.5 continua bloqueado na chave oficial do
   Render com Anthropic `400`, saldo baixo. Se ha creditos na conta do usuario,
   o proximo gate e atualizar/rotacionar a chave do Render por caminho seguro.

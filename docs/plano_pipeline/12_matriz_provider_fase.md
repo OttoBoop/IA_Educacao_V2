@@ -83,6 +83,13 @@ Use
   `9ee5548a301761ec`, `20135/6752` tokens e `US$ 0.051857`; `c489f094083c`
   (`o3-mini`, medium) falhou alto por JSON sem `questoes` e PDF/JSON
   divergente, `48584/32577` tokens e `US$ 0.196781`.
+- Smoke o3-low encadeado: `task_91f7660e5013` completou
+  `corrigir`, `analisar_habilidades` e `gerar_relatorio` com
+  `58ff5dcdff67`; custo por etapa `US$ 0.072270`, `US$ 0.048818` e
+  `US$ 0.047563`, total do bloco `US$ 0.168651`. Uma tentativa de rodar so
+  finais (`task_5eed58fdf6e6`) falhou alto porque a ultima correcao oficial
+  era erro do `o3-mini` medium, confirmando que o executor nao faz fallback
+  silencioso para artefato antigo.
 - Anthropic recheck: Haiku 4.5 ainda retorna Anthropic `400`, saldo baixo, na
   chave oficial do Render.
 - Pipeline live GPT-5.4 Mini: `task_a1f7521077a5` completou as 6 etapas na
@@ -259,7 +266,7 @@ Fontes de preco:
 | `gem25lite001` | Gemini 2.5 Flash Lite | `google/gemini-2.5-flash-lite` | T/V | `0.10/0.40` | oficial Google | ⏸️ | ⏸️ | ⏸️ | 🚫 | ⏸️ | ⏸️ | 🚫 quota | `task_817bda15b4c0`: Google `429 RESOURCE_EXHAUSTED`, erro `f5e71b8e5707790d`, custo `US$ 0.000553`; historico `task_124bf0e8d7bf` falhou por JSON/PDF divergentes | `US$ 0.012387` | Repetir `corrigir` quando quota Google permitir; tools ja alinhadas no catalogo e no site. |
 | `gem3flash001` | Gemini 3 Flash | `google/gemini-3-flash-preview` | T/V | `0.50/3.00` | oficial Google | ✅ | ✅ | ✅ | ⚠️ | ⚠️ | ⚠️ | 🚫 quota/revalidacao | `task_5e97bbee896e`: tres extracoes passaram; falhou alto em `corrigir` por `429` | `US$ 0.074338` | Repetir pipeline sequencial completa quando quota permitir. |
 | `e251747cd7a2` | Gemini 2.5 Pro | `google/gemini-2.5-pro` | T/V | `1.25/10.00` ate 200k prompt | oficial Google | ⏸️ | ⏸️ | ⏸️ | ⏸️ | ⏸️ | ⏸️ | 🚫 quota | Sweep live: conexao bloqueada por Google `429` | `US$ 0.216851` | Testar conexao e uma etapa quando quota permitir. |
-| `58ff5dcdff67` | o3 Mini | `openai/o3-mini` | T/sem vision | `1.10/4.40` | oficial OpenAI/catalogo | ⏸️ | ⏸️ | ⏸️ | ✅ | ⏸️ | ⏸️ | ⏸️ | `task_d5a8031e3acd`: `corrigir` OK, JSON/PDF coerentes, custo `US$ 0.055689` | `US$ 0.136256` | Testar extracoes e etapas finais; nao promover para full pipeline ainda. |
+| `58ff5dcdff67` | o3 Mini | `openai/o3-mini` | T/sem vision | `1.10/4.40` | oficial OpenAI/catalogo | ⏸️ | ⏸️ | ⏸️ | ✅ | ✅ | ✅ | ⚠️ parcial finais | `task_91f7660e5013`: `corrigir`+finais OK, custo bloco `US$ 0.168651`; `task_d5a8031e3acd`: `corrigir` isolado `US$ 0.055689` | `US$ 0.136256` | Testar as tres extracoes e full pipeline; nao promover para 6 etapas ainda. |
 | `c489f094083c` | o3 Mini | `openai/o3-mini` | T/sem vision | `1.10/4.40` | oficial OpenAI/catalogo | ⏸️ | ⏸️ | ⏸️ | ❌ | ⏸️ | ⏸️ | ❌ nesta config | `task_07738514d159`: falha alta, JSONs sem `questoes` e PDF/JSON divergente, custo `US$ 0.196781` | `US$ 0.136256` | Reavaliar `reasoning_effort=medium`/prompt antes de novo smoke caro. |
 | `9f6b2b61b6c3` | o4 Mini | `openai/o4-mini` | T/V | `1.10/4.40` | oficial OpenAI/catalogo | ⏸️ | ⏸️ | ⏸️ | ✅ | ⏸️ | ⏸️ | ⏸️ | `task_77b382e71e94`: `corrigir` OK, JSON/PDF coerentes, custo `US$ 0.051857` | `US$ 0.136256` | Testar extracoes e etapas finais; nao promover para full pipeline ainda. |
 | `ollama-llama3` | Llama 3.2 (Local) | `ollama/llama3.2:latest` | sem tools/V | sem preco | sem preco | 🚫 | 🚫 | 🚫 | 🚫 | 🚫 | 🚫 | 🚫 infra | Render nao tem Ollama local acessivel | N/A | Fora da pipeline oficial em producao. |

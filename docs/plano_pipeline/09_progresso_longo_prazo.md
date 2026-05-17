@@ -3489,6 +3489,33 @@ Critério de pronto: lista de limpeza segura e revisada.
   `CORRIGIR` na fixture simples. `o3-mini` medium fica `❌` nesta config. Ainda
   falta testar extracoes, habilidades, relatorio e pipeline completa.
 
+### 2026-05-17 -- Provider: o3-mini low completa etapas finais encadeadas
+
+- Achado anti-fallback: `task_5eed58fdf6e6`, rodando apenas
+  `selected_steps=["analisar_habilidades","gerar_relatorio"]` com `o3-mini`
+  low, falhou alto porque a correcao mais recente era o erro caro do
+  `o3-mini` medium. Isso e comportamento correto do P0: o executor usa a
+  ultima execucao oficial e nao volta para um artefato antigo sem declaracao.
+- Smoke encadeado correto: `task_91f7660e5013`,
+  `selected_steps=["corrigir","analisar_habilidades","gerar_relatorio"]`,
+  `model_id=58ff5dcdff67`, fixture Diana. A task completou as tres etapas,
+  sem `stage_errors`.
+- Artefatos/custos:
+  - `CORRIGIR`: JSON `257b1487054a8c0e`, PDF `4a3c0c2b27f83794`,
+    `36040/7415` tokens, `US$ 0.072270`. Artefatos intermediarios
+    `5e27a3bde2165e33` e `38b7b4ae4139f608` ficaram `status=erro`, nao
+    mascarados.
+  - `ANALISAR_HABILIDADES`: JSON `16ac92af035cb754`, PDF
+    `53004a00deafbcbd`, `23040/5335` tokens, `US$ 0.048818`.
+  - `GERAR_RELATORIO`: JSON `ac5fcaf739a8eb27`, PDF `2ea45ca7645ca691`,
+    `23407/4958` tokens, `US$ 0.047563`.
+- Custo medido do bloco final o3-low: `US$ 0.168651`, alem do smoke isolado
+  anterior de `corrigir` (`US$ 0.055689`).
+- Status: `o3-mini` low agora esta `✅` em `CORRIGIR`,
+  `ANALISAR_HABILIDADES` e `GERAR_RELATORIO` na fixture simples. Ainda faltam
+  `EXTRAIR_QUESTOES`, `EXTRAIR_GABARITO`, `EXTRAIR_RESPOSTAS` e full pipeline
+  de 6 etapas.
+
 ## Riscos Abertos
 
 1. Chave Anthropic configurada no Render ainda retorna saldo baixo; se existem
