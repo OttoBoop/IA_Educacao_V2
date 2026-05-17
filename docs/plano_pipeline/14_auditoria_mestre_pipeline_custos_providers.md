@@ -4344,6 +4344,36 @@ Observacoes:
   sem uma pergunta comparativa clara; Flash já validou turma, e matéria segue
   bloqueada por ausência de dados em duas turmas distintas.
 
+## Atualizacao 2026-05-18 -- Anthropic Desbloqueado, Mas Falha Em JSON Cru
+
+O que mudou:
+
+- A chave Anthropic atualizada pelo fluxo seguro funciona: Haiku 4.5 passou
+  conexão, chat simples e `CORRIGIR` isolado.
+- O bloqueio atual não é crédito; é formato de saída nas extrações.
+
+Evidências:
+
+- Haiku 4.5 `CORRIGIR` isolado: `task_1255fef385bf`, JSON
+  `816d1927e116914c`, PDF `e250407e3823c99d`, `43096/11976` tokens,
+  `US$0.102976`.
+- Haiku 4.5 full pipeline: `task_4520bf40103d` falhou em
+  `EXTRAIR_QUESTOES`; erro explícito: JSON válido dentro de Markdown. Custo de
+  erro registrado por `token_usage`: `4237/1296`, `US$0.010717`.
+- Sonnet 4.5 `EXTRAIR_QUESTOES`: `task_b19524abfdd5` falhou pelo mesmo motivo,
+  custo `4200/1491`, `US$0.034965`.
+
+Interpretação:
+
+- O parser não deve aceitar o envelope Markdown; isso preserva P0.
+- O retry explícito no mesmo modelo já aconteceu para a etapa de extração, mas
+  Anthropic continuou devolvendo envelope.
+- Anthropic fica classificado como não pipeline-ready até existir estratégia
+  específica para JSON cru nessas etapas, ou até uma nova evidência mostrar que
+  os modelos obedecem sem envelope.
+- Não gastar full Sonnet enquanto a primeira etapa falha do mesmo jeito que
+  Haiku.
+
 ## Fechamento
 
 O ponto central desta auditoria e simples: a pipeline nao pode parecer saudavel

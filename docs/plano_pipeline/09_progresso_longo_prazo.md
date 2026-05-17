@@ -160,6 +160,16 @@ pipeline individual e desempenho de tarefa, com ressalva forte de custo/latencia
 maiores que Gemini 2.5 Flash. Nao rodar turma/materia com Gemini 3 sem motivo
 comparativo; Flash ja cobriu turma, e materia continua bloqueada por dados.
 
+Atualizacao Anthropic de 2026-05-18: credito/chave agora funcionam, mas a
+frente Anthropic trava em JSON cru nas extrações. Haiku 4.5 mantem
+`CORRIGIR` isolado OK (`task_1255fef385bf`, `US$0.102976`), porem a full
+pipeline `task_4520bf40103d` falhou em `EXTRAIR_QUESTOES`: a resposta tinha
+JSON valido dentro de Markdown, e o executor bloqueou corretamente; custo de
+erro `4237/1296`, `US$0.010717`. Sonnet 4.5 foi testado apenas em
+`EXTRAIR_QUESTOES` (`task_b19524abfdd5`) e falhou pelo mesmo motivo, custo
+`4200/1491`, `US$0.034965`. Estado: Anthropic nao esta pipeline-ready; nao
+gastar full Sonnet/Haiku ate corrigir a estratégia de JSON cru para Anthropic.
+
 Atualizacao Lista0 de 2026-05-17: a atividade real `Lista0`
 (`126e8b5ad7dd6d59`) tem documentos base cadastrados e 63 alunos
 (`38` com prova, `34` com correcao), mas a inspeção dos PDFs mostrou um bloqueio

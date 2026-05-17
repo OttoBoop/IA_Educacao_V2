@@ -167,6 +167,12 @@ Use
   `desempenho_tarefa-sync` passou parcial em `110.6s`, run
   `run-20260518-162141`, `108350/11191`, `US$0.087748`. Ressalva: custo e
   latencia ficaram maiores que Gemini 2.5 Flash.
+- Ciclo Anthropic pos-chave: Haiku 4.5 ainda tem `CORRIGIR` isolado OK, mas a
+  pipeline completa `task_4520bf40103d` falhou em `EXTRAIR_QUESTOES` porque a
+  resposta veio como JSON valido dentro de Markdown; custo de erro
+  `4237/1296`, `US$0.010717`. Sonnet 4.5 foi testado apenas em
+  `EXTRAIR_QUESTOES` e falhou pelo mesmo envelope Markdown em
+  `task_b19524abfdd5`; custo `4200/1491`, `US$0.034965`.
 - Anthropic recheck antigo de saldo baixo foi superado apos troca de chave; o
   status atual de Haiku 4.5 e parcial/confirmado para conexao, chat simples e
   `CORRIGIR` isolado, pendente pipeline completa e desempenho.
@@ -338,8 +344,8 @@ Fontes de preco:
 | `gpt5nano001` | GPT-5 Nano | `openai/gpt-5-nano` | T/sem vision | `0.05/0.40` | catalogo | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ fixture simples | `task_cbe8568e78d6`: `US$ 0.017160`; custo real maior que estimativa por tokens gerados nessa task | `US$ 0.008674` | Repetir em dataset maior antes de chamar de pipeline-ready geral. |
 | `ffae9accf68e` | GPT-4.1 | `openai/gpt-4.1` | T/V | `2.00/8.00` | catalogo | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | `task_f6851ed535b8`: `US$ 0.222856` | `US$ 0.247738` | Repetir em dataset maior e checar qualidade visual de PDFs. |
 | `180b8298a279` | gpt-4o | `openai/gpt-4o` | T/V | `2.50/10.00` | catalogo | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | `task_68b19146a95b`: `US$ 0.314369` | `US$ 0.309673` | Manter como referencia, nao fallback silencioso. |
-| `588f3efe7975` | Claude Haiku 4.5 | `anthropic/claude-haiku-4-5-20251001` | T/V | `1.00/5.00` | oficial Anthropic | ⏸️ | ⏸️ | ⏸️ | ✅ | ⏸️ | ⏸️ | ⚠️ parcial | Pos-chave: conexao OK, chat simples HTTP 200, `CORRIGIR` isolado passou em `task_1255fef385bf`, JSON `816d1927e116914c`, PDF `e250407e3823c99d`, `43096/11976`, `US$0.102976` | `US$ 0.136272` | Rodar pipeline completa Haiku depois de fechar a rodada Google barata. |
-| `4eaeb5105f5d` | Claude Sonnet 4.5 | `anthropic/claude-sonnet-4-5-20250929` | T/V | `3.00/15.00` | oficial Anthropic | 🚫 | 🚫 | 🚫 | 🚫 | 🚫 | 🚫 | 🚫 chave/saldo | Sweep anterior indicou mesmo bloqueio Anthropic; nao retestado para poupar ate Haiku destravar | `US$ 0.408816` | Testar so depois de Haiku, por custo ~3x maior. |
+| `588f3efe7975` | Claude Haiku 4.5 | `anthropic/claude-haiku-4-5-20251001` | T/V | `1.00/5.00` | oficial Anthropic | ❌ | ⏸️ | ⏸️ | ✅ | ⏸️ | ⏸️ | ❌ primeira etapa | `CORRIGIR` isolado passou (`US$0.102976`), mas full `task_4520bf40103d` falhou em `EXTRAIR_QUESTOES` por JSON dentro de Markdown; erro `4237/1296`, `US$0.010717` | `US$ 0.136272` | Corrigir estratégia Anthropic de JSON cru antes de nova full pipeline. |
+| `4eaeb5105f5d` | Claude Sonnet 4.5 | `anthropic/claude-sonnet-4-5-20250929` | T/V | `3.00/15.00` | oficial Anthropic | ❌ | ⏸️ | ⏸️ | ⏸️ | ⏸️ | ⏸️ | ❌ primeira etapa | `task_b19524abfdd5` em `EXTRAIR_QUESTOES` falhou por JSON dentro de Markdown; erro `4200/1491`, `US$0.034965` | `US$ 0.408816` | Nao gastar em full Sonnet ate resolver JSON cru nas extrações. |
 | `gem25flash001` | Gemini 2.5 Flash | `google/gemini-2.5-flash` | T/V | `0.30/2.50` | oficial Google | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ Beatriz | `task_ca5dd6b8b3b5`: seis etapas OK, `117829/31691`, `US$0.114578`; agregados: tarefa `US$0.019984`, turma `US$0.054663`; materia bloqueada corretamente por pre-requisito | `US$ 0.053285` | Repetir em outro aluno/turma; criar dados da segunda turma antes de `desempenho_materia`. |
 | `gem25lite001` | Gemini 2.5 Flash Lite | `google/gemini-2.5-flash-lite` | T/V | `0.10/0.40` | oficial Google | ⏸️ | ⏸️ | ⏸️ | ❌ | ⏸️ | ⏸️ | ❌ em `CORRIGIR` | `task_44ec067a3d82` apos `a7f02a3`: JSON salvo, mas sem schema minimo; erro `8c875cf984e55e91`, `31602/5201`, `US$0.005241` | `US$ 0.012387` | Nao subir para agregado; testar Gemini 3 Flash ou desenhar prompt menor especifico para Lite. |
 | `gem3flash001` | Gemini 3 Flash | `google/gemini-3-flash-preview` | T/V | `0.50/3.00` | oficial Google | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ Beatriz | `task_24fe4d7b7ecc`: seis etapas OK, `181550/33182`, `US$0.190321`; `desempenho_tarefa` parcial `US$0.087748` | `US$ 0.074338` | Manter como validado, mas preferir Flash quando custo/latencia importarem. |
