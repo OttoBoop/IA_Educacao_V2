@@ -4,11 +4,13 @@
 **Responsavel operacional:** Paulo
 **Status geral:** o servico oficial Render
 `srv-d5t8gbh4tr6s738fr3s0` (`IA_Educacao_V2`, branch `main`, URL
-`https://ia-educacao-v2.onrender.com`) tem como codigo funcional mais recente
-confirmado o commit `d357960` (`fix: validate pipeline schemas during parsing`),
-validado por `/api/deploy-info`, `/api/health` e
-`./scripts/check_deploy.sh d357960`. O codigo funcional de batch contido nesse
-runtime continua sendo `9b68de1`, validado por `task_ee773aefb10d`.
+`https://ia-educacao-v2.onrender.com`) esta em runtime `737a709`
+(`chore: prepare secure token usage migration`), validado por
+`/api/deploy-info`, `/api/health` e `./scripts/check_deploy.sh 737a709`. O
+codigo funcional de pipeline mais recente contido nesse runtime continua sendo
+`d357960` (`fix: validate pipeline schemas during parsing`), e o codigo
+funcional de batch continua sendo `9b68de1`, validado por
+`task_ee773aefb10d`.
 `origin/main` pode estar em commit documental posterior; isso nao muda runtime
 enquanto `/api/deploy-info` com no-cache continuar apontando para o hash
 registrado neste painel.
@@ -66,8 +68,11 @@ para o PostgREST atualizar cache apos a criacao. Novo helper local
 recebe a connection string Postgres como campo de senha, aplica somente essa
 migration e imprime apenas status/preview mascarado. Validacoes:
 `py_compile`, `git diff --check` e testes focados de custo/UI `6 passed`. Falta
-executar o helper com credencial SQL do Supabase e revalidar
-`/api/custos/status` ate `token_usage_backend.durable=true`.
+executar o helper com credencial SQL do Supabase. Deploy `737a709` confirmado no
+Render; `/api/custos/status?limit=20` ainda retorna `ok=false`,
+`token_usage_backend.supabase.table_available=false`, `error_code=PGRST205` e
+`token_usage_backend.durable=false`, como esperado antes da migration ser
+aplicada.
 
 Atualizacao chaves seguras de 2026-05-18: qualquer chave colada em chat e
 tratada como exposta e nao deve ser usada para producao. O caminho operacional
