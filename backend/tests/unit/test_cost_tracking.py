@@ -2488,7 +2488,7 @@ async def test_executar_com_tools_provider_error_preserva_tokens_de_documento_pa
             raise ProviderAPIError(
                 "Google",
                 429,
-                '{"error":{"status":"RESOURCE_EXHAUSTED","message":"quota"}}',
+                '{"error":{"status":"RESOURCE_EXHAUSTED","message":"quota. Please retry in 8.610734207s."}}',
             )
 
     monkeypatch.setattr(chat_service, "ChatClient", DummyClient)
@@ -2516,6 +2516,7 @@ async def test_executar_com_tools_provider_error_preserva_tokens_de_documento_pa
 
     assert resultado.sucesso is False
     assert resultado.erro_codigo == 429
+    assert resultado.retry_after == 9
     assert resultado.tokens_entrada == 20
     assert resultado.tokens_saida == 6
 
@@ -2563,7 +2564,7 @@ async def test_executar_com_tools_provider_error_usa_usage_do_erro_sem_resposta_
             raise ProviderAPIError(
                 "Google",
                 429,
-                '{"error":{"status":"RESOURCE_EXHAUSTED","message":"quota"}}',
+                '{"error":{"status":"RESOURCE_EXHAUSTED","message":"quota. Please retry in 8.610734207s."}}',
                 input_tokens=20,
                 output_tokens=6,
                 total_tokens=26,
@@ -2586,6 +2587,7 @@ async def test_executar_com_tools_provider_error_usa_usage_do_erro_sem_resposta_
 
     assert resultado.sucesso is False
     assert resultado.erro_codigo == 429
+    assert resultado.retry_after == 9
     assert resultado.tokens_entrada == 20
     assert resultado.tokens_saida == 6
 

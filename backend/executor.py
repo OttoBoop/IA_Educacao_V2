@@ -5294,6 +5294,10 @@ Seja preciso, educativo e construtivo em suas análises."""
             metadata_patch = {
                 "erro_pipeline": str(e),
                 "cost_run_id": cost_run_id,
+                "erro_tipo": "provider_api_error",
+                "erro_codigo": e.status_code,
+                "retryable": e.retryable,
+                "retry_after": getattr(e, "retry_after", None),
             }
             if tokens_total > 0:
                 metadata_patch.update(
@@ -5329,10 +5333,14 @@ Seja preciso, educativo e construtivo em suas análises."""
                     erro=str(e),
                     erro_codigo=e.status_code,
                     retryable=e.retryable,
+                    retry_after=getattr(e, "retry_after", None),
                     tempo_ms=tempo_ms,
                     prompt_id=locals().get("prompt_id"),
                     source="executar_com_tools_provider_error",
-                    metadata={"erro_tipo": "provider_api_error"},
+                    metadata={
+                        "erro_tipo": "provider_api_error",
+                        "retry_after": getattr(e, "retry_after", None),
+                    },
                 )
             return ResultadoExecucao(
                 sucesso=False,
@@ -5340,6 +5348,7 @@ Seja preciso, educativo e construtivo em suas análises."""
                 erro=str(e),
                 erro_codigo=e.status_code,
                 retryable=e.retryable,
+                retry_after=getattr(e, "retry_after", None),
                 provider=getattr(e, "provider", ""),
                 tokens_entrada=tokens_entrada,
                 tokens_saida=tokens_saida,

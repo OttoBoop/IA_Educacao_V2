@@ -458,6 +458,7 @@ Seja preciso e educativo nas correcoes."""
                     "provider": e.provider,
                     "provider_status_code": e.status_code,
                     "retryable": e.retryable,
+                    "retry_after": e.retry_after,
                     "mensagem": str(e),
                 },
             )

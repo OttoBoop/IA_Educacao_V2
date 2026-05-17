@@ -611,7 +611,10 @@ class TestGoogleProviderErrors:
             mock_r1 = MagicMock(status_code=200)
             mock_r1.json.return_value = fc_response
             mock_r2 = MagicMock(status_code=429)
-            mock_r2.text = '{"error":{"status":"RESOURCE_EXHAUSTED","message":"quota"}}'
+            mock_r2.text = (
+                '{"error":{"status":"RESOURCE_EXHAUSTED",'
+                '"message":"quota. Please retry in 8.610734207s."}}'
+            )
             mock_client.post = AsyncMock(side_effect=[mock_r1, mock_r2])
 
             with pytest.raises(ProviderAPIError) as exc:
@@ -629,4 +632,5 @@ class TestGoogleProviderErrors:
         assert exc.value.input_tokens == 20
         assert exc.value.output_tokens == 6
         assert exc.value.total_tokens == 26
+        assert exc.value.retry_after == 9
         assert "RESOURCE_EXHAUSTED" in str(exc.value)

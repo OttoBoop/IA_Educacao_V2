@@ -96,7 +96,11 @@ async def test_chat_direto_preserva_status_de_erro_do_provider(monkeypatch):
             pass
 
         async def chat(self, user_message, historico, system_prompt):
-            raise ProviderAPIError("Google", 429, "Limite de requisições atingido.")
+            raise ProviderAPIError(
+                "Google",
+                429,
+                "Limite de requisições atingido. Please retry in 8.610734207s.",
+            )
 
     monkeypatch.setattr(routes_chat, "model_manager", FakeModelManager())
     monkeypatch.setattr(routes_chat, "api_key_manager", FakeApiKeyManager())
@@ -115,3 +119,4 @@ async def test_chat_direto_preserva_status_de_erro_do_provider(monkeypatch):
     assert exc_info.value.detail["provider"] == "Google"
     assert exc_info.value.detail["provider_status_code"] == 429
     assert exc_info.value.detail["retryable"] is True
+    assert exc_info.value.detail["retry_after"] == 9

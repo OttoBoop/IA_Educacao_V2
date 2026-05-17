@@ -65,8 +65,10 @@ class ProviderAPIError(Exception):
         input_tokens: int = 0,
         output_tokens: int = 0,
         total_tokens: int = 0,
+        retry_after: Optional[int] = None,
     ):
-        body_preview = (body or "").strip()[:500]
+        body_text = (body or "").strip()
+        body_preview = body_text[:500]
         message = f"Erro API {provider}: {status_code}"
         if body_preview:
             message += f" - {body_preview}"
@@ -75,9 +77,34 @@ class ProviderAPIError(Exception):
         self.status_code = status_code
         self.body = body_preview
         self.retryable = status_code in RETRYABLE_HTTP_STATUS
+        self.retry_after = retry_after if retry_after is not None else self._extract_retry_after(body_text)
         self.input_tokens = int(input_tokens or 0)
         self.output_tokens = int(output_tokens or 0)
         self.total_tokens = int(total_tokens or 0) or self.input_tokens + self.output_tokens
+
+    @staticmethod
+    def _extract_retry_after(body: str) -> Optional[int]:
+        """Extract provider retry delay from common JSON/text rate-limit messages."""
+        if not body:
+            return None
+
+        patterns = [
+            r"retry\s+in\s+([0-9]+(?:\.[0-9]+)?)\s*s",
+            r"retryDelay[\"']?\s*[:=]\s*[\"']?([0-9]+(?:\.[0-9]+)?)s",
+            r"retry_after[\"']?\s*[:=]\s*([0-9]+(?:\.[0-9]+)?)",
+        ]
+        for pattern in patterns:
+            match = re.search(pattern, body, flags=re.IGNORECASE)
+            if not match:
+                continue
+            try:
+                value = float(match.group(1))
+            except (TypeError, ValueError):
+                continue
+            # Round up without importing math; one extra second is cheaper than
+            # immediately re-hitting provider quota.
+            return max(1, int(value) + (0 if value.is_integer() else 1))
+        return None
 
 
 # URLs padrão por tipo
