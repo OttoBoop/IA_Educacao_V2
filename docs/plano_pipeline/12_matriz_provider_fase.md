@@ -5,10 +5,11 @@
 (`126e8b5ad7dd6d59`), smoke simples oficial `Smoke Paulo Pipeline 2026-05-16`
 (`f68d57a9a339081f`) e atividade textual `Prova 1 - Equações do 1º Grau`
 (`8f58cc8b5fb75869`)
-**Runtime oficial atual:** backend Render em `c56c4b6`; `origin/main` recebeu o
-ciclo `c56c4b6` para alinhar Gemini 2.5 Flash Lite como modelo com tools no
-catalogo, alem dos precos Gemini corrigidos em `a3e95e8`. O codigo funcional de
-batch mais recente continua sendo `9b68de1`, agora incluido no runtime atual.
+**Runtime oficial atual:** backend Render em `0411f9a`; `origin/main` recebeu o
+ciclo `0411f9a` para alinhar capabilities dos modelos OpenAI o-series
+configurados, alem do ciclo `c56c4b6` de Flash Lite tools e dos precos Gemini
+corrigidos em `a3e95e8`. O codigo funcional de batch mais recente continua
+sendo `9b68de1`, agora incluido no runtime atual.
 Use
 `/api/deploy-info` com no-cache/cache-buster como gate de codigo live.
 **Commits aplicados/observados:** `a632883`, `5737611`, `50935ea`, `479b77d`,
@@ -28,16 +29,17 @@ Use
 `d47d748`, `c53fae6`, `9ab53df`, `1454e68`, `3fce335`, `33fb7d5`, `0f84552`,
 `974f040`, `11a396b`, `c094fba`, `d799165`, `6b43016`, `8c77cc4`, `29a4b7e`,
 `fdf0cbd`, `e2260d2`, `ae04982`, `ed592de`, `2a0462d`, `dbbecfe`, `4a4caf0`,
-`0bcff27`, `9b68de1`, `a3e95e8`, `c56c4b6`
+`0bcff27`, `9b68de1`, `a3e95e8`, `c56c4b6`, `4d7aaeb`, `4dc1cc8`,
+`0411f9a`
 
 ## Status Oficial De Deploy
 
 - O servico oficial em 2026-05-17 e
   `srv-d5t8gbh4tr6s738fr3s0` (`IA_Educacao_V2`), branch `main`,
   `rootDir=backend`, URL `https://ia-educacao-v2.onrender.com`.
-- `/api/deploy-info` confirmou o runtime backend `c56c4b6` com
+- `/api/deploy-info` confirmou o runtime backend `0411f9a` com
   `source=RENDER_GIT_COMMIT`; esse e o gate primario atual para codigo live.
-- `origin/main` pode estar em commit documental posterior a `c56c4b6`; o gate
+- `origin/main` pode estar em commit documental posterior a `0411f9a`; o gate
   de comportamento de provider/pipeline continua sendo `/api/deploy-info` com
   no-cache e os smokes live.
 - Smoke pos-deploy de catalogo: `/api/settings/model-catalog/calculate-cost`
@@ -69,6 +71,18 @@ Use
   `task_01a883e945fd` (`o3-mini` duplicado) e `task_16f6789803fb` (`o4-mini`)
   falharam cedo em `corrigir` com "modelo nao suporta geracao de documentos",
   `retryable=false`, sem fallback e sem custo de IA.
+- Deploy `0411f9a`: `models.json` passou a marcar `o3-mini` e `o4-mini` com
+  `suporta_function_calling=true`; `o4-mini` com `suporta_vision=true`; o
+  catalogo corrigiu `o3-mini` para `supports_vision=false`. A fonte oficial da
+  OpenAI confirma function calling/structured outputs para ambos, image input
+  ausente no `o3-mini` e image input no `o4-mini`.
+- Smokes live pos-`0411f9a`: `58ff5dcdff67` (`o3-mini`, low) completou
+  `corrigir` com JSON `b6189d46df313c9c`, PDF `36d3f4ef3f435cff`,
+  `24622/6501` tokens e `US$ 0.055689`; `9f6b2b61b6c3` (`o4-mini`, high)
+  completou `corrigir` com JSON `9a9f231fec7d6f67`, PDF
+  `9ee5548a301761ec`, `20135/6752` tokens e `US$ 0.051857`; `c489f094083c`
+  (`o3-mini`, medium) falhou alto por JSON sem `questoes` e PDF/JSON
+  divergente, `48584/32577` tokens e `US$ 0.196781`.
 - Anthropic recheck: Haiku 4.5 ainda retorna Anthropic `400`, saldo baixo, na
   chave oficial do Render.
 - Pipeline live GPT-5.4 Mini: `task_a1f7521077a5` completou as 6 etapas na
@@ -245,9 +259,9 @@ Fontes de preco:
 | `gem25lite001` | Gemini 2.5 Flash Lite | `google/gemini-2.5-flash-lite` | T/V | `0.10/0.40` | oficial Google | ⏸️ | ⏸️ | ⏸️ | 🚫 | ⏸️ | ⏸️ | 🚫 quota | `task_817bda15b4c0`: Google `429 RESOURCE_EXHAUSTED`, erro `f5e71b8e5707790d`, custo `US$ 0.000553`; historico `task_124bf0e8d7bf` falhou por JSON/PDF divergentes | `US$ 0.012387` | Repetir `corrigir` quando quota Google permitir; tools ja alinhadas no catalogo e no site. |
 | `gem3flash001` | Gemini 3 Flash | `google/gemini-3-flash-preview` | T/V | `0.50/3.00` | oficial Google | ✅ | ✅ | ✅ | ⚠️ | ⚠️ | ⚠️ | 🚫 quota/revalidacao | `task_5e97bbee896e`: tres extracoes passaram; falhou alto em `corrigir` por `429` | `US$ 0.074338` | Repetir pipeline sequencial completa quando quota permitir. |
 | `e251747cd7a2` | Gemini 2.5 Pro | `google/gemini-2.5-pro` | T/V | `1.25/10.00` ate 200k prompt | oficial Google | ⏸️ | ⏸️ | ⏸️ | ⏸️ | ⏸️ | ⏸️ | 🚫 quota | Sweep live: conexao bloqueada por Google `429` | `US$ 0.216851` | Testar conexao e uma etapa quando quota permitir. |
-| `58ff5dcdff67` | o3 Mini | `openai/o3-mini` | sem tools/sem vision | `1.10/4.40` | catalogo | 🚫 | 🚫 | 🚫 | 🚫 | 🚫 | 🚫 | 🚫 config | `task_ef461a0fb4f9`: falha cedo, "modelo nao suporta geracao de documentos", sem custo | `US$ 0.136256` | Nao usar na pipeline enquanto tools estiverem desativadas. |
-| `c489f094083c` | o3 Mini | `openai/o3-mini` | sem tools/sem vision | `1.10/4.40` | catalogo | 🚫 | 🚫 | 🚫 | 🚫 | 🚫 | 🚫 | 🚫 config | `task_01a883e945fd`: duplicado tambem falha cedo por falta de tools, sem custo | `US$ 0.136256` | Remover duplicidade ou registrar uso fora da pipeline. |
-| `9f6b2b61b6c3` | o4 Mini | `openai/o4-mini` | sem tools/sem vision | `1.10/4.40` | catalogo | 🚫 | 🚫 | 🚫 | 🚫 | 🚫 | 🚫 | 🚫 config | `task_16f6789803fb`: falha cedo, "modelo nao suporta geracao de documentos", sem custo | `US$ 0.136256` | Nao usar na pipeline enquanto tools estiverem desativadas. |
+| `58ff5dcdff67` | o3 Mini | `openai/o3-mini` | T/sem vision | `1.10/4.40` | oficial OpenAI/catalogo | ⏸️ | ⏸️ | ⏸️ | ✅ | ⏸️ | ⏸️ | ⏸️ | `task_d5a8031e3acd`: `corrigir` OK, JSON/PDF coerentes, custo `US$ 0.055689` | `US$ 0.136256` | Testar extracoes e etapas finais; nao promover para full pipeline ainda. |
+| `c489f094083c` | o3 Mini | `openai/o3-mini` | T/sem vision | `1.10/4.40` | oficial OpenAI/catalogo | ⏸️ | ⏸️ | ⏸️ | ❌ | ⏸️ | ⏸️ | ❌ nesta config | `task_07738514d159`: falha alta, JSONs sem `questoes` e PDF/JSON divergente, custo `US$ 0.196781` | `US$ 0.136256` | Reavaliar `reasoning_effort=medium`/prompt antes de novo smoke caro. |
+| `9f6b2b61b6c3` | o4 Mini | `openai/o4-mini` | T/V | `1.10/4.40` | oficial OpenAI/catalogo | ⏸️ | ⏸️ | ⏸️ | ✅ | ⏸️ | ⏸️ | ⏸️ | `task_77b382e71e94`: `corrigir` OK, JSON/PDF coerentes, custo `US$ 0.051857` | `US$ 0.136256` | Testar extracoes e etapas finais; nao promover para full pipeline ainda. |
 | `ollama-llama3` | Llama 3.2 (Local) | `ollama/llama3.2:latest` | sem tools/V | sem preco | sem preco | 🚫 | 🚫 | 🚫 | 🚫 | 🚫 | 🚫 | 🚫 infra | Render nao tem Ollama local acessivel | N/A | Fora da pipeline oficial em producao. |
 
 Achados deste ciclo:

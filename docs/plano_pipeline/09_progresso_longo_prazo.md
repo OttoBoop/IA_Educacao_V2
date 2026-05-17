@@ -3427,8 +3427,8 @@ Critério de pronto: lista de limpeza segura e revisada.
   em pipeline como falso sucesso nem acionam fallback.
 - Leitura do site oficial: `58ff5dcdff67` e `c489f094083c` (`o3-mini`) e
   `9f6b2b61b6c3` (`o4-mini`) estao ativos, mas com
-  `suporta_function_calling=false`, `suporta_vision=false` e `provider=null`
-  na resposta de `/api/settings/models`.
+  `suporta_function_calling=false`, `tipo=openai`; `o3-mini` sem vision e
+  `o4-mini` tambem sem vision por configuracao antiga.
 - Smokes oficiais em `corrigir`, fixture Diana:
   - `task_ef461a0fb4f9` (`58ff5dcdff67`, `o3-mini`) falhou imediatamente:
     "Este modelo nao suporta geracao de documentos", `retryable=false`,
@@ -3444,6 +3444,50 @@ Critério de pronto: lista de limpeza segura e revisada.
 - Recheck Anthropic: `/api/settings/models/588f3efe7975/testar` ainda retorna
   Anthropic `400`, "credit balance is too low". Se ha creditos Anthropic, a
   chave/plano configurado no Render nao e o que enxerga esses creditos.
+
+### 2026-05-17 -- Provider: OpenAI o-series com tools corrigido e smokeado
+
+- Fonte: paginas oficiais OpenAI de `o3-mini`
+  (`https://platform.openai.com/docs/models/o3-mini`) e `o4-mini`
+  (`https://platform.openai.com/docs/models/o4-mini`). Elas confirmam function
+  calling e structured outputs para ambos; `o3-mini` nao suporta image input,
+  `o4-mini` suporta image input.
+- Patch: `0411f9a` (`fix: align openai reasoning model capabilities`):
+  - `backend/data/models.json`: `o3-mini` low/medium e `o4-mini` agora usam
+    `suporta_function_calling=true`; `o4-mini` usa `suporta_vision=true`.
+  - `backend/data/model_catalog.json`: `o3-mini` corrigido para
+    `supports_vision=false`.
+  - Testes novos em `test_gpt5_nano_registration.py` e
+    `test_model_manager.py`.
+- Validacoes locais: `json.tool` dos dois JSONs, `py_compile` dos arquivos
+  tocados, `git diff --check`, e
+  `test_gpt5_nano_registration.py + test_model_manager.py`: `67 passed`.
+- Deploy: `0411f9a` publicado no GitHub; Render confirmou
+  `0411f9afe703ec15e5ea8c2b11ea00d0f1f5a13f` por `wait_deploy.sh`,
+  `check_deploy.sh`, `/api/deploy-info` e `/api/health`.
+- Smoke settings live: `/api/settings/models` confirmou:
+  - `58ff5dcdff67`: `o3-mini`, tools `true`, vision `false`,
+    `reasoning_effort=low`.
+  - `c489f094083c`: `o3-mini`, tools `true`, vision `false`,
+    `reasoning_effort=medium`.
+  - `9f6b2b61b6c3`: `o4-mini`, tools `true`, vision `true`,
+    `reasoning_effort=high`.
+- Smoke `corrigir` `o3-mini` low: `task_d5a8031e3acd` completou no site
+  oficial. JSON `b6189d46df313c9c` e PDF `36d3f4ef3f435cff` ficaram
+  coerentes, nota `8.0`, `Feedback Geral` verificado via `pdftotext`;
+  `24622/6501` tokens, custo `US$ 0.055689`. Um PDF intermediario
+  `b4fca5f53b7d2502` ficou `status=erro` por consistencia antes do retry.
+- Smoke `corrigir` `o4-mini` high: `task_77b382e71e94` completou no site
+  oficial. JSON `9a9f231fec7d6f67` e PDF `9ee5548a301761ec` ficaram
+  coerentes, nota `8.0`, `Feedback Geral` verificado; `20135/6752` tokens,
+  custo `US$ 0.051857`.
+- Smoke `corrigir` `o3-mini` medium duplicado: `task_07738514d159` falhou alto.
+  A etapa gerou multiplos JSONs sem lista `questoes` e PDF/JSON divergente;
+  nenhum artefato foi aceito como sucesso. O custo da falha foi medido:
+  `48584/32577` tokens, `US$ 0.196781`.
+- Status: `o3-mini` low e `o4-mini` high sobem de `🚫 config` para `✅` em
+  `CORRIGIR` na fixture simples. `o3-mini` medium fica `❌` nesta config. Ainda
+  falta testar extracoes, habilidades, relatorio e pipeline completa.
 
 ## Riscos Abertos
 

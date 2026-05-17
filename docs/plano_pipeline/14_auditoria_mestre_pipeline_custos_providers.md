@@ -10,9 +10,12 @@ um deve ser lido, o que ainda vale, o que ficou historico, e quais fatos precisa
 guiar os proximos ciclos.
 
 Atualizacao de controle de 2026-05-17: o runtime mais recente confirmado no site
-oficial e `c56c4b6`, validado por `/api/deploy-info` com
-cache-buster/no-cache, `/api/health`, `check_deploy.sh` e smoke live de
-catalogo/custos. O codigo funcional de batch dentro desse runtime continua
+oficial e `0411f9a`, validado por `/api/deploy-info` com
+cache-buster/no-cache, `/api/health`, `check_deploy.sh` e smokes live de
+catalogo/custos/providers. Esse runtime inclui o alinhamento de capabilities
+dos modelos OpenAI o-series, no qual `o3-mini` low e `o4-mini` high passaram
+`CORRIGIR`, enquanto `o3-mini` medium falhou alto por output invalido. O codigo
+funcional de batch dentro desse runtime continua
 validado por `task_ee773aefb10d`. Smokes anteriores continuam
 validando documentos/ranking/dashboard nos hashes registrados em seus proprios
 ciclos. O ciclo `dbbecfe` aumentou para duas as tentativas explicitas de
@@ -4033,13 +4036,24 @@ Interpretacao:
   troca silenciosa de modelo. O custo do erro ficou visivel em
   `/api/custos/resumo?limit=160`: documento `f5e71b8e5707790d`,
   `3314/555` tokens e `US$ 0.000553`.
-- OpenAI sem tools pos-`c56c4b6`: os modelos configurados `o3-mini`
-  (`58ff5dcdff67` e `c489f094083c`) e `o4-mini` (`9f6b2b61b6c3`) estao
-  ativos no site, mas com `suporta_function_calling=false`. Smokes oficiais
-  `task_ef461a0fb4f9`, `task_01a883e945fd` e `task_16f6789803fb` falharam
-  cedo em `corrigir` com "modelo nao suporta geracao de documentos",
-  `retryable=false`, sem custo de IA e sem fallback. Isso confirma a regra:
-  chat simples OK nao implica pipeline-ready.
+- OpenAI o-series pos-`0411f9a`: o ciclo primeiro provou que os cadastros
+  antigos `o3-mini` (`58ff5dcdff67`, `c489f094083c`) e `o4-mini`
+  (`9f6b2b61b6c3`) falhavam cedo em `corrigir` por
+  `suporta_function_calling=false`, sem custo e sem fallback. A checagem nas
+  paginas oficiais OpenAI (`https://platform.openai.com/docs/models/o3-mini` e
+  `https://platform.openai.com/docs/models/o4-mini`) mostrou que `o3-mini` e
+  `o4-mini` suportam function calling/structured outputs; `o3-mini` nao suporta
+  image input e `o4-mini` suporta image input. O patch `0411f9a` alinhou `models.json` e
+  `model_catalog.json`, foi validado com `67 passed`, publicado no Render e
+  confirmado por `/api/deploy-info`.
+- Smokes o-series pos-`0411f9a`: `task_d5a8031e3acd` (`o3-mini` low)
+  completou `corrigir` com JSON/PDF coerentes, `24622/6501` tokens e
+  `US$ 0.055689`; `task_77b382e71e94` (`o4-mini` high) completou `corrigir`
+  com JSON/PDF coerentes, `20135/6752` tokens e `US$ 0.051857`;
+  `task_07738514d159` (`o3-mini` medium duplicado) falhou alto por multiplos
+  JSONs sem `questoes` e PDF/JSON divergente, com custo de falha
+  `48584/32577` tokens e `US$ 0.196781`. Isso confirma a regra: capability
+  correta abre a execucao, mas cada `model_id` ainda precisa evidencia propria.
 - Anthropic pos-`c56c4b6`: Haiku 4.5 continua bloqueado na chave oficial do
   Render com Anthropic `400`, saldo baixo. Se ha creditos na conta do usuario,
   o proximo gate e atualizar/rotacionar a chave do Render por caminho seguro.
