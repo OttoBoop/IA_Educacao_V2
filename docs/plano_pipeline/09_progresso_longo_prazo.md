@@ -1,15 +1,14 @@
 # Painel Vivo Paulo -- NOVO CR
 
-**Atualizado:** 2026-05-17
+**Atualizado:** 2026-05-18
 **Responsavel operacional:** Paulo
 **Status geral:** o servico oficial Render
 `srv-d5t8gbh4tr6s738fr3s0` (`IA_Educacao_V2`, branch `main`, URL
 `https://ia-educacao-v2.onrender.com`) tem como codigo funcional mais recente
-confirmado o commit `a3e95e8` (`docs: add model cost matrix`),
-validado por `/api/deploy-info` com cache-buster, `/api/health`,
-`./scripts/check_deploy.sh a3e95e8` e smoke oficial de catalogo/custos.
-O codigo funcional de batch contido nesse runtime continua sendo `9b68de1`,
-validado por `task_ee773aefb10d`.
+confirmado o commit `8de0ab3` (`fix: retry google quota waits per request`),
+validado por `/api/deploy-info`, `/api/health` e
+`./scripts/check_deploy.sh 8de0ab3`. O codigo funcional de batch contido nesse
+runtime continua sendo `9b68de1`, validado por `task_ee773aefb10d`.
 `origin/main` pode estar em commit documental posterior; isso nao muda runtime
 enquanto `/api/deploy-info` com no-cache continuar apontando para o hash
 registrado neste painel.
@@ -37,8 +36,10 @@ patch de branco rastreavel. O batch `task_ee773aefb10d` no runtime `9b68de1`
 agora termina `failed` quando Helena falha em `extrair_respostas`, expondo
 `summary` com `29` etapas `skipped`, `1` etapa `failed` e erro global, sem
 falso verde. Gemini Flash/Flash Lite/3 Flash passam em
-conexao simples, mas `corrigir` com Gemini 2.5 Flash ainda falha alto por quota
-`429`; Gemini 2.5 Pro tambem esta bloqueado por quota. Anthropic foi retestado
+conexao simples; Flash Lite tambem passou JSON simples com backoff manual, mas
+`corrigir` ainda falha alto por quota Google `429` de
+`generate_content_free_tier_requests` no projeto/chave atual do Render. Gemini
+2.5 Pro nao foi retestado neste ciclo para poupar custo. Anthropic foi retestado
 com Haiku em 2026-05-17 e a chave configurada no Render ainda retornou
 `400`/saldo baixo; se ha creditos na conta correta, falta sincronizar ou
 rotacionar a chave do site oficial. Ollama esta indisponivel no Render.
@@ -3593,6 +3594,51 @@ Critério de pronto: lista de limpeza segura e revisada.
   ficou apenas no `task-progress`.
 - Status: Google continua nao pipeline-ready na configuracao atual por quota.
   Isso e bloqueio externo, nao bug silencioso: a pipeline falha alto e para.
+
+### 2026-05-18 -- Loop Google: retry_after publicado, mas quota free-tier ainda bloqueia
+
+- Objetivo: retomar o loop Google apos credito novo, gastando pouco e incluindo
+  relatorios de desempenho agregados no plano de aceite.
+- Documento novo: `docs/plano_pipeline/15_log_google_pipeline_custos.md` guarda
+  o diario bruto de tentativas, custos, tarefas e decisoes de parada.
+- Baseline oficial:
+  - Runtime inicial observado: `0411f9a`; runtime final publicado: `8de0ab3`.
+  - `/api/health` saudavel.
+  - `/api/custos/status?limit=100` segue `ok=false` porque Supabase
+    `public.token_usage` nao existe (`PGRST205`).
+- Smokes baratos:
+  - `gem25lite001`: conexao OK (`tokens=20`), JSON simples falhou em `429`
+    sem backoff e passou apos `75s` (`tokens_used=398`).
+  - `gem25flash001`: conexao OK (`tokens=39`), JSON simples imediato `429`.
+  - `gem3flash001`: conexao OK (`tokens=84`), JSON simples imediato `429`.
+- Patches publicados:
+  - `9dbb122` preserva `retry_after` em `ProviderAPIError`, `/api/chat`,
+    `ResultadoExecucao`, metadata e token usage.
+  - `8de0ab3` faz retry por request Google dentro do `ChatClient`, evitando
+    reiniciar a etapa inteira quando Gemini pede espera.
+  - Validacoes locais: `py_compile`, `git diff --check`, testes focados
+    `7 passed`.
+- Smokes oficiais de `CORRIGIR` com `gem25lite001`, atividade
+  `8f58cc8b5fb75869`, aluna Beatriz (`08893c99aa53002d`):
+  - `task_cbf8fc1a0d3e` antes do patch falhou alto em `429`, retry sugerido
+    `8.610734207s`, sem documento novo observado.
+  - `task_3669d284c815` apos `9dbb122` falhou alto em `429` depois de cerca de
+    `123s`; documento de erro `5df1cac02c5fb746`, `3467/366` tokens,
+    `US$ 0.000493`, `retry_after=49`.
+  - `task_c6e0b3157990` apos `8de0ab3` falhou alto em `429` depois de cerca de
+    `491s`; documento de erro `91219d221a2b3aa2`, `3467/1287` tokens,
+    `US$ 0.000862`, `retry_after=60`.
+- Interpretacao: a chave/projeto Google usado pelo Render ainda esta preso ao
+  limite `generate_content_free_tier_requests`, `limit=20`, apesar do credito
+  novo. O sistema agora registra melhor o erro e espera o tempo correto, mas
+  Google ainda nao esta pipeline-ready.
+- Relatorios de desempenho: nao executados para poupar custo. A atividade
+  `8f58cc8b5fb75869` tem `8` `RELATORIO_FINAL` para `4` alunos, entao
+  `desempenho_tarefa` esta pronto do ponto de vista de dados; o bloqueio e
+  provider/rate-limit antes da camada agregada.
+- Proximo passo: corrigir billing/chave/projeto Google do Render ate a mensagem
+  deixar de citar `free_tier_requests`; depois repetir `gem25lite001` em
+  `CORRIGIR`, e so entao rodar `desempenho-tarefa-sync`.
 
 ## Riscos Abertos
 

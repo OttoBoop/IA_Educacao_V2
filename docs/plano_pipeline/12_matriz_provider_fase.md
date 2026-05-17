@@ -1,15 +1,14 @@
 # Matriz Provider × Fase — Status Atual
 
-**Atualizado:** 2026-05-17
+**Atualizado:** 2026-05-18
 **Atividades de teste principais:** Lista0 — Algebra Linear Avancada
 (`126e8b5ad7dd6d59`), smoke simples oficial `Smoke Paulo Pipeline 2026-05-16`
 (`f68d57a9a339081f`) e atividade textual `Prova 1 - Equações do 1º Grau`
 (`8f58cc8b5fb75869`)
-**Runtime oficial atual:** backend Render em `0411f9a`; `origin/main` recebeu o
-ciclo `0411f9a` para alinhar capabilities dos modelos OpenAI o-series
-configurados, alem do ciclo `c56c4b6` de Flash Lite tools e dos precos Gemini
-corrigidos em `a3e95e8`. O codigo funcional de batch mais recente continua
-sendo `9b68de1`, agora incluido no runtime atual.
+**Runtime oficial atual:** backend Render em `8de0ab3`; `origin/main` recebeu o
+ciclo `9dbb122`/`8de0ab3` para preservar `retry_after` de provider e fazer retry
+por request Google sem trocar modelo. O codigo funcional de batch mais recente
+continua sendo `9b68de1`, incluido no runtime atual.
 Use
 `/api/deploy-info` com no-cache/cache-buster como gate de codigo live.
 **Commits aplicados/observados:** `a632883`, `5737611`, `50935ea`, `479b77d`,
@@ -103,6 +102,18 @@ Use
   Flash Lite e Gemini 2.5 Pro retornaram Google `429`; `task_287db2c7f112`
   confirmou que Gemini 2.5 Flash ainda falha alto em `corrigir` por quota
   `429 RESOURCE_EXHAUSTED`, sem fallback e sem custo/doc novo.
+- Ciclo Google de 2026-05-18: Flash Lite, Flash e Gemini 3 conectaram no site
+  oficial; Flash Lite tambem respondeu JSON simples depois de backoff manual
+  (`tokens_used=398`). Patches `9dbb122` e `8de0ab3` passaram a preservar
+  `retry_after` e retentar o mesmo request Google. Mesmo assim,
+  `task_c6e0b3157990` com `gem25lite001` em `CORRIGIR` rodou cerca de `491s` e
+  falhou alto por quota `generate_content_free_tier_requests`, limite `20`,
+  com retry sugerido de aproximadamente `59s`. Documento de erro
+  `91219d221a2b3aa2`: `3467/1287` tokens, `US$ 0.000862`, `status=erro`.
+  Desempenho agregado nao foi executado para nao gastar em cima do mesmo
+  bloqueio; a atividade `8f58cc8b5fb75869` tem 4 alunos com `RELATORIO_FINAL`
+  e esta pronta para `desempenho_tarefa` quando Google sair do free-tier/rate
+  limit.
 - Anthropic recheck: Haiku 4.5 ainda retorna Anthropic `400`, saldo baixo, na
   chave oficial do Render.
 - Pipeline live GPT-5.4 Mini: `task_a1f7521077a5` completou as 6 etapas na
@@ -275,9 +286,9 @@ Fontes de preco:
 | `180b8298a279` | gpt-4o | `openai/gpt-4o` | T/V | `2.50/10.00` | catalogo | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | `task_68b19146a95b`: `US$ 0.314369` | `US$ 0.309673` | Manter como referencia, nao fallback silencioso. |
 | `588f3efe7975` | Claude Haiku 4.5 | `anthropic/claude-haiku-4-5-20251001` | T/V | `1.00/5.00` | oficial Anthropic | 🚫 | 🚫 | 🚫 | 🚫 | 🚫 | 🚫 | 🚫 chave/saldo | Re-smoke 2026-05-17: `/testar` e `/api/chat` retornaram Anthropic `400`, saldo baixo; recheck pos-`c56c4b6` confirmou o mesmo bloqueio na chave do Render | `US$ 0.136272` | Sincronizar/rotacionar chave Anthropic do Render; depois rodar Haiku primeiro. |
 | `4eaeb5105f5d` | Claude Sonnet 4.5 | `anthropic/claude-sonnet-4-5-20250929` | T/V | `3.00/15.00` | oficial Anthropic | 🚫 | 🚫 | 🚫 | 🚫 | 🚫 | 🚫 | 🚫 chave/saldo | Sweep anterior indicou mesmo bloqueio Anthropic; nao retestado para poupar ate Haiku destravar | `US$ 0.408816` | Testar so depois de Haiku, por custo ~3x maior. |
-| `gem25flash001` | Gemini 2.5 Flash | `google/gemini-2.5-flash` | T/V | `0.30/2.50` | oficial Google | ✅ | ✅ | ✅ | 🚫 | ⏸️ | ⏸️ | 🚫 quota em `corrigir` | `task_287db2c7f112` e `task_41c45d7939b5`: falha alta em `corrigir` por Google `429 RESOURCE_EXHAUSTED` | `US$ 0.053285` | Repetir quando quota Google permitir. |
-| `gem25lite001` | Gemini 2.5 Flash Lite | `google/gemini-2.5-flash-lite` | T/V | `0.10/0.40` | oficial Google | ⏸️ | ⏸️ | ⏸️ | 🚫 | ⏸️ | ⏸️ | 🚫 quota | `task_817bda15b4c0`: Google `429 RESOURCE_EXHAUSTED`, erro `f5e71b8e5707790d`, custo `US$ 0.000553`; historico `task_124bf0e8d7bf` falhou por JSON/PDF divergentes | `US$ 0.012387` | Repetir `corrigir` quando quota Google permitir; tools ja alinhadas no catalogo e no site. |
-| `gem3flash001` | Gemini 3 Flash | `google/gemini-3-flash-preview` | T/V | `0.50/3.00` | oficial Google | ✅ | ✅ | ✅ | ⚠️ | ⚠️ | ⚠️ | 🚫 quota/revalidacao | `task_5e97bbee896e`: tres extracoes passaram; falhou alto em `corrigir` por `429` | `US$ 0.074338` | Repetir pipeline sequencial completa quando quota permitir. |
+| `gem25flash001` | Gemini 2.5 Flash | `google/gemini-2.5-flash` | T/V | `0.30/2.50` | oficial Google | ✅ | ✅ | ✅ | 🚫 | ⏸️ | ⏸️ | 🚫 quota em `corrigir` | `task_287db2c7f112` e `task_41c45d7939b5`: falha alta em `corrigir`; 2026-05-18 conexao OK (`tokens=39`), JSON imediato `429` | `US$ 0.053285` | Aguardar billing/rate-limit Google antes de pipeline; nao gastar Flash enquanto Lite trava. |
+| `gem25lite001` | Gemini 2.5 Flash Lite | `google/gemini-2.5-flash-lite` | T/V | `0.10/0.40` | oficial Google | ⏸️ | ⏸️ | ⏸️ | 🚫 | ⏸️ | ⏸️ | 🚫 quota free-tier | 2026-05-18: conexao OK (`tokens=20`), JSON OK apos backoff (`tokens_used=398`), mas `task_c6e0b3157990` falhou em `CORRIGIR` por `generate_content_free_tier_requests` limite `20`; erro `91219d221a2b3aa2`, `US$ 0.000862` | `US$ 0.012387` | Corrigir billing/chave Google no Render; repetir `CORRIGIR`, depois `desempenho_tarefa`. |
+| `gem3flash001` | Gemini 3 Flash | `google/gemini-3-flash-preview` | T/V | `0.50/3.00` | oficial Google | ✅ | ✅ | ✅ | ⚠️ | ⚠️ | ⚠️ | 🚫 quota/revalidacao | `task_5e97bbee896e`: tres extracoes passaram; falhou alto em `corrigir` por `429`; 2026-05-18 conexao OK (`tokens=84`), JSON imediato `429` | `US$ 0.074338` | Repetir pipeline sequencial so depois de Lite sair do bloqueio. |
 | `e251747cd7a2` | Gemini 2.5 Pro | `google/gemini-2.5-pro` | T/V | `1.25/10.00` ate 200k prompt | oficial Google | ⏸️ | ⏸️ | ⏸️ | ⏸️ | ⏸️ | ⏸️ | 🚫 quota | Sweep live: conexao bloqueada por Google `429` | `US$ 0.216851` | Testar conexao e uma etapa quando quota permitir. |
 | `58ff5dcdff67` | o3 Mini | `openai/o3-mini` | T/sem vision | `1.10/4.40` | oficial OpenAI/catalogo | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ fixture simples | `task_f200c8d9abf4`: 6 etapas OK, `US$ 0.264026`; `task_91f7660e5013`: finais OK, `US$ 0.168651` | `US$ 0.136256` | Repetir em dataset maior; custo real desta fixture ficou acima do perfil canonico. |
 | `c489f094083c` | o3 Mini | `openai/o3-mini` | T/sem vision | `1.10/4.40` | oficial OpenAI/catalogo | ⏸️ | ⏸️ | ⏸️ | ❌ | ⏸️ | ⏸️ | ❌ nesta config | `task_07738514d159`: falha alta, JSONs sem `questoes` e PDF/JSON divergente, custo `US$ 0.196781` | `US$ 0.136256` | Reavaliar `reasoning_effort=medium`/prompt antes de novo smoke caro. |
@@ -297,6 +308,20 @@ Achados deste ciclo:
   disponivel, entao o catalogo agora usa `supports_tools=true`.
 - A matriz antiga abaixo continua como historico detalhado por frente, mas a
   tabela acima e a fonte de decisao operacional por modelo ativo.
+
+## Matriz Google -- Relatorios De Desempenho Agregado
+
+Esta tabela responde a lacuna de produto: os relatorios de desempenho agregados
+nao sao a mesma coisa que `GERAR_RELATORIO` individual. Eles usam os endpoints
+`/api/executar/desempenho-tarefa-sync`, `/api/executar/desempenho-turma-sync` e
+`/api/executar/desempenho-materia-sync`.
+
+| Modelo Google | `desempenho_tarefa` | `desempenho_turma` | `desempenho_materia` | Evidencia | Proximo passo |
+|---|:---:|:---:|:---:|---|---|
+| `gem25lite001` | 🚫 | 🚫 | 🚫 | Nao executado por economia: `CORRIGIR` ja falhou em `task_c6e0b3157990` por quota free-tier. A atividade `8f58cc8b5fb75869` tem 4 alunos com `RELATORIO_FINAL`, entao o dado esta pronto para tarefa. | Corrigir billing/rate-limit; rodar `desempenho-tarefa-sync` primeiro. |
+| `gem25flash001` | 🚫 | 🚫 | 🚫 | Conexao OK, mas JSON simples imediato `429`; nao gastar agregado enquanto Lite bloqueia no mesmo provider. | Reavaliar so depois de Lite passar `CORRIGIR`. |
+| `gem3flash001` | 🚫 | 🚫 | 🚫 | Conexao OK, mas JSON simples imediato `429`; historico de pipeline tambem bloqueou em `corrigir`. | Reavaliar apos Flash/Lite, por custo maior. |
+| `e251747cd7a2` | ⏸️ | ⏸️ | ⏸️ | Pro nao foi retestado neste ciclo para poupar custo. | Testar conexao so depois de resolver billing/rate-limit dos modelos baratos. |
 
 ---
 
