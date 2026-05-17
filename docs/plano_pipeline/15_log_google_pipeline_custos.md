@@ -63,6 +63,82 @@ analisados; portanto o delta global nao deve ser lido como custo exato do ciclo.
 As amostras por documento abaixo sao a evidencia de custo mais confiavel deste
 ciclo.
 
+## Resposta Operacional: Gasto, Bloqueio E Solucao
+
+### O credito acabou?
+
+Nao ha evidencia de que os `R$40` tenham sido consumidos. Pelo contrario: as
+amostras Google diretamente atribuiveis ao ciclo de pipeline custaram frações de
+centavo de dolar.
+
+Custos Google medidos nos documentos novos de erro:
+
+- `5df1cac02c5fb746`: `US$0.000493`.
+- `91219d221a2b3aa2`: `US$0.000862`.
+- Total medido nesses dois documentos: `US$0.001355`.
+
+Tambem houve chamadas de conexao/chat simples que nao entram como documentos no
+resumo de custos, mas elas foram muito pequenas: conexoes de `20`, `39` e `84`
+tokens, e um JSON simples com `398` tokens. Mesmo somando isso, o gasto e
+minimo frente ao credito informado.
+
+O aumento de `/api/custos/resumo` nao deve ser usado como resposta direta sobre
+quanto foi gasto neste ciclo, porque o endpoint muda a janela com `limit` e
+inclui historico OpenAI/Google anterior. A evidencia confiavel do ciclo sao os
+documentos/calls listados nesta pagina.
+
+### O que bloqueou exatamente?
+
+O erro do provider diz:
+
+- quota `generate_content_free_tier_requests`;
+- `limit: 20`;
+- modelo `gemini-2.5-flash-lite`;
+- `RESOURCE_EXHAUSTED`;
+- retry sugerido entre ~49s e ~60s nos smokes finais.
+
+Isso prova que:
+
+- a chave Google existe e funciona para chamadas simples;
+- o modelo Flash Lite existe e responde;
+- o backend agora preserva e respeita `retry_after`;
+- o site oficial ainda esta sendo tratado pelo Google como free tier/rate-limit
+  no projeto/chave configurado no Render.
+
+Isso nao parece falta de saldo consumido; parece billing/chave/projeto errado ou
+quota paga ainda nao aplicada ao projeto da chave usada em producao.
+
+### Solucao concreta
+
+Gate externo, fora do codigo:
+
+1. Abrir Google AI Studio ou Google Cloud no projeto que gerou a chave usada no
+   Render.
+2. Confirmar que billing pago esta ativo nesse projeto, nao apenas em outra
+   conta/projeto.
+3. Confirmar que a API key configurada no Render (`GOOGLE_API_KEY` ou chave
+   Google no cofre do site) pertence ao projeto pago.
+4. Se houver duvida, criar uma nova API key no projeto pago e substituir a chave
+   no Render Dashboard, sem colar segredo em chat/docs/logs.
+5. Reiniciar/deployar o servico Render.
+6. Rodar o gate minimo:
+   - `/api/settings/models/gem25lite001/testar`;
+   - `/api/chat` JSON simples;
+   - `CORRIGIR` em `gem25lite001`.
+7. So quando a mensagem parar de citar `generate_content_free_tier_requests`,
+   retomar `desempenho-tarefa-sync`.
+
+Gate de codigo ja feito neste ciclo:
+
+- `9dbb122` preserva `retry_after`.
+- `8de0ab3` faz retry por request Google.
+- O sistema agora falha alto, registra custo parcial e mostra provider/codigo.
+
+Gate estrutural ainda pendente:
+
+- Aplicar `backend/migrations/002_create_token_usage.sql` no Supabase para que
+  falhas sem documento final tenham persistencia duravel de custo.
+
 ## Tentativas Google
 
 | Ordem | Modelo | Alvo | Resultado | Evidencia | Custo medido |
