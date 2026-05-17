@@ -58,6 +58,17 @@ local de polling, mas o aceite fica nos artefatos oficiais, no runtime
 Supabase `token_usage`
 continua ausente (`PGRST205`), deixando custo duravel como gate real.
 
+Atualizacao custos duraveis de 2026-05-18: o proximo gate oficial nao e mais
+diagnostico, e aplicacao segura da migration. `backend/migrations/002_create_token_usage.sql`
+agora ativa RLS na tabela `token_usage` e envia `NOTIFY pgrst, 'reload schema'`
+para o PostgREST atualizar cache apos a criacao. Novo helper local
+`scripts/secure_supabase_migration_form.py` abre formulario em `127.0.0.1`,
+recebe a connection string Postgres como campo de senha, aplica somente essa
+migration e imprime apenas status/preview mascarado. Validacoes:
+`py_compile`, `git diff --check` e testes focados de custo/UI `6 passed`. Falta
+executar o helper com credencial SQL do Supabase e revalidar
+`/api/custos/status` ate `token_usage_backend.durable=true`.
+
 Atualizacao chaves seguras de 2026-05-18: qualquer chave colada em chat e
 tratada como exposta e nao deve ser usada para producao. O caminho operacional
 para rotacionar credenciais do site oficial agora e

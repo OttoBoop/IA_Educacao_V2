@@ -35,3 +35,12 @@ CREATE INDEX IF NOT EXISTS idx_token_usage_cost_run ON token_usage(cost_run_id);
 CREATE INDEX IF NOT EXISTS idx_token_usage_atividade ON token_usage(atividade_id);
 CREATE INDEX IF NOT EXISTS idx_token_usage_aluno ON token_usage(aluno_id);
 CREATE INDEX IF NOT EXISTS idx_token_usage_criado_em ON token_usage(criado_em);
+
+-- Keep token usage private to the service role. The backend uses the
+-- SUPABASE_SERVICE_KEY, which bypasses RLS; public anon clients should not read
+-- this operational cost table directly.
+ALTER TABLE token_usage ENABLE ROW LEVEL SECURITY;
+
+-- Ask PostgREST to refresh the schema cache so /api/custos/status can stop
+-- reporting PGRST205 shortly after the migration is applied.
+NOTIFY pgrst, 'reload schema';
