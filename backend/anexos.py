@@ -459,6 +459,37 @@ class ClienteAPIMultimodal:
         self.suporta_temperature = config.get("suporta_temperature", not is_reasoning_model(self.modelo))
 
         self.preparador = PreparadorArquivos()
+
+    def _anthropic_suporta_json_output_config(self) -> bool:
+        """Return True for Claude models whose API supports structured JSON outputs."""
+        modelo = (self.modelo or "").lower()
+        modelos_suportados = (
+            "claude-haiku-4-5",
+            "claude-sonnet-4-5",
+            "claude-opus-4-5",
+            "claude-sonnet-4-6",
+            "claude-opus-4-6",
+            "claude-opus-4-7",
+            "claude-mythos",
+        )
+        return any(marcador in modelo for marcador in modelos_suportados)
+
+    def _mensagem_pede_json_cru(self, mensagem: str, system_prompt: Optional[str] = None) -> bool:
+        """Detect pipeline prompts that require a raw JSON object response."""
+        texto = f"{system_prompt or ''}\n{mensagem or ''}".lower()
+        if "json" not in texto:
+            return False
+        marcadores = (
+            "retorne apenas",
+            "apenas json",
+            "json cru",
+            "json parseavel",
+            "json parseável",
+            "comeca com {",
+            "começa com {",
+            "contrato bloqueante de formato",
+        )
+        return any(marcador in texto for marcador in marcadores)
     
     async def enviar_com_anexos(
         self,
@@ -756,6 +787,20 @@ class ClienteAPIMultimodal:
             "system": system_prompt or "Você é um assistente útil.",
             "messages": messages
         }
+
+        if (
+            self._anthropic_suporta_json_output_config()
+            and self._mensagem_pede_json_cru(mensagem, system_prompt)
+        ):
+            params["output_config"] = {
+                "format": {
+                    "type": "json_schema",
+                    "schema": {
+                        "type": "object",
+                        "additionalProperties": True,
+                    },
+                }
+            }
 
         # Add temperature if model supports it
         if self.suporta_temperature and self.temperature is not None:
