@@ -2921,7 +2921,7 @@ PROMPT ORIGINAL DE REFERENCIA, APENAS PARA TAREFA E SCHEMA:
             if etapa_nome and not isinstance(data, dict):
                 return _json_raiz_invalida(data)
 
-            if isinstance(data, dict) and HAS_VALIDATION and etapa_nome:
+            if isinstance(data, dict) and etapa_nome:
                 try:
                     if _validar_json_pipeline is None:
                         from pipeline_validation import validar_json_pipeline as vjp
@@ -2953,6 +2953,7 @@ PROMPT ORIGINAL DE REFERENCIA, APENAS PARA TAREFA E SCHEMA:
                         origem=origem,
                         validation_error=str(ve),
                     )
+                    HAS_VALIDATION = False
                     data["_validation_error"] = str(ve)
 
             return data

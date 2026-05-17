@@ -122,3 +122,50 @@ async def test_anthropic_unknown_json_prompt_does_not_use_generic_schema(monkeyp
 
     payload = _FakeAsyncClient.captured_payloads[-1]
     assert "output_config" not in payload
+
+
+def test_anthropic_gabarito_schema_wins_over_embedded_questoes_context():
+    from anexos import ClienteAPIMultimodal
+
+    cliente = ClienteAPIMultimodal(
+        {
+            "tipo": "anthropic",
+            "api_key": "test-key",
+            "modelo": "claude-haiku-4-5-20251001",
+        }
+    )
+
+    schema = cliente._anthropic_json_schema_para_prompt(
+        'Questões já identificadas: {"questoes":[{"tipo_raciocinio":"aplicacao"}]}\n'
+        'Estrutura JSON esperada: {"respostas":[{"questao_numero":1,'
+        '"resposta_correta":"x=5","justificativa":"","conceito_central":"Equacao",'
+        '"criterios_parciais":[]}],"_avisos_documento":[],"_avisos_questao":[]}'
+    )
+
+    assert "respostas" in schema["required"]
+    assert "questoes" not in schema["required"]
+
+
+def test_anthropic_respostas_schema_wins_over_embedded_questoes_context():
+    from anexos import ClienteAPIMultimodal
+
+    cliente = ClienteAPIMultimodal(
+        {
+            "tipo": "anthropic",
+            "api_key": "test-key",
+            "modelo": "claude-haiku-4-5-20251001",
+        }
+    )
+
+    schema = cliente._anthropic_json_schema_para_prompt(
+        'Questões da prova: {"questoes":[{"tipo_raciocinio":"aplicacao"}]}\n'
+        'Estrutura JSON esperada: {"aluno":"Ana","respostas":[{"questao_numero":1,'
+        '"resposta_aluno":"x=5","em_branco":false,"ilegivel":false,'
+        '"observacoes":"","raciocinio_parcial":null}],'
+        '"questoes_respondidas":1,"questoes_em_branco":0,'
+        '"_avisos_documento":[],"_avisos_questao":[]}'
+    )
+
+    assert "aluno" in schema["required"]
+    assert "respostas" in schema["required"]
+    assert "questoes" not in schema["required"]

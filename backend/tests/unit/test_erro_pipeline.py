@@ -827,6 +827,43 @@ class TestF2T1_ErrorFramework:
 
         assert parsed["_error"] == "invalid_json_envelope"
 
+    def test_parsear_resposta_valida_schema_da_etapa_mesmo_com_lazy_import(self):
+        """Shape de questoes nao pode passar como gabarito por validação desligada."""
+        from executor import EtapaProcessamento, PipelineExecutor
+
+        executor = PipelineExecutor.__new__(PipelineExecutor)
+        parsed = executor._parsear_resposta(
+            json.dumps(
+                {
+                    "questoes": [
+                        {
+                            "numero": 1,
+                            "enunciado": "Resolva x",
+                            "itens": [],
+                            "tipo": "dissertativa",
+                            "pontuacao": 1.0,
+                            "habilidades": ["Resolver equacao"],
+                            "tipo_raciocinio": "aplicacao",
+                        }
+                    ],
+                    "total_questoes": 1,
+                    "pontuacao_total": 1.0,
+                    "_avisos_documento": [],
+                    "_avisos_questao": [],
+                }
+            ),
+            context={"stage": "extrair_gabarito", "provider": "teste"},
+        )
+
+        erro = executor._erro_resposta_parseada(
+            EtapaProcessamento.EXTRAIR_GABARITO,
+            parsed,
+        )
+
+        assert erro is not None
+        assert "schema esperado" in erro
+        assert "respostas" in erro
+
     def test_parsear_resposta_rejeita_array_na_raiz_com_stage_sem_crash(self):
         """Array na raiz nao e schema de etapa e deve falhar alto sem exception."""
         from executor import PipelineExecutor

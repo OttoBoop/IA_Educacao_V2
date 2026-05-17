@@ -525,61 +525,6 @@ class ClienteAPIMultimodal:
             },
         }
 
-        if '"questoes"' in texto and '"tipo_raciocinio"' in texto:
-            item_questao = {
-                "type": "object",
-                "additionalProperties": False,
-                "properties": {
-                    "letra": {"type": "string"},
-                    "texto": {"type": "string"},
-                },
-                "required": ["letra", "texto"],
-            }
-            return {
-                "type": "object",
-                "additionalProperties": False,
-                "properties": {
-                    "questoes": {
-                        "type": "array",
-                        "items": {
-                            "type": "object",
-                            "additionalProperties": False,
-                            "properties": {
-                                "numero": {"type": "integer"},
-                                "enunciado": {"type": "string"},
-                                "itens": {"type": "array", "items": item_questao},
-                                "tipo": {"type": "string"},
-                                "pontuacao": {"type": "number"},
-                                "habilidades": {
-                                    "type": "array",
-                                    "items": {"type": "string"},
-                                },
-                                "tipo_raciocinio": {"type": "string"},
-                            },
-                            "required": [
-                                "numero",
-                                "enunciado",
-                                "itens",
-                                "tipo",
-                                "pontuacao",
-                                "habilidades",
-                                "tipo_raciocinio",
-                            ],
-                        },
-                    },
-                    "total_questoes": {"type": "integer"},
-                    "pontuacao_total": {"type": "number"},
-                    **avisos,
-                },
-                "required": [
-                    "questoes",
-                    "total_questoes",
-                    "pontuacao_total",
-                    "_avisos_documento",
-                    "_avisos_questao",
-                ],
-            }
-
         if '"respostas"' in texto and '"resposta_correta"' in texto:
             criterio_parcial = {
                 "type": "object",
@@ -666,6 +611,61 @@ class ClienteAPIMultimodal:
                     "respostas",
                     "questoes_respondidas",
                     "questoes_em_branco",
+                    "_avisos_documento",
+                    "_avisos_questao",
+                ],
+            }
+
+        if '"questoes"' in texto and '"tipo_raciocinio"' in texto:
+            item_questao = {
+                "type": "object",
+                "additionalProperties": False,
+                "properties": {
+                    "letra": {"type": "string"},
+                    "texto": {"type": "string"},
+                },
+                "required": ["letra", "texto"],
+            }
+            return {
+                "type": "object",
+                "additionalProperties": False,
+                "properties": {
+                    "questoes": {
+                        "type": "array",
+                        "items": {
+                            "type": "object",
+                            "additionalProperties": False,
+                            "properties": {
+                                "numero": {"type": "integer"},
+                                "enunciado": {"type": "string"},
+                                "itens": {"type": "array", "items": item_questao},
+                                "tipo": {"type": "string"},
+                                "pontuacao": {"type": "number"},
+                                "habilidades": {
+                                    "type": "array",
+                                    "items": {"type": "string"},
+                                },
+                                "tipo_raciocinio": {"type": "string"},
+                            },
+                            "required": [
+                                "numero",
+                                "enunciado",
+                                "itens",
+                                "tipo",
+                                "pontuacao",
+                                "habilidades",
+                                "tipo_raciocinio",
+                            ],
+                        },
+                    },
+                    "total_questoes": {"type": "integer"},
+                    "pontuacao_total": {"type": "number"},
+                    **avisos,
+                },
+                "required": [
+                    "questoes",
+                    "total_questoes",
+                    "pontuacao_total",
                     "_avisos_documento",
                     "_avisos_questao",
                 ],
