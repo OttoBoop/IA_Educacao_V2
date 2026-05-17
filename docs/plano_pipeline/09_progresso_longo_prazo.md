@@ -3516,6 +3516,42 @@ Critério de pronto: lista de limpeza segura e revisada.
   `EXTRAIR_QUESTOES`, `EXTRAIR_GABARITO`, `EXTRAIR_RESPOSTAS` e full pipeline
   de 6 etapas.
 
+### 2026-05-17 -- Provider: o3-mini low completa full pipeline na fixture Diana
+
+- Smoke de extracoes: `task_7ae78134d188`, `model_id=58ff5dcdff67`,
+  `selected_steps=["extrair_questoes","extrair_gabarito","extrair_respostas"]`,
+  completou as tres etapas sem `stage_errors`.
+  - `EXTRAIR_QUESTOES`: JSON `0093cc79eeb99173`, `1150/1299` tokens,
+    `US$ 0.006981`, 4 questoes, pontuacao total `10.0`.
+  - `EXTRAIR_GABARITO`: JSON `bb06eed4e5a2d67e`, `1839/1702` tokens,
+    `US$ 0.009512`, respostas `x = 5`, `34`, `30`, `20 cm2`.
+  - `EXTRAIR_RESPOSTAS`: JSON `cf698aede4a580e7`, `2232/1490` tokens,
+    `US$ 0.009011`, respostas da Diana `x = 5`, `34`, `25`, `20 cm2`.
+- Full pipeline: `task_f200c8d9abf4`, `model_id=58ff5dcdff67`,
+  `force_rerun=true`, sem `selected_steps`, completou as seis etapas em uma
+  unica task oficial, sem `stage_errors`.
+- Custos full pipeline o3-low:
+  - `EXTRAIR_QUESTOES`: `2c869926454cf221`, `1150/1676`, `US$ 0.008639`.
+  - `EXTRAIR_GABARITO`: `9c751b3c853cb7e2`, `1825/1705`, `US$ 0.009510`.
+  - `EXTRAIR_RESPOSTAS`: `2181d37decd7aa1b`, `2222/1901`,
+    `US$ 0.010809`.
+  - `CORRIGIR`: JSON `dd49df5997b0adc8`, PDF `19606f5f232b7466`,
+    `59195/11906`, `US$ 0.117501`.
+  - `ANALISAR_HABILIDADES`: `8484d2f4963cd09e`, `16440/3551`,
+    `US$ 0.033708`.
+  - `GERAR_RELATORIO`: JSON `5e33e44046bb29ad`, PDF
+    `b8e001c46a1ce975`, `45327/7727`, `US$ 0.083859`.
+- Total medido da full pipeline o3-low: `126159/28466` tokens,
+  `US$ 0.264026`. O estimado canonico (`US$ 0.136256`) subestima essa task
+  porque a full gerou mais output e retries/artefatos que o perfil canonico.
+- Validacao de conteudo: relatorio final PDF extraido por `pdftotext` trouxe
+  `Nota Final: 8/10`, pontos fortes, area de melhoria em porcentagem e
+  recomendacao. O PDF extra `bb8df355932a70c6` ficou `status=erro` como
+  `stale_tool_artifact`; somente o PDF validado `b8e001c46a1ce975` conta.
+- Status: `o3-mini` low agora e `✅` para as seis etapas e `✅` para pipeline
+  completa na fixture simples Diana. Ainda precisa dataset maior antes de virar
+  default operacional.
+
 ## Riscos Abertos
 
 1. Chave Anthropic configurada no Render ainda retorna saldo baixo; se existem

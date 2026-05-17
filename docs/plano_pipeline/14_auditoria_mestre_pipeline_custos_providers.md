@@ -4062,6 +4062,15 @@ Interpretacao:
   Custos: `CORRIGIR` `36040/7415`, `US$ 0.072270`; `ANALISAR_HABILIDADES`
   `23040/5335`, `US$ 0.048818`; `GERAR_RELATORIO` `23407/4958`,
   `US$ 0.047563`; total do bloco `US$ 0.168651`.
+- o3-low full pipeline: `task_7ae78134d188` validou antes as tres extracoes.
+  Depois `task_f200c8d9abf4` completou as seis etapas em uma unica task
+  oficial com `58ff5dcdff67`, sem `stage_errors`. Custo medido:
+  `EXTRAIR_QUESTOES` `US$ 0.008639`, `EXTRAIR_GABARITO` `US$ 0.009510`,
+  `EXTRAIR_RESPOSTAS` `US$ 0.010809`, `CORRIGIR` `US$ 0.117501`,
+  `ANALISAR_HABILIDADES` `US$ 0.033708`, `GERAR_RELATORIO` `US$ 0.083859`;
+  total `126159/28466` tokens, `US$ 0.264026`. Esse custo real ficou acima do
+  perfil canonico estimado `US$ 0.136256`, reforcando que estimativa nao
+  substitui medicao por task.
 - Anthropic pos-`c56c4b6`: Haiku 4.5 continua bloqueado na chave oficial do
   Render com Anthropic `400`, saldo baixo. Se ha creditos na conta do usuario,
   o proximo gate e atualizar/rotacionar a chave do Render por caminho seguro.
