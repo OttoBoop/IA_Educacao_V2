@@ -192,6 +192,30 @@ mensagem explicita de dependencia ausente. Validacao correta com
 reproduziu o inventario: 29 materias, 35 turmas, 114 atividades, 87 PDFs
 testados, `fetch_errors=0`, 27 materias bloqueadas, 1 sem turma e 1 parcial.
 
+Subciclo seguinte em Matematica-V/Omega-V, com Google Flash e sem mexer em Rio:
+`desempenho_tarefa-sync` para `19a8105384c60675` passou no site oficial com
+`gem25flash001`, `sucesso=true`, `status=COMPLETO`, 2 alunos incluidos, 0
+excluidos, run `tool_cb6a2aaaa7d0`, docs `a607b7da4a5a8373` JSON e
+`0e9897e0667e40b4` PDF, `19037/3783` tokens e custo estimado `US$0.015169`.
+Em seguida, `desempenho_turma-sync` para Omega-V revelou novo P0 de contrato:
+o run `tool_0ffda87eba2b` criou 172 artefatos, sendo 171 JSONs e 1 PDF; o
+executor no runtime live marcou 170 JSONs como `status=erro`, mas o readback
+`/api/desempenho/turma/0c015879203b093a` ainda listava todos os 172 docs no
+mesmo run. O run consumiu `78470/14313` tokens e elevou
+`token_usage.record_count` para `8`; durante a execução, `/api/health` e custos
+chegaram a dar timeout curto, evidenciando pressao operacional. Correção local
+preparada: `tool_handlers.py` passa a rejeitar segunda chamada de
+`create_document` JSON e segunda chamada de `execute_python_code` PDF no mesmo
+run de pipeline; `executor.py` falha alto em avalanche de artefatos vivos; e
+`routes_extras.py` deixa de mostrar docs `status=erro` como relatorios de
+desempenho validos. Validacao local: `py_compile`, `git diff --check` e bloco
+focado com `181 passed` (`test_tool_artifact_contract.py`,
+`test_desempenho_api_endpoints.py`, `test_desempenho_no_duplicate_save.py`,
+`test_warning_system.py`, `test_e_t2_retry_partial_output.py`,
+`test_f2_desempenho_resposta_raw.py`, `test_cost_tracking.py`). Status deste
+subciclo: patch local pronto para commit/deploy; ate o deploy, o site oficial
+ainda tem o comportamento antigo no readback.
+
 Atualizacao agregados Matemática-V de 2026-05-19: o smoke inicial em
 `737a709` revelou um bug de produto: `desempenho_tarefa` de
 `810ef4c1a71c701b` contava versões historicas de `RELATORIO_FINAL` como se

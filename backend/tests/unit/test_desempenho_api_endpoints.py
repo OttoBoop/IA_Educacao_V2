@@ -183,6 +183,42 @@ class TestDesempenhoGetEndpoint:
         assert "doc-narr-1" not in all_doc_ids, "Must NOT include narrative student docs"
         assert "doc-turma-1" not in all_doc_ids, "Must NOT include other-level desempenho docs"
 
+    def test_erro_docs_do_not_count_as_desempenho_reports(self, client):
+        """Docs marked status=erro must not appear as successful desempenho reports."""
+        ok_doc = _make_desempenho_doc(
+            "doc-ok",
+            TipoDocumento.RELATORIO_DESEMPENHO_TURMA,
+            "ativ-001",
+            metadata={"cost_run_id": "tool-run"},
+        )
+        error_doc = _make_desempenho_doc(
+            "doc-error",
+            TipoDocumento.RELATORIO_DESEMPENHO_TURMA,
+            "ativ-001",
+            metadata={"cost_run_id": "tool-run"},
+        )
+        error_doc.status = StatusProcessamento.ERRO
+
+        def listar_documentos(atividade_id, tipo=None):
+            if tipo == TipoDocumento.RELATORIO_DESEMPENHO_TURMA:
+                return [ok_doc, error_doc]
+            return []
+
+        with patch("routes_extras.storage") as mock_storage:
+            mock_storage.listar_atividades.return_value = [MagicMock(id="ativ-001")]
+            mock_storage.listar_documentos.side_effect = listar_documentos
+            response = client.get("/api/desempenho/turma/turma-001")
+
+        data = response.json()
+        assert data["meta"]["total_docs"] == 1
+        assert data["runs"][0]["docs"][0]["id"] == "doc-ok"
+        assert data["runs"][0]["docs"][0]["status"] == StatusProcessamento.CONCLUIDO.value
+        assert "doc-error" not in [
+            doc["id"]
+            for run in data["runs"]
+            for doc in run["docs"]
+        ]
+
     # --- Run grouping ---
 
     def test_groups_docs_by_run_timestamp(self, client):

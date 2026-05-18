@@ -27,6 +27,20 @@ ou chamar etapa bloqueada de sucesso continua proibido.
   provaram escrita row-level; apos o smoke Haiku agregado em `f534576`, o status
   atual e `record_count=6`, `token_usage_analisados=6`, `alertas=[]`. Ainda
   falta ampliar a prova para falhas sem documento final.
+- Atualizacao Omega-V: depois da auditoria completa de materias, Matematica-V
+  ficou como unica materia parcial com dados suficientes para continuar
+  desempenho. `desempenho_tarefa-sync` em `19a8105384c60675` com
+  `gem25flash001` passou `COMPLETO`, 2/0 alunos, run
+  `tool_cb6a2aaaa7d0`, docs `a607b7da4a5a8373`/`0e9897e0667e40b4`,
+  `19037/3783` tokens, custo estimado `US$0.015169`. O passo seguinte,
+  `desempenho_turma-sync` em Omega-V, encontrou bug P0: run
+  `tool_0ffda87eba2b` gerou 171 JSONs e 1 PDF no mesmo run; 170 JSONs foram
+  marcados `status=erro`, mas o readback ainda listava todos os 172 docs e o
+  serviço ficou lento durante a execução. Custo/tokens do run:
+  `78470/14313`; `token_usage.record_count=8`. Patch local preparado para
+  impedir segunda chamada de JSON/PDF no mesmo run de pipeline e esconder docs
+  `status=erro` do readback de desempenho; pendente commit/deploy neste ponto
+  do log.
 
 ## Dados De Teste Escolhidos
 

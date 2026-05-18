@@ -19,6 +19,44 @@ from tools import ToolResult, ToolExecutionContext
 logger = logging.getLogger(__name__)
 
 
+def _status_value(document: Any) -> str:
+    status = getattr(document, "status", None)
+    return str(getattr(status, "value", status) or "").lower()
+
+
+def _pipeline_artifact_already_created(
+    context: Optional[ToolExecutionContext],
+    tool_name: str,
+    extension: str,
+) -> bool:
+    """Return True if this pipeline run already has a live artifact for a tool."""
+    if not context or not getattr(context, "created_document_ids", None):
+        return False
+
+    try:
+        from storage import storage
+    except Exception:
+        return False
+
+    wanted_extension = extension.lower()
+    for document_id in dict.fromkeys(context.created_document_ids):
+        try:
+            document = storage.get_documento(document_id)
+        except Exception:
+            document = None
+        if not document or _status_value(document) == "erro":
+            continue
+
+        metadata = getattr(document, "metadata", {})
+        if not isinstance(metadata, dict):
+            metadata = {}
+        if metadata.get("tool") != tool_name:
+            continue
+        if str(getattr(document, "extensao", "") or "").lower() == wanted_extension:
+            return True
+    return False
+
+
 # =============================================================================
 # EXECUTE PYTHON CODE HANDLER
 # =============================================================================
@@ -84,6 +122,40 @@ async def handle_execute_python_code(
             # from the E2B/Docker sandbox, but we never saved them to
             # the database. This caused all generated PDFs to vanish.
             # =========================================================
+            if context and getattr(context, "expected_document_type", None):
+                from pathlib import Path as _Path
+
+                generated_files = list(result.files_generated or [])
+                if len(generated_files) != 1:
+                    return ToolResult(
+                        tool_use_id="",
+                        content=(
+                            "Error: execute_python_code in pipeline stages must produce "
+                            f"exactly one PDF. Got {len(generated_files)} file(s)."
+                        ),
+                        is_error=True,
+                    )
+                generated_ext = _Path(generated_files[0].filename).suffix.lower()
+                if generated_ext != ".pdf":
+                    return ToolResult(
+                        tool_use_id="",
+                        content=(
+                            "Error: execute_python_code in pipeline stages only accepts "
+                            f"one final .pdf artifact. Got: {generated_files[0].filename}"
+                        ),
+                        is_error=True,
+                    )
+                if _pipeline_artifact_already_created(context, "execute_python_code", ".pdf"):
+                    return ToolResult(
+                        tool_use_id="",
+                        content=(
+                            "Error: execute_python_code already produced the required PDF "
+                            "for this pipeline run. Do not call it again; the stage accepts "
+                            "exactly one PDF artifact."
+                        ),
+                        is_error=True,
+                    )
+
             saved_docs = []
             if result.files_generated and context and context.atividade_id:
                 import base64 as _b64
@@ -709,6 +781,16 @@ async def handle_create_document(
             is_error=True
         )
 
+    if pipeline_requires_storage and len(documents) != 1:
+        return ToolResult(
+            tool_use_id="",
+            content=(
+                "Error: create_document in pipeline stages must create exactly one "
+                f"JSON artifact. Got {len(documents)} document(s)."
+            ),
+            is_error=True,
+        )
+
     # Map document types to TipoDocumento enum
     type_mapping = {
         "report": TipoDocumento.RELATORIO_FINAL,
@@ -755,6 +837,22 @@ async def handle_create_document(
                     "error": (
                         "create_document in pipeline stages only accepts .json. "
                         "Use execute_python_code for PDF or other generated files."
+                    ),
+                })
+                continue
+
+            if (
+                context
+                and context.expected_document_type
+                and ext == ".json"
+                and _pipeline_artifact_already_created(context, "create_document", ".json")
+            ):
+                errors.append({
+                    "filename": filename,
+                    "error": (
+                        "create_document already produced the required JSON for this "
+                        "pipeline run. Do not call it again; the stage accepts exactly "
+                        "one JSON artifact."
                     ),
                 })
                 continue

@@ -21,7 +21,7 @@ import re
 import unicodedata
 from pathlib import Path
 
-from models import TipoDocumento
+from models import StatusProcessamento, TipoDocumento
 from storage import storage
 
 
@@ -1340,6 +1340,15 @@ def _doc_cost_run_id(doc) -> Optional[str]:
     return str(cost_run_id).strip() if cost_run_id else None
 
 
+def _doc_status_value(doc) -> str:
+    status = getattr(doc, "status", "") or ""
+    return str(getattr(status, "value", status) or "")
+
+
+def _doc_is_error(doc) -> bool:
+    return _doc_status_value(doc) == StatusProcessamento.ERRO.value
+
+
 def _make_run(doc_list, cost_run_id: Optional[str] = None):
     """Create a run dict from a list of Documento objects."""
     run_date = doc_list[0].criado_em
@@ -1413,6 +1422,7 @@ def _doc_to_dict(doc):
         "criado_em": doc.criado_em.isoformat() if doc.criado_em else None,
         "extensao": doc.extensao,
         "atividade_id": doc.atividade_id,
+        "status": _doc_status_value(doc) or None,
     }
     cost_run_id = _doc_cost_run_id(doc)
     if cost_run_id:
@@ -1483,7 +1493,7 @@ def _collect_desempenho_docs(level: str, entity_id: str, tipo: TipoDocumento):
     seen = set()
     result = []
     for d in docs:
-        if d.tipo == tipo and d.id not in seen:
+        if d.tipo == tipo and d.id not in seen and not _doc_is_error(d):
             seen.add(d.id)
             result.append(d)
     return result

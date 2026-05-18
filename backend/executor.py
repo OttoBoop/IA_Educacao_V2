@@ -5074,6 +5074,40 @@ Seja preciso, educativo e construtivo em suas análises."""
                         marked.append(f"{label} extra {stale_id} marcado como erro")
                 return marked
 
+            def _dual_output_artifact_count_errors(state: Dict[str, Any]) -> List[str]:
+                if not dual_output_expected:
+                    return []
+
+                errors: List[str] = []
+                specs = [
+                    ("create_document", ".json", "JSON"),
+                    ("execute_python_code", ".pdf", "PDF"),
+                ]
+                for tool_name, extension, label in specs:
+                    docs = [
+                        doc
+                        for doc in state.get("docs_by_tool", {}).get(tool_name, [])
+                        if (getattr(doc, "extensao", "") or "").lower() == extension
+                        and not _doc_is_error(doc)
+                    ]
+                    # One stale artifact can be produced by an explicit same-model
+                    # repair and is marked as erro below. More than one live extra
+                    # artifact of the same kind means the model/tool loop is running
+                    # away and must fail high instead of accepting the latest file.
+                    if len(docs) > 2:
+                        ids = ", ".join(
+                            str(getattr(doc, "id", "sem_id"))
+                            for doc in docs[:8]
+                        )
+                        if len(docs) > 8:
+                            ids += ", ..."
+                        errors.append(
+                            f"Etapa dual-output persistiu {len(docs)} artefatos {label}; "
+                            "o contrato aceita exatamente 1 JSON via create_document e "
+                            f"1 PDF via execute_python_code. Artefatos {label}: {ids}"
+                        )
+                return errors
+
             initial_tool_choice = (
                 _forced_openai_tool("create_document")
                 if dual_output_expected and uses_phased_tool_calls
@@ -5502,6 +5536,7 @@ Seja preciso, educativo e construtivo em suas análises."""
 
             validation_errors = (
                 post_repair_missing_errors
+                + _dual_output_artifact_count_errors(final_state)
                 + create_document_contract_errors
                 + json_validation_errors
                 + pdf_json_errors
