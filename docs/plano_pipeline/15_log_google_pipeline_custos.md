@@ -197,6 +197,18 @@ do PDF: nota final `8.0/10.0`, 4 questoes, 3 acertos, 1 erro, `Feedback Geral`
 presente no PDF. Conclusao: Sonnet validado em Q/G/R/Corr na fixture Diana
 Omega; ainda faltam Hab/Rel/full pipeline.
 
+Novo degrau Sonnet: `ANALISAR_HABILIDADES` isolado, `task_285f0f62a5cd`.
+Barreira operacional igual a anterior: demora para devolver `task_id`;
+resposta foi checar health/custos e aguardar, sem duplicar execucao. Durante a
+execucao houve leitura intermediaria `runs_bloqueados=1` por
+`token_split_missing`; no fim, `/api/custos/status?limit=640` ficou
+`record_count=13`, `token_usage_analisados=13`, `runs_bloqueados=0`. Resultado:
+JSON `678d08cdef1e323e`, PDF `777aea7f9d12f677`, `29462/8315` tokens,
+`US$0.213111`, usage `usage_8e51a29148fc4b84`. Inspecao: proficiencia geral
+`0.8`, porcentagem como area de atencao, PDF com nota `8,0/10,0`, taxa de
+acerto `75%` e recomendacoes. Conclusao: Sonnet validado em Q/G/R/Corr/Hab;
+falta `GERAR_RELATORIO` e full pipeline.
+
 ## Dados De Teste Escolhidos
 
 Atividade principal para pipeline individual:

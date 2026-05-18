@@ -45,9 +45,9 @@ Depois da aplicacao da migration Supabase, `/api/custos/status` retorna
 `token_usage_backend.supabase.table_available=true`, `error_code=null` e
 `token_usage_durable=true`. O gate row-level foi exercitado: apos smokes oficiais
 em `518f8a2`, `58781a1`, `f534576`, `e85be11` e `546b72f`,
-`/api/custos/status?limit=600` mostra
-`token_usage_backend.supabase.record_count=12`, `token_usage_analisados=12`,
-`runs_analisados=33`, `runs_precificados=33`, `runs_bloqueados=0` e
+`/api/custos/status?limit=640` mostra
+`token_usage_backend.supabase.record_count=13`, `token_usage_analisados=13`,
+`runs_analisados=34`, `runs_precificados=34`, `runs_bloqueados=0` e
 `alertas=[]`. O caminho de código para falhas sem documento final já tem teste
 local (`test_cost_tracking.py`, `33 passed` em 2026-05-19); o que ainda falta é
 uma evidencia live pos-migration especificamente desse caso, sem gastar IA so
@@ -349,6 +349,20 @@ tokens, `US$0.128835`, usage `usage_fe8d1854ee36466e`. Inspecao: JSON com
 tambem mostra `NOTA FINAL 8.0 / 10.0` e secao `FEEDBACK GERAL`. Interpretacao:
 Sonnet agora esta validado em Q/G/R/Corr nessa fixture, mas ainda falta
 Hab/Rel/full pipeline.
+
+Atualizacao Sonnet 4.5 de 2026-05-19, `ANALISAR_HABILIDADES`: a chamada tambem
+demorou a devolver `task_id`, e o loop respondeu checando health/custos sem
+duplicar execucao. Enquanto a task rodava, o status de custos mostrou
+`runs_bloqueados=1` por `token_split_missing`; apos fechamento, voltou para
+`runs_bloqueados=0` e subiu para `record_count=13`. A task
+`task_285f0f62a5cd` completou apenas `analisar_habilidades`. Artefatos: PDF
+`777aea7f9d12f677` e JSON `678d08cdef1e323e`, `cost_run_id`
+`tool_bbbe57cab277`, `29462/8315` tokens, `US$0.213111`, usage
+`usage_8e51a29148fc4b84`. Inspecao: JSON com proficiencia geral `0.8`,
+areas de destaque coerentes e porcentagem como area de atencao; PDF extraido
+mostra `Nota Final 8,0 / 10,0`, `Taxa de Acerto 75%` e recomendacoes
+priorizadas. Interpretacao: Sonnet agora esta validado em Q/G/R/Corr/Hab nessa
+fixture; falta `GERAR_RELATORIO` e full pipeline.
 
 Atualizacao agregados Matemática-V de 2026-05-19: o smoke inicial em
 `737a709` revelou um bug de produto: `desempenho_tarefa` de
