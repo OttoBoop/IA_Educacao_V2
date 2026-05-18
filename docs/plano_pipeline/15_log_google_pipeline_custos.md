@@ -17,15 +17,15 @@ ou chamar etapa bloqueada de sucesso continua proibido.
 - URL oficial: `https://ia-educacao-v2.onrender.com`.
 - Runtime inicial observado: `0411f9a`.
 - Runtime final do subloop Google original: `a7f02a3`.
-- Runtime funcional oficial atual: `2fa5d47`.
+- Runtime funcional oficial atual: `e85be11`.
 - Health final: `/api/health` retornou `{"status":"healthy","supabase":true}`.
 - `origin/main` no fechamento Google: `a7f02a31fc04606de82e22bec3345150fff9ead6`;
-  depois avançou ate `2fa5d479af355a640a570fc9d2e95dfba39d3d28`.
+  depois avançou ate `e85be1151400b8cf0985581d39d4a944d75cd10f`.
 - Persistencia duravel de `token_usage`: migration aplicada; `/api/custos/status`
   retorna `ok=true`, `table_available=true`, `error_code=null` e
   `token_usage_backend.durable=true`. Smokes oficiais em `518f8a2` e `58781a1`
   provaram escrita row-level; apos o smoke Haiku agregado em `f534576`, o status
-  atual e `record_count=4`, `token_usage_analisados=4`, `alertas=[]`. Ainda
+  atual e `record_count=6`, `token_usage_analisados=6`, `alertas=[]`. Ainda
   falta ampliar a prova para falhas sem documento final.
 
 ## Dados De Teste Escolhidos
@@ -560,6 +560,20 @@ Executados para `gem25flash001`:
   atividades.
 - `desempenho_materia`: passou parcial pos-`bc96faf`, 3 turmas e 11 narrativas,
   com avisos explícitos de dados.
+- `desempenho_tarefa` pos-`e85be11`: passou completo de novo em
+  `810ef4c1a71c701b`, agora com contrato de artefatos reforçado. O alerta de
+  documentos gerados listou somente JSON/PDF persistidos:
+  `desempenho_tarefa.json_b310.json` e
+  `Relatório de Desempenho (Tarefa) - Matemática-V - Alpha-V_dc96.pdf`. Custo
+  principal: `usage_459e3a56a73748fc`, `16939/3300`, `US$0.013332`, documentos
+  `afa143d8e6390caf`/`692d50f8be3d885d`.
+
+Nota operacional: uma tentativa anterior de smoke local fechou o pipe de leitura
+antes de gravar resposta em arquivo, mas o servidor continuou processando e gerou
+outro par JSON/PDF oficial. Esse gasto tambem fica registrado:
+`usage_ac21f90610244c4b`, `16842/4329`, `US$0.015875`, documentos
+`6041b3de9c64f769`/`18f24ee5c213ab55`. Nao repetir esse padrao: para smokes
+longos, usar `curl -o arquivo` e parsear depois.
 
 Proximo passo honesto:
 
@@ -569,6 +583,9 @@ Proximo passo honesto:
    salvo se houver novo patch especifico de prompt/JSON para modelos baratos.
 3. Nao rodar `desempenho_turma`/`materia` com Gemini 3 sem necessidade: Flash ja
    cobriu turma, e Gemini 3 mostrou custo/latencia maiores.
+4. Repetir `desempenho_materia` com `gem25flash001` somente depois do dado do
+   Erik/Omega existir, para verificar se `e85be11` tambem elimina artefatos extras
+   no agregado de matéria.
 
 ## Status Final Do Ciclo
 

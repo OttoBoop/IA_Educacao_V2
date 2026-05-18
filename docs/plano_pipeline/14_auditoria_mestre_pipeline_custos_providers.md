@@ -10,8 +10,8 @@ um deve ser lido, o que ainda vale, o que ficou historico, e quais fatos precisa
 guiar os proximos ciclos.
 
 Atualizacao curta de 2026-05-19 para qualquer IA retomando apos compactar:
-`/api/deploy-info` confirma Render em `2fa5d47`, e `origin/main` tambem esta em
-`2fa5d47`. O runtime contem a correcao `bc96faf` para falso agregado de
+`/api/deploy-info` confirma Render em `e85be11`, e `origin/main` tambem esta em
+`e85be11`. O runtime contem a correcao `bc96faf` para falso agregado de
 desempenho: antes, `desempenho_tarefa` de Matemática-V/Alpha-V contava versões
 historicas de `RELATORIO_FINAL` como alunos (`12` incluidos, `4` excluidos).
 Depois, o executor passou a usar no maximo uma narrativa legivel por
@@ -20,23 +20,35 @@ para o aluno, versões historicas `.json`/`.md` nao derrubam mais o agregado.
 O commit `f534576` fecha outro P0: `max_iterations_exceeded` em tool-use agora
 falha alto e marca documentos como erro, em vez de retornar `sucesso=true` com
 aviso. O commit `2fa5d47` corrige a rota de versões por aluno para nao misturar
-documentos de colegas no diagnóstico.
+documentos de colegas no diagnóstico. O commit `e85be11` fecha a fresta de
+artefatos extras em tool-use: etapas dual-output de pipeline agora exigem
+exatamente um JSON via `create_document` e um PDF via `execute_python_code`, o
+schema da tool limita `documents` a um item, e Markdown/artefato extra declarado
+em `create_document` vira erro bloqueante.
 Evidencia live com `gem25flash001`: tarefa `run-20260519-112430` completa
 (`2/0`, `US$0.013267`), turma `run-20260519-112612` completa (`4` narrativas,
 `US$0.031716`) e materia `run-20260519-120054` parcial honesta (`3` turmas,
 `11` narrativas, apenas Erik/Omega sem `RELATORIO_FINAL`, `US$0.016914`).
 O run de materia gerou PDF `1500c163ad6efab8`, JSON oficial
 `4722445c303f9393` e JSON extra `814489ad08fab682` marcado como erro
-`stale_tool_artifact`, sem falso verde. A migration Supabase `token_usage`
+`stale_tool_artifact`, sem falso verde. Smoke oficial pos-`e85be11` com
+`gem25flash001` em `desempenho_tarefa-sync` (`810ef4c1a71c701b`) retornou
+`sucesso=true`, `COMPLETO`, 2 alunos incluidos, 0 excluidos e alertas apenas com
+JSON/PDF persistidos; custo principal `16939/3300`, `US$0.013332`,
+`usage_459e3a56a73748fc`, docs `afa143d8e6390caf`/`692d50f8be3d885d`. Uma
+primeira tentativa local fechou o pipe cedo, mas o servidor processou mesmo assim
+e gerou outro par JSON/PDF: `16842/4329`, `US$0.015875`,
+`usage_ac21f90610244c4b`. A migration Supabase `token_usage`
 tambem ja foi aplicada: `/api/custos/status?limit=160` retorna `ok=true`,
-`table_available=true`, `durable=true`, `record_count=4`,
-`token_usage_analisados=4` e `alertas=[]`. Anthropic Haiku 4.5 tambem tem smoke
+`table_available=true`, `durable=true`, `record_count=6`,
+`token_usage_analisados=6` e `alertas=[]`. Anthropic Haiku 4.5 tambem tem smoke
 agregado de tarefa: `run-20260519-122041`, `COMPLETO`, `151975/26024`,
 `US$0.282095`, mas fica com ressalva forte de custo/latencia; o run anterior
 `run-20260519-121133` expôs o falso verde de max-iterations e custou
 `US$0.388877`. Proximo loop recomendado: completar o `RELATORIO_FINAL`
-faltante do Erik/Omega, limpar artefatos extras de agregados e ampliar a
-cobertura row-level para falhas sem documento final, sem mexer em Rio 3.
+faltante do Erik/Omega, repetir `desempenho_materia` para confirmar o contrato
+de artefato extra em nível matéria e ampliar a cobertura row-level para falhas
+sem documento final, sem mexer em Rio 3.
 
 Validacao especifica do `2fa5d47`: antes do patch,
 `/api/documentos/f68d57a9a339081f/4ae10210c8acbaa5/versoes` mostrava prova,

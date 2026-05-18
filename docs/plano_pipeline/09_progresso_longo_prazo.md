@@ -4,17 +4,17 @@
 **Responsavel operacional:** Paulo
 **Status geral:** o servico oficial Render
 `srv-d5t8gbh4tr6s738fr3s0` (`IA_Educacao_V2`, branch `main`, URL
-`https://ia-educacao-v2.onrender.com`) esta em runtime `2fa5d47`
-(`fix: scope document versions to selected student`), validado por
-`/api/deploy-info`, `/api/health`, `./scripts/wait_deploy.sh 2fa5d47` e
-`./scripts/check_deploy.sh 2fa5d47`.
-`origin/main` tambem aponta para `2fa5d47`. O codigo funcional de pipeline
+`https://ia-educacao-v2.onrender.com`) esta em runtime `e85be11`
+(`fix: enforce pipeline tool artifact contract`), validado por
+`/api/deploy-info`, `/api/health`, `./scripts/wait_deploy.sh e85be11` e
+`./scripts/check_deploy.sh e85be11`.
+`origin/main` tambem aponta para `e85be11`. O codigo funcional de pipeline
 inclui os ciclos Anthropic/Google ate `d357960`, o preparo seguro de migration
 `737a709`, a correcao de desempenho agregado `bc96faf` e a observabilidade de
 `token_usage` vazio `c8f538a`, agora fechado por persistencia row-level em
-`518f8a2`, a preferencia por PDF narrativo em agregados em `58781a1` e o erro
-bloqueante para `max_iterations_exceeded` em `f534576`, mais o filtro correto de
-versões por aluno em `2fa5d47`.
+`518f8a2`, a preferencia por PDF narrativo em agregados em `58781a1`, o erro
+bloqueante para `max_iterations_exceeded` em `f534576`, o filtro correto de
+versões por aluno em `2fa5d47` e o contrato de artefatos agregados em `e85be11`.
 
 Estado funcional consolidado: documentos com `status=erro` nao contam como
 progresso; correcao sem itens avaliaveis nao vira `completo=true`; ranking,
@@ -26,8 +26,9 @@ Depois da aplicacao da migration Supabase, `/api/custos/status` retorna
 `ok=true`, `custos_persistencia_status=duravel`,
 `token_usage_backend.supabase.table_available=true`, `error_code=null` e
 `token_usage_durable=true`. O gate row-level foi exercitado: apos smokes oficiais
-em `518f8a2`, `58781a1` e `f534576`, `/api/custos/status?limit=220` mostra
-`token_usage_backend.supabase.record_count=4`, `token_usage_analisados=4` e
+em `518f8a2`, `58781a1`, `f534576` e `e85be11`,
+`/api/custos/status?limit=240` mostra
+`token_usage_backend.supabase.record_count=6`, `token_usage_analisados=6` e
 `alertas=[]`. O proximo ciclo de custos deve cobrir tambem falhas sem documento
 final, mas a escrita duravel basica ja esta provada.
 
@@ -62,8 +63,20 @@ derrubam o agregado. Re-smoke oficial `run-20260519-120054`: `PARCIAL`, 3
 turmas, 11 narrativas, um unico aviso real (`Erik` sem `RELATORIO_FINAL` no
 smoke Omega), docs `1500c163ad6efab8`/`4722445c303f9393` e JSON extra
 `814489ad08fab682` marcado como `status=erro`, `28889/3299`, `US$0.016914`,
-`usage_c53952166c3d40ce`. O parcial de materia nao e falha silenciosa: o dado
-faltante restante esta nomeado. Gemini 2.5 Pro nao foi
+`usage_c53952166c3d40ce`. O commit `e85be11` endureceu o contrato de
+`create_document` nas etapas dual-output: prompts agregados agora exigem
+exatamente um JSON via `create_document` e um PDF via `execute_python_code`, o
+schema de tool limita `documents` a um item e o executor falha alto se o modelo
+tentar declarar Markdown/artefato extra como output de pipeline. Smoke oficial
+pos-deploy com `gem25flash001` em `desempenho_tarefa-sync` para
+`810ef4c1a71c701b`: `sucesso=true`, `status=COMPLETO`, 2 alunos incluidos, 0
+excluidos, alertas apenas com JSON/PDF persistidos. Duas execuções ocorreram
+porque uma primeira tentativa local fechou o pipe de leitura cedo, mas o servidor
+continuou processando: `usage_ac21f90610244c4b` (`16842/4329`,
+`US$0.015875`, docs `6041b3de9c64f769`/`18f24ee5c213ab55`) e a evidência
+principal `usage_459e3a56a73748fc` (`16939/3300`, `US$0.013332`, docs
+`afa143d8e6390caf`/`692d50f8be3d885d`). O parcial de materia nao e falha
+silenciosa: o dado faltante restante esta nomeado. Gemini 2.5 Pro nao foi
 retestado neste ciclo para
 poupar custo. Anthropic foi atualizado pelo fluxo seguro; depois dos commits
 `334825d`, `62fa27d`, `e548816` e `d357960`, Haiku 4.5 passou pipeline
@@ -85,7 +98,7 @@ funcional para tarefa, mas muito mais caro/lento que Google Flash; nao rodar
 turma/materia com Haiku sem objetivo claro de comparacao de qualidade. Ollama esta indisponivel no Render.
 Supabase `token_usage` nao esta mais ausente: a migration foi aplicada e
 `/api/custos/status` retorna `ok=true`, `table_available=true` e `durable=true`.
-O gate row-level basico tambem esta confirmado por `record_count=2`; falta
+O gate row-level basico tambem esta confirmado por `record_count=6`; falta
 estender a cobertura para falhas sem documento final.
 
 Atualizacao agregados Matemática-V de 2026-05-19: o smoke inicial em
@@ -162,7 +175,8 @@ custo medido caiu para `28889/3299`, `US$0.016914`; readback em
 extra nao e falso verde, mas vira proximo alvo de limpeza de outputs agregados.
 `/api/custos/status?limit=160` subiu para `record_count=2`,
 `token_usage_analisados=2`, `alertas=[]`, com usage
-`usage_c53952166c3d40ce`.
+`usage_c53952166c3d40ce`. Esse bloco foi supersedido pelo smoke `e85be11`, que
+elevou a contagem duravel para `record_count=6`.
 
 Atualizacao P0 max-iterations de 2026-05-19: o smoke Haiku de
 `desempenho_tarefa` em `58781a1` expôs falso verde: a API retornou
