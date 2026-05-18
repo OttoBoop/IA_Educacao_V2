@@ -6,7 +6,7 @@
 (`f68d57a9a339081f`) e atividade textual `Prova 1 - Equações do 1º Grau`
 (`8f58cc8b5fb75869`) e Matemática-V (`0f615b57854235ec`) para agregados
 oficiais.
-**Runtime oficial atual:** backend Render em `f534576`; `origin/main` recebeu os
+**Runtime oficial atual:** backend Render em `2fa5d47`; `origin/main` recebeu os
 ciclos Google `9dbb122`/`8de0ab3` para preservar `retry_after` de provider e
 fazer retry por request Google sem trocar modelo, `2d08eec` para impedir retry
 que reintroduzia Markdown em JSON, `d7313a6` para remover duplicacao de
@@ -22,7 +22,8 @@ sem registros row-level, e `518f8a2` passa a persistir `TokenUsageRecord` para
 runs de tool-use com documentos. `58781a1` prefere PDFs validos nos agregados e
 ignora versões historicas `.json`/`.md` quando existe PDF para o aluno.
 `f534576` transforma `max_iterations_exceeded` em falha bloqueante, nao alerta
-verde. O
+verde. `2fa5d47` impede a rota de versões de mostrar documentos de outro aluno.
+O
 codigo funcional de batch mais recente continua sendo `9b68de1`, incluido no
 runtime atual.
 Use
@@ -52,9 +53,9 @@ Use
 - O servico oficial em 2026-05-17 e
   `srv-d5t8gbh4tr6s738fr3s0` (`IA_Educacao_V2`), branch `main`,
   `rootDir=backend`, URL `https://ia-educacao-v2.onrender.com`.
-- `/api/deploy-info` confirmou o runtime backend `f534576` com
+- `/api/deploy-info` confirmou o runtime backend `2fa5d47` com
   `source=RENDER_GIT_COMMIT`; esse e o gate primario atual para codigo live.
-- `origin/main` aponta para `f534576`. O gate de comportamento
+- `origin/main` aponta para `2fa5d47`. O gate de comportamento
   provider/pipeline continua sendo `/api/deploy-info` com no-cache e smokes
   live, nao apenas commit local.
 - `/api/custos/status?limit=100` em `c8f538a` retornou `ok=true`,
@@ -84,6 +85,10 @@ Use
   de iterações e custo `US$0.388877`; isso agora viraria falha. Re-smoke
   `run-20260519-122041` passou sem max-iterations, `151975/26024`,
   `US$0.282095`, usage `usage_d1af0c291f2743e1`, `record_count=4`.
+- Deploy `2fa5d47` corrigiu `/api/documentos/{atividade}/{aluno}/versoes`: Erik
+  em Omega agora mostra `prova_respondida=0`, `correcao=0` e
+  `relatorio_final=0`, em vez de herdar documentos da Diana. Isso confirma que
+  o parcial de `desempenho_materia` e dado faltante real.
 - Smoke pos-deploy de catalogo: `/api/settings/model-catalog/calculate-cost`
   retornou para o perfil `74257/12403`: Gemini 2.5 Flash `US$ 0.053285`,
   Gemini 2.5 Flash Lite `US$ 0.012387`, Gemini 3 Flash `US$ 0.074338`.

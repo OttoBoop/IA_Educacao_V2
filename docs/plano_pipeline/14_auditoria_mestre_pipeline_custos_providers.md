@@ -10,8 +10,8 @@ um deve ser lido, o que ainda vale, o que ficou historico, e quais fatos precisa
 guiar os proximos ciclos.
 
 Atualizacao curta de 2026-05-19 para qualquer IA retomando apos compactar:
-`/api/deploy-info` confirma Render em `f534576`, e `origin/main` tambem esta em
-`f534576`. O runtime contem a correcao `bc96faf` para falso agregado de
+`/api/deploy-info` confirma Render em `2fa5d47`, e `origin/main` tambem esta em
+`2fa5d47`. O runtime contem a correcao `bc96faf` para falso agregado de
 desempenho: antes, `desempenho_tarefa` de Matemática-V/Alpha-V contava versões
 historicas de `RELATORIO_FINAL` como alunos (`12` incluidos, `4` excluidos).
 Depois, o executor passou a usar no maximo uma narrativa legivel por
@@ -19,7 +19,8 @@ aluno/atividade. O commit `58781a1` refinou a regra: quando existe PDF valido
 para o aluno, versões historicas `.json`/`.md` nao derrubam mais o agregado.
 O commit `f534576` fecha outro P0: `max_iterations_exceeded` em tool-use agora
 falha alto e marca documentos como erro, em vez de retornar `sucesso=true` com
-aviso.
+aviso. O commit `2fa5d47` corrige a rota de versões por aluno para nao misturar
+documentos de colegas no diagnóstico.
 Evidencia live com `gem25flash001`: tarefa `run-20260519-112430` completa
 (`2/0`, `US$0.013267`), turma `run-20260519-112612` completa (`4` narrativas,
 `US$0.031716`) e materia `run-20260519-120054` parcial honesta (`3` turmas,
@@ -36,6 +37,15 @@ agregado de tarefa: `run-20260519-122041`, `COMPLETO`, `151975/26024`,
 `US$0.388877`. Proximo loop recomendado: completar o `RELATORIO_FINAL`
 faltante do Erik/Omega, limpar artefatos extras de agregados e ampliar a
 cobertura row-level para falhas sem documento final, sem mexer em Rio 3.
+
+Validacao especifica do `2fa5d47`: antes do patch,
+`/api/documentos/f68d57a9a339081f/4ae10210c8acbaa5/versoes` mostrava prova,
+correcoes e relatorios da Diana ao consultar Erik. Depois do deploy, Erik/Omega
+mostra `enunciado=1`, `gabarito=1`, `prova_respondida=0`,
+`extracao_respostas=0`, `correcao=0`, `analise_habilidades=0` e
+`relatorio_final=0`; Diana/Omega continua mostrando a prova e os relatorios
+dela. Portanto o bloqueio de Erik nao e bug de provider nem perda de relatório:
+falta mesmo documento de entrada/resposta para esse aluno.
 
 Complemento do mesmo ciclo: o commit `c8f538a` fez o endpoint de custos retornar
 alerta informativo `token_usage_sem_registros` para o caso "tabela duravel, zero linhas". Isso

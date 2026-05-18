@@ -4,16 +4,17 @@
 **Responsavel operacional:** Paulo
 **Status geral:** o servico oficial Render
 `srv-d5t8gbh4tr6s738fr3s0` (`IA_Educacao_V2`, branch `main`, URL
-`https://ia-educacao-v2.onrender.com`) esta em runtime `f534576`
-(`fix: fail tool runs on max iterations`), validado por
-`/api/deploy-info`, `/api/health`, `./scripts/wait_deploy.sh f534576` e
-`./scripts/check_deploy.sh f534576`.
-`origin/main` tambem aponta para `f534576`. O codigo funcional de pipeline
+`https://ia-educacao-v2.onrender.com`) esta em runtime `2fa5d47`
+(`fix: scope document versions to selected student`), validado por
+`/api/deploy-info`, `/api/health`, `./scripts/wait_deploy.sh 2fa5d47` e
+`./scripts/check_deploy.sh 2fa5d47`.
+`origin/main` tambem aponta para `2fa5d47`. O codigo funcional de pipeline
 inclui os ciclos Anthropic/Google ate `d357960`, o preparo seguro de migration
 `737a709`, a correcao de desempenho agregado `bc96faf` e a observabilidade de
 `token_usage` vazio `c8f538a`, agora fechado por persistencia row-level em
 `518f8a2`, a preferencia por PDF narrativo em agregados em `58781a1` e o erro
-bloqueante para `max_iterations_exceeded` em `f534576`.
+bloqueante para `max_iterations_exceeded` em `f534576`, mais o filtro correto de
+versões por aluno em `2fa5d47`.
 
 Estado funcional consolidado: documentos com `status=erro` nao contam como
 progresso; correcao sem itens avaliaveis nao vira `completo=true`; ranking,
@@ -178,6 +179,23 @@ limite e passou `COMPLETO`: `run-20260519-122041`, `151975/26024` tokens,
 `US$0.282095`, `usage_d1af0c291f2743e1`, `record_count=4`. Interpretacao:
 o bug P0 esta corrigido, e Haiku tarefa fica validado com ressalva forte de
 custo/latencia.
+
+Atualizacao escopo de versões por aluno de 2026-05-19: durante a investigação
+do parcial de Matemática-V, o endpoint
+`/api/documentos/f68d57a9a339081f/4ae10210c8acbaa5/versoes` mostrava
+documentos da Diana quando o aluno consultado era Erik. Causa: a rota tratava
+`storage.listar_documentos(atividade_id)` como documentos base, mas esse método
+retorna o histórico inteiro da atividade. O commit `2fa5d47` filtra documentos
+base com `aluno_id` vazio e documentos do aluno com `aluno_id` exatamente igual
+ao solicitado, deduplicando por `id`. Validacoes locais: `py_compile`,
+`git diff --check`, `test_document_versions_filter.py` (`2 passed`) e bloco
+`test_f2_desempenho_resposta_raw.py` + `test_cost_tracking.py` (`38 passed`).
+Deploy confirmado. Smoke oficial pos-deploy para Erik/Omega:
+`enunciado=1`, `gabarito=1`, `prova_respondida=0`,
+`extracao_respostas=0`, `correcao=0`, `analise_habilidades=0`,
+`relatorio_final=0`. Smoke oficial para Diana/Omega continua mostrando a prova
+e os relatórios dela. Isso confirma que o `PARCIAL` de
+`desempenho_materia` e dado faltante real do Erik, nao vazamento de documento.
 
 Atualizacao chaves seguras de 2026-05-18: qualquer chave colada em chat e
 tratada como exposta e nao deve ser usada para producao. O caminho operacional

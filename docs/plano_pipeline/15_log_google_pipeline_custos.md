@@ -17,10 +17,10 @@ ou chamar etapa bloqueada de sucesso continua proibido.
 - URL oficial: `https://ia-educacao-v2.onrender.com`.
 - Runtime inicial observado: `0411f9a`.
 - Runtime final do subloop Google original: `a7f02a3`.
-- Runtime funcional oficial atual: `f534576`.
+- Runtime funcional oficial atual: `2fa5d47`.
 - Health final: `/api/health` retornou `{"status":"healthy","supabase":true}`.
 - `origin/main` no fechamento Google: `a7f02a31fc04606de82e22bec3345150fff9ead6`;
-  depois avançou ate `f5345764a5817c2ce57aa371ea986764b54701af`.
+  depois avançou ate `2fa5d479af355a640a570fc9d2e95dfba39d3d28`.
 - Persistencia duravel de `token_usage`: migration aplicada; `/api/custos/status`
   retorna `ok=true`, `table_available=true`, `error_code=null` e
   `token_usage_backend.durable=true`. Smokes oficiais em `518f8a2` e `58781a1`
