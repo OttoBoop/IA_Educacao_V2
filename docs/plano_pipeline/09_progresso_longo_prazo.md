@@ -45,9 +45,9 @@ Depois da aplicacao da migration Supabase, `/api/custos/status` retorna
 `token_usage_backend.supabase.table_available=true`, `error_code=null` e
 `token_usage_durable=true`. O gate row-level foi exercitado: apos smokes oficiais
 em `518f8a2`, `58781a1`, `f534576`, `e85be11` e `546b72f`,
-`/api/custos/status?limit=560` mostra
-`token_usage_backend.supabase.record_count=11`, `token_usage_analisados=11`,
-`runs_analisados=32`, `runs_precificados=32`, `runs_bloqueados=0` e
+`/api/custos/status?limit=600` mostra
+`token_usage_backend.supabase.record_count=12`, `token_usage_analisados=12`,
+`runs_analisados=33`, `runs_precificados=33`, `runs_bloqueados=0` e
 `alertas=[]`. O caminho de código para falhas sem documento final já tem teste
 local (`test_cost_tracking.py`, `33 passed` em 2026-05-19); o que ainda falta é
 uma evidencia live pos-migration especificamente desse caso, sem gastar IA so
@@ -335,6 +335,20 @@ etapas `skipped` por selecao. O documento `6f98a33dd2f98770` ficou
 `record_count=11`, `token_usage_analisados=11`, sem alertas. Interpretacao:
 Sonnet agora esta validado em Q/G/R nessa fixture; ainda falta Corr/Hab/Rel e
 full pipeline.
+
+Atualizacao Sonnet 4.5 de 2026-05-19, `CORRIGIR`: a chamada inicial demorou a
+devolver `task_id`, entao o loop respondeu a barreira verificando `/api/health`,
+`/api/deploy-info` e custos em paralelo, sem duplicar a execucao. Durante a task
+houve leitura intermediaria com `runs_bloqueados=1` por `token_split_missing`;
+apos fechamento, `/api/custos/status?limit=600` voltou para `runs_bloqueados=0`
+e subiu para `record_count=12`. A task `task_baf5c638a3d8` completou apenas
+`corrigir`. Artefatos: JSON `0556518140b3222c` e PDF `f993aabbf6835583`,
+ambos `status=concluido`, `cost_run_id=tool_089563514f44`, `16405/5308`
+tokens, `US$0.128835`, usage `usage_fe8d1854ee36466e`. Inspecao: JSON com
+`nota_final=8.0`, 4 questoes, 3 acertos, 1 erro; PDF extraido por `pdftotext`
+tambem mostra `NOTA FINAL 8.0 / 10.0` e secao `FEEDBACK GERAL`. Interpretacao:
+Sonnet agora esta validado em Q/G/R/Corr nessa fixture, mas ainda falta
+Hab/Rel/full pipeline.
 
 Atualizacao agregados Matemática-V de 2026-05-19: o smoke inicial em
 `737a709` revelou um bug de produto: `desempenho_tarefa` de

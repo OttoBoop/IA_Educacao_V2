@@ -53,8 +53,8 @@ tambem ja foi aplicada: `/api/custos/status?limit=160` retorna `ok=true`,
 runtime `546b72f` confirmou o estado intermediario com `record_count=8`,
 `token_usage_analisados=8`, `runs_analisados=28`, `runs_precificados=28` e
 `runs_bloqueados=0`; runtime `deb1e2a` confirmou o estado mais novo com
-`record_count=11`, `token_usage_analisados=11`, `runs_analisados=32`,
-`runs_precificados=32` e `runs_bloqueados=0`. Readback pos-`52ff747`, sem nova
+`record_count=12`, `token_usage_analisados=12`, `runs_analisados=33`,
+`runs_precificados=33` e `runs_bloqueados=0`. Readback pos-`52ff747`, sem nova
 chamada de IA, mostra esses dois smokes separados:
 `run-tool_ae40e3a59695` com docs `afa143d8e6390caf`/`692d50f8be3d885d` e
 `run-tool_922168f5c256` com docs `6041b3de9c64f769`/`18f24ee5c213ab55`.
@@ -95,6 +95,13 @@ O degrau seguinte, `EXTRAIR_RESPOSTAS`, tambem passou em
 0 branco/ilegivel. A unica barreira operacional foi polling inicial em endpoint
 errado; `/api/task-progress/{task_id}` confirmou a task. Isso valida Sonnet em
 Q/G/R, ainda sem Corr/Hab/Rel/full.
+`CORRIGIR` tambem passou em `task_baf5c638a3d8`: JSON
+`0556518140b3222c`, PDF `f993aabbf6835583`, `16405/5308` tokens,
+`US$0.128835`, usage `usage_fe8d1854ee36466e`, `cost_run_id`
+`tool_089563514f44`. O PDF tem `NOTA FINAL 8.0 / 10.0` e `FEEDBACK GERAL`; o
+JSON tem `nota_final=8.0`, 3 acertos e 1 erro. Houve um bloqueio intermediario
+`token_split_missing` enquanto a task estava rodando, mas o status final voltou
+a `runs_bloqueados=0`. Sonnet fica validado em Q/G/R/Corr nessa fixture.
 
 Validacao especifica do `2fa5d47`: antes do patch,
 `/api/documentos/f68d57a9a339081f/4ae10210c8acbaa5/versoes` mostrava prova,

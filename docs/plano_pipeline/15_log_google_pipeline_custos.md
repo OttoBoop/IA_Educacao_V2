@@ -185,6 +185,18 @@ Novo degrau da mesma escada Sonnet: `EXTRAIR_RESPOSTAS` iniciou como
 `20 cm2.`), 0 em branco, 0 ilegivel. Conclusao: Sonnet esta validado em
 Q/G/R nessa fixture, mas ainda nao deve ser chamado de pipeline-ready.
 
+Novo degrau Sonnet: `CORRIGIR` isolado, `task_baf5c638a3d8`. Barreira
+operacional: a resposta inicial demorou a aparecer; o loop verificou health,
+deploy e custos em paralelo em vez de disparar segunda chamada. Durante a
+execucao, `/api/custos/status` chegou a mostrar `runs_bloqueados=1` por
+`token_split_missing`; apos a task fechar, voltou a `runs_bloqueados=0` e subiu
+para `record_count=12`. Resultado: JSON `0556518140b3222c`, PDF
+`f993aabbf6835583`, `16405/5308` tokens, `US$0.128835`,
+`usage_fe8d1854ee36466e`, `cost_run_id=tool_089563514f44`. Inspecao do JSON e
+do PDF: nota final `8.0/10.0`, 4 questoes, 3 acertos, 1 erro, `Feedback Geral`
+presente no PDF. Conclusao: Sonnet validado em Q/G/R/Corr na fixture Diana
+Omega; ainda faltam Hab/Rel/full pipeline.
+
 ## Dados De Teste Escolhidos
 
 Atividade principal para pipeline individual:
