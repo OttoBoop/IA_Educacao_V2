@@ -145,6 +145,18 @@ Sweep de conexão por modelo, com gasto mínimo e sem pipeline:
   estes testes de conexão confirmam credencial/provider vivo, mas nao substituem
   smoke de pipeline nem custo persistido de etapa.
 
+Registro de bug descoberto fora de Google, mas dentro do objetivo de custos:
+Sonnet 4.5 foi revalidado em `EXTRAIR_QUESTOES` com a task
+`task_b9eb22dbb753`; doc `147b412840c2b618`, `2257/461`, `US$0.013686`.
+O custo apareceu em `/api/custos/resumo`, mas `token_usage.record_count` nao
+subiu de `8`. Diagnostico: `_executar_multimodal` nao registrava
+`TokenUsageRecord` em sucesso de etapas simples. Patch local preparado em
+`backend/executor.py`: sucesso multimodal grava row-level com `documento_id`
+como `cost_run_id` para deduplicacao; provider error multimodal com tokens grava
+row-level mesmo sem documento. Testes locais: `py_compile`, `git diff --check`,
+`TestMultimodalExtractionValidationRetry` com `5 passed` e
+`test_cost_tracking.py` com `33 passed`.
+
 ## Dados De Teste Escolhidos
 
 Atividade principal para pipeline individual:

@@ -1104,7 +1104,8 @@ class TestF4T1_QuestoesFaltantes:
         mock_response.sucesso = True
 
         # Mock ClienteAPIMultimodal
-        with patch("executor.ClienteAPIMultimodal") as mock_client_class:
+        with patch("executor.ClienteAPIMultimodal") as mock_client_class, \
+                patch("executor.record_token_usage"):
             mock_client = MagicMock()
             mock_client.enviar_com_anexos = AsyncMock(return_value=mock_response)
             mock_client_class.return_value = mock_client
@@ -1176,7 +1177,8 @@ class TestF4T1_QuestoesFaltantes:
         mock_response.tentativas = 1
         mock_response.sucesso = True
 
-        with patch("executor.ClienteAPIMultimodal") as mock_client_class:
+        with patch("executor.ClienteAPIMultimodal") as mock_client_class, \
+                patch("executor.record_token_usage"):
             mock_client = MagicMock()
             mock_client.enviar_com_anexos = AsyncMock(return_value=mock_response)
             mock_client_class.return_value = mock_client
@@ -1287,7 +1289,8 @@ class TestMultimodalExtractionValidationRetry:
             self._response(self._gabarito_valido(), 120, 30),
         ]
 
-        with patch("executor.ClienteAPIMultimodal") as mock_client_class:
+        with patch("executor.ClienteAPIMultimodal") as mock_client_class, \
+                patch("executor.record_token_usage"):
             mock_client = MagicMock()
             mock_client.enviar_com_anexos = AsyncMock(side_effect=respostas)
             mock_client_class.return_value = mock_client
@@ -1319,6 +1322,90 @@ class TestMultimodalExtractionValidationRetry:
         assert salvar_kwargs["tokens_saida"] == 50
 
     @pytest.mark.asyncio
+    async def test_multimodal_sucesso_registra_token_usage_com_documento_id(self):
+        from executor import EtapaProcessamento
+
+        executor = self._executor()
+        prompt = self._prompt()
+
+        with patch("executor.ClienteAPIMultimodal") as mock_client_class, \
+                patch("executor.record_token_usage") as record_usage:
+            mock_client = MagicMock()
+            mock_client.enviar_com_anexos = AsyncMock(
+                return_value=self._response(self._gabarito_valido(), 24, 5)
+            )
+            mock_client_class.return_value = mock_client
+
+            resultado = await executor._executar_multimodal(
+                etapa=EtapaProcessamento.EXTRAIR_GABARITO,
+                atividade_id="ativ",
+                aluno_id=None,
+                prompt=prompt,
+                materia=MagicMock(),
+                atividade=MagicMock(),
+                provider_id=None,
+                variaveis_extra=None,
+                salvar_resultado=True,
+                inicio=time.time(),
+            )
+
+        assert resultado.sucesso is True
+        record_usage.assert_called_once()
+        kwargs = record_usage.call_args.kwargs
+        assert kwargs["cost_run_id"] == "doc-ok"
+        assert kwargs["status"] == "sucesso"
+        assert kwargs["tokens_entrada"] == 24
+        assert kwargs["tokens_saida"] == 5
+        assert kwargs["metadata"]["documento_id"] == "doc-ok"
+
+    @pytest.mark.asyncio
+    async def test_multimodal_provider_error_registra_token_usage_sem_documento(self):
+        from executor import EtapaProcessamento
+
+        executor = self._executor()
+        prompt = self._prompt()
+        resposta = MagicMock()
+        resposta.sucesso = False
+        resposta.provider = "anthropic"
+        resposta.modelo = "claude-sonnet-4-5-20250929"
+        resposta.erro = "provider unavailable"
+        resposta.erro_codigo = 503
+        resposta.retryable = True
+        resposta.retry_after = 10
+        resposta.tokens_entrada = 24
+        resposta.tokens_saida = 5
+        resposta.anexos_enviados = [{"nome": "fake.pdf"}]
+
+        with patch("executor.ClienteAPIMultimodal") as mock_client_class, \
+                patch("executor.record_token_usage") as record_usage:
+            mock_client = MagicMock()
+            mock_client.enviar_com_anexos = AsyncMock(return_value=resposta)
+            mock_client_class.return_value = mock_client
+
+            resultado = await executor._executar_multimodal(
+                etapa=EtapaProcessamento.EXTRAIR_GABARITO,
+                atividade_id="ativ",
+                aluno_id=None,
+                prompt=prompt,
+                materia=MagicMock(),
+                atividade=MagicMock(),
+                provider_id=None,
+                variaveis_extra=None,
+                salvar_resultado=True,
+                inicio=time.time(),
+            )
+
+        assert resultado.sucesso is False
+        executor._salvar_resultado.assert_not_awaited()
+        record_usage.assert_called_once()
+        kwargs = record_usage.call_args.kwargs
+        assert kwargs["cost_run_id"].startswith("multimodal_")
+        assert kwargs["status"] == "erro"
+        assert kwargs["erro"] == "provider unavailable"
+        assert kwargs["tokens_entrada"] == 24
+        assert kwargs["tokens_saida"] == 5
+
+    @pytest.mark.asyncio
     async def test_retry_corrige_gabarito_todo_missing_content(self):
         from executor import EtapaProcessamento
 
@@ -1342,7 +1429,8 @@ class TestMultimodalExtractionValidationRetry:
             self._response(self._gabarito_valido(), 70, 20),
         ]
 
-        with patch("executor.ClienteAPIMultimodal") as mock_client_class:
+        with patch("executor.ClienteAPIMultimodal") as mock_client_class, \
+                patch("executor.record_token_usage"):
             mock_client = MagicMock()
             mock_client.enviar_com_anexos = AsyncMock(side_effect=respostas)
             mock_client_class.return_value = mock_client

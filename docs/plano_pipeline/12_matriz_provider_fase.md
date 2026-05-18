@@ -430,7 +430,7 @@ Fontes de preco:
 | `ffae9accf68e` | GPT-4.1 | `openai/gpt-4.1` | T/V | `2.00/8.00` | catalogo | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | `task_f6851ed535b8`: `US$ 0.222856` | `US$ 0.247738` | Repetir em dataset maior e checar qualidade visual de PDFs. |
 | `180b8298a279` | gpt-4o | `openai/gpt-4o` | T/V | `2.50/10.00` | catalogo | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | `task_68b19146a95b`: `US$ 0.314369` | `US$ 0.309673` | Manter como referencia, nao fallback silencioso. |
 | `588f3efe7975` | Claude Haiku 4.5 | `anthropic/claude-haiku-4-5-20251001` | T/V | `1.00/5.00` | oficial Anthropic | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ Beatriz; ⚠️ tarefa agregada | Pipeline individual pos-`d357960`: Q `d11486043fd2856e`, G `55bbe9f20a79d3f7`, R `fa21df6427683bca`, Corr `cf52ae50099a7623`, Hab `cff266a64d1d4256`, Rel `611f9ae8226692cf`/`60fe1cc4dfd2a1af`; `118025/32892`, `US$0.282485`. Agregado tarefa pos-`f534576`: `run-20260519-122041`, 2/0 alunos, `151975/26024`, `US$0.282095`, sem max-iterations; run anterior `run-20260519-121133` foi falso verde historico com max-iterations e `US$0.388877`. | `US$ 0.136272` | Nao rodar turma/materia sem objetivo de qualidade: tarefa Haiku custa muito mais que Google Flash. |
-| `4eaeb5105f5d` | Claude Sonnet 4.5 | `anthropic/claude-sonnet-4-5-20250929` | T/V | `3.00/15.00` | oficial Anthropic | ❌ | ⏸️ | ⏸️ | ⏸️ | ⏸️ | ⏸️ | ❌ primeira etapa | `task_b19524abfdd5` em `EXTRAIR_QUESTOES` falhou por JSON dentro de Markdown; erro `4200/1491`, `US$0.034965` | `US$ 0.408816` | Nao gastar em full Sonnet ate resolver JSON cru nas extrações. |
+| `4eaeb5105f5d` | Claude Sonnet 4.5 | `anthropic/claude-sonnet-4-5-20250929` | T/V | `3.00/15.00` | oficial Anthropic | ✅ | ⏸️ | ⏸️ | ⏸️ | ⏸️ | ⏸️ | ⏸️ nao testado | Falha historica `task_b19524abfdd5` por JSON em Markdown foi superada para `EXTRAIR_QUESTOES`: `task_b9eb22dbb753`, doc `147b412840c2b618`, `2257/461`, `US$0.013686`. | `US$ 0.408816` | Nao gastar em full Sonnet ate validar G/R/Corr em escada; e mais caro que Haiku/Google. |
 | `gem25flash001` | Gemini 2.5 Flash | `google/gemini-2.5-flash` | T/V | `0.30/2.50` | oficial Google | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ Beatriz + agregados Matemática-V | Pipeline individual `task_ca5dd6b8b3b5`: seis etapas OK, `117829/31691`, `US$0.114578`; agregados: tarefa `run-20260519-112430` completa `15858/3404`, `US$0.013267`; turma `run-20260519-112612` completa `30310/9049`, `US$0.031716`; materia pos-`58781a1` `run-20260519-120054` parcial honesta por Erik/Omega sem relatório, `28889/3299`, `US$0.016914`, usage `usage_c53952166c3d40ce`; tarefa pos-`e85be11` limpa sem `.md` fantasma: `usage_459e3a56a73748fc`, `16939/3300`, `US$0.013332`, docs `afa143d8e6390caf`/`692d50f8be3d885d`; readback pos-`52ff747` separa esse run do `usage_ac21f90610244c4b` por `cost_run_id`; Omega-V pos-`546b72f` mantém 2 docs válidos em tarefa e turma e eleva row-level para `record_count=8`. | `US$ 0.053285` | Proximo: completar `RELATORIO_FINAL` do Erik/Omega so com dado real e repetir matéria; contrato de artefato extra em tarefa/turma ja esta provado. |
 | `gem25lite001` | Gemini 2.5 Flash Lite | `google/gemini-2.5-flash-lite` | T/V | `0.10/0.40` | oficial Google | ⏸️ | ⏸️ | ⏸️ | ❌ | ⏸️ | ⏸️ | ❌ em `CORRIGIR` | `task_44ec067a3d82` apos `a7f02a3`: JSON salvo, mas sem schema minimo; erro `8c875cf984e55e91`, `31602/5201`, `US$0.005241` | `US$ 0.012387` | Nao subir para agregado; testar Gemini 3 Flash ou desenhar prompt menor especifico para Lite. |
 | `gem3flash001` | Gemini 3 Flash | `google/gemini-3-flash-preview` | T/V | `0.50/3.00` | oficial Google | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ Beatriz | `task_24fe4d7b7ecc`: seis etapas OK, `181550/33182`, `US$0.190321`; `desempenho_tarefa` parcial `US$0.087748` | `US$ 0.074338` | Manter como validado, mas preferir Flash quando custo/latencia importarem. |
@@ -462,6 +462,10 @@ Achados deste ciclo:
   modelos ativos responderam OK. A unica falha foi `ollama-llama3`, por
   infraestrutura local indisponivel no Render. Isso altera Gemini 2.5 Pro de
   "bloqueado por quota na conexao" para "conexao OK, pipeline nao testada".
+- Smoke Sonnet 4.5 de baixo custo no mesmo dia revalidou `EXTRAIR_QUESTOES`:
+  `task_b9eb22dbb753`, `147b412840c2b618`, `2257/461`, `US$0.013686`. A
+  validação descobriu lacuna de row-level em `_executar_multimodal`, corrigida
+  localmente com testes antes do deploy.
 - A matriz antiga abaixo continua como historico detalhado por frente, mas a
   tabela acima e a fonte de decisao operacional por modelo ativo.
 
@@ -546,8 +550,9 @@ requisições atingido`). Sweep posterior pos-`c56c4b6` reabriu conexao simples
 para Flash, Flash Lite e Gemini 3 Flash, mas os smokes de pipeline ainda batem
 quota em `corrigir`.
 Anthropic nao esta mais bloqueado por credito: Haiku 4.5 completou pipeline
-individual e `desempenho_tarefa`; Sonnet 4.5 ainda nao foi revalidado alem de
-falha em extração com envelope Markdown. Ollama local falha conexao no Render.
+individual e `desempenho_tarefa`; Sonnet 4.5 agora tem conexão e
+`EXTRAIR_QUESTOES` validados, mas nao pipeline completa. Ollama local falha
+conexao no Render.
 Nota de dataset Lista0: a atividade `126e8b5ad7dd6d59` possui base docs
 presentes, porem a auditoria de PDF de 2026-05-17 confirmou que o enunciado
 `5dc75513e958c25b` contem os exercicios 1 a 7 enquanto o gabarito

@@ -1201,6 +1201,20 @@ class PipelineExecutor:
             )
         
         if not resultado.sucesso:
+            self._registrar_token_usage_multimodal(
+                etapa=etapa,
+                atividade_id=atividade_id,
+                aluno_id=aluno_id,
+                provider=resultado.provider,
+                modelo=resultado.modelo,
+                tokens_entrada=tokens_entrada_total,
+                tokens_saida=tokens_saida_total,
+                status="erro",
+                erro=resultado.erro,
+                tempo_ms=tempo_ms,
+                prompt_id=prompt.id,
+                tentativas_validacao=tentativas_validacao,
+            )
             return ResultadoExecucao(
                 sucesso=False,
                 etapa=etapa,
@@ -1308,7 +1322,7 @@ class PipelineExecutor:
                     "questoes": []
                 }
                 if salvar_resultado:
-                    await self._salvar_resultado(
+                    documento_id_erro = await self._salvar_resultado(
                         etapa, atividade_id, aluno_id,
                         resultado.resposta, erro_content,
                         resultado.provider, resultado.modelo, prompt.id,
@@ -1317,6 +1331,21 @@ class PipelineExecutor:
                         gerar_formatos_extras=False,
                         tokens_entrada=tokens_entrada_total,
                         tokens_saida=tokens_saida_total,
+                    )
+                    self._registrar_token_usage_multimodal(
+                        etapa=etapa,
+                        atividade_id=atividade_id,
+                        aluno_id=aluno_id,
+                        provider=resultado.provider,
+                        modelo=resultado.modelo,
+                        tokens_entrada=tokens_entrada_total,
+                        tokens_saida=tokens_saida_total,
+                        status="erro",
+                        erro=erro_pipeline["mensagem"],
+                        tempo_ms=tempo_ms,
+                        prompt_id=prompt.id,
+                        documento_id=documento_id_erro,
+                        tentativas_validacao=tentativas_validacao,
                     )
                 return ResultadoExecucao(
                     sucesso=False,
@@ -1370,6 +1399,20 @@ class PipelineExecutor:
                 tokens_entrada=tokens_entrada_total,
                 tokens_saida=tokens_saida_total,
                 criar_nova_versao=criar_nova_versao
+            )
+            self._registrar_token_usage_multimodal(
+                etapa=etapa,
+                atividade_id=atividade_id,
+                aluno_id=aluno_id,
+                provider=resultado.provider,
+                modelo=resultado.modelo,
+                tokens_entrada=tokens_entrada_total,
+                tokens_saida=tokens_saida_total,
+                status="sucesso",
+                tempo_ms=tempo_ms,
+                prompt_id=prompt.id,
+                documento_id=documento_id,
+                tentativas_validacao=tentativas_validacao,
             )
         
         return ResultadoExecucao(
@@ -3342,6 +3385,55 @@ PROMPT ORIGINAL DE REFERENCIA, APENAS PARA TAREFA E SCHEMA:
             _logger.warning(
                 "Falha ao registrar custo de resposta invalida",
                 stage=etapa.value if hasattr(etapa, "value") else str(etapa),
+                erro=str(exc),
+            )
+
+    def _registrar_token_usage_multimodal(
+        self,
+        *,
+        etapa: EtapaProcessamento,
+        atividade_id: str,
+        aluno_id: Optional[str],
+        provider: str,
+        modelo: str,
+        tokens_entrada: int,
+        tokens_saida: int,
+        status: str,
+        tempo_ms: float,
+        prompt_id: Optional[str],
+        documento_id: Optional[str] = None,
+        erro: Optional[str] = None,
+        tentativas_validacao: int = 1,
+        source: str = "executar_multimodal",
+    ) -> None:
+        tokens_total = int(tokens_entrada or 0) + int(tokens_saida or 0)
+        if tokens_total <= 0:
+            return
+        try:
+            record_token_usage(
+                cost_run_id=documento_id or f"multimodal_{uuid.uuid4().hex[:12]}",
+                atividade_id=atividade_id,
+                aluno_id=aluno_id,
+                etapa=etapa.value if hasattr(etapa, "value") else str(etapa),
+                provider=provider,
+                modelo=modelo,
+                tokens_entrada=int(tokens_entrada or 0),
+                tokens_saida=int(tokens_saida or 0),
+                status=status,
+                erro=erro,
+                tempo_ms=tempo_ms,
+                prompt_id=prompt_id,
+                source=source,
+                metadata={
+                    "documento_id": documento_id,
+                    "tentativas_validacao": tentativas_validacao,
+                },
+            )
+        except Exception as exc:
+            _logger.warning(
+                "Falha ao registrar token_usage multimodal",
+                stage=etapa.value if hasattr(etapa, "value") else str(etapa),
+                status=status,
                 erro=str(exc),
             )
     

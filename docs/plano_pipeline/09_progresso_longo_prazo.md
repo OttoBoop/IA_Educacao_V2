@@ -275,6 +275,26 @@ segue fora do Render. Recheck de custos apos o sweep: `token_usage_analisados=8`
 `runs_precificados=28`, `custo_usd=1.484609`; testes de conexão nao viraram
 registro duravel de custo de pipeline.
 
+Subciclo Sonnet/custo multimodal em 2026-05-19: como Sonnet 4.5 conectou no
+sweep, foi rodado apenas `EXTRAIR_QUESTOES` na fixture Diana/Omega
+(`f68d57a9a339081f`, aluno `10d9fa4f4303ea1f`) com `model_id=4eaeb5105f5d` e
+`force_rerun=true`. Task `task_b9eb22dbb753` terminou `completed`, com apenas
+`extrair_questoes=completed` e as demais etapas `skipped` por seleção explícita.
+Artefato oficial: `147b412840c2b618`, modelo
+`claude-sonnet-4-5-20250929`, `2257/461` tokens, `US$0.013686`,
+`status=concluido`. Isso reclassifica Sonnet: conexão OK e
+`EXTRAIR_QUESTOES` OK pós-patches Anthropic; pipeline completa segue não
+validada. Barreira nova respondida: o run entrou em `/api/custos/resumo`
+(`runs_precificados=29`, `custo_usd=1.498295`), mas
+`token_usage.record_count` ficou `8`; causa encontrada em `executor.py`:
+`_executar_multimodal` gravava tokens na metadata do documento, mas não criava
+`TokenUsageRecord` row-level em sucesso. Patch local: registrar token usage em
+sucesso multimodal usando `documento_id` como `cost_run_id`, e também registrar
+provider error multimodal com tokens mesmo sem documento. Validações locais:
+`py_compile backend/executor.py backend/tests/unit/test_erro_pipeline.py`,
+`git diff --check`, `TestMultimodalExtractionValidationRetry` com `5 passed` e
+`test_cost_tracking.py` com `33 passed`.
+
 Atualizacao agregados Matemática-V de 2026-05-19: o smoke inicial em
 `737a709` revelou um bug de produto: `desempenho_tarefa` de
 `810ef4c1a71c701b` contava versões historicas de `RELATORIO_FINAL` como se

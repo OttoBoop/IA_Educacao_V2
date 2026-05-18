@@ -72,6 +72,12 @@ Anthropic e Google têm credenciais funcionais para chamada simples, incluindo
 Gemini 2.5 Pro. A única falha é Ollama por infra local ausente no Render. Isso
 nao promove modelo nenhum a pipeline-ready: conexão simples só remove o bloqueio
 de credencial/quota imediata.
+Sonnet 4.5 foi rechecado com uma etapa real barata: `EXTRAIR_QUESTOES` em
+`task_b9eb22dbb753` passou e gerou `147b412840c2b618`, `2257/461` tokens,
+`US$0.013686`. O smoke revelou uma lacuna arquitetural de custo: caminhos
+multimodais simples criavam metadata de documento, mas nao `TokenUsageRecord`
+row-level em sucesso. O patch local passa a registrar row-level nesses casos com
+o mesmo `cost_run_id` do documento, preservando deduplicacao no resumo.
 
 Validacao especifica do `2fa5d47`: antes do patch,
 `/api/documentos/f68d57a9a339081f/4ae10210c8acbaa5/versoes` mostrava prova,
