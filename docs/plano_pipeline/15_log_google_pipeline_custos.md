@@ -16,13 +16,15 @@ ou chamar etapa bloqueada de sucesso continua proibido.
 
 - URL oficial: `https://ia-educacao-v2.onrender.com`.
 - Runtime inicial observado: `0411f9a`.
-- Runtime final do subloop Google: `a7f02a3`.
-- Runtime funcional oficial atual depois do subloop Anthropic: `d357960`.
+- Runtime final do subloop Google original: `a7f02a3`.
+- Runtime funcional oficial atual: `bc96faf`.
 - Health final: `/api/health` retornou `{"status":"healthy","supabase":true}`.
 - `origin/main` no fechamento Google: `a7f02a31fc04606de82e22bec3345150fff9ead6`;
   depois avançou para `d3579606a35273ff7519a7d13231be268824f711`.
-- Persistencia duravel de `token_usage`: ainda bloqueada por Supabase
-  `PGRST205`, tabela `public.token_usage` ausente.
+- Persistencia duravel de `token_usage`: migration aplicada; `/api/custos/status`
+  retorna `ok=true`, `table_available=true`, `error_code=null` e
+  `token_usage_backend.durable=true`. Ressalva: `token_usage_analisados=0`
+  nos smokes recentes, entao ainda falta provar escrita row-level na tabela.
 
 ## Dados De Teste Escolhidos
 
@@ -450,20 +452,70 @@ Bug novo de custos/artefatos:
   `test_e_t2_retry_partial_output.py` com `34 passed`.
 - Deploy: Render confirmou `a7f02a3`, `/api/health` OK.
 
+## Atualizacao 2026-05-19 -- Matemática-V Agregada Pos-`bc96faf`
+
+Motivo do ciclo:
+
+- O primeiro smoke em Matemática-V no runtime `737a709` provou um bug de
+  produto: `desempenho_tarefa` para `810ef4c1a71c701b` retornou
+  `alunos_incluidos=12` e `alunos_excluidos=4`, embora Alpha-V tenha 2 alunos.
+- Causa: os agregados liam todos os `RELATORIO_FINAL` historicos da atividade e
+  contavam versões antigas/arquivos quebrados como se fossem alunos.
+- Correção `bc96faf`: coletar no maximo uma narrativa legivel por aluno e
+  atividade, usando alunos matriculados como denominador; arquivos ilegiveis
+  viram avisos explícitos.
+
+Validações:
+
+- Local: `py_compile`, `git diff --check` e suite focada de desempenho com
+  `56 passed`.
+- Deploy: `./scripts/wait_deploy.sh bc96faf` confirmou Render em `bc96faf`.
+- Custos: `/api/custos/status?limit=100` retornou `ok=true`,
+  `custos_persistencia_status=duravel` e `token_usage_backend.durable=true`.
+
+Smokes oficiais com `gem25flash001`:
+
+| Nivel | Endpoint | Evidencia | Status | Tokens | Custo |
+|---|---|---|---|---:|---:|
+| tarefa | `/api/executar/desempenho-tarefa-sync` | `run-20260519-112430`, docs `15f81063a315ef79`/`3c278a0623e8a9d4` | `COMPLETO`, 2 incluidos, 0 excluidos | `15858/3404` | `US$0.013267` |
+| turma | `/api/executar/desempenho-turma-sync` | `run-20260519-112612`, docs `3c69d6ab6949a343`/`03dd9c3b5f943281` | `COMPLETO`, 4 narrativas, 2 atividades | `30310/9049` | `US$0.031716` |
+| materia | `/api/executar/desempenho-materia-sync` | `run-20260519-112841`, docs `3791ca018fb615d6`/`e252c6af3c9b88e4` | `PARCIAL`, 3 turmas, 11 narrativas | `34922/4815` | `US$0.022514` |
+
+Avisos do agregado de matéria:
+
+- Beta-V/Daniel: dois documentos antigos ilegiveis foram registrados com
+  `documento_id` (`46f652f9442e3e53` e `dfde26721d0dcf6e`), sem esconder o
+  problema.
+- Omega-V/Erik: falta `RELATORIO_FINAL` na atividade `Smoke Paulo Pipeline
+  2026-05-16`.
+
+Interpretação nova:
+
+- Google Flash (`gem25flash001`) está validado no site oficial para pipeline
+  individual, desempenho de tarefa, desempenho de turma e desempenho de matéria
+  com avisos explícitos.
+- O status parcial de matéria é dado real a limpar, não erro de provider.
+- O custo total dos três agregados Matemática-V pos-`bc96faf` foi
+  `US$0.067497` (`0.013267 + 0.031716 + 0.022514`).
+- A queda de custo em tarefa (`US$0.020012` antes contra `US$0.013267` depois)
+  confirma que remover versões historicas reduziu prompt e custo.
+
 ## Interpretação
 
 - Google nao esta sem chave: os testes de conexao funcionaram para Flash Lite,
   Flash e Gemini 3 Flash.
 - Google Flash (`gem25flash001`) esta validado no site oficial para pipeline
-  individual completa da Beatriz, `desempenho_tarefa` parcial e
-  `desempenho_turma` parcial, com custos medidos.
+  individual completa da Beatriz, `desempenho_tarefa` completo,
+  `desempenho_turma` completo e `desempenho_materia` parcial honesto em
+  Matemática-V, com custos medidos.
 - Google Lite (`gem25lite001`) ainda nao esta validado para pipeline:
   `a7f02a3` corrigiu o prompt faseado de tools, mas o re-smoke ainda falhou
   alto por JSON sem schema minimo.
 - Gemini 3 Flash (`gem3flash001`) esta validado para pipeline individual
   completa e `desempenho_tarefa`, mas e mais caro/lento que Flash neste caso.
-- `desempenho_materia` nao e falha do modelo neste momento: esta bloqueado por
-  dado real ausente na segunda turma.
+- `desempenho_materia` nao e falha do modelo neste momento: ele gera artefato
+  real, mas retorna parcial por arquivos historicos ilegiveis e um aluno sem
+  `RELATORIO_FINAL` na atividade smoke.
 - O backend agora registra melhor `retry_after`, custo parcial e erro provider;
   isso melhora observabilidade, mas nao remove o bloqueio externo.
 
@@ -471,15 +523,17 @@ Bug novo de custos/artefatos:
 
 Executados para `gem25flash001`:
 
-- `desempenho_tarefa`: passou, mas parcial por arquivos antigos ilegíveis.
-- `desempenho_turma`: passou, mas parcial por lacunas de atividade/documentos.
-- `desempenho_materia`: bloqueou corretamente por falta de duas turmas distintas
-  com `RELATORIO_FINAL` legivel.
+- `desempenho_tarefa`: passou completo pos-`bc96faf`, 2 alunos incluidos e 0
+  excluidos.
+- `desempenho_turma`: passou completo pos-`bc96faf`, 4 narrativas e 2
+  atividades.
+- `desempenho_materia`: passou parcial pos-`bc96faf`, 3 turmas e 11 narrativas,
+  com avisos explícitos de dados.
 
 Proximo passo honesto:
 
-1. Criar ou completar dados reais na segunda turma antes de rodar
-   `desempenho_materia`.
+1. Limpar/renomear historicos ilegiveis da Matemática-V e completar o
+   `RELATORIO_FINAL` ausente do smoke Omega antes de repetir matéria.
 2. Tratar `gem25lite001` como falha alta em `CORRIGIR` por schema invalido,
    salvo se houver novo patch especifico de prompt/JSON para modelos baratos.
 3. Nao rodar `desempenho_turma`/`materia` com Gemini 3 sem necessidade: Flash ja
@@ -491,14 +545,15 @@ Proximo passo honesto:
   alto apos `a7f02a3` por JSON sem schema minimo (`8c875cf984e55e91`,
   `US$0.005241`).
 - `gem25flash001`: conexao OK, `CORRIGIR` OK, pipeline individual completa OK,
-  `desempenho_tarefa` OK parcial, `desempenho_turma` OK parcial,
-  `desempenho_materia` bloqueado corretamente por pre-requisito de dados.
+  `desempenho_tarefa` OK completo, `desempenho_turma` OK completo,
+  `desempenho_materia` OK parcial com avisos de dados.
 - `gem3flash001`: conexao OK, chat JSON OK, `CORRIGIR` OK, pipeline completa OK
   e `desempenho_tarefa` OK parcial; manter como validado com ressalva de
   custo/latencia.
 - `e251747cd7a2`: nao retestado neste ciclo; Pro fica por ultimo por custo.
-- Desempenho agregado: validado ate turma com Google Flash; materia exige dados
-  em pelo menos duas turmas distintas antes de nova chamada de IA.
+- Desempenho agregado: validado ate materia com Google Flash. O proximo passo
+  nao e desbloquear endpoint, e limpar dados historicos/ausentes para transformar
+  materia de parcial em completo.
 
 ## Atualizacao 2026-05-18 -- Anthropic Haiku 4.5 Completa Pipeline Individual
 
@@ -528,4 +583,4 @@ Interpretação:
 - A validação do parser continua bloqueante; o sistema não passou a aceitar Markdown como JSON.
 - O task id da full pipeline não foi preservado pelo cliente local de polling, mas os artefatos, o runtime `d357960` e `/api/custos/resumo` confirmam o ciclo completo.
 - Haiku custa mais que Gemini 2.5 Flash neste caso (`US$0.282485` vs `US$0.114578`) e menos que alguns OpenAI/GPT-4o históricos; vale como provider funcional, não como default automático.
-- `token_usage_durable=false` segue bloqueio estrutural até aplicar `backend/migrations/002_create_token_usage.sql` no Supabase.
+- Atualizacao 2026-05-19: a migration `backend/migrations/002_create_token_usage.sql` foi aplicada; `token_usage_durable=true`. O novo bloqueio estrutural e provar escrita row-level, pois `token_usage_analisados=0` nos smokes recentes.

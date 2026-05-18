@@ -1,11 +1,12 @@
 # Matriz Provider × Fase — Status Atual
 
-**Atualizado:** 2026-05-18
+**Atualizado:** 2026-05-19
 **Atividades de teste principais:** Lista0 — Algebra Linear Avancada
 (`126e8b5ad7dd6d59`), smoke simples oficial `Smoke Paulo Pipeline 2026-05-16`
 (`f68d57a9a339081f`) e atividade textual `Prova 1 - Equações do 1º Grau`
-(`8f58cc8b5fb75869`)
-**Runtime oficial atual:** backend Render em `d357960`; `origin/main` recebeu os
+(`8f58cc8b5fb75869`) e Matemática-V (`0f615b57854235ec`) para agregados
+oficiais.
+**Runtime oficial atual:** backend Render em `bc96faf`; `origin/main` recebeu os
 ciclos Google `9dbb122`/`8de0ab3` para preservar `retry_after` de provider e
 fazer retry por request Google sem trocar modelo, `2d08eec` para impedir retry
 que reintroduzia Markdown em JSON, `d7313a6` para remover duplicacao de
@@ -13,8 +14,11 @@ artefatos agregados, `16afe40` para bloquear `desempenho_materia` sem duas
 turmas com resultado real, `a7f02a3` para Google usar a mesma primeira chamada
 faseada de dual-output que OpenAI, e os ciclos Anthropic `334825d`, `62fa27d`,
 `e548816` e `d357960` para pedir JSON estruturado e validar schema runtime sem
-aceitar envelope Markdown. O codigo funcional de batch mais recente continua
-sendo `9b68de1`, incluido no runtime atual.
+aceitar envelope Markdown. `737a709` preparou a migration segura de custos e
+`bc96faf` corrige a coleta dos agregados para usar uma narrativa legivel por
+aluno/atividade, sem contar historico de documentos como alunos extras. O
+codigo funcional de batch mais recente continua sendo `9b68de1`, incluido no
+runtime atual.
 Use
 `/api/deploy-info` com no-cache/cache-buster como gate de codigo live.
 **Commits aplicados/observados:** `a632883`, `5737611`, `50935ea`, `479b77d`,
@@ -42,11 +46,18 @@ Use
 - O servico oficial em 2026-05-17 e
   `srv-d5t8gbh4tr6s738fr3s0` (`IA_Educacao_V2`), branch `main`,
   `rootDir=backend`, URL `https://ia-educacao-v2.onrender.com`.
-- `/api/deploy-info` confirmou o runtime backend `d357960` com
+- `/api/deploy-info` confirmou o runtime backend `bc96faf` com
   `source=RENDER_GIT_COMMIT`; esse e o gate primario atual para codigo live.
-- `origin/main` pode estar em commit documental posterior a `0411f9a`; o gate
-  de comportamento de provider/pipeline continua sendo `/api/deploy-info` com
-  no-cache e os smokes live.
+- `origin/main` aponta para `bc96faf`. O gate de comportamento
+  provider/pipeline continua sendo `/api/deploy-info` com no-cache e smokes
+  live, nao apenas commit local.
+- `/api/custos/status?limit=100` em `bc96faf` retornou `ok=true`,
+  `custos_persistencia_status=duravel`,
+  `token_usage_backend.supabase.table_available=true`, `error_code=null` e
+  `token_usage_backend.durable=true`. Ressalva: `token_usage_analisados=0`,
+  entao a proxima frente de custos deve provar escrita row-level em
+  `public.token_usage`; por enquanto as evidencias novas de custo vêm da
+  metadata duravel dos documentos agrupada por `cost_run_id`.
 - Smoke pos-deploy de catalogo: `/api/settings/model-catalog/calculate-cost`
   retornou para o perfil `74257/12403`: Gemini 2.5 Flash `US$ 0.053285`,
   Gemini 2.5 Flash Lite `US$ 0.012387`, Gemini 3 Flash `US$ 0.074338`.
@@ -349,7 +360,7 @@ Fontes de preco:
 | `180b8298a279` | gpt-4o | `openai/gpt-4o` | T/V | `2.50/10.00` | catalogo | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | `task_68b19146a95b`: `US$ 0.314369` | `US$ 0.309673` | Manter como referencia, nao fallback silencioso. |
 | `588f3efe7975` | Claude Haiku 4.5 | `anthropic/claude-haiku-4-5-20251001` | T/V | `1.00/5.00` | oficial Anthropic | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ Beatriz | Pos-`d357960`, pipeline individual completa validada por artefatos oficiais: Q `d11486043fd2856e`, G `55bbe9f20a79d3f7`, R `fa21df6427683bca`, Corr `cf52ae50099a7623`, Hab `cff266a64d1d4256`, Rel `611f9ae8226692cf`/`60fe1cc4dfd2a1af`; `118025/32892`, `US$0.282485` | `US$ 0.136272` | Repetir em outro aluno/dataset; manter Sonnet pausado ate precisar comparar qualidade. |
 | `4eaeb5105f5d` | Claude Sonnet 4.5 | `anthropic/claude-sonnet-4-5-20250929` | T/V | `3.00/15.00` | oficial Anthropic | ❌ | ⏸️ | ⏸️ | ⏸️ | ⏸️ | ⏸️ | ❌ primeira etapa | `task_b19524abfdd5` em `EXTRAIR_QUESTOES` falhou por JSON dentro de Markdown; erro `4200/1491`, `US$0.034965` | `US$ 0.408816` | Nao gastar em full Sonnet ate resolver JSON cru nas extrações. |
-| `gem25flash001` | Gemini 2.5 Flash | `google/gemini-2.5-flash` | T/V | `0.30/2.50` | oficial Google | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ Beatriz | `task_ca5dd6b8b3b5`: seis etapas OK, `117829/31691`, `US$0.114578`; agregados: tarefa `US$0.019984`, turma `US$0.054663`; materia bloqueada corretamente por pre-requisito | `US$ 0.053285` | Repetir em outro aluno/turma; criar dados da segunda turma antes de `desempenho_materia`. |
+| `gem25flash001` | Gemini 2.5 Flash | `google/gemini-2.5-flash` | T/V | `0.30/2.50` | oficial Google | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ Beatriz + agregados Matemática-V | Pipeline individual `task_ca5dd6b8b3b5`: seis etapas OK, `117829/31691`, `US$0.114578`; agregados pos-`bc96faf`: tarefa `run-20260519-112430` completa `15858/3404`, `US$0.013267`; turma `run-20260519-112612` completa `30310/9049`, `US$0.031716`; materia `run-20260519-112841` parcial honesta, `34922/4815`, `US$0.022514`. | `US$ 0.053285` | Proximo: revalidar outro aluno/turma e investigar escrita row-level em `token_usage`; manter avisos de materia como dados a limpar, nao falha do modelo. |
 | `gem25lite001` | Gemini 2.5 Flash Lite | `google/gemini-2.5-flash-lite` | T/V | `0.10/0.40` | oficial Google | ⏸️ | ⏸️ | ⏸️ | ❌ | ⏸️ | ⏸️ | ❌ em `CORRIGIR` | `task_44ec067a3d82` apos `a7f02a3`: JSON salvo, mas sem schema minimo; erro `8c875cf984e55e91`, `31602/5201`, `US$0.005241` | `US$ 0.012387` | Nao subir para agregado; testar Gemini 3 Flash ou desenhar prompt menor especifico para Lite. |
 | `gem3flash001` | Gemini 3 Flash | `google/gemini-3-flash-preview` | T/V | `0.50/3.00` | oficial Google | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ Beatriz | `task_24fe4d7b7ecc`: seis etapas OK, `181550/33182`, `US$0.190321`; `desempenho_tarefa` parcial `US$0.087748` | `US$ 0.074338` | Manter como validado, mas preferir Flash quando custo/latencia importarem. |
 | `e251747cd7a2` | Gemini 2.5 Pro | `google/gemini-2.5-pro` | T/V | `1.25/10.00` ate 200k prompt | oficial Google | ⏸️ | ⏸️ | ⏸️ | ⏸️ | ⏸️ | ⏸️ | 🚫 quota | Sweep live: conexao bloqueada por Google `429` | `US$ 0.216851` | Testar conexao e uma etapa quando quota permitir. |
@@ -383,7 +394,7 @@ nao sao a mesma coisa que `GERAR_RELATORIO` individual. Eles usam os endpoints
 | Modelo Google | `desempenho_tarefa` | `desempenho_turma` | `desempenho_materia` | Evidencia | Proximo passo |
 |---|:---:|:---:|:---:|---|---|
 | `gem25lite001` | ⏸️ | ⏸️ | ⏸️ | Nao executado: `CORRIGIR` falhou alto apos `a7f02a3` por JSON sem schema minimo. | Nao subir para agregado sem novo patch especifico para Lite. |
-| `gem25flash001` | ✅ | ✅ | 🚫 prereq | Tarefa `run-20260518-153754` passou parcial, `US$0.019984`; turma `run-20260518-154054` passou parcial, `US$0.054663`; materia bloqueou em `16afe40` porque so uma turma tem relatorio legivel. | Completar dados reais da segunda turma, depois repetir materia. |
+| `gem25flash001` | ✅ | ✅ | ⚠️ | Pos-`bc96faf`: tarefa `run-20260519-112430` completa, 2 alunos/0 excluidos, `US$0.013267`; turma `run-20260519-112612` completa, 4 narrativas/2 atividades, `US$0.031716`; materia `run-20260519-112841` gerou PDF/JSON com 3 turmas e 11 narrativas, `US$0.022514`, mas status parcial por avisos explícitos em Beta/Omega. | Limpar/renomear historicos ilegiveis e completar `RELATORIO_FINAL` do smoke Omega; repetir materia depois. |
 | `gem3flash001` | ✅ | ⏸️ | ⏸️ | `desempenho_tarefa` parcial em `run-20260518-162141`, `US$0.087748`; turma/materia nao rodados para conter custo, ja que Flash cobriu turma. | Rodar turma so se precisarmos comparar qualidade; materia continua bloqueada por dados. |
 | `e251747cd7a2` | ⏸️ | ⏸️ | ⏸️ | Pro nao foi retestado neste ciclo para poupar custo. | Testar conexao so depois de resolver billing/rate-limit dos modelos baratos. |
 
@@ -1105,8 +1116,10 @@ na fixture simples. Ainda falta pipeline completa de 6 etapas e datasets maiores
 - [x] Rodar primeira pipeline sequencial completa Gemini pos-runner e registrar
       o bloqueio real: quota Google/Gemini `429` em `corrigir`, nao falha de
       health nem timeout de requisicao
-- [ ] Repetir pipeline sequencial completa Gemini quando quota/credito permitir,
-      sem retry cego e sem trocar modelo
+- [x] Repetir pipeline sequencial completa Gemini quando quota/credito permitir,
+      sem retry cego e sem trocar modelo: `gem25flash001` completou Beatriz em
+      `task_ca5dd6b8b3b5`; depois `bc96faf` validou agregados Matemática-V ate
+      matéria com avisos explícitos.
 - [ ] Aplicar `backend/migrations/002_create_token_usage.sql` no Supabase e revalidar
       `token_usage_backend.supabase.table_available=true`
 - [x] Corrigir contaminacao por artefatos antigos em prompts/anexos; `f2211bb`
@@ -1276,22 +1289,22 @@ modelo barato/falhante em fallback automatico.
 
 **Proximos passos:**
 1. Manter deploy oficial confirmado por `/api/deploy-info` antes de cada smoke
-   novo; o codigo funcional mais recente confirmado e `d357960`. Commits
+   novo; o codigo funcional mais recente confirmado e `bc96faf`. Commits
    documentais posteriores podem mudar o hash de `/api/deploy-info` sem alterar
    comportamento de pipeline.
-2. Aplicar/validar `backend/migrations/002_create_token_usage.sql` no Supabase
-   para tornar duravel o custo de falhas sem documento; enquanto
-   `token_usage_durable=false`, custo por metadata/API e evidencia parcial, nao
-   registro oficial permanente.
+2. Verificar escrita row-level em `public.token_usage`: a migration ja foi
+   aplicada e `/api/custos/status` retorna `durable=true`, mas os smokes
+   recentes ainda exibem `token_usage_analisados=0`. Ate provar inserts
+   duraveis, custo por metadata/documento e evidencia oficial parcial.
 3. Revalidar matriz por provider/modelo em datasets maiores: GPT-5.4 Mini,
    GPT-4o, GPT-4.1, o-series, Gemini 2.5 Flash, Gemini 3 Flash e Haiku 4.5
    possuem evidencias oficiais; GPT-5 Nano e Flash Lite seguem limitados por
    qualidade/schema; Sonnet 4.5 e Gemini Pro nao devem ser promovidos sem smoke
    proprio.
 4. Corrigir o maior bloqueador vivo reproduzido, nao listas antigas: hoje os
-   candidatos sao custo duravel ausente, Flash Lite com JSON sem schema minimo,
-   Sonnet sem revalidacao e prerequisito real de duas turmas para
-   `desempenho_materia`.
+   candidatos sao escrita row-level ausente em `token_usage`, Flash Lite com
+   JSON sem schema minimo, Sonnet sem revalidacao e dados historicos/ausentes
+   que deixam `desempenho_materia` de Matemática-V parcial.
 5. Confirmar no site oficial que telas de resultado obedecem `status=erro`:
    documento parcial em erro nao conta como etapa concluida; retry concluido
    pode fechar a etapa, mas o documento de erro continua visivel na lista para
@@ -1307,6 +1320,7 @@ modelo barato/falhante em fallback automatico.
    ausente (`PGRST205`, `missing_migration=true`,
    `backend/migrations/002_create_token_usage.sql`); `e2260d2` confirmou que o
    dashboard oficial mostra esse codigo e caminho da migration; `ae04982`
-   confirmou custo agregado por etapa em `/api/custos/resumo`. Falta aplicar a
-   migration `token_usage`, repetir smokes em dataset maior e manter a matriz
-   por modelo sincronizada com custo medido.
+   confirmou custo agregado por etapa em `/api/custos/resumo`; `bc96faf`
+   confirmou agregados Matemática-V com Gemini Flash sem contar historico como
+   aluno. Falta provar escrita row-level em `token_usage`, repetir smokes em
+   dataset maior e manter a matriz por modelo sincronizada com custo medido.

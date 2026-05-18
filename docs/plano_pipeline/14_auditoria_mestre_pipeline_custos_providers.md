@@ -1,6 +1,6 @@
 # Auditoria Mestre -- Pipeline, Custos, Providers e Fallbacks
 
-**Data:** 2026-05-17
+**Data:** 2026-05-19
 **Responsavel operacional:** Paulo
 **Status:** mapa grande de auditoria; o Doc 09 continua sendo o painel vivo curto
 
@@ -8,6 +8,23 @@ Este documento existe porque a pasta de planejamento ficou grande demais para se
 lida de memoria. Ele nao substitui os documentos originais: ele explica como cada
 um deve ser lido, o que ainda vale, o que ficou historico, e quais fatos precisam
 guiar os proximos ciclos.
+
+Atualizacao curta de 2026-05-19 para qualquer IA retomando apos compactar:
+`/api/deploy-info` confirma Render em `bc96faf`, e `origin/main` tambem esta em
+`bc96faf`. Esse ciclo corrigiu um falso agregado de desempenho: antes,
+`desempenho_tarefa` de Matemática-V/Alpha-V contava versões historicas de
+`RELATORIO_FINAL` como alunos (`12` incluidos, `4` excluidos). Agora o executor
+usa no maximo uma narrativa legivel por aluno/atividade, registra arquivos
+ilegiveis como aviso e usa alunos matriculados como denominador. Evidencia live
+com `gem25flash001`: tarefa `run-20260519-112430` completa (`2/0`,
+`US$0.013267`), turma `run-20260519-112612` completa (`4` narrativas,
+`US$0.031716`) e materia `run-20260519-112841` parcial honesta (`3` turmas,
+`11` narrativas, `US$0.022514`). A migration Supabase `token_usage` tambem ja
+foi aplicada: `/api/custos/status` retorna `ok=true`, `table_available=true`,
+`durable=true`; ainda falta provar escrita row-level porque
+`token_usage_analisados=0`. Proximo loop recomendado: investigar essa escrita
+row-level de custos e limpar dados historicos ilegiveis/ausentes em
+Matemática-V, sem mexer em Rio 3.
 
 Atualizacao de controle de 2026-05-17: o runtime mais recente confirmado no site
 oficial e `0411f9a`, validado por `/api/deploy-info` com

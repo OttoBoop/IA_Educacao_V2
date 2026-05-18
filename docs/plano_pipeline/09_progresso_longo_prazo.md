@@ -1,29 +1,29 @@
 # Painel Vivo Paulo -- NOVO CR
 
-**Atualizado:** 2026-05-18
+**Atualizado:** 2026-05-19
 **Responsavel operacional:** Paulo
 **Status geral:** o servico oficial Render
 `srv-d5t8gbh4tr6s738fr3s0` (`IA_Educacao_V2`, branch `main`, URL
-`https://ia-educacao-v2.onrender.com`) esta em runtime `737a709`
-(`chore: prepare secure token usage migration`), validado por
-`/api/deploy-info`, `/api/health` e `./scripts/check_deploy.sh 737a709`. O
-codigo funcional de pipeline mais recente contido nesse runtime continua sendo
-`d357960` (`fix: validate pipeline schemas during parsing`), e o codigo
-funcional de batch continua sendo `9b68de1`, validado por
-`task_ee773aefb10d`.
-`origin/main` pode estar em commit documental posterior; isso nao muda runtime
-enquanto `/api/deploy-info` com no-cache continuar apontando para o hash
-registrado neste painel.
+`https://ia-educacao-v2.onrender.com`) esta em runtime `bc96faf`
+(`fix: de-duplicate aggregate desempenho inputs`), validado por
+`/api/deploy-info`, `/api/health` e `./scripts/wait_deploy.sh bc96faf`.
+`origin/main` tambem aponta para `bc96faf`. O codigo funcional de pipeline
+inclui os ciclos Anthropic/Google ate `d357960`, o preparo seguro de migration
+`737a709` e a correcao atual de desempenho agregado `bc96faf`.
 
 Estado funcional consolidado: documentos com `status=erro` nao contam como
 progresso; correcao sem itens avaliaveis nao vira `completo=true`; ranking,
 estatisticas e dashboard preservam notas legitimas `0.0`; o default oficial e
 GPT-5.4 Mini (`gpt54mini001`); erros de provider aparecem estruturados em chat,
 task progress e custos; o dashboard mostra o bloqueio de migration
-`token_usage`; `/api/custos/resumo` agrega por `cost_run_id`, `por_etapa` e agora
-expõe `token_usage_durable=false` quando a persistencia de falhas sem documento
-nao e duravel. O ciclo atual tambem transformou o Doc 12 em matriz operacional
-por `model_id` ativo, com custo medido/estimado por modelo e fonte de preco.
+`token_usage`; `/api/custos/resumo` agrega por `cost_run_id` e `por_etapa`.
+Depois da aplicacao da migration Supabase, `/api/custos/status` retorna
+`ok=true`, `custos_persistencia_status=duravel`,
+`token_usage_backend.supabase.table_available=true`, `error_code=null` e
+`token_usage_durable=true`. Ressalva importante: `token_usage_analisados=0` nos
+smokes mais recentes, entao o custo oficial ainda esta vindo principalmente da
+metadata duravel dos documentos; o proximo ciclo de custos deve garantir escrita
+row-level efetiva em `public.token_usage` para falhas sem documento.
 
 Estado de providers: GPT-4.1, GPT-5.4 Mini, GPT-4o e GPT-5 Nano seguem
 referencias OpenAI na fixture Diana. Nano agora passou as seis etapas em uma
@@ -44,10 +44,16 @@ patch `a7f02a3` corrigiu o prompt faseado de tools para Google; depois disso,
 Lite salvou JSON via `create_document`, mas o JSON veio sem schema minimo.
 Gemini Flash (`gem25flash001`) agora esta confirmado
 no site oficial para pipeline completa de Beatriz (`task_ca5dd6b8b3b5`,
-`US$0.114578`), `desempenho_tarefa` parcial (`US$0.019984`) e
-`desempenho_turma` parcial (`US$0.054663`). `desempenho_materia` bloqueou
-corretamente em `16afe40` porque so uma das duas turmas de Matemática tem
-`RELATORIO_FINAL` legivel. Gemini 2.5 Pro nao foi retestado neste ciclo para
+`US$0.114578`) e, no runtime `bc96faf`, para agregados oficiais em
+Matemática-V: `desempenho_tarefa` completo (`run-20260519-112430`,
+2 alunos/0 excluidos, `15858/3404`, `US$0.013267`), `desempenho_turma`
+completo (`run-20260519-112612`, 4 narrativas/2 atividades, `30310/9049`,
+`US$0.031716`) e `desempenho_materia` parcial honesto
+(`run-20260519-112841`, 3 turmas, 11 narrativas, `34922/4815`,
+`US$0.022514`). O parcial de materia nao e falha silenciosa: os avisos nomeiam
+dois arquivos antigos ilegiveis do Daniel em Beta-V e um aluno sem
+`RELATORIO_FINAL` na atividade smoke de Omega-V. Gemini 2.5 Pro nao foi
+retestado neste ciclo para
 poupar custo. Anthropic foi atualizado pelo fluxo seguro; depois dos commits
 `334825d`, `62fa27d`, `e548816` e `d357960`, Haiku 4.5 passou pipeline
 individual completa no site oficial por artefatos/custos oficiais: questoes
@@ -57,22 +63,36 @@ individual completa no site oficial por artefatos/custos oficiais: questoes
 `118025/32892` tokens, `US$0.282485`. O task id nao foi capturado pelo cliente
 local de polling, mas o aceite fica nos artefatos oficiais, no runtime
 `d357960` e no custo em `/api/custos/resumo`. Ollama esta indisponivel no Render.
-Supabase `token_usage`
-continua ausente (`PGRST205`), deixando custo duravel como gate real.
+Supabase `token_usage` nao esta mais ausente: a migration foi aplicada e
+`/api/custos/status` retorna `ok=true`, `table_available=true` e `durable=true`.
+O gate restante e confirmar escrita row-level em `public.token_usage`, porque
+os smokes recentes ainda exibem `token_usage_analisados=0`.
 
-Atualizacao custos duraveis de 2026-05-18: o proximo gate oficial nao e mais
-diagnostico, e aplicacao segura da migration. `backend/migrations/002_create_token_usage.sql`
-agora ativa RLS na tabela `token_usage` e envia `NOTIFY pgrst, 'reload schema'`
-para o PostgREST atualizar cache apos a criacao. Novo helper local
-`scripts/secure_supabase_migration_form.py` abre formulario em `127.0.0.1`,
-recebe a connection string Postgres como campo de senha, aplica somente essa
-migration e imprime apenas status/preview mascarado. Validacoes:
-`py_compile`, `git diff --check` e testes focados de custo/UI `6 passed`. Falta
-executar o helper com credencial SQL do Supabase. Deploy `737a709` confirmado no
-Render; `/api/custos/status?limit=20` ainda retorna `ok=false`,
-`token_usage_backend.supabase.table_available=false`, `error_code=PGRST205` e
-`token_usage_backend.durable=false`, como esperado antes da migration ser
-aplicada.
+Atualizacao agregados Matemática-V de 2026-05-19: o smoke inicial em
+`737a709` revelou um bug de produto: `desempenho_tarefa` de
+`810ef4c1a71c701b` contava versões historicas de `RELATORIO_FINAL` como se
+fossem alunos, retornando `alunos_incluidos=12`, `alunos_excluidos=4` e custo
+`US$0.020012`. O commit `bc96faf` corrigiu a coleta para escolher no maximo uma
+narrativa legivel por aluno/atividade, registrar arquivos ilegiveis e usar
+alunos matriculados como denominador. Validacoes locais:
+`py_compile`, `git diff --check` e suite focada de desempenho `56 passed`.
+Smokes oficiais pos-deploy: tarefa `COMPLETO` (`2/0`, `US$0.013267`), turma
+`COMPLETO` (`4` narrativas, `US$0.031716`) e materia `PARCIAL` com avisos
+explícitos (`11` narrativas, `US$0.022514`). Proximo alvo: verificar por que a
+tabela duravel `token_usage` continua sem linhas analisadas, apesar de custos
+por metadata/documento estarem persistidos e agrupados.
+
+Atualizacao custos duraveis de 2026-05-19: a migration
+`backend/migrations/002_create_token_usage.sql` foi aplicada com credencial SQL
+enviada por formulario local seguro. O resultado permitido no log foi apenas
+preview mascarado e status; nenhum segredo foi registrado. Validacao oficial:
+`/api/custos/status?limit=100` retorna `ok=true`,
+`custos_persistencia_status=duravel`,
+`token_usage_backend.supabase.table_available=true`, `error_code=null`,
+`missing_migration=false` e `token_usage_backend.durable=true`. O ponto aberto
+mudou de "criar tabela" para "confirmar escrita row-level": os resumos recentes
+continuam com `token_usage_analisados=0`, enquanto custos por documento e
+`cost_run_id` estao duraveis em metadata.
 
 Atualizacao chaves seguras de 2026-05-18: qualquer chave colada em chat e
 tratada como exposta e nao deve ser usada para producao. O caminho operacional
