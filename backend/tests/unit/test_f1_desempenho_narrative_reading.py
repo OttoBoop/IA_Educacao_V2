@@ -289,3 +289,58 @@ class TestF1T4ExecutorReadsPDFNarratives:
             and "ilegível" in aviso.get("motivo", "")
             for aviso in result["avisos"]
         )
+
+    @pytest.mark.asyncio
+    async def test_tarefa_ignores_newer_non_pdf_versions_when_pdf_exists(self, tmp_path, executor_mocked):
+        """JSON/MD versions of RELATORIO_FINAL must not make a valid PDF narrative partial."""
+        pdf_ana = make_pdf_with_text(tmp_path / "ana.pdf", "Ana legivel em PDF.")
+        pdf_bruno = make_pdf_with_text(tmp_path / "bruno.pdf", "Bruno legivel em PDF.")
+        json_ana = tmp_path / "ana.json"
+        json_ana.write_text('{"resumo": "versao json"}', encoding="utf-8")
+
+        doc_ana_json = SimpleNamespace(
+            id="ana-json",
+            aluno_id="aluno_1",
+            extensao=".json",
+            criado_em=datetime(2026, 5, 18, 12, 0, 0),
+        )
+        doc_ana_pdf = SimpleNamespace(
+            id="ana-pdf",
+            aluno_id="aluno_1",
+            extensao=".pdf",
+            criado_em=datetime(2026, 5, 18, 11, 0, 0),
+        )
+        doc_bruno_pdf = SimpleNamespace(
+            id="bruno-pdf",
+            aluno_id="aluno_2",
+            extensao=".pdf",
+            criado_em=datetime(2026, 5, 18, 10, 0, 0),
+        )
+        paths = {
+            "ana-json": json_ana,
+            "ana-pdf": pdf_ana,
+            "bruno-pdf": pdf_bruno,
+        }
+
+        executor_mocked.storage.listar_documentos.return_value = [
+            doc_ana_json,
+            doc_ana_pdf,
+            doc_bruno_pdf,
+        ]
+        executor_mocked.storage.resolver_caminho_documento.side_effect = (
+            lambda doc: paths[doc.id]
+        )
+        _setup_context_mocks(executor_mocked)
+        executor_mocked.storage.listar_alunos.return_value = [
+            SimpleNamespace(id="aluno_1", nome="Ana"),
+            SimpleNamespace(id="aluno_2", nome="Bruno"),
+        ]
+
+        result = await executor_mocked.gerar_relatorio_desempenho_tarefa("atividade_123")
+
+        assert result["sucesso"] is True
+        assert result["status"] == "COMPLETO"
+        assert result["avisos"] == []
+        variaveis = executor_mocked.prompt_manager.get_prompt_padrao.return_value.render.call_args.kwargs
+        assert "Ana legivel em PDF" in variaveis["relatorios_narrativos"]
+        assert "versao json" not in variaveis["relatorios_narrativos"]

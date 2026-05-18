@@ -1496,6 +1496,12 @@ PROMPT ORIGINAL DE REFERENCIA, APENAS PARA TAREFA E SCHEMA:
         except Exception as e:
             return None, f"Arquivo narrativo ilegível: {e}"
 
+    def _extensao_documento_segura(self, documento: Any) -> Optional[str]:
+        extensao = getattr(documento, "extensao", None)
+        if isinstance(extensao, str) and extensao.strip():
+            return extensao.strip().lower()
+        return None
+
     def _coletar_relatorios_finais_legiveis_por_aluno(
         self,
         atividade: Any,
@@ -1542,7 +1548,26 @@ PROMPT ORIGINAL DE REFERENCIA, APENAS PARA TAREFA E SCHEMA:
         conteudos: List[Dict[str, Any]] = []
         alunos_incluidos: Set[str] = set()
         for aluno_id, docs_aluno in por_aluno.items():
-            for doc in docs_aluno:
+            pdf_docs = [
+                doc for doc in docs_aluno
+                if self._extensao_documento_segura(doc) == ".pdf"
+            ]
+            extensoes_conhecidas = [
+                self._extensao_documento_segura(doc)
+                for doc in docs_aluno
+                if self._extensao_documento_segura(doc)
+            ]
+            docs_para_ler = pdf_docs or docs_aluno
+            if not pdf_docs and extensoes_conhecidas:
+                formatos = sorted(set(extensoes_conhecidas))
+                avisos.append({
+                    "aluno_id": aluno_id,
+                    "motivo": (
+                        "Aluno sem RELATORIO_FINAL em PDF para esta atividade; "
+                        f"formatos encontrados: {', '.join(formatos)}"
+                    ),
+                })
+            for doc in docs_para_ler:
                 texto, erro = self._ler_texto_relatorio_final(doc)
                 if texto:
                     aluno = alunos_por_id.get(aluno_id)
