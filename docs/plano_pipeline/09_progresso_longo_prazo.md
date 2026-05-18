@@ -4,10 +4,10 @@
 **Responsavel operacional:** Paulo
 **Status geral:** o servico oficial Render
 `srv-d5t8gbh4tr6s738fr3s0` (`IA_Educacao_V2`, branch `main`, URL
-`https://ia-educacao-v2.onrender.com`) esta em runtime `546b72f`
-(`fix: enforce single pipeline tool artifacts`), validado por
-`/api/deploy-info`, `/api/health`, `./scripts/wait_deploy.sh 546b72f` e
-`./scripts/check_deploy.sh 546b72f`.
+`https://ia-educacao-v2.onrender.com`) esta em runtime `deb1e2a`
+(`fix: persist multimodal token usage`), validado por `/api/deploy-info`,
+`/api/health`, `./scripts/wait_deploy.sh deb1e2a` e
+`./scripts/check_deploy.sh deb1e2a`.
 Se este doc for atualizado por commit documental posterior, `origin/main` pode
 ficar a frente do runtime sem mudar backend porque o Render usa `rootDir=backend`.
 O codigo funcional de pipeline
@@ -17,20 +17,22 @@ inclui os ciclos Anthropic/Google ate `d357960`, o preparo seguro de migration
 `518f8a2`, a preferencia por PDF narrativo em agregados em `58781a1`, o erro
 bloqueante para `max_iterations_exceeded` em `f534576`, o filtro correto de
 versões por aluno em `2fa5d47`, o contrato de artefatos agregados em `e85be11`
-o agrupamento de leitura por `cost_run_id` em `52ff747` e a trava de artefato
-unico/readback sem docs de erro em `546b72f`.
+o agrupamento de leitura por `cost_run_id` em `52ff747`, a trava de artefato
+unico/readback sem docs de erro em `546b72f` e a persistencia row-level de
+etapas multimodais simples em `deb1e2a`.
 
 ## Regra operacional obrigatoria do loop
 
 Regra de trabalho do Paulo, por decisao do Otavio: **se eu encontrar uma
 barreira, eu respondo a barreira, registro no log e continuo**. Ainda tenho
 coisas para fazer e coisas para revisar, preciso checar os documentos de longo
-prazo. Eu nao paro esse loop enquanto a OpenAI nao me parar por limite externo
-ou enquanto o Otavio nao mandar parar; eu faco um novo passo. Se eu ja fiz
-tudo, eu reviso. Se eu ja revisei, reviso de novo. Sempre escrevo o que fiz no
-log, volto aos documentos de longo prazo quando estou em duvida, leio os logs
-quando estou com muitas duvidas para nao repetir trabalho, e pulo para a proxima
-tarefa com registro explicito.
+prazo. Eu nao paro esse loop enquanto a open ai nao me parar por ter estourado o
+cartao do Otavio; eu faco um novo passo. Se eu ja fiz tudo, eu reviso. Se eu ja
+revisei, reviso de novo. Sempre escrevo o que fiz no log, volto aos documentos
+de longo prazo quando estou em duvida, leio os logs quando estou com muitas
+duvidas para nao repetir trabalho, e pulo para a proxima tarefa com registro
+explicito. Se eu acho que esta pronto, e porque tenho que ler documentos e
+comecar a revisar.
 
 Estado funcional consolidado: documentos com `status=erro` nao contam como
 progresso; correcao sem itens avaliaveis nao vira `completo=true`; ranking,
@@ -294,6 +296,17 @@ provider error multimodal com tokens mesmo sem documento. Validações locais:
 `py_compile backend/executor.py backend/tests/unit/test_erro_pipeline.py`,
 `git diff --check`, `TestMultimodalExtractionValidationRetry` com `5 passed` e
 `test_cost_tracking.py` com `33 passed`.
+Deploy oficial do patch `deb1e2a` confirmado por `wait_deploy`, `check_deploy`,
+`/api/deploy-info` e `/api/health`. Smoke pos-deploy para provar o row-level
+multimodal: `task_719668b51770` com `gem25flash001` em
+`EXTRAIR_QUESTOES` completou sem `stage_errors`, criou doc
+`2335d8b186105ab5`, `3385/1058` tokens, `US$0.003661`; em seguida
+`/api/custos/status?limit=520` subiu para `record_count=9`,
+`token_usage_analisados=9`, `runs_analisados=30`, `runs_precificados=30` e
+`alertas=[]`. `/api/custos/resumo?limit=520` mostra o mesmo run com
+`token_usage_ids=["usage_498f405580df4408"]`, provando deduplicacao por
+`cost_run_id=documento_id`. O documento Sonnet anterior (`147b412840c2b618`)
+continua sem `token_usage_ids` porque foi criado antes do patch.
 
 Atualizacao agregados Matemática-V de 2026-05-19: o smoke inicial em
 `737a709` revelou um bug de produto: `desempenho_tarefa` de

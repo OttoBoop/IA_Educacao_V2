@@ -17,7 +17,7 @@ ou chamar etapa bloqueada de sucesso continua proibido.
 - URL oficial: `https://ia-educacao-v2.onrender.com`.
 - Runtime inicial observado: `0411f9a`.
 - Runtime final do subloop Google original: `a7f02a3`.
-- Runtime funcional oficial atual: `546b72f`.
+- Runtime funcional oficial atual: `deb1e2a`.
 - Health final: `/api/health` retornou `{"status":"healthy","supabase":true}`.
 - `origin/main` no fechamento Google: `a7f02a31fc04606de82e22bec3345150fff9ead6`;
   depois avançou ate `52ff747debcbede3f75c5d7f6f9631c58cc72726`.
@@ -156,6 +156,14 @@ como `cost_run_id` para deduplicacao; provider error multimodal com tokens grava
 row-level mesmo sem documento. Testes locais: `py_compile`, `git diff --check`,
 `TestMultimodalExtractionValidationRetry` com `5 passed` e
 `test_cost_tracking.py` com `33 passed`.
+Fechamento pos-deploy: `deb1e2a` publicado e confirmado. Smoke
+`task_719668b51770` com `gem25flash001` em `EXTRAIR_QUESTOES` criou
+`2335d8b186105ab5`, `3385/1058`, `US$0.003661`. O resumo de custos mostra
+`usage_498f405580df4408` no mesmo run e `/api/custos/status?limit=520` subiu
+para `record_count=9`, `token_usage_analisados=9`, `runs_precificados=30`,
+`alertas=[]`. Barreira respondida: multimodal simples agora entra no row-level
+duravel; o documento Sonnet anterior (`147b412840c2b618`) continua sem
+`token_usage_ids` porque foi criado antes do patch.
 
 ## Dados De Teste Escolhidos
 

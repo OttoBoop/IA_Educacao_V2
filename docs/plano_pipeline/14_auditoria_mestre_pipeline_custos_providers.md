@@ -10,7 +10,7 @@ um deve ser lido, o que ainda vale, o que ficou historico, e quais fatos precisa
 guiar os proximos ciclos.
 
 Atualizacao curta de 2026-05-19 para qualquer IA retomando apos compactar:
-`/api/deploy-info` confirma Render em `546b72f`. Se `origin/main` estiver a
+`/api/deploy-info` confirma Render em `deb1e2a`. Se `origin/main` estiver a
 frente por commit documental, isso nao muda o backend porque Render usa
 `rootDir=backend`. O runtime contem a correcao `bc96faf` para falso agregado de
 desempenho: antes, `desempenho_tarefa` de Matemática-V/Alpha-V contava versões
@@ -50,9 +50,11 @@ e gerou outro par JSON/PDF: `16842/4329`, `US$0.015875`,
 tambem ja foi aplicada: `/api/custos/status?limit=160` retorna `ok=true`,
 `table_available=true`, `durable=true`, `record_count=6`,
 `token_usage_analisados=6` e `alertas=[]`; a reconexao de 2026-05-19 em
-runtime `546b72f` confirmou o estado mais novo com `record_count=8`,
+runtime `546b72f` confirmou o estado intermediario com `record_count=8`,
 `token_usage_analisados=8`, `runs_analisados=28`, `runs_precificados=28` e
-`runs_bloqueados=0`. Readback pos-`52ff747`, sem nova
+`runs_bloqueados=0`; runtime `deb1e2a` confirmou o estado mais novo com
+`record_count=9`, `token_usage_analisados=9`, `runs_analisados=30`,
+`runs_precificados=30` e `runs_bloqueados=0`. Readback pos-`52ff747`, sem nova
 chamada de IA, mostra esses dois smokes separados:
 `run-tool_ae40e3a59695` com docs `afa143d8e6390caf`/`692d50f8be3d885d` e
 `run-tool_922168f5c256` com docs `6041b3de9c64f769`/`18f24ee5c213ab55`.
@@ -78,6 +80,10 @@ Sonnet 4.5 foi rechecado com uma etapa real barata: `EXTRAIR_QUESTOES` em
 multimodais simples criavam metadata de documento, mas nao `TokenUsageRecord`
 row-level em sucesso. O patch local passa a registrar row-level nesses casos com
 o mesmo `cost_run_id` do documento, preservando deduplicacao no resumo.
+Fechamento oficial: `deb1e2a` foi deployado e o smoke `task_719668b51770` com
+Gemini Flash em `EXTRAIR_QUESTOES` criou `2335d8b186105ab5` e
+`usage_498f405580df4408`; `record_count` subiu para `9` e
+`token_usage_analisados` para `9`, sem alertas.
 
 Validacao especifica do `2fa5d47`: antes do patch,
 `/api/documentos/f68d57a9a339081f/4ae10210c8acbaa5/versoes` mostrava prova,
