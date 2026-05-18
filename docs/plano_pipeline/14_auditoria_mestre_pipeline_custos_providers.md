@@ -53,8 +53,8 @@ tambem ja foi aplicada: `/api/custos/status?limit=160` retorna `ok=true`,
 runtime `546b72f` confirmou o estado intermediario com `record_count=8`,
 `token_usage_analisados=8`, `runs_analisados=28`, `runs_precificados=28` e
 `runs_bloqueados=0`; runtime `deb1e2a` confirmou o estado mais novo com
-`record_count=9`, `token_usage_analisados=9`, `runs_analisados=30`,
-`runs_precificados=30` e `runs_bloqueados=0`. Readback pos-`52ff747`, sem nova
+`record_count=10`, `token_usage_analisados=10`, `runs_analisados=31`,
+`runs_precificados=31` e `runs_bloqueados=0`. Readback pos-`52ff747`, sem nova
 chamada de IA, mostra esses dois smokes separados:
 `run-tool_ae40e3a59695` com docs `afa143d8e6390caf`/`692d50f8be3d885d` e
 `run-tool_922168f5c256` com docs `6041b3de9c64f769`/`18f24ee5c213ab55`.
@@ -84,6 +84,11 @@ Fechamento oficial: `deb1e2a` foi deployado e o smoke `task_719668b51770` com
 Gemini Flash em `EXTRAIR_QUESTOES` criou `2335d8b186105ab5` e
 `usage_498f405580df4408`; `record_count` subiu para `9` e
 `token_usage_analisados` para `9`, sem alertas.
+Na sequencia, Sonnet 4.5 rodou `EXTRAIR_GABARITO` em `task_f6f7260d5a77`,
+criou `ce57fd9cc1cbbdac`, consumiu `7731/1585` tokens, custou `US$0.046968` e
+gravou `usage_7a50263d5d16434c` no mesmo `cost_run_id`; o contador duravel foi
+para `record_count=10`, `token_usage_analisados=10`. Isso valida Sonnet em Q/G,
+mas nao valida respostas, correcao, finais nem pipeline completa.
 
 Validacao especifica do `2fa5d47`: antes do patch,
 `/api/documentos/f68d57a9a339081f/4ae10210c8acbaa5/versoes` mostrava prova,

@@ -45,9 +45,9 @@ Depois da aplicacao da migration Supabase, `/api/custos/status` retorna
 `token_usage_backend.supabase.table_available=true`, `error_code=null` e
 `token_usage_durable=true`. O gate row-level foi exercitado: apos smokes oficiais
 em `518f8a2`, `58781a1`, `f534576`, `e85be11` e `546b72f`,
-`/api/custos/status?limit=420` mostra
-`token_usage_backend.supabase.record_count=8`, `token_usage_analisados=8`,
-`runs_analisados=28`, `runs_precificados=28`, `runs_bloqueados=0` e
+`/api/custos/status?limit=540` mostra
+`token_usage_backend.supabase.record_count=10`, `token_usage_analisados=10`,
+`runs_analisados=31`, `runs_precificados=31`, `runs_bloqueados=0` e
 `alertas=[]`. O caminho de código para falhas sem documento final já tem teste
 local (`test_cost_tracking.py`, `33 passed` em 2026-05-19); o que ainda falta é
 uma evidencia live pos-migration especificamente desse caso, sem gastar IA so
@@ -307,6 +307,19 @@ multimodal: `task_719668b51770` com `gem25flash001` em
 `token_usage_ids=["usage_498f405580df4408"]`, provando deduplicacao por
 `cost_run_id=documento_id`. O documento Sonnet anterior (`147b412840c2b618`)
 continua sem `token_usage_ids` porque foi criado antes do patch.
+
+Atualizacao Sonnet 4.5 de 2026-05-19, ainda em escada barata e sem full
+pipeline: depois do patch `deb1e2a`, `EXTRAIR_GABARITO` rodou no site oficial
+para Diana/Omega com `task_f6f7260d5a77`, completou apenas a etapa selecionada
+e pulou as demais como esperado. O documento `ce57fd9cc1cbbdac` aparece em
+`/api/custos/resumo` com provider `anthropic`, modelo
+`claude-sonnet-4-5-20250929`, `7731/1585` tokens, `US$0.046968`, `cost_run_id`
+igual ao documento e `token_usage_ids=["usage_7a50263d5d16434c"]`. O status
+row-level subiu para `record_count=10`, `token_usage_analisados=10`,
+`runs_analisados=31` e `runs_precificados=31`, sem alertas. Interpretacao:
+Sonnet agora esta validado em `EXTRAIR_QUESTOES` e `EXTRAIR_GABARITO`; ainda nao
+esta pipeline-ready, e as proximas etapas devem continuar em escada controlada
+por custo.
 
 Atualizacao agregados Matemática-V de 2026-05-19: o smoke inicial em
 `737a709` revelou um bug de produto: `desempenho_tarefa` de

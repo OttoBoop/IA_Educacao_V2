@@ -165,6 +165,16 @@ para `record_count=9`, `token_usage_analisados=9`, `runs_precificados=30`,
 duravel; o documento Sonnet anterior (`147b412840c2b618`) continua sem
 `token_usage_ids` porque foi criado antes do patch.
 
+Continuidade do mesmo gate de custo, agora em Anthropic: Sonnet 4.5 rodou
+`EXTRAIR_GABARITO` no site oficial com `task_f6f7260d5a77`, atividade
+`f68d57a9a339081f`, Diana Omega, apenas a etapa selecionada. Resultado:
+`completed`, doc `ce57fd9cc1cbbdac`, `7731/1585` tokens, `US$0.046968`,
+`usage_7a50263d5d16434c` e `/api/custos/status?limit=540` com
+`record_count=10`, `token_usage_analisados=10`, `runs_precificados=31`,
+`alertas=[]`. Barreira respondida e registrada: Sonnet nao esta mais parado em
+conexao ou Q/G, mas continua sem validacao de R/Corr/Hab/Rel/full pipeline; a
+escada deve seguir isolada para nao gastar Sonnet como se fosse fallback.
+
 ## Dados De Teste Escolhidos
 
 Atividade principal para pipeline individual:
