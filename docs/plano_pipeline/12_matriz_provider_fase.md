@@ -6,7 +6,7 @@
 (`f68d57a9a339081f`) e atividade textual `Prova 1 - Equações do 1º Grau`
 (`8f58cc8b5fb75869`) e Matemática-V (`0f615b57854235ec`) para agregados
 oficiais.
-**Runtime oficial atual:** backend Render em `c8f538a`; `origin/main` recebeu os
+**Runtime oficial atual:** backend Render em `518f8a2`; `origin/main` recebeu os
 ciclos Google `9dbb122`/`8de0ab3` para preservar `retry_after` de provider e
 fazer retry por request Google sem trocar modelo, `2d08eec` para impedir retry
 que reintroduzia Markdown em JSON, `d7313a6` para remover duplicacao de
@@ -18,7 +18,8 @@ aceitar envelope Markdown. `737a709` preparou a migration segura de custos e
 `bc96faf` corrige a coleta dos agregados para usar uma narrativa legivel por
 aluno/atividade, sem contar historico de documentos como alunos extras, e
 `c8f538a` faz o endpoint de custos alertar quando `token_usage` esta duravel mas
-sem registros row-level. O
+sem registros row-level, e `518f8a2` passa a persistir `TokenUsageRecord` para
+runs de tool-use com documentos. O
 codigo funcional de batch mais recente continua sendo `9b68de1`, incluido no
 runtime atual.
 Use
@@ -48,9 +49,9 @@ Use
 - O servico oficial em 2026-05-17 e
   `srv-d5t8gbh4tr6s738fr3s0` (`IA_Educacao_V2`), branch `main`,
   `rootDir=backend`, URL `https://ia-educacao-v2.onrender.com`.
-- `/api/deploy-info` confirmou o runtime backend `c8f538a` com
+- `/api/deploy-info` confirmou o runtime backend `518f8a2` com
   `source=RENDER_GIT_COMMIT`; esse e o gate primario atual para codigo live.
-- `origin/main` aponta para `c8f538a`. O gate de comportamento
+- `origin/main` aponta para `518f8a2`. O gate de comportamento
   provider/pipeline continua sendo `/api/deploy-info` com no-cache e smokes
   live, nao apenas commit local.
 - `/api/custos/status?limit=100` em `c8f538a` retornou `ok=true`,
@@ -68,6 +69,9 @@ Use
   runs de tool-use que geram documentos e em provider error com documento
   parcial. O custo nao deve duplicar porque o resumo deduplica por
   `cost_run_id`. Validacao local: `test_cost_tracking.py` com `33 passed`.
+- Deploy `518f8a2` confirmou essa mudanca no site oficial: novo
+  `desempenho_tarefa` `run-20260519-115020` gravou `usage_38b5132cecab4e38`,
+  elevou `record_count` para `1` e manteve custo deduplicado em `US$0.012258`.
 - Smoke pos-deploy de catalogo: `/api/settings/model-catalog/calculate-cost`
   retornou para o perfil `74257/12403`: Gemini 2.5 Flash `US$ 0.053285`,
   Gemini 2.5 Flash Lite `US$ 0.012387`, Gemini 3 Flash `US$ 0.074338`.

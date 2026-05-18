@@ -17,7 +17,7 @@ ou chamar etapa bloqueada de sucesso continua proibido.
 - URL oficial: `https://ia-educacao-v2.onrender.com`.
 - Runtime inicial observado: `0411f9a`.
 - Runtime final do subloop Google original: `a7f02a3`.
-- Runtime funcional oficial atual: `c8f538a`.
+- Runtime funcional oficial atual: `518f8a2`.
 - Health final: `/api/health` retornou `{"status":"healthy","supabase":true}`.
 - `origin/main` no fechamento Google: `a7f02a31fc04606de82e22bec3345150fff9ead6`;
   depois avançou para `d3579606a35273ff7519a7d13231be268824f711`.
@@ -505,10 +505,13 @@ Interpretação nova:
   confunde "tabela existe" com "falhas sem documento ja foram persistidas".
   Smoke live: `/api/custos/status?limit=100` retornou `ok=true` e
   `alertas[0].tipo=token_usage_sem_registros`.
-- Patch local seguinte: cada execução tool-use com tokens passa a registrar
+- Patch `518f8a2`: cada execução tool-use com tokens passa a registrar
   `TokenUsageRecord` row-level mesmo quando documentos JSON/PDF são gerados.
   Como documentos e usage compartilham `cost_run_id`, o custo continua contado
   uma vez só. Validacao local: `test_cost_tracking.py` com `33 passed`.
+  Smoke live: `run-20260519-115020` criou docs `6b174d9b7b9d8873` /
+  `36ddf06eabb9da00` e usage `usage_38b5132cecab4e38`; `/api/custos/status`
+  passou para `record_count=1`, `token_usage_analisados=1`, `alertas=[]`.
 
 ## Interpretação
 

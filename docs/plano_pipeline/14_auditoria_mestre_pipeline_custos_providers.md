@@ -10,8 +10,8 @@ um deve ser lido, o que ainda vale, o que ficou historico, e quais fatos precisa
 guiar os proximos ciclos.
 
 Atualizacao curta de 2026-05-19 para qualquer IA retomando apos compactar:
-`/api/deploy-info` confirma Render em `c8f538a`, e `origin/main` tambem esta em
-`c8f538a`. O runtime contem a correcao `bc96faf` para falso agregado de
+`/api/deploy-info` confirma Render em `518f8a2`, e `origin/main` tambem esta em
+`518f8a2`. O runtime contem a correcao `bc96faf` para falso agregado de
 desempenho: antes,
 `desempenho_tarefa` de Matemática-V/Alpha-V contava versões historicas de
 `RELATORIO_FINAL` como alunos (`12` incluidos, `4` excluidos). Agora o executor
@@ -32,10 +32,12 @@ alerta informativo `token_usage_sem_registros` para o caso "tabela duravel, zero
 mantem `ok=true` quando a migration esta aplicada, mas impede leitura enganosa
 de que a camada row-level ja foi exercitada. Teste local: `test_cost_tracking.py`
 com `32 passed`; smoke live `/api/custos/status?limit=100` confirmou o alerta.
-Patch local seguinte amplia o proprio registro: runs de tool-use bem-sucedidos
+O commit `518f8a2` amplia o proprio registro: runs de tool-use bem-sucedidos
 e provider errors com documento parcial tambem passam a criar `TokenUsageRecord`
 row-level com o mesmo `cost_run_id`, preservando deduplicacao de custo no
-resumo. Teste local: `test_cost_tracking.py` com `33 passed`.
+resumo. Teste local: `test_cost_tracking.py` com `33 passed`. Smoke live:
+`run-20260519-115020` gravou `usage_38b5132cecab4e38`, `record_count=1`,
+`token_usage_analisados=1` e nenhum alerta de `token_usage_sem_registros`.
 
 Atualizacao de controle de 2026-05-17: o runtime mais recente confirmado no site
 oficial e `0411f9a`, validado por `/api/deploy-info` com

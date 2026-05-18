@@ -4,13 +4,14 @@
 **Responsavel operacional:** Paulo
 **Status geral:** o servico oficial Render
 `srv-d5t8gbh4tr6s738fr3s0` (`IA_Educacao_V2`, branch `main`, URL
-`https://ia-educacao-v2.onrender.com`) esta em runtime `c8f538a`
-(`fix: surface empty durable token usage`), validado por
-`/api/deploy-info`, `/api/health` e `./scripts/wait_deploy.sh c8f538a`.
-`origin/main` tambem aponta para `c8f538a`. O codigo funcional de pipeline
+`https://ia-educacao-v2.onrender.com`) esta em runtime `518f8a2`
+(`fix: persist token usage for tool runs`), validado por
+`/api/deploy-info`, `/api/health` e `./scripts/wait_deploy.sh 518f8a2`.
+`origin/main` tambem aponta para `518f8a2`. O codigo funcional de pipeline
 inclui os ciclos Anthropic/Google ate `d357960`, o preparo seguro de migration
 `737a709`, a correcao de desempenho agregado `bc96faf` e a observabilidade de
-`token_usage` vazio `c8f538a`.
+`token_usage` vazio `c8f538a`, agora fechado por persistencia row-level em
+`518f8a2`.
 
 Estado funcional consolidado: documentos com `status=erro` nao contam como
 progresso; correcao sem itens avaliaveis nao vira `completo=true`; ranking,
@@ -107,13 +108,20 @@ com `32 passed`. Deploy: `./scripts/wait_deploy.sh c8f538a` confirmou o
 runtime, e `/api/custos/status?limit=100` retornou `alertas[0].tipo =
 token_usage_sem_registros`.
 
-Atualizacao row-level de custos de 2026-05-19: patch local posterior passa a
+Atualizacao row-level de custos de 2026-05-19: o commit `518f8a2` passa a
 registrar `TokenUsageRecord` tambem para runs de tool-use que geram documentos,
 nao apenas falhas sem documento. O resumo ja deduplica documentos e
 `token_usage` por `cost_run_id`, entao o objetivo e rastreabilidade duravel por
 execucao sem duplicar custo. Tambem passou a registrar provider error com
 documento parcial. Validacoes locais: `py_compile`, `git diff --check` e
-`backend/tests/unit/test_cost_tracking.py` com `33 passed`.
+`backend/tests/unit/test_cost_tracking.py` com `33 passed`. Smoke oficial:
+`desempenho_tarefa-sync` em Matemática-V/Alpha-V gerou
+`run-20260519-115020`, documentos `6b174d9b7b9d8873` e
+`36ddf06eabb9da00`, `15893/2996` tokens, `US$0.012258`, e
+`/api/custos/status?limit=120` confirmou `token_usage_backend.supabase.record_count=1`,
+`token_usage_analisados=1`, sem alertas. A amostra do resumo mostra
+`token_usage_ids=["usage_38b5132cecab4e38"]` no mesmo `cost_run_id`
+`tool_64a238dd3fd3`, provando deduplicacao.
 
 Atualizacao chaves seguras de 2026-05-18: qualquer chave colada em chat e
 tratada como exposta e nao deve ser usada para producao. O caminho operacional
