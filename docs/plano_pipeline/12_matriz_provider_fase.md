@@ -6,7 +6,7 @@
 (`f68d57a9a339081f`) e atividade textual `Prova 1 - Equações do 1º Grau`
 (`8f58cc8b5fb75869`) e Matemática-V (`0f615b57854235ec`) para agregados
 oficiais.
-**Runtime oficial atual:** backend Render em `518f8a2`; `origin/main` recebeu os
+**Runtime oficial atual:** backend Render em `58781a1`; `origin/main` recebeu os
 ciclos Google `9dbb122`/`8de0ab3` para preservar `retry_after` de provider e
 fazer retry por request Google sem trocar modelo, `2d08eec` para impedir retry
 que reintroduzia Markdown em JSON, `d7313a6` para remover duplicacao de
@@ -19,7 +19,8 @@ aceitar envelope Markdown. `737a709` preparou a migration segura de custos e
 aluno/atividade, sem contar historico de documentos como alunos extras, e
 `c8f538a` faz o endpoint de custos alertar quando `token_usage` esta duravel mas
 sem registros row-level, e `518f8a2` passa a persistir `TokenUsageRecord` para
-runs de tool-use com documentos. O
+runs de tool-use com documentos. `58781a1` prefere PDFs validos nos agregados e
+ignora versões historicas `.json`/`.md` quando existe PDF para o aluno. O
 codigo funcional de batch mais recente continua sendo `9b68de1`, incluido no
 runtime atual.
 Use
@@ -49,18 +50,17 @@ Use
 - O servico oficial em 2026-05-17 e
   `srv-d5t8gbh4tr6s738fr3s0` (`IA_Educacao_V2`), branch `main`,
   `rootDir=backend`, URL `https://ia-educacao-v2.onrender.com`.
-- `/api/deploy-info` confirmou o runtime backend `518f8a2` com
+- `/api/deploy-info` confirmou o runtime backend `58781a1` com
   `source=RENDER_GIT_COMMIT`; esse e o gate primario atual para codigo live.
-- `origin/main` aponta para `518f8a2`. O gate de comportamento
+- `origin/main` aponta para `58781a1`. O gate de comportamento
   provider/pipeline continua sendo `/api/deploy-info` com no-cache e smokes
   live, nao apenas commit local.
 - `/api/custos/status?limit=100` em `c8f538a` retornou `ok=true`,
   `custos_persistencia_status=duravel`,
   `token_usage_backend.supabase.table_available=true`, `error_code=null` e
-  `token_usage_backend.durable=true`. Ressalva: `token_usage_analisados=0`,
-  entao a proxima frente de custos deve provar escrita row-level em
-  `public.token_usage`; por enquanto as evidencias novas de custo vêm da
-  metadata duravel dos documentos agrupada por `cost_run_id`.
+  `token_usage_backend.durable=true`, mas ainda com `token_usage_analisados=0`.
+  Esse bloqueio foi fechado depois: smokes em `518f8a2` e `58781a1` elevaram
+  `record_count` para `2`, `token_usage_analisados=2` e `alertas=[]`.
 - `c8f538a` adicionou alerta informativo `token_usage_sem_registros` quando
   essa tabela existe, mas continua vazia. Validacao local:
   `test_cost_tracking.py` com `32 passed`; smoke live em
@@ -72,6 +72,11 @@ Use
 - Deploy `518f8a2` confirmou essa mudanca no site oficial: novo
   `desempenho_tarefa` `run-20260519-115020` gravou `usage_38b5132cecab4e38`,
   elevou `record_count` para `1` e manteve custo deduplicado em `US$0.012258`.
+- Deploy `58781a1` confirmou a preferencia por PDF em agregados:
+  `desempenho_materia` Matemática-V `run-20260519-120054` ficou `PARCIAL` por
+  apenas um dado ausente real (Erik/Omega sem `RELATORIO_FINAL`), sem os avisos
+  antigos de Daniel/Beta-V; custo `28889/3299`, `US$0.016914`, usage
+  `usage_c53952166c3d40ce`, `record_count=2`, `token_usage_analisados=2`.
 - Smoke pos-deploy de catalogo: `/api/settings/model-catalog/calculate-cost`
   retornou para o perfil `74257/12403`: Gemini 2.5 Flash `US$ 0.053285`,
   Gemini 2.5 Flash Lite `US$ 0.012387`, Gemini 3 Flash `US$ 0.074338`.
@@ -374,7 +379,7 @@ Fontes de preco:
 | `180b8298a279` | gpt-4o | `openai/gpt-4o` | T/V | `2.50/10.00` | catalogo | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | `task_68b19146a95b`: `US$ 0.314369` | `US$ 0.309673` | Manter como referencia, nao fallback silencioso. |
 | `588f3efe7975` | Claude Haiku 4.5 | `anthropic/claude-haiku-4-5-20251001` | T/V | `1.00/5.00` | oficial Anthropic | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ Beatriz | Pos-`d357960`, pipeline individual completa validada por artefatos oficiais: Q `d11486043fd2856e`, G `55bbe9f20a79d3f7`, R `fa21df6427683bca`, Corr `cf52ae50099a7623`, Hab `cff266a64d1d4256`, Rel `611f9ae8226692cf`/`60fe1cc4dfd2a1af`; `118025/32892`, `US$0.282485` | `US$ 0.136272` | Repetir em outro aluno/dataset; manter Sonnet pausado ate precisar comparar qualidade. |
 | `4eaeb5105f5d` | Claude Sonnet 4.5 | `anthropic/claude-sonnet-4-5-20250929` | T/V | `3.00/15.00` | oficial Anthropic | ❌ | ⏸️ | ⏸️ | ⏸️ | ⏸️ | ⏸️ | ❌ primeira etapa | `task_b19524abfdd5` em `EXTRAIR_QUESTOES` falhou por JSON dentro de Markdown; erro `4200/1491`, `US$0.034965` | `US$ 0.408816` | Nao gastar em full Sonnet ate resolver JSON cru nas extrações. |
-| `gem25flash001` | Gemini 2.5 Flash | `google/gemini-2.5-flash` | T/V | `0.30/2.50` | oficial Google | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ Beatriz + agregados Matemática-V | Pipeline individual `task_ca5dd6b8b3b5`: seis etapas OK, `117829/31691`, `US$0.114578`; agregados pos-`bc96faf`: tarefa `run-20260519-112430` completa `15858/3404`, `US$0.013267`; turma `run-20260519-112612` completa `30310/9049`, `US$0.031716`; materia `run-20260519-112841` parcial honesta, `34922/4815`, `US$0.022514`. | `US$ 0.053285` | Proximo: revalidar outro aluno/turma e investigar escrita row-level em `token_usage`; manter avisos de materia como dados a limpar, nao falha do modelo. |
+| `gem25flash001` | Gemini 2.5 Flash | `google/gemini-2.5-flash` | T/V | `0.30/2.50` | oficial Google | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ Beatriz + agregados Matemática-V | Pipeline individual `task_ca5dd6b8b3b5`: seis etapas OK, `117829/31691`, `US$0.114578`; agregados: tarefa `run-20260519-112430` completa `15858/3404`, `US$0.013267`; turma `run-20260519-112612` completa `30310/9049`, `US$0.031716`; materia pos-`58781a1` `run-20260519-120054` parcial honesta por Erik/Omega sem relatório, `28889/3299`, `US$0.016914`, usage `usage_c53952166c3d40ce`. | `US$ 0.053285` | Proximo: completar `RELATORIO_FINAL` do Erik/Omega e limpar JSON extra `stale_tool_artifact`; row-level basico ja esta provado com `record_count=2`. |
 | `gem25lite001` | Gemini 2.5 Flash Lite | `google/gemini-2.5-flash-lite` | T/V | `0.10/0.40` | oficial Google | ⏸️ | ⏸️ | ⏸️ | ❌ | ⏸️ | ⏸️ | ❌ em `CORRIGIR` | `task_44ec067a3d82` apos `a7f02a3`: JSON salvo, mas sem schema minimo; erro `8c875cf984e55e91`, `31602/5201`, `US$0.005241` | `US$ 0.012387` | Nao subir para agregado; testar Gemini 3 Flash ou desenhar prompt menor especifico para Lite. |
 | `gem3flash001` | Gemini 3 Flash | `google/gemini-3-flash-preview` | T/V | `0.50/3.00` | oficial Google | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ Beatriz | `task_24fe4d7b7ecc`: seis etapas OK, `181550/33182`, `US$0.190321`; `desempenho_tarefa` parcial `US$0.087748` | `US$ 0.074338` | Manter como validado, mas preferir Flash quando custo/latencia importarem. |
 | `e251747cd7a2` | Gemini 2.5 Pro | `google/gemini-2.5-pro` | T/V | `1.25/10.00` ate 200k prompt | oficial Google | ⏸️ | ⏸️ | ⏸️ | ⏸️ | ⏸️ | ⏸️ | 🚫 quota | Sweep live: conexao bloqueada por Google `429` | `US$ 0.216851` | Testar conexao e uma etapa quando quota permitir. |
@@ -408,7 +413,7 @@ nao sao a mesma coisa que `GERAR_RELATORIO` individual. Eles usam os endpoints
 | Modelo Google | `desempenho_tarefa` | `desempenho_turma` | `desempenho_materia` | Evidencia | Proximo passo |
 |---|:---:|:---:|:---:|---|---|
 | `gem25lite001` | ⏸️ | ⏸️ | ⏸️ | Nao executado: `CORRIGIR` falhou alto apos `a7f02a3` por JSON sem schema minimo. | Nao subir para agregado sem novo patch especifico para Lite. |
-| `gem25flash001` | ✅ | ✅ | ⚠️ | Pos-`bc96faf`: tarefa `run-20260519-112430` completa, 2 alunos/0 excluidos, `US$0.013267`; turma `run-20260519-112612` completa, 4 narrativas/2 atividades, `US$0.031716`; materia `run-20260519-112841` gerou PDF/JSON com 3 turmas e 11 narrativas, `US$0.022514`, mas status parcial por avisos explícitos em Beta/Omega. | Limpar/renomear historicos ilegiveis e completar `RELATORIO_FINAL` do smoke Omega; repetir materia depois. |
+| `gem25flash001` | ✅ | ✅ | ⚠️ | Tarefa `run-20260519-112430` completa, 2 alunos/0 excluidos, `US$0.013267`; turma `run-20260519-112612` completa, 4 narrativas/2 atividades, `US$0.031716`; materia pos-`58781a1` `run-20260519-120054` gerou PDF/JSON com 3 turmas e 11 narrativas, `US$0.016914`, e ficou parcial por um aviso real: Erik/Omega sem `RELATORIO_FINAL`. | Completar `RELATORIO_FINAL` do smoke Omega; investigar por que o modelo ainda cria um JSON extra marcado como `stale_tool_artifact`. |
 | `gem3flash001` | ✅ | ⏸️ | ⏸️ | `desempenho_tarefa` parcial em `run-20260518-162141`, `US$0.087748`; turma/materia nao rodados para conter custo, ja que Flash cobriu turma. | Rodar turma so se precisarmos comparar qualidade; materia continua bloqueada por dados. |
 | `e251747cd7a2` | ⏸️ | ⏸️ | ⏸️ | Pro nao foi retestado neste ciclo para poupar custo. | Testar conexao so depois de resolver billing/rate-limit dos modelos baratos. |
 

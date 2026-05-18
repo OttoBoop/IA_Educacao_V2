@@ -17,14 +17,15 @@ ou chamar etapa bloqueada de sucesso continua proibido.
 - URL oficial: `https://ia-educacao-v2.onrender.com`.
 - Runtime inicial observado: `0411f9a`.
 - Runtime final do subloop Google original: `a7f02a3`.
-- Runtime funcional oficial atual: `518f8a2`.
+- Runtime funcional oficial atual: `58781a1`.
 - Health final: `/api/health` retornou `{"status":"healthy","supabase":true}`.
 - `origin/main` no fechamento Google: `a7f02a31fc04606de82e22bec3345150fff9ead6`;
-  depois avançou para `d3579606a35273ff7519a7d13231be268824f711`.
+  depois avançou ate `58781a139983268726960cc8858525623d64be91`.
 - Persistencia duravel de `token_usage`: migration aplicada; `/api/custos/status`
   retorna `ok=true`, `table_available=true`, `error_code=null` e
-  `token_usage_backend.durable=true`. Ressalva: `token_usage_analisados=0`
-  nos smokes recentes, entao ainda falta provar escrita row-level na tabela.
+  `token_usage_backend.durable=true`. Smokes oficiais em `518f8a2` e `58781a1`
+  provaram escrita row-level: `record_count=2`, `token_usage_analisados=2`,
+  `alertas=[]`. Ainda falta ampliar a prova para falhas sem documento final.
 
 ## Dados De Teste Escolhidos
 
@@ -512,6 +513,22 @@ Interpretação nova:
   Smoke live: `run-20260519-115020` criou docs `6b174d9b7b9d8873` /
   `36ddf06eabb9da00` e usage `usage_38b5132cecab4e38`; `/api/custos/status`
   passou para `record_count=1`, `token_usage_analisados=1`, `alertas=[]`.
+- Patch `58781a1`: agregados passam a preferir `RELATORIO_FINAL` em PDF quando
+  existe PDF para o aluno, ignorando versões historicas `.json`/`.md` que antes
+  geravam falso aviso de arquivo ilegivel. Validacoes locais:
+  `py_compile`, `git diff --check`, `test_f1_desempenho_narrative_reading.py`,
+  `test_desempenho_materia_prereqs.py`,
+  `test_b3_c3_d3_desempenho_implementation.py` e
+  `test_desempenho_no_duplicate_save.py` com `20 passed`.
+  Deploy: `./scripts/check_deploy.sh 58781a1` confirmou Render.
+  Smoke live: `run-20260519-120054` em Matemática-V com `gem25flash001`,
+  `status=PARCIAL`, 3 turmas, 11 narrativas, cobertura Alpha-V `4`, Beta-V `4`,
+  Omega-V `3`, apenas um aviso real (`Erik` sem `RELATORIO_FINAL` na atividade
+  `Smoke Paulo Pipeline 2026-05-16`). Docs: PDF `1500c163ad6efab8`, JSON
+  oficial `4722445c303f9393`, JSON extra `814489ad08fab682` marcado como
+  `erro`/`stale_tool_artifact`. Custo: `28889/3299`, `US$0.016914`,
+  `usage_c53952166c3d40ce`; `/api/custos/status?limit=160` passou para
+  `record_count=2`, `token_usage_analisados=2`, `alertas=[]`.
 
 ## Interpretação
 
@@ -596,4 +613,4 @@ Interpretação:
 - A validação do parser continua bloqueante; o sistema não passou a aceitar Markdown como JSON.
 - O task id da full pipeline não foi preservado pelo cliente local de polling, mas os artefatos, o runtime `d357960` e `/api/custos/resumo` confirmam o ciclo completo.
 - Haiku custa mais que Gemini 2.5 Flash neste caso (`US$0.282485` vs `US$0.114578`) e menos que alguns OpenAI/GPT-4o históricos; vale como provider funcional, não como default automático.
-- Atualizacao 2026-05-19: a migration `backend/migrations/002_create_token_usage.sql` foi aplicada; `token_usage_durable=true`. O novo bloqueio estrutural e provar escrita row-level, pois `token_usage_analisados=0` nos smokes recentes.
+- Atualizacao 2026-05-19: a migration `backend/migrations/002_create_token_usage.sql` foi aplicada; `token_usage_durable=true`. Naquele momento ainda faltava provar escrita row-level; isso foi fechado depois por `518f8a2` e `58781a1`, que levaram `record_count` para `2` e `token_usage_analisados=2`.

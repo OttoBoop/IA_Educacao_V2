@@ -4,14 +4,14 @@
 **Responsavel operacional:** Paulo
 **Status geral:** o servico oficial Render
 `srv-d5t8gbh4tr6s738fr3s0` (`IA_Educacao_V2`, branch `main`, URL
-`https://ia-educacao-v2.onrender.com`) esta em runtime `518f8a2`
-(`fix: persist token usage for tool runs`), validado por
-`/api/deploy-info`, `/api/health` e `./scripts/wait_deploy.sh 518f8a2`.
-`origin/main` tambem aponta para `518f8a2`. O codigo funcional de pipeline
+`https://ia-educacao-v2.onrender.com`) esta em runtime `58781a1`
+(`fix: prefer pdf narratives in aggregate desempenho`), validado por
+`/api/deploy-info`, `/api/health` e `./scripts/check_deploy.sh 58781a1`.
+`origin/main` tambem aponta para `58781a1`. O codigo funcional de pipeline
 inclui os ciclos Anthropic/Google ate `d357960`, o preparo seguro de migration
 `737a709`, a correcao de desempenho agregado `bc96faf` e a observabilidade de
 `token_usage` vazio `c8f538a`, agora fechado por persistencia row-level em
-`518f8a2`.
+`518f8a2`, alem da preferencia por PDF narrativo em agregados em `58781a1`.
 
 Estado funcional consolidado: documentos com `status=erro` nao contam como
 progresso; correcao sem itens avaliaveis nao vira `completo=true`; ranking,
@@ -22,10 +22,11 @@ task progress e custos; o dashboard mostra o bloqueio de migration
 Depois da aplicacao da migration Supabase, `/api/custos/status` retorna
 `ok=true`, `custos_persistencia_status=duravel`,
 `token_usage_backend.supabase.table_available=true`, `error_code=null` e
-`token_usage_durable=true`. Ressalva importante: `token_usage_analisados=0` nos
-smokes mais recentes, entao o custo oficial ainda esta vindo principalmente da
-metadata duravel dos documentos; o proximo ciclo de custos deve garantir escrita
-row-level efetiva em `public.token_usage` para falhas sem documento.
+`token_usage_durable=true`. O gate row-level foi exercitado: apos smokes oficiais
+em `518f8a2` e `58781a1`, `/api/custos/status?limit=160` mostra
+`token_usage_backend.supabase.record_count=2`, `token_usage_analisados=2` e
+`alertas=[]`. O proximo ciclo de custos deve cobrir tambem falhas sem documento
+final, mas a escrita duravel basica ja esta provada.
 
 Estado de providers: GPT-4.1, GPT-5.4 Mini, GPT-4o e GPT-5 Nano seguem
 referencias OpenAI na fixture Diana. Nano agora passou as seis etapas em uma
@@ -50,11 +51,16 @@ no site oficial para pipeline completa de Beatriz (`task_ca5dd6b8b3b5`,
 Matemática-V: `desempenho_tarefa` completo (`run-20260519-112430`,
 2 alunos/0 excluidos, `15858/3404`, `US$0.013267`), `desempenho_turma`
 completo (`run-20260519-112612`, 4 narrativas/2 atividades, `30310/9049`,
-`US$0.031716`) e `desempenho_materia` parcial honesto
-(`run-20260519-112841`, 3 turmas, 11 narrativas, `34922/4815`,
-`US$0.022514`). O parcial de materia nao e falha silenciosa: os avisos nomeiam
-dois arquivos antigos ilegiveis do Daniel em Beta-V e um aluno sem
-`RELATORIO_FINAL` na atividade smoke de Omega-V. Gemini 2.5 Pro nao foi
+`US$0.031716`) e `desempenho_materia` parcial honesto. Em `bc96faf`, o run
+`run-20260519-112841` ainda trazia dois avisos antigos de Daniel/Beta-V e um de
+Erik/Omega-V (`34922/4815`, `US$0.022514`). O commit `58781a1` refinou a coleta:
+quando existe PDF valido para o aluno, versões `.json`/`.md` historicas nao
+derrubam o agregado. Re-smoke oficial `run-20260519-120054`: `PARCIAL`, 3
+turmas, 11 narrativas, um unico aviso real (`Erik` sem `RELATORIO_FINAL` no
+smoke Omega), docs `1500c163ad6efab8`/`4722445c303f9393` e JSON extra
+`814489ad08fab682` marcado como `status=erro`, `28889/3299`, `US$0.016914`,
+`usage_c53952166c3d40ce`. O parcial de materia nao e falha silenciosa: o dado
+faltante restante esta nomeado. Gemini 2.5 Pro nao foi
 retestado neste ciclo para
 poupar custo. Anthropic foi atualizado pelo fluxo seguro; depois dos commits
 `334825d`, `62fa27d`, `e548816` e `d357960`, Haiku 4.5 passou pipeline
@@ -67,8 +73,8 @@ local de polling, mas o aceite fica nos artefatos oficiais, no runtime
 `d357960` e no custo em `/api/custos/resumo`. Ollama esta indisponivel no Render.
 Supabase `token_usage` nao esta mais ausente: a migration foi aplicada e
 `/api/custos/status` retorna `ok=true`, `table_available=true` e `durable=true`.
-O gate restante e confirmar escrita row-level em `public.token_usage`, porque
-os smokes recentes ainda exibem `token_usage_analisados=0`.
+O gate row-level basico tambem esta confirmado por `record_count=2`; falta
+estender a cobertura para falhas sem documento final.
 
 Atualizacao agregados Matemática-V de 2026-05-19: o smoke inicial em
 `737a709` revelou um bug de produto: `desempenho_tarefa` de
@@ -80,9 +86,9 @@ alunos matriculados como denominador. Validacoes locais:
 `py_compile`, `git diff --check` e suite focada de desempenho `56 passed`.
 Smokes oficiais pos-deploy: tarefa `COMPLETO` (`2/0`, `US$0.013267`), turma
 `COMPLETO` (`4` narrativas, `US$0.031716`) e materia `PARCIAL` com avisos
-explícitos (`11` narrativas, `US$0.022514`). Proximo alvo: verificar por que a
-tabela duravel `token_usage` continua sem linhas analisadas, apesar de custos
-por metadata/documento estarem persistidos e agrupados.
+explícitos (`11` narrativas, `US$0.022514`). Esse alvo de custos foi fechado em
+`518f8a2`/`58781a1`: a tabela duravel agora tem registros row-level e o proximo
+alvo virou cobrir falhas sem documento final.
 
 Atualizacao custos duraveis de 2026-05-19: a migration
 `backend/migrations/002_create_token_usage.sql` foi aplicada com credencial SQL
@@ -91,10 +97,9 @@ preview mascarado e status; nenhum segredo foi registrado. Validacao oficial:
 `/api/custos/status?limit=100` retorna `ok=true`,
 `custos_persistencia_status=duravel`,
 `token_usage_backend.supabase.table_available=true`, `error_code=null`,
-`missing_migration=false` e `token_usage_backend.durable=true`. O ponto aberto
-mudou de "criar tabela" para "confirmar escrita row-level": os resumos recentes
-continuam com `token_usage_analisados=0`, enquanto custos por documento e
-`cost_run_id` estao duraveis em metadata.
+`missing_migration=false` e `token_usage_backend.durable=true`. Esse bloco e o
+estado imediatamente apos a migration; depois, `518f8a2` e `58781a1` provaram
+escrita row-level com `record_count=2` e `token_usage_analisados=2`.
 
 Atualizacao observabilidade de custos de 2026-05-19: apos diagnosticar que
 `token_usage_durable=true` podia parecer "resolvido" mesmo com
@@ -122,6 +127,30 @@ documento parcial. Validacoes locais: `py_compile`, `git diff --check` e
 `token_usage_analisados=1`, sem alertas. A amostra do resumo mostra
 `token_usage_ids=["usage_38b5132cecab4e38"]` no mesmo `cost_run_id`
 `tool_64a238dd3fd3`, provando deduplicacao.
+
+Atualizacao agregados Matemática-V pos-`58781a1`: o commit
+`fix: prefer pdf narratives in aggregate desempenho` foi publicado no GitHub e
+confirmado no Render por `/api/deploy-info`, `/api/health` e
+`./scripts/check_deploy.sh 58781a1`. Validacoes locais antes do push:
+`py_compile`, `git diff --check`, `test_f1_desempenho_narrative_reading.py`,
+`test_desempenho_materia_prereqs.py`,
+`test_b3_c3_d3_desempenho_implementation.py` e
+`test_desempenho_no_duplicate_save.py` com `20 passed` no bloco focado. Smoke
+oficial: `/api/executar/desempenho-materia-sync` para Matemática-V
+(`0f615b57854235ec`) com `gem25flash001` retornou `sucesso=true`,
+`status=PARCIAL`, `total_turmas=3`, `narrativas_encontradas=11`, cobertura
+Alpha-V `4`, Beta-V `4`, Omega-V `3`, e apenas um aviso:
+`4ae10210c8acbaa5` sem `RELATORIO_FINAL` na atividade `Smoke Paulo Pipeline
+2026-05-16`. Os avisos antigos de Daniel/Beta-V desapareceram porque havia PDF
+valido e os formatos historicos nao-PDF deixaram de contaminar a leitura. O
+custo medido caiu para `28889/3299`, `US$0.016914`; readback em
+`/api/desempenho/materia/0f615b57854235ec` mostrou `run-20260519-120054`, PDF
+`1500c163ad6efab8`, JSON oficial `4722445c303f9393` e JSON extra
+`814489ad08fab682` marcado como `erro`/`stale_tool_artifact`. Esse artefato
+extra nao e falso verde, mas vira proximo alvo de limpeza de outputs agregados.
+`/api/custos/status?limit=160` subiu para `record_count=2`,
+`token_usage_analisados=2`, `alertas=[]`, com usage
+`usage_c53952166c3d40ce`.
 
 Atualizacao chaves seguras de 2026-05-18: qualquer chave colada em chat e
 tratada como exposta e nao deve ser usada para producao. O caminho operacional
