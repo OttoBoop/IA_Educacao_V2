@@ -35,6 +35,13 @@ def executor_com_mock():
     return executor
 
 
+@pytest.fixture(autouse=True)
+def no_token_usage_writes():
+    """These resposta_raw tests should not exercise durable cost persistence."""
+    with patch("executor.record_token_usage"):
+        yield
+
+
 def _make_tool_response(
     content="",
     tool_calls=None,
@@ -291,6 +298,8 @@ class TestMaxIterationsSentinel:
             "resposta_raw must contain create_document content even on max_iterations. "
             f"Got: {result.resposta_raw!r}"
         )
+        assert result.sucesso is False
+        assert "Limite máximo" in result.erro
 
     @pytest.mark.asyncio
     async def test_max_iterations_adds_alert(
@@ -335,3 +344,5 @@ class TestMaxIterationsSentinel:
             "An alert about max iterations must be added when the limit is exceeded. "
             f"Got alerts: {result.alertas}"
         )
+        assert result.sucesso is False
+        assert "Limite máximo" in result.erro

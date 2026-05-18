@@ -5116,10 +5116,17 @@ Seja preciso, educativo e construtivo em suas análises."""
                 alertas.append({"tipo": "info", "mensagem": f"Documentos gerados: {documentos_gerados}"})
 
             # F2-T2: Check for max_iterations error and add alert
-            if resposta.get("error") == "max_iterations_exceeded":
+            max_iterations_exceeded = any(
+                isinstance(resp, dict) and resp.get("error") == "max_iterations_exceeded"
+                for resp in respostas_tool
+            )
+            if max_iterations_exceeded:
                 alertas.append({
                     "tipo": "aviso",
-                    "mensagem": "Limite máximo de iterações de tools atingido. Resultado pode estar incompleto."
+                    "mensagem": (
+                        "Limite máximo de iterações de tools atingido. "
+                        "A etapa falhará sem fallback automático."
+                    )
                 })
 
             # F2-T1: Extract resposta_raw from create_document tool content
@@ -5156,6 +5163,71 @@ Seja preciso, educativo e construtivo em suas análises."""
 
             pdf_fallback_used = False
             final_state = _dual_output_state(respostas_tool) if dual_output_expected else {"complete": True}
+
+            if max_iterations_exceeded:
+                tokens_entrada = _sum_usage(respostas_tool, "input_tokens") or _sum_usage(respostas_tool, "tokens")
+                tokens_saida = _sum_usage(respostas_tool, "output_tokens")
+                tokens_total = tokens_entrada + tokens_saida
+                response_debug = _safe_response_debug(respostas_tool)
+                erro_msg = (
+                    "Limite máximo de iterações de tools atingido. "
+                    "A etapa falhou para evitar conclusão falsa; o modelo solicitado "
+                    "deve produzir os artefatos obrigatórios dentro do limite."
+                )
+                for doc_id in context.created_document_ids:
+                    self.storage.atualizar_documento_processamento(
+                        doc_id,
+                        ia_provider=model.tipo.value,
+                        ia_modelo=model.modelo,
+                        prompt_usado=prompt_id,
+                        tokens_usados=tokens_total,
+                        tempo_processamento_ms=tempo_ms,
+                        status=StatusProcessamento.ERRO,
+                        metadata_patch={
+                            "erro_pipeline": erro_msg,
+                            "erro_tipo": "max_iterations_exceeded",
+                            "tokens_entrada": tokens_entrada,
+                            "tokens_saida": tokens_saida,
+                            "tokens_total": tokens_total,
+                            "cost_run_id": context.cost_run_id,
+                            "custo_origem": "tool_use_error",
+                        },
+                    )
+                if tokens_total > 0:
+                    record_token_usage(
+                        cost_run_id=context.cost_run_id,
+                        atividade_id=atividade_id,
+                        aluno_id=aluno_id,
+                        etapa=expected_document_type.value if expected_document_type else "tools",
+                        provider=model.tipo.value,
+                        modelo=model.modelo,
+                        tokens_entrada=tokens_entrada,
+                        tokens_saida=tokens_saida,
+                        status="erro",
+                        erro=erro_msg,
+                        tentativas=tentativas,
+                        tempo_ms=tempo_ms,
+                        prompt_id=prompt_id,
+                        source="executar_com_tools",
+                        metadata={
+                            "erro_tipo": "max_iterations_exceeded",
+                            "documentos_ids": list(context.created_document_ids),
+                            "response_debug": response_debug,
+                        },
+                    )
+                return ResultadoExecucao(
+                    sucesso=False,
+                    etapa="tools",
+                    resposta_raw=raw_content,
+                    provider=model.tipo.value,
+                    modelo=model.modelo,
+                    tokens_entrada=tokens_entrada,
+                    tokens_saida=tokens_saida,
+                    tempo_ms=tempo_ms,
+                    alertas=alertas,
+                    tentativas=tentativas,
+                    erro=erro_msg,
+                )
 
             if dual_output_expected and not final_state["complete"]:
                 tokens_entrada = _sum_usage(respostas_tool, "input_tokens") or _sum_usage(respostas_tool, "tokens")
