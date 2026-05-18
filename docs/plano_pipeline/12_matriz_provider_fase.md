@@ -1327,22 +1327,23 @@ modelo barato/falhante em fallback automatico.
 
 **Proximos passos:**
 1. Manter deploy oficial confirmado por `/api/deploy-info` antes de cada smoke
-   novo; o codigo funcional mais recente confirmado e `c8f538a`. Commits
+   novo; o codigo funcional mais recente confirmado e `2fa5d47`. Commits
    documentais posteriores podem mudar o hash de `/api/deploy-info` sem alterar
    comportamento de pipeline.
-2. Verificar escrita row-level em `public.token_usage`: a migration ja foi
-   aplicada e `/api/custos/status` retorna `durable=true`, mas os smokes
-   recentes ainda exibem `token_usage_analisados=0`. Ate provar inserts
-   duraveis, custo por metadata/documento e evidencia oficial parcial.
+2. Ampliar escrita row-level em `public.token_usage`: a migration ja foi
+   aplicada e smokes oficiais elevaram `record_count` para `4` e
+   `token_usage_analisados` para `4`. O que falta e cobrir falhas com tokens
+   consumidos e sem documento final, mantendo deduplicacao por `cost_run_id`.
 3. Revalidar matriz por provider/modelo em datasets maiores: GPT-5.4 Mini,
    GPT-4o, GPT-4.1, o-series, Gemini 2.5 Flash, Gemini 3 Flash e Haiku 4.5
    possuem evidencias oficiais; GPT-5 Nano e Flash Lite seguem limitados por
    qualidade/schema; Sonnet 4.5 e Gemini Pro nao devem ser promovidos sem smoke
    proprio.
 4. Corrigir o maior bloqueador vivo reproduzido, nao listas antigas: hoje os
-   candidatos sao escrita row-level ausente em `token_usage`, Flash Lite com
-   JSON sem schema minimo, Sonnet sem revalidacao e dados historicos/ausentes
-   que deixam `desempenho_materia` de Matemática-V parcial.
+   candidatos sao Flash Lite com JSON sem schema minimo, Sonnet sem revalidacao,
+   dados ausentes do Erik/Omega que deixam `desempenho_materia` de Matemática-V
+   parcial, artefatos extras `stale_tool_artifact` em agregados e cobertura
+   row-level para falhas sem documento final.
 5. Confirmar no site oficial que telas de resultado obedecem `status=erro`:
    documento parcial em erro nao conta como etapa concluida; retry concluido
    pode fechar a etapa, mas o documento de erro continua visivel na lista para
@@ -1360,5 +1361,7 @@ modelo barato/falhante em fallback automatico.
    dashboard oficial mostra esse codigo e caminho da migration; `ae04982`
    confirmou custo agregado por etapa em `/api/custos/resumo`; `bc96faf`
    confirmou agregados Matemática-V com Gemini Flash sem contar historico como
-   aluno. Falta provar escrita row-level em `token_usage`, repetir smokes em
-   dataset maior e manter a matriz por modelo sincronizada com custo medido.
+   aluno; `518f8a2`/`58781a1`/`f534576` provaram escrita row-level em
+   `token_usage`; `2fa5d47` confirmou escopo correto de versões por aluno.
+   Falta repetir smokes em dataset maior e manter a matriz por modelo
+   sincronizada com custo medido.
