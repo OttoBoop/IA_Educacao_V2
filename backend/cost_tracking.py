@@ -384,6 +384,26 @@ def build_cost_summary(
                 "acao": "Aplicar backend/migrations/002_create_token_usage.sql no Supabase.",
             }
         )
+    elif (
+        token_usage_backend.get("supabase", {}).get("enabled")
+        and token_usage_backend.get("supabase", {}).get("record_count") == 0
+    ):
+        alerts.append(
+            {
+                "tipo": "token_usage_sem_registros",
+                "severidade": "informativo",
+                "mensagem": (
+                    "A tabela public.token_usage existe e esta duravel, mas ainda "
+                    "nao ha registros row-level analisados. Custos de documentos "
+                    "com metadata continuam medidos; falta provar uma falha com "
+                    "tokens consumidos e sem documento final."
+                ),
+                "acao": (
+                    "Rodar um smoke controlado de erro sem documento ou auditar "
+                    "o proximo erro desse tipo para confirmar insert em token_usage."
+                ),
+            }
+        )
 
     return {
         "storage_backend": storage._backend_label(),

@@ -58,6 +58,9 @@ Use
   entao a proxima frente de custos deve provar escrita row-level em
   `public.token_usage`; por enquanto as evidencias novas de custo vêm da
   metadata duravel dos documentos agrupada por `cost_run_id`.
+- Patch local posterior a `f49a0ad` adiciona alerta informativo
+  `token_usage_sem_registros` quando essa tabela existe, mas continua vazia.
+  Validacao local: `test_cost_tracking.py` com `32 passed`.
 - Smoke pos-deploy de catalogo: `/api/settings/model-catalog/calculate-cost`
   retornou para o perfil `74257/12403`: Gemini 2.5 Flash `US$ 0.053285`,
   Gemini 2.5 Flash Lite `US$ 0.012387`, Gemini 3 Flash `US$ 0.074338`.

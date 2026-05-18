@@ -26,6 +26,12 @@ foi aplicada: `/api/custos/status` retorna `ok=true`, `table_available=true`,
 row-level de custos e limpar dados historicos ilegiveis/ausentes em
 Matemática-V, sem mexer em Rio 3.
 
+Complemento do mesmo ciclo: o endpoint de custos ganhou um alerta informativo
+`token_usage_sem_registros` para o caso "tabela duravel, zero linhas". Isso
+mantem `ok=true` quando a migration esta aplicada, mas impede leitura enganosa
+de que a camada row-level ja foi exercitada. Teste local: `test_cost_tracking.py`
+com `32 passed`.
+
 Atualizacao de controle de 2026-05-17: o runtime mais recente confirmado no site
 oficial e `0411f9a`, validado por `/api/deploy-info` com
 cache-buster/no-cache, `/api/health`, `check_deploy.sh` e smokes live de

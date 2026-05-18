@@ -94,6 +94,16 @@ mudou de "criar tabela" para "confirmar escrita row-level": os resumos recentes
 continuam com `token_usage_analisados=0`, enquanto custos por documento e
 `cost_run_id` estao duraveis em metadata.
 
+Atualizacao observabilidade de custos de 2026-05-19: apos diagnosticar que
+`token_usage_durable=true` podia parecer "resolvido" mesmo com
+`token_usage_analisados=0`, foi preparado patch pequeno em `backend/cost_tracking.py`
+para emitir alerta informativo `token_usage_sem_registros` quando a tabela
+Supabase existe, mas ainda nao ha registros row-level. Isso nao bloqueia
+`/api/custos/status` nem rebaixa custos por metadata; apenas explicita que falta
+provar uma falha com tokens consumidos e sem documento final. Validacoes locais:
+`py_compile`, `git diff --check` e `backend/tests/unit/test_cost_tracking.py`
+com `32 passed`.
+
 Atualizacao chaves seguras de 2026-05-18: qualquer chave colada em chat e
 tratada como exposta e nao deve ser usada para producao. O caminho operacional
 para rotacionar credenciais do site oficial agora e

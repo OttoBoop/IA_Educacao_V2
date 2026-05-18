@@ -425,6 +425,41 @@ def test_cost_summary_alerta_quando_token_usage_nao_e_duravel(monkeypatch):
     )
 
 
+def test_cost_summary_informa_quando_token_usage_duravel_esta_vazio(monkeypatch):
+    import cost_tracking
+
+    class FakeTokenUsageStore:
+        def status(self):
+            return {
+                "local_path": "/tmp/token_usage",
+                "local_record_count": 0,
+                "local_error": None,
+                "supabase": {
+                    "enabled": True,
+                    "table_available": True,
+                    "record_count": 0,
+                    "error": None,
+                    "error_code": None,
+                },
+                "durable": True,
+            }
+
+        def list_records(self, limit=None):
+            return []
+
+    monkeypatch.setattr(cost_tracking, "token_usage_store", FakeTokenUsageStore())
+
+    summary = cost_tracking.build_cost_summary([], token_usage_records=[])
+
+    assert summary["custos_persistencia_status"] == "duravel"
+    assert summary["token_usage_durable"] is True
+    assert any(
+        alerta["tipo"] == "token_usage_sem_registros"
+        and alerta["severidade"] == "informativo"
+        for alerta in summary["alertas"]
+    )
+
+
 @pytest.mark.asyncio
 async def test_cost_status_nao_fica_ok_sem_token_usage_duravel(monkeypatch):
     import routes_costs
