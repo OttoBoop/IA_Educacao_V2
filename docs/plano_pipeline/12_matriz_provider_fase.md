@@ -6,7 +6,7 @@
 (`f68d57a9a339081f`) e atividade textual `Prova 1 - Equações do 1º Grau`
 (`8f58cc8b5fb75869`) e Matemática-V (`0f615b57854235ec`) para agregados
 oficiais.
-**Runtime oficial atual:** backend Render em `52ff747`; `origin/main` recebeu os
+**Runtime oficial atual:** backend Render em `546b72f`; `origin/main` recebeu os
 ciclos Google `9dbb122`/`8de0ab3` para preservar `retry_after` de provider e
 fazer retry por request Google sem trocar modelo, `2d08eec` para impedir retry
 que reintroduzia Markdown em JSON, `d7313a6` para remover duplicacao de
@@ -29,6 +29,12 @@ erro, e os alertas passam a listar documentos persistidos de verdade.
 `52ff747` muda a leitura dos relatórios de desempenho para agrupar runs por
 `metadata.cost_run_id` quando disponível, evitando que duas execuções próximas no
 tempo apareçam como um único run.
+`546b72f` fecha o bug Omega-V descoberto no loop de auditoria de materias:
+`desempenho_turma-sync` com `gem25flash001` chegou a gerar 171 JSONs e 1 PDF no
+mesmo `cost_run_id`; o patch impede segunda chamada de JSON/PDF no mesmo run de
+pipeline e o readback de desempenho deixa de expor documentos `status=erro` como
+relatorios validos. Validação oficial pos-deploy: Omega-V tarefa e turma agora
+aparecem com 2 docs validos cada no readback.
 O
 codigo funcional de batch mais recente continua sendo `9b68de1`, incluido no
 runtime atual.

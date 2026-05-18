@@ -17,7 +17,7 @@ ou chamar etapa bloqueada de sucesso continua proibido.
 - URL oficial: `https://ia-educacao-v2.onrender.com`.
 - Runtime inicial observado: `0411f9a`.
 - Runtime final do subloop Google original: `a7f02a3`.
-- Runtime funcional oficial atual: `52ff747`.
+- Runtime funcional oficial atual: `546b72f`.
 - Health final: `/api/health` retornou `{"status":"healthy","supabase":true}`.
 - `origin/main` no fechamento Google: `a7f02a31fc04606de82e22bec3345150fff9ead6`;
   depois avançou ate `52ff747debcbede3f75c5d7f6f9631c58cc72726`.
@@ -39,8 +39,14 @@ ou chamar etapa bloqueada de sucesso continua proibido.
   serviço ficou lento durante a execução. Custo/tokens do run:
   `78470/14313`; `token_usage.record_count=8`. Patch local preparado para
   impedir segunda chamada de JSON/PDF no mesmo run de pipeline e esconder docs
-  `status=erro` do readback de desempenho; pendente commit/deploy neste ponto
-  do log.
+  `status=erro` do readback de desempenho. Fechamento: commit `546b72f` foi
+  publicado e deployado; `/api/desempenho/turma/0c015879203b093a` passou a
+  retornar apenas 2 docs validos no run `tool_0ffda87eba2b` (PDF
+  `7209c58dcfbbd00c`, JSON `46a7b5500383c961`), e
+  `/api/desempenho/tarefa/19a8105384c60675` retorna 2 docs no run
+  `tool_cb6a2aaaa7d0`. `/api/custos/status?limit=420` pos-deploy:
+  `record_count=8`, `token_usage_analisados=8`, `runs_analisados=28`,
+  `runs_precificados=28`, `alertas=[]`.
 
 ## Dados De Teste Escolhidos
 

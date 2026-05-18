@@ -4,10 +4,10 @@
 **Responsavel operacional:** Paulo
 **Status geral:** o servico oficial Render
 `srv-d5t8gbh4tr6s738fr3s0` (`IA_Educacao_V2`, branch `main`, URL
-`https://ia-educacao-v2.onrender.com`) esta em runtime `52ff747`
-(`fix: group desempenho runs by cost run id`), validado por
-`/api/deploy-info`, `/api/health`, `./scripts/wait_deploy.sh 52ff747` e
-`./scripts/check_deploy.sh 52ff747`.
+`https://ia-educacao-v2.onrender.com`) esta em runtime `546b72f`
+(`fix: enforce single pipeline tool artifacts`), validado por
+`/api/deploy-info`, `/api/health`, `./scripts/wait_deploy.sh 546b72f` e
+`./scripts/check_deploy.sh 546b72f`.
 Se este doc for atualizado por commit documental posterior, `origin/main` pode
 ficar a frente do runtime sem mudar backend porque o Render usa `rootDir=backend`.
 O codigo funcional de pipeline
@@ -17,7 +17,8 @@ inclui os ciclos Anthropic/Google ate `d357960`, o preparo seguro de migration
 `518f8a2`, a preferencia por PDF narrativo em agregados em `58781a1`, o erro
 bloqueante para `max_iterations_exceeded` em `f534576`, o filtro correto de
 versões por aluno em `2fa5d47`, o contrato de artefatos agregados em `e85be11`
-e o agrupamento de leitura por `cost_run_id` em `52ff747`.
+o agrupamento de leitura por `cost_run_id` em `52ff747` e a trava de artefato
+unico/readback sem docs de erro em `546b72f`.
 
 ## Regra operacional obrigatoria do loop
 
@@ -213,8 +214,17 @@ focado com `181 passed` (`test_tool_artifact_contract.py`,
 `test_desempenho_api_endpoints.py`, `test_desempenho_no_duplicate_save.py`,
 `test_warning_system.py`, `test_e_t2_retry_partial_output.py`,
 `test_f2_desempenho_resposta_raw.py`, `test_cost_tracking.py`). Status deste
-subciclo: patch local pronto para commit/deploy; ate o deploy, o site oficial
-ainda tem o comportamento antigo no readback.
+subciclo: commit `546b72f` publicado e deploy confirmado por
+`./scripts/wait_deploy.sh 546b72f`, `./scripts/check_deploy.sh 546b72f`,
+`/api/deploy-info` e `/api/health`. Readback oficial pos-deploy:
+`/api/desempenho/turma/0c015879203b093a` agora retorna `total_docs=2`, run
+`run-tool_0ffda87eba2b`, apenas o PDF `7209c58dcfbbd00c` e o JSON
+`46a7b5500383c961` concluídos; os 170 JSONs `status=erro` nao aparecem mais
+como relatorios validos. `/api/desempenho/tarefa/19a8105384c60675` tambem
+retorna `total_docs=2`, run `run-tool_cb6a2aaaa7d0`, PDF
+`0e9897e0667e40b4` e JSON `a607b7da4a5a8373`. Custos duraveis pos-deploy:
+`record_count=8`, `token_usage_analisados=8`, `runs_analisados=28`,
+`runs_precificados=28`, `alertas=[]`.
 
 Atualizacao agregados Matemática-V de 2026-05-19: o smoke inicial em
 `737a709` revelou um bug de produto: `desempenho_tarefa` de

@@ -10,7 +10,7 @@ um deve ser lido, o que ainda vale, o que ficou historico, e quais fatos precisa
 guiar os proximos ciclos.
 
 Atualizacao curta de 2026-05-19 para qualquer IA retomando apos compactar:
-`/api/deploy-info` confirma Render em `52ff747`. Se `origin/main` estiver a
+`/api/deploy-info` confirma Render em `546b72f`. Se `origin/main` estiver a
 frente por commit documental, isso nao muda o backend porque Render usa
 `rootDir=backend`. O runtime contem a correcao `bc96faf` para falso agregado de
 desempenho: antes, `desempenho_tarefa` de Matemática-V/Alpha-V contava versões
@@ -29,6 +29,10 @@ em `create_document` vira erro bloqueante.
 O commit `52ff747` corrige a leitura posterior desses artefatos: quando existe
 `metadata.cost_run_id`, `/api/desempenho/{level}/{entity_id}` agrupa por esse id,
 nao mais por janela de timestamp.
+O commit `546b72f` fecha o bug de avalanche de artefatos em Omega-V: a tool
+agora rejeita segunda criação de JSON/PDF no mesmo run de pipeline, o executor
+falha alto em multiplicidade patologica e o readback de desempenho nao lista
+documentos `status=erro` como relatórios validos.
 Evidencia live com `gem25flash001`: tarefa `run-20260519-112430` completa
 (`2/0`, `US$0.013267`), turma `run-20260519-112612` completa (`4` narrativas,
 `US$0.031716`) e materia `run-20260519-120054` parcial honesta (`3` turmas,
