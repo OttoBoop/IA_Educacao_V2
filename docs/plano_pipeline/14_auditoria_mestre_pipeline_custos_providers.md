@@ -67,6 +67,11 @@ amostra live de `TokenUsageRecord` sem documento final. O caminho local ja foi
 revalidado por `backend/tests/unit/test_cost_tracking.py` (`33 passed` em
 2026-05-19), entao nao gastar IA apenas para fabricar esse caso. Rio 3 segue
 fora deste ciclo.
+Sweep de conexão no mesmo dia: 13/14 modelos ativos responderam `OK`; OpenAI,
+Anthropic e Google têm credenciais funcionais para chamada simples, incluindo
+Gemini 2.5 Pro. A única falha é Ollama por infra local ausente no Render. Isso
+nao promove modelo nenhum a pipeline-ready: conexão simples só remove o bloqueio
+de credencial/quota imediata.
 
 Validacao especifica do `2fa5d47`: antes do patch,
 `/api/documentos/f68d57a9a339081f/4ae10210c8acbaa5/versoes` mostrava prova,

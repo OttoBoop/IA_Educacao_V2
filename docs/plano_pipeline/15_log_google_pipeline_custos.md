@@ -133,6 +133,18 @@ GPT-4.1 `US$0.247738`, GPT-4o `US$0.309673`, o3/o4 Mini `US$0.136256`.
 Isso confirma a tabela de estimativa; custo real continua vencendo estimativa
 quando ha smoke.
 
+Sweep de conexão por modelo, com gasto mínimo e sem pipeline:
+
+- Google: `gem25flash001` OK (`39` tokens), `gem25lite001` OK (`20`),
+  `gem3flash001` OK (`120`) e `e251747cd7a2` Gemini Pro OK (`197`).
+- Anthropic: Haiku OK (`30`), Sonnet OK (`30`).
+- OpenAI: GPT-4o, GPT-4.1, GPT-5 Nano, GPT-5.4 Mini, o3 low/medium e o4 Mini OK.
+- Ollama: falhou por infra (`All connection attempts failed`).
+- `/api/custos/resumo?limit=420` apos o sweep permaneceu em
+  `runs_precificados=28`, `token_usage_analisados=8`, `US$1.484609`. Logo,
+  estes testes de conexão confirmam credencial/provider vivo, mas nao substituem
+  smoke de pipeline nem custo persistido de etapa.
+
 ## Dados De Teste Escolhidos
 
 Atividade principal para pipeline individual:

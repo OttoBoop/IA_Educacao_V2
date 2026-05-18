@@ -262,6 +262,19 @@ de `prova_respondida`; nao criar fallback, nao inventar prova, nao chamar isso
 de erro de provider. O loop deve pular para o proximo alvo que produza evidencia
 nova de provider/custo.
 
+Sweep de conexao por modelo em 2026-05-19, usando
+`POST /api/settings/models/{id}/testar` e sem pipeline: 13/14 modelos ativos
+responderam `success=true`. OpenAI OK: GPT-4o `30` tokens, o3 low `106`, GPT-4.1
+`30`, o4 Mini `111`, GPT-5 Nano `38`, GPT-5.4 Mini `55`, o3 medium `234`.
+Anthropic OK: Haiku 4.5 `30`, Sonnet 4.5 `30`. Google OK: Gemini 2.5 Pro `197`,
+Gemini 2.5 Flash `39`, Flash Lite `20`, Gemini 3 Flash `120`. Ollama falhou
+por infraestrutura (`All connection attempts failed`). Barreiras respondidas:
+Gemini Pro nao esta mais bloqueado na conexao, mas continua sem validação de
+pipeline; Sonnet conecta, mas continua sem extração/pipeline validada; Ollama
+segue fora do Render. Recheck de custos apos o sweep: `token_usage_analisados=8`,
+`runs_precificados=28`, `custo_usd=1.484609`; testes de conexão nao viraram
+registro duravel de custo de pipeline.
+
 Atualizacao agregados Matemática-V de 2026-05-19: o smoke inicial em
 `737a709` revelou um bug de produto: `desempenho_tarefa` de
 `810ef4c1a71c701b` contava versões historicas de `RELATORIO_FINAL` como se
