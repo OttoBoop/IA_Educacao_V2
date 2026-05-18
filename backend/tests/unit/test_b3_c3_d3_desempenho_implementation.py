@@ -17,8 +17,11 @@ Run: cd IA_Educacao_V2/backend && pytest tests/unit/test_b3_c3_d3_desempenho_imp
 
 import pytest
 import sys
+from datetime import datetime
 from pathlib import Path
-from unittest.mock import MagicMock, AsyncMock, patch, mock_open
+from unittest.mock import MagicMock, AsyncMock
+
+import fitz
 
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
@@ -72,13 +75,25 @@ def executor_com_mock():
     return executor
 
 
-def _make_narrativo_doc(aluno_id: str, caminho: str):
-    """Create a mock RELATORIO_NARRATIVO document."""
+def _make_pdf(path: Path, text: str) -> Path:
+    """Create a tiny text PDF that matches current RELATORIO_FINAL storage."""
+    doc = fitz.open()
+    page = doc.new_page()
+    page.insert_text((50, 100), text, fontsize=12)
+    doc.save(str(path))
+    doc.close()
+    return path
+
+
+def _make_narrativo_doc(aluno_id: str, caminho: str, doc_id: str = None):
+    """Create a mock RELATORIO_FINAL document."""
     from models import TipoDocumento
     doc = MagicMock()
-    doc.tipo = TipoDocumento.RELATORIO_NARRATIVO
+    doc.id = doc_id or f"relatorio-{aluno_id}"
+    doc.tipo = TipoDocumento.RELATORIO_FINAL
     doc.aluno_id = aluno_id
     doc.caminho_arquivo = caminho
+    doc.criado_em = datetime(2026, 5, 18, 12, 0, 0)
     return doc
 
 
@@ -89,18 +104,23 @@ def _make_narrativo_doc(aluno_id: str, caminho: str):
 class TestDesempenhoTarefaImplementation:
     """B3: Full implementation of gerar_relatorio_desempenho_tarefa.
 
-    When ≥2 RELATORIO_NARRATIVO documents exist for an atividade,
+    When ≥2 RELATORIO_FINAL documents exist for an atividade,
     the method must call the LLM and return sucesso=True.
     """
 
-    async def test_b3_happy_path_returns_success(self, executor_com_mock):
+    async def test_b3_happy_path_returns_success(self, tmp_path, executor_com_mock):
         """With ≥2 narratives, method must return sucesso=True (not raise NotImplementedError).
 
         Currently raises NotImplementedError → test FAILS in RED phase.
         """
-        doc1 = _make_narrativo_doc("aluno-001", "/fake/narrativa_aluno1.md")
-        doc2 = _make_narrativo_doc("aluno-002", "/fake/narrativa_aluno2.md")
+        pdf1 = _make_pdf(tmp_path / "narrativa_aluno1.pdf", "Relatorio aluno 1")
+        pdf2 = _make_pdf(tmp_path / "narrativa_aluno2.pdf", "Relatorio aluno 2")
+        doc1 = _make_narrativo_doc("aluno-001", str(pdf1), "doc-001")
+        doc2 = _make_narrativo_doc("aluno-002", str(pdf2), "doc-002")
         executor_com_mock.storage.listar_documentos.return_value = [doc1, doc2]
+        executor_com_mock.storage.resolver_caminho_documento.side_effect = (
+            lambda doc: Path(doc.caminho_arquivo)
+        )
 
         # Context mocks
         atividade_mock = MagicMock(nome="Prova 1", turma_id="turma-001")
@@ -110,11 +130,9 @@ class TestDesempenhoTarefaImplementation:
         executor_com_mock.storage.get_turma.return_value = turma_mock
         executor_com_mock.storage.get_materia.return_value = materia_mock
 
-        fake_md = "# Relatório do Aluno\n\nConteúdo narrativo..."
-        with patch("builtins.open", mock_open(read_data=fake_md)):
-            result = await executor_com_mock.gerar_relatorio_desempenho_tarefa(
-                atividade_id="ativ-001",
-            )
+        result = await executor_com_mock.gerar_relatorio_desempenho_tarefa(
+            atividade_id="ativ-001",
+        )
 
         assert isinstance(result, dict), f"Expected dict, got {type(result)}"
         assert result.get("sucesso") is True, (
@@ -122,11 +140,16 @@ class TestDesempenhoTarefaImplementation:
             f"narratives exist. Got: {result}"
         )
 
-    async def test_b3_calls_executar_com_tools(self, executor_com_mock):
+    async def test_b3_calls_executar_com_tools(self, tmp_path, executor_com_mock):
         """Method must call executar_com_tools (LLM call) for the happy path."""
-        doc1 = _make_narrativo_doc("aluno-001", "/fake/narrativa_aluno1.md")
-        doc2 = _make_narrativo_doc("aluno-002", "/fake/narrativa_aluno2.md")
+        pdf1 = _make_pdf(tmp_path / "narrativa_aluno1.pdf", "Relatorio aluno 1")
+        pdf2 = _make_pdf(tmp_path / "narrativa_aluno2.pdf", "Relatorio aluno 2")
+        doc1 = _make_narrativo_doc("aluno-001", str(pdf1), "doc-001")
+        doc2 = _make_narrativo_doc("aluno-002", str(pdf2), "doc-002")
         executor_com_mock.storage.listar_documentos.return_value = [doc1, doc2]
+        executor_com_mock.storage.resolver_caminho_documento.side_effect = (
+            lambda doc: Path(doc.caminho_arquivo)
+        )
 
         atividade_mock = MagicMock(nome="Prova 1", turma_id="turma-001")
         turma_mock = MagicMock(nome="Turma A", materia_id="mat-001")
@@ -135,11 +158,9 @@ class TestDesempenhoTarefaImplementation:
         executor_com_mock.storage.get_turma.return_value = turma_mock
         executor_com_mock.storage.get_materia.return_value = materia_mock
 
-        fake_md = "# Relatório do Aluno\n\nConteúdo narrativo..."
-        with patch("builtins.open", mock_open(read_data=fake_md)):
-            await executor_com_mock.gerar_relatorio_desempenho_tarefa(
-                atividade_id="ativ-001",
-            )
+        await executor_com_mock.gerar_relatorio_desempenho_tarefa(
+            atividade_id="ativ-001",
+        )
 
         executor_com_mock.executar_com_tools.assert_called_once()
 
@@ -160,10 +181,10 @@ class TestDesempenhoTurmaImplementation:
     """C3: Full implementation of gerar_relatorio_desempenho_turma.
 
     When ≥2 students exist in a turma, the method must gather all their
-    RELATORIO_NARRATIVO docs across atividades, call the LLM, and return sucesso=True.
+    RELATORIO_FINAL docs across atividades, call the LLM, and return sucesso=True.
     """
 
-    async def test_c3_happy_path_returns_success(self, executor_com_mock):
+    async def test_c3_happy_path_returns_success(self, tmp_path, executor_com_mock):
         """With ≥2 students in turma, method must return sucesso=True.
 
         Currently raises NotImplementedError → test FAILS in RED phase.
@@ -177,9 +198,14 @@ class TestDesempenhoTurmaImplementation:
         executor_com_mock.storage.listar_atividades.return_value = [ativ1]
 
         # Each student has narratives
-        doc1 = _make_narrativo_doc("aluno-001", "/fake/aluno1_ativ1.md")
-        doc2 = _make_narrativo_doc("aluno-002", "/fake/aluno2_ativ1.md")
+        pdf1 = _make_pdf(tmp_path / "aluno1_ativ1.pdf", "Relatorio aluno 1")
+        pdf2 = _make_pdf(tmp_path / "aluno2_ativ1.pdf", "Relatorio aluno 2")
+        doc1 = _make_narrativo_doc("aluno-001", str(pdf1), "doc-001")
+        doc2 = _make_narrativo_doc("aluno-002", str(pdf2), "doc-002")
         executor_com_mock.storage.listar_documentos.return_value = [doc1, doc2]
+        executor_com_mock.storage.resolver_caminho_documento.side_effect = (
+            lambda doc: Path(doc.caminho_arquivo)
+        )
 
         # Context mocks
         turma_mock = MagicMock(nome="Turma A", materia_id="mat-001")
@@ -187,11 +213,9 @@ class TestDesempenhoTurmaImplementation:
         executor_com_mock.storage.get_turma.return_value = turma_mock
         executor_com_mock.storage.get_materia.return_value = materia_mock
 
-        fake_md = "# Relatório do Aluno\n\nConteúdo narrativo..."
-        with patch("builtins.open", mock_open(read_data=fake_md)):
-            result = await executor_com_mock.gerar_relatorio_desempenho_turma(
-                turma_id="turma-001",
-            )
+        result = await executor_com_mock.gerar_relatorio_desempenho_turma(
+            turma_id="turma-001",
+        )
 
         assert isinstance(result, dict), f"Expected dict, got {type(result)}"
         assert result.get("sucesso") is True, (
@@ -199,7 +223,7 @@ class TestDesempenhoTurmaImplementation:
             f"students have narratives. Got: {result}"
         )
 
-    async def test_c3_calls_executar_com_tools(self, executor_com_mock):
+    async def test_c3_calls_executar_com_tools(self, tmp_path, executor_com_mock):
         """Method must call executar_com_tools (LLM call) for the happy path."""
         aluno1 = MagicMock(id="aluno-001", nome="Maria")
         aluno2 = MagicMock(id="aluno-002", nome="João")
@@ -208,20 +232,23 @@ class TestDesempenhoTurmaImplementation:
         ativ1 = MagicMock(id="ativ-001", nome="Prova 1")
         executor_com_mock.storage.listar_atividades.return_value = [ativ1]
 
-        doc1 = _make_narrativo_doc("aluno-001", "/fake/aluno1.md")
-        doc2 = _make_narrativo_doc("aluno-002", "/fake/aluno2.md")
+        pdf1 = _make_pdf(tmp_path / "aluno1.pdf", "Relatorio aluno 1")
+        pdf2 = _make_pdf(tmp_path / "aluno2.pdf", "Relatorio aluno 2")
+        doc1 = _make_narrativo_doc("aluno-001", str(pdf1), "doc-001")
+        doc2 = _make_narrativo_doc("aluno-002", str(pdf2), "doc-002")
         executor_com_mock.storage.listar_documentos.return_value = [doc1, doc2]
+        executor_com_mock.storage.resolver_caminho_documento.side_effect = (
+            lambda doc: Path(doc.caminho_arquivo)
+        )
 
         turma_mock = MagicMock(nome="Turma A", materia_id="mat-001")
         materia_mock = MagicMock(nome="Matemática", id="mat-001")
         executor_com_mock.storage.get_turma.return_value = turma_mock
         executor_com_mock.storage.get_materia.return_value = materia_mock
 
-        fake_md = "# Relatório\n\nConteúdo..."
-        with patch("builtins.open", mock_open(read_data=fake_md)):
-            await executor_com_mock.gerar_relatorio_desempenho_turma(
-                turma_id="turma-001",
-            )
+        await executor_com_mock.gerar_relatorio_desempenho_turma(
+            turma_id="turma-001",
+        )
 
         executor_com_mock.executar_com_tools.assert_called_once()
 
@@ -245,7 +272,7 @@ class TestDesempenhoMateriaImplementation:
     across all turmas, call the LLM, and return sucesso=True.
     """
 
-    async def test_d3_happy_path_returns_success(self, executor_com_mock):
+    async def test_d3_happy_path_returns_success(self, tmp_path, executor_com_mock):
         """With ≥2 turmas, method must return sucesso=True.
 
         Currently raises NotImplementedError → test FAILS in RED phase.
@@ -264,19 +291,22 @@ class TestDesempenhoMateriaImplementation:
         executor_com_mock.storage.listar_atividades.return_value = [ativ1]
 
         # Narratives exist
-        doc1 = _make_narrativo_doc("aluno-001", "/fake/aluno1.md")
-        doc2 = _make_narrativo_doc("aluno-002", "/fake/aluno2.md")
+        pdf1 = _make_pdf(tmp_path / "aluno1.pdf", "Relatorio aluno 1")
+        pdf2 = _make_pdf(tmp_path / "aluno2.pdf", "Relatorio aluno 2")
+        doc1 = _make_narrativo_doc("aluno-001", str(pdf1), "doc-001")
+        doc2 = _make_narrativo_doc("aluno-002", str(pdf2), "doc-002")
         executor_com_mock.storage.listar_documentos.return_value = [doc1, doc2]
+        executor_com_mock.storage.resolver_caminho_documento.side_effect = (
+            lambda doc: Path(doc.caminho_arquivo)
+        )
 
         # Context mocks
         materia_mock = MagicMock(nome="Matemática", id="mat-001")
         executor_com_mock.storage.get_materia.return_value = materia_mock
 
-        fake_md = "# Relatório\n\nConteúdo..."
-        with patch("builtins.open", mock_open(read_data=fake_md)):
-            result = await executor_com_mock.gerar_relatorio_desempenho_materia(
-                materia_id="mat-001",
-            )
+        result = await executor_com_mock.gerar_relatorio_desempenho_materia(
+            materia_id="mat-001",
+        )
 
         assert isinstance(result, dict), f"Expected dict, got {type(result)}"
         assert result.get("sucesso") is True, (
@@ -284,7 +314,7 @@ class TestDesempenhoMateriaImplementation:
             f"turmas have data. Got: {result}"
         )
 
-    async def test_d3_calls_executar_com_tools(self, executor_com_mock):
+    async def test_d3_calls_executar_com_tools(self, tmp_path, executor_com_mock):
         """Method must call executar_com_tools (LLM call) for the happy path."""
         turma1 = MagicMock(id="turma-001", nome="Turma A")
         turma2 = MagicMock(id="turma-002", nome="Turma B")
@@ -296,17 +326,19 @@ class TestDesempenhoMateriaImplementation:
         ativ1 = MagicMock(id="ativ-001", nome="Prova 1")
         executor_com_mock.storage.listar_atividades.return_value = [ativ1]
 
-        doc1 = _make_narrativo_doc("aluno-001", "/fake/aluno1.md")
+        pdf1 = _make_pdf(tmp_path / "aluno1.pdf", "Relatorio aluno 1")
+        doc1 = _make_narrativo_doc("aluno-001", str(pdf1), "doc-001")
         executor_com_mock.storage.listar_documentos.return_value = [doc1]
+        executor_com_mock.storage.resolver_caminho_documento.side_effect = (
+            lambda doc: Path(doc.caminho_arquivo)
+        )
 
         materia_mock = MagicMock(nome="Matemática", id="mat-001")
         executor_com_mock.storage.get_materia.return_value = materia_mock
 
-        fake_md = "# Relatório\n\nConteúdo..."
-        with patch("builtins.open", mock_open(read_data=fake_md)):
-            await executor_com_mock.gerar_relatorio_desempenho_materia(
-                materia_id="mat-001",
-            )
+        await executor_com_mock.gerar_relatorio_desempenho_materia(
+            materia_id="mat-001",
+        )
 
         executor_com_mock.executar_com_tools.assert_called_once()
 

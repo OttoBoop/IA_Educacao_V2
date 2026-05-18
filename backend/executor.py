@@ -12,7 +12,7 @@ Mantém compatibilidade com:
 
 from dataclasses import dataclass, field
 from datetime import datetime
-from typing import Optional, Dict, Any, List, Union
+from typing import Optional, Dict, Any, List, Union, Set
 from pathlib import Path
 import json
 import asyncio
@@ -1459,6 +1459,126 @@ PROMPT ORIGINAL DE REFERENCIA, APENAS PARA TAREFA E SCHEMA:
             key=self._valor_data_documento,
             reverse=True,
         )
+
+    def _documento_id_seguro(self, documento: Any) -> str:
+        """Return a human-readable document identifier for warnings."""
+        for attr in ("id", "display_name", "nome_arquivo", "caminho_arquivo"):
+            valor = getattr(documento, attr, None)
+            if valor:
+                return str(valor)
+        return "documento_sem_id"
+
+    def _listar_alunos_seguro(self, turma_id: Optional[str]) -> List[Any]:
+        """Return enrolled students, tolerating older tests/mocks without this query."""
+        if not turma_id:
+            return []
+        try:
+            alunos = self.storage.listar_alunos(turma_id)
+        except Exception:
+            return []
+        try:
+            return list(alunos or [])
+        except TypeError:
+            return []
+
+    def _ler_texto_relatorio_final(self, documento: Any) -> tuple[Optional[str], Optional[str]]:
+        """Read one RELATORIO_FINAL PDF and return either text or a blocking reason."""
+        try:
+            resolved = self.storage.resolver_caminho_documento(documento)
+            pdf_doc = fitz.open(str(resolved))
+            try:
+                texto = "".join(page.get_text() for page in pdf_doc)
+            finally:
+                pdf_doc.close()
+            if texto.strip():
+                return texto.strip(), None
+            return None, "PDF sem texto extraível (página em branco ou imagem)"
+        except Exception as e:
+            return None, f"Arquivo narrativo ilegível: {e}"
+
+    def _coletar_relatorios_finais_legiveis_por_aluno(
+        self,
+        atividade: Any,
+        alunos: Optional[List[Any]] = None,
+    ) -> Dict[str, Any]:
+        """
+        Coleta uma narrativa legível por aluno para relatórios agregados.
+
+        O storage mantém histórico de versões. Desempenho agregado não pode contar
+        versões antigas como alunos extras, nem esconder arquivo ilegível.
+        """
+        atividade_id = getattr(atividade, "id", None) or str(atividade)
+        documentos = self.storage.listar_documentos(
+            atividade_id, tipo=TipoDocumento.RELATORIO_FINAL
+        )
+        alunos = list(alunos or [])
+        alunos_por_id = {
+            getattr(aluno, "id", None): aluno
+            for aluno in alunos
+            if getattr(aluno, "id", None)
+        }
+        ids_matriculados: Set[str] = set(alunos_por_id.keys())
+
+        avisos: List[Dict[str, Any]] = []
+        por_aluno: Dict[str, List[Any]] = {}
+        for doc in self._documentos_novos_primeiro(documentos):
+            aluno_id = getattr(doc, "aluno_id", None)
+            if not aluno_id:
+                avisos.append({
+                    "aluno_id": None,
+                    "documento_id": self._documento_id_seguro(doc),
+                    "motivo": "RELATORIO_FINAL sem aluno_id foi ignorado",
+                })
+                continue
+            if ids_matriculados and aluno_id not in ids_matriculados:
+                avisos.append({
+                    "aluno_id": aluno_id,
+                    "documento_id": self._documento_id_seguro(doc),
+                    "motivo": "RELATORIO_FINAL ignorado: aluno não pertence à turma da atividade",
+                })
+                continue
+            por_aluno.setdefault(str(aluno_id), []).append(doc)
+
+        conteudos: List[Dict[str, Any]] = []
+        alunos_incluidos: Set[str] = set()
+        for aluno_id, docs_aluno in por_aluno.items():
+            for doc in docs_aluno:
+                texto, erro = self._ler_texto_relatorio_final(doc)
+                if texto:
+                    aluno = alunos_por_id.get(aluno_id)
+                    conteudos.append({
+                        "aluno_id": aluno_id,
+                        "aluno_nome": getattr(aluno, "nome", None) or aluno_id,
+                        "documento_id": self._documento_id_seguro(doc),
+                        "documento_criado_em": self._valor_data_documento(doc),
+                        "conteudo": texto,
+                    })
+                    alunos_incluidos.add(aluno_id)
+                    break
+                avisos.append({
+                    "aluno_id": aluno_id,
+                    "documento_id": self._documento_id_seguro(doc),
+                    "motivo": erro,
+                })
+
+        ids_esperados = ids_matriculados or set(por_aluno.keys())
+        for aluno_id in sorted(ids_esperados - alunos_incluidos):
+            if aluno_id not in por_aluno:
+                avisos.append({
+                    "aluno_id": aluno_id,
+                    "motivo": "Aluno sem RELATORIO_FINAL para esta atividade",
+                })
+
+        alunos_excluidos = ids_esperados - alunos_incluidos
+        return {
+            "conteudos": conteudos,
+            "avisos": avisos,
+            "total_alunos": len(ids_esperados),
+            "alunos_incluidos": alunos_incluidos,
+            "alunos_excluidos": alunos_excluidos,
+            "alunos_com_documento": set(por_aluno.keys()),
+            "documentos_encontrados": len(documentos or []),
+        }
 
     def _documento_mais_recente(
         self,
@@ -5453,60 +5573,55 @@ Crie UM documento separado para cada aluno, nomeando como "relatorio_[nome_aluno
         """
         Síntese narrativa agregada para uma atividade.
 
-        Busca todos os RELATORIO_FINAL da atividade e gera um relatório
+        Busca um RELATORIO_FINAL legível por aluno e gera um relatório
         coletivo usando o prompt RELATORIO_DESEMPENHO_TAREFA.
         Requer pelo menos 2 alunos com relatórios — falha caso contrário.
         """
-        narrativos = self.storage.listar_documentos(
-            atividade_id, tipo=TipoDocumento.RELATORIO_FINAL
+        # Fetch context first so the aggregate uses enrolled students, not
+        # historical document versions, as the denominator.
+        atividade = self.storage.get_atividade(atividade_id)
+        turma = self.storage.get_turma(atividade.turma_id) if atividade else None
+        materia = self.storage.get_materia(turma.materia_id) if turma else None
+        alunos = self._listar_alunos_seguro(atividade.turma_id if atividade else None)
+
+        coleta = self._coletar_relatorios_finais_legiveis_por_aluno(
+            atividade or atividade_id,
+            alunos,
         )
-        if len(narrativos) < 2:
+        conteudos = coleta["conteudos"]
+        avisos = coleta["avisos"]
+        total_alunos = coleta["total_alunos"]
+        alunos_excluidos = coleta["alunos_excluidos"]
+
+        if total_alunos < 2:
             return {
                 "sucesso": False,
                 "erro": (
                     f"São necessários pelo menos 2 alunos com RELATORIO_FINAL para gerar o "
-                    f"relatório de desempenho da tarefa. Encontrados: {len(narrativos)}."
+                    f"relatório de desempenho da tarefa. Encontrados: {total_alunos}."
                 ),
+                "etapa": "relatorio_desempenho_tarefa",
+                "total_alunos": total_alunos,
+                "alunos_incluidos": len(conteudos),
+                "alunos_excluidos": len(alunos_excluidos),
+                "avisos": avisos,
+                "status": "BLOQUEADO_PREREQUISITO",
             }
-
-        # Read narrative file contents (resolve via Supabase on Render)
-        conteudos = []
-        avisos = []
-        for doc in narrativos:
-            try:
-                resolved = self.storage.resolver_caminho_documento(doc)
-                pdf_doc = fitz.open(str(resolved))
-                texto = "".join(page.get_text() for page in pdf_doc)
-                pdf_doc.close()
-                if texto.strip():
-                    conteudos.append({
-                        "aluno_id": doc.aluno_id,
-                        "conteudo": texto.strip(),
-                    })
-                else:
-                    avisos.append({
-                        "aluno_id": doc.aluno_id,
-                        "motivo": "PDF sem texto extraível (página em branco ou imagem)",
-                    })
-            except Exception as e:
-                avisos.append({
-                    "aluno_id": doc.aluno_id,
-                    "motivo": f"Arquivo narrativo ilegível: {e}",
-                })
 
         if len(conteudos) < 2:
             return {
                 "sucesso": False,
                 "erro": (
-                    f"Apenas {len(conteudos)} narrativa(s) legível(is) de {len(narrativos)} "
-                    f"encontrada(s). São necessárias pelo menos 2."
+                    f"Apenas {len(conteudos)} aluno(s) com RELATORIO_FINAL legível de "
+                    f"{total_alunos} encontrado(s). São necessários pelo menos 2."
                 ),
+                "etapa": "relatorio_desempenho_tarefa",
+                "total_alunos": total_alunos,
+                "alunos_incluidos": len(conteudos),
+                "alunos_excluidos": len(alunos_excluidos),
+                "avisos": avisos,
+                "status": "BLOQUEADO_PREREQUISITO",
             }
-
-        # Fetch context
-        atividade = self.storage.get_atividade(atividade_id)
-        turma = self.storage.get_turma(atividade.turma_id) if atividade else None
-        materia = self.storage.get_materia(turma.materia_id) if turma else None
 
         # Get prompt
         prompt = self.prompt_manager.get_prompt_padrao(
@@ -5518,15 +5633,16 @@ Crie UM documento separado para cada aluno, nomeando como "relatorio_[nome_aluno
 
         # Build variables
         relatorios_texto = "\n\n---\n\n".join([
-            f"### Aluno: {c['aluno_id']}\n\n{c['conteudo']}" for c in conteudos
+            f"### Aluno: {c['aluno_nome']} ({c['aluno_id']})\n\n{c['conteudo']}"
+            for c in conteudos
         ])
         variaveis = {
             "relatorios_narrativos": relatorios_texto,
             "atividade": atividade.nome if atividade else atividade_id,
             "materia": materia.nome if materia else "N/A",
-            "total_alunos": str(len(narrativos)),
+            "total_alunos": str(total_alunos),
             "alunos_incluidos": str(len(conteudos)),
-            "alunos_excluidos": str(len(avisos)),
+            "alunos_excluidos": str(len(alunos_excluidos)),
         }
 
         # Render prompt
@@ -5550,10 +5666,11 @@ Crie UM documento separado para cada aluno, nomeando como "relatorio_[nome_aluno
             "sucesso": resultado.sucesso,
             "etapa": "relatorio_desempenho_tarefa",
             "alunos_incluidos": len(conteudos),
-            "alunos_excluidos": len(avisos),
+            "alunos_excluidos": len(alunos_excluidos),
+            "total_alunos": total_alunos,
             "avisos": avisos,
             "alertas": resultado.alertas,
-            "status": "PARCIAL" if avisos else "COMPLETO",
+            "status": "PARCIAL" if avisos or alunos_excluidos else "COMPLETO",
             "erro": resultado.erro if not resultado.sucesso else None,
         }
 
@@ -5565,7 +5682,7 @@ Crie UM documento separado para cada aluno, nomeando como "relatorio_[nome_aluno
         """
         Narrativa holística de uma turma ao longo de todas as atividades.
 
-        Busca todos os alunos da turma e seus RELATORIO_FINAL em todas as
+        Busca todos os alunos da turma e um RELATORIO_FINAL por aluno em todas as
         atividades. Requer pelo menos 2 alunos com resultados.
         """
         alunos = self.storage.listar_alunos(turma_id)
@@ -5585,40 +5702,27 @@ Crie UM documento separado para cada aluno, nomeando como "relatorio_[nome_aluno
         # Fetch atividades for this turma
         atividades = self.storage.listar_atividades(turma_id)
 
-        # Gather narratives across all atividades for each student
+        # Gather one narrative per student/activity. Historical document versions
+        # must not inflate aggregate coverage or cost.
         conteudos = []
         avisos = []
         atividades_cobertas = set()
         alunos_por_atividade = {}  # atividade_nome → set of aluno_ids with narratives
         for atividade in atividades:
-            docs = self.storage.listar_documentos(
-                atividade.id, tipo=TipoDocumento.RELATORIO_FINAL,
-            )
-            alunos_com_narrativa = set()
-            for doc in docs:
-                try:
-                    resolved = self.storage.resolver_caminho_documento(doc)
-                    pdf_doc = fitz.open(str(resolved))
-                    texto = "".join(page.get_text() for page in pdf_doc)
-                    pdf_doc.close()
-                    if texto.strip():
-                        conteudos.append({
-                            "aluno_id": doc.aluno_id,
-                            "atividade": atividade.nome,
-                            "conteudo": texto.strip(),
-                        })
-                        atividades_cobertas.add(atividade.nome)
-                        alunos_com_narrativa.add(doc.aluno_id)
-                    else:
-                        avisos.append({
-                            "aluno_id": doc.aluno_id,
-                            "motivo": "PDF sem texto extraível (página em branco ou imagem)",
-                        })
-                except Exception as e:
-                    avisos.append({
-                        "aluno_id": doc.aluno_id,
-                        "motivo": f"Arquivo narrativo ilegível: {e}",
-                    })
+            coleta = self._coletar_relatorios_finais_legiveis_por_aluno(atividade, alunos)
+            alunos_com_narrativa = coleta["alunos_incluidos"]
+            for conteudo in coleta["conteudos"]:
+                conteudos.append({
+                    "aluno_id": conteudo["aluno_id"],
+                    "aluno_nome": conteudo["aluno_nome"],
+                    "atividade": atividade.nome,
+                    "conteudo": conteudo["conteudo"],
+                })
+                atividades_cobertas.add(atividade.nome)
+            for aviso in coleta["avisos"]:
+                aviso = dict(aviso)
+                aviso["atividade"] = atividade.nome
+                avisos.append(aviso)
             alunos_por_atividade[atividade.nome] = alunos_com_narrativa
 
         # Detect atividades with coverage gaps (not all enrolled students have narratives)
@@ -5648,7 +5752,7 @@ Crie UM documento separado para cada aluno, nomeando como "relatorio_[nome_aluno
 
         # Build variables
         relatorios_texto = "\n\n---\n\n".join([
-            f"### Aluno: {c['aluno_id']} | Atividade: {c['atividade']}\n\n{c['conteudo']}"
+            f"### Aluno: {c['aluno_nome']} ({c['aluno_id']}) | Atividade: {c['atividade']}\n\n{c['conteudo']}"
             for c in conteudos
         ])
         variaveis = {
@@ -5716,7 +5820,7 @@ Crie UM documento separado para cada aluno, nomeando como "relatorio_[nome_aluno
         # Fetch context
         materia = self.storage.get_materia(materia_id)
 
-        # Gather narratives across all turmas
+        # Gather one narrative per student/activity across all turmas.
         conteudos = []
         avisos = []
         cobertura = {}  # turma_id → {"turma": nome, "narrativas": count}
@@ -5728,36 +5832,22 @@ Crie UM documento separado para cada aluno, nomeando como "relatorio_[nome_aluno
             for atividade in atividades:
                 if atividade_ref is None:
                     atividade_ref = atividade.id
-                docs = self.storage.listar_documentos(
-                    atividade.id, tipo=TipoDocumento.RELATORIO_FINAL,
-                )
-                for doc in docs:
-                    try:
-                        resolved = self.storage.resolver_caminho_documento(doc)
-                        pdf_doc = fitz.open(str(resolved))
-                        texto = "".join(page.get_text() for page in pdf_doc)
-                        pdf_doc.close()
-                        if texto.strip():
-                            conteudos.append({
-                                "turma_id": turma.id,
-                                "turma": turma.nome,
-                                "aluno_id": doc.aluno_id,
-                                "atividade": atividade.nome,
-                                "conteudo": texto.strip(),
-                            })
-                            narrativas_turma += 1
-                        else:
-                            avisos.append({
-                                "aluno_id": doc.aluno_id,
-                                "turma_id": turma.id,
-                                "motivo": "PDF sem texto extraível (página em branco ou imagem)",
-                            })
-                    except Exception as e:
-                        avisos.append({
-                            "aluno_id": doc.aluno_id,
-                            "turma_id": turma.id,
-                            "motivo": f"Arquivo narrativo ilegível: {e}",
-                        })
+                coleta = self._coletar_relatorios_finais_legiveis_por_aluno(atividade, alunos)
+                for conteudo in coleta["conteudos"]:
+                    conteudos.append({
+                        "turma_id": turma.id,
+                        "turma": turma.nome,
+                        "aluno_id": conteudo["aluno_id"],
+                        "aluno_nome": conteudo["aluno_nome"],
+                        "atividade": atividade.nome,
+                        "conteudo": conteudo["conteudo"],
+                    })
+                narrativas_turma += len(coleta["conteudos"])
+                for aviso in coleta["avisos"]:
+                    aviso = dict(aviso)
+                    aviso["turma_id"] = turma.id
+                    aviso["atividade"] = atividade.nome
+                    avisos.append(aviso)
             cobertura[turma.id] = {"turma": turma.nome, "narrativas": narrativas_turma}
 
         turmas_com_resultado = {c["turma_id"] for c in conteudos}
@@ -5796,7 +5886,7 @@ Crie UM documento separado para cada aluno, nomeando como "relatorio_[nome_aluno
 
         # Build variables
         relatorios_texto = "\n\n---\n\n".join([
-            f"### Turma: {c['turma']} ({c['turma_id']}) | Aluno: {c['aluno_id']} | Atividade: {c['atividade']}\n\n{c['conteudo']}"
+            f"### Turma: {c['turma']} ({c['turma_id']}) | Aluno: {c['aluno_nome']} ({c['aluno_id']}) | Atividade: {c['atividade']}\n\n{c['conteudo']}"
             for c in conteudos
         ])
         turma_nomes = sorted(set(

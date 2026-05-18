@@ -14,7 +14,9 @@ Run: cd IA_Educacao_V2/backend && pytest tests/unit/test_f1_desempenho_narrative
 
 import pytest
 import sys
+from datetime import datetime
 from pathlib import Path
+from types import SimpleNamespace
 from unittest.mock import MagicMock, AsyncMock
 
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
@@ -178,4 +180,112 @@ class TestF1T4ExecutorReadsPDFNarratives:
         assert "1" in result["erro"], (
             f"Expected error about '1' readable narrative, got: {result['erro']}. "
             "After fix, empty PDFs should be counted as missing (not as a valid narrative)."
+        )
+
+    @pytest.mark.asyncio
+    async def test_tarefa_uses_one_latest_legible_report_per_student(self, tmp_path, executor_mocked):
+        """Historical RELATORIO_FINAL versions must not be counted as extra students."""
+        pdf_ana_old = make_pdf_with_text(tmp_path / "ana_old.pdf", "Versao antiga da Ana.")
+        pdf_ana_new = make_pdf_with_text(tmp_path / "ana_new.pdf", "Versao nova da Ana.")
+        pdf_bruno = make_pdf_with_text(tmp_path / "bruno.pdf", "Relatorio do Bruno.")
+
+        doc_ana_old = SimpleNamespace(
+            id="ana-old",
+            aluno_id="aluno_1",
+            criado_em=datetime(2026, 5, 18, 10, 0, 0),
+        )
+        doc_ana_new = SimpleNamespace(
+            id="ana-new",
+            aluno_id="aluno_1",
+            criado_em=datetime(2026, 5, 18, 11, 0, 0),
+        )
+        doc_bruno = SimpleNamespace(
+            id="bruno",
+            aluno_id="aluno_2",
+            criado_em=datetime(2026, 5, 18, 9, 0, 0),
+        )
+        paths = {
+            "ana-old": pdf_ana_old,
+            "ana-new": pdf_ana_new,
+            "bruno": pdf_bruno,
+        }
+
+        executor_mocked.storage.listar_documentos.return_value = [
+            doc_ana_old,
+            doc_bruno,
+            doc_ana_new,
+        ]
+        executor_mocked.storage.resolver_caminho_documento.side_effect = (
+            lambda doc: paths[doc.id]
+        )
+        _setup_context_mocks(executor_mocked)
+        executor_mocked.storage.listar_alunos.return_value = [
+            SimpleNamespace(id="aluno_1", nome="Ana"),
+            SimpleNamespace(id="aluno_2", nome="Bruno"),
+        ]
+
+        result = await executor_mocked.gerar_relatorio_desempenho_tarefa("atividade_123")
+
+        assert result["sucesso"] is True
+        assert result["total_alunos"] == 2
+        assert result["alunos_incluidos"] == 2
+        assert result["alunos_excluidos"] == 0
+        variaveis = executor_mocked.prompt_manager.get_prompt_padrao.return_value.render.call_args.kwargs
+        assert variaveis["total_alunos"] == "2"
+        assert variaveis["alunos_incluidos"] == "2"
+        assert "Versao nova da Ana" in variaveis["relatorios_narrativos"]
+        assert "Versao antiga da Ana" not in variaveis["relatorios_narrativos"]
+
+    @pytest.mark.asyncio
+    async def test_tarefa_records_unreadable_latest_before_using_older_report(self, tmp_path, executor_mocked):
+        """If newest report is broken, using an older legible version must be visible."""
+        broken = tmp_path / "ana_new_broken.pdf"
+        broken.write_text("not a pdf", encoding="utf-8")
+        pdf_ana_old = make_pdf_with_text(tmp_path / "ana_old.pdf", "Ana legivel antiga.")
+        pdf_bruno = make_pdf_with_text(tmp_path / "bruno.pdf", "Bruno legivel.")
+
+        doc_ana_new = SimpleNamespace(
+            id="ana-new-broken",
+            aluno_id="aluno_1",
+            criado_em=datetime(2026, 5, 18, 11, 0, 0),
+        )
+        doc_ana_old = SimpleNamespace(
+            id="ana-old",
+            aluno_id="aluno_1",
+            criado_em=datetime(2026, 5, 18, 10, 0, 0),
+        )
+        doc_bruno = SimpleNamespace(
+            id="bruno",
+            aluno_id="aluno_2",
+            criado_em=datetime(2026, 5, 18, 9, 0, 0),
+        )
+        paths = {
+            "ana-new-broken": broken,
+            "ana-old": pdf_ana_old,
+            "bruno": pdf_bruno,
+        }
+
+        executor_mocked.storage.listar_documentos.return_value = [
+            doc_ana_old,
+            doc_bruno,
+            doc_ana_new,
+        ]
+        executor_mocked.storage.resolver_caminho_documento.side_effect = (
+            lambda doc: paths[doc.id]
+        )
+        _setup_context_mocks(executor_mocked)
+        executor_mocked.storage.listar_alunos.return_value = [
+            SimpleNamespace(id="aluno_1", nome="Ana"),
+            SimpleNamespace(id="aluno_2", nome="Bruno"),
+        ]
+
+        result = await executor_mocked.gerar_relatorio_desempenho_tarefa("atividade_123")
+
+        assert result["sucesso"] is True
+        assert result["status"] == "PARCIAL"
+        assert result["alunos_incluidos"] == 2
+        assert any(
+            aviso.get("documento_id") == "ana-new-broken"
+            and "ilegível" in aviso.get("motivo", "")
+            for aviso in result["avisos"]
         )
