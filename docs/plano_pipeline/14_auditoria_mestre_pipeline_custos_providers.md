@@ -53,8 +53,8 @@ tambem ja foi aplicada: `/api/custos/status?limit=160` retorna `ok=true`,
 runtime `546b72f` confirmou o estado intermediario com `record_count=8`,
 `token_usage_analisados=8`, `runs_analisados=28`, `runs_precificados=28` e
 `runs_bloqueados=0`; runtime `deb1e2a` confirmou o estado mais novo com
-`record_count=13`, `token_usage_analisados=13`, `runs_analisados=34`,
-`runs_precificados=34` e `runs_bloqueados=0`. Readback pos-`52ff747`, sem nova
+`record_count=14`, `token_usage_analisados=14`, `runs_analisados=67`,
+`runs_precificados=67` e `runs_bloqueados=0`. Readback pos-`52ff747`, sem nova
 chamada de IA, mostra esses dois smokes separados:
 `run-tool_ae40e3a59695` com docs `afa143d8e6390caf`/`692d50f8be3d885d` e
 `run-tool_922168f5c256` com docs `6041b3de9c64f769`/`18f24ee5c213ab55`.
@@ -108,6 +108,13 @@ a `runs_bloqueados=0`. Sonnet fica validado em Q/G/R/Corr nessa fixture.
 `tool_bbbe57cab277`. O JSON traz proficiencia geral `0.8` e area de atencao em
 porcentagem; o PDF mostra `Nota Final 8,0 / 10,0`, `Taxa de Acerto 75%` e
 recomendacoes. Sonnet fica validado em Q/G/R/Corr/Hab nessa fixture.
+`GERAR_RELATORIO` passou em `task_a0dac5f0e565`: JSON `f48b635c52d030b7`,
+PDF `72d63fecc800cf5a`, `18561/6493` tokens, `US$0.153078`, usage
+`usage_5bf3982306644110`, `cost_run_id=tool_708089e7c2df`. O JSON traz
+`nota_final=8.0` e fontes `CORRIGIR`/`ANALISAR_HABILIDADES`; o PDF mostra
+relatorio pedagogico com nota `8,0 / 10,0`, recomendacoes e detalhamento por
+questao. Sonnet fica validado nas seis etapas isoladas da fixture; full pipeline
+em task unica ainda nao foi rodado.
 
 Validacao especifica do `2fa5d47`: antes do patch,
 `/api/documentos/f68d57a9a339081f/4ae10210c8acbaa5/versoes` mostrava prova,

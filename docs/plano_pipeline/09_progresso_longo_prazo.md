@@ -45,9 +45,9 @@ Depois da aplicacao da migration Supabase, `/api/custos/status` retorna
 `token_usage_backend.supabase.table_available=true`, `error_code=null` e
 `token_usage_durable=true`. O gate row-level foi exercitado: apos smokes oficiais
 em `518f8a2`, `58781a1`, `f534576`, `e85be11` e `546b72f`,
-`/api/custos/status?limit=640` mostra
-`token_usage_backend.supabase.record_count=13`, `token_usage_analisados=13`,
-`runs_analisados=34`, `runs_precificados=34`, `runs_bloqueados=0` e
+`/api/custos/status?limit=700` mostra
+`token_usage_backend.supabase.record_count=14`, `token_usage_analisados=14`,
+`runs_analisados=67`, `runs_precificados=67`, `runs_bloqueados=0` e
 `alertas=[]`. O caminho de código para falhas sem documento final já tem teste
 local (`test_cost_tracking.py`, `33 passed` em 2026-05-19); o que ainda falta é
 uma evidencia live pos-migration especificamente desse caso, sem gastar IA so
@@ -363,6 +363,21 @@ areas de destaque coerentes e porcentagem como area de atencao; PDF extraido
 mostra `Nota Final 8,0 / 10,0`, `Taxa de Acerto 75%` e recomendacoes
 priorizadas. Interpretacao: Sonnet agora esta validado em Q/G/R/Corr/Hab nessa
 fixture; falta `GERAR_RELATORIO` e full pipeline.
+
+Atualizacao Sonnet 4.5 de 2026-05-19/20, `GERAR_RELATORIO`: a chamada repetiu
+o padrao de demora para devolver `task_id`, entao o loop checou health/custos e
+aguardou sem duplicar. Durante a execucao, custos exibiram `runs_bloqueados=1`
+temporario; apos fechamento, `/api/custos/status?limit=700` voltou a
+`runs_bloqueados=0` e subiu para `record_count=14`. A task
+`task_a0dac5f0e565` completou apenas `gerar_relatorio`. Artefatos: JSON
+`f48b635c52d030b7`, PDF `72d63fecc800cf5a`, `cost_run_id`
+`tool_708089e7c2df`, `18561/6493` tokens, `US$0.153078`, usage
+`usage_5bf3982306644110`. Inspecao: JSON com `nota_final=8.0`,
+`_fontes_utilizadas=["CORRIGIR","ANALISAR_HABILIDADES"]`; PDF extraido mostra
+`RELATÓRIO DE DESEMPENHO PEDAGÓGICO`, nota `8,0 / 10,0`, resumo, pontos fortes,
+areas de melhoria, recomendacoes e detalhamento por questao. Interpretacao:
+Sonnet 4.5 esta validado nas seis etapas isoladas da fixture Diana/Omega; ainda
+falta full pipeline em uma task unica antes de marcar pipeline completa.
 
 Atualizacao agregados Matemática-V de 2026-05-19: o smoke inicial em
 `737a709` revelou um bug de produto: `desempenho_tarefa` de

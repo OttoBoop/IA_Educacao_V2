@@ -209,6 +209,19 @@ JSON `678d08cdef1e323e`, PDF `777aea7f9d12f677`, `29462/8315` tokens,
 acerto `75%` e recomendacoes. Conclusao: Sonnet validado em Q/G/R/Corr/Hab;
 falta `GERAR_RELATORIO` e full pipeline.
 
+Novo degrau Sonnet: `GERAR_RELATORIO` isolado, `task_a0dac5f0e565`. Barreira
+operacional repetida: demora para devolver `task_id`, mas a resposta foi
+monitorar health/custos e aguardar. Durante a execucao houve
+`runs_bloqueados=1` temporario; no fechamento, `/api/custos/status?limit=700`
+ficou `record_count=14`, `token_usage_analisados=14`, `runs_bloqueados=0`.
+Resultado: JSON `f48b635c52d030b7`, PDF `72d63fecc800cf5a`, `18561/6493`
+tokens, `US$0.153078`, usage `usage_5bf3982306644110`,
+`cost_run_id=tool_708089e7c2df`. Inspecao: JSON com `nota_final=8.0`,
+fontes `CORRIGIR`/`ANALISAR_HABILIDADES`; PDF com nota `8,0/10,0`, resumo,
+recomendacoes e detalhamento por questao. Conclusao: Sonnet validado nas seis
+etapas isoladas da fixture Diana/Omega; ainda falta full pipeline em task unica
+se o ciclo decidir gastar esse teste.
+
 ## Dados De Teste Escolhidos
 
 Atividade principal para pipeline individual:
