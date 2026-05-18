@@ -956,11 +956,23 @@ async def listar_versoes_documentos(
     """
     from models import TipoDocumento
     
-    # Buscar documentos do aluno e da atividade
-    docs_base = storage.listar_documentos(atividade_id)
-    docs_aluno = storage.listar_documentos(atividade_id, aluno_id)
-    
-    todos_docs = docs_base + docs_aluno
+    # Buscar documentos base da atividade e documentos estritamente do aluno.
+    # storage.listar_documentos(atividade_id) retorna o historico inteiro da
+    # atividade; filtrar aluno_id aqui evita vazar versoes de outros alunos.
+    docs_atividade = storage.listar_documentos(atividade_id)
+    docs_base = [d for d in docs_atividade if not getattr(d, "aluno_id", None)]
+    docs_aluno = [
+        d for d in storage.listar_documentos(atividade_id, aluno_id)
+        if getattr(d, "aluno_id", None) == aluno_id
+    ]
+
+    todos_docs_por_id = {}
+    for doc in docs_base + docs_aluno:
+        doc_id = getattr(doc, "id", None)
+        if doc_id and doc_id in todos_docs_por_id:
+            continue
+        todos_docs_por_id[doc_id or id(doc)] = doc
+    todos_docs = list(todos_docs_por_id.values())
     
     # Filtrar por tipo se especificado
     if tipo:
