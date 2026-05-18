@@ -4,17 +4,20 @@
 **Responsavel operacional:** Paulo
 **Status geral:** o servico oficial Render
 `srv-d5t8gbh4tr6s738fr3s0` (`IA_Educacao_V2`, branch `main`, URL
-`https://ia-educacao-v2.onrender.com`) esta em runtime `e85be11`
-(`fix: enforce pipeline tool artifact contract`), validado por
-`/api/deploy-info`, `/api/health`, `./scripts/wait_deploy.sh e85be11` e
-`./scripts/check_deploy.sh e85be11`.
-`origin/main` tambem aponta para `e85be11`. O codigo funcional de pipeline
+`https://ia-educacao-v2.onrender.com`) esta em runtime `52ff747`
+(`fix: group desempenho runs by cost run id`), validado por
+`/api/deploy-info`, `/api/health`, `./scripts/wait_deploy.sh 52ff747` e
+`./scripts/check_deploy.sh 52ff747`.
+Se este doc for atualizado por commit documental posterior, `origin/main` pode
+ficar a frente do runtime sem mudar backend porque o Render usa `rootDir=backend`.
+O codigo funcional de pipeline
 inclui os ciclos Anthropic/Google ate `d357960`, o preparo seguro de migration
 `737a709`, a correcao de desempenho agregado `bc96faf` e a observabilidade de
 `token_usage` vazio `c8f538a`, agora fechado por persistencia row-level em
 `518f8a2`, a preferencia por PDF narrativo em agregados em `58781a1`, o erro
 bloqueante para `max_iterations_exceeded` em `f534576`, o filtro correto de
-versões por aluno em `2fa5d47` e o contrato de artefatos agregados em `e85be11`.
+versões por aluno em `2fa5d47`, o contrato de artefatos agregados em `e85be11`
+e o agrupamento de leitura por `cost_run_id` em `52ff747`.
 
 Estado funcional consolidado: documentos com `status=erro` nao contam como
 progresso; correcao sem itens avaliaveis nao vira `completo=true`; ranking,
@@ -177,6 +180,20 @@ extra nao e falso verde, mas vira proximo alvo de limpeza de outputs agregados.
 `token_usage_analisados=2`, `alertas=[]`, com usage
 `usage_c53952166c3d40ce`. Esse bloco foi supersedido pelo smoke `e85be11`, que
 elevou a contagem duravel para `record_count=6`.
+
+Atualizacao leitura de desempenho pos-`52ff747`: a tentativa duplicada do smoke
+Google expôs que `/api/desempenho/tarefa/{id}` agrupava execuções independentes
+pela proximidade de timestamp. O commit `52ff747` muda a prioridade: quando
+documentos têm `metadata.cost_run_id`, a API agrupa por esse id e usa janela de
+tempo apenas como fallback legado. Validações locais: `py_compile`,
+`git diff --check`, `test_desempenho_api_endpoints.py` e
+`test_desempenho_no_duplicate_save.py` com `26 passed`. Deploy oficial:
+`wait_deploy.sh 52ff747`, `check_deploy.sh 52ff747`, `/api/health`. Readback
+sem nova chamada de IA: `/api/desempenho/tarefa/810ef4c1a71c701b` agora mostra
+`run-tool_ae40e3a59695` com docs `afa143d8e6390caf`/`692d50f8be3d885d` e
+`run-tool_922168f5c256` com docs `6041b3de9c64f769`/`18f24ee5c213ab55`, em vez
+de misturar os quatro artefatos num mesmo run. `/api/custos/status?limit=240`
+permanece `record_count=6`, `token_usage_analisados=6`, `alertas=[]`.
 
 Atualizacao P0 max-iterations de 2026-05-19: o smoke Haiku de
 `desempenho_tarefa` em `58781a1` expôs falso verde: a API retornou

@@ -6,7 +6,7 @@
 (`f68d57a9a339081f`) e atividade textual `Prova 1 - Equações do 1º Grau`
 (`8f58cc8b5fb75869`) e Matemática-V (`0f615b57854235ec`) para agregados
 oficiais.
-**Runtime oficial atual:** backend Render em `e85be11`; `origin/main` recebeu os
+**Runtime oficial atual:** backend Render em `52ff747`; `origin/main` recebeu os
 ciclos Google `9dbb122`/`8de0ab3` para preservar `retry_after` de provider e
 fazer retry por request Google sem trocar modelo, `2d08eec` para impedir retry
 que reintroduzia Markdown em JSON, `d7313a6` para remover duplicacao de
@@ -26,6 +26,9 @@ verde. `2fa5d47` impede a rota de versões de mostrar documentos de outro aluno.
 `e85be11` reforça o contrato de artefatos de pipeline: `create_document` aceita
 exatamente um JSON por chamada em etapa dual-output, Markdown/artefato extra vira
 erro, e os alertas passam a listar documentos persistidos de verdade.
+`52ff747` muda a leitura dos relatórios de desempenho para agrupar runs por
+`metadata.cost_run_id` quando disponível, evitando que duas execuções próximas no
+tempo apareçam como um único run.
 O
 codigo funcional de batch mais recente continua sendo `9b68de1`, incluido no
 runtime atual.
@@ -56,11 +59,11 @@ Use
 - O servico oficial em 2026-05-17 e
   `srv-d5t8gbh4tr6s738fr3s0` (`IA_Educacao_V2`), branch `main`,
   `rootDir=backend`, URL `https://ia-educacao-v2.onrender.com`.
-- `/api/deploy-info` confirmou o runtime backend `e85be11` com
+- `/api/deploy-info` confirmou o runtime backend `52ff747` com
   `source=RENDER_GIT_COMMIT`; esse e o gate primario atual para codigo live.
-- `origin/main` aponta para `e85be11`. O gate de comportamento
-  provider/pipeline continua sendo `/api/deploy-info` com no-cache e smokes
-  live, nao apenas commit local.
+- `origin/main` pode ficar a frente do runtime em commits documentais; para
+  codigo backend, o gate de comportamento provider/pipeline continua sendo
+  `/api/deploy-info` com no-cache e smokes live, nao apenas commit local.
 - `/api/custos/status?limit=100` em `c8f538a` retornou `ok=true`,
   `custos_persistencia_status=duravel`,
   `token_usage_backend.supabase.table_available=true`, `error_code=null` e
@@ -102,6 +105,13 @@ Use
   `afa143d8e6390caf`/`692d50f8be3d885d`; uma primeira tentativa local de smoke
   tambem processou no servidor e gerou `usage_ac21f90610244c4b`, `16842/4329`,
   `US$0.015875`, docs `6041b3de9c64f769`/`18f24ee5c213ab55`.
+- Deploy `52ff747` corrigiu a leitura desses dois smokes: antes,
+  `/api/desempenho/tarefa/810ef4c1a71c701b` agrupava os quatro docs em um run por
+  proximidade temporal; depois, o readback mostra `run-tool_ae40e3a59695` e
+  `run-tool_922168f5c256` separados por `cost_run_id`. Validacoes locais:
+  `py_compile`, `git diff --check`, `test_desempenho_api_endpoints.py` e
+  `test_desempenho_no_duplicate_save.py` com `26 passed`. O check oficial foi
+  GET/readback, sem nova chamada de IA.
 - Smoke pos-deploy de catalogo: `/api/settings/model-catalog/calculate-cost`
   retornou para o perfil `74257/12403`: Gemini 2.5 Flash `US$ 0.053285`,
   Gemini 2.5 Flash Lite `US$ 0.012387`, Gemini 3 Flash `US$ 0.074338`.
@@ -404,7 +414,7 @@ Fontes de preco:
 | `180b8298a279` | gpt-4o | `openai/gpt-4o` | T/V | `2.50/10.00` | catalogo | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | `task_68b19146a95b`: `US$ 0.314369` | `US$ 0.309673` | Manter como referencia, nao fallback silencioso. |
 | `588f3efe7975` | Claude Haiku 4.5 | `anthropic/claude-haiku-4-5-20251001` | T/V | `1.00/5.00` | oficial Anthropic | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ Beatriz; ⚠️ tarefa agregada | Pipeline individual pos-`d357960`: Q `d11486043fd2856e`, G `55bbe9f20a79d3f7`, R `fa21df6427683bca`, Corr `cf52ae50099a7623`, Hab `cff266a64d1d4256`, Rel `611f9ae8226692cf`/`60fe1cc4dfd2a1af`; `118025/32892`, `US$0.282485`. Agregado tarefa pos-`f534576`: `run-20260519-122041`, 2/0 alunos, `151975/26024`, `US$0.282095`, sem max-iterations; run anterior `run-20260519-121133` foi falso verde historico com max-iterations e `US$0.388877`. | `US$ 0.136272` | Nao rodar turma/materia sem objetivo de qualidade: tarefa Haiku custa muito mais que Google Flash. |
 | `4eaeb5105f5d` | Claude Sonnet 4.5 | `anthropic/claude-sonnet-4-5-20250929` | T/V | `3.00/15.00` | oficial Anthropic | ❌ | ⏸️ | ⏸️ | ⏸️ | ⏸️ | ⏸️ | ❌ primeira etapa | `task_b19524abfdd5` em `EXTRAIR_QUESTOES` falhou por JSON dentro de Markdown; erro `4200/1491`, `US$0.034965` | `US$ 0.408816` | Nao gastar em full Sonnet ate resolver JSON cru nas extrações. |
-| `gem25flash001` | Gemini 2.5 Flash | `google/gemini-2.5-flash` | T/V | `0.30/2.50` | oficial Google | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ Beatriz + agregados Matemática-V | Pipeline individual `task_ca5dd6b8b3b5`: seis etapas OK, `117829/31691`, `US$0.114578`; agregados: tarefa `run-20260519-112430` completa `15858/3404`, `US$0.013267`; turma `run-20260519-112612` completa `30310/9049`, `US$0.031716`; materia pos-`58781a1` `run-20260519-120054` parcial honesta por Erik/Omega sem relatório, `28889/3299`, `US$0.016914`, usage `usage_c53952166c3d40ce`; tarefa pos-`e85be11` limpa sem `.md` fantasma: `usage_459e3a56a73748fc`, `16939/3300`, `US$0.013332`, docs `afa143d8e6390caf`/`692d50f8be3d885d`. | `US$ 0.053285` | Proximo: completar `RELATORIO_FINAL` do Erik/Omega e repetir matéria; contrato de artefato extra em tarefa ja esta provado, row-level basico esta em `record_count=6`. |
+| `gem25flash001` | Gemini 2.5 Flash | `google/gemini-2.5-flash` | T/V | `0.30/2.50` | oficial Google | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ Beatriz + agregados Matemática-V | Pipeline individual `task_ca5dd6b8b3b5`: seis etapas OK, `117829/31691`, `US$0.114578`; agregados: tarefa `run-20260519-112430` completa `15858/3404`, `US$0.013267`; turma `run-20260519-112612` completa `30310/9049`, `US$0.031716`; materia pos-`58781a1` `run-20260519-120054` parcial honesta por Erik/Omega sem relatório, `28889/3299`, `US$0.016914`, usage `usage_c53952166c3d40ce`; tarefa pos-`e85be11` limpa sem `.md` fantasma: `usage_459e3a56a73748fc`, `16939/3300`, `US$0.013332`, docs `afa143d8e6390caf`/`692d50f8be3d885d`; readback pos-`52ff747` separa esse run do `usage_ac21f90610244c4b` por `cost_run_id`. | `US$ 0.053285` | Proximo: completar `RELATORIO_FINAL` do Erik/Omega e repetir matéria; contrato de artefato extra em tarefa ja esta provado, row-level basico esta em `record_count=6`. |
 | `gem25lite001` | Gemini 2.5 Flash Lite | `google/gemini-2.5-flash-lite` | T/V | `0.10/0.40` | oficial Google | ⏸️ | ⏸️ | ⏸️ | ❌ | ⏸️ | ⏸️ | ❌ em `CORRIGIR` | `task_44ec067a3d82` apos `a7f02a3`: JSON salvo, mas sem schema minimo; erro `8c875cf984e55e91`, `31602/5201`, `US$0.005241` | `US$ 0.012387` | Nao subir para agregado; testar Gemini 3 Flash ou desenhar prompt menor especifico para Lite. |
 | `gem3flash001` | Gemini 3 Flash | `google/gemini-3-flash-preview` | T/V | `0.50/3.00` | oficial Google | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ Beatriz | `task_24fe4d7b7ecc`: seis etapas OK, `181550/33182`, `US$0.190321`; `desempenho_tarefa` parcial `US$0.087748` | `US$ 0.074338` | Manter como validado, mas preferir Flash quando custo/latencia importarem. |
 | `e251747cd7a2` | Gemini 2.5 Pro | `google/gemini-2.5-pro` | T/V | `1.25/10.00` ate 200k prompt | oficial Google | ⏸️ | ⏸️ | ⏸️ | ⏸️ | ⏸️ | ⏸️ | 🚫 quota | Sweep live: conexao bloqueada por Google `429` | `US$ 0.216851` | Testar conexao e uma etapa quando quota permitir. |

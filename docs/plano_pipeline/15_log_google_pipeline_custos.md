@@ -17,10 +17,10 @@ ou chamar etapa bloqueada de sucesso continua proibido.
 - URL oficial: `https://ia-educacao-v2.onrender.com`.
 - Runtime inicial observado: `0411f9a`.
 - Runtime final do subloop Google original: `a7f02a3`.
-- Runtime funcional oficial atual: `e85be11`.
+- Runtime funcional oficial atual: `52ff747`.
 - Health final: `/api/health` retornou `{"status":"healthy","supabase":true}`.
 - `origin/main` no fechamento Google: `a7f02a31fc04606de82e22bec3345150fff9ead6`;
-  depois avançou ate `e85be1151400b8cf0985581d39d4a944d75cd10f`.
+  depois avançou ate `52ff747debcbede3f75c5d7f6f9631c58cc72726`.
 - Persistencia duravel de `token_usage`: migration aplicada; `/api/custos/status`
   retorna `ok=true`, `table_available=true`, `error_code=null` e
   `token_usage_backend.durable=true`. Smokes oficiais em `518f8a2` e `58781a1`
@@ -574,6 +574,12 @@ outro par JSON/PDF oficial. Esse gasto tambem fica registrado:
 `usage_ac21f90610244c4b`, `16842/4329`, `US$0.015875`, documentos
 `6041b3de9c64f769`/`18f24ee5c213ab55`. Nao repetir esse padrao: para smokes
 longos, usar `curl -o arquivo` e parsear depois.
+
+Leitura pos-`52ff747`: `/api/desempenho/tarefa/810ef4c1a71c701b` agora agrupa
+por `metadata.cost_run_id` quando existe. Os dois smokes acima aparecem como
+runs separados (`run-tool_ae40e3a59695` e `run-tool_922168f5c256`) e nao mais
+como um unico run por proximidade de timestamp. Essa validação foi GET/readback
+sem nova chamada ao modelo e sem custo adicional.
 
 Proximo passo honesto:
 

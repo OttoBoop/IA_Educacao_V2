@@ -10,8 +10,9 @@ um deve ser lido, o que ainda vale, o que ficou historico, e quais fatos precisa
 guiar os proximos ciclos.
 
 Atualizacao curta de 2026-05-19 para qualquer IA retomando apos compactar:
-`/api/deploy-info` confirma Render em `e85be11`, e `origin/main` tambem esta em
-`e85be11`. O runtime contem a correcao `bc96faf` para falso agregado de
+`/api/deploy-info` confirma Render em `52ff747`. Se `origin/main` estiver a
+frente por commit documental, isso nao muda o backend porque Render usa
+`rootDir=backend`. O runtime contem a correcao `bc96faf` para falso agregado de
 desempenho: antes, `desempenho_tarefa` de Matemática-V/Alpha-V contava versões
 historicas de `RELATORIO_FINAL` como alunos (`12` incluidos, `4` excluidos).
 Depois, o executor passou a usar no maximo uma narrativa legivel por
@@ -25,6 +26,9 @@ artefatos extras em tool-use: etapas dual-output de pipeline agora exigem
 exatamente um JSON via `create_document` e um PDF via `execute_python_code`, o
 schema da tool limita `documents` a um item, e Markdown/artefato extra declarado
 em `create_document` vira erro bloqueante.
+O commit `52ff747` corrige a leitura posterior desses artefatos: quando existe
+`metadata.cost_run_id`, `/api/desempenho/{level}/{entity_id}` agrupa por esse id,
+nao mais por janela de timestamp.
 Evidencia live com `gem25flash001`: tarefa `run-20260519-112430` completa
 (`2/0`, `US$0.013267`), turma `run-20260519-112612` completa (`4` narrativas,
 `US$0.031716`) e materia `run-20260519-120054` parcial honesta (`3` turmas,
@@ -41,7 +45,11 @@ e gerou outro par JSON/PDF: `16842/4329`, `US$0.015875`,
 `usage_ac21f90610244c4b`. A migration Supabase `token_usage`
 tambem ja foi aplicada: `/api/custos/status?limit=160` retorna `ok=true`,
 `table_available=true`, `durable=true`, `record_count=6`,
-`token_usage_analisados=6` e `alertas=[]`. Anthropic Haiku 4.5 tambem tem smoke
+`token_usage_analisados=6` e `alertas=[]`. Readback pos-`52ff747`, sem nova
+chamada de IA, mostra esses dois smokes separados:
+`run-tool_ae40e3a59695` com docs `afa143d8e6390caf`/`692d50f8be3d885d` e
+`run-tool_922168f5c256` com docs `6041b3de9c64f769`/`18f24ee5c213ab55`.
+Anthropic Haiku 4.5 tambem tem smoke
 agregado de tarefa: `run-20260519-122041`, `COMPLETO`, `151975/26024`,
 `US$0.282095`, mas fica com ressalva forte de custo/latencia; o run anterior
 `run-20260519-121133` expôs o falso verde de max-iterations e custou
