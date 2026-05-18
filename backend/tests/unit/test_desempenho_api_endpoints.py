@@ -37,6 +37,7 @@ def _make_desempenho_doc(
     atividade_id: str,
     criado_em: datetime = None,
     nome_arquivo: str = "relatorio_desempenho.md",
+    metadata: dict = None,
 ) -> Documento:
     """Create a Documento instance for testing."""
     return Documento(
@@ -49,6 +50,7 @@ def _make_desempenho_doc(
         atualizado_em=criado_em or datetime(2026, 2, 27, 12, 8, 25),
         criado_por="sistema",
         status=StatusProcessamento.CONCLUIDO,
+        metadata=metadata or {},
     )
 
 
@@ -203,6 +205,53 @@ class TestDesempenhoGetEndpoint:
         assert len(data["runs"]) == 2, (
             f"Expected 2 runs (docs 1+2 grouped, doc 3 separate), got {len(data['runs'])}"
         )
+
+    def test_groups_docs_by_cost_run_id_before_timestamp(self, client):
+        """Distinct cost_run_id values must not merge just because timestamps are close."""
+        t1 = datetime(2026, 5, 19, 20, 53, 57)
+        t2 = datetime(2026, 5, 19, 20, 54, 38)
+        doc1 = _make_desempenho_doc(
+            "doc-json-run-a",
+            TipoDocumento.RELATORIO_DESEMPENHO_TAREFA,
+            "ativ-001",
+            t1,
+            metadata={"cost_run_id": "tool_run_a"},
+        )
+        doc2 = _make_desempenho_doc(
+            "doc-pdf-run-a",
+            TipoDocumento.RELATORIO_DESEMPENHO_TAREFA,
+            "ativ-001",
+            t1 + timedelta(seconds=1),
+            metadata={"cost_run_id": "tool_run_a"},
+        )
+        doc3 = _make_desempenho_doc(
+            "doc-json-run-b",
+            TipoDocumento.RELATORIO_DESEMPENHO_TAREFA,
+            "ativ-001",
+            t2,
+            metadata={"cost_run_id": "tool_run_b"},
+        )
+        doc4 = _make_desempenho_doc(
+            "doc-pdf-run-b",
+            TipoDocumento.RELATORIO_DESEMPENHO_TAREFA,
+            "ativ-001",
+            t2 + timedelta(seconds=1),
+            metadata={"cost_run_id": "tool_run_b"},
+        )
+
+        with patch("routes_extras.storage") as mock_storage:
+            mock_storage.listar_documentos.return_value = [doc1, doc2, doc3, doc4]
+            mock_storage.get_atividade.return_value = MagicMock(id="ativ-001", nome="Prova 1", turma_id="t1")
+            response = client.get("/api/desempenho/tarefa/ativ-001")
+
+        data = response.json()
+        run_ids = {run["id"] for run in data["runs"]}
+        docs_by_run = {run["id"]: {doc["id"] for doc in run["docs"]} for run in data["runs"]}
+
+        assert run_ids == {"run-tool_run_a", "run-tool_run_b"}
+        assert docs_by_run["run-tool_run_a"] == {"doc-json-run-a", "doc-pdf-run-a"}
+        assert docs_by_run["run-tool_run_b"] == {"doc-json-run-b", "doc-pdf-run-b"}
+        assert all("cost_run_id" in run for run in data["runs"])
 
     def test_each_run_has_required_fields(self, client):
         """Each run object must have 'id', 'date', and 'docs' fields."""

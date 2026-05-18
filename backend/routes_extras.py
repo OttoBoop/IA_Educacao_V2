@@ -1327,24 +1327,34 @@ def _extract_preview(doc_list) -> str:
     return ""
 
 
-def _make_run(doc_list):
+def _doc_cost_run_id(doc) -> Optional[str]:
+    metadata = getattr(doc, "metadata", {}) or {}
+    if isinstance(metadata, str):
+        try:
+            metadata = json.loads(metadata)
+        except json.JSONDecodeError:
+            metadata = {}
+    if not isinstance(metadata, dict):
+        return None
+    cost_run_id = metadata.get("cost_run_id")
+    return str(cost_run_id).strip() if cost_run_id else None
+
+
+def _make_run(doc_list, cost_run_id: Optional[str] = None):
     """Create a run dict from a list of Documento objects."""
     run_date = doc_list[0].criado_em
-    return {
-        "id": f"run-{run_date.strftime('%Y%m%d-%H%M%S')}",
+    run = {
+        "id": f"run-{cost_run_id}" if cost_run_id else f"run-{run_date.strftime('%Y%m%d-%H%M%S')}",
         "date": run_date.isoformat(),
         "docs": [_doc_to_dict(d) for d in doc_list],
         "preview": _extract_preview(doc_list),
     }
+    if cost_run_id:
+        run["cost_run_id"] = cost_run_id
+    return run
 
 
-def _group_docs_into_runs(docs):
-    """Group documents by pipeline run based on timestamp proximity.
-
-    Docs created within _RUN_GROUP_THRESHOLD_SECONDS of each other
-    are considered part of the same pipeline run.
-    Returns list of run dicts: [{id, date, docs: [...]}]
-    """
+def _group_docs_by_timestamp(docs):
     if not docs:
         return []
 
@@ -1364,9 +1374,39 @@ def _group_docs_into_runs(docs):
     return runs
 
 
+def _group_docs_into_runs(docs):
+    """Group documents by pipeline run.
+
+    Prefer explicit cost_run_id metadata when available. Timestamp proximity is
+    only a legacy fallback for older desempenho documents without run metadata.
+    Returns list of run dicts: [{id, date, docs: [...]}]
+    """
+    if not docs:
+        return []
+
+    docs_by_cost_run: Dict[str, List[Any]] = {}
+    legacy_docs = []
+    for doc in docs:
+        cost_run_id = _doc_cost_run_id(doc)
+        if cost_run_id:
+            docs_by_cost_run.setdefault(cost_run_id, []).append(doc)
+        else:
+            legacy_docs.append(doc)
+
+    runs = [
+        _make_run(
+            sorted(doc_list, key=lambda d: d.criado_em, reverse=True),
+            cost_run_id=cost_run_id,
+        )
+        for cost_run_id, doc_list in docs_by_cost_run.items()
+    ]
+    runs.extend(_group_docs_by_timestamp(legacy_docs))
+    return sorted(runs, key=lambda run: run["date"], reverse=True)
+
+
 def _doc_to_dict(doc):
     """Convert a Documento to a simplified dict for the API response."""
-    return {
+    payload = {
         "id": doc.id,
         "tipo": doc.tipo.value,
         "nome_arquivo": doc.nome_arquivo,
@@ -1374,6 +1414,10 @@ def _doc_to_dict(doc):
         "extensao": doc.extensao,
         "atividade_id": doc.atividade_id,
     }
+    cost_run_id = _doc_cost_run_id(doc)
+    if cost_run_id:
+        payload["cost_run_id"] = cost_run_id
+    return payload
 
 
 def _check_has_atividades(level: str, entity_id: str) -> bool:
