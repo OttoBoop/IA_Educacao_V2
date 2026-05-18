@@ -181,6 +181,17 @@ tiver dado real. O loop deve agora revisar os detalhes das turmas/atividades de
 Matematica-V, escolher o proximo teste que produz evidencia nova sem depender de
 dado ausente e, em paralelo, manter a matriz de provider/custo atualizada.
 
+Ferramenta reprodutivel adicionada depois desta auditoria:
+`scripts/audit_materias_relatorios.py`. Ela refaz os GETs oficiais, baixa os
+PDFs finais candidatos, valida texto extraivel com PyMuPDF e gera Markdown/JSON
+para colar neste painel. Barreira encontrada e respondida: a primeira execucao
+direta do script usou um Python sem `fitz`, o que inicialmente reclassificou
+todos os PDFs como ilegiveis. Isso foi corrigido para falhar alto com
+mensagem explicita de dependencia ausente. Validacao correta com
+`/home/otavio/Documents/vscode/.venv/bin/python scripts/audit_materias_relatorios.py`
+reproduziu o inventario: 29 materias, 35 turmas, 114 atividades, 87 PDFs
+testados, `fetch_errors=0`, 27 materias bloqueadas, 1 sem turma e 1 parcial.
+
 Atualizacao agregados Matemática-V de 2026-05-19: o smoke inicial em
 `737a709` revelou um bug de produto: `desempenho_tarefa` de
 `810ef4c1a71c701b` contava versões historicas de `RELATORIO_FINAL` como se
