@@ -19,6 +19,18 @@ bloqueante para `max_iterations_exceeded` em `f534576`, o filtro correto de
 versões por aluno em `2fa5d47`, o contrato de artefatos agregados em `e85be11`
 e o agrupamento de leitura por `cost_run_id` em `52ff747`.
 
+## Regra operacional obrigatoria do loop
+
+Regra de trabalho do Paulo, por decisao do Otavio: **se eu encontrar uma
+barreira, eu respondo a barreira, registro no log e continuo**. Ainda tenho
+coisas para fazer e coisas para revisar, preciso checar os documentos de longo
+prazo. Eu nao paro esse loop enquanto a OpenAI nao me parar por limite externo
+ou enquanto o Otavio nao mandar parar; eu faco um novo passo. Se eu ja fiz
+tudo, eu reviso. Se eu ja revisei, reviso de novo. Sempre escrevo o que fiz no
+log, volto aos documentos de longo prazo quando estou em duvida, leio os logs
+quando estou com muitas duvidas para nao repetir trabalho, e pulo para a proxima
+tarefa com registro explicito.
+
 Estado funcional consolidado: documentos com `status=erro` nao contam como
 progresso; correcao sem itens avaliaveis nao vira `completo=true`; ranking,
 estatisticas e dashboard preservam notas legitimas `0.0`; o default oficial e
@@ -103,6 +115,71 @@ Supabase `token_usage` nao esta mais ausente: a migration foi aplicada e
 `/api/custos/status` retorna `ok=true`, `table_available=true` e `durable=true`.
 O gate row-level basico tambem esta confirmado por `record_count=6`; falta
 estender a cobertura para falhas sem documento final.
+
+## Auditoria de materias para relatorios agregados -- 2026-05-18
+
+Acao executada no site oficial, sem chamada de IA e sem gasto novo: inventario
+por GET em `/api/materias`, `/api/turmas`, `/api/alunos?turma_id=...`,
+`/api/atividades?turma_id=...`, `/api/documentos?atividade_id=...` e download
+dos PDFs finais candidatos para testar texto extraivel com PyMuPDF. Resultado:
+29 materias, 35 turmas, 114 atividades, 87 PDFs finais candidatos testados e
+0 erros tecnicos de fetch/download. Barreira registrada: a maior parte do banco
+nao tem pre-requisito real para relatorios agregados, entao nao pode virar
+sucesso por fallback.
+
+Critério operacional usado:
+- `desempenho_tarefa`: pelo menos 2 alunos matriculados e 2
+  `RELATORIO_FINAL` legiveis na atividade.
+- `desempenho_turma`: pelo menos 2 alunos na turma e 2 narrativas finais
+  legiveis na turma.
+- `desempenho_materia`: pelo menos 2 turmas com narrativa final legivel.
+
+Resumo: 27 materias estao bloqueadas por pre-requisito, 1 materia nao tem
+turma, e 1 materia esta parcial. A unica materia realmente promissora para
+seguir o loop de desempenho agora e **Matematica-V**: todas as 3 turmas têm
+material suficiente para `desempenho_turma`, mas a materia segue parcial porque
+a atividade `Smoke Paulo Pipeline 2026-05-16` em `Omega-V` tem somente 1
+relatorio final legivel de 2 alunos. A barreira especifica ja observada antes
+continua sendo dado faltante de Erik/Omega: sem `prova_respondida` resolvivel,
+nao ha como gerar a pipeline individual desse aluno sem upload/dado real.
+
+| Materia | Turmas | Alunos | Atividades | Tarefa pronta | Turma pronta | Status materia | Narrativas legiveis | Agregados PDF ja gerados | Bloqueio principal |
+|---|---:|---:|---:|---:|---:|---|---:|---|---|
+| atlas-validation `5c7d8b21` | 0 | 0 | 0 | 0/0 | 0/0 | sem turma | 0 | tarefa 0, turma 0, materia 0 | sem turma |
+| Ciencias `9998c6ce` | 1 | 5 | 1 | 0/1 | 0/1 | bloqueado | 0 | tarefa 0, turma 0, materia 0 | menos de 2 turmas |
+| Computacao `0d37cae1` | 1 | 1 | 4 | 0/4 | 0/1 | bloqueado | 0 | tarefa 0, turma 0, materia 0 | menos de 2 turmas |
+| Calculo 1 `f95445ac` | 2 | 3 | 2 | 1/2 | 1/2 | bloqueado | 3 | tarefa 1, turma 1, materia 1 | apenas 1 turma com `RELATORIO_FINAL` legivel |
+| Calculo I `c71fba6f` | 2 | 2 | 6 | 0/6 | 0/2 | bloqueado | 0 | tarefa 0, turma 0, materia 0 | nenhuma turma com `RELATORIO_FINAL` legivel |
+| Calculo II `24673f03` | 1 | 1 | 15 | 0/15 | 0/1 | bloqueado | 0 | tarefa 0, turma 0, materia 0 | menos de 2 turmas |
+| Direito e Economia `2c65e22a` | 1 | 1 | 4 | 0/4 | 0/1 | bloqueado | 1 | tarefa 0, turma 0, materia 0 | menos de 2 turmas |
+| Econometria I `59a09ee6` | 1 | 1 | 10 | 0/10 | 0/1 | bloqueado | 4 | tarefa 0, turma 0, materia 0 | menos de 2 turmas |
+| Economia Brasileira Contemporanea `56424176` | 1 | 1 | 2 | 0/2 | 0/1 | bloqueado | 0 | tarefa 0, turma 0, materia 0 | menos de 2 turmas |
+| Financas `f8da90ab` | 1 | 1 | 4 | 0/4 | 0/1 | bloqueado | 0 | tarefa 0, turma 0, materia 0 | menos de 2 turmas |
+| Financas `73bfed50` | 1 | 1 | 11 | 0/11 | 0/1 | bloqueado | 0 | tarefa 0, turma 0, materia 0 | menos de 2 turmas |
+| Formacao Economica do Brasil `917eb449` | 1 | 1 | 2 | 0/2 | 0/1 | bloqueado | 0 | tarefa 0, turma 0, materia 0 | menos de 2 turmas |
+| Historia Economica Geral I `ea8c7652` | 1 | 1 | 2 | 0/2 | 0/1 | bloqueado | 0 | tarefa 0, turma 0, materia 0 | menos de 2 turmas |
+| Interpretacoes do Brasil `91d8eb55` | 1 | 1 | 1 | 0/1 | 0/1 | bloqueado | 0 | tarefa 0, turma 0, materia 0 | menos de 2 turmas |
+| Introducao ao R `2b41c384` | 1 | 1 | 1 | 0/1 | 0/1 | bloqueado | 1 | tarefa 0, turma 0, materia 0 | menos de 2 turmas |
+| Lab. Ciencia de Dados Financas `299337b3` | 1 | 1 | 1 | 0/1 | 0/1 | bloqueado | 0 | tarefa 0, turma 0, materia 0 | menos de 2 turmas |
+| Lab. de Politicas Publicas `d8eb07b2` | 1 | 1 | 12 | 0/12 | 0/1 | bloqueado | 1 | tarefa 0, turma 0, materia 0 | menos de 2 turmas |
+| Macroeconomia III `723ef647` | 1 | 1 | 6 | 0/6 | 0/1 | bloqueado | 1 | tarefa 0, turma 0, materia 0 | menos de 2 turmas |
+| Matematica `840eefa3` | 2 | 7 | 3 | 1/3 | 1/2 | bloqueado | 4 | tarefa 3, turma 1, materia 0 | apenas 1 turma com `RELATORIO_FINAL` legivel |
+| Matematica-V `0f615b57` | 3 | 6 | 6 | 5/6 | 3/3 | parcial | 11 | tarefa 11, turma 4, materia 4 | 1 atividade sem minimo para `desempenho_tarefa` |
+| materia teste upload csv `148ebee4` | 1 | 0 | 0 | 0/0 | 0/1 | bloqueado | 0 | tarefa 0, turma 0, materia 0 | menos de 2 turmas |
+| Materia Sync Teste `2cdc959e` | 1 | 0 | 0 | 0/0 | 0/1 | bloqueado | 0 | tarefa 0, turma 0, materia 0 | menos de 2 turmas |
+| Microeconomia I `5c9f0d2c` | 1 | 1 | 1 | 0/1 | 0/1 | bloqueado | 0 | tarefa 0, turma 0, materia 0 | menos de 2 turmas |
+| Portugues `481cefb5` | 1 | 5 | 2 | 0/2 | 0/1 | bloqueado | 0 | tarefa 0, turma 0, materia 0 | menos de 2 turmas |
+| Quant. Methods in Marketing `dba7f36f` | 1 | 1 | 1 | 0/1 | 0/1 | bloqueado | 0 | tarefa 0, turma 0, materia 0 | menos de 2 turmas |
+| Quantitative Methods in Marketing `4b4cd047` | 1 | 1 | 3 | 0/3 | 0/1 | bloqueado | 0 | tarefa 0, turma 0, materia 0 | menos de 2 turmas |
+| Teoria da Probabilidade `588aa8bf` | 2 | 2 | 9 | 0/9 | 0/2 | bloqueado | 1 | tarefa 0, turma 0, materia 0 | apenas 1 turma com `RELATORIO_FINAL` legivel |
+| Teste Verificacao `9f3e4e15` | 2 | 4 | 4 | 0/4 | 0/2 | bloqueado | 1 | tarefa 1, turma 0, materia 0 | apenas 1 turma com `RELATORIO_FINAL` legivel |
+| Algebra Linear Avancada `57861d16` | 1 | 63 | 1 | 1/1 | 1/1 | bloqueado | 33 | tarefa 0, turma 1, materia 0 | menos de 2 turmas |
+
+Proximo passo automatico: usar Matematica-V como materia padrao de desempenho,
+mas nao insistir no `desempenho_materia` como "completo" enquanto Erik/Omega nao
+tiver dado real. O loop deve agora revisar os detalhes das turmas/atividades de
+Matematica-V, escolher o proximo teste que produz evidencia nova sem depender de
+dado ausente e, em paralelo, manter a matriz de provider/custo atualizada.
 
 Atualizacao agregados Matemática-V de 2026-05-19: o smoke inicial em
 `737a709` revelou um bug de produto: `desempenho_tarefa` de
