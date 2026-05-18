@@ -362,7 +362,11 @@ Você DEVE usar as ferramentas disponíveis para produzir dois outputs:
      "padroes_erros": ["<str>"],
      "recomendacoes": [{"tipo": "<str>", "descricao": "<str>", "prioridade": "<str>"}]
    }
-   Use extensão .json e nome descritivo (ex: "desempenho_tarefa.json").
+   Use exatamente um arquivo .json em create_document, com nome descritivo
+   (ex: "desempenho_tarefa.json"). O campo content deve ser JSON valido,
+   serializado como string ou objeto JSON. Nao crie Markdown, TXT, CSV, DOCX,
+   PDF, PNG ou texto livre via create_document. Qualquer artefato extra torna
+   a etapa invalida.
 
 2. **execute_python_code** — Gere um PDF estilizado com reportlab contendo:
    - Cabeçalho com nome da atividade, turma e data
@@ -370,7 +374,9 @@ Você DEVE usar as ferramentas disponíveis para produzir dois outputs:
    - Questões com maior dificuldade
    - Padrões de erros identificados
    - Recomendações pedagógicas
-   Use extensão .pdf e nome descritivo.
+   Use exatamente um arquivo .pdf e nome descritivo. output_files deve conter
+   somente esse PDF final, sem PNG/CSV/JSON/Markdown auxiliares.
+""" + PDF_SANDBOX_RULES + """
 """,
     # F-T5: DESEMPENHO_TURMA
     EtapaProcessamento.RELATORIO_DESEMPENHO_TURMA: """
@@ -388,7 +394,11 @@ Você DEVE usar as ferramentas disponíveis para produzir dois outputs:
      "padroes_turma": ["<str>"],
      "recomendacoes": [{"tipo": "<str>", "descricao": "<str>", "prioridade": "<str>"}]
    }
-   Use extensão .json e nome descritivo (ex: "desempenho_turma.json").
+   Use exatamente um arquivo .json em create_document, com nome descritivo
+   (ex: "desempenho_turma.json"). O campo content deve ser JSON valido,
+   serializado como string ou objeto JSON. Nao crie Markdown, TXT, CSV, DOCX,
+   PDF, PNG ou texto livre via create_document. Qualquer artefato extra torna
+   a etapa invalida.
 
 2. **execute_python_code** — Gere um PDF estilizado com reportlab contendo:
    - Cabeçalho com nome da turma, matéria e período analisado
@@ -396,7 +406,9 @@ Você DEVE usar as ferramentas disponíveis para produzir dois outputs:
    - Distribuição de alunos por perfil (destaque / atenção)
    - Padrões identificados na turma
    - Recomendações para o professor
-   Use extensão .pdf e nome descritivo.
+   Use exatamente um arquivo .pdf e nome descritivo. output_files deve conter
+   somente esse PDF final, sem PNG/CSV/JSON/Markdown auxiliares.
+""" + PDF_SANDBOX_RULES + """
 """,
     # F-T6: DESEMPENHO_MATERIA
     EtapaProcessamento.RELATORIO_DESEMPENHO_MATERIA: """
@@ -414,7 +426,11 @@ Você DEVE usar as ferramentas disponíveis para produzir dois outputs:
      "efetividade_curriculo": "<str>",
      "recomendacoes": [{"tipo": "<str>", "descricao": "<str>", "prioridade": "<str>"}]
    }
-   Use extensão .json e nome descritivo (ex: "desempenho_materia.json").
+   Use exatamente um arquivo .json em create_document, com nome descritivo
+   (ex: "desempenho_materia.json"). O campo content deve ser JSON valido,
+   serializado como string ou objeto JSON. Nao crie Markdown, TXT, CSV, DOCX,
+   PDF, PNG ou texto livre via create_document. Qualquer artefato extra torna
+   a etapa invalida.
 
 2. **execute_python_code** — Gere um PDF estilizado com reportlab contendo:
    - Cabeçalho com nome da matéria e período
@@ -422,7 +438,9 @@ Você DEVE usar as ferramentas disponíveis para produzir dois outputs:
    - Padrões transversais identificados
    - Avaliação da efetividade curricular
    - Recomendações para revisão do currículo
-   Use extensão .pdf e nome descritivo.
+   Use exatamente um arquivo .pdf e nome descritivo. output_files deve conter
+   somente esse PDF final, sem PNG/CSV/JSON/Markdown auxiliares.
+""" + PDF_SANDBOX_RULES + """
 """,
 }
 
@@ -3765,8 +3783,11 @@ PROMPT ORIGINAL DE REFERENCIA, APENAS PARA TAREFA E SCHEMA:
                         documents_schema["description"] = (
                             "Array with JSON document objects only. Each filename must end "
                             "with .json and content must be valid JSON serialized as a string "
-                            "or passed as an object."
+                            "or passed as an object. Pipeline stages accept exactly one "
+                            "JSON artifact per create_document call."
                         )
+                        documents_schema["minItems"] = 1
+                        documents_schema["maxItems"] = 1
                         content_schema = (
                             documents_schema
                             .get("items", {})
@@ -3856,6 +3877,69 @@ Seja preciso, educativo e construtivo em suas análises."""
                     calls.extend(response.get("tool_calls", []) or [])
                 return calls
 
+            def _create_document_docs_from_call(tool_call: Dict[str, Any]) -> List[Dict[str, Any]]:
+                input_payload = tool_call.get("input", {})
+                if not isinstance(input_payload, dict):
+                    return []
+                docs_input = input_payload.get("documents", [])
+                if isinstance(docs_input, dict):
+                    docs = [docs_input]
+                elif isinstance(docs_input, list):
+                    docs = [doc for doc in docs_input if isinstance(doc, dict)]
+                else:
+                    docs = []
+                if not docs and input_payload.get("content") is not None:
+                    docs = [{
+                        "filename": input_payload.get("filename"),
+                        "content": input_payload.get("content"),
+                        "_implicit_content": True,
+                    }]
+                return docs
+
+            def _create_document_request_has_json(tool_call: Dict[str, Any]) -> bool:
+                if tool_call.get("name") != "create_document" or tool_call.get("is_error", False):
+                    return False
+                return any(
+                    str(doc.get("filename") or "").lower().endswith(".json")
+                    for doc in _create_document_docs_from_call(tool_call)
+                )
+
+            def _create_document_contract_errors(calls: List[Dict[str, Any]]) -> List[str]:
+                if not (dual_output_expected and expected_document_type):
+                    return []
+
+                errors: List[str] = []
+                for idx, tool_call in enumerate(calls, start=1):
+                    if tool_call.get("name") != "create_document":
+                        continue
+                    if tool_call.get("is_error", False):
+                        continue
+                    docs = _create_document_docs_from_call(tool_call)
+                    if not docs:
+                        # Some provider adapters report only the tool name while the
+                        # handler has already persisted the artifact into storage.
+                        # Storage-based validation remains authoritative there.
+                        continue
+                    if len(docs) != 1:
+                        errors.append(
+                            f"create_document chamada {idx} tentou criar {len(docs)} documentos; "
+                            "etapas de pipeline aceitam exatamente 1 JSON por chamada."
+                        )
+                    for doc_idx, doc in enumerate(docs, start=1):
+                        filename = str(doc.get("filename") or "").strip()
+                        if not filename:
+                            if doc.get("_implicit_content"):
+                                continue
+                            errors.append(
+                                f"create_document chamada {idx}.{doc_idx} sem filename .json."
+                            )
+                        elif not filename.lower().endswith(".json"):
+                            errors.append(
+                                "create_document tentou criar arquivo não-JSON em etapa "
+                                f"de pipeline: {filename}"
+                            )
+                return errors
+
             def _sum_usage(responses: List[Dict[str, Any]], key: str) -> int:
                 total = 0
                 for response in responses:
@@ -3935,10 +4019,7 @@ Seja preciso, educativo e construtivo em suas análises."""
                         for doc in docs_by_tool["execute_python_code"]
                     )
                 else:
-                    has_json = any(
-                        tc.get("name") == "create_document" and not tc.get("is_error", False)
-                        for tc in calls
-                    )
+                    has_json = any(_create_document_request_has_json(tc) for tc in calls)
                     has_pdf = any(
                         tc.get("name") == "execute_python_code"
                         and not tc.get("is_error", False)
@@ -5096,21 +5177,19 @@ Seja preciso, educativo e construtivo em suas análises."""
 
             tempo_ms = (time.time() - inicio) * 1000
 
-            # Coletar documentos gerados pelas tools
+            # Coletar documentos realmente persistidos pelas tools. Nao usar
+            # apenas tool input aqui: uma tentativa rejeitada nao e documento gerado.
             documentos_gerados = []
             tool_calls = _combined_tool_calls(respostas_tool)
-            for tc in tool_calls:
-                if tc.get("name") == "create_document":
-                    docs_input = tc.get("input", {}).get("documents", [])
-                    if isinstance(docs_input, dict):
-                        docs = [docs_input]
-                    elif isinstance(docs_input, list):
-                        docs = docs_input
-                    else:
-                        docs = []
-                    for doc in docs:
-                        if isinstance(doc, dict):
-                            documentos_gerados.append(doc.get("filename", "documento"))
+            create_document_contract_errors = _create_document_contract_errors(tool_calls)
+            for doc_id in dict.fromkeys(context.created_document_ids):
+                try:
+                    doc = self.storage.get_documento(doc_id)
+                except Exception:
+                    doc = None
+                if not doc or _doc_is_error(doc):
+                    continue
+                documentos_gerados.append(getattr(doc, "nome_arquivo", None) or doc_id)
 
             if documentos_gerados:
                 alertas.append({"tipo": "info", "mensagem": f"Documentos gerados: {documentos_gerados}"})
@@ -5311,6 +5390,17 @@ Seja preciso, educativo e construtivo em suas análises."""
             tokens_saida = _sum_usage(respostas_tool, "output_tokens")
             tokens_total = tokens_entrada + tokens_saida
 
+            if dual_output_expected and final_state.get("errored_tool_details"):
+                detalhes_tools = " | ".join(final_state["errored_tool_details"])
+                alertas.append({
+                    "tipo": "aviso",
+                    "mensagem": (
+                        "Tentativas de ferramenta com erro foram registradas no mesmo modelo: "
+                        + detalhes_tools[:700]
+                        + ". A etapa só pode concluir se os artefatos obrigatórios finais forem válidos."
+                    ),
+                })
+
             json_repair_error_msg: Optional[str] = None
             json_validation_errors = _validate_json_artifacts(final_state)
             if (
@@ -5410,7 +5500,12 @@ Seja preciso, educativo e construtivo em suas análises."""
                     msg += f". Erro original: {json_repair_error_msg}"
                 post_repair_missing_errors.append(msg)
 
-            validation_errors = post_repair_missing_errors + json_validation_errors + pdf_json_errors
+            validation_errors = (
+                post_repair_missing_errors
+                + create_document_contract_errors
+                + json_validation_errors
+                + pdf_json_errors
+            )
             if validation_errors:
                 erro_msg = (
                     "Saída obrigatória inválida: "

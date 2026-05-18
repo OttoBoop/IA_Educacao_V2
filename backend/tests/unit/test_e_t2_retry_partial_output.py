@@ -578,6 +578,66 @@ class TestBothOutputsNoRetry:
         assert {"type": "string"} in content_schema["anyOf"]
         assert "prefer passing an object" in content_schema["description"].lower()
 
+    async def test_pipeline_create_document_schema_limits_pipeline_to_one_json(self):
+        """Pipeline tool schema should express the one-JSON contract."""
+        both_response = _tool_response(["create_document", "execute_python_code"])
+        _result, mock_client = await _call_executar_com_tools(
+            chat_side_effect=both_response,
+            tools_to_use=["create_document", "execute_python_code"],
+            tipo_value="openai",
+            expected_document_type=TipoDocumento.RELATORIO_DESEMPENHO_TAREFA,
+        )
+
+        create_doc_tool = mock_client.chat_with_tools.call_args_list[0].kwargs["tools"][0]
+        documents_schema = create_doc_tool["input_schema"]["properties"]["documents"]
+
+        assert documents_schema["minItems"] == 1
+        assert documents_schema["maxItems"] == 1
+        assert "exactly one" in documents_schema["description"].lower()
+
+    async def test_pipeline_rejects_non_json_create_document_artifact_request(self):
+        """A dual-output pipeline stage must not complete after asking create_document for Markdown."""
+        response = {
+            "content": "",
+            "tokens": 150,
+            "input_tokens": 100,
+            "output_tokens": 50,
+            "modelo": "test-model",
+            "provider": "anthropic",
+            "tool_calls": [
+                {
+                    "name": "create_document",
+                    "input": {
+                        "documents": [
+                            {
+                                "filename": "desempenho_tarefa.json",
+                                "content": json.dumps({"resumo_turma": "ok"}),
+                            },
+                            {
+                                "filename": "plano_acao_personalizado.md",
+                                "content": "# Plano indevido",
+                            },
+                        ]
+                    },
+                },
+                {
+                    "name": "execute_python_code",
+                    "input": {"code": "# generate PDF"},
+                },
+            ],
+        }
+
+        result, mock_client = await _call_executar_com_tools(
+            chat_side_effect=response,
+            tools_to_use=["create_document", "execute_python_code"],
+            expected_document_type=TipoDocumento.RELATORIO_DESEMPENHO_TAREFA,
+        )
+
+        assert result.sucesso is False
+        assert mock_client.chat_with_tools.call_count == 1
+        assert "não-JSON" in (result.erro or "")
+        assert "exatamente 1 JSON" in (result.erro or "")
+
     async def test_openai_no_tools_retries_with_forced_json_tool_choice(self):
         """If OpenAI still returns plain text, retry must force create_document again."""
         no_tools_response = _tool_response([])
