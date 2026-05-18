@@ -48,6 +48,91 @@ ou chamar etapa bloqueada de sucesso continua proibido.
   `record_count=8`, `token_usage_analisados=8`, `runs_analisados=28`,
   `runs_precificados=28`, `alertas=[]`.
 
+## Atualizacao 2026-05-19 -- Reconexao Sem Custo E Baseline Vivo
+
+Regra aplicada: se uma barreira aparece, ela e respondida, registrada e o loop
+continua. Barreira local: `jq` nao estava instalado, entao os GETs com pipe
+quebraram; resposta foi repetir os mesmos endpoints com Python stdlib. O endpoint
+`/api/settings/models` tambem exigiu ajuste porque retorna `{models,total}`.
+
+Estado vivo sem nova chamada de IA:
+
+- `origin/main`: `1271fa1`, commit documental.
+- Render backend: `546b72f`, esperado porque o commit novo nao altera backend.
+- `/api/health`: saudavel com Supabase.
+- Modelos ativos: 14; default `gpt54mini001`.
+- Google ativos: `gem25flash001`, `gem25lite001`, `gem3flash001`,
+  `e251747cd7a2`.
+- Anthropic ativos: `588f3efe7975` Haiku 4.5 e `4eaeb5105f5d` Sonnet 4.5.
+- `/api/custos/status?limit=420`: `record_count=8`,
+  `token_usage_analisados=8`, `runs_analisados=28`, `runs_precificados=28`,
+  `runs_bloqueados=0`, sem alertas.
+- `/api/custos/resumo?limit=420`: `US$1.484609` na janela recente,
+  `US$0.490543` Google e `US$0.994066` Anthropic.
+- Readback Omega-V pos-`546b72f`: `desempenho_tarefa` e `desempenho_turma`
+  mostram 2 documentos validos cada; documentos `status=erro` nao entram como
+  relatorio valido.
+
+Auditoria de materias reexecutada com
+`/home/otavio/Documents/vscode/.venv/bin/python scripts/audit_materias_relatorios.py`:
+29 materias, 35 turmas, 114 atividades, 87 PDFs testados, `fetch_errors=0`.
+Resumo inalterado: 27 bloqueadas, 1 sem turma, 1 parcial.
+
+Matematica-V detalhada:
+
+- Materia `0f615b57854235ec`: 3 turmas, 6 alunos, 6 atividades.
+- Tarefas prontas: 5/6.
+- Turmas prontas: 3/3.
+- Narrativas legiveis: 11.
+- Agregados PDF existentes: tarefa 12, turma 5, materia 4.
+- Alpha-V e Beta-V estao completas para tarefa/turma.
+- Omega-V esta parcial: `Prova Omega - Warning Test` tem 2/2 finais legiveis;
+  `Smoke Paulo Pipeline 2026-05-16` (`f68d57a9a339081f`) tem 1/2 finais
+  legiveis.
+
+Proximo passo Google: nao gastar uma nova chamada de Gemini enquanto a barreira
+for dado ausente. Primeiro diagnosticar Erik/Omega (`prova_respondida`,
+`extracao_respostas`, `correcao`, `relatorio_final`) por GET oficial. Se faltar
+documento de entrada, registrar bloqueio de dado e mudar para uma tarefa que
+produza evidencia nova de custo/provider.
+
+Diagnostico feito:
+
+- Diana Omega (`10d9fa4f4303ea1f`) em `f68d57a9a339081f`: `prova_respondida=1`,
+  `extracao_respostas=34`, `correcao=160`, `analise_habilidades=77`,
+  `relatorio_final=80`.
+- Erik Omega (`4ae10210c8acbaa5`) em `f68d57a9a339081f`: `prova_respondida=0`,
+  `extracao_respostas=0`, `correcao=0`, `analise_habilidades=0`,
+  `relatorio_final=0`.
+
+Conclusao: o parcial de Matematica-V/Omega nao e bug de Google, nem bug de
+readback, nem custo pendente. E prerequisito de dado ausente. Sem
+`prova_respondida` real para Erik, a pipeline individual dele deve falhar alto
+em `EXTRAIR_RESPOSTAS` e o agregado de materia deve permanecer parcial. O loop
+continua por outro alvo; nao rodar Gemini para tentar "resolver" falta de
+entrada.
+
+Alvo seguinte revisado: custo duravel para falhas sem documento final. Leitura
+de código/testes mostrou que o caminho local ja existe:
+`test_cost_summary_inclui_token_usage_sem_documento`,
+`test_executar_com_tools_provider_error_preserva_tokens_de_documento_parcial` e
+`test_executar_com_tools_provider_error_usa_usage_do_erro_sem_resposta_final`.
+Validacao rodada em 2026-05-19:
+`PYTHONPATH=backend /home/otavio/Documents/vscode/.venv/bin/python -m pytest backend/tests/unit/test_cost_tracking.py -q`
+com `33 passed, 1 warning`. Portanto o status correto nao e "bug de código
+aberto"; e "falta amostra live pos-migration de uma falha real sem documento
+final". Nao gastar chamada de IA so para fabricar essa falha.
+
+Recheck de estimativas, sem IA: o endpoint
+`/api/settings/model-catalog/calculate-cost` foi chamado para o perfil canonico
+`74257/12403`. Os valores live bateram com o Doc 12: Gemini 2.5 Flash
+`US$0.053285`, Flash Lite `US$0.012387`, Gemini 3 Flash `US$0.074338`,
+Gemini 2.5 Pro `US$0.216851`, Haiku 4.5 `US$0.136272`, Sonnet 4.5
+`US$0.408816`, GPT-5.4 Mini `US$0.111506`, GPT-5 Nano `US$0.008674`,
+GPT-4.1 `US$0.247738`, GPT-4o `US$0.309673`, o3/o4 Mini `US$0.136256`.
+Isso confirma a tabela de estimativa; custo real continua vencendo estimativa
+quando ha smoke.
+
 ## Dados De Teste Escolhidos
 
 Atividade principal para pipeline individual:

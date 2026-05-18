@@ -49,7 +49,10 @@ e gerou outro par JSON/PDF: `16842/4329`, `US$0.015875`,
 `usage_ac21f90610244c4b`. A migration Supabase `token_usage`
 tambem ja foi aplicada: `/api/custos/status?limit=160` retorna `ok=true`,
 `table_available=true`, `durable=true`, `record_count=6`,
-`token_usage_analisados=6` e `alertas=[]`. Readback pos-`52ff747`, sem nova
+`token_usage_analisados=6` e `alertas=[]`; a reconexao de 2026-05-19 em
+runtime `546b72f` confirmou o estado mais novo com `record_count=8`,
+`token_usage_analisados=8`, `runs_analisados=28`, `runs_precificados=28` e
+`runs_bloqueados=0`. Readback pos-`52ff747`, sem nova
 chamada de IA, mostra esses dois smokes separados:
 `run-tool_ae40e3a59695` com docs `afa143d8e6390caf`/`692d50f8be3d885d` e
 `run-tool_922168f5c256` com docs `6041b3de9c64f769`/`18f24ee5c213ab55`.
@@ -57,10 +60,13 @@ Anthropic Haiku 4.5 tambem tem smoke
 agregado de tarefa: `run-20260519-122041`, `COMPLETO`, `151975/26024`,
 `US$0.282095`, mas fica com ressalva forte de custo/latencia; o run anterior
 `run-20260519-121133` expôs o falso verde de max-iterations e custou
-`US$0.388877`. Proximo loop recomendado: completar o `RELATORIO_FINAL`
-faltante do Erik/Omega, repetir `desempenho_materia` para confirmar o contrato
-de artefato extra em nível matéria e ampliar a cobertura row-level para falhas
-sem documento final, sem mexer em Rio 3.
+`US$0.388877`. Proximo loop recomendado: manter Erik/Omega como bloqueio de
+dado real ate existir `prova_respondida`, repetir `desempenho_materia` somente
+quando esse dado existir, e usar a proxima falha real de provider para obter
+amostra live de `TokenUsageRecord` sem documento final. O caminho local ja foi
+revalidado por `backend/tests/unit/test_cost_tracking.py` (`33 passed` em
+2026-05-19), entao nao gastar IA apenas para fabricar esse caso. Rio 3 segue
+fora deste ciclo.
 
 Validacao especifica do `2fa5d47`: antes do patch,
 `/api/documentos/f68d57a9a339081f/4ae10210c8acbaa5/versoes` mostrava prova,

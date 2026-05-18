@@ -42,11 +42,14 @@ Depois da aplicacao da migration Supabase, `/api/custos/status` retorna
 `ok=true`, `custos_persistencia_status=duravel`,
 `token_usage_backend.supabase.table_available=true`, `error_code=null` e
 `token_usage_durable=true`. O gate row-level foi exercitado: apos smokes oficiais
-em `518f8a2`, `58781a1`, `f534576` e `e85be11`,
-`/api/custos/status?limit=240` mostra
-`token_usage_backend.supabase.record_count=6`, `token_usage_analisados=6` e
-`alertas=[]`. O proximo ciclo de custos deve cobrir tambem falhas sem documento
-final, mas a escrita duravel basica ja esta provada.
+em `518f8a2`, `58781a1`, `f534576`, `e85be11` e `546b72f`,
+`/api/custos/status?limit=420` mostra
+`token_usage_backend.supabase.record_count=8`, `token_usage_analisados=8`,
+`runs_analisados=28`, `runs_precificados=28`, `runs_bloqueados=0` e
+`alertas=[]`. O caminho de código para falhas sem documento final já tem teste
+local (`test_cost_tracking.py`, `33 passed` em 2026-05-19); o que ainda falta é
+uma evidencia live pos-migration especificamente desse caso, sem gastar IA so
+para provar uma lacuna que ja esta coberta localmente.
 
 Estado de providers: GPT-4.1, GPT-5.4 Mini, GPT-4o e GPT-5 Nano seguem
 referencias OpenAI na fixture Diana. Nano agora passou as seis etapas em uma
@@ -114,8 +117,10 @@ funcional para tarefa, mas muito mais caro/lento que Google Flash; nao rodar
 turma/materia com Haiku sem objetivo claro de comparacao de qualidade. Ollama esta indisponivel no Render.
 Supabase `token_usage` nao esta mais ausente: a migration foi aplicada e
 `/api/custos/status` retorna `ok=true`, `table_available=true` e `durable=true`.
-O gate row-level basico tambem esta confirmado por `record_count=6`; falta
-estender a cobertura para falhas sem documento final.
+O gate row-level basico tambem esta confirmado por `record_count=8`; o teste
+local de custo cobre falhas sem documento final, mas ainda falta uma amostra
+live pos-migration desse caso quando ela surgir naturalmente em smoke de
+provider.
 
 ## Auditoria de materias para relatorios agregados -- 2026-05-18
 
@@ -226,6 +231,37 @@ retorna `total_docs=2`, run `run-tool_cb6a2aaaa7d0`, PDF
 `record_count=8`, `token_usage_analisados=8`, `runs_analisados=28`,
 `runs_precificados=28`, `alertas=[]`.
 
+Reconexao do loop em 2026-05-19, sem custo de IA: barreira operacional local
+registrada e respondida (`jq` ausente; endpoints repetidos com Python stdlib).
+`origin/main` recebeu o commit documental `1271fa1`
+(`docs: record omega artifact contract deploy`), enquanto Render continua
+corretamente no backend `546b72f` porque o commit novo nao altera `backend`.
+Baseline oficial: `/api/deploy-info=546b72f`, `/api/health` saudavel, 14 modelos
+ativos em `/api/settings/models` com default `gpt54mini001`,
+`/api/custos/status?limit=420` com `record_count=8`,
+`token_usage_analisados=8`, `runs_analisados=28`, `runs_precificados=28`,
+`runs_bloqueados=0` e `alertas=[]`; `/api/custos/resumo?limit=420` marcou
+`US$1.484609` na janela recente, sendo `US$0.490543` Google e `US$0.994066`
+Anthropic. Auditoria reexecutada com `scripts/audit_materias_relatorios.py`:
+29 materias, 35 turmas, 114 atividades, 87 PDFs finais testados,
+`fetch_errors=0`, 27 materias bloqueadas, 1 sem turma e 1 parcial. Matematica-V
+segue como materia padrao: 3 turmas, 6 alunos, 6 atividades, 5/6 tarefas
+prontas, 3/3 turmas prontas, 11 narrativas legiveis; o bloqueio real continua
+em Omega-V, atividade `f68d57a9a339081f` (`Smoke Paulo Pipeline 2026-05-16`),
+com 1/2 `RELATORIO_FINAL` legivel. Proximo alvo sem gastar IA: diagnosticar os
+documentos de Erik/Omega por GET oficial; se faltar `prova_respondida` valida,
+registrar bloqueio de dado e seguir para outro teste que gere evidencia nova.
+Diagnostico executado por GET oficial em
+`/api/documentos/f68d57a9a339081f/{aluno_id}/versoes`: Diana Omega tem
+`prova_respondida=1`, `extracao_respostas=34`, `correcao=160`,
+`analise_habilidades=77` e `relatorio_final=80`; Erik Omega tem
+`prova_respondida=0`, `extracao_respostas=0`, `correcao=0`,
+`analise_habilidades=0` e `relatorio_final=0`. Portanto a barreira foi
+respondida: nao ha como completar a pipeline de Erik/Omega sem upload/dado real
+de `prova_respondida`; nao criar fallback, nao inventar prova, nao chamar isso
+de erro de provider. O loop deve pular para o proximo alvo que produza evidencia
+nova de provider/custo.
+
 Atualizacao agregados Matemática-V de 2026-05-19: o smoke inicial em
 `737a709` revelou um bug de produto: `desempenho_tarefa` de
 `810ef4c1a71c701b` contava versões historicas de `RELATORIO_FINAL` como se
@@ -237,8 +273,11 @@ alunos matriculados como denominador. Validacoes locais:
 Smokes oficiais pos-deploy: tarefa `COMPLETO` (`2/0`, `US$0.013267`), turma
 `COMPLETO` (`4` narrativas, `US$0.031716`) e materia `PARCIAL` com avisos
 explícitos (`11` narrativas, `US$0.022514`). Esse alvo de custos foi fechado em
-`518f8a2`/`58781a1`: a tabela duravel agora tem registros row-level e o proximo
-alvo virou cobrir falhas sem documento final.
+`518f8a2`/`58781a1`: a tabela duravel agora tem registros row-level. Releitura
+de código/testes em 2026-05-19 confirmou que o caminho de falhas sem documento
+final ja existe e esta coberto por `test_cost_tracking.py`; o alvo restante e
+obter amostra live pos-migration quando uma falha real ocorrer, sem forcar gasto
+artificial.
 
 Atualizacao custos duraveis de 2026-05-19: a migration
 `backend/migrations/002_create_token_usage.sql` foi aplicada com credencial SQL

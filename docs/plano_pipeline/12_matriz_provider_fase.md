@@ -35,6 +35,12 @@ mesmo `cost_run_id`; o patch impede segunda chamada de JSON/PDF no mesmo run de
 pipeline e o readback de desempenho deixa de expor documentos `status=erro` como
 relatorios validos. Validação oficial pos-deploy: Omega-V tarefa e turma agora
 aparecem com 2 docs validos cada no readback.
+Atualizacao documental `1271fa1`: `origin/main` ficou a frente do runtime apenas
+para registrar o fechamento; Render continua corretamente em `546b72f`.
+Auditoria sem gasto em 2026-05-19 revalidou que Matematica-V e a unica materia
+parcial/promissora para agregados: 5/6 tarefas prontas, 3/3 turmas prontas e
+bloqueio restante em Erik/Omega (`f68d57a9a339081f`, 1/2 relatorios finais
+legiveis).
 O
 codigo funcional de batch mais recente continua sendo `9b68de1`, incluido no
 runtime atual.
@@ -404,6 +410,11 @@ Formula: `(input_tokens * preco_input + output_tokens * preco_output) /
 1_000_000`. O custo real pode mudar por tokenizacao, retry explicito, tool-use
 e tamanho do documento; por isso a coluna "medido" vence a estimativa quando
 existe smoke oficial.
+Recheck sem IA em 2026-05-19 contra
+`/api/settings/model-catalog/calculate-cost`: todos os valores da tabela para
+OpenAI, Anthropic e Google bateram com o endpoint live para o perfil
+`74257/12403`. Isso valida as estimativas como estado do catalogo do site, nao
+como promessa de custo real por provider.
 
 Fontes de preco:
 
@@ -420,7 +431,7 @@ Fontes de preco:
 | `180b8298a279` | gpt-4o | `openai/gpt-4o` | T/V | `2.50/10.00` | catalogo | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | `task_68b19146a95b`: `US$ 0.314369` | `US$ 0.309673` | Manter como referencia, nao fallback silencioso. |
 | `588f3efe7975` | Claude Haiku 4.5 | `anthropic/claude-haiku-4-5-20251001` | T/V | `1.00/5.00` | oficial Anthropic | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ Beatriz; ⚠️ tarefa agregada | Pipeline individual pos-`d357960`: Q `d11486043fd2856e`, G `55bbe9f20a79d3f7`, R `fa21df6427683bca`, Corr `cf52ae50099a7623`, Hab `cff266a64d1d4256`, Rel `611f9ae8226692cf`/`60fe1cc4dfd2a1af`; `118025/32892`, `US$0.282485`. Agregado tarefa pos-`f534576`: `run-20260519-122041`, 2/0 alunos, `151975/26024`, `US$0.282095`, sem max-iterations; run anterior `run-20260519-121133` foi falso verde historico com max-iterations e `US$0.388877`. | `US$ 0.136272` | Nao rodar turma/materia sem objetivo de qualidade: tarefa Haiku custa muito mais que Google Flash. |
 | `4eaeb5105f5d` | Claude Sonnet 4.5 | `anthropic/claude-sonnet-4-5-20250929` | T/V | `3.00/15.00` | oficial Anthropic | ❌ | ⏸️ | ⏸️ | ⏸️ | ⏸️ | ⏸️ | ❌ primeira etapa | `task_b19524abfdd5` em `EXTRAIR_QUESTOES` falhou por JSON dentro de Markdown; erro `4200/1491`, `US$0.034965` | `US$ 0.408816` | Nao gastar em full Sonnet ate resolver JSON cru nas extrações. |
-| `gem25flash001` | Gemini 2.5 Flash | `google/gemini-2.5-flash` | T/V | `0.30/2.50` | oficial Google | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ Beatriz + agregados Matemática-V | Pipeline individual `task_ca5dd6b8b3b5`: seis etapas OK, `117829/31691`, `US$0.114578`; agregados: tarefa `run-20260519-112430` completa `15858/3404`, `US$0.013267`; turma `run-20260519-112612` completa `30310/9049`, `US$0.031716`; materia pos-`58781a1` `run-20260519-120054` parcial honesta por Erik/Omega sem relatório, `28889/3299`, `US$0.016914`, usage `usage_c53952166c3d40ce`; tarefa pos-`e85be11` limpa sem `.md` fantasma: `usage_459e3a56a73748fc`, `16939/3300`, `US$0.013332`, docs `afa143d8e6390caf`/`692d50f8be3d885d`; readback pos-`52ff747` separa esse run do `usage_ac21f90610244c4b` por `cost_run_id`. | `US$ 0.053285` | Proximo: completar `RELATORIO_FINAL` do Erik/Omega e repetir matéria; contrato de artefato extra em tarefa ja esta provado, row-level basico esta em `record_count=6`. |
+| `gem25flash001` | Gemini 2.5 Flash | `google/gemini-2.5-flash` | T/V | `0.30/2.50` | oficial Google | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ Beatriz + agregados Matemática-V | Pipeline individual `task_ca5dd6b8b3b5`: seis etapas OK, `117829/31691`, `US$0.114578`; agregados: tarefa `run-20260519-112430` completa `15858/3404`, `US$0.013267`; turma `run-20260519-112612` completa `30310/9049`, `US$0.031716`; materia pos-`58781a1` `run-20260519-120054` parcial honesta por Erik/Omega sem relatório, `28889/3299`, `US$0.016914`, usage `usage_c53952166c3d40ce`; tarefa pos-`e85be11` limpa sem `.md` fantasma: `usage_459e3a56a73748fc`, `16939/3300`, `US$0.013332`, docs `afa143d8e6390caf`/`692d50f8be3d885d`; readback pos-`52ff747` separa esse run do `usage_ac21f90610244c4b` por `cost_run_id`; Omega-V pos-`546b72f` mantém 2 docs válidos em tarefa e turma e eleva row-level para `record_count=8`. | `US$ 0.053285` | Proximo: completar `RELATORIO_FINAL` do Erik/Omega so com dado real e repetir matéria; contrato de artefato extra em tarefa/turma ja esta provado. |
 | `gem25lite001` | Gemini 2.5 Flash Lite | `google/gemini-2.5-flash-lite` | T/V | `0.10/0.40` | oficial Google | ⏸️ | ⏸️ | ⏸️ | ❌ | ⏸️ | ⏸️ | ❌ em `CORRIGIR` | `task_44ec067a3d82` apos `a7f02a3`: JSON salvo, mas sem schema minimo; erro `8c875cf984e55e91`, `31602/5201`, `US$0.005241` | `US$ 0.012387` | Nao subir para agregado; testar Gemini 3 Flash ou desenhar prompt menor especifico para Lite. |
 | `gem3flash001` | Gemini 3 Flash | `google/gemini-3-flash-preview` | T/V | `0.50/3.00` | oficial Google | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ Beatriz | `task_24fe4d7b7ecc`: seis etapas OK, `181550/33182`, `US$0.190321`; `desempenho_tarefa` parcial `US$0.087748` | `US$ 0.074338` | Manter como validado, mas preferir Flash quando custo/latencia importarem. |
 | `e251747cd7a2` | Gemini 2.5 Pro | `google/gemini-2.5-pro` | T/V | `1.25/10.00` ate 200k prompt | oficial Google | ⏸️ | ⏸️ | ⏸️ | ⏸️ | ⏸️ | ⏸️ | 🚫 quota | Sweep live: conexao bloqueada por Google `429` | `US$ 0.216851` | Testar conexao e uma etapa quando quota permitir. |
@@ -441,6 +452,12 @@ Achados deste ciclo:
 - O catalogo local tambem marcava Gemini 2.5 Flash Lite como sem tools; a
   documentacao oficial Google e o modelo ativo do site indicam function calling
   disponivel, entao o catalogo agora usa `supports_tools=true`.
+- Recheck 2026-05-19 do endpoint live de custo confirmou:
+  GPT-5.4 Mini `US$0.111506`, GPT-5 Nano `US$0.008674`, GPT-4.1
+  `US$0.247738`, GPT-4o `US$0.309673`, Haiku 4.5 `US$0.136272`, Sonnet 4.5
+  `US$0.408816`, Gemini 2.5 Flash `US$0.053285`, Flash Lite `US$0.012387`,
+  Gemini 3 Flash `US$0.074338`, Gemini 2.5 Pro `US$0.216851`, o3 Mini e
+  o4 Mini `US$0.136256`.
 - A matriz antiga abaixo continua como historico detalhado por frente, mas a
   tabela acima e a fonte de decisao operacional por modelo ativo.
 
@@ -474,9 +491,9 @@ nao sao a mesma coisa que `GERAR_RELATORIO` individual. Eles usam os endpoints
 | Provider/Modelo | EXTRAIR_QUESTOES | EXTRAIR_GABARITO | EXTRAIR_RESPOSTAS | CORRIGIR | ANALISAR_HABILIDADES | GERAR_RELATORIO |
 |-----------------|:---:|:---:|:---:|:---:|:---:|:---:|
 | **Claude Haiku 4.5** (`588f3efe7975`) | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
-| **Gemini 2.5 Flash** (`gem25flash001`) | ✅ | ✅ | ✅ | 🚫 | ⏸️ | ⏸️ |
-| **Gemini 2.5 Flash Lite** (`gem25lite001`) | ⏸️ | ⏸️ | ⏸️ | 🚫 | ⏸️ | ⏸️ |
-| **Gemini 3 Flash** (`gem3flash001`) | ✅ | ✅ | ✅ | ⚠️ | ⚠️ | ⚠️ |
+| **Gemini 2.5 Flash** (`gem25flash001`) | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| **Gemini 2.5 Flash Lite** (`gem25lite001`) | ⏸️ | ⏸️ | ⏸️ | ❌ | ⏸️ | ⏸️ |
+| **Gemini 3 Flash** (`gem3flash001`) | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | **GPT-5 Nano** (`gpt5nano001`) | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | **GPT-5.4 Mini** (`gpt54mini001`) | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | **GPT-4o** (`180b8298a279`) — referencia | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
@@ -484,8 +501,11 @@ nao sao a mesma coisa que `GERAR_RELATORIO` individual. Eles usam os endpoints
 
 Nota de leitura: os checks da tabela acima sao por etapa individual validada.
 Eles nao significam que a pipeline completa de 6 etapas passou em uma unica
-task. Em 2026-05-16, Gemini completou as tres extracoes em uma task sequencial,
-mas parou em `corrigir` por quota `429`.
+task, exceto quando a linha operacional curta acima registra task completa.
+Atualizacao 2026-05-19: Gemini 2.5 Flash ja completou pipeline individual em
+Beatriz e agregados de Matematica-V; Gemini 3 Flash completou pipeline
+individual em Beatriz, mas com custo/latencia maiores; Flash Lite continua
+falhando alto em `CORRIGIR` por schema minimo ausente.
 
 Nota GPT-5 Nano pos-`4a4caf0`: a linha ✅ significa que as seis etapas passaram
 em uma unica task oficial na fixture simples Diana
@@ -521,8 +541,9 @@ Naquele momento Google estava bloqueado por quota em `gem25flash001`,
 requisições atingido`). Sweep posterior pos-`c56c4b6` reabriu conexao simples
 para Flash, Flash Lite e Gemini 3 Flash, mas os smokes de pipeline ainda batem
 quota em `corrigir`.
-Anthropic esta bloqueado por credito em Haiku/Sonnet 4.5 (`400`, saldo
-insuficiente). Ollama local falha conexao no Render.
+Anthropic nao esta mais bloqueado por credito: Haiku 4.5 completou pipeline
+individual e `desempenho_tarefa`; Sonnet 4.5 ainda nao foi revalidado alem de
+falha em extração com envelope Markdown. Ollama local falha conexao no Render.
 Nota de dataset Lista0: a atividade `126e8b5ad7dd6d59` possui base docs
 presentes, porem a auditoria de PDF de 2026-05-17 confirmou que o enunciado
 `5dc75513e958c25b` contem os exercicios 1 a 7 enquanto o gabarito
