@@ -17,7 +17,7 @@ ou chamar etapa bloqueada de sucesso continua proibido.
 - URL oficial: `https://ia-educacao-v2.onrender.com`.
 - Runtime inicial observado: `0411f9a`.
 - Runtime final do subloop Google original: `a7f02a3`.
-- Runtime funcional oficial atual: `bc96faf`.
+- Runtime funcional oficial atual: `c8f538a`.
 - Health final: `/api/health` retornou `{"status":"healthy","supabase":true}`.
 - `origin/main` no fechamento Google: `a7f02a31fc04606de82e22bec3345150fff9ead6`;
   depois avançou para `d3579606a35273ff7519a7d13231be268824f711`.
@@ -499,10 +499,12 @@ Interpretação nova:
   `US$0.067497` (`0.013267 + 0.031716 + 0.022514`).
 - A queda de custo em tarefa (`US$0.020012` antes contra `US$0.013267` depois)
   confirma que remover versões historicas reduziu prompt e custo.
-- Patch de observabilidade de custos posterior: quando
+- Patch de observabilidade de custos `c8f538a`: quando
   `token_usage_backend.durable=true` mas `record_count=0`, o resumo passa a
   retornar alerta informativo `token_usage_sem_registros`. Assim o painel não
   confunde "tabela existe" com "falhas sem documento ja foram persistidas".
+  Smoke live: `/api/custos/status?limit=100` retornou `ok=true` e
+  `alertas[0].tipo=token_usage_sem_registros`.
 
 ## Interpretação
 

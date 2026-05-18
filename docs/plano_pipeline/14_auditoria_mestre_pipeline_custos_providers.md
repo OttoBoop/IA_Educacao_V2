@@ -10,8 +10,9 @@ um deve ser lido, o que ainda vale, o que ficou historico, e quais fatos precisa
 guiar os proximos ciclos.
 
 Atualizacao curta de 2026-05-19 para qualquer IA retomando apos compactar:
-`/api/deploy-info` confirma Render em `bc96faf`, e `origin/main` tambem esta em
-`bc96faf`. Esse ciclo corrigiu um falso agregado de desempenho: antes,
+`/api/deploy-info` confirma Render em `c8f538a`, e `origin/main` tambem esta em
+`c8f538a`. O runtime contem a correcao `bc96faf` para falso agregado de
+desempenho: antes,
 `desempenho_tarefa` de Matemática-V/Alpha-V contava versões historicas de
 `RELATORIO_FINAL` como alunos (`12` incluidos, `4` excluidos). Agora o executor
 usa no maximo uma narrativa legivel por aluno/atividade, registra arquivos
@@ -26,11 +27,11 @@ foi aplicada: `/api/custos/status` retorna `ok=true`, `table_available=true`,
 row-level de custos e limpar dados historicos ilegiveis/ausentes em
 Matemática-V, sem mexer em Rio 3.
 
-Complemento do mesmo ciclo: o endpoint de custos ganhou um alerta informativo
-`token_usage_sem_registros` para o caso "tabela duravel, zero linhas". Isso
+Complemento do mesmo ciclo: o commit `c8f538a` fez o endpoint de custos retornar
+alerta informativo `token_usage_sem_registros` para o caso "tabela duravel, zero linhas". Isso
 mantem `ok=true` quando a migration esta aplicada, mas impede leitura enganosa
 de que a camada row-level ja foi exercitada. Teste local: `test_cost_tracking.py`
-com `32 passed`.
+com `32 passed`; smoke live `/api/custos/status?limit=100` confirmou o alerta.
 
 Atualizacao de controle de 2026-05-17: o runtime mais recente confirmado no site
 oficial e `0411f9a`, validado por `/api/deploy-info` com

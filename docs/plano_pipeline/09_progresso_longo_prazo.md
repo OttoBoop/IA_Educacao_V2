@@ -4,12 +4,13 @@
 **Responsavel operacional:** Paulo
 **Status geral:** o servico oficial Render
 `srv-d5t8gbh4tr6s738fr3s0` (`IA_Educacao_V2`, branch `main`, URL
-`https://ia-educacao-v2.onrender.com`) esta em runtime `bc96faf`
-(`fix: de-duplicate aggregate desempenho inputs`), validado por
-`/api/deploy-info`, `/api/health` e `./scripts/wait_deploy.sh bc96faf`.
-`origin/main` tambem aponta para `bc96faf`. O codigo funcional de pipeline
+`https://ia-educacao-v2.onrender.com`) esta em runtime `c8f538a`
+(`fix: surface empty durable token usage`), validado por
+`/api/deploy-info`, `/api/health` e `./scripts/wait_deploy.sh c8f538a`.
+`origin/main` tambem aponta para `c8f538a`. O codigo funcional de pipeline
 inclui os ciclos Anthropic/Google ate `d357960`, o preparo seguro de migration
-`737a709` e a correcao atual de desempenho agregado `bc96faf`.
+`737a709`, a correcao de desempenho agregado `bc96faf` e a observabilidade de
+`token_usage` vazio `c8f538a`.
 
 Estado funcional consolidado: documentos com `status=erro` nao contam como
 progresso; correcao sem itens avaliaveis nao vira `completo=true`; ranking,
@@ -96,13 +97,15 @@ continuam com `token_usage_analisados=0`, enquanto custos por documento e
 
 Atualizacao observabilidade de custos de 2026-05-19: apos diagnosticar que
 `token_usage_durable=true` podia parecer "resolvido" mesmo com
-`token_usage_analisados=0`, foi preparado patch pequeno em `backend/cost_tracking.py`
+`token_usage_analisados=0`, o commit `c8f538a` adicionou patch pequeno em `backend/cost_tracking.py`
 para emitir alerta informativo `token_usage_sem_registros` quando a tabela
 Supabase existe, mas ainda nao ha registros row-level. Isso nao bloqueia
 `/api/custos/status` nem rebaixa custos por metadata; apenas explicita que falta
 provar uma falha com tokens consumidos e sem documento final. Validacoes locais:
 `py_compile`, `git diff --check` e `backend/tests/unit/test_cost_tracking.py`
-com `32 passed`.
+com `32 passed`. Deploy: `./scripts/wait_deploy.sh c8f538a` confirmou o
+runtime, e `/api/custos/status?limit=100` retornou `alertas[0].tipo =
+token_usage_sem_registros`.
 
 Atualizacao chaves seguras de 2026-05-18: qualquer chave colada em chat e
 tratada como exposta e nao deve ser usada para producao. O caminho operacional
