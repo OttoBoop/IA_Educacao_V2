@@ -505,6 +505,10 @@ Interpretação nova:
   confunde "tabela existe" com "falhas sem documento ja foram persistidas".
   Smoke live: `/api/custos/status?limit=100` retornou `ok=true` e
   `alertas[0].tipo=token_usage_sem_registros`.
+- Patch local seguinte: cada execução tool-use com tokens passa a registrar
+  `TokenUsageRecord` row-level mesmo quando documentos JSON/PDF são gerados.
+  Como documentos e usage compartilham `cost_run_id`, o custo continua contado
+  uma vez só. Validacao local: `test_cost_tracking.py` com `33 passed`.
 
 ## Interpretação
 

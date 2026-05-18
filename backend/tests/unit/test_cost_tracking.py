@@ -685,6 +685,104 @@ async def test_executar_com_tools_falha_sem_pdf_obrigatorio(monkeypatch):
 
 
 @pytest.mark.asyncio
+async def test_executar_com_tools_sucesso_registra_token_usage_mesmo_com_documentos(monkeypatch):
+    import executor as executor_module
+    import chat_service
+    from executor import PipelineExecutor
+    from chat_service import ProviderType
+
+    model = SimpleNamespace(
+        id="gemini",
+        tipo=ProviderType.GOOGLE,
+        modelo="gemini-2.5-flash",
+        api_key_id=None,
+        suporta_function_calling=True,
+        max_tokens=1024,
+        temperature=0,
+        suporta_temperature=False,
+    )
+
+    monkeypatch.setattr(chat_service.model_manager, "get", lambda model_id: model)
+    monkeypatch.setattr(chat_service.api_key_manager, "get", lambda key_id: None)
+    monkeypatch.setattr(
+        chat_service.api_key_manager,
+        "get_por_empresa",
+        lambda provider: SimpleNamespace(api_key="test-key"),
+    )
+
+    class DummyClient:
+        def __init__(self, model_config, api_key):
+            self.calls = 0
+
+        async def chat_with_tools(self, **kwargs):
+            self.calls += 1
+            if self.calls == 1:
+                kwargs["context"].created_document_ids.append("doc-json")
+                return {
+                    "content": "",
+                    "tokens": 13,
+                    "input_tokens": 10,
+                    "output_tokens": 3,
+                    "tool_calls": [{"name": "create_document", "is_error": False}],
+                }
+            kwargs["context"].created_document_ids.append("doc-pdf")
+            return {
+                "content": "",
+                "tokens": 26,
+                "input_tokens": 20,
+                "output_tokens": 6,
+                "tool_calls": [
+                    {
+                        "name": "execute_python_code",
+                        "is_error": False,
+                        "files_generated": ["relatorio.pdf"],
+                    }
+                ],
+            }
+
+    monkeypatch.setattr(chat_service, "ChatClient", DummyClient)
+    record_usage = MagicMock()
+    monkeypatch.setattr(executor_module, "record_token_usage", record_usage)
+
+    docs = {
+        "doc-json": SimpleNamespace(
+            id="doc-json",
+            extensao=".json",
+            metadata={"tool": "create_document"},
+            status=StatusProcessamento.CONCLUIDO,
+        ),
+        "doc-pdf": SimpleNamespace(
+            id="doc-pdf",
+            extensao=".pdf",
+            metadata={"tool": "execute_python_code"},
+            status=StatusProcessamento.CONCLUIDO,
+        ),
+    }
+
+    executor = PipelineExecutor()
+    executor.storage.get_documento = MagicMock(side_effect=lambda doc_id: docs[doc_id])
+    executor.storage.atualizar_documento_processamento = MagicMock()
+
+    resultado = await executor.executar_com_tools(
+        mensagem="corrija",
+        atividade_id="ativ-1",
+        aluno_id="aluno-1",
+        provider_id="gemini",
+        tools_to_use=["create_document", "execute_python_code"],
+        expected_document_type=TipoDocumento.RELATORIO_DESEMPENHO_TAREFA,
+        prompt_id="prompt-1",
+    )
+
+    assert resultado.sucesso is True
+    record_usage.assert_called_once()
+    kwargs = record_usage.call_args.kwargs
+    assert kwargs["status"] == "concluido"
+    assert kwargs["tokens_entrada"] == 30
+    assert kwargs["tokens_saida"] == 9
+    assert kwargs["metadata"]["documentos_ids"] == ["doc-json", "doc-pdf"]
+
+
+@pytest.mark.asyncio
 async def test_executar_com_tools_falha_quando_execute_code_nao_persiste_pdf(monkeypatch):
     import chat_service
     from executor import PipelineExecutor

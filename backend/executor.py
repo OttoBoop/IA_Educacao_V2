@@ -5174,7 +5174,7 @@ Seja preciso, educativo e construtivo em suas análises."""
                             "custo_origem": "tool_use_error",
                         },
                     )
-                if not context.created_document_ids and tokens_total > 0:
+                if tokens_total > 0:
                     record_token_usage(
                         cost_run_id=context.cost_run_id,
                         atividade_id=atividade_id,
@@ -5192,6 +5192,7 @@ Seja preciso, educativo e construtivo em suas análises."""
                         source="executar_com_tools",
                         metadata={
                             "erro_tipo": "dual_output_incomplete",
+                            "documentos_ids": list(context.created_document_ids),
                             "response_debug": response_debug,
                         },
                     )
@@ -5342,6 +5343,27 @@ Seja preciso, educativo e construtivo em suas análises."""
                     "tipo": "aviso",
                     "mensagem": erro_msg,
                 })
+                if tokens_total > 0:
+                    record_token_usage(
+                        cost_run_id=context.cost_run_id,
+                        atividade_id=atividade_id,
+                        aluno_id=aluno_id,
+                        etapa=expected_document_type.value if expected_document_type else "tools",
+                        provider=model.tipo.value,
+                        modelo=model.modelo,
+                        tokens_entrada=tokens_entrada,
+                        tokens_saida=tokens_saida,
+                        status="erro",
+                        erro=erro_msg,
+                        tentativas=tentativas,
+                        tempo_ms=tempo_ms,
+                        prompt_id=prompt_id,
+                        source="executar_com_tools_validation",
+                        metadata={
+                            "erro_tipo": "tool_use_validation_error",
+                            "documentos_ids": list(context.created_document_ids),
+                        },
+                    )
                 return ResultadoExecucao(
                     sucesso=False,
                     etapa="tools",
@@ -5387,6 +5409,27 @@ Seja preciso, educativo e construtivo em suas análises."""
                 )
 
             resposta_parsed_final, documento_id_principal = _resposta_parsed_e_documento_principal(final_state)
+
+            if tokens_total > 0:
+                record_token_usage(
+                    cost_run_id=context.cost_run_id,
+                    atividade_id=atividade_id,
+                    aluno_id=aluno_id,
+                    etapa=expected_document_type.value if expected_document_type else "tools",
+                    provider=model.tipo.value,
+                    modelo=model.modelo,
+                    tokens_entrada=tokens_entrada,
+                    tokens_saida=tokens_saida,
+                    status="concluido",
+                    tentativas=tentativas,
+                    tempo_ms=tempo_ms,
+                    prompt_id=prompt_id,
+                    source="executar_com_tools",
+                    metadata={
+                        "custo_origem": "tool_use",
+                        "documentos_ids": list(context.created_document_ids),
+                    },
+                )
 
             return ResultadoExecucao(
                 sucesso=True,
@@ -5452,7 +5495,7 @@ Seja preciso, educativo e construtivo em suas análises."""
                     status=StatusProcessamento.ERRO,
                     metadata_patch=metadata_patch,
                 )
-            if not getattr(created_context, "created_document_ids", []) and tokens_total > 0:
+            if tokens_total > 0:
                 record_token_usage(
                     cost_run_id=cost_run_id or f"provider_error_{uuid.uuid4().hex[:12]}",
                     atividade_id=atividade_id,
@@ -5466,12 +5509,12 @@ Seja preciso, educativo e construtivo em suas análises."""
                     erro=str(e),
                     erro_codigo=e.status_code,
                     retryable=e.retryable,
-                    retry_after=getattr(e, "retry_after", None),
                     tempo_ms=tempo_ms,
                     prompt_id=locals().get("prompt_id"),
                     source="executar_com_tools_provider_error",
                     metadata={
                         "erro_tipo": "provider_api_error",
+                        "documentos_ids": list(getattr(created_context, "created_document_ids", []) or []),
                         "retry_after": getattr(e, "retry_after", None),
                     },
                 )

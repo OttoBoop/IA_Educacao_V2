@@ -32,6 +32,10 @@ alerta informativo `token_usage_sem_registros` para o caso "tabela duravel, zero
 mantem `ok=true` quando a migration esta aplicada, mas impede leitura enganosa
 de que a camada row-level ja foi exercitada. Teste local: `test_cost_tracking.py`
 com `32 passed`; smoke live `/api/custos/status?limit=100` confirmou o alerta.
+Patch local seguinte amplia o proprio registro: runs de tool-use bem-sucedidos
+e provider errors com documento parcial tambem passam a criar `TokenUsageRecord`
+row-level com o mesmo `cost_run_id`, preservando deduplicacao de custo no
+resumo. Teste local: `test_cost_tracking.py` com `33 passed`.
 
 Atualizacao de controle de 2026-05-17: o runtime mais recente confirmado no site
 oficial e `0411f9a`, validado por `/api/deploy-info` com

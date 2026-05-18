@@ -64,6 +64,10 @@ Use
   essa tabela existe, mas continua vazia. Validacao local:
   `test_cost_tracking.py` com `32 passed`; smoke live em
   `/api/custos/status?limit=100` mostrou o alerta.
+- Patch local posterior passa a gravar `TokenUsageRecord` row-level tambem em
+  runs de tool-use que geram documentos e em provider error com documento
+  parcial. O custo nao deve duplicar porque o resumo deduplica por
+  `cost_run_id`. Validacao local: `test_cost_tracking.py` com `33 passed`.
 - Smoke pos-deploy de catalogo: `/api/settings/model-catalog/calculate-cost`
   retornou para o perfil `74257/12403`: Gemini 2.5 Flash `US$ 0.053285`,
   Gemini 2.5 Flash Lite `US$ 0.012387`, Gemini 3 Flash `US$ 0.074338`.

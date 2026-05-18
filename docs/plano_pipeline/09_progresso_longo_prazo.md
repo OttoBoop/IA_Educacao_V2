@@ -107,6 +107,14 @@ com `32 passed`. Deploy: `./scripts/wait_deploy.sh c8f538a` confirmou o
 runtime, e `/api/custos/status?limit=100` retornou `alertas[0].tipo =
 token_usage_sem_registros`.
 
+Atualizacao row-level de custos de 2026-05-19: patch local posterior passa a
+registrar `TokenUsageRecord` tambem para runs de tool-use que geram documentos,
+nao apenas falhas sem documento. O resumo ja deduplica documentos e
+`token_usage` por `cost_run_id`, entao o objetivo e rastreabilidade duravel por
+execucao sem duplicar custo. Tambem passou a registrar provider error com
+documento parcial. Validacoes locais: `py_compile`, `git diff --check` e
+`backend/tests/unit/test_cost_tracking.py` com `33 passed`.
+
 Atualizacao chaves seguras de 2026-05-18: qualquer chave colada em chat e
 tratada como exposta e nao deve ser usada para producao. O caminho operacional
 para rotacionar credenciais do site oficial agora e
