@@ -10,13 +10,16 @@ um deve ser lido, o que ainda vale, o que ficou historico, e quais fatos precisa
 guiar os proximos ciclos.
 
 Atualizacao curta de 2026-05-19 para qualquer IA retomando apos compactar:
-`/api/deploy-info` confirma Render em `58781a1`, e `origin/main` tambem esta em
-`58781a1`. O runtime contem a correcao `bc96faf` para falso agregado de
+`/api/deploy-info` confirma Render em `f534576`, e `origin/main` tambem esta em
+`f534576`. O runtime contem a correcao `bc96faf` para falso agregado de
 desempenho: antes, `desempenho_tarefa` de Matemática-V/Alpha-V contava versões
 historicas de `RELATORIO_FINAL` como alunos (`12` incluidos, `4` excluidos).
 Depois, o executor passou a usar no maximo uma narrativa legivel por
 aluno/atividade. O commit `58781a1` refinou a regra: quando existe PDF valido
 para o aluno, versões historicas `.json`/`.md` nao derrubam mais o agregado.
+O commit `f534576` fecha outro P0: `max_iterations_exceeded` em tool-use agora
+falha alto e marca documentos como erro, em vez de retornar `sucesso=true` com
+aviso.
 Evidencia live com `gem25flash001`: tarefa `run-20260519-112430` completa
 (`2/0`, `US$0.013267`), turma `run-20260519-112612` completa (`4` narrativas,
 `US$0.031716`) e materia `run-20260519-120054` parcial honesta (`3` turmas,
@@ -25,11 +28,14 @@ O run de materia gerou PDF `1500c163ad6efab8`, JSON oficial
 `4722445c303f9393` e JSON extra `814489ad08fab682` marcado como erro
 `stale_tool_artifact`, sem falso verde. A migration Supabase `token_usage`
 tambem ja foi aplicada: `/api/custos/status?limit=160` retorna `ok=true`,
-`table_available=true`, `durable=true`, `record_count=2`,
-`token_usage_analisados=2` e `alertas=[]`. Proximo loop recomendado: completar
-o `RELATORIO_FINAL` faltante do Erik/Omega, limpar o JSON extra de agregados e
-ampliar a cobertura row-level para falhas sem documento final, sem mexer em
-Rio 3.
+`table_available=true`, `durable=true`, `record_count=4`,
+`token_usage_analisados=4` e `alertas=[]`. Anthropic Haiku 4.5 tambem tem smoke
+agregado de tarefa: `run-20260519-122041`, `COMPLETO`, `151975/26024`,
+`US$0.282095`, mas fica com ressalva forte de custo/latencia; o run anterior
+`run-20260519-121133` expôs o falso verde de max-iterations e custou
+`US$0.388877`. Proximo loop recomendado: completar o `RELATORIO_FINAL`
+faltante do Erik/Omega, limpar artefatos extras de agregados e ampliar a
+cobertura row-level para falhas sem documento final, sem mexer em Rio 3.
 
 Complemento do mesmo ciclo: o commit `c8f538a` fez o endpoint de custos retornar
 alerta informativo `token_usage_sem_registros` para o caso "tabela duravel, zero linhas". Isso
@@ -46,6 +52,11 @@ Smoke live posterior em `58781a1`: `run-20260519-120054` gravou
 `usage_c53952166c3d40ce`, elevou `record_count` para `2`,
 `token_usage_analisados=2` e manteve custo deduplicado em `US$0.016914` no
 mesmo `cost_run_id` dos documentos de materia.
+Smoke live posterior em `f534576`: `run-20260519-122041` gravou
+`usage_d1af0c291f2743e1`, elevou `record_count` para `4` e custou
+`US$0.282095`. O run imediatamente anterior `run-20260519-121133` permanece
+como evidencia historica de falso verde: `max_iterations_exceeded`, 7
+documentos, `US$0.388877`.
 
 Atualizacao de controle de 2026-05-17: o runtime mais recente confirmado no site
 oficial e `0411f9a`, validado por `/api/deploy-info` com

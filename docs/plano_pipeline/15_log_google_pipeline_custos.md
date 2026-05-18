@@ -17,15 +17,16 @@ ou chamar etapa bloqueada de sucesso continua proibido.
 - URL oficial: `https://ia-educacao-v2.onrender.com`.
 - Runtime inicial observado: `0411f9a`.
 - Runtime final do subloop Google original: `a7f02a3`.
-- Runtime funcional oficial atual: `58781a1`.
+- Runtime funcional oficial atual: `f534576`.
 - Health final: `/api/health` retornou `{"status":"healthy","supabase":true}`.
 - `origin/main` no fechamento Google: `a7f02a31fc04606de82e22bec3345150fff9ead6`;
-  depois avançou ate `58781a139983268726960cc8858525623d64be91`.
+  depois avançou ate `f5345764a5817c2ce57aa371ea986764b54701af`.
 - Persistencia duravel de `token_usage`: migration aplicada; `/api/custos/status`
   retorna `ok=true`, `table_available=true`, `error_code=null` e
   `token_usage_backend.durable=true`. Smokes oficiais em `518f8a2` e `58781a1`
-  provaram escrita row-level: `record_count=2`, `token_usage_analisados=2`,
-  `alertas=[]`. Ainda falta ampliar a prova para falhas sem documento final.
+  provaram escrita row-level; apos o smoke Haiku agregado em `f534576`, o status
+  atual e `record_count=4`, `token_usage_analisados=4`, `alertas=[]`. Ainda
+  falta ampliar a prova para falhas sem documento final.
 
 ## Dados De Teste Escolhidos
 

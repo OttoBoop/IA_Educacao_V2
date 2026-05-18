@@ -6,7 +6,7 @@
 (`f68d57a9a339081f`) e atividade textual `Prova 1 - Equações do 1º Grau`
 (`8f58cc8b5fb75869`) e Matemática-V (`0f615b57854235ec`) para agregados
 oficiais.
-**Runtime oficial atual:** backend Render em `58781a1`; `origin/main` recebeu os
+**Runtime oficial atual:** backend Render em `f534576`; `origin/main` recebeu os
 ciclos Google `9dbb122`/`8de0ab3` para preservar `retry_after` de provider e
 fazer retry por request Google sem trocar modelo, `2d08eec` para impedir retry
 que reintroduzia Markdown em JSON, `d7313a6` para remover duplicacao de
@@ -20,7 +20,9 @@ aluno/atividade, sem contar historico de documentos como alunos extras, e
 `c8f538a` faz o endpoint de custos alertar quando `token_usage` esta duravel mas
 sem registros row-level, e `518f8a2` passa a persistir `TokenUsageRecord` para
 runs de tool-use com documentos. `58781a1` prefere PDFs validos nos agregados e
-ignora versões historicas `.json`/`.md` quando existe PDF para o aluno. O
+ignora versões historicas `.json`/`.md` quando existe PDF para o aluno.
+`f534576` transforma `max_iterations_exceeded` em falha bloqueante, nao alerta
+verde. O
 codigo funcional de batch mais recente continua sendo `9b68de1`, incluido no
 runtime atual.
 Use
@@ -50,9 +52,9 @@ Use
 - O servico oficial em 2026-05-17 e
   `srv-d5t8gbh4tr6s738fr3s0` (`IA_Educacao_V2`), branch `main`,
   `rootDir=backend`, URL `https://ia-educacao-v2.onrender.com`.
-- `/api/deploy-info` confirmou o runtime backend `58781a1` com
+- `/api/deploy-info` confirmou o runtime backend `f534576` com
   `source=RENDER_GIT_COMMIT`; esse e o gate primario atual para codigo live.
-- `origin/main` aponta para `58781a1`. O gate de comportamento
+- `origin/main` aponta para `f534576`. O gate de comportamento
   provider/pipeline continua sendo `/api/deploy-info` com no-cache e smokes
   live, nao apenas commit local.
 - `/api/custos/status?limit=100` em `c8f538a` retornou `ok=true`,
@@ -77,6 +79,11 @@ Use
   apenas um dado ausente real (Erik/Omega sem `RELATORIO_FINAL`), sem os avisos
   antigos de Daniel/Beta-V; custo `28889/3299`, `US$0.016914`, usage
   `usage_c53952166c3d40ce`, `record_count=2`, `token_usage_analisados=2`.
+- Deploy `f534576` corrigiu falso verde por `max_iterations_exceeded`. O smoke
+  Haiku anterior (`run-20260519-121133`) tinha retornado `COMPLETO` com limite
+  de iterações e custo `US$0.388877`; isso agora viraria falha. Re-smoke
+  `run-20260519-122041` passou sem max-iterations, `151975/26024`,
+  `US$0.282095`, usage `usage_d1af0c291f2743e1`, `record_count=4`.
 - Smoke pos-deploy de catalogo: `/api/settings/model-catalog/calculate-cost`
   retornou para o perfil `74257/12403`: Gemini 2.5 Flash `US$ 0.053285`,
   Gemini 2.5 Flash Lite `US$ 0.012387`, Gemini 3 Flash `US$ 0.074338`.
@@ -377,7 +384,7 @@ Fontes de preco:
 | `gpt5nano001` | GPT-5 Nano | `openai/gpt-5-nano` | T/sem vision | `0.05/0.40` | catalogo | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ fixture simples | `task_cbe8568e78d6`: `US$ 0.017160`; custo real maior que estimativa por tokens gerados nessa task | `US$ 0.008674` | Repetir em dataset maior antes de chamar de pipeline-ready geral. |
 | `ffae9accf68e` | GPT-4.1 | `openai/gpt-4.1` | T/V | `2.00/8.00` | catalogo | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | `task_f6851ed535b8`: `US$ 0.222856` | `US$ 0.247738` | Repetir em dataset maior e checar qualidade visual de PDFs. |
 | `180b8298a279` | gpt-4o | `openai/gpt-4o` | T/V | `2.50/10.00` | catalogo | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | `task_68b19146a95b`: `US$ 0.314369` | `US$ 0.309673` | Manter como referencia, nao fallback silencioso. |
-| `588f3efe7975` | Claude Haiku 4.5 | `anthropic/claude-haiku-4-5-20251001` | T/V | `1.00/5.00` | oficial Anthropic | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ Beatriz | Pos-`d357960`, pipeline individual completa validada por artefatos oficiais: Q `d11486043fd2856e`, G `55bbe9f20a79d3f7`, R `fa21df6427683bca`, Corr `cf52ae50099a7623`, Hab `cff266a64d1d4256`, Rel `611f9ae8226692cf`/`60fe1cc4dfd2a1af`; `118025/32892`, `US$0.282485` | `US$ 0.136272` | Repetir em outro aluno/dataset; manter Sonnet pausado ate precisar comparar qualidade. |
+| `588f3efe7975` | Claude Haiku 4.5 | `anthropic/claude-haiku-4-5-20251001` | T/V | `1.00/5.00` | oficial Anthropic | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ Beatriz; ⚠️ tarefa agregada | Pipeline individual pos-`d357960`: Q `d11486043fd2856e`, G `55bbe9f20a79d3f7`, R `fa21df6427683bca`, Corr `cf52ae50099a7623`, Hab `cff266a64d1d4256`, Rel `611f9ae8226692cf`/`60fe1cc4dfd2a1af`; `118025/32892`, `US$0.282485`. Agregado tarefa pos-`f534576`: `run-20260519-122041`, 2/0 alunos, `151975/26024`, `US$0.282095`, sem max-iterations; run anterior `run-20260519-121133` foi falso verde historico com max-iterations e `US$0.388877`. | `US$ 0.136272` | Nao rodar turma/materia sem objetivo de qualidade: tarefa Haiku custa muito mais que Google Flash. |
 | `4eaeb5105f5d` | Claude Sonnet 4.5 | `anthropic/claude-sonnet-4-5-20250929` | T/V | `3.00/15.00` | oficial Anthropic | ❌ | ⏸️ | ⏸️ | ⏸️ | ⏸️ | ⏸️ | ❌ primeira etapa | `task_b19524abfdd5` em `EXTRAIR_QUESTOES` falhou por JSON dentro de Markdown; erro `4200/1491`, `US$0.034965` | `US$ 0.408816` | Nao gastar em full Sonnet ate resolver JSON cru nas extrações. |
 | `gem25flash001` | Gemini 2.5 Flash | `google/gemini-2.5-flash` | T/V | `0.30/2.50` | oficial Google | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ Beatriz + agregados Matemática-V | Pipeline individual `task_ca5dd6b8b3b5`: seis etapas OK, `117829/31691`, `US$0.114578`; agregados: tarefa `run-20260519-112430` completa `15858/3404`, `US$0.013267`; turma `run-20260519-112612` completa `30310/9049`, `US$0.031716`; materia pos-`58781a1` `run-20260519-120054` parcial honesta por Erik/Omega sem relatório, `28889/3299`, `US$0.016914`, usage `usage_c53952166c3d40ce`. | `US$ 0.053285` | Proximo: completar `RELATORIO_FINAL` do Erik/Omega e limpar JSON extra `stale_tool_artifact`; row-level basico ja esta provado com `record_count=2`. |
 | `gem25lite001` | Gemini 2.5 Flash Lite | `google/gemini-2.5-flash-lite` | T/V | `0.10/0.40` | oficial Google | ⏸️ | ⏸️ | ⏸️ | ❌ | ⏸️ | ⏸️ | ❌ em `CORRIGIR` | `task_44ec067a3d82` apos `a7f02a3`: JSON salvo, mas sem schema minimo; erro `8c875cf984e55e91`, `31602/5201`, `US$0.005241` | `US$ 0.012387` | Nao subir para agregado; testar Gemini 3 Flash ou desenhar prompt menor especifico para Lite. |
@@ -416,6 +423,13 @@ nao sao a mesma coisa que `GERAR_RELATORIO` individual. Eles usam os endpoints
 | `gem25flash001` | ✅ | ✅ | ⚠️ | Tarefa `run-20260519-112430` completa, 2 alunos/0 excluidos, `US$0.013267`; turma `run-20260519-112612` completa, 4 narrativas/2 atividades, `US$0.031716`; materia pos-`58781a1` `run-20260519-120054` gerou PDF/JSON com 3 turmas e 11 narrativas, `US$0.016914`, e ficou parcial por um aviso real: Erik/Omega sem `RELATORIO_FINAL`. | Completar `RELATORIO_FINAL` do smoke Omega; investigar por que o modelo ainda cria um JSON extra marcado como `stale_tool_artifact`. |
 | `gem3flash001` | ✅ | ⏸️ | ⏸️ | `desempenho_tarefa` parcial em `run-20260518-162141`, `US$0.087748`; turma/materia nao rodados para conter custo, ja que Flash cobriu turma. | Rodar turma so se precisarmos comparar qualidade; materia continua bloqueada por dados. |
 | `e251747cd7a2` | ⏸️ | ⏸️ | ⏸️ | Pro nao foi retestado neste ciclo para poupar custo. | Testar conexao so depois de resolver billing/rate-limit dos modelos baratos. |
+
+## Matriz Anthropic -- Relatorios De Desempenho Agregado
+
+| Modelo Anthropic | `desempenho_tarefa` | `desempenho_turma` | `desempenho_materia` | Evidencia | Proximo passo |
+|---|:---:|:---:|:---:|---|---|
+| `588f3efe7975` Haiku 4.5 | ⚠️ | ⏸️ | ⏸️ | `run-20260519-122041` passou tarefa Alpha Algebra, 2 alunos/0 excluidos, `151975/26024`, `US$0.282095`; ressalva: custo/latencia altos e run anterior bateu `max_iterations_exceeded`. | Nao subir para turma/materia sem decisao explicita de comparar qualidade contra Google Flash. |
+| `4eaeb5105f5d` Sonnet 4.5 | ⏸️ | ⏸️ | ⏸️ | Nao testado em agregado; Sonnet ja falhou em extração e e mais caro. | Pausar ate Haiku/Google cobrirem o produto principal. |
 
 ---
 

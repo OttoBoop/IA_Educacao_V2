@@ -4,14 +4,16 @@
 **Responsavel operacional:** Paulo
 **Status geral:** o servico oficial Render
 `srv-d5t8gbh4tr6s738fr3s0` (`IA_Educacao_V2`, branch `main`, URL
-`https://ia-educacao-v2.onrender.com`) esta em runtime `58781a1`
-(`fix: prefer pdf narratives in aggregate desempenho`), validado por
-`/api/deploy-info`, `/api/health` e `./scripts/check_deploy.sh 58781a1`.
-`origin/main` tambem aponta para `58781a1`. O codigo funcional de pipeline
+`https://ia-educacao-v2.onrender.com`) esta em runtime `f534576`
+(`fix: fail tool runs on max iterations`), validado por
+`/api/deploy-info`, `/api/health`, `./scripts/wait_deploy.sh f534576` e
+`./scripts/check_deploy.sh f534576`.
+`origin/main` tambem aponta para `f534576`. O codigo funcional de pipeline
 inclui os ciclos Anthropic/Google ate `d357960`, o preparo seguro de migration
 `737a709`, a correcao de desempenho agregado `bc96faf` e a observabilidade de
 `token_usage` vazio `c8f538a`, agora fechado por persistencia row-level em
-`518f8a2`, alem da preferencia por PDF narrativo em agregados em `58781a1`.
+`518f8a2`, a preferencia por PDF narrativo em agregados em `58781a1` e o erro
+bloqueante para `max_iterations_exceeded` em `f534576`.
 
 Estado funcional consolidado: documentos com `status=erro` nao contam como
 progresso; correcao sem itens avaliaveis nao vira `completo=true`; ranking,
@@ -23,8 +25,8 @@ Depois da aplicacao da migration Supabase, `/api/custos/status` retorna
 `ok=true`, `custos_persistencia_status=duravel`,
 `token_usage_backend.supabase.table_available=true`, `error_code=null` e
 `token_usage_durable=true`. O gate row-level foi exercitado: apos smokes oficiais
-em `518f8a2` e `58781a1`, `/api/custos/status?limit=160` mostra
-`token_usage_backend.supabase.record_count=2`, `token_usage_analisados=2` e
+em `518f8a2`, `58781a1` e `f534576`, `/api/custos/status?limit=220` mostra
+`token_usage_backend.supabase.record_count=4`, `token_usage_analisados=4` e
 `alertas=[]`. O proximo ciclo de custos deve cobrir tambem falhas sem documento
 final, mas a escrita duravel basica ja esta provada.
 
@@ -70,7 +72,16 @@ individual completa no site oficial por artefatos/custos oficiais: questoes
 `cff266a64d1d4256`, relatorio `611f9ae8226692cf`/`60fe1cc4dfd2a1af`,
 `118025/32892` tokens, `US$0.282485`. O task id nao foi capturado pelo cliente
 local de polling, mas o aceite fica nos artefatos oficiais, no runtime
-`d357960` e no custo em `/api/custos/resumo`. Ollama esta indisponivel no Render.
+`d357960` e no custo em `/api/custos/resumo`. Em desempenho agregado, Haiku 4.5
+tem evidencia oficial apenas em `desempenho_tarefa`: antes do patch
+`f534576`, `run-20260519-121133` retornou `COMPLETO`, mas com
+`max_iterations_exceeded`, 7 documentos e custo `US$0.388877`, entao fica
+reclassificado como falso verde historico/⚠️. Depois do patch,
+`run-20260519-122041` completou a tarefa Alpha Algebra sem max-iterations,
+2 alunos/0 excluidos, PDF `bf2563807fd54312`, JSON `35bcd95b585a6796`,
+`151975/26024` tokens, `US$0.282095`, usage `usage_d1af0c291f2743e1`. Haiku e
+funcional para tarefa, mas muito mais caro/lento que Google Flash; nao rodar
+turma/materia com Haiku sem objetivo claro de comparacao de qualidade. Ollama esta indisponivel no Render.
 Supabase `token_usage` nao esta mais ausente: a migration foi aplicada e
 `/api/custos/status` retorna `ok=true`, `table_available=true` e `durable=true`.
 O gate row-level basico tambem esta confirmado por `record_count=2`; falta
@@ -151,6 +162,22 @@ extra nao e falso verde, mas vira proximo alvo de limpeza de outputs agregados.
 `/api/custos/status?limit=160` subiu para `record_count=2`,
 `token_usage_analisados=2`, `alertas=[]`, com usage
 `usage_c53952166c3d40ce`.
+
+Atualizacao P0 max-iterations de 2026-05-19: o smoke Haiku de
+`desempenho_tarefa` em `58781a1` expôs falso verde: a API retornou
+`sucesso=true` apesar de `Limite máximo de iterações de tools atingido`,
+gerando 7 artefatos e custo `US$0.388877`. O commit `f534576` muda
+`executar_com_tools`: qualquer `max_iterations_exceeded` agora retorna
+`ResultadoExecucao(sucesso=False)`, marca documentos criados como
+`status=erro` com `erro_tipo=max_iterations_exceeded` e registra
+`TokenUsageRecord` de erro. Validacoes locais: `py_compile`, `git diff --check`,
+`test_f2_desempenho_resposta_raw.py` (`5 passed`) e bloco
+`test_e_t2_retry_partial_output.py` + `test_cost_tracking.py` (`67 passed`).
+Deploy confirmado em Render. Re-smoke Haiku tarefa apos o patch nao atingiu o
+limite e passou `COMPLETO`: `run-20260519-122041`, `151975/26024` tokens,
+`US$0.282095`, `usage_d1af0c291f2743e1`, `record_count=4`. Interpretacao:
+o bug P0 esta corrigido, e Haiku tarefa fica validado com ressalva forte de
+custo/latencia.
 
 Atualizacao chaves seguras de 2026-05-18: qualquer chave colada em chat e
 tratada como exposta e nao deve ser usada para producao. O caminho operacional
