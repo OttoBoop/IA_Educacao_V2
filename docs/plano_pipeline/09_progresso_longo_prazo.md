@@ -45,9 +45,9 @@ Depois da aplicacao da migration Supabase, `/api/custos/status` retorna
 `token_usage_backend.supabase.table_available=true`, `error_code=null` e
 `token_usage_durable=true`. O gate row-level foi exercitado: apos smokes oficiais
 em `518f8a2`, `58781a1`, `f534576`, `e85be11` e `546b72f`,
-`/api/custos/status?limit=540` mostra
-`token_usage_backend.supabase.record_count=10`, `token_usage_analisados=10`,
-`runs_analisados=31`, `runs_precificados=31`, `runs_bloqueados=0` e
+`/api/custos/status?limit=560` mostra
+`token_usage_backend.supabase.record_count=11`, `token_usage_analisados=11`,
+`runs_analisados=32`, `runs_precificados=32`, `runs_bloqueados=0` e
 `alertas=[]`. O caminho de código para falhas sem documento final já tem teste
 local (`test_cost_tracking.py`, `33 passed` em 2026-05-19); o que ainda falta é
 uma evidencia live pos-migration especificamente desse caso, sem gastar IA so
@@ -320,6 +320,21 @@ row-level subiu para `record_count=10`, `token_usage_analisados=10`,
 Sonnet agora esta validado em `EXTRAIR_QUESTOES` e `EXTRAIR_GABARITO`; ainda nao
 esta pipeline-ready, e as proximas etapas devem continuar em escada controlada
 por custo.
+
+Atualizacao Sonnet 4.5 de 2026-05-19, `EXTRAIR_RESPOSTAS`: a primeira tentativa
+de polling usou a rota errada (`/api/tasks/{task_id}`) e recebeu 404; a barreira
+operacional foi respondida usando a rota correta `/api/task-progress/{task_id}`.
+A task `task_70ecb29b3434` completou apenas `extrair_respostas`, com as demais
+etapas `skipped` por selecao. O documento `6f98a33dd2f98770` ficou
+`status=concluido`, provider `anthropic`, modelo
+`claude-sonnet-4-5-20250929`, `3719/708` tokens, `US$0.021777`, usage
+`usage_9d683b3f19754814`. Inspecao de conteudo via
+`/api/documentos/6f98a33dd2f98770/conteudo`: 4 respostas reais extraidas
+(`x = 5.`, `34.`, `25.`, `20 cm2.`), `questoes_respondidas=4`,
+`questoes_em_branco=0`, sem ilegivel. O row-level duravel foi para
+`record_count=11`, `token_usage_analisados=11`, sem alertas. Interpretacao:
+Sonnet agora esta validado em Q/G/R nessa fixture; ainda falta Corr/Hab/Rel e
+full pipeline.
 
 Atualizacao agregados Matemática-V de 2026-05-19: o smoke inicial em
 `737a709` revelou um bug de produto: `desempenho_tarefa` de

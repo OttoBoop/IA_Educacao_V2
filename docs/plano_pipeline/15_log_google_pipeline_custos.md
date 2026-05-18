@@ -175,6 +175,16 @@ Continuidade do mesmo gate de custo, agora em Anthropic: Sonnet 4.5 rodou
 conexao ou Q/G, mas continua sem validacao de R/Corr/Hab/Rel/full pipeline; a
 escada deve seguir isolada para nao gastar Sonnet como se fosse fallback.
 
+Novo degrau da mesma escada Sonnet: `EXTRAIR_RESPOSTAS` iniciou como
+`task_70ecb29b3434`. Barreira operacional: o script de polling usou
+`/api/tasks/{task_id}` e recebeu 404; resposta correta foi usar
+`/api/task-progress/{task_id}`. Resultado oficial: `completed`, doc
+`6f98a33dd2f98770`, `3719/708` tokens, `US$0.021777`,
+`usage_9d683b3f19754814`, `record_count=11`, `token_usage_analisados=11`,
+`alertas=[]`. Conteudo lido: 4 respostas reais (`x = 5.`, `34.`, `25.`,
+`20 cm2.`), 0 em branco, 0 ilegivel. Conclusao: Sonnet esta validado em
+Q/G/R nessa fixture, mas ainda nao deve ser chamado de pipeline-ready.
+
 ## Dados De Teste Escolhidos
 
 Atividade principal para pipeline individual:

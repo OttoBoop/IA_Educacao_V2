@@ -53,8 +53,8 @@ tambem ja foi aplicada: `/api/custos/status?limit=160` retorna `ok=true`,
 runtime `546b72f` confirmou o estado intermediario com `record_count=8`,
 `token_usage_analisados=8`, `runs_analisados=28`, `runs_precificados=28` e
 `runs_bloqueados=0`; runtime `deb1e2a` confirmou o estado mais novo com
-`record_count=10`, `token_usage_analisados=10`, `runs_analisados=31`,
-`runs_precificados=31` e `runs_bloqueados=0`. Readback pos-`52ff747`, sem nova
+`record_count=11`, `token_usage_analisados=11`, `runs_analisados=32`,
+`runs_precificados=32` e `runs_bloqueados=0`. Readback pos-`52ff747`, sem nova
 chamada de IA, mostra esses dois smokes separados:
 `run-tool_ae40e3a59695` com docs `afa143d8e6390caf`/`692d50f8be3d885d` e
 `run-tool_922168f5c256` com docs `6041b3de9c64f769`/`18f24ee5c213ab55`.
@@ -89,6 +89,12 @@ criou `ce57fd9cc1cbbdac`, consumiu `7731/1585` tokens, custou `US$0.046968` e
 gravou `usage_7a50263d5d16434c` no mesmo `cost_run_id`; o contador duravel foi
 para `record_count=10`, `token_usage_analisados=10`. Isso valida Sonnet em Q/G,
 mas nao valida respostas, correcao, finais nem pipeline completa.
+O degrau seguinte, `EXTRAIR_RESPOSTAS`, tambem passou em
+`task_70ecb29b3434`: doc `6f98a33dd2f98770`, `3719/708` tokens,
+`US$0.021777`, usage `usage_9d683b3f19754814`, conteudo com 4 respostas reais e
+0 branco/ilegivel. A unica barreira operacional foi polling inicial em endpoint
+errado; `/api/task-progress/{task_id}` confirmou a task. Isso valida Sonnet em
+Q/G/R, ainda sem Corr/Hab/Rel/full.
 
 Validacao especifica do `2fa5d47`: antes do patch,
 `/api/documentos/f68d57a9a339081f/4ae10210c8acbaa5/versoes` mostrava prova,
