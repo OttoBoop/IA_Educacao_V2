@@ -403,6 +403,21 @@ areas de atencao e detalhamento por questao. Interpretacao: Sonnet 4.5 agora e
 de custos ainda retorna `runs_bloqueados=2` por `token_split_missing`, mas as
 amostras Sonnet full recentes tem `token_usage_ids` e `custo_status=ok`.
 
+Atualizacao observabilidade de custos de 2026-05-19/20: investigando a barreira
+`runs_bloqueados=2`, o loop auditou 1000 documentos recentes e localizou os dois
+runs: `c4d75e5b0456b27a` e `338b25f9c0f74415`, ambos `correcao` Google
+`gemini-2.5-flash`, `status=erro`, criados em 2026-05-17, com erro 429/quota e
+metadata sem `tokens_entrada`/`tokens_saida`. O problema de produto encontrado
+nao era custo Sonnet, e sim observabilidade: `/api/custos/status` dizia que
+havia bloqueio, mas o usuario nao recebia amostras dos runs bloqueados. Patch
+local em `backend/cost_tracking.py` adiciona `amostras_bloqueadas` separada das
+50 amostras recentes; `backend/routes_costs.py` expoe esse campo em
+`/api/custos/status`; `backend/tests/unit/test_cost_tracking.py` cobre
+`token_split_missing` e `run_metadata_conflict`. Validacoes locais:
+`py_compile` dos tres arquivos, `git diff --check` e
+`test_cost_tracking.py` com `33 passed, 1 warning`. Proximo gate: commit, push,
+deploy Render e smoke live de `/api/custos/status` mostrando os ids bloqueados.
+
 Atualizacao agregados Matemática-V de 2026-05-19: o smoke inicial em
 `737a709` revelou um bug de produto: `desempenho_tarefa` de
 `810ef4c1a71c701b` contava versões historicas de `RELATORIO_FINAL` como se

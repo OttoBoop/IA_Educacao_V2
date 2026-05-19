@@ -291,6 +291,7 @@ def build_cost_summary(
     by_provider: Dict[str, Dict[str, Any]] = {}
     by_stage: Dict[str, Dict[str, Any]] = {}
     samples: list[Dict[str, Any]] = []
+    blocked_samples: list[Dict[str, Any]] = []
     alerts: list[Dict[str, Any]] = []
 
     for run_id, run_rows in rows_by_run.items():
@@ -303,6 +304,7 @@ def build_cost_summary(
             sample["erro"] = reason
             sample["erros"] = sorted({row.get("erro") or "unknown" for row in run_rows})
             samples.append(sample)
+            blocked_samples.append(sample)
             continue
 
         signatures = {_cost_signature(row) for row in ok_rows}
@@ -312,6 +314,7 @@ def build_cost_summary(
             sample["custo_status"] = "blocked"
             sample["erro"] = "run_metadata_conflict"
             samples.append(sample)
+            blocked_samples.append(sample)
             alerts.append(
                 {
                     "tipo": "run_metadata_conflict",
@@ -424,5 +427,6 @@ def build_cost_summary(
         "por_provider": sorted(by_provider.values(), key=lambda item: item["provider"]),
         "por_etapa": sorted(by_stage.values(), key=lambda item: item["etapa"]),
         "amostras": samples[:50],
+        "amostras_bloqueadas": blocked_samples[:50],
         "alertas": alerts[:50],
     }

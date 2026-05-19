@@ -127,6 +127,12 @@ Q/G/R/Corr/Hab/Rel em uma unica task, sem `stage_errors`. Evidencias: Q
 pipeline completa validada nessa fixture; nao promove como padrao economico.
 Barreira aberta separada: o status global de custos ainda acusa 2 runs
 historicos `token_split_missing`, embora as entradas Sonnet full tenham usage.
+O diagnostico desses 2 bloqueios achou `c4d75e5b0456b27a` e
+`338b25f9c0f74415`: erros Google 429 de 2026-05-17, sem split de tokens. O
+patch local de observabilidade adiciona `amostras_bloqueadas` ao resumo/status
+de custos para que o proximo bloqueio venha com ids e `cost_run_id`, sem exigir
+auditoria manual de documentos. Validacao local: `test_cost_tracking.py` passou
+com 33 testes.
 
 Validacao especifica do `2fa5d47`: antes do patch,
 `/api/documentos/f68d57a9a339081f/4ae10210c8acbaa5/versoes` mostrava prova,

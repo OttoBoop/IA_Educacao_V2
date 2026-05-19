@@ -28,6 +28,7 @@ async def get_cost_status(limit: int = 500):
         "runs_precificados": summary["runs_precificados"],
         "runs_bloqueados": summary["runs_bloqueados"],
         "bloqueios": summary["bloqueios"],
+        "amostras_bloqueadas": summary.get("amostras_bloqueadas", []),
         "alertas": summary["alertas"],
     }
 

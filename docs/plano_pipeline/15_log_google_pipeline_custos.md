@@ -238,6 +238,15 @@ fontes `CORRIGIR`/`ANALISAR_HABILIDADES`, PDF legivel. Nova barreira registrada:
 `runs_bloqueados=2` por `token_split_missing` historico; as entradas Sonnet full
 recentes aparecem com `token_usage_ids` e custo OK.
 
+Ciclo de observabilidade do bloqueio global: a auditoria manual de 1000
+documentos recentes identificou os dois `token_split_missing` como erros Google
+429 antigos (`c4d75e5b0456b27a` e `338b25f9c0f74415`, ambos de 2026-05-17).
+Barreira respondida: o status dizia "2 bloqueios", mas nao mostrava quais eram.
+Patch local adicionou `amostras_bloqueadas` em `build_cost_summary()` e em
+`/api/custos/status`, com testes cobrindo split ausente e conflito de metadata.
+Validacoes: `py_compile`, `git diff --check`, `test_cost_tracking.py` =
+`33 passed`. Proximo passo: publicar/deployar e confirmar no site oficial.
+
 ## Dados De Teste Escolhidos
 
 Atividade principal para pipeline individual:

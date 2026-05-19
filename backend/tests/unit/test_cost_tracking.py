@@ -113,6 +113,9 @@ def test_cost_summary_precifica_apenas_split_real(tmp_path):
     assert summary["runs_precificados"] == 1
     assert summary["runs_bloqueados"] == 1
     assert summary["bloqueios"]["token_split_missing"] == 1
+    assert len(summary["amostras_bloqueadas"]) == 1
+    assert summary["amostras_bloqueadas"][0]["documentos_ids"] == [doc_legacy.id]
+    assert summary["amostras_bloqueadas"][0]["erro"] == "token_split_missing"
     assert summary["tokens_entrada"] == 200
     assert summary["tokens_saida"] == 100
     assert summary["custo_usd"] > 0
@@ -355,6 +358,7 @@ def test_cost_summary_bloqueia_run_com_metadata_conflitante(tmp_path):
     assert summary["tokens_entrada"] == 0
     assert summary["tokens_saida"] == 0
     assert summary["amostras"][0]["erro"] == "run_metadata_conflict"
+    assert summary["amostras_bloqueadas"][0]["erro"] == "run_metadata_conflict"
     assert set(summary["amostras"][0]["documentos_ids"]) == {doc_json.id, doc_pdf.id}
     assert summary["alertas"][0]["tipo"] == "run_metadata_conflict"
 
