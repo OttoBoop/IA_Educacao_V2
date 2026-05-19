@@ -133,6 +133,10 @@ patch local de observabilidade adiciona `amostras_bloqueadas` ao resumo/status
 de custos para que o proximo bloqueio venha com ids e `cost_run_id`, sem exigir
 auditoria manual de documentos. Validacao local: `test_cost_tracking.py` passou
 com 33 testes.
+Deploy `3190ff8` confirmou essa mudanca no site: `/api/custos/status` e
+`/api/custos/resumo` mostram `amostras_bloqueadas` com os dois documentos 429,
+incluindo `erro_codigo=429`, `erro_provider_status=RESOURCE_EXHAUSTED` e
+`erro_categoria=quota_exhausted`.
 
 Validacao especifica do `2fa5d47`: antes do patch,
 `/api/documentos/f68d57a9a339081f/4ae10210c8acbaa5/versoes` mostrava prova,

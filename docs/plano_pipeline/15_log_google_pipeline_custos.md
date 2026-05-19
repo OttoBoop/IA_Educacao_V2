@@ -247,6 +247,15 @@ Patch local adicionou `amostras_bloqueadas` em `build_cost_summary()` e em
 Validacoes: `py_compile`, `git diff --check`, `test_cost_tracking.py` =
 `33 passed`. Proximo passo: publicar/deployar e confirmar no site oficial.
 
+Deploy confirmado: `3190ff8` entrou no Render (`wait_deploy` achou depois de
+180s, `check_deploy` passou). Smoke live de custos:
+`/api/custos/status?limit=5000` expõe `amostras_bloqueadas` com
+`c4d75e5b0456b27a` e `338b25f9c0f74415`, ambos 429/quota Google Flash
+historicos, com `cost_run_id`, `erro_codigo=429`,
+`erro_provider_status=RESOURCE_EXHAUSTED` e `erro_categoria=quota_exhausted`.
+Isso fecha a barreira de observabilidade; não fecha a decisão semântica de como
+classificar erro 429 sem usage medido.
+
 ## Dados De Teste Escolhidos
 
 Atividade principal para pipeline individual:

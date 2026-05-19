@@ -418,6 +418,19 @@ local em `backend/cost_tracking.py` adiciona `amostras_bloqueadas` separada das
 `test_cost_tracking.py` com `33 passed, 1 warning`. Proximo gate: commit, push,
 deploy Render e smoke live de `/api/custos/status` mostrando os ids bloqueados.
 
+Fechamento oficial desse patch: commit `3190ff8` (`fix: expose blocked cost
+samples`) publicado no GitHub e confirmado no Render por `wait_deploy` depois de
+180s e `check_deploy.sh 3190ff8`. Smoke live: `/api/deploy-info` retornou
+`3190ff8`, `/api/health` saudavel, `/api/custos/status?limit=5000` e
+`/api/custos/resumo?limit=5000` agora retornam `amostras_bloqueadas` com
+`c4d75e5b0456b27a` (`cost_run_id=tool_69d43db38b93`) e
+`338b25f9c0f74415` (`cost_run_id=tool_4cee91268892`), ambos Google
+`gemini-2.5-flash`, `erro_codigo=429`, `erro_provider_status=RESOURCE_EXHAUSTED`,
+`erro_categoria=quota_exhausted` e `erro=token_split_missing`. A barreira agora
+esta visivel no site oficial; proximo ciclo pode decidir se esses erros antigos
+devem continuar bloqueados ou ganhar classificacao explicita de "provider 429
+sem uso medido".
+
 Atualizacao agregados Matemática-V de 2026-05-19: o smoke inicial em
 `737a709` revelou um bug de produto: `desempenho_tarefa` de
 `810ef4c1a71c701b` contava versões historicas de `RELATORIO_FINAL` como se
