@@ -53,8 +53,9 @@ tambem ja foi aplicada: `/api/custos/status?limit=160` retorna `ok=true`,
 runtime `546b72f` confirmou o estado intermediario com `record_count=8`,
 `token_usage_analisados=8`, `runs_analisados=28`, `runs_precificados=28` e
 `runs_bloqueados=0`; runtime `deb1e2a` confirmou o estado mais novo com
-`record_count=14`, `token_usage_analisados=14`, `runs_analisados=67`,
-`runs_precificados=67` e `runs_bloqueados=0`. Readback pos-`52ff747`, sem nova
+`record_count=20`, `token_usage_analisados=20`, `runs_analisados=189`,
+`runs_precificados=187` e `runs_bloqueados=2` por `token_split_missing`
+historico. Readback pos-`52ff747`, sem nova
 chamada de IA, mostra esses dois smokes separados:
 `run-tool_ae40e3a59695` com docs `afa143d8e6390caf`/`692d50f8be3d885d` e
 `run-tool_922168f5c256` com docs `6041b3de9c64f769`/`18f24ee5c213ab55`.
@@ -115,6 +116,17 @@ PDF `72d63fecc800cf5a`, `18561/6493` tokens, `US$0.153078`, usage
 relatorio pedagogico com nota `8,0 / 10,0`, recomendacoes e detalhamento por
 questao. Sonnet fica validado nas seis etapas isoladas da fixture; full pipeline
 em task unica ainda nao foi rodado.
+Full pipeline Sonnet foi rodada logo depois em `task_80582211e0da` e completou
+Q/G/R/Corr/Hab/Rel em uma unica task, sem `stage_errors`. Evidencias: Q
+`a7d0bc2c7dd26df5`, G `2ebd91546651be8e`, R `6c8774849c49340e`, Corr
+`ae83d94c78257e2d`/`d017033cc075c1d6`, Hab
+`74c427fad66dff70`/`a5b27c23e3f061ac`, Rel
+`c12bbcf3f4e79fcf`/`1e1129edafedbb44`. Custo somado das seis entradas:
+`68172/23088` tokens, `US$0.550836`. O relatorio final preserva
+`nota_final=8.0`, fontes Corr/Hab e PDF legivel. Isso promove Sonnet a
+pipeline completa validada nessa fixture; nao promove como padrao economico.
+Barreira aberta separada: o status global de custos ainda acusa 2 runs
+historicos `token_split_missing`, embora as entradas Sonnet full tenham usage.
 
 Validacao especifica do `2fa5d47`: antes do patch,
 `/api/documentos/f68d57a9a339081f/4ae10210c8acbaa5/versoes` mostrava prova,

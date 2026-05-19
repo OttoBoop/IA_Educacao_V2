@@ -45,10 +45,12 @@ Depois da aplicacao da migration Supabase, `/api/custos/status` retorna
 `token_usage_backend.supabase.table_available=true`, `error_code=null` e
 `token_usage_durable=true`. O gate row-level foi exercitado: apos smokes oficiais
 em `518f8a2`, `58781a1`, `f534576`, `e85be11` e `546b72f`,
-`/api/custos/status?limit=700` mostra
-`token_usage_backend.supabase.record_count=14`, `token_usage_analisados=14`,
-`runs_analisados=67`, `runs_precificados=67`, `runs_bloqueados=0` e
-`alertas=[]`. O caminho de código para falhas sem documento final já tem teste
+`/api/custos/status?limit=940` mostra
+`token_usage_backend.supabase.record_count=20`, `token_usage_analisados=20`,
+`runs_analisados=189`, `runs_precificados=187`, `runs_bloqueados=2` por
+`token_split_missing` historico e `alertas=[]`. As amostras Sonnet recentes
+estao precificadas; o bloqueio residual e global/historico e precisa de ciclo
+proprio. O caminho de código para falhas sem documento final já tem teste
 local (`test_cost_tracking.py`, `33 passed` em 2026-05-19); o que ainda falta é
 uma evidencia live pos-migration especificamente desse caso, sem gastar IA so
 para provar uma lacuna que ja esta coberta localmente.
@@ -378,6 +380,28 @@ temporario; apos fechamento, `/api/custos/status?limit=700` voltou a
 areas de melhoria, recomendacoes e detalhamento por questao. Interpretacao:
 Sonnet 4.5 esta validado nas seis etapas isoladas da fixture Diana/Omega; ainda
 falta full pipeline em uma task unica antes de marcar pipeline completa.
+
+Atualizacao Sonnet 4.5 de 2026-05-19/20, pipeline completa: a chamada full
+demorou a devolver `task_id`; o loop encontrou a task por `/api/tasks` e passou
+a monitorar `/api/task-progress/task_80582211e0da`. A task completou as seis
+etapas em uma unica execucao, sem `stage_errors`: Q/G/R/Corr/Hab/Rel =
+`completed`. Artefatos/custos da task full: Q `a7d0bc2c7dd26df5`
+(`2257/421`, `US$0.013086`, usage `usage_bc32a4a44bfa4cb2`), G
+`2ebd91546651be8e` (`7458/1652`, `US$0.047154`, usage
+`usage_fe6013b469b84642`), R `6c8774849c49340e` (`3585/289`, `US$0.015090`,
+usage `usage_6656ca78ebd04636`), Corr JSON/PDF
+`ae83d94c78257e2d`/`d017033cc075c1d6` (`16604/5676`, `US$0.134952`, usage
+`usage_f2adfcc94a98472f`), Hab JSON/PDF
+`74c427fad66dff70`/`a5b27c23e3f061ac` (`17235/7304`, `US$0.161265`, usage
+`usage_81f328103904459a`), Rel JSON/PDF
+`c12bbcf3f4e79fcf`/`1e1129edafedbb44` (`21033/7746`, `US$0.179289`, usage
+`usage_91176cddd9504510`). Custo full somado: `68172/23088` tokens,
+aprox. `US$0.550836`. Inspecao final: relatorio JSON com `nota_final=8.0` e
+fontes `CORRIGIR`/`ANALISAR_HABILIDADES`; PDF com nota 8.0, pontos fortes,
+areas de atencao e detalhamento por questao. Interpretacao: Sonnet 4.5 agora e
+✅ para pipeline completa nessa fixture. Barreira registrada: o endpoint global
+de custos ainda retorna `runs_bloqueados=2` por `token_split_missing`, mas as
+amostras Sonnet full recentes tem `token_usage_ids` e `custo_status=ok`.
 
 Atualizacao agregados Matemática-V de 2026-05-19: o smoke inicial em
 `737a709` revelou um bug de produto: `desempenho_tarefa` de

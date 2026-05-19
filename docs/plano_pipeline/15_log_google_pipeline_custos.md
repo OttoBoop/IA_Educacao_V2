@@ -222,6 +222,22 @@ recomendacoes e detalhamento por questao. Conclusao: Sonnet validado nas seis
 etapas isoladas da fixture Diana/Omega; ainda falta full pipeline em task unica
 se o ciclo decidir gastar esse teste.
 
+Full Sonnet executado por necessidade da matriz operacional: `task_80582211e0da`
+em Diana/Omega, Matemática-V. Barreira operacional: a chamada demorou a devolver
+`task_id`; o loop localizou a task em `/api/tasks` e monitorou
+`/api/task-progress/task_80582211e0da`. Resultado: seis etapas `completed`, sem
+`stage_errors`. Artefatos e custos: Q `a7d0bc2c7dd26df5` (`2257/421`,
+`US$0.013086`), G `2ebd91546651be8e` (`7458/1652`, `US$0.047154`), R
+`6c8774849c49340e` (`3585/289`, `US$0.015090`), Corr
+`ae83d94c78257e2d`/`d017033cc075c1d6` (`16604/5676`, `US$0.134952`), Hab
+`74c427fad66dff70`/`a5b27c23e3f061ac` (`17235/7304`, `US$0.161265`), Rel
+`c12bbcf3f4e79fcf`/`1e1129edafedbb44` (`21033/7746`, `US$0.179289`). Soma:
+`68172/23088`, aprox. `US$0.550836`. Relatorio final inspecionado: nota 8.0,
+fontes `CORRIGIR`/`ANALISAR_HABILIDADES`, PDF legivel. Nova barreira registrada:
+`/api/custos/status?limit=940` ficou `record_count=20`, mas ainda
+`runs_bloqueados=2` por `token_split_missing` historico; as entradas Sonnet full
+recentes aparecem com `token_usage_ids` e custo OK.
+
 ## Dados De Teste Escolhidos
 
 Atividade principal para pipeline individual:
