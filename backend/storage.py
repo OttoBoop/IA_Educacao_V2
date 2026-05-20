@@ -1374,7 +1374,7 @@ class StorageManager:
                 "tipo": documento.tipo.value,
                 "atividade_id": documento.atividade_id,
                 "aluno_id": documento.aluno_id,
-                "display_name": documento.display_name,
+                # display_name omitido — coluna foi removida do schema Supabase 2026-05-20
                 "nome_arquivo": documento.nome_arquivo,
                 "caminho_arquivo": documento.caminho_arquivo,
                 "extensao": documento.extensao,
