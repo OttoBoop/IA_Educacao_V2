@@ -392,6 +392,14 @@ Use
   2026-05-16 usam Render MCP/lista de deploys como fonte oficial quando o marker
   HTML fica atrasado.
 
+> Nota Paulo 2026-05-14: esta matriz e evidencia historica importante, mas esta
+> stale em relacao aos commits locais posteriores (`3b3291f`, `a695db4`,
+> `76c8467`, `b12be9a`). Use como fotografia de falhas/sucessos observados, nao
+> como status atual de producao. Providers precisam ser revalidados por
+> `modelo + rota + etapa + commit + ambiente + schema + metadata + custo` depois
+> de push/deploy. Gemini 3 Flash segue como positivo parcial; GPT-5 Nano segue
+> bloqueado para pipeline-completo ate falhar alto ou corrigir tool-use/schema.
+
 ## Legenda
 
 - ✅ **OK** — Etapa rodou, JSON valido, conteudo faz sentido

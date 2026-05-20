@@ -5,7 +5,80 @@
 >
 > Ultima atualizacao: 2026-04-17
 
+> Nota Paulo 2026-05-14: o split `input_tokens`/`output_tokens` foi corrigido
+> localmente no commit `b12be9a`, mas isso ainda nao e custo real persistido.
+> `TokenUsageRecord`, metadata confiavel em documentos e precificacao automatica
+> continuam pendentes. Pelo P0 atual, remover/converter fallbacks silenciosos vem
+> antes de dashboard bonito de custos.
+
 ---
+
+## Indice Operacional
+
+Este documento e o roadmap estrategico. Para estado vivo e evidencias, leia
+tambem:
+
+- [09_progresso_longo_prazo.md](09_progresso_longo_prazo.md): painel curto do
+  ciclo atual.
+- [14_auditoria_mestre_pipeline_custos_providers.md](14_auditoria_mestre_pipeline_custos_providers.md):
+  auditoria mestre; comece por `Fontes De Verdade E Loop Pos-Compactacao`,
+  `Estado Do Projeto Em Uma Pagina`, `Resposta Modelo Do Estado Do Projeto`,
+  `Checklist Executavel Do Doc 02`, `Loop De Resolucao Dos Problemas` e
+  `Lacunas Do Documento De Longo Prazo`.
+- [12_matriz_provider_fase.md](12_matriz_provider_fase.md): fotografia historica
+  dos providers, hoje marcada como stale ate revalidacao.
+
+Secoes deste documento:
+
+1. [Rastreamento de custos de tokens](#1-rastreamento-de-custos-de-tokens)
+2. [Roadmap de providers](#2-roadmap-de-providers)
+3. [Otimizacoes futuras](#3-otimizacoes-futuras)
+4. [Verificacoes realizadas](#4-verificacoes-realizadas)
+5. [Ordem de implementacao recomendada](#5-ordem-de-implementacao-recomendada)
+
+## Status Atual Do Longo Prazo
+
+| Eixo | Estado atual | Proxima decisao/ciclo |
+|---|---|---|
+| Confiabilidade da pipeline | Melhorou localmente, mas Path 2 ainda nao cumpre o contrato do Doc 02 | Ciclo anti-fallback/Path 2 antes de custo visual. |
+| Custos | Split `input_tokens`/`output_tokens` feito localmente; custo real nao persistido | Criar `TokenUsageRecord` apos remover sucesso enganoso. |
+| Metadata | Campos existem no storage, mas alimentacao segue incompleta em caminhos tool-use | Popular `tokens_usados`, `ia_provider`, `ia_modelo`, `tempo_processamento_ms`. |
+| Providers | Gemini 3 Flash positivo parcial; GPT-5 Nano falhou; Haiku bloqueado; matriz stale | Revalidar por rota/etapa/commit/ambiente depois de deploy. |
+| UI de erro | Pendente | Mostrar aluno, etapa, provider, causa e artefato real/parcial/erro. |
+| Escala | Modelo por etapa, cache, batching e Supabase sao desejaveis | So depois de schema, metadata, custo real e UI de erro. |
+| Rio 3 | Pausado | Nao retomar sem decisao explicita e caminho seguro de segredo. |
+
+## Lacunas Que Este Documento Ainda Precisa Fechar
+
+1. Separar permanentemente **estimativa**, **medicao local** e **custo
+   persistido**. Nao chamar medicao local de custo real.
+2. Reordenar a implementacao para que anti-fallback/Path 2 venha antes de
+   dashboard de custos.
+3. Adicionar custo de falha ao desenho de `TokenUsageRecord`: falhas tambem
+   consomem tokens.
+4. Tornar metadata de documentos um pre-requisito explicito para qualquer
+   dashboard ou matriz de provider.
+5. Reclassificar providers por evidencia real, nao por capacidade teorica:
+   `modelo + rota + etapa + commit + ambiente + schema + metadata + custo`.
+6. Marcar otimizacoes de escala como fase posterior, nao prioridade imediata.
+7. Manter Rio 3 fora do plano ativo ate nova decisao.
+
+## Contratos Do Doc 02 Que Bloqueiam Este Roadmap
+
+O roadmap abaixo so deve avancar para dashboard, escala e providers depois que
+estes contratos estiverem fechados no Path 2. A tabela completa esta no Doc 14
+em `Checklist Executavel Do Doc 02`, e a sequencia de execucao esta em `Loop De
+Resolucao Dos Problemas`.
+
+| Contrato | Por que bloqueia o longo prazo |
+|---|---|
+| JSON de `create_document` validado antes de sucesso | Sem schema valido, custo mede lixo como se fosse produto. |
+| `executar_com_tools()` com etapa real, documento principal e `resposta_parsed` | Sem retorno equivalente ao Path 1, logs/custos/UI ficam cegos. |
+| Prompts/tool instructions sem conflito | Modelo pequeno pode seguir o schema errado e gerar artefato invalido. |
+| PDF ausente sem auto-sucesso | PDF inventado transforma falha de tool-use em documento verde. |
+| Nota confiavel obrigatoria em relatorio | `N/A` e nota fake tornam relatorio pedagogico enganoso. |
+| Metadata de documento preenchida | Sem provider/modelo/tokens/tempo, nao ha auditoria nem custo real. |
+| Custo de falhas registrado | Falhas tambem gastam tokens e precisam aparecer na decisao de provider. |
 
 ## 1. Rastreamento de custos de tokens
 
@@ -18,7 +91,7 @@ inconsistente. A tabela abaixo resume o estado real do codigo (verificado em 202
 |---------|-------|-----------|-----------------|
 | `executor.py` L75-76 -- `ResultadoExecucao` dataclass | `tokens_entrada`, `tokens_saida` | Declarados como `int = 0` | Preenchidos nos caminhos abaixo |
 | `executor.py` L580-581 -- caminho `_executar_etapa` (provider legado via `ai_providers.py`) | `tokens_entrada = response.input_tokens` | Sim | `AIResponse.input_tokens` |
-| | `tokens_saida = response.output_tokens or response.tokens_used` | Sim (com fallback) | `AIResponse.output_tokens` |
+| | `tokens_saida = response.output_tokens or response.tokens_used` | Sim, com compatibilidade tecnica a auditar | `AIResponse.output_tokens` |
 | `executor.py` L857-858 -- caminho `_executar_multimodal` (via `anexos.py`) | `tokens_entrada = resultado.tokens_entrada` | Sim | `ResultadoEnvio.tokens_entrada` (de `anexos.py`) |
 | | `tokens_saida = resultado.tokens_saida` | Sim | `ResultadoEnvio.tokens_saida` |
 | `executor.py` L2455 -- caminho `executar_com_tools` (via `chat_service.py`) | `tokens_entrada = resposta.get("tokens", 0)` | **PARCIAL** -- soma total, nao input separado | `ChatClient` retorna `"tokens"` como total |
@@ -44,6 +117,10 @@ inconsistente. A tabela abaixo resume o estado real do codigo (verificado em 202
 2. **`ChatClient` retorna apenas `"tokens"` como total.** Os metodos `_chat_openai`,
    `_chat_anthropic`, etc. em `chat_service.py` descartam a separacao input/output e
    retornam so a soma. Precisam retornar `"input_tokens"` e `"output_tokens"` separados.
+
+   **Atualizacao 2026-05-14:** os gaps 1 e 2 foram corrigidos localmente em
+   `b12be9a`. Eles ainda precisam de push/deploy e revalidacao no site oficial
+   antes de serem tratados como producao.
 
 3. **Nenhum registro persistente de custos.** Os tokens sao retornados no `ResultadoExecucao`
    e aparecem nos logs/resposta da API, mas nao sao gravados em nenhum banco ou arquivo.

@@ -18,11 +18,13 @@ from pydantic import BaseModel
 from typing import Optional, List, Dict, Any
 from datetime import datetime
 from pathlib import Path
+from urllib.parse import urlparse
+import os
 
 from chat_service import (
     api_key_manager, model_manager, chat_service,
     ApiKeyConfig, ModelConfig, ProviderType,
-    DEFAULT_URLS, MODELOS_SUGERIDOS, get_tipos_providers,
+    DEFAULT_URLS, MODELOS_SUGERIDOS, get_tipos_providers, RIO3_ENV_KEY_ID,
     ProviderAPIError,
 )
 from model_catalog import model_catalog, ModelMetadata
@@ -1115,6 +1117,7 @@ class CustomModelCreate(BaseModel):
     tipo: str  # "openai", "anthropic", etc.
     custom_model_id: str  # ID exato do modelo
     custom_base_url: str  # URL customizada
+    api_key_id: Optional[str] = None
     api_version: Optional[str] = None
     extra_headers: Optional[Dict[str, str]] = None
     max_tokens: Optional[int] = 4096
@@ -1126,6 +1129,15 @@ class CustomModelCreate(BaseModel):
     suporta_temperature: Optional[bool] = None
 
 
+def _normalize_base_url(url: str) -> str:
+    return url.rstrip("/")
+
+
+def _is_local_base_url(url: str) -> bool:
+    host = (urlparse(url).hostname or "").lower()
+    return host in {"localhost", "127.0.0.1", "0.0.0.0", "::1"}
+
+
 @router.post("/api/settings/models/custom", tags=["Models"])
 async def criar_modelo_customizado(data: CustomModelCreate):
     """Cria um modelo com endpoint totalmente customizado"""
@@ -1134,11 +1146,37 @@ async def criar_modelo_customizado(data: CustomModelCreate):
     except ValueError:
         raise HTTPException(400, f"Tipo de provider inválido: {data.tipo}")
 
+    key_config = None
+    if data.api_key_id:
+        key_config = api_key_manager.get(data.api_key_id)
+        if not key_config:
+            raise HTTPException(400, "API key informada não encontrada")
+
+    normalized_base_url = _normalize_base_url(data.custom_base_url)
+    if not _is_local_base_url(normalized_base_url):
+        rio_base_url = _normalize_base_url(os.environ.get("RIO3_BASE_URL", ""))
+        rio_model_id = os.environ.get("RIO3_MODEL_ID", "").strip()
+        is_authorized_rio_env = (
+            provider_type == ProviderType.CUSTOM
+            and key_config is not None
+            and key_config.empresa == ProviderType.CUSTOM
+            and key_config.id == RIO3_ENV_KEY_ID
+            and bool(rio_base_url)
+            and normalized_base_url == rio_base_url
+            and (not rio_model_id or data.custom_model_id == rio_model_id)
+        )
+        if not is_authorized_rio_env:
+            raise HTTPException(
+                403,
+                "No site oficial, endpoints remotos customizados exigem configuracao server-side do Rio 3"
+            )
+
     model = model_manager.adicionar(
         nome=data.nome,
         tipo=provider_type,
         modelo=data.custom_model_id,
-        base_url=data.custom_base_url,
+        api_key_id=data.api_key_id,
+        base_url=normalized_base_url,
         max_tokens=data.max_tokens,
         temperature=data.temperature,
         system_prompt=data.system_prompt

@@ -125,6 +125,10 @@ DEFAULT_URLS = {
     ProviderType.LMSTUDIO: "http://localhost:1234/v1",
 }
 
+RIO3_ENV_KEY_ID = hashlib.sha256(f"{ProviderType.CUSTOM.value}:RIO3_API_KEY".encode()).hexdigest()[:12]
+RIO3_ENV_MODEL_ID = "rio3-open-mini-env"
+RIO3_ENV_KEY_NAME = "Rio 3 (env)"
+
 # Modelos populares por provider (atualizado com documento Jan 2026)
 MODELOS_SUGERIDOS = {
     ProviderType.OPENAI: [
@@ -329,6 +333,7 @@ class ApiKeyManager:
             return False
 
     def _load(self):
+        needs_save = False
         if self.config_path.exists():
             try:
                 with open(self.config_path, 'r', encoding='utf-8') as f:
@@ -351,7 +356,7 @@ class ApiKeyManager:
 
                 # Migrar keys não criptografadas
                 if needs_migration:
-                    self._save()
+                    needs_save = True
                     print("API keys migradas para formato criptografado.")
 
             except Exception as e:
@@ -359,21 +364,67 @@ class ApiKeyManager:
         else:
             self._init_from_env()
 
+        if self._sync_from_env() or needs_save:
+            self._save()
+
     def _init_from_env(self):
         """Auto-create API key configs from env vars (for fresh Render deploys)."""
-        env_map = {
-            ProviderType.OPENAI: "OPENAI_API_KEY",
-            ProviderType.ANTHROPIC: "ANTHROPIC_API_KEY",
-            ProviderType.GOOGLE: "GOOGLE_API_KEY",
-        }
-        created = []
-        for provider_type, env_var in env_map.items():
+        self._sync_from_env()
+        if self.keys:
+            self._save()
+            names = [k.nome_exibicao or k.empresa.value for k in self.keys.values()]
+            print(f"[ApiKeyManager] Auto-initialized from env: {', '.join(names)}")
+
+    def _sync_from_env(self) -> bool:
+        """Sync supported secret env vars into the encrypted key store."""
+        env_map = [
+            (ProviderType.OPENAI, "OPENAI_API_KEY", "Openai (env)", None),
+            (ProviderType.ANTHROPIC, "ANTHROPIC_API_KEY", "Anthropic (env)", None),
+            (ProviderType.GOOGLE, "GOOGLE_API_KEY", "Google (env)", None),
+            (ProviderType.CUSTOM, "RIO3_API_KEY", RIO3_ENV_KEY_NAME, RIO3_ENV_KEY_ID),
+        ]
+        changed = False
+        synced = []
+        for provider_type, env_var, display_name, explicit_id in env_map:
             key_value = os.environ.get(env_var)
-            if key_value:
-                self.adicionar(provider_type, key_value, f"{provider_type.value.title()} (env)")
-                created.append(provider_type.value)
-        if created:
-            print(f"[ApiKeyManager] Auto-initialized from env: {', '.join(created)}")
+            if not key_value:
+                continue
+
+            key_id = explicit_id or hashlib.sha256(f"{provider_type.value}:{env_var}".encode()).hexdigest()[:12]
+            existing = self.keys.get(key_id)
+            if not existing and explicit_id is None:
+                existing = next(
+                    (
+                        key for key in self.keys.values()
+                        if key.empresa == provider_type and key.nome_exibicao == display_name
+                    ),
+                    None
+                )
+            if existing:
+                if (
+                    existing.api_key != key_value
+                    or existing.nome_exibicao != display_name
+                    or existing.empresa != provider_type
+                    or not existing.ativo
+                ):
+                    existing.api_key = key_value
+                    existing.nome_exibicao = display_name
+                    existing.empresa = provider_type
+                    existing.ativo = True
+                    changed = True
+            else:
+                self.keys[key_id] = ApiKeyConfig(
+                    id=key_id,
+                    empresa=provider_type,
+                    api_key=key_value,
+                    nome_exibicao=display_name,
+                )
+                changed = True
+            synced.append(provider_type.value)
+
+        if changed and synced:
+            print(f"[ApiKeyManager] Synced env keys: {', '.join(synced)}")
+        return changed
 
     def _save(self):
         keys_data = []
@@ -586,6 +637,8 @@ class ModelManager:
 
                 # Validar unicidade de is_default e salvar patch se necessário
                 self._ensure_single_default()
+                if self._sync_rio3_from_env():
+                    needs_save = True
                 if needs_save:
                     self._save()
             except Exception as e:
@@ -637,6 +690,7 @@ class ModelManager:
                 ativo=True,
                 suporta_function_calling=True,
             )
+        self._sync_rio3_from_env()
         if self.models:
             self._save()
             names = [m.nome for m in self.models.values()]
@@ -665,6 +719,41 @@ class ModelManager:
             return openai_model
 
         return active_models[0]
+
+    def _sync_rio3_from_env(self) -> bool:
+        """Configura Rio Open Mini via secrets do ambiente de producao."""
+        api_key = os.environ.get("RIO3_API_KEY")
+        base_url = os.environ.get("RIO3_BASE_URL")
+        model_id = os.environ.get("RIO3_MODEL_ID", "rio-open-mini")
+        if not api_key or not base_url or not model_id:
+            return False
+
+        desired = {
+            "id": RIO3_ENV_MODEL_ID,
+            "nome": "Rio Open Mini (env)",
+            "tipo": ProviderType.CUSTOM,
+            "modelo": model_id,
+            "api_key_id": RIO3_ENV_KEY_ID,
+            "base_url": base_url.rstrip("/"),
+            "custom_model_id": model_id,
+            "max_tokens": int(os.environ.get("RIO3_MAX_TOKENS", "4096")),
+            "temperature": float(os.environ.get("RIO3_TEMPERATURE", "0.2")),
+            "suporta_function_calling": False,
+            "ativo": True,
+            "is_default": False,
+        }
+
+        existing = self.models.get(RIO3_ENV_MODEL_ID)
+        if not existing:
+            self.models[RIO3_ENV_MODEL_ID] = ModelConfig(**desired)
+            return True
+
+        changed = False
+        for key, value in desired.items():
+            if getattr(existing, key) != value:
+                setattr(existing, key, value)
+                changed = True
+        return changed
 
     def _ensure_single_default(self):
         """Garante que apenas um modelo seja marcado como padrao.

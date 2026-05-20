@@ -5445,7 +5445,7 @@
                 <div id="settings-tab-api-keys">
                     <div class="card-header" style="margin-bottom: 16px;">
                         <span class="card-title">API Keys por Empresa</span>
-                        <button class="btn btn-primary btn-sm" onclick="openModal('modal-add-apikey')">+
+                        <button class="btn btn-primary btn-sm" onclick="openAddApiKeyModal()">+
                             Adicionar</button>
                     </div>
                     <div id="api-keys-list">
@@ -5556,6 +5556,7 @@
                         <div class="form-group">
                             <label class="form-label">Tipo de Compatibilidade *</label>
                             <select id="custom-compat" class="form-select">
+                                <option value="custom">Custom (Render/Rio)</option>
                                 <option value="openai">OpenAI-Compatible</option>
                                 <option value="anthropic">Anthropic-Compatible</option>
                             </select>
@@ -5577,6 +5578,14 @@
                             <label class="form-label">ID Exato do Modelo *</label>
                             <input type="text" class="form-input" id="custom-model-id" placeholder="gpt-4o-2024-08-06">
                             <div class="form-hint">O identificador exato enviado nas requisições</div>
+                        </div>
+
+                        <div class="form-group">
+                            <label class="form-label">API Key armazenada</label>
+                            <select class="form-select" id="custom-api-key-id">
+                                <option value="">Usar apenas chave custom autorizada</option>
+                            </select>
+                            <div class="form-hint">No site oficial, o caminho aprovado para Rio 3 continua sendo secrets do Render. Esta lista só mostra chaves custom já guardadas no cofre.</div>
                         </div>
 
                         <div class="form-group">
@@ -5689,6 +5698,7 @@
                         <option value="cohere">Cohere</option>
                         <option value="groq">Groq</option>
                         <option value="openrouter">OpenRouter</option>
+                        <option value="custom">Custom/Rio 3</option>
                         <option value="ollama">Ollama (local)</option>
                         <option value="vllm">vLLM (local)</option>
                         <option value="lmstudio">LM Studio (local)</option>
@@ -13176,6 +13186,7 @@
             if (tab === 'api-keys') carregarApiKeys();
             if (tab === 'models') carregarModelos();
             if (tab === 'catalog') carregarCatalogo();
+            if (tab === 'custom') carregarCustomApiKeys();
             if (tab === 'local') detectAllLocalModels();
         }
 
@@ -13522,6 +13533,7 @@
             const tipo = document.getElementById('custom-compat').value;
             const modelId = document.getElementById('custom-model-id').value;
             const baseUrl = document.getElementById('custom-url').value;
+            const apiKeyId = document.getElementById('custom-api-key-id').value || null;
             const apiVersion = document.getElementById('custom-api-version').value || null;
             const headersText = document.getElementById('custom-headers').value;
             const maxTokens = parseInt(document.getElementById('custom-tokens').value) || 4096;
@@ -13550,6 +13562,7 @@
                         tipo,
                         custom_model_id: modelId,
                         custom_base_url: baseUrl,
+                        api_key_id: apiKeyId,
                         api_version: apiVersion,
                         extra_headers: extraHeaders,
                         max_tokens: maxTokens,
@@ -13659,6 +13672,68 @@
             } catch (e) {
                 document.getElementById('api-keys-list').innerHTML = '<div class="alert alert-warning">⚠️ Erro ao carregar API keys. Verifique se o routes_chat.py está instalado.</div>';
             }
+        }
+
+        async function carregarCustomApiKeys() {
+            const select = document.getElementById('custom-api-key-id');
+            if (!select) return;
+            try {
+                const data = await api('/settings/api-keys');
+                const keys = (data.api_keys || []).filter(k => k.empresa === 'custom');
+                select.innerHTML = '<option value="">Usar apenas chave custom autorizada</option>' +
+                    keys.map(k => `<option value="${escapeHtml(k.id)}">${escapeHtml(k.nome_exibicao || k.empresa)} (${escapeHtml(k.api_key_preview || '***')})</option>`).join('');
+            } catch (e) {
+                select.innerHTML = '<option value="">Chaves indisponíveis</option>';
+            }
+        }
+
+        function isLocalRio3SetupHost() {
+            return ['localhost', '127.0.0.1'].includes(window.location.hostname);
+        }
+
+        function openAddApiKeyModal() {
+            const hint = document.getElementById('rio3-key-setup-hint');
+            if (hint) hint.remove();
+            openModal('modal-add-apikey');
+        }
+
+        function openRio3KeySetup() {
+            if (!isLocalRio3SetupHost()) return;
+
+            const empresa = document.getElementById('input-apikey-empresa');
+            if (empresa) empresa.value = 'custom';
+
+            const nome = document.getElementById('input-apikey-nome');
+            if (nome && !nome.value) nome.value = 'Custom/Rio 3';
+
+            const apiKey = document.getElementById('input-apikey-key');
+            if (apiKey) apiKey.value = '';
+
+            const body = document.querySelector('#modal-add-apikey .modal-body');
+            if (body && !document.getElementById('rio3-key-setup-hint')) {
+                const hint = document.createElement('div');
+                hint.id = 'rio3-key-setup-hint';
+                hint.className = 'alert alert-warning';
+                hint.textContent = 'Cole a chave somente aqui no cofre. Para produção pública, use secrets do Render até existir admin gate.';
+                body.insertBefore(hint, body.firstChild);
+            }
+
+            openModal('modal-add-apikey');
+        }
+
+        function maybeOpenRio3KeySetup() {
+            const params = new URLSearchParams(window.location.search);
+            if (!isLocalRio3SetupHost()) return;
+            if (params.get('setup') === 'rio3-key' || window.location.hash === '#rio3-key') {
+                openRio3KeySetup();
+            }
+        }
+
+        function aplicarGuardrailsRio3NoSiteOficial() {
+            if (isLocalRio3SetupHost()) return;
+
+            const customOption = document.querySelector('#input-apikey-empresa option[value="custom"]');
+            if (customOption) customOption.disabled = true;
         }
 
         async function salvarApiKey() {
@@ -14033,6 +14108,8 @@ Seja preciso e educativo nas correções.`;
             }
             // Carregar modelos sugeridos no início
             carregarModelosSugeridosInicial();
+            aplicarGuardrailsRio3NoSiteOficial();
+            maybeOpenRio3KeySetup();
         });
     </script>
     <script src="/static/chat_system.js"></script>
