@@ -1,25 +1,14 @@
 # Painel Vivo Paulo -- NOVO CR
 
-**Atualizado:** 2026-05-19
+**Atualizado:** 2026-05-23
 **Responsavel operacional:** Paulo
-**Status geral:** o servico oficial Render
-`srv-d5t8gbh4tr6s738fr3s0` (`IA_Educacao_V2`, branch `main`, URL
-`https://ia-educacao-v2.onrender.com`) esta em runtime `deb1e2a`
-(`fix: persist multimodal token usage`), validado por `/api/deploy-info`,
-`/api/health`, `./scripts/wait_deploy.sh deb1e2a` e
-`./scripts/check_deploy.sh deb1e2a`.
-Se este doc for atualizado por commit documental posterior, `origin/main` pode
-ficar a frente do runtime sem mudar backend porque o Render usa `rootDir=backend`.
-O codigo funcional de pipeline
-inclui os ciclos Anthropic/Google ate `d357960`, o preparo seguro de migration
-`737a709`, a correcao de desempenho agregado `bc96faf` e a observabilidade de
-`token_usage` vazio `c8f538a`, agora fechado por persistencia row-level em
-`518f8a2`, a preferencia por PDF narrativo em agregados em `58781a1`, o erro
-bloqueante para `max_iterations_exceeded` em `f534576`, o filtro correto de
-versões por aluno em `2fa5d47`, o contrato de artefatos agregados em `e85be11`
-o agrupamento de leitura por `cost_run_id` em `52ff747`, a trava de artefato
-unico/readback sem docs de erro em `546b72f` e a persistencia row-level de
-etapas multimodais simples em `deb1e2a`.
+**Status geral:** emergencia de dados. O servico oficial Render
+`https://ia-educacao-v2.onrender.com` foi encontrado em runtime `da12ce1`, mas
+o banco live caiu para `2` materias, `3` turmas, `4` atividades, `41` alunos
+globais e `99` documentos. O trabalho ativo agora e congelar qualquer wipe de
+startup, publicar esse congelamento, inventariar backups/snapshots sem mutar
+producao e restaurar de forma deterministica. Os ciclos de pipeline, providers e
+custos ficam pausados ate o banco voltar a uma base confiavel.
 
 ## Regra operacional obrigatoria do loop
 
@@ -33,6 +22,61 @@ de longo prazo quando estou em duvida, leio os logs quando estou com muitas
 duvidas para nao repetir trabalho, e pulo para a proxima tarefa com registro
 explicito. Se eu acho que esta pronto, e porque tenho que ler documentos e
 comecar a revisar.
+
+## Incidente P0 -- Recuperacao emergencial do banco (2026-05-23)
+
+Status vivo: **congelamento destrutivo em deploy gate**. Nenhuma pipeline de IA
+deve rodar antes de estabilizar o banco oficial.
+
+Fatos confirmados por leitura:
+
+- Site oficial em `https://ia-educacao-v2.onrender.com`, runtime observado antes
+  do patch: `da12ce1`.
+- Estado oficial atual: `2` materias, `3` turmas, `4` atividades, `41` alunos
+  globais e `99` documentos.
+- Baseline historico deste proprio Doc 09 em 2026-05-18: `29` materias,
+  `35` turmas, `114` atividades e `87` PDFs finais testados.
+- Algebra Linear Avancada ainda existe, mas a turma `3f3ab03dfe783f30` retorna
+  `0` alunos vinculados, apesar de haver `64` documentos `prova_respondida`.
+- Causa provavel no codigo: o startup voltou a chamar seed/limpeza destrutiva
+  em producao. O comportamento perigoso apagava dados com `metadata` vazia ao
+  julgar o banco "incompleto". O commit protetor historico `943439e` bloqueava
+  essa classe de wipe, mas o estado atual regrediu.
+- Risco adicional corrigido no lote local: `/api/manutencao/supabase-debug`
+  podia expor prefixo de service key e fazer mutacao de debug.
+
+Congelamento preparado localmente:
+
+- `backend/main_v2.py`: `initialize_fantasy_data_if_empty()` e
+  `cleanup_duplicate_materias()` ficam atras de `ENABLE_DEMO_SEEDING=true`;
+  default oficial e nao semear/nao limpar. `_wipe_old_untagged_data()` preserva
+  metadata vazia e so remove tags explicitas de gerador demo/teste.
+- `backend/routes_extras.py`: debug Supabase virou leitura segura, sem prefixo
+  de segredo e sem `PATCH`.
+- `md documents/algebra-linear-providers-mapping/_recover_supabase.py`: recovery
+  de Algebra passa a montar `alunos_turmas` com `id`, `ativo=true`,
+  `data_entrada` e campos esperados; o script tambem fica bloqueado por
+  `CONFIRM_SUPABASE_RECOVERY` para evitar mutacao acidental antes de descartar
+  PITR/backup.
+- Testes locais do lote: `py_compile`, `git diff --check` e
+  `backend/tests/unit/test_generator.py backend/tests/unit/test_supabase_debug_safety.py`
+  com `27 passed`.
+
+Fontes de recuperacao inventariadas ate aqui:
+
+- Snapshot completo Lista0:
+  `md documents/algebra-linear-providers-mapping/_raw_lista0_docs_2026-05-20.json`.
+- SQLite local atual `backend/data/database.db`: `5` materias, `11` turmas,
+  `13` alunos, `18` vinculos, `10` atividades e `50` documentos.
+- SQLite historico `3f9f63a:backend/data/database.db`: `9` materias,
+  `15` turmas, `22` alunos, `95` vinculos, `38` atividades e `425` documentos.
+- Doc 09 e auditorias historicas provam que o site oficial ja teve escala muito
+  maior que o live atual.
+
+Proximo gate obrigatorio: commitar/pushar o congelamento, confirmar Render no
+novo hash via `/api/deploy-info` e `/api/health`, entao inventariar backups
+Render/Supabase sem mutar producao. Se PITR/backup Supabase existir, ele vem
+antes de reconstrução manual.
 
 Estado funcional consolidado: documentos com `status=erro` nao contam como
 progresso; correcao sem itens avaliaveis nao vira `completo=true`; ranking,

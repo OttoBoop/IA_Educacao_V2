@@ -1,6 +1,6 @@
 # Auditoria Mestre -- Pipeline, Custos, Providers e Fallbacks
 
-**Data:** 2026-05-19
+**Data:** 2026-05-23
 **Responsavel operacional:** Paulo
 **Status:** mapa grande de auditoria; o Doc 09 continua sendo o painel vivo curto
 
@@ -8,6 +8,55 @@ Este documento existe porque a pasta de planejamento ficou grande demais para se
 lida de memoria. Ele nao substitui os documentos originais: ele explica como cada
 um deve ser lido, o que ainda vale, o que ficou historico, e quais fatos precisam
 guiar os proximos ciclos.
+
+## Incidente P0 2026-05-23 -- perda de materias, vinculos e documentos oficiais
+
+Leitura obrigatoria para qualquer agente retomando apos compactar: antes de
+qualquer pipeline, custo ou provider, o banco oficial precisa ser congelado e
+recuperado. O site oficial foi encontrado com `2` materias, `3` turmas,
+`4` atividades, `41` alunos globais e `99` documentos. O proprio historico deste
+plano registrava, em 2026-05-18, `29` materias, `35` turmas, `114` atividades e
+`87` PDFs finais testados. Portanto o problema atual nao e qualidade de IA: e
+perda estrutural de dados.
+
+Estado de Algebra Linear Avancada: a materia e a atividade Lista0 ainda existem
+no live, e ha `64` documentos `prova_respondida`, mas a turma
+`3f3ab03dfe783f30` retorna `0` alunos vinculados. Isso aponta para perda de
+relacionamentos em `alunos_turmas` ou restore incompleto, nao para ausencia de
+PDFs de entrada.
+
+Causa provavel consolidada: a rotina de startup voltou a executar seed/limpeza
+destrutiva em producao quando julgava o banco "incompleto". Esse caminho podia
+remover materias/alunos com `metadata` vazia. A regra correta agora e P0:
+startup em Supabase/producao nunca pode apagar ou reseedar dados sem
+`ENABLE_DEMO_SEEDING=true`. Metadata vazia nao e prova de dado demo.
+
+Lote de congelamento preparado em 2026-05-23:
+
+- `initialize_fantasy_data_if_empty()` e `cleanup_duplicate_materias()` ficam
+  desativadas por default e so rodam com `ENABLE_DEMO_SEEDING=true`.
+- `_wipe_old_untagged_data()` so pode remover tags explicitas de gerador demo ou
+  teste, nunca metadata vazia.
+- `/api/manutencao/supabase-debug` vira endpoint read-only e nao expõe prefixo de
+  service key.
+- `_recover_supabase.py` passa a inserir `alunos_turmas` com `id`,
+  `ativo=true`, `data_entrada` e campos esperados, mas so roda com
+  `CONFIRM_SUPABASE_RECOVERY` definido para impedir upsert acidental.
+
+Fontes de recuperacao ja encontradas:
+
+- Snapshot Lista0 completo:
+  `md documents/algebra-linear-providers-mapping/_raw_lista0_docs_2026-05-20.json`.
+- SQLite local atual `backend/data/database.db`: `5` materias, `11` turmas,
+  `13` alunos, `18` vinculos, `10` atividades e `50` documentos.
+- SQLite historico `3f9f63a:backend/data/database.db`: `9` materias,
+  `15` turmas, `22` alunos, `95` vinculos, `38` atividades e `425` documentos.
+- Doc 09 e auditorias anteriores provam escala oficial maior que o live atual.
+
+Roteiro deterministico: primeiro deployar o congelamento; depois procurar
+backup/PITR Supabase e logs Render em leitura; se backup existir, restaurar por
+PITR antes de qualquer reconstrução manual. So usar snapshots locais para
+reconstrução idempotente se PITR estiver indisponivel.
 
 Atualizacao curta de 2026-05-19 para qualquer IA retomando apos compactar:
 `/api/deploy-info` confirma Render em `deb1e2a`. Se `origin/main` estiver a

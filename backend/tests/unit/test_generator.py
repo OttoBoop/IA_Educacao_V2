@@ -841,36 +841,35 @@ def test_check_document_completeness_returns_true_when_all_types_exist(mock_stor
     assert result is True
 
 
-def test_wipe_old_untagged_data_deletes_empty_metadata(mock_storage):
+def test_wipe_old_untagged_data_preserves_empty_metadata(mock_storage):
     """
-    FG-T9: _wipe_old_untagged_data deletes materias/alunos with empty metadata.
+    Emergency recovery guard: empty metadata is not proof of fantasy data.
     """
     from main_v2 import _wipe_old_untagged_data
 
-    # Old untagged materia (empty metadata)
+    # Real historical data may have empty metadata and must be preserved.
     materia_old = Mock(id="mat-old", nome="Matematica", metadata={})
-    # User materia (has custom metadata)
+    materia_generator = Mock(id="mat-generator", nome="Demo", metadata={"criado_por": "test_generator"})
     materia_user = Mock(id="mat-user", nome="Econometria", metadata={"custom": "data"})
 
-    mock_storage.listar_materias.return_value = [materia_old, materia_user]
+    mock_storage.listar_materias.return_value = [materia_old, materia_generator, materia_user]
 
     aluno_old = Mock(id="aluno-old", metadata={})
-    mock_storage.listar_alunos.return_value = [aluno_old]
+    aluno_generator = Mock(id="aluno-generator", metadata={"criado_por": "fantasy_generator"})
+    mock_storage.listar_alunos.return_value = [aluno_old, aluno_generator]
     mock_storage.deletar_materia.return_value = True
     mock_storage.deletar_aluno.return_value = True
 
     with patch("main_v2.storage", mock_storage):
         _wipe_old_untagged_data()
 
-    # Old untagged materia should be deleted
-    mock_storage.deletar_materia.assert_called_once_with("mat-old")
-    # User materia should NOT be deleted
-    mock_storage.deletar_aluno.assert_called_once_with("aluno-old")
+    mock_storage.deletar_materia.assert_called_once_with("mat-generator")
+    mock_storage.deletar_aluno.assert_called_once_with("aluno-generator")
 
 
-def test_initialize_reseeds_when_data_incomplete(mock_storage):
+def test_initialize_does_not_reseed_without_explicit_env(mock_storage):
     """
-    FG-T9: initialize_fantasy_data_if_empty re-seeds when data is incomplete.
+    Emergency recovery guard: startup mutation is opt-in only.
     """
     from main_v2 import initialize_fantasy_data_if_empty
 
@@ -883,11 +882,34 @@ def test_initialize_reseeds_when_data_incomplete(mock_storage):
     with patch("main_v2.storage", mock_storage), \
          patch("main_v2._check_document_completeness", return_value=False), \
          patch("main_v2._wipe_old_untagged_data") as mock_wipe, \
-         patch("test_data_generator.TestDataGenerator", return_value=mock_gen_instance):
+         patch("test_data_generator.TestDataGenerator", return_value=mock_gen_instance), \
+         patch.dict("os.environ", {"ENABLE_DEMO_SEEDING": "false"}, clear=False):
 
         initialize_fantasy_data_if_empty()
 
-        # Should wipe old data
+        mock_wipe.assert_not_called()
+        mock_gen_instance.gerar_tudo.assert_not_called()
+
+
+def test_initialize_reseeds_when_explicit_demo_env_enabled(mock_storage):
+    """
+    Demo reseed remains available only with ENABLE_DEMO_SEEDING=true.
+    """
+    from main_v2 import initialize_fantasy_data_if_empty
+
+    materia = Mock(id="mat-001", nome="Matematica", metadata={})
+    mock_storage.listar_materias.return_value = [materia]
+
+    mock_gen_instance = MagicMock()
+    mock_gen_instance.gerar_tudo.return_value = {"materias": 3, "documentos": 20}
+
+    with patch("main_v2.storage", mock_storage), \
+         patch("main_v2._check_document_completeness", return_value=False), \
+         patch("main_v2._wipe_old_untagged_data") as mock_wipe, \
+         patch("test_data_generator.TestDataGenerator", return_value=mock_gen_instance), \
+         patch.dict("os.environ", {"ENABLE_DEMO_SEEDING": "true"}, clear=False):
+
+        initialize_fantasy_data_if_empty()
+
         mock_wipe.assert_called_once()
-        # Should re-seed
         mock_gen_instance.gerar_tudo.assert_called_once()

@@ -113,6 +113,11 @@ print("="*50 + "\n")
 # APP SETUP
 # ============================================================
 
+def _demo_seeding_enabled() -> bool:
+    """Return True only when demo data mutation is explicitly enabled."""
+    return os.getenv("ENABLE_DEMO_SEEDING", "").strip().lower() in {"1", "true", "yes", "on"}
+
+
 def _check_document_completeness() -> bool:
     """
     Spot-check whether all 4 document types exist in the database.
@@ -141,28 +146,30 @@ def _check_document_completeness() -> bool:
 
 def _wipe_old_untagged_data():
     """
-    Delete old fantasy data that lacks criado_por tags (pre-overhaul data).
-    Preserves any data with non-empty metadata (user-created or tagged).
+    Delete ONLY explicit fantasy/test-generated data.
+
+    Empty metadata is not proof that data is disposable. Production/user data
+    existed for months without criado_por tags, so this function must never
+    delete rows just because metadata is empty.
     """
+    generator_tags = {"test_generator", "fantasy_generator"}
     materias = storage.listar_materias()
     deleted = 0
     for materia in materias:
         meta = materia.metadata if isinstance(materia.metadata, dict) else {}
-        # Delete if no metadata or empty metadata (old generator data)
-        # Also delete if tagged as test_generator (cleanup from failed runs)
-        if not meta or meta.get("criado_por") == "test_generator":
+        if meta.get("criado_por") in generator_tags:
             print(f"  [wipe] Deleting materia '{materia.nome}' (id={materia.id})")
             storage.deletar_materia(materia.id)
             deleted += 1
-    # Also delete untagged alunos
+    # Also delete explicitly generator-tagged alunos.
     alunos = storage.listar_alunos()
     alunos_deleted = 0
     for aluno in alunos:
         meta = aluno.metadata if isinstance(aluno.metadata, dict) else {}
-        if not meta or meta.get("criado_por") == "test_generator":
+        if meta.get("criado_por") in generator_tags:
             storage.deletar_aluno(aluno.id)
             alunos_deleted += 1
-    print(f"[!] Wiped {deleted} materias, {alunos_deleted} alunos (old untagged data)")
+    print(f"[!] Wiped {deleted} materias, {alunos_deleted} alunos (generator data only)")
 
 
 def initialize_fantasy_data_if_empty():
@@ -173,6 +180,10 @@ def initialize_fantasy_data_if_empty():
     1. Empty DB (fresh deploy or SQLite reset) → seed from scratch
     2. Incomplete data (old generator failed silently) → wipe and re-seed
     """
+    if not _demo_seeding_enabled():
+        print("[OK] Demo seeding disabled; skipping startup data mutation")
+        return
+
     try:
         materias = storage.listar_materias()
         if len(materias) == 0:
@@ -211,16 +222,18 @@ async def lifespan(app: FastAPI):
         import traceback
         traceback.print_exc()
 
-    # Initialize fantasy data if database is empty (handles Render's ephemeral filesystem)
+    # Demo seeding is opt-in only. Production/Supabase must never mutate data on startup.
     initialize_fantasy_data_if_empty()
 
-    # Clean up any duplicate matérias left from before uniqueness checks were added
-    try:
-        report = storage.cleanup_duplicate_materias()
-        if report["duplicates_removed"] > 0:
-            print(f"[CLEANUP] Removed {report['duplicates_removed']} duplicate matérias, reassigned {report['turmas_reassigned']} turmas")
-    except Exception as e:
-        print(f"[CLEANUP] Warning: matéria dedup failed: {e}")
+    if _demo_seeding_enabled():
+        try:
+            report = storage.cleanup_duplicate_materias()
+            if report["duplicates_removed"] > 0:
+                print(f"[CLEANUP] Removed {report['duplicates_removed']} duplicate matérias, reassigned {report['turmas_reassigned']} turmas")
+        except Exception as e:
+            print(f"[CLEANUP] Warning: matéria dedup failed: {e}")
+    else:
+        print("[OK] Startup matéria dedup disabled; skipping destructive cleanup")
 
     yield
 

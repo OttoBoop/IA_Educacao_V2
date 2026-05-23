@@ -2069,12 +2069,15 @@ async def backfill_display_names_v2(dry_run: bool = True):
 
 @router.get("/api/manutencao/supabase-debug", tags=["Manutenção"])
 async def supabase_debug():
-    """Debug: test Supabase env vars and a direct PATCH call."""
-    import os, requests as _requests
+    """Debug Supabase configuration without exposing secrets or mutating data."""
+    import os
+    import requests as _requests
+    from urllib.parse import urlparse
 
     SUPABASE_URL = os.getenv("SUPABASE_URL", "").rstrip("/")
     SERVICE_KEY = os.getenv("SUPABASE_SERVICE_KEY", "")
     ANON_KEY = os.getenv("SUPABASE_ANON_KEY", "")
+    parsed = urlparse(SUPABASE_URL) if SUPABASE_URL else None
 
     # Try to get one doc from DB to get a real ID
     doc_id = None
@@ -2089,26 +2092,27 @@ async def supabase_debug():
         if doc_id: break
 
     results = {
-        "SUPABASE_URL": SUPABASE_URL[:40] + "..." if SUPABASE_URL else "(not set)",
-        "SERVICE_KEY": SERVICE_KEY[:20] + "..." if SERVICE_KEY else "(not set)",
-        "ANON_KEY": ANON_KEY[:20] + "..." if ANON_KEY else "(not set)",
+        "supabase_url_configured": bool(SUPABASE_URL),
+        "supabase_host": parsed.netloc if parsed else None,
+        "service_key_configured": bool(SERVICE_KEY),
+        "anon_key_configured": bool(ANON_KEY),
         "use_postgresql": storage.use_postgresql,
         "test_doc_id": doc_id,
     }
 
     if SUPABASE_URL and SERVICE_KEY and doc_id:
-        url = f"{SUPABASE_URL}/rest/v1/documentos?id=eq.{doc_id}"
+        url = f"{SUPABASE_URL}/rest/v1/documentos?select=id&id=eq.{doc_id}&limit=1"
         headers = {
             "apikey": SERVICE_KEY,
             "Authorization": f"Bearer {SERVICE_KEY}",
-            "Content-Type": "application/json",
-            "Prefer": "return=minimal",
         }
         try:
-            resp = _requests.patch(url, headers=headers, json={"display_name": "TEST_BACKFILL"}, timeout=10)
-            results["patch_status"] = resp.status_code
-            results["patch_body"] = resp.text[:200]
+            resp = _requests.get(url, headers=headers, timeout=10)
+            results["direct_read_status"] = resp.status_code
+            results["direct_read_ok"] = resp.ok
+            if not resp.ok:
+                results["direct_read_error"] = resp.text[:200]
         except Exception as e:
-            results["patch_error"] = str(e)
+            results["direct_read_error"] = str(e)
 
     return results
