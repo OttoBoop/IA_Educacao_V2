@@ -36,16 +36,18 @@
 
 ---
 
-## Modelos (mais baratos da família, validados em `backend/data/model_catalog.json` 2026.05)
+## Modelos (mais baratos da família — validados em `backend/data/model_catalog.json` 2026.05 + `/api/settings/models`)
 
-| Provider | ID | $/1M input | $/1M output | Estimativa Lista0 (38 alunos × 6 etapas + 1 desempenho-tarefa = 229 calls) |
-|---|---|---|---|---|
-| Anthropic | `claude-haiku-4-5-20251001` | $1.00 | $5.00 | ~$1.50–$3.00 |
-| OpenAI | `gpt-5-nano` | $0.05 | $0.40 | ~$0.15–$0.40 |
-| Google | `gemini-3-flash-preview` | $0.50 | $3.00 | ~$0.75–$1.50 |
-| **TOTAL ESPERADO** | | | | **~$2.50–$5.00** |
+| Provider | Modelo | `provider_id` (UI/API) | $/1M input | $/1M output | Estimativa Lista0 |
+|---|---|---|---|---|---|
+| Anthropic | `claude-haiku-4-5-20251001` | `588f3efe7975` | $1.00 | $5.00 | ~$1.50–$3.00 |
+| OpenAI | `gpt-5-nano` | `gpt5nano001` | $0.05 | $0.40 | ~$0.15–$0.40 |
+| Google | `gemini-3-flash-preview` | `gem3flash001` | $0.50 | $3.00 | ~$0.75–$1.50 |
+| **TOTAL ESPERADO** | | | | | **~$2.50–$5.00** |
 
-Estimativa assume ~2k tokens input + ~1k tokens output por chamada (heurística observada em runs anteriores).
+Pipeline: 38 alunos × 6 etapas + 1 desempenho-tarefa = 229 calls. Estimativa assume ~2k input + ~1k output por chamada.
+
+**Default ativo no Supabase:** `gpt54mini001` (GPT-5.4 Mini OCR candidato). Não usar pra esse loop — usar explicitamente os 3 acima via `provider_id` no POST do modal.
 
 ---
 

@@ -12464,8 +12464,119 @@
             }
         }
 
+        // Render an inline progress panel inside generateArea while the
+        // pipeline is running. Iterates data.students (populated by backend
+        // via update_stage_progress) and shows counts + lists of students by
+        // status, including current stage and failure messages.
+        const _DESEMPENHO_STAGE_KEYS = [
+            'extrair_questoes', 'extrair_gabarito', 'extrair_respostas',
+            'corrigir', 'analisar_habilidades', 'gerar_relatorio',
+        ];
+        const _DESEMPENHO_STAGE_LABELS = {
+            extrair_questoes: 'Extrair Questões',
+            extrair_gabarito: 'Extrair Gabarito',
+            extrair_respostas: 'Extrair Respostas',
+            corrigir: 'Corrigir',
+            analisar_habilidades: 'Analisar Habilidades',
+            gerar_relatorio: 'Relatório Final',
+        };
+        function _renderDesempenhoProgressPanel(data, level, entityId, elapsedSec) {
+            const students = data.students || {};
+            const ids = Object.keys(students);
+            const total = ids.length;
+            const buckets = { completed: [], failed: [], running: [], pending: [] };
+            for (const aid of ids) {
+                const st = students[aid] || {};
+                const stages = st.stages || {};
+                const values = _DESEMPENHO_STAGE_KEYS.map(k => stages[k] || 'pending');
+                const allDone = values.every(v => v === 'completed' || v === 'skipped');
+                const hasFailed = values.some(v => v === 'failed');
+                let bucket;
+                if (hasFailed) bucket = 'failed';
+                else if (allDone) bucket = 'completed';
+                else if (values.some(v => v === 'running' || v === 'completed' || v === 'skipped')) bucket = 'running';
+                else bucket = 'pending';
+                // determine current stage label for non-terminal entries
+                let currentStage = null, currentIdx = 0;
+                for (let i = 0; i < _DESEMPENHO_STAGE_KEYS.length; i++) {
+                    const k = _DESEMPENHO_STAGE_KEYS[i];
+                    if (stages[k] === 'running') { currentStage = k; currentIdx = i + 1; break; }
+                }
+                if (!currentStage) {
+                    for (let i = 0; i < _DESEMPENHO_STAGE_KEYS.length; i++) {
+                        const k = _DESEMPENHO_STAGE_KEYS[i];
+                        if (!stages[k] || stages[k] === 'pending') { currentStage = k; currentIdx = i + 1; break; }
+                    }
+                }
+                // pick failure detail (first failed stage with error)
+                let failDetail = null;
+                if (hasFailed) {
+                    for (const k of _DESEMPENHO_STAGE_KEYS) {
+                        if (stages[k] === 'failed') {
+                            const err = (st.stage_errors || {})[k];
+                            failDetail = { stage: k, mensagem: (err && (err.mensagem || err.erro)) || '' };
+                            break;
+                        }
+                    }
+                }
+                buckets[bucket].push({ id: aid, nome: st.nome || aid, stages, currentStage, currentIdx, failDetail });
+            }
+
+            const fmtElapsed = (s) => {
+                s = Math.max(0, Math.floor(s));
+                if (s < 60) return s + 's';
+                const m = Math.floor(s / 60), r = s % 60;
+                if (m < 60) return m + 'm' + (r ? ' ' + r + 's' : '');
+                const h = Math.floor(m / 60), mr = m % 60;
+                return h + 'h ' + mr + 'm';
+            };
+
+            const safeName = (n) => (n || '').replace(/[<>&"']/g, c => ({'<':'&lt;','>':'&gt;','&':'&amp;','"':'&quot;',"'":'&#39;'}[c]));
+
+            const counts = `<span style="color: var(--success, #22c55e); font-weight: 600;">✅ ${buckets.completed.length}</span> · <span style="color: var(--danger, #ef4444); font-weight: 600;">❌ ${buckets.failed.length}</span> · <span style="color: var(--warning, #f59e0b); font-weight: 600;">⏳ ${buckets.running.length}</span>${buckets.pending.length ? ' · <span style="color: var(--text-muted); font-weight: 600;">⏸️ ' + buckets.pending.length + '</span>' : ''} <span style="color: var(--text-muted); font-weight: 400;">de ${total}</span>`;
+
+            const stagesBadge = (stages) => _DESEMPENHO_STAGE_KEYS.map(k => {
+                const v = stages[k];
+                if (v === 'completed') return '<span title="' + _DESEMPENHO_STAGE_LABELS[k] + '" style="color: var(--success, #22c55e);">●</span>';
+                if (v === 'running') return '<span title="' + _DESEMPENHO_STAGE_LABELS[k] + '" style="color: var(--warning, #f59e0b);">◐</span>';
+                if (v === 'failed') return '<span title="' + _DESEMPENHO_STAGE_LABELS[k] + '" style="color: var(--danger, #ef4444);">✕</span>';
+                if (v === 'skipped') return '<span title="' + _DESEMPENHO_STAGE_LABELS[k] + ' (skipped)" style="color: var(--text-muted);">↷</span>';
+                return '<span title="' + _DESEMPENHO_STAGE_LABELS[k] + '" style="color: var(--text-muted);">○</span>';
+            }).join(' ');
+
+            const runningList = buckets.running.length === 0 ? '' :
+                `<details open style="margin-top: 8px;"><summary style="cursor: pointer; font-weight: 500; color: var(--warning, #f59e0b);">⏳ Em andamento (${buckets.running.length})</summary>
+                <div style="margin-top: 6px; display: flex; flex-direction: column; gap: 4px;">${buckets.running.map(s =>
+                    `<div style="display: flex; gap: 10px; align-items: center; font-size: 0.85rem;"><span style="font-family: monospace; letter-spacing: 2px;">${stagesBadge(s.stages)}</span><span style="flex: 1;">${safeName(s.nome)}</span><span style="color: var(--text-muted); font-size: 0.8rem;">${_DESEMPENHO_STAGE_LABELS[s.currentStage] || '-'} (${s.currentIdx}/6)</span></div>`
+                ).join('')}</div></details>`;
+
+            const failedList = buckets.failed.length === 0 ? '' :
+                `<details open style="margin-top: 8px;"><summary style="cursor: pointer; font-weight: 500; color: var(--danger, #ef4444);">❌ Falhas (${buckets.failed.length})</summary>
+                <div style="margin-top: 6px; display: flex; flex-direction: column; gap: 4px;">${buckets.failed.map(s =>
+                    `<div style="display: flex; gap: 10px; align-items: flex-start; font-size: 0.85rem;"><span style="font-family: monospace; letter-spacing: 2px;">${stagesBadge(s.stages)}</span><div style="flex: 1;"><div>${safeName(s.nome)}</div>${s.failDetail ? '<div style="color: var(--danger, #ef4444); font-size: 0.78rem; margin-top: 2px;">' + (_DESEMPENHO_STAGE_LABELS[s.failDetail.stage] || s.failDetail.stage) + ': ' + safeName(s.failDetail.mensagem.slice(0, 200)) + '</div>' : ''}</div></div>`
+                ).join('')}</div></details>`;
+
+            const doneList = buckets.completed.length === 0 ? '' :
+                `<details style="margin-top: 8px;"><summary style="cursor: pointer; font-weight: 500; color: var(--success, #22c55e);">✅ Concluídos (${buckets.completed.length})</summary>
+                <div style="margin-top: 6px; display: flex; flex-direction: column; gap: 2px; font-size: 0.85rem;">${buckets.completed.map(s =>
+                    `<div style="display: flex; gap: 10px; align-items: center;"><span style="font-family: monospace; letter-spacing: 2px;">${stagesBadge(s.stages)}</span><span>${safeName(s.nome)}</span></div>`
+                ).join('')}</div></details>`;
+
+            const elapsedKey = level + '-' + entityId;
+            return `<div id="desempenho-progress-panel" style="border: 1px solid var(--border); border-radius: 8px; padding: 12px; display: flex; flex-direction: column; gap: 6px;">
+                <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
+                    <span class="spinner"></span>
+                    <span style="font-weight: 600;">Gerando relatório</span>
+                    <span style="color: var(--text-muted);">elapsed: <span id="desempenho-elapsed-${elapsedKey}">${fmtElapsed(elapsedSec)}</span></span>
+                    ${total > 0 ? `<span style="margin-left: auto; font-size: 0.9rem;">${counts}</span>` : '<span style="margin-left: auto; color: var(--text-muted); font-size: 0.85rem;">aguardando inicialização da tarefa…</span>'}
+                </div>
+                ${runningList}${failedList}${doneList}
+            </div>`;
+        }
+
         // D-T1: Poll task-progress for desempenho-specific completion handling
         function _awaitDesempenhoCompletion(taskId, level, entityId, generateArea) {
+            const startMs = Date.now();
             const poll = async () => {
                 try {
                     const resp = await fetch(`/api/task-progress/${taskId}`);
@@ -12493,8 +12604,11 @@
                     } else if (data.status === 'cancelled') {
                         _cleanupDesempenhoProgress(generateArea, level, entityId);
                         showToast('⛔ Geração cancelada pelo usuário', 'info');
+                    } else if (generateArea) {
+                        // running — render live progress panel from data.students
+                        const elapsedSec = (Date.now() - startMs) / 1000;
+                        generateArea.innerHTML = _renderDesempenhoProgressPanel(data, level, entityId, elapsedSec);
                     }
-                    // else 'running' — keep polling
                 } catch (err) {
                     // Network error — keep polling (resilience)
                 }

@@ -1285,6 +1285,7 @@ async def _executar_desempenho_tarefa_background(
             entity_id=atividade_id,
             provider_id=provider_id,
             force_reexec=force_reexec,
+            task_id=task_id,
         )
         resultado = await executor.gerar_relatorio_desempenho_tarefa(
             atividade_id=atividade_id,
@@ -1352,6 +1353,7 @@ async def _executar_desempenho_turma_background(
             entity_id=turma_id,
             provider_id=provider_id,
             force_reexec=force_reexec,
+            task_id=task_id,
         )
         resultado = await executor.gerar_relatorio_desempenho_turma(
             turma_id=turma_id,
@@ -1416,6 +1418,7 @@ async def _executar_desempenho_materia_background(
             entity_id=materia_id,
             provider_id=provider_id,
             force_reexec=force_reexec,
+            task_id=task_id,
         )
         resultado = await executor.gerar_relatorio_desempenho_materia(
             materia_id=materia_id,

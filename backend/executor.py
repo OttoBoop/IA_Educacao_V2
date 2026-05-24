@@ -6302,6 +6302,7 @@ Crie UM documento separado para cada aluno, nomeando como "relatorio_[nome_aluno
         entity_id: str,
         provider_id: Optional[str] = None,
         force_reexec: bool = False,
+        task_id: Optional[str] = None,
     ) -> Dict[str, Any]:
         """
         Ensure all upstream prerequisite docs exist before running desempenho.
@@ -6347,6 +6348,7 @@ Crie UM documento separado para cada aluno, nomeando como "relatorio_[nome_aluno
                     aluno.id,
                     provider_name=provider_id,
                     force_rerun=force_reexec,
+                    task_id=task_id,
                 )
                 last = list(resultado.values())[-1] if resultado else None
                 last_ok = getattr(last, "sucesso", None) if last else None
@@ -6369,7 +6371,7 @@ Crie UM documento separado para cada aluno, nomeando como "relatorio_[nome_aluno
                 if not force_reexec and has_relatorio_final:
                     skipped.append(atividade.id)
                     continue
-                await self._cascade_prereqs("tarefa", atividade.id, provider_id, force_reexec)
+                await self._cascade_prereqs("tarefa", atividade.id, provider_id, force_reexec, task_id=task_id)
                 resultado = await self.gerar_relatorio_desempenho_tarefa(atividade.id, provider_id)
                 if resultado.get("sucesso"):
                     created.append(atividade.id)
@@ -6391,7 +6393,7 @@ Crie UM documento separado para cada aluno, nomeando como "relatorio_[nome_aluno
                 if not force_reexec and has_relatorio_final:
                     skipped.append(turma.id)
                     continue
-                await self._cascade_prereqs("turma", turma.id, provider_id, force_reexec)
+                await self._cascade_prereqs("turma", turma.id, provider_id, force_reexec, task_id=task_id)
                 resultado = await self.gerar_relatorio_desempenho_turma(turma.id, provider_id)
                 if resultado.get("sucesso"):
                     created.append(turma.id)
