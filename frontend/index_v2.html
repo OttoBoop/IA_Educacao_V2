@@ -5363,7 +5363,7 @@
                 <div class="form-group"><label style="display:flex;align-items:center;gap:8px;cursor:pointer;"><input type="checkbox" id="input-desempenho-force-rerun"> Forçar re-execução</label><small style="color:var(--text-muted);display:block;margin-top:4px;">Se marcado, gera novo relatório mesmo se já existir.</small></div>
                 <input type="hidden" id="input-desempenho-level"><input type="hidden" id="input-desempenho-entity-id">
                 <!-- F2-T4: Opções Avançadas — per-phase model selectors --><div class="form-group"><label class="form-label" style="display:flex;align-items:center;justify-content:space-between;cursor:pointer;" onclick="toggleDesempenhoAdvanced()"><span>Opções Avançadas</span><span id="desempenho-advanced-toggle" style="font-size:12px;color:var(--text-muted);">▶ Expandir</span></label><div id="desempenho-advanced" style="display:none;padding:8px;display:flex;flex-direction:column;gap:6px;"><small style="color:var(--text-muted);margin-bottom:4px;">Modelo por etapa (deixe "Padrão" para usar o modelo global):</small><div style="display:flex;align-items:center;gap:6px;"><label style="min-width:130px;font-size:12px;">Extrair Questões</label><select class="form-select" data-phase="extrair_questoes" id="desempenho-model-extrair_questoes" style="font-size:11px;flex:1;"><option value="">Padrão</option></select></div><div style="display:flex;align-items:center;gap:6px;"><label style="min-width:130px;font-size:12px;">Extrair Gabarito</label><select class="form-select" data-phase="extrair_gabarito" id="desempenho-model-extrair_gabarito" style="font-size:11px;flex:1;"><option value="">Padrão</option></select></div><div style="display:flex;align-items:center;gap:6px;"><label style="min-width:130px;font-size:12px;">Extrair Respostas</label><select class="form-select" data-phase="extrair_respostas" id="desempenho-model-extrair_respostas" style="font-size:11px;flex:1;"><option value="">Padrão</option></select></div><div style="display:flex;align-items:center;gap:6px;"><label style="min-width:130px;font-size:12px;">Corrigir</label><select class="form-select" data-phase="corrigir" id="desempenho-model-corrigir" style="font-size:11px;flex:1;"><option value="">Padrão</option></select></div><div style="display:flex;align-items:center;gap:6px;"><label style="min-width:130px;font-size:12px;">Analisar Habilidades</label><select class="form-select" data-phase="analisar_habilidades" id="desempenho-model-analisar_habilidades" style="font-size:11px;flex:1;"><option value="">Padrão</option></select></div><div style="display:flex;align-items:center;gap:6px;"><label style="min-width:130px;font-size:12px;">Gerar Relatório</label><select class="form-select" data-phase="gerar_relatorio" id="desempenho-model-gerar_relatorio" style="font-size:11px;flex:1;"><option value="">Padrão</option></select></div></div></div>
-                <!-- F2-T1: Etapas --><div class="form-group" id="desempenho-etapas-section"><label class="form-label" style="display:flex;align-items:center;justify-content:space-between;cursor:pointer;" onclick="toggleDesempenhoEtapas()"><span>Etapas a Executar</span><span id="desempenho-etapas-toggle" style="font-size:12px;color:var(--text-muted);">▶ Expandir</span></label><small style="color:var(--text-muted);display:block;margin-bottom:6px;">Selecione etapas do pipeline para cada aluno.</small><div id="desempenho-etapas-tree" style="display:none;border:1px solid var(--border);border-radius:6px;padding:8px;max-height:320px;overflow-y:auto;"><div style="color:var(--text-muted);font-size:13px;padding:8px;">Carregando alunos...</div></div></div>
+                <!-- F2-T1: Etapas --><div class="form-group" id="desempenho-etapas-section"><label class="form-label" style="display:flex;align-items:center;justify-content:space-between;cursor:pointer;" onclick="toggleDesempenhoEtapas()"><span>Etapas a Executar</span><span id="desempenho-etapas-toggle" style="font-size:12px;color:var(--text-muted);">▶ Expandir</span></label><small style="color:var(--text-muted);display:block;margin-bottom:6px;">Selecione etapas do pipeline para cada aluno.</small><label id="desempenho-master-toggle-row" style="display:none;align-items:center;gap:8px;padding:6px 8px;margin-bottom:4px;border:1px solid var(--border);border-radius:6px;background:var(--bg-card);cursor:pointer;font-size:13px;"><input type="checkbox" id="desempenho-etapa-select-all" onchange="toggleAllDesempenhoEtapas(this)"><strong>Selecionar/desmarcar todas as etapas</strong><span style="color:var(--text-muted);font-size:12px;">— clica uma vez pra marcar tudo, depois desmarca o que não quer re-executar</span></label><div id="desempenho-etapas-tree" style="display:none;border:1px solid var(--border);border-radius:6px;padding:8px;max-height:320px;overflow-y:auto;"><div style="color:var(--text-muted);font-size:13px;padding:8px;">Carregando alunos...</div></div></div>
             </div>
             <div class="modal-footer">
                 <button class="btn" onclick="closeModal('modal-desempenho-settings')">Cancelar</button>
@@ -11956,15 +11956,21 @@
                 const hasAtividades = data.has_atividades;
                 const runs = data.runs || [];
 
-                // B-T3: Update generate button based on has_atividades
+                // B-T3: Show warning when no atividades exist, WITHOUT destroying the working button.
+                // Previous version overwrote generateArea.innerHTML with a disabled stub button (no onclick),
+                // which broke the "Gerar Relatório" flow. Now we append a sibling warning div instead.
                 if (generateArea) {
+                    const existingWarn = generateArea.querySelector('.desempenho-no-atividades-warn');
                     if (!hasAtividades) {
-                        generateArea.innerHTML = `
-                            <button class="btn btn-primary" disabled>▶️ Gerar Relatório</button>
-                            <div style="color: var(--text-muted); font-size: 0.8rem; margin-top: 4px;">
-                                Nenhuma atividade corrigida. Corrija atividades primeiro para gerar o relatório.
-                            </div>
-                        `;
+                        if (!existingWarn) {
+                            const warn = document.createElement('div');
+                            warn.className = 'desempenho-no-atividades-warn';
+                            warn.style.cssText = 'color: var(--text-muted); font-size: 0.8rem; margin-top: 4px;';
+                            warn.textContent = 'Nenhuma atividade corrigida ainda. Clicar "Gerar Relatório" vai rodar a pipeline inteira (extração → correção → relatório) antes do desempenho.';
+                            generateArea.appendChild(warn);
+                        }
+                    } else if (existingWarn) {
+                        existingWarn.remove();
                     }
                 }
 
@@ -12087,14 +12093,35 @@
         function toggleDesempenhoEtapas() {
             const tree = document.getElementById('desempenho-etapas-tree');
             const toggle = document.getElementById('desempenho-etapas-toggle');
+            const masterRow = document.getElementById('desempenho-master-toggle-row');
             if (!tree || !toggle) return;
             if (tree.style.display === 'none') {
                 tree.style.display = 'block';
                 toggle.textContent = '▼ Recolher';
+                if (masterRow) masterRow.style.display = 'flex';
             } else {
                 tree.style.display = 'none';
                 toggle.textContent = '▶ Expandir';
+                if (masterRow) masterRow.style.display = 'none';
             }
+        }
+
+        // Select/deselect all etapa checkboxes inside the tree (also walks lazy-loaded children).
+        // Called from #desempenho-etapa-select-all onchange.
+        function toggleAllDesempenhoEtapas(master) {
+            const tree = document.getElementById('desempenho-etapas-tree');
+            if (!tree) return;
+            tree.querySelectorAll('.desempenho-etapa-check').forEach(cb => {
+                cb.checked = master.checked;
+            });
+            // Lazy-loaded turma/atividade groups: expand them all so the selection propagates
+            // through children users haven't manually expanded yet.
+            tree.querySelectorAll('.desempenho-group-header, .desempenho-turma-header').forEach(header => {
+                const children = header.nextElementSibling;
+                if (children && children.classList.contains('desempenho-lazy-children') && children.dataset.loaded !== 'true') {
+                    header.click();
+                }
+            });
         }
 
         // F2-T4: Toggle advanced options section (per-phase selectors are static HTML)
@@ -12273,6 +12300,11 @@
         async function openDesempenhoSettings(level, entityId) {
             document.getElementById('input-desempenho-level').value = level;
             document.getElementById('input-desempenho-entity-id').value = entityId;
+            // Reset master toggle state and hide its row (tree starts collapsed).
+            const masterCb = document.getElementById('desempenho-etapa-select-all');
+            const masterRow = document.getElementById('desempenho-master-toggle-row');
+            if (masterCb) masterCb.checked = false;
+            if (masterRow) masterRow.style.display = 'none';
             // F3-T1: Map level to breadcrumb API tipo
             const breadcrumbTipo = level === 'tarefa' ? 'atividade' : level;
             await Promise.all([
