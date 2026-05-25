@@ -122,10 +122,22 @@ def register_pipeline_task(
 
 
 def update_stage_progress(task_id, aluno_id, stage, status, error=None):
-    """Update a specific stage status for a student in a task."""
+    """Update a specific stage status for a student in a task.
+
+    Auto-creates a student entry if missing so background cascades
+    (desempenho_turma/materia) that discover alunos at runtime can
+    still report progress without pre-populating aluno_ids upfront.
+    """
     task = task_registry.get(task_id)
-    if task and aluno_id in task["students"]:
-        student = task["students"][aluno_id]
+    if task:
+        students = task.setdefault("students", {})
+        if aluno_id not in students:
+            students[aluno_id] = {
+                "nome": "",
+                "stages": {s: "pending" for s in PIPELINE_STAGES},
+                "stage_errors": {},
+            }
+        student = students[aluno_id]
         student["stages"][stage] = status
         stage_errors = student.setdefault("stage_errors", {})
         stage_skips = student.setdefault("stage_skips", {})

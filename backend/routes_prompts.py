@@ -1279,7 +1279,25 @@ async def _executar_desempenho_tarefa_background(
     force_reexec: bool = False,
 ):
     from executor import executor
+    from routes_tasks import task_registry, PIPELINE_STAGES
     try:
+        # Pre-populate students for the UI progress panel
+        try:
+            atividade = storage.get_atividade(atividade_id)
+            alunos = storage.listar_alunos(atividade.turma_id) if atividade else []
+            task = task_registry.get(task_id)
+            if task is not None:
+                students = task.setdefault("students", {})
+                for aluno in (alunos or []):
+                    if aluno.id not in students:
+                        students[aluno.id] = {
+                            "nome": aluno.nome or "",
+                            "stages": {s: "pending" for s in PIPELINE_STAGES},
+                            "stage_errors": {},
+                        }
+        except Exception:
+            pass
+
         await executor._cascade_prereqs(
             level="tarefa",
             entity_id=atividade_id,
@@ -1347,7 +1365,26 @@ async def _executar_desempenho_turma_background(
     force_reexec: bool = False,
 ):
     from executor import executor
+    from routes_tasks import task_registry, PIPELINE_STAGES
     try:
+        # Pre-populate students in task_registry so the UI progress panel
+        # can show names from the first poll, before the cascade has touched
+        # any aluno yet.
+        try:
+            alunos = storage.listar_alunos(turma_id) or []
+            task = task_registry.get(task_id)
+            if task is not None:
+                students = task.setdefault("students", {})
+                for aluno in alunos:
+                    if aluno.id not in students:
+                        students[aluno.id] = {
+                            "nome": aluno.nome or "",
+                            "stages": {s: "pending" for s in PIPELINE_STAGES},
+                            "stage_errors": {},
+                        }
+        except Exception:
+            pass  # progress pre-population is best-effort; cascade still works
+
         await executor._cascade_prereqs(
             level="turma",
             entity_id=turma_id,
