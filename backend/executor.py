@@ -12,7 +12,7 @@ Mantém compatibilidade com:
 
 from dataclasses import dataclass, field
 from datetime import datetime
-from typing import Optional, Dict, Any, List, Union, Set
+from typing import Optional, Dict, Any, List, Tuple, Union, Set
 from pathlib import Path
 import json
 import asyncio
@@ -2096,7 +2096,7 @@ PROMPT ORIGINAL DE REFERENCIA, APENAS PARA TAREFA E SCHEMA:
 
         variaveis.update(contexto_json)
         self._aplicar_aliases_contexto_corrigir(variaveis, contexto_json)
-        erro_gabarito = self._erro_gabarito_incompleto_para_correcao(
+        erro_gabarito, questoes_sem_gabarito = self._validar_gabarito_para_correcao(
             contexto_json.get("gabarito_extraido")
         )
         if erro_gabarito:
@@ -2113,6 +2113,28 @@ PROMPT ORIGINAL DE REFERENCIA, APENAS PARA TAREFA E SCHEMA:
 
         # Add tool-use instructions for dual output (from module-level STAGE_TOOL_INSTRUCTIONS)
         tool_instructions = STAGE_TOOL_INSTRUCTIONS.get(EtapaProcessamento.CORRIGIR, "")
+
+        # If the gabarito only covers some questions, instruct the model to
+        # mark the uncovered ones as not-gradable instead of inventing answers.
+        if questoes_sem_gabarito:
+            qs = ", ".join(str(q) for q in questoes_sem_gabarito)
+            partial_directive = (
+                "\n\nGABARITO PARCIAL — questoes "
+                f"{qs} NAO tem resposta_correta valida no gabarito do professor.\n"
+                "Para cada uma dessas questoes:\n"
+                "  - copie a resposta_aluno normalmente,\n"
+                "  - defina resposta_correta como \"MISSING_CONTENT\",\n"
+                "  - defina nota como null e acerto como null,\n"
+                "  - defina nota_maxima conforme prova,\n"
+                "  - escreva feedback explicando: 'Nao corrigivel: gabarito do "
+                "professor nao cobre esta questao'.\n"
+                "NUNCA invente uma resposta_correta para questoes sem gabarito. "
+                "Calcule nota_final apenas com as questoes corrigiveis e adicione "
+                "um item em _avisos_documento com codigo MISSING_CONTENT explicando "
+                "que as questoes acima ficaram sem correcao por falta de gabarito.\n"
+            )
+            tool_instructions = tool_instructions + partial_directive
+
         full_system = prompt_sistema + tool_instructions
 
         # Call with tools — single pass replaces two-pass narrative
@@ -2145,21 +2167,39 @@ PROMPT ORIGINAL DE REFERENCIA, APENAS PARA TAREFA E SCHEMA:
             variaveis["respostas_aluno"] = contexto_json["respostas_aluno"]
             variaveis["resposta_aluno"] = contexto_json["respostas_aluno"]
 
-    def _erro_gabarito_incompleto_para_correcao(
+    def _validar_gabarito_para_correcao(
         self,
         gabarito_extraido: Optional[str],
-    ) -> Optional[str]:
-        """Block grading when the extracted answer key cannot support a grade."""
+    ) -> Tuple[Optional[str], List[int]]:
+        """Validate the answer key before grading.
+
+        Returns (erro_bloqueante, questoes_sem_gabarito).
+
+        Previously this aborted CORRIGIR whenever ANY question lacked a real
+        answer key (MISSING_CONTENT). That created two bad incentives:
+        (1) honest providers (Gemini) hit the guard and the pipeline died;
+        (2) retry-heavy providers (Anthropic) kept calling extracao_gabarito
+        until they hallucinated content for the missing questions, passing
+        the guard but corrupting every downstream grade.
+
+        New behavior: only block when grading is structurally impossible —
+        empty/invalid gabarito, the whole document marked
+        MISSING_CONTENT/ILLEGIBLE_DOCUMENT, or ZERO questions have a real
+        answer key. Otherwise return the list of question numbers that lack
+        a real gabarito so the prompt can ask the model to mark them as
+        not-gradable (nota=null, feedback="Gabarito do professor não cobre
+        esta questão") instead of inventing answers.
+        """
         if not gabarito_extraido:
-            return "Gabarito extraido ausente; nao e seguro corrigir sem resposta esperada estruturada."
+            return ("Gabarito extraido ausente; nao e seguro corrigir sem resposta esperada estruturada.", [])
 
         try:
             dados = json.loads(gabarito_extraido)
         except json.JSONDecodeError:
-            return "Gabarito extraido nao e JSON valido; nao e seguro corrigir."
+            return ("Gabarito extraido nao e JSON valido; nao e seguro corrigir.", [])
 
         if not isinstance(dados, dict):
-            return "Gabarito extraido nao tem estrutura de objeto JSON; nao e seguro corrigir."
+            return ("Gabarito extraido nao tem estrutura de objeto JSON; nao e seguro corrigir.", [])
 
         avisos_documento = dados.get("_avisos_documento") or []
         avisos_questao = dados.get("_avisos_questao") or []
@@ -2174,30 +2214,66 @@ PROMPT ORIGINAL DE REFERENCIA, APENAS PARA TAREFA E SCHEMA:
             if isinstance(aviso, dict)
             and str(aviso.get("codigo", "")).upper() in codigos_bloqueantes_doc
         ]
-        questoes_bloqueadas = [
-            aviso.get("questao", "?")
+        if doc_bloqueado:
+            codigos = ", ".join(sorted({str(a.get("codigo", "")).upper() for a in doc_bloqueado}))
+            return (
+                f"Gabarito extraido tem documento inteiro bloqueado ({codigos}). "
+                "Reenvie o gabarito do professor ou corrija a etapa EXTRAIR_GABARITO.",
+                [],
+            )
+
+        def _safe_int(v) -> Optional[int]:
+            try:
+                return int(v)
+            except (TypeError, ValueError):
+                return None
+
+        questoes_bloqueadas = {
+            _safe_int(aviso.get("questao"))
             for aviso in avisos_questao
             if isinstance(aviso, dict)
             and str(aviso.get("codigo", "")).upper() in codigos_bloqueantes_questao
-        ]
-        respostas_missing = [
-            resposta.get("questao_numero", "?")
-            for resposta in respostas
-            if isinstance(resposta, dict)
-            and str(resposta.get("resposta_correta", "")).strip().upper() == "MISSING_CONTENT"
+        }
+        questoes_bloqueadas.discard(None)
+
+        respostas_missing = {
+            _safe_int(resp.get("questao_numero"))
+            for resp in respostas
+            if isinstance(resp, dict)
+            and str(resp.get("resposta_correta", "")).strip().upper() in ("", "MISSING_CONTENT")
+        }
+        respostas_missing.discard(None)
+
+        questoes_sem_gabarito = sorted(questoes_bloqueadas | respostas_missing)
+
+        # If there are answers in `respostas`, count how many are usable.
+        respostas_validas = [
+            resp for resp in respostas
+            if isinstance(resp, dict)
+            and _safe_int(resp.get("questao_numero")) is not None
+            and str(resp.get("resposta_correta", "")).strip()
+            and str(resp.get("resposta_correta", "")).strip().upper() != "MISSING_CONTENT"
         ]
 
-        if doc_bloqueado or questoes_bloqueadas or respostas_missing:
-            questoes = sorted({str(q) for q in [*questoes_bloqueadas, *respostas_missing]})
-            questoes_txt = ", ".join(questoes[:10]) if questoes else "documento inteiro"
+        if respostas and not respostas_validas:
+            # Every entry in respostas is missing — the gabarito is structurally empty.
             return (
-                "Gabarito extraido incompleto para correcao: questoes "
-                f"{questoes_txt}. A etapa CORRIGIR nao pode atribuir nota ou "
-                "gerar feedback como se houvesse resposta esperada completa. "
-                "Reenvie um gabarito completo ou corrija a etapa EXTRAIR_GABARITO."
+                "Gabarito extraido sem nenhuma resposta_correta valida. "
+                "Reenvie um gabarito que cubra pelo menos uma questao.",
+                questoes_sem_gabarito,
             )
 
-        return None
+        if not respostas and questoes_sem_gabarito:
+            # No respostas at all but avisos_questao listed missing items — degenerate.
+            return (
+                "Gabarito extraido sem chave 'respostas'. "
+                "Reenvie o gabarito do professor.",
+                questoes_sem_gabarito,
+            )
+
+        # Pass-through: at least one usable answer. CORRIGIR can grade what it has
+        # and explicitly mark the rest as not-gradable.
+        return (None, questoes_sem_gabarito)
 
     async def analisar_habilidades(
         self,

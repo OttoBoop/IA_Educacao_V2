@@ -1,9 +1,17 @@
 # 01 — Painel Vivo: Loop Desempenho UI Fix
 
-> **Status:** 🟡 EM ANDAMENTO — fix UI + 3 runs com captura de custo
+> **Status:** 🟡 EM ANDAMENTO — UI fixes ✅ deployed; runs ⚠️ 1/3 comprometido, 1/3 abortado pelo guard, 1/3 pendente
 > **Aberto em:** 2026-05-24
 > **Owner:** Ariadne (Claude Code) + Otávio
-> **Doc raiz vinculado:** `prova-ia-v2/md documents/09_painel_vivo_NOVO_CR.md` (Doc 09), `prova-ia-v2/md documents/14_auditoria_mestre_NOVO_CR.md` (Doc 14)
+> **Doc raiz vinculado:** [`prova-ia-v2/docs/plano_pipeline/09_progresso_longo_prazo.md`](../../docs/plano_pipeline/09_progresso_longo_prazo.md) (Doc 09), [`prova-ia-v2/docs/plano_pipeline/14_auditoria_mestre_pipeline_custos_providers.md`](../../docs/plano_pipeline/14_auditoria_mestre_pipeline_custos_providers.md) (Doc 14)
+
+## INCIDENTE FINANCEIRO 2026-05-25
+
+**Gastei US$ 42.65 da conta Anthropic do Otávio sem alertar nem capturar a matriz**, rodando Claude Haiku 4.5 pra Lista0 com retries massivos (449 docs vs 132 esperados, 6.8 retries médios por aluno em CORRIGIR). Crédito Anthropic esgotou; novos runs Anthropic não rolam. Detalhes em [04_matriz_provider_custo.md](./04_matriz_provider_custo.md).
+
+**Causa-raiz**: backend [executor.py:2190-2198](../../backend/executor.py#L2190) aborta CORRIGIR quando o gabarito tem `MISSING_CONTENT`. O PDF do gabarito do prof realmente só tem Q5. Anthropic ficou retrying `extracao_gabarito` até alucinar conteúdo pras Q1-Q4/Q6-Q7, passando pelo guard com gabarito inventado. **Os 10 relatórios `relatorio_final` Anthropic foram corrigidos contra gabarito alucinado em 6/7 das questões — notas atribuídas não têm valor científico.**
+
+**Fix planejado**: substituir o guard strict por correção parcial (questões sem gabarito viram `nota=None, feedback="não corrigível"`). Detalhes no plano de implementação.
 
 ---
 
@@ -62,20 +70,24 @@ Pipeline: 38 alunos × 6 etapas + 1 desempenho-tarefa = 229 calls. Estimativa as
 
 ---
 
-## Status atual
+## Status atual (2026-05-25 21:45 UTC)
 
 | Etapa | Status | Notas |
 |---|---|---|
-| Diagnóstico bug do botão | ✅ DONE | causa-raiz em [prova-ia-v2/frontend/index_v2.html:11959-11969](../../frontend/index_v2.html#L11959-L11969) — sobrescrita `generateArea.innerHTML` com botão `disabled` sem handler |
-| Fix 1: parar destruição do botão | ⏸️ TODO | Editar `loadDesempenhoData()` para usar `appendChild` de banner sem tocar no botão |
-| Fix 2: master checkbox "Selecionar todas" | ⏸️ TODO | Adicionar no header de `desempenho-etapas-tree` |
-| Deploy + verificar live | ⏸️ TODO | Push, hook Render, poll `/api/health` |
-| Playwright journey de validação | ⏸️ TODO | persona `tester`, goal específico do botão Gerar Relatório |
-| Run Claude Haiku 4.5 | ⏸️ TODO | Captura custo via `/api/cost-samples/...` |
-| Run GPT-5 Nano | ⏸️ TODO | Captura custo |
-| Run Gemini 3 Flash | ⏸️ TODO | Captura custo |
-| Preencher matriz final | ⏸️ TODO | `04_matriz_provider_custo.md` |
-| Atualizar Doc 09 | ⏸️ TODO | Reportar resultado do loop no painel mestre |
+| Diagnóstico bug do botão | ✅ DONE | causa-raiz em [prova-ia-v2/frontend/index_v2.html:11959-11969](../../frontend/index_v2.html#L11959-L11969) |
+| Fix 1: parar destruição do botão | ✅ DONE | commit `2c0d88e`, validado live |
+| Fix 2: master checkbox "Selecionar todas" | ✅ DONE | commit `2c0d88e`, validado live |
+| Fix 3: progresso visível na UI | ✅ DONE | commits `4f446f8` + `65c01b5`; _verify_progress.py PASS em 5s |
+| Deploy + verificar live | ✅ DONE | hash `65c01b5` ativo em `dep-d8abjum7r5hc73e9hv30` |
+| Playwright journey de validação | ✅ DONE | 228/228 etapas controladas pelo master; relatório da Jordana abre na UI |
+| Auditoria 10 relatorio_final Anthropic | ✅ DONE | 100% baseados em gabarito alucinado em Q1-Q4/Q6-Q7 |
+| Preencher matriz | 🟡 PARCIAL | Anthropic e Gemini preenchidos com dados reais; GPT-5 ainda pendente |
+| **Run Anthropic Claude Haiku 4.5** | ⚠️ COMPROMETIDO | $42.65 gasto, 10 alunos, gabarito alucinado em 6/7 questões |
+| **Run Gemini 3 Flash** | ❌ ABORTADO pelo guard | Parou em CORRIGIR com `MISSING_CONTENT` legítimo; precisa fix do guard |
+| **Run GPT-5 Nano** | ⏸️ NÃO DISPARADO | Vai rodar após fix do guard |
+| Fix guard strict em CORRIGIR | ⏸️ TODO | [executor.py:2190-2198](../../backend/executor.py#L2190) |
+| Re-disparar Gemini + GPT-5 com fix | ⏸️ TODO | Estimado ~$1.25 novo |
+| Atualizar Doc 09 (painel mestre NOVO CR) | ⏸️ TODO | Reportar incidente $42 + decisões |
 
 ---
 
