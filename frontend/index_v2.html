@@ -5361,6 +5361,8 @@
                 <div class="form-group"><label class="form-label">Modelo de IA</label><select class="form-select" id="input-desempenho-provider"></select></div>
                 <div class="form-group"><label class="form-label">Prompt</label><select class="form-select" id="input-desempenho-prompt"><option value="">Usar prompt padrão</option></select></div>
                 <div class="form-group"><label style="display:flex;align-items:center;gap:8px;cursor:pointer;"><input type="checkbox" id="input-desempenho-force-rerun"> Forçar re-execução</label><small style="color:var(--text-muted);display:block;margin-top:4px;">Se marcado, gera novo relatório mesmo se já existir.</small></div>
+                <div class="form-group"><label style="display:flex;align-items:center;gap:8px;cursor:pointer;"><input type="checkbox" id="input-desempenho-isolate-provider" checked> Isolar provider (usar apenas docs do provider selecionado como contexto)</label><small style="color:var(--text-muted);display:block;margin-top:4px;">Quando marcado, cada etapa usa apenas documentos gerados pelo mesmo provider. Desmarque para permitir mix de providers entre etapas.</small></div>
+                <div class="form-group"><label class="form-label" style="display:flex;align-items:center;justify-content:space-between;cursor:pointer;" onclick="toggleDesempenhoDocsSection()"><span>Documentos Disponíveis</span><span id="desempenho-docs-toggle" style="font-size:12px;color:var(--text-muted);">▶ Expandir</span></label><div id="desempenho-docs-section" style="display:none;border:1px solid var(--border);border-radius:6px;padding:8px;max-height:200px;overflow-y:auto;"><div style="color:var(--text-muted);font-size:13px;padding:8px;">Carregando...</div></div></div>
                 <input type="hidden" id="input-desempenho-level"><input type="hidden" id="input-desempenho-entity-id">
                 <!-- F2-T4: Opções Avançadas — per-phase model selectors --><div class="form-group"><label class="form-label" style="display:flex;align-items:center;justify-content:space-between;cursor:pointer;" onclick="toggleDesempenhoAdvanced()"><span>Opções Avançadas</span><span id="desempenho-advanced-toggle" style="font-size:12px;color:var(--text-muted);">▶ Expandir</span></label><div id="desempenho-advanced" style="display:none;padding:8px;display:flex;flex-direction:column;gap:6px;"><small style="color:var(--text-muted);margin-bottom:4px;">Modelo por etapa (deixe "Padrão" para usar o modelo global):</small><div style="display:flex;align-items:center;gap:6px;"><label style="min-width:130px;font-size:12px;">Extrair Questões</label><select class="form-select" data-phase="extrair_questoes" id="desempenho-model-extrair_questoes" style="font-size:11px;flex:1;"><option value="">Padrão</option></select></div><div style="display:flex;align-items:center;gap:6px;"><label style="min-width:130px;font-size:12px;">Extrair Gabarito</label><select class="form-select" data-phase="extrair_gabarito" id="desempenho-model-extrair_gabarito" style="font-size:11px;flex:1;"><option value="">Padrão</option></select></div><div style="display:flex;align-items:center;gap:6px;"><label style="min-width:130px;font-size:12px;">Extrair Respostas</label><select class="form-select" data-phase="extrair_respostas" id="desempenho-model-extrair_respostas" style="font-size:11px;flex:1;"><option value="">Padrão</option></select></div><div style="display:flex;align-items:center;gap:6px;"><label style="min-width:130px;font-size:12px;">Corrigir</label><select class="form-select" data-phase="corrigir" id="desempenho-model-corrigir" style="font-size:11px;flex:1;"><option value="">Padrão</option></select></div><div style="display:flex;align-items:center;gap:6px;"><label style="min-width:130px;font-size:12px;">Analisar Habilidades</label><select class="form-select" data-phase="analisar_habilidades" id="desempenho-model-analisar_habilidades" style="font-size:11px;flex:1;"><option value="">Padrão</option></select></div><div style="display:flex;align-items:center;gap:6px;"><label style="min-width:130px;font-size:12px;">Gerar Relatório</label><select class="form-select" data-phase="gerar_relatorio" id="desempenho-model-gerar_relatorio" style="font-size:11px;flex:1;"><option value="">Padrão</option></select></div></div></div>
                 <!-- F2-T1: Etapas --><div class="form-group" id="desempenho-etapas-section"><label class="form-label" style="display:flex;align-items:center;justify-content:space-between;cursor:pointer;" onclick="toggleDesempenhoEtapas()"><span>Etapas a Executar</span><span id="desempenho-etapas-toggle" style="font-size:12px;color:var(--text-muted);">▶ Expandir</span></label><small style="color:var(--text-muted);display:block;margin-bottom:6px;">Selecione etapas do pipeline para cada aluno.</small><label id="desempenho-master-toggle-row" style="display:none;align-items:center;gap:8px;padding:6px 8px;margin-bottom:4px;border:1px solid var(--border);border-radius:6px;background:var(--bg-card);cursor:pointer;font-size:13px;"><input type="checkbox" id="desempenho-etapa-select-all" onchange="toggleAllDesempenhoEtapas(this)"><strong>Selecionar/desmarcar todas as etapas</strong><span style="color:var(--text-muted);font-size:12px;">— clica uma vez pra marcar tudo, depois desmarca o que não quer re-executar</span></label><div id="desempenho-etapas-tree" style="display:none;border:1px solid var(--border);border-radius:6px;padding:8px;max-height:320px;overflow-y:auto;"><div style="color:var(--text-muted);font-size:13px;padding:8px;">Carregando alunos...</div></div></div>
@@ -12124,6 +12126,51 @@
             });
         }
 
+        function toggleDesempenhoDocsSection() {
+            const section = document.getElementById('desempenho-docs-section');
+            const toggle = document.getElementById('desempenho-docs-toggle');
+            if (!section || !toggle) return;
+            if (section.style.display === 'none') {
+                section.style.display = 'block';
+                toggle.textContent = '▼ Recolher';
+                _loadDesempenhoDocs();
+            } else {
+                section.style.display = 'none';
+                toggle.textContent = '▶ Expandir';
+            }
+        }
+
+        async function _loadDesempenhoDocs() {
+            const section = document.getElementById('desempenho-docs-section');
+            if (!section) return;
+            const level = document.getElementById('input-desempenho-level')?.value;
+            const entityId = document.getElementById('input-desempenho-entity-id')?.value;
+            if (!level || !entityId) { section.innerHTML = '<div style="color:var(--text-muted);font-size:13px;padding:8px;">Sem contexto.</div>'; return; }
+            try {
+                let atividade_id = entityId;
+                if (level === 'turma') {
+                    const ad = await api(`/atividades?turma_id=${entityId}`).catch(() => ({atividades:[]}));
+                    const ats = ad.atividades || [];
+                    atividade_id = ats.length ? ats[0].id : null;
+                }
+                if (!atividade_id) { section.innerHTML = '<div style="color:var(--text-muted);font-size:13px;padding:8px;">Sem atividade.</div>'; return; }
+                const docsData = await api(`/documentos?atividade_id=${atividade_id}`).catch(() => ({documentos:[]}));
+                const docs = (docsData.documentos || []).filter(d => !['prova_respondida','enunciado','gabarito'].includes(d.tipo));
+                if (!docs.length) { section.innerHTML = '<div style="color:var(--text-muted);font-size:13px;padding:8px;">Nenhum documento gerado ainda.</div>'; return; }
+                const byStageProvider = {};
+                for (const d of docs) {
+                    const key = `${d.tipo}|${d.ia_provider || '?'}|${d.ia_modelo || '?'}`;
+                    if (!byStageProvider[key]) byStageProvider[key] = {tipo: d.tipo, provider: d.ia_provider||'?', modelo: d.ia_modelo||'?', count: 0, last: ''};
+                    byStageProvider[key].count++;
+                    if (d.criado_em > byStageProvider[key].last) byStageProvider[key].last = d.criado_em;
+                }
+                const rows = Object.values(byStageProvider).sort((a,b) => a.tipo.localeCompare(b.tipo) || a.provider.localeCompare(b.provider));
+                section.innerHTML = `<table style="width:100%;font-size:12px;border-collapse:collapse;"><thead><tr style="border-bottom:1px solid var(--border);"><th style="text-align:left;padding:4px;">Etapa</th><th style="text-align:left;padding:4px;">Provider</th><th style="text-align:left;padding:4px;">Modelo</th><th style="text-align:right;padding:4px;">Docs</th><th style="text-align:right;padding:4px;">Último</th></tr></thead><tbody>${rows.map(r => `<tr style="border-bottom:1px solid var(--border);"><td style="padding:4px;">${r.tipo}</td><td style="padding:4px;">${r.provider}</td><td style="padding:4px;max-width:120px;overflow:hidden;text-overflow:ellipsis;">${r.modelo}</td><td style="padding:4px;text-align:right;">${r.count}</td><td style="padding:4px;text-align:right;font-size:11px;">${r.last ? r.last.slice(5,16).replace('T',' ') : '—'}</td></tr>`).join('')}</tbody></table>`;
+            } catch (e) {
+                section.innerHTML = '<div style="color:var(--text-muted);font-size:13px;padding:8px;">Erro ao carregar docs.</div>';
+            }
+        }
+
         // F2-T4: Toggle advanced options section (per-phase selectors are static HTML)
         function toggleDesempenhoAdvanced() {
             const section = document.getElementById('desempenho-advanced');
@@ -12345,8 +12392,9 @@
                 const val = sel.value;
                 if (val) phaseModels[phase] = val;
             });
+            const isolateProvider = document.getElementById('input-desempenho-isolate-provider')?.checked || false;
             closeModal('modal-desempenho-settings');
-            executarDesempenho(level, entityId, providerId, promptId, forceReexec, etapasMap, phaseModels);
+            executarDesempenho(level, entityId, providerId, promptId, forceReexec, etapasMap, phaseModels, isolateProvider);
         }
 
         // B-T4: Progress indicator state — F1-T1: ALL state per-level-entity (not global singletons)
@@ -12356,7 +12404,7 @@
         let _desempenhoActiveTasks = {};
         let _desempenhoPollIntervals = {};
 
-        async function executarDesempenho(level, entityId, providerId = null, promptId = null, forceReexec = false, etapasSelecionadas = null, phaseModels = null) {
+        async function executarDesempenho(level, entityId, providerId = null, promptId = null, forceReexec = false, etapasSelecionadas = null, phaseModels = null, isolateProvider = false) {
             // B-T4: Prevent concurrent generation — F1-T1: per-level-entity key
             const _desempenhoKey = level + '-' + entityId;
             if (_desempenhoGenerating[_desempenhoKey]) return;
@@ -12401,6 +12449,7 @@
                 if (promptId) formData.append('prompt_id', promptId);
                 // FC-T2: Forward force_reexec and etapas_selecionadas
                 if (forceReexec) formData.append('force_reexec', 'true');
+                if (isolateProvider) formData.append('isolate_provider', 'true');
                 if (etapasSelecionadas && Object.keys(etapasSelecionadas).length > 0) {
                     formData.append('etapas_selecionadas', JSON.stringify(etapasSelecionadas));
                 }

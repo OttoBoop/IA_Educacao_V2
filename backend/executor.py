@@ -16,6 +16,7 @@ from typing import Optional, Dict, Any, List, Tuple, Union, Set
 from pathlib import Path
 import json
 import asyncio
+import contextvars
 import time
 import re
 import tempfile
@@ -448,6 +449,11 @@ Você DEVE usar as ferramentas disponíveis para produzir dois outputs:
 # ============================================================
 # PIPELINE EXECUTOR UNIFICADO
 # ============================================================
+
+_provider_filter_ctx: contextvars.ContextVar[Optional[str]] = contextvars.ContextVar(
+    "provider_filter", default=None
+)
+
 
 class PipelineExecutor:
     """
@@ -1711,12 +1717,17 @@ PROMPT ORIGINAL DE REFERENCIA, APENAS PARA TAREFA E SCHEMA:
         self,
         documentos: List[Any],
         tipo: TipoDocumento,
+        provider_filter: Optional[str] = None,
     ) -> List[Any]:
         docs_tipo = [
             doc
             for doc in self._documentos_novos_primeiro(documentos)
             if doc.tipo == tipo
         ]
+        if provider_filter:
+            filtered = [d for d in docs_tipo if getattr(d, "ia_provider", None) == provider_filter]
+            if filtered:
+                docs_tipo = filtered
         if not docs_tipo:
             return []
 
@@ -1735,9 +1746,10 @@ PROMPT ORIGINAL DE REFERENCIA, APENAS PARA TAREFA E SCHEMA:
         self,
         documentos: List[Any],
         tipo: TipoDocumento,
+        provider_filter: Optional[str] = None,
     ) -> Optional[Any]:
         """Return the JSON artifact from the latest run, never an older run's JSON."""
-        for doc in self._documentos_da_ultima_execucao(documentos, tipo):
+        for doc in self._documentos_da_ultima_execucao(documentos, tipo, provider_filter=provider_filter):
             if str(getattr(doc, "extensao", "") or "").lower() == ".json":
                 return doc
         return None
@@ -1860,7 +1872,8 @@ PROMPT ORIGINAL DE REFERENCIA, APENAS PARA TAREFA E SCHEMA:
         self,
         atividade_id: str,
         aluno_id: Optional[str],
-        etapa: EtapaProcessamento
+        etapa: EtapaProcessamento,
+        provider_filter: Optional[str] = None,
     ) -> Dict[str, str]:
         """
         Prepara contexto de documentos JSON já processados.
@@ -1870,6 +1883,9 @@ PROMPT ORIGINAL DE REFERENCIA, APENAS PARA TAREFA E SCHEMA:
         - "_documentos_faltantes": lista de documentos obrigatórios que não foram encontrados
         - "_documentos_carregados": lista de documentos que foram carregados com sucesso
         """
+        if provider_filter is None:
+            provider_filter = _provider_filter_ctx.get()
+
         contexto = {}
         documentos_faltantes = []
         documentos_carregados = []
@@ -1915,7 +1931,7 @@ PROMPT ORIGINAL DE REFERENCIA, APENAS PARA TAREFA E SCHEMA:
             return False
 
         def _carregar_json_mais_recente(docs, tipo: TipoDocumento, chave: str) -> bool:
-            doc = self._documento_json_da_ultima_execucao(docs, tipo)
+            doc = self._documento_json_da_ultima_execucao(docs, tipo, provider_filter=provider_filter)
             if not doc:
                 return False
             return _carregar_json(doc, chave)
@@ -2129,19 +2145,30 @@ PROMPT ORIGINAL DE REFERENCIA, APENAS PARA TAREFA E SCHEMA:
         if questoes_sem_gabarito:
             qs = ", ".join(str(q) for q in questoes_sem_gabarito)
             partial_directive = (
-                "\n\nGABARITO PARCIAL — questoes "
-                f"{qs} NAO tem resposta_correta valida no gabarito do professor.\n"
-                "Para cada uma dessas questoes:\n"
-                "  - copie a resposta_aluno normalmente,\n"
-                "  - defina resposta_correta como \"MISSING_CONTENT\",\n"
-                "  - defina nota como null e acerto como null,\n"
-                "  - defina nota_maxima conforme prova,\n"
-                "  - escreva feedback explicando: 'Nao corrigivel: gabarito do "
-                "professor nao cobre esta questao'.\n"
-                "NUNCA invente uma resposta_correta para questoes sem gabarito. "
-                "Calcule nota_final apenas com as questoes corrigiveis e adicione "
-                "um item em _avisos_documento com codigo MISSING_CONTENT explicando "
-                "que as questoes acima ficaram sem correcao por falta de gabarito.\n"
+                "\n\n=== GABARITO PARCIAL ===\n"
+                f"As questoes {qs} NAO possuem resposta_correta no gabarito do professor.\n\n"
+                "INSTRUCOES OBRIGATORIAS (ignorar qualquer uma = artefato rejeitado):\n\n"
+                "1. CORRIJA NORMALMENTE as questoes que TEM gabarito (todas as "
+                "questoes NAO listadas acima). Para essas: nota numerica, acerto "
+                "booleano, feedback detalhado, resposta_correta copiada do gabarito.\n\n"
+                f"2. Para CADA questao SEM gabarito ({qs}), INCLUA na lista de "
+                "questoes com EXATAMENTE estes campos:\n"
+                "   - \"resposta_correta\": \"MISSING_CONTENT\"\n"
+                "   - \"nota\": null\n"
+                "   - \"acerto\": null\n"
+                "   - \"nota_maxima\": <conforme prova>\n"
+                "   - \"feedback\": \"Nao corrigivel: gabarito do professor nao "
+                "cobre esta questao.\"\n"
+                "   Copie resposta_aluno normalmente da EXTRAIR_RESPOSTAS.\n\n"
+                "3. A lista questoes[] DEVE conter TODAS as questoes da prova "
+                "(corrigiveis + MISSING_CONTENT). Se a prova tem 7 questoes, "
+                "retorne 7 itens. NUNCA retorne questoes vazio [].\n\n"
+                "4. nota_final: calcule APENAS com as questoes corrigiveis.\n\n"
+                "5. total_acertos e total_erros: conte APENAS questoes corrigiveis.\n\n"
+                "6. Adicione em _avisos_documento:\n"
+                "   {\"codigo\": \"MISSING_CONTENT\", \"explicacao\": \"Questoes "
+                f"{qs} ficaram sem correcao por falta de gabarito do professor.\"}}\n"
+                "=== FIM GABARITO PARCIAL ===\n"
             )
             tool_instructions = tool_instructions + partial_directive
 
@@ -6423,6 +6450,7 @@ Crie UM documento separado para cada aluno, nomeando como "relatorio_[nome_aluno
         provider_id: Optional[str] = None,
         force_reexec: bool = False,
         task_id: Optional[str] = None,
+        isolate_provider: bool = False,
     ) -> Dict[str, Any]:
         """
         Ensure all upstream prerequisite docs exist before running desempenho.
@@ -6459,25 +6487,32 @@ Crie UM documento separado para cada aluno, nomeando como "relatorio_[nome_aluno
                 if d.tipo == TipoDocumento.RELATORIO_FINAL
             }
 
-            for aluno in alunos:
-                if not force_reexec and aluno.id in alunos_com_relatorio:
-                    skipped.append(aluno.id)
-                    continue
-                resultado = await self.executar_pipeline_completo(
-                    entity_id,
-                    aluno.id,
-                    provider_name=provider_id,
-                    force_rerun=force_reexec,
-                    task_id=task_id,
-                )
-                last = list(resultado.values())[-1] if resultado else None
-                last_ok = getattr(last, "sucesso", None) if last else None
-                if last_ok is None and isinstance(last, dict):
-                    last_ok = last.get("sucesso")
-                if last_ok:
-                    created.append(aluno.id)
-                else:
-                    failed.append(aluno.id)
+            alunos_to_run = [a for a in alunos if force_reexec or a.id not in alunos_com_relatorio]
+            skipped.extend([a.id for a in alunos if not force_reexec and a.id in alunos_com_relatorio])
+
+            _max_workers = int(os.environ.get("PARALLEL_WORKERS", "12"))
+            _sem = asyncio.Semaphore(_max_workers)
+
+            async def _run_aluno(aluno):
+                async with _sem:
+                    resultado = await self.executar_pipeline_completo(
+                        entity_id,
+                        aluno.id,
+                        provider_name=provider_id,
+                        force_rerun=force_reexec,
+                        task_id=task_id,
+                        isolate_provider=isolate_provider,
+                    )
+                    last = list(resultado.values())[-1] if resultado else None
+                    last_ok = getattr(last, "sucesso", None) if last else None
+                    if last_ok is None and isinstance(last, dict):
+                        last_ok = last.get("sucesso")
+                    if last_ok:
+                        created.append(aluno.id)
+                    else:
+                        failed.append(aluno.id)
+
+            await asyncio.gather(*[_run_aluno(a) for a in alunos_to_run])
 
         elif level == "turma":
             atividades = self.storage.listar_atividades(entity_id)
@@ -6491,7 +6526,7 @@ Crie UM documento separado para cada aluno, nomeando como "relatorio_[nome_aluno
                 if not force_reexec and has_relatorio_final:
                     skipped.append(atividade.id)
                     continue
-                await self._cascade_prereqs("tarefa", atividade.id, provider_id, force_reexec, task_id=task_id)
+                await self._cascade_prereqs("tarefa", atividade.id, provider_id, force_reexec, task_id=task_id, isolate_provider=isolate_provider)
                 resultado = await self.gerar_relatorio_desempenho_tarefa(atividade.id, provider_id)
                 if resultado.get("sucesso"):
                     created.append(atividade.id)
@@ -6513,7 +6548,7 @@ Crie UM documento separado para cada aluno, nomeando como "relatorio_[nome_aluno
                 if not force_reexec and has_relatorio_final:
                     skipped.append(turma.id)
                     continue
-                await self._cascade_prereqs("turma", turma.id, provider_id, force_reexec, task_id=task_id)
+                await self._cascade_prereqs("turma", turma.id, provider_id, force_reexec, task_id=task_id, isolate_provider=isolate_provider)
                 resultado = await self.gerar_relatorio_desempenho_turma(turma.id, provider_id)
                 if resultado.get("sucesso"):
                     created.append(turma.id)
@@ -6538,7 +6573,8 @@ Crie UM documento separado para cada aluno, nomeando como "relatorio_[nome_aluno
         usar_multimodal: bool = True,
         selected_steps: Optional[List[str]] = None,
         force_rerun: bool = False,
-        task_id: Optional[str] = None
+        task_id: Optional[str] = None,
+        isolate_provider: bool = False,
     ) -> Dict[str, ResultadoExecucao]:
         """
         Executa o pipeline completo para um aluno.
@@ -6554,6 +6590,13 @@ Crie UM documento separado para cada aluno, nomeando como "relatorio_[nome_aluno
         import logging
         from routes_tasks import update_stage_progress, complete_pipeline_task, task_registry
         logger = logging.getLogger("pipeline")
+
+        if isolate_provider and provider_name:
+            try:
+                config = self._get_provider_config(provider_name)
+                _provider_filter_ctx.set(config.get("tipo"))
+            except Exception:
+                pass
 
         resultados = {}
         etapas_puladas = {}  # Registra motivo de cada etapa pulada

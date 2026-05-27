@@ -1241,6 +1241,7 @@ async def executar_pipeline_desempenho_tarefa(
     provider_id: Optional[str] = Form(None),
     force_reexec: bool = Form(False),
     etapas_selecionadas: Optional[str] = Form(None),
+    isolate_provider: bool = Form(False),
 ):
     """
     Gera relatório de desempenho agregado para uma atividade.
@@ -1267,6 +1268,7 @@ async def executar_pipeline_desempenho_tarefa(
         atividade_id=atividade_id,
         provider_id=provider_id,
         force_reexec=force_reexec,
+        isolate_provider=isolate_provider,
     )
 
     return {"task_id": task_id, "status": "started"}
@@ -1277,6 +1279,7 @@ async def _executar_desempenho_tarefa_background(
     atividade_id: str,
     provider_id: Optional[str],
     force_reexec: bool = False,
+    isolate_provider: bool = False,
 ):
     from executor import executor
     from routes_tasks import task_registry, PIPELINE_STAGES
@@ -1304,6 +1307,7 @@ async def _executar_desempenho_tarefa_background(
             provider_id=provider_id,
             force_reexec=force_reexec,
             task_id=task_id,
+            isolate_provider=isolate_provider,
         )
         resultado = await executor.gerar_relatorio_desempenho_tarefa(
             atividade_id=atividade_id,
@@ -1324,6 +1328,7 @@ async def executar_pipeline_desempenho_turma(
     provider_id: Optional[str] = Form(None),
     force_reexec: bool = Form(False),
     etapas_selecionadas: Optional[str] = Form(None),
+    isolate_provider: bool = Form(False),
 ):
     """
     Gera relatório de desempenho holístico para uma turma.
@@ -1353,6 +1358,7 @@ async def executar_pipeline_desempenho_turma(
         turma_id=turma_id,
         provider_id=provider_id,
         force_reexec=force_reexec,
+        isolate_provider=isolate_provider,
     )
 
     return {"task_id": task_id, "status": "started"}
@@ -1363,6 +1369,7 @@ async def _executar_desempenho_turma_background(
     turma_id: str,
     provider_id: Optional[str],
     force_reexec: bool = False,
+    isolate_provider: bool = False,
 ):
     from executor import executor
     from routes_tasks import task_registry, PIPELINE_STAGES
@@ -1391,6 +1398,7 @@ async def _executar_desempenho_turma_background(
             provider_id=provider_id,
             force_reexec=force_reexec,
             task_id=task_id,
+            isolate_provider=isolate_provider,
         )
         resultado = await executor.gerar_relatorio_desempenho_turma(
             turma_id=turma_id,
@@ -1411,6 +1419,7 @@ async def executar_pipeline_desempenho_materia(
     provider_id: Optional[str] = Form(None),
     force_reexec: bool = Form(False),
     etapas_selecionadas: Optional[str] = Form(None),
+    isolate_provider: bool = Form(False),
 ):
     """
     Gera relatório de desempenho cross-turma para uma matéria.
@@ -1437,6 +1446,7 @@ async def executar_pipeline_desempenho_materia(
         materia_id=materia_id,
         provider_id=provider_id,
         force_reexec=force_reexec,
+        isolate_provider=isolate_provider,
     )
 
     return {"task_id": task_id, "status": "started"}
@@ -1447,6 +1457,7 @@ async def _executar_desempenho_materia_background(
     materia_id: str,
     provider_id: Optional[str],
     force_reexec: bool = False,
+    isolate_provider: bool = False,
 ):
     from executor import executor
     try:
@@ -1456,6 +1467,7 @@ async def _executar_desempenho_materia_background(
             provider_id=provider_id,
             force_reexec=force_reexec,
             task_id=task_id,
+            isolate_provider=isolate_provider,
         )
         resultado = await executor.gerar_relatorio_desempenho_materia(
             materia_id=materia_id,
