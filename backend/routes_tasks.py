@@ -207,8 +207,14 @@ def _summarize_task_stages(task):
 def complete_pipeline_task(task_id, status="completed", error=None, result=None):
     """Mark a pipeline task as completed or failed."""
     task = task_registry.get(task_id)
+    BATCH_TYPES = {
+        "pipeline_todos_os_alunos",
+        "pipeline_desempenho_tarefa",
+        "pipeline_desempenho_turma",
+        "pipeline_desempenho_materia",
+    }
     if task:
-        if task.get("type") == "pipeline_todos_os_alunos" and status in {"completed", "failed"}:
+        if task.get("type") in BATCH_TYPES and status in {"completed", "failed"}:
             summary = _summarize_task_stages(task)
             task["summary"] = summary
             has_incomplete = bool(summary["pending_stages"] or summary["running_stages"])

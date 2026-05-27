@@ -582,13 +582,20 @@ class PipelineExecutor:
                     )
 
             checked_questions = 0
+            correctable_questions = 0
             for question in json_data.get("questoes") or []:
                 if not isinstance(question, dict):
+                    continue
+                # Skip uncorrectable items: gabarito did not cover them so
+                # the PDF won't have a numeric nota for them either.
+                rc = str(question.get("resposta_correta") or "").strip().upper()
+                if rc in ("", "MISSING_CONTENT", "N/A", "NULL", "NONE"):
                     continue
                 numero = question.get("numero")
                 expected_note = _as_float(question.get("nota"))
                 if numero is None or expected_note is None:
                     continue
+                correctable_questions += 1
                 question_match = re.search(
                     rf"quest(?:a|ã)o\s*{re.escape(str(numero))}\b.*?nota\s*[:\-]?\s*([0-9]+(?:\.[0-9]+)?)",
                     text,
@@ -604,7 +611,10 @@ class PipelineExecutor:
                         f"PDF {pdf_label} mostra nota {pdf_note_raw} na questão {numero}, "
                         f"mas JSON {json_label} tem nota {_format_num(expected_note)}"
                     )
-            if json_data.get("questoes") and checked_questions == 0:
+            # Only require PDF-side note traces when there are correctable
+            # questions to compare with. A fully uncorrectable gabarito
+            # legitimately has zero numeric notes per question.
+            if correctable_questions > 0 and checked_questions == 0:
                 errors.append(f"PDF {pdf_label} sem notas por questão verificáveis para CORRIGIR")
 
             feedback_geral = json_data.get("feedback_geral")
@@ -4667,6 +4677,23 @@ Seja preciso, educativo e construtivo em suas análises."""
                     _required_list("_avisos_documento")
                     _required_list("_avisos_questao")
                     _validate_avisos()
+
+                    # An item is "uncorrectable" when the prof's gabarito did
+                    # not cover that question. The CORRIGIR prompt instructs
+                    # the model to mark these with resposta_correta="MISSING_CONTENT",
+                    # nota=null, acerto=null. The validator below skips numeric
+                    # and trace checks for those items so honest models don't
+                    # have to hallucinate gabarito to pass.
+                    def _is_uncorrectable(item):
+                        if not isinstance(item, dict):
+                            return False
+                        rc = str(item.get("resposta_correta") or "").strip().upper()
+                        # Explicit marker, or empty/null resposta_correta = the
+                        # gabarito did not cover this question. Both forms count.
+                        if rc in ("", "MISSING_CONTENT", "N/A", "NULL", "NONE"):
+                            return True
+                        return False
+
                     if isinstance(questoes, list):
                         trace_maps = _correcao_trace_maps()
                         has_respostas = bool(trace_maps["respostas_aluno"]) or bool(
@@ -4684,6 +4711,23 @@ Seja preciso, educativo e construtivo em suas análises."""
                                 continue
                             numero = _question_key(item.get("numero"))
                             questao_label = numero if numero is not None else "?"
+
+                            # Uncorrectable questions: accept null nota/acerto,
+                            # don't require traceable resposta_correta, skip
+                            # divergence checks. The question just has to declare
+                            # MISSING_CONTENT and have some feedback.
+                            uncorrectable = _is_uncorrectable(item)
+                            if uncorrectable:
+                                # require explanatory feedback so the prof knows why
+                                feedback = item.get("feedback")
+                                if not isinstance(feedback, str) or not feedback.strip():
+                                    errors.append(
+                                        f"JSON {doc_label} questão {questao_label} marcada MISSING_CONTENT "
+                                        "mas sem feedback explicativo"
+                                    )
+                                # Cleanly skip numeric/trace checks for this item
+                                continue
+
                             nota_item = self._nota_como_float(item.get("nota"))
                             if nota_item is None:
                                 errors.append(
