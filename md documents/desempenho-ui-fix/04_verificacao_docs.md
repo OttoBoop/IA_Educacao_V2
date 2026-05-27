@@ -78,15 +78,49 @@ Verificação de conteúdo pendente até ter relatorio_final.
 
 ---
 
-## Problemas identificados na verificação
+## Google — Gemini 3 Flash (teste 2026-05-27 13:45, task_873a30ff9736)
 
-1. **GPT-5 Nano gera relatorio_final vazio**: diretiva "GABARITO PARCIAL" fez o modelo entender "não corrija nada" pra Q5 também. Precisa ajustar prompt pra ser explícito: "corrija NORMALMENTE as questões COM gabarito (neste caso, questão 5)".
-2. **Schema validator aceitou JSON vazio**: `questoes: []` deveria ter sido rejeitado pelo check `not questoes → "sem lista de questoes"`, mas o doc foi gravado. Possível falha na propagação de erros.
-3. **Anthropic gabarito alucinado**: notas existem mas são cientificamente inválidas. As correções de Q1-Q4/Q6-Q7 são baseadas em texto inventado.
-4. **Nenhum relatório Gemini** ainda pra verificar.
+**Run**: `task_873a30ff9736`, Gemini Flash, force_reexec=true, isolate_provider=true, 38 alunos (bug: selecionei 2 mas cascade rodou todos).
+
+**Resultado**: 33/38 falharam no CORRIGIR. 0 relatórios finais gerados.
+
+| Tipo de falha | Qtd | Exemplo |
+|---|---|---|
+| "Limite máximo de iterações de tools" | ~15 | Alvaro, Ana Beatriz — modelo fica em loop de tool calls |
+| "resposta_aluno divergente da EXTRAIR_RESPOSTAS" | ~12 | Ana Julia, Ana Victoria — cópia não-exata entre etapas |
+| "questão 5 sem resposta_aluno rastreável" | ~6 | Beatriz — resposta_aluno vazia ou mal formatada |
+
+**Análise**: Gemini Flash conseguiu EXTRAIR (questões, gabarito, respostas) com sucesso pra muitos alunos (56+ docs). Mas no CORRIGIR:
+- Não consegue produzir JSON + PDF dentro do limite de iterações de tools
+- Quando produz JSON, a cópia de resposta_aluno não bate exatamente com EXTRAIR_RESPOSTAS (paráfrase, truncamento, formatação diferente)
+- O schema validator rejeita por divergência
+
+**Conclusão**: Gemini 3 Flash Preview NÃO consegue completar CORRIGIR com gabarito parcial na forma atual. Não é problema da diretiva T3 — é limitação do modelo com tool-use complexo.
 
 ---
 
-## Próxima atualização
+## Problemas identificados na verificação (consolidado)
 
-Quando runs GPT-5 Nano + Gemini completarem, ABRIR cada novo relatorio_final e adicionar à tabela acima.
+1. **GPT-5 Nano gera relatorio_final vazio** (run 2026-05-27 01:14): `questoes: []`, nota_final=0. Diretiva T3 reescrita mas NÃO testada novamente com GPT-5 Nano ainda.
+2. **Gemini Flash falha no CORRIGIR** (run 2026-05-27 13:45): 33/38 falham por limite de iterações ou resposta_aluno divergente. 0 relatórios.
+3. **Anthropic gabarito alucinado** (run 2026-05-25): 10 relatórios existem mas com notas baseadas em gabarito inventado em 6/7 questões.
+4. **Schema validator estrito**: rejeita cópia não-exata de resposta_aluno entre etapas. Modelos baratos parafraseiam em vez de copiar literalmente.
+5. **`etapas_selecionadas` ignorado**: cascade roda 38 alunos mesmo quando só 2 estão selecionados.
+
+---
+
+## Decisão pendente
+
+Nenhum dos 3 providers baratos completa a pipeline CORRIGIR com gabarito parcial (Lista0 Q5-only):
+- Anthropic: completou mas alucinando gabarito + $42 de custo
+- GPT-5 Nano: relatório vazio
+- Gemini Flash: 33/38 falham no CORRIGIR
+
+**Opções**:
+a) Testar modelo mais capaz (GPT-5, Gemini 2.5 Pro, Claude Sonnet) — custo maior mas pode funcionar
+b) Relaxar validator de "resposta_aluno divergente" — aceitar paráfrases
+c) Aumentar max_tool_iterations — mais custo por tentativa
+d) Aceitar que gabarito parcial é limitação real e buscar gabarito completo
+e) Combinação de b+c
+
+Aguardando direção do Otávio.

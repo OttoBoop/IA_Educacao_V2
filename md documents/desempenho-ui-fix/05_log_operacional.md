@@ -25,3 +25,11 @@ Timeline de ações reais deste loop. Sem interpretação. Cada entry = ação �
 | 2026-05-27 12:00 | Dispatch GPT-5 Nano `task_8c798da9755a` + Gemini `task_10e944fdbd7d` | Ambos rodando. 1/38 alunos cada (sequencial). |
 | 2026-05-27 ~12:30 | Snapshot: GPT-5 39 docs (2 relatorio_final!), Gemini 56 docs (7 analise_habilidades) | Pipelines avançando. Fixes D4+D5+D6 funcionaram. |
 | 2026-05-27 12:35 | Movidos 01-04.md pra `legacy/`. Início da escrita dos docs frescos. | — |
+| 2026-05-27 12:36 | Cancelados runs GPT-5 `task_8c798da9755a` + Gemini `task_10e944fdbd7d` (contaminados) | Ambos cancelados OK |
+| 2026-05-27 ~13:00 | Commit `7fc6833`: T1 (paralelismo 12 workers) + T2 (isolate provider) + T3 (diretiva CORRIGIR reescrita) + docs frescos 01-05 | Push + deploy `dep-d8bkfeernols7394tjn0` |
+| 2026-05-27 13:40 | Deploy `7fc6833` live. UI verificada: checkbox isolar ✅, seção Docs Disponíveis ✅ | Playwright screenshot |
+| 2026-05-27 13:45 | Confirmado: custos reais já existem em `token_usage` (807 records Supabase) + `/api/custos/resumo` funciona | Sem caching API → custo = tokens × rate = custo real |
+| 2026-05-27 13:45 | Teste 2 alunos via UI Playwright: Gemini Flash, force_reexec, isolate_provider | task_873a30ff9736. Bug: selecionei 2, rodou 38 (`etapas_selecionadas` ignorado) |
+| 2026-05-27 13:46 | **T1 confirmado**: `active=12` (12 alunos simultâneos no poll) | Paralelismo funciona |
+| 2026-05-27 13:49 | Falhas: 33/38 alunos falharam no CORRIGIR com Gemini Flash | "limite iterações tools" + "resposta_aluno divergente" |
+| 2026-05-27 13:55 | Atualizado 01_objetivos com status real de T1-T7, bugs P1-P6, decisões D8-D10 | — |
