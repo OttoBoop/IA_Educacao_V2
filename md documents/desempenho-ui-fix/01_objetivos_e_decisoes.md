@@ -47,19 +47,28 @@ Commit `7fc6833`. 12 workers (env var `PARALLEL_WORKERS`). Confirmado: 12 alunos
 - ❌ Seleção individual de doc por etapa (`doc_id` override)
 - **Bug achado**: `etapas_selecionadas` do modal é ignorado pelo `_cascade_prereqs` — selecionei 2 alunos mas rodou 38. O cascade não olha `etapas_selecionadas` pra filtrar quais alunos rodar.
 
-### T3. Diretiva CORRIGIR ⚠️ BUG NA DIRETIVA (corrigido, re-teste pendente)
-Reescrita com 6 instruções (commit `7fc6833`), mas teste real com Gemini Flash mostrou 33/38 falhas.
+### T3. Diretiva CORRIGIR — DIAGNÓSTICO ATUALIZADO APÓS 3 TENTATIVAS
 
-**Diagnóstico REAL** (investigado abrindo os docs gerados):
-- EXTRAIR_RESPOSTAS funciona PERFEITAMENTE — respostas reais de álgebra linear presentes
-- O CORRIGIR do Gemini colocou `resposta_aluno="MISSING_CONTENT"` em TODAS as questões — inclusive Q5 que TEM gabarito e a aluna respondeu
-- **O modelo confundiu "sem gabarito" com "sem resposta do aluno"** — pôs MISSING_CONTENT no campo errado
-- O validator rejeitou com razão: "resposta_aluno divergente da EXTRAIR_RESPOSTAS" porque EXTRAIR_RESPOSTAS tem texto real mas CORRIGIR pôs MISSING_CONTENT
+**Histórico dos fixes:**
+1. Commit `7fc6833`: diretiva com 6 instruções → Gemini 33/38 fail (pôs MISSING_CONTENT no resposta_aluno)
+2. Commit `d6acf51`: regra 3 "NUNCA coloque MISSING_CONTENT no resposta_aluno" → Re-teste: Gemini AINDA falha, agora com `resposta_aluno=''` (vazio) em TODAS as questões
 
-**NÃO É limitação do modelo. É bug da diretiva.** A diretiva não deixava claro que MISSING_CONTENT é EXCLUSIVAMENTE pro campo `resposta_correta`, NUNCA pro `resposta_aluno`.
+**Diagnóstico PRECISO (investigado abrindo docs gerados + código):**
+- EXTRAIR_RESPOSTAS funciona PERFEITAMENTE (Gemini, 7 respostas reais, Q3/Q5/Q6/Q7 com álgebra linear)
+- O contexto `respostas_aluno` É CARREGADO no prompt (se não fosse, `documentos_faltantes` bloquearia a etapa — verificado no código [executor.py:2114-2121](../../backend/executor.py#L2114))
+- O template injeta via `{{resposta_aluno}}` no prompt ([prompts.py:411](../../backend/prompts.py#L411))
+- O CORRIGIR gera JSON com 7 questões (estrutura OK) MAS com `resposta_aluno=''` em TODAS
+- **O modelo LÊ o contexto mas NÃO COPIA os dados pra dentro do JSON de output**
 
-**Fix aplicado**: adicionada regra 3 "REGRA CRITICA SOBRE resposta_aluno" na diretiva. Re-teste pendente.
-**Status**: commit pendente. Verificação: re-rodar Gemini com 2 alunos e confirmar Q5 com nota real + Q1-Q4/Q6-Q7 com MISSING_CONTENT só no resposta_correta.
+**Causa-raiz**: o prompt pede pro modelo "Copie exatamente a resposta_aluno da extração de respostas" ([prompts.py:431](../../backend/prompts.py#L431)). Isso exige que o modelo LOCALIZE cada resposta no bloco `{{resposta_aluno}}` (que é um JSON grande), EXTRAIA a string correta pra cada questão, e COLE no JSON de output. Com a diretiva de gabarito parcial adicionando ~40 linhas extras, o modelo não consegue fazer essa cópia complexa.
+
+**NÃO É** "modelo barato demais". **É** a pipeline pedindo ao modelo pra fazer trabalho que deveria ser feito por CÓDIGO:
+- A cópia de `resposta_aluno` e `resposta_correta` pode ser feita programaticamente ANTES de chamar o modelo
+- O modelo recebe a correção pré-montada e só precisa adicionar `nota`, `acerto` e `feedback`
+
+**Fix proposto (T3-v3)**: pré-montar o array `questoes[]` no código ([executor.py, dentro de `corrigir()`](../../backend/executor.py)) com `resposta_aluno` e `resposta_correta` já preenchidos do contexto JSON. Passar esse array pré-montado pro modelo como parte do prompt. O modelo preenche APENAS nota, acerto, feedback.
+
+**Status**: NÃO implementado. Precisa code change no `corrigir()` function.
 
 ### T4. Custos reais ✅ JÁ EXISTE
 Tabela `token_usage` no Supabase com 807+ registros. Endpoint `/api/custos/resumo` agrega por provider/etapa. Custo = tokens × rate do catálogo. Sem caching API, custo é exato. Confirmado com Otávio: OK pra este teste.

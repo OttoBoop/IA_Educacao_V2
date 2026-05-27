@@ -2132,6 +2132,19 @@ PROMPT ORIGINAL DE REFERENCIA, APENAS PARA TAREFA E SCHEMA:
                 provider=provider_id,
             )
 
+        # T3-v3: Pre-build questoes[] with resposta_aluno and resposta_correta
+        # already filled from upstream docs. The model only needs to add
+        # nota, acerto, and feedback — no manual copying required.
+        questoes_pre = self._pre_montar_questoes_correcao(
+            contexto_json.get("respostas_aluno"),
+            contexto_json.get("gabarito_extraido"),
+            questoes_sem_gabarito,
+        )
+        if questoes_pre:
+            variaveis["questoes_pre_montadas"] = json.dumps(
+                questoes_pre, ensure_ascii=False, indent=2
+            )
+
         # Render prompt
         prompt_renderizado = prompt.render(**variaveis)
         prompt_sistema_raw = prompt.render_sistema(**variaveis)
@@ -2144,35 +2157,25 @@ PROMPT ORIGINAL DE REFERENCIA, APENAS PARA TAREFA E SCHEMA:
         # mark the uncovered ones as not-gradable instead of inventing answers.
         if questoes_sem_gabarito:
             qs = ", ".join(str(q) for q in questoes_sem_gabarito)
+            pre_json = variaveis.get("questoes_pre_montadas", "")
             partial_directive = (
-                "\n\n=== GABARITO PARCIAL ===\n"
-                f"As questoes {qs} NAO possuem resposta_correta no gabarito do professor.\n\n"
-                "INSTRUCOES OBRIGATORIAS (ignorar qualquer uma = artefato rejeitado):\n\n"
-                "1. CORRIJA NORMALMENTE as questoes que TEM gabarito (todas as "
-                "questoes NAO listadas acima). Para essas: nota numerica, acerto "
-                "booleano, feedback detalhado, resposta_correta copiada do gabarito.\n\n"
-                f"2. Para CADA questao SEM gabarito ({qs}), INCLUA na lista de "
-                "questoes com EXATAMENTE estes campos:\n"
-                "   - \"resposta_correta\": \"MISSING_CONTENT\"\n"
-                "   - \"nota\": null\n"
-                "   - \"acerto\": null\n"
-                "   - \"nota_maxima\": <conforme prova>\n"
-                "   - \"feedback\": \"Nao corrigivel: gabarito do professor nao "
-                "cobre esta questao.\"\n\n"
-                "3. REGRA CRITICA SOBRE resposta_aluno: o campo resposta_aluno "
-                "DEVE ser copiado EXATAMENTE da EXTRAIR_RESPOSTAS para TODAS as "
-                "questoes (com e sem gabarito). NUNCA coloque MISSING_CONTENT no "
-                "resposta_aluno. MISSING_CONTENT e EXCLUSIVAMENTE para o campo "
-                "resposta_correta das questoes sem gabarito. Se o aluno deixou a "
-                "questao em branco, copie a string vazia da EXTRAIR_RESPOSTAS.\n\n"
-                "4. A lista questoes[] DEVE conter TODAS as questoes da prova "
-                "(corrigiveis + MISSING_CONTENT). Se a prova tem 7 questoes, "
-                "retorne 7 itens. NUNCA retorne questoes vazio [].\n\n"
-                "5. nota_final: calcule APENAS com as questoes corrigiveis.\n\n"
-                "6. total_acertos e total_erros: conte APENAS questoes corrigiveis.\n\n"
-                "7. Adicione em _avisos_documento:\n"
-                "   {\"codigo\": \"MISSING_CONTENT\", \"explicacao\": \"Questoes "
-                f"{qs} ficaram sem correcao por falta de gabarito do professor.\"}}\n"
+                "\n\n=== GABARITO PARCIAL + QUESTOES PRE-MONTADAS ===\n"
+                f"As questoes {qs} NAO possuem gabarito do professor.\n\n"
+                "O array questoes[] abaixo ja esta PRE-MONTADO com resposta_aluno "
+                "e resposta_correta preenchidos a partir dos documentos anteriores. "
+                "Questoes sem gabarito ja tem resposta_correta='MISSING_CONTENT', "
+                "nota=null, acerto=null e feedback pre-definido.\n\n"
+                "VOCE SO PRECISA:\n"
+                "1. Para questoes com resposta_correta REAL (nao MISSING_CONTENT): "
+                "substituir 'A_PREENCHER' por nota numerica, acerto booleano (true/false), "
+                "nota_maxima numerica, e feedback detalhado.\n"
+                "2. Para questoes MISSING_CONTENT: NAO ALTERAR. Copie exatamente como esta.\n"
+                "3. NAO alterar resposta_aluno nem resposta_correta — ja estao corretos.\n"
+                "4. Calcular nota_final somando APENAS as notas das questoes corrigiveis.\n"
+                "5. total_acertos/total_erros: contar APENAS questoes corrigiveis.\n"
+                "6. Incluir _avisos_documento MISSING_CONTENT listando questoes sem correcao.\n\n"
+                "QUESTOES PRE-MONTADAS (use como base do seu JSON):\n"
+                f"{pre_json}\n"
                 "=== FIM GABARITO PARCIAL ===\n"
             )
             tool_instructions = tool_instructions + partial_directive
@@ -2190,6 +2193,65 @@ PROMPT ORIGINAL DE REFERENCIA, APENAS PARA TAREFA E SCHEMA:
             expected_document_type=TipoDocumento.CORRECAO,
             prompt_id=prompt.id,
         )
+
+    def _pre_montar_questoes_correcao(
+        self,
+        respostas_aluno_json: Optional[str],
+        gabarito_json: Optional[str],
+        questoes_sem_gabarito: List[int],
+    ) -> Optional[List[Dict[str, Any]]]:
+        """Build a pre-filled questoes[] array for CORRIGIR from upstream data.
+
+        Instead of asking the model to manually copy resposta_aluno and
+        resposta_correta from context blocks in the prompt, we do the
+        matching here in code and pass the result as a structured input.
+        The model only needs to add nota, acerto, and feedback.
+        """
+        try:
+            respostas = json.loads(respostas_aluno_json) if respostas_aluno_json else {}
+            gabarito = json.loads(gabarito_json) if gabarito_json else {}
+        except (json.JSONDecodeError, TypeError):
+            return None
+
+        resps_list = respostas.get("respostas") or []
+        gab_list = gabarito.get("respostas") or []
+
+        resps_by_q = {r.get("questao_numero"): r for r in resps_list if isinstance(r, dict)}
+        gab_by_q = {g.get("questao_numero"): g for g in gab_list if isinstance(g, dict)}
+
+        all_nums = sorted({*resps_by_q.keys(), *gab_by_q.keys()})
+        if not all_nums:
+            return None
+
+        sem_gab_set = set(questoes_sem_gabarito)
+        questoes = []
+        for num in all_nums:
+            resp = resps_by_q.get(num, {})
+            gab = gab_by_q.get(num, {})
+            ra = resp.get("resposta_aluno", "")
+            rc = gab.get("resposta_correta", "")
+
+            if num in sem_gab_set or not rc or str(rc).strip().upper() == "MISSING_CONTENT":
+                questoes.append({
+                    "numero": num,
+                    "resposta_aluno": ra,
+                    "resposta_correta": "MISSING_CONTENT",
+                    "nota": None,
+                    "acerto": None,
+                    "nota_maxima": None,
+                    "feedback": "Nao corrigivel: gabarito do professor nao cobre esta questao.",
+                })
+            else:
+                questoes.append({
+                    "numero": num,
+                    "resposta_aluno": ra,
+                    "resposta_correta": rc,
+                    "nota": "A_PREENCHER",
+                    "acerto": "A_PREENCHER",
+                    "nota_maxima": "A_PREENCHER",
+                    "feedback": "A_PREENCHER",
+                })
+        return questoes
 
     def _aplicar_aliases_contexto_corrigir(
         self,
