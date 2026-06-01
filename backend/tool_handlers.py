@@ -877,6 +877,61 @@ async def handle_create_document(
                     })
                     continue
 
+                # Reject empty / stub payloads for pipeline stages BEFORE
+                # writing. _inject_default_avisos would otherwise turn an
+                # empty {} into a 85-byte ghost doc with just defaults,
+                # which the cascade treats as a successful artifact.
+                if context and context.expected_document_type:
+                    _PIPELINE_REQUIRED_FIELDS = {
+                        TipoDocumento.EXTRACAO_QUESTOES: ("questoes",),
+                        TipoDocumento.EXTRACAO_GABARITO: ("respostas",),
+                        TipoDocumento.EXTRACAO_RESPOSTAS: ("respostas",),
+                        TipoDocumento.CORRECAO: ("questoes", "nota_final", "feedback_geral"),
+                        TipoDocumento.ANALISE_HABILIDADES: ("habilidades",),
+                        TipoDocumento.RELATORIO_FINAL: ("feedback_geral",),
+                    }
+                    required = _PIPELINE_REQUIRED_FIELDS.get(tipo)
+                    if required:
+                        if not isinstance(parsed_content, dict):
+                            errors.append({
+                                "filename": filename,
+                                "error": (
+                                    f"Pipeline {tipo.value} requires a JSON object payload; "
+                                    f"got {type(parsed_content).__name__}."
+                                ),
+                            })
+                            continue
+                        missing = [k for k in required if k not in parsed_content]
+                        if missing:
+                            errors.append({
+                                "filename": filename,
+                                "error": (
+                                    f"Pipeline {tipo.value} payload is missing required "
+                                    f"fields: {', '.join(missing)}. Returning an empty/stub "
+                                    "JSON is not accepted. Produce the full schema before "
+                                    "calling create_document."
+                                ),
+                            })
+                            continue
+                        # Reject explicitly-empty lists for list-typed required fields.
+                        list_fields_must_be_nonempty = {"questoes", "respostas", "habilidades"}
+                        empty_lists = [
+                            k for k in required
+                            if k in list_fields_must_be_nonempty
+                            and isinstance(parsed_content.get(k), list)
+                            and not parsed_content.get(k)
+                        ]
+                        if empty_lists:
+                            errors.append({
+                                "filename": filename,
+                                "error": (
+                                    f"Pipeline {tipo.value} requires non-empty {empty_lists} "
+                                    "list. Empty list is not a valid output — include the "
+                                    "actual items (questions, answers, abilities)."
+                                ),
+                            })
+                            continue
+
                 with open(temp_path, 'w', encoding='utf-8') as f:
                     json.dump(parsed_content, f, ensure_ascii=False, indent=2)
 

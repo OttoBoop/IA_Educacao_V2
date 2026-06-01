@@ -99,6 +99,9 @@ Registry in-memory. 404 intermitentes observados durante polling do teste (Rende
 | P4 | "Limite máximo de iterações de tools" em alguns alunos | Gemini Flash pode precisar de mais iterações OU a diretiva confusa causava loops | Re-testar após fix da diretiva |
 | P5 | 404 intermitentes no task-progress durante runs pesados | task_registry in-memory + Render instável | Painel some/pisca durante run |
 | P6 | Anthropic sem créditos | Bloqueio externo | Não testa Claude Haiku |
+| **P7** | **ENUNCIADO + GABARITO PERDIDOS → RESTAURADOS 2026-05-27** | DB tinha 0 enunciado, 0 gabarito (perdidos no incidente 2026-05-20). PDFs físicos sobreviveram no Storage com paths sanitizados (sem acentos). Restaurados via `_restore_enunciado_gabarito.py` | **TODA pipeline antes da restauração rodava sem input real** — providers inventavam questões e gabarito. **Após restauração**: Gemini extraiu 7 questões REAIS (polinômio interpolador, sistema linear da Asdrúbal, matriz B 4x4) e gabarito HONESTO (Q5 com resposta real + Q1-Q4/Q6-Q7 marcadas MISSING_CONTENT com "documento contém apenas gabarito do Exercício 5"). |
+
+| **D11** | **Restauração enunciado/gabarito + apagamento de 408 extrações falsas** (commit pendente) | 2026-05-27 | ✅ Verificado: extrações novas com conteúdo real do PDF, gabarito honesto detecta MISSING_CONTENT |
 
 ---
 
