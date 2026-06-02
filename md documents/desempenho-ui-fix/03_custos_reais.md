@@ -51,6 +51,28 @@
 - 8 docs, $0.27
 - Fora do escopo deste loop
 
+### Run validador pós-D13 — Alvaro / Gemini Flash (2026-06-02, task_971fe37f07c9)
+
+**Setup**: 1 aluno (Alvaro), provider=gem3flash001, force_rerun=true, server-side PDF (commit 82c2cbf).
+
+**Custos REAIS por etapa** (Gemini 3 Flash Preview, rate $0.50/$3.00 por 1M):
+
+| Etapa | tokens_in | tokens_out | Custo |
+|---|---:|---:|---:|
+| extrair_questoes (atividade-level) | 1.612 | 1.931 | $0.0066 |
+| extrair_gabarito (atividade-level) | 5.779 | 711 | $0.0050 |
+| extrair_respostas (Alvaro) | 22.805 | 3.858 | $0.0230 |
+| correcao (Alvaro) | 18.657 | 2.262 | $0.0161 |
+| analise_habilidades (Alvaro) | 9.570 | 1.117 | $0.0081 |
+| relatorio_final (Alvaro) | 18.729 | 1.808 | $0.0148 |
+| **TOTAL 1 aluno** | **77.152** | **11.687** | **$0.0736** |
+
+**Comparação com run Gemini de 2026-05-27** (mesmo provider, mesma turma, pré-D13):
+- Pré-D13: $13.04, 247 docs, 33/38 falharam, **0 relatórios válidos**
+- Pós-D13: $0.0736 (1 aluno), 7 docs, 1 pipeline OK, **1 relatório válido**
+- **Extrapolando 38 alunos**: ~$2.38 (1 atividade-level $0.012 + 38 × $0.062 aluno-level)
+- **Redução de ~5.5×** se a pipeline funcionar com a mesma confiabilidade pra 38 alunos
+
 ---
 
 ## Custo médio por doc por provider

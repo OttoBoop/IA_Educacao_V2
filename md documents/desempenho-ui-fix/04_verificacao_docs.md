@@ -109,6 +109,54 @@ Verificação de conteúdo pendente até ter relatorio_final.
 
 ---
 
+## Teste pós-server-side-PDF — Alvaro / Gemini Flash (2026-06-02, task_971fe37f07c9)
+
+**Setup**: commit `82c2cbf` deploy live 19:31 UTC. Dispatch via UI Playwright `_dispatch_alvaro.py` modo aluno único. Provider gem3flash001, force_rerun=true. Tarefa terminou em 5min43s. Custo $0.0736.
+
+**Doc IDs**:
+| Tipo | ID JSON | ID PDF | bytes JSON / PDF |
+|---|---|---|---|
+| extracao_respostas | ca170211015c3db9 | (n/a) | 5373 / — |
+| correcao | ad597feb9ae104fc | fa510f56b601c4c2 | 6760 / 7171 |
+| analise_habilidades | 04befff18ad7079c | e4fea6e5d1b1fe17 | 3299 / 3690 |
+| relatorio_final | 8e537097449ee7de | bb7b0885cf5bdba6 | 3377 / 3137 |
+
+**Auto-PDF rastreabilidade**: cada PDF tem `metadata.tool="execute_python_code"` + `metadata.auto_generated_from=<json_id>` apontando pro JSON pai. PDFs gerados pelo `document_generators.generate_pipeline_pdf` server-side, não pelo modelo.
+
+**CORRECAO.json — verificado manualmente**:
+- `nota_final`: **2.86** (Q4 + Q5 = 1.43 + 1.43 = 2.86 — soma correta)
+- `total_acertos`: 2 (Q4 e Q5)
+- `total_erros`: 0
+- `feedback_geral`: 680 chars, análise pedagógica real ("O aluno demonstra um domínio técnico excepcional...")
+- `questoes[]`: 7 itens, schema correto:
+  - Q1, Q2, Q3, Q6, Q7: `nota=None, acerto=None, resposta_correta="MISSING_CONTENT"`, feedback="Nao corrigivel: gabarito do professor nao cobre esta questao." — comportamento HONESTO (gabarito real só tinha Q4/Q5)
+  - Q4, Q5: `nota=1.43, acerto=true`, feedback de análise pedagógica detalhada
+- `_avisos_documento`: 1 aviso MISSING_CONTENT explicando que gabarito só cobria Q4/Q5
+- `_avisos_questao`: 5 avisos MISSING_CONTENT (um por questão sem gabarito)
+
+**CORRECAO.pdf — checks do validator passaram**:
+- ✅ Contém "Nota final: 2.86"
+- ✅ Contém "Feedback Geral"
+- ✅ Contém "ALVARO JOEL TICONA MOTTA" no cabeçalho
+- ✅ Contém "Questão 4 — Nota: 1.43" e "Questão 5 — Nota: 1.43"
+- ✅ Contém respostas do aluno + feedback por questão
+- Sem violações sandbox, sem `colors.hexColor` errors, sem PDF/JSON divergence (impossível por construção — PDF é função pura do JSON)
+
+**ANALISE.pdf**: cabeçalho com nome do aluno, 3 habilidades avaliadas ("Modelagem Matemática", "Álgebra Matricial", "Álgebra sobre Corpos Finitos"), todas marcadas "dominado" com nota 10, evidências por habilidade.
+
+**RELATORIO.pdf**: "Nota final: 2.86", "Resumo Geral" com análise unificada, "Pontos Fortes" listados (domínio de aritmética modular, modelagem matemática, integração Python).
+
+**Veredicto**: ✅ **PIPELINE FUNCIONA END-TO-END com Gemini Flash pós-D13**. Primeiro relatório CIENTIFICAMENTE VÁLIDO de todo o loop (D11 restaurou inputs reais, D13 destravou CORRIGIR).
+
+**Próximos testes pendentes**:
+- Replicar para 38 alunos (via pipeline-desempenho-turma)
+- Replicar com GPT-5 Nano (mesmo fix se aplica)
+- Anthropic continua bloqueado (sem créditos)
+- Marcar relatórios pré-D11 como **INVALIDADOS** (input enunciado/gabarito faltava)
+- Marcar relatórios pré-D13 com PDF gerado pelo modelo como **POTENCIALMENTE INCONSISTENTES** (PDF vs JSON divergence)
+
+---
+
 ## Decisão pendente
 
 Nenhum dos 3 providers baratos completa a pipeline CORRIGIR com gabarito parcial (Lista0 Q5-only):

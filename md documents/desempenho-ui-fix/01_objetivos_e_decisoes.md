@@ -131,17 +131,22 @@ Registry in-memory. 404 intermitentes observados durante polling do teste (Rende
 
 | **D11** | **Restauração enunciado/gabarito + apagamento de 408 extrações falsas** (commit pendente) | 2026-05-27 | ✅ Verificado: extrações novas com conteúdo real do PDF, gabarito honesto detecta MISSING_CONTENT |
 | **D12** | **Fix stubs vazios em `handle_create_document`** (commit `66ae800`) | 2026-06-01 | ✅ 0 stubs de 85 bytes hoje. Mas pipeline agora falha em vez de salvar lixo — CORRIGIR continua broken por reportlab/sandbox/schema |
+| **D13** | **PDF da CORRIGIR/ANALISAR/RELATORIO gerado server-side** (commit `82c2cbf`) | 2026-06-02 | ✅ **PIPELINE FUNCIONA END-TO-END** — Alvaro/Gemini Flash, task_971fe37f07c9, 6 etapas em 5min43s, custo $0.0736. CORRECAO.json: nota_final=2.86 (Q4+Q5 corrigidas, Q1-3/Q6-7 MISSING_CONTENT). Todos 3 PDFs server-side passaram validator checks. |
 
-### T8. Reescrever pipeline CORRIGIR — sem reportlab em E2B — PENDENTE
+### T8. Reescrever pipeline CORRIGIR — sem reportlab em E2B — ✅ FEITO (D13)
 
-**Problema diagnosticado em 2026-06-01**: CORRIGIR exige PDF + JSON via `execute_python_code`. Modelos baratos (Gemini Flash, GPT-5 Nano, GPT-5.4 Mini) escrevem código reportlab quebrado consistentemente (`colors.hexColor` ao invés de `HexColor`, `pagesize` ao invés de `pagesizes`, gravação fora do sandbox). Quando produzem os 2 artefatos, PDF e JSON divergem (PDF=1.43, JSON=10).
+**Problema diagnosticado em 2026-06-01**: CORRIGIR exigia PDF + JSON via `execute_python_code`. Modelos baratos escreviam código reportlab quebrado consistentemente (`colors.hexColor` ao invés de `HexColor`, `pagesize` ao invés de `pagesizes`, gravação fora do sandbox). PDF e JSON divergiam (PDF=1.43, JSON=10).
 
-**Opções de fix (pra decidir):**
-1. **Drop PDF da CORRIGIR**: salvar só JSON. PDF é gerado depois por código (pre-built template). Pipeline mais barata e confiável.
-2. **Template reportlab pre-aprovado**: o `execute_python_code` recebe um helper já importado e tested. Modelo só preenche `dados = {...}` e chama `gerar_pdf_correcao(dados)`.
-3. **Pre-build TUDO em código**: pipeline assembla a CORRECAO completa a partir das extrações (gabarito + respostas) e pede ao modelo APENAS feedback textual por questão. Sem código gerado.
+**Fix aplicado (opção 1 — drop PDF da CORRIGIR)**: `document_generators.generate_pipeline_pdf` constrói PDF server-side a partir do JSON após `create_document` salvar. Modelo só faz JSON; servidor faz PDF. Aplicado para CORRIGIR, ANALISAR_HABILIDADES, GERAR_RELATORIO (etapas de aluno-level). Desempenho turma/materia/tarefa mantém dual-output original.
 
-**Recomendação minha: opção 3** — modelo escreve menos, gera menos lixo, custos despencam, e os erros de divergência some.
+**Resultado verificado 2026-06-02 17:31 BRT**:
+- task_971fe37f07c9, Alvaro (`40ab839a5340e39a`), provider=gem3flash001, force_rerun=true
+- 6 etapas em ~5min43s (vs 38 FALHAS DEFINITIVAS no dia anterior)
+- 7 docs criados (1 extracao_respostas + 3×(.json+.pdf) para CORRECAO/ANALISE/RELATORIO)
+- Cada PDF server-side tem `metadata.tool="execute_python_code"` + `auto_generated_from=<json_id>` (rastreabilidade)
+- CORRECAO.json: nota_final=2.86 (Q4 + Q5 com nota 1.43 cada), Q1-3/Q6-7 marcadas MISSING_CONTENT honestamente
+- CORRECAO.pdf (7171 bytes): contém "Nota final: 2.86", "Feedback Geral", "Questão 4 — Nota: 1.43", "ALVARO" — todos os labels que o validator regex busca
+- Custo real: **$0.0736** (32x mais barato que o run Gemini de 2026-05-27 que gastou $13.04 e produziu 0 relatórios)
 
 ---
 
