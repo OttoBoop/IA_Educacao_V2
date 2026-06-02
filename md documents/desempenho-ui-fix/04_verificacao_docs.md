@@ -156,6 +156,37 @@ Verificação de conteúdo pendente até ter relatorio_final.
 
 ---
 
+## Obj 5 — comparativo entre providers pós-fixes (2026-06-02, single-aluno Alvaro)
+
+Após sequência de fixes D13/be5496d/fb9c74d/3001e2f/e7deb21 (PDF server-side + pre-save schema validation + raciocinio_parcial vocabulary fix + resposta_correta trace-check), 4 dispatches de single-aluno para Alvaro:
+
+| Provider | Modelo | EXTRAIR_Q | EXTRAIR_G | EXTRAIR_R | CORRIGIR | ANALISE | RELATORIO | Pipeline completa? |
+|---|---|---|---|---|---|---|---|---|
+| Google | gemini-3-flash-preview | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ SIM ($0.0736) |
+| OpenAI | gpt-5-nano | ✅ | ✅ | ✅ | ✅ (pós-trace-check) | ❌ JSON sintaxe | — | ❌ |
+| Anthropic | claude-haiku-4-5 | ✅ | ❌ "Falha após 3 tentativas" (API) | — | — | — | — | ❌ |
+
+**Causas-raiz diagnosticadas e RESOLVIDAS no código:**
+1. **Stubs vazios** (D12, `66ae800`): `_inject_default_avisos` aceitava `{}` → 85-byte ghost docs. Fix: validation em `handle_create_document`.
+2. **PDF reportlab quebrado** (D13, `82c2cbf`): modelo escreveu `colors.hexColor`+`pagesize`+gravava fora sandbox. Fix: PDF server-side via `document_generators.generate_pipeline_pdf`.
+3. **Schema CORRECAO incompleto** (`be5496d`): modelo omitia `_avisos_*`/`total_*`. Fix: pre-save required fields enforcement.
+4. **Bug for-else** (`fb9c74d`): minha validação aceitava `_avisos` como null. Fix: collect errs + continue.
+5. **Anthropic raciocinio_parcial drift** (`3001e2f`): prompt CONTINHA palavras-gatilho ("errada") em exemplos → modelo as copiava. Fix: prompt rewrite + pre-save regex check.
+6. **CORRIGIR resposta_correta divergente** (`e7deb21`): modelo reescrevia gabarito apesar de pre-montado + directive. Fix: pre-save trace-check carrega upstream EXTRACAO_GABARITO e compara.
+
+**Falhas remanescentes (limites do modelo, não do código):**
+- GPT-5 Nano ANALISE: JSON sintaxe inválida (char 324) — modelo produz JSON malformado consistentemente. Mitigação possível: prompt mais simples para ANALISE OU passar para JSON mode da OpenAI API.
+- Anthropic Haiku EXTRACAO_GABARITO: 3 retries esgotados (não-determinístico — provavelmente API rate limit ou modelo produzindo output rejeitável). Pode ser resolvido com max_retries maior + backoff específico.
+
+**Veredicto obj 5:**
+- ✅ **Gemini Flash** é o ÚNICO provider que completa pipeline end-to-end com fidelidade pedagógica. $0.0736/aluno.
+- ⚠️ **GPT-5 Nano** chega muito longe pós-fixes mas trava em ANALISE. Útil para EXTRAIR_RESPOSTAS / CORRIGIR isolados.
+- ❌ **Anthropic Haiku** pré-D13 alucinava gabarito + fazia retries explosivos ($42); pós-D13 instabilidade não-determinística em EXTRAIR_GABARITO. Custo: $0.15-0.20 por tentativa.
+
+**Recomendação:** rodar turma inteira com Gemini Flash como provider default. Custo estimado 38 alunos ≈ $2.40. Anthropic/GPT-5 Nano como fallback para etapas isoladas se necessário.
+
+---
+
 ## Auditoria forense: 18 relatorio_final Anthropic pré-D11 (2026-05-25)
 
 **Status**: ❌ **CIENTIFICAMENTE INVÁLIDOS** — gabarito alucinado, mas conteúdo do aluno parcialmente real.

@@ -128,10 +128,24 @@ Registry in-memory. 404 intermitentes observados durante polling do teste (Rende
 | P5 | 404 intermitentes no task-progress durante runs pesados | task_registry in-memory + Render instável | Painel some/pisca durante run |
 | P6 | Anthropic sem créditos | Bloqueio externo | Não testa Claude Haiku |
 | **P7** | **ENUNCIADO + GABARITO PERDIDOS → RESTAURADOS 2026-05-27** | DB tinha 0 enunciado, 0 gabarito (perdidos no incidente 2026-05-20). PDFs físicos sobreviveram no Storage com paths sanitizados (sem acentos). Restaurados via `_restore_enunciado_gabarito.py` | **TODA pipeline antes da restauração rodava sem input real** — providers inventavam questões e gabarito. **Após restauração**: Gemini extraiu 7 questões REAIS (polinômio interpolador, sistema linear da Asdrúbal, matriz B 4x4) e gabarito HONESTO (Q5 com resposta real + Q1-Q4/Q6-Q7 marcadas MISSING_CONTENT com "documento contém apenas gabarito do Exercício 5"). |
+| **P8** | **`force_reexec=true` em pipeline-desempenho-turma causa race no Supabase Storage** | task_da1c78d83aa2 (2026-06-02 20:38-20:51): primeiros 12 alunos OK, depois 38 FALHA DEFINITIVA "Arquivo não encontrado para extrair_questoes". `_should_run` retorna True com `force_rerun=True` mesmo para etapas ATIVIDADE-level (extracao_questoes/gabarito). 38 workers paralelos baixam o mesmo enunciado.pdf do Storage → Storage rate-limits/falha intermitente. | 4 alunos com pipeline completa + 8 com correcao+PDF (auto-PDF server-side OK!) + 1 fail + 25 não rodaram. **Custo deste run parcial: $1.33** (Gemini Flash). **Mitigação**: re-dispatch SEM force_reexec faz cascade pular extracao_questoes/gabarito existentes — só EXTRAIR_RESPOSTAS por aluno (PDF por aluno, sem race). **Fix de código pendente**: `_should_run` deveria ignorar force_rerun para etapas atividade-level. |
 
 | **D11** | **Restauração enunciado/gabarito + apagamento de 408 extrações falsas** (commit pendente) | 2026-05-27 | ✅ Verificado: extrações novas com conteúdo real do PDF, gabarito honesto detecta MISSING_CONTENT |
 | **D12** | **Fix stubs vazios em `handle_create_document`** (commit `66ae800`) | 2026-06-01 | ✅ 0 stubs de 85 bytes hoje. Mas pipeline agora falha em vez de salvar lixo — CORRIGIR continua broken por reportlab/sandbox/schema |
 | **D13** | **PDF da CORRIGIR/ANALISAR/RELATORIO gerado server-side** (commit `82c2cbf`) | 2026-06-02 | ✅ **PIPELINE FUNCIONA END-TO-END** — Alvaro/Gemini Flash, task_971fe37f07c9, 6 etapas em 5min43s, custo $0.0736. CORRECAO.json: nota_final=2.86 (Q4+Q5 corrigidas, Q1-3/Q6-7 MISSING_CONTENT). Todos 3 PDFs server-side passaram validator checks. |
+| **D14** | **Pre-save schema enforcement CORRECAO/ANALISE/RELATORIO** (commit `be5496d` + `fb9c74d`) | 2026-06-02 | Require `_avisos_documento`/`_avisos_questao` como lista, `total_acertos`/`total_erros` numéricos, `feedback_geral` >=30 chars, MISSING_CONTENT exige feedback, nota_final = soma das nota das corrigíveis (±0.05). Bug for-else corrigido em `fb9c74d`. |
+| **D15** | **Root-cause Anthropic Haiku raciocinio_parcial drift** (commit `3001e2f`) | 2026-06-02 | Prompt EXTRAIR_RESPOSTAS continha palavras-gatilho ("errada") em exemplos. Reescrito + adicionado VOCABULÁRIO PROIBIDO + pre-save regex check em `handle_create_document`. |
+| **D16** | **Trace-check CORRIGIR resposta_correta vs EXTRACAO_GABARITO** (commit `e7deb21`) | 2026-06-02 | Pre-save carrega gabarito upstream e compara cada `resposta_correta` (normalizado NFKD). Rejeita com erro específico citando question + valores divergentes + gabarito_id. Resolveu CORRIGIR para GPT-5 Nano. |
+
+### P9. Cascade desempenho-turma falha com partial state — PENDENTE
+
+**Diagnosticado em 2026-06-02 task_da1c78d83aa2**: re-dispatch sem force_reexec marcou 38 alunos como `students_failed` mesmo com docs pré-existentes (correcao OK em 12, full pipeline em 4). Cascade não distingue "etapa pulada porque doc existe" de "etapa falhou" — ANY stage failed → aluno marked failed. Cascade do `pipeline-desempenho-turma` precisa revisitar a lógica.
+
+**Workaround usado**: dispatch single-aluno via `_dispatch_batch.py` (paralelo 33 alunos via `/api/executar/pipeline-completo`). Funciona mas requer parallelism manual.
+
+### P10. task_registry in-memory perde tasks pós-deploy/restart — PENDENTE (era T6)
+
+**Reconfirmado 2026-06-02**: dispatcher script aborta com 404 ×9 quando registry vacia. Cascade pode continuar mas script não consegue acompanhar. Workaround: poll Supabase direto em vez de `/api/task-progress/`.
 
 ### T8. Reescrever pipeline CORRIGIR — sem reportlab em E2B — ✅ FEITO (D13)
 
