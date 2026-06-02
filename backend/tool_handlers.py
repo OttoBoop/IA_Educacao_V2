@@ -1054,6 +1054,76 @@ async def handle_create_document(
                             context.created_document_ids.append(saved_doc.id)
                         doc_info["id"] = saved_doc.id
                         doc_info["saved_to_storage"] = True
+
+                        # Auto-generate companion PDF for pipeline artifacts.
+                        # Replaces the unreliable model-generated reportlab PDF
+                        # via execute_python_code (hexColor typos, sandbox
+                        # violations, PDF/JSON divergence).
+                        _AUTO_PDF_TIPOS = {
+                            TipoDocumento.CORRECAO: "correcao",
+                            TipoDocumento.ANALISE_HABILIDADES: "analise_habilidades",
+                            TipoDocumento.RELATORIO_FINAL: "relatorio_final",
+                        }
+                        pdf_doc_type = _AUTO_PDF_TIPOS.get(tipo)
+                        if pdf_doc_type and ext == ".json" and isinstance(parsed_content, dict):
+                            try:
+                                from document_generators import generate_pipeline_pdf
+                                header_meta = {}
+                                try:
+                                    if aluno_id:
+                                        aluno = storage.get_aluno(aluno_id)
+                                        if aluno:
+                                            header_meta["aluno_nome"] = getattr(aluno, "nome", None)
+                                    if atividade_id:
+                                        atv = storage.get_atividade(atividade_id)
+                                        if atv:
+                                            header_meta["atividade_nome"] = getattr(atv, "nome", None)
+                                            turma_id_local = getattr(atv, "turma_id", None)
+                                            if turma_id_local:
+                                                turma = storage.get_turma(turma_id_local)
+                                                if turma and getattr(turma, "materia_id", None):
+                                                    materia = storage.get_materia(turma.materia_id)
+                                                    if materia:
+                                                        header_meta["materia_nome"] = getattr(materia, "nome", None)
+                                except Exception as meta_err:
+                                    logger.warning(
+                                        "[create_document] auto-PDF header lookup failed: %s",
+                                        meta_err,
+                                    )
+                                pdf_bytes = generate_pipeline_pdf(
+                                    pdf_doc_type, parsed_content, header_meta,
+                                )
+                                pdf_filename = (filename[:-5] if filename.lower().endswith(".json") else filename) + ".pdf"
+                                pdf_temp = temp_path.replace(".json", ".pdf")
+                                with open(pdf_temp, "wb") as fpdf:
+                                    fpdf.write(pdf_bytes)
+                                pdf_doc = storage.salvar_documento(
+                                    arquivo_origem=pdf_temp,
+                                    tipo=tipo,
+                                    atividade_id=atividade_id,
+                                    aluno_id=aluno_id,
+                                    display_name=pdf_filename,
+                                    ia_provider=context.provider if context else None,
+                                    ia_modelo=context.modelo if context else None,
+                                    prompt_usado=context.prompt_id if context else None,
+                                    metadata={
+                                        "cost_run_id": context.cost_run_id if context else None,
+                                        "etapa": context.etapa if context else None,
+                                        "tool": "execute_python_code",
+                                        "auto_generated_from": saved_doc.id,
+                                    } if context else {"auto_generated_from": saved_doc.id, "tool": "execute_python_code"},
+                                    criado_por="pipeline_tool",
+                                )
+                                if pdf_doc:
+                                    if context:
+                                        context.created_document_ids.append(pdf_doc.id)
+                                    doc_info["auto_pdf_id"] = pdf_doc.id
+                            except Exception as pdf_err:
+                                logger.warning(
+                                    "[create_document] auto-PDF generation failed for %s: %s",
+                                    saved_doc.id, pdf_err,
+                                )
+                                doc_info["auto_pdf_error"] = str(pdf_err)
                     else:
                         doc_info["saved_to_storage"] = False
                         doc_info["storage_error"] = "salvar_documento returned None"

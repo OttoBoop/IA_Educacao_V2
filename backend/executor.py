@@ -141,10 +141,13 @@ ResultadoEtapa = ResultadoExecucao
 # ============================================================
 
 STAGE_TOOLS: Dict[EtapaProcessamento, List[str]] = {
-    EtapaProcessamento.CORRIGIR: ["create_document", "execute_python_code"],
-    EtapaProcessamento.ANALISAR_HABILIDADES: ["create_document", "execute_python_code"],
-    EtapaProcessamento.GERAR_RELATORIO: ["create_document", "execute_python_code"],
-    # F-T4 / F-T5 / F-T6 — aggregate desempenho reports
+    # CORRIGIR / ANALISAR / GERAR_RELATORIO: model only produces JSON.
+    # The companion PDF is rendered server-side via document_generators
+    # in handle_create_document after the JSON is persisted.
+    EtapaProcessamento.CORRIGIR: ["create_document"],
+    EtapaProcessamento.ANALISAR_HABILIDADES: ["create_document"],
+    EtapaProcessamento.GERAR_RELATORIO: ["create_document"],
+    # F-T4 / F-T5 / F-T6 — aggregate desempenho reports (still dual-output)
     EtapaProcessamento.RELATORIO_DESEMPENHO_TAREFA: ["create_document", "execute_python_code"],
     EtapaProcessamento.RELATORIO_DESEMPENHO_TURMA: ["create_document", "execute_python_code"],
     EtapaProcessamento.RELATORIO_DESEMPENHO_MATERIA: ["create_document", "execute_python_code"],
@@ -163,9 +166,11 @@ STAGE_TOOL_INSTRUCTIONS: Dict[EtapaProcessamento, str] = {
     EtapaProcessamento.CORRIGIR: """
 INSTRUÇÕES DE TOOL-USE PARA CORREÇÃO:
 =====================================
-Você DEVE usar as ferramentas disponíveis para produzir dois outputs:
+Você DEVE usar a ferramenta create_document para salvar o JSON da correção.
+O PDF é renderizado automaticamente pelo servidor a partir desse JSON.
+NÃO chame execute_python_code nesta etapa — o servidor cuida do PDF.
 
-1. **create_document** — Salve o resultado da correção como JSON com o schema:
+**create_document** — Salve o resultado da correção como JSON com o schema:
    {
      "nota_final": <float>,
      "questoes": [
@@ -207,30 +212,15 @@ Você DEVE usar as ferramentas disponíveis para produzir dois outputs:
    questoes deve copiar `resposta_aluno` da extração de respostas e
    `resposta_correta` do gabarito antes de atribuir nota.
    Use extensão .json e nome descritivo (ex: "correcao_aluno.json").
-
-2. **execute_python_code** — Gere um PDF estilizado com reportlab contendo:
-   - Cabeçalho com nome do aluno, matéria e data
-   - Nota final em destaque
-   - Questões com status (acerto/erro), nota e feedback completo
-   - Seção literal "Feedback Geral" com o texto completo de `feedback_geral`
-     do JSON oficial. O PDF sera rejeitado se essa seção estiver ausente,
-     resumida demais, truncada ou terminar sem pontuação.
-   Nao use placeholders como "—", "N/A" ou "Nao informado" no cabecalho quando
-   os metadados aparecem no prompt.
-   O PDF nao pode cortar, truncar ou esconder feedback. Evite tabelas largas
-   para textos longos; prefira blocos por questao ou use Paragraph/word-wrap do
-   ReportLab com largura suficiente. Nao use slicing tipo texto[:80] para
-   caber no layout. Se usar tabela, cada celula textual deve quebrar linha e
-   preservar o conteudo essencial.
-   Use extensão .pdf e nome descritivo.
-""" + PDF_SANDBOX_RULES + """
 """,
     EtapaProcessamento.ANALISAR_HABILIDADES: """
 INSTRUÇÕES DE TOOL-USE PARA ANÁLISE DE HABILIDADES:
 ====================================================
-Você DEVE usar as ferramentas disponíveis para produzir dois outputs:
+Você DEVE usar a ferramenta create_document para salvar o JSON da análise.
+O PDF é renderizado automaticamente pelo servidor a partir desse JSON.
+NÃO chame execute_python_code nesta etapa — o servidor cuida do PDF.
 
-1. **create_document** — Salve a análise como JSON com o schema:
+**create_document** — Salve a análise como JSON com o schema:
    {
      "habilidades": [
        {"nome": "<str>", "nivel": "<str>", "evidencias": ["<str>"], "nota": <float>}
@@ -280,25 +270,15 @@ Você DEVE usar as ferramentas disponíveis para produzir dois outputs:
    "Aluno", "Student" ou valores fictícios. Se o nome real do aluno estiver
    ausente, use o aluno_id real do contexto e registre aviso explícito.
 
-2. **execute_python_code** — Gere um PDF estilizado com reportlab contendo:
-   - Cabeçalho com identificação do aluno
-   - Lista de habilidades com níveis e indicadores visuais
-   - Indicadores de proficiência
-   - Recomendações pedagógicas priorizadas
-   O PDF nao pode cortar, truncar ou esconder evidencias/recomendacoes. Use
-   Paragraph/word-wrap ou blocos verticais em vez de colunas estreitas para
-   textos longos.
-   Use o arquivo "analise_habilidades.pdf". O código DEVE gravar esse .pdf real
-   no disco e preencher output_files com ["analise_habilidades.pdf"]. Não basta
-   imprimir, retornar base64 ou descrever o PDF.
-""" + PDF_SANDBOX_RULES + """
 """,
     EtapaProcessamento.GERAR_RELATORIO: """
 INSTRUÇÕES DE TOOL-USE PARA RELATÓRIO FINAL:
 =============================================
-Você DEVE usar as ferramentas disponíveis para produzir dois outputs:
+Você DEVE usar a ferramenta create_document para salvar o JSON do relatório.
+O PDF é renderizado automaticamente pelo servidor a partir desse JSON.
+NÃO chame execute_python_code nesta etapa — o servidor cuida do PDF.
 
-1. **create_document** — Salve o relatório como JSON com o schema:
+**create_document** — Salve o relatório como JSON com o schema:
    {
      "resumo_geral": "<str>",
      "pontos_fortes": ["<str>"],
@@ -333,20 +313,6 @@ Você DEVE usar as ferramentas disponíveis para produzir dois outputs:
    _fontes_utilizadas: liste quais etapas do pipeline você usou como fonte de dados para gerar este relatório.
    Use extensão .json e nome descritivo.
 
-2. **execute_python_code** — Gere um PDF estilizado com reportlab contendo:
-   - Cabeçalho com dados do aluno e atividade
-   - Resumo geral narrativo
-   - Pontos fortes destacados
-   - Áreas de melhoria
-   - Recomendações pedagógicas
-   Se exibir `nota_final` e `proficiencia_geral`, trate como metricas separadas
-   e rotule claramente (ex: "Nota final: 8/10" e "Proficiência geral: 75%").
-   Nao escreva "8/10 (75%)" nem qualquer texto que faca parecer que a nota
-   8/10 equivale a 75%. Se nao houver percentual confiavel, omita o percentual.
-   O PDF nao pode cortar ou truncar textos longos; use Paragraph/word-wrap ou
-   blocos verticais.
-   Use extensão .pdf.
-""" + PDF_SANDBOX_RULES + """
 """,
     # F-T4: DESEMPENHO_TAREFA
     EtapaProcessamento.RELATORIO_DESEMPENHO_TAREFA: """
@@ -2189,7 +2155,7 @@ PROMPT ORIGINAL DE REFERENCIA, APENAS PARA TAREFA E SCHEMA:
             aluno_id=aluno_id,
             provider_id=provider_id,
             system_prompt=full_system,
-            tools_to_use=["create_document", "execute_python_code"],
+            tools_to_use=["create_document"],
             expected_document_type=TipoDocumento.CORRECAO,
             prompt_id=prompt.id,
         )
@@ -2446,7 +2412,7 @@ PROMPT ORIGINAL DE REFERENCIA, APENAS PARA TAREFA E SCHEMA:
             aluno_id=aluno_id,
             provider_id=provider_id,
             system_prompt=full_system,
-            tools_to_use=["create_document", "execute_python_code"],
+            tools_to_use=["create_document"],
             expected_document_type=TipoDocumento.ANALISE_HABILIDADES,
             prompt_id=prompt.id,
         )
@@ -2604,7 +2570,7 @@ PROMPT ORIGINAL DE REFERENCIA, APENAS PARA TAREFA E SCHEMA:
             aluno_id=aluno_id,
             provider_id=provider_id,
             system_prompt=full_system,
-            tools_to_use=["create_document", "execute_python_code"],
+            tools_to_use=["create_document"],
             expected_document_type=TipoDocumento.RELATORIO_FINAL,
             prompt_id=prompt.id,
         )
@@ -4039,13 +4005,22 @@ PROMPT ORIGINAL DE REFERENCIA, APENAS PARA TAREFA E SCHEMA:
                     registry.register(tool)
                     tool_definition = tool.to_anthropic_format()
                     if tool.name == "create_document" and expected_document_type:
-                        tool_definition["description"] = (
-                            "Create and save the required structured JSON artifact for this "
-                            "pipeline stage. In pipeline stages this tool accepts ONLY .json "
-                            "filenames with valid JSON content. Do not use create_document "
-                            "for PDF, DOCX, Markdown, text, or narrative files; use "
-                            "execute_python_code for PDF generation."
-                        )
+                        has_python = "execute_python_code" in tools_to_use
+                        if has_python:
+                            tool_definition["description"] = (
+                                "Create and save the required structured JSON artifact for this "
+                                "pipeline stage. In pipeline stages this tool accepts ONLY .json "
+                                "filenames with valid JSON content. Do not use create_document "
+                                "for PDF, DOCX, Markdown, text, or narrative files; use "
+                                "execute_python_code for PDF generation."
+                            )
+                        else:
+                            tool_definition["description"] = (
+                                "Create and save the required structured JSON artifact for this "
+                                "pipeline stage. Accepts ONLY .json filenames with valid JSON "
+                                "content. The companion PDF is rendered server-side from the "
+                                "JSON; do not generate PDFs yourself."
+                            )
                         documents_schema = (
                             tool_definition
                             .get("input_schema", {})

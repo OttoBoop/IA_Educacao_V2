@@ -37,7 +37,35 @@
 
 ---
 
-## Tarefas pendentes (atualizado 2026-05-27 13:55 UTC)
+## Estado pós-restauração + fix stubs (2026-06-01 17:38 BRT)
+
+**Fix `66ae800` (`tool_handlers.py`)**: validation que rejeita payload vazio/stub em `handle_create_document` para tipos da pipeline. Deploy live desde 20:12 UTC.
+
+**Resultado verificado no Supabase (hoje, 2026-06-01):**
+- ✅ Stubs de 85 bytes: 0 hoje (histórico: 58 em 2026-05-27)
+- ✅ EXTRACAO_QUESTOES/GABARITO/RESPOSTAS gerados com bytes reais (4-8 KB) — pipeline lê os PDFs restaurados
+- ✅ Enunciado (116 KB) + Gabarito (111 KB) intactos no DB pós-restauração
+- ❌ **0 CORRECAO criadas hoje** — pipeline trava antes do CORRIGIR completar
+- ❌ **0 ANALISE_HABILIDADES, 0 RELATORIO_FINAL** hoje
+
+**Logs Render (últimas 6h) — 38 FALHA DEFINITIVA, categorias:**
+
+| Categoria | Count | Diagnóstico |
+|---|---:|---|
+| `reportlab` AttributeError | 18 | Modelo escreve `colors.hexColor()` (correto: `HexColor` com H maiúsculo). Também `pagesize` (correto: `pagesizes` plural) |
+| Sandbox `File write outside` | 17 | Modelo tenta gravar PDF em path absoluto fora do sandbox E2B |
+| Pydantic `string_too_short` | 24 | Modelo retorna feedback_geral/feedback_questao mais curto que min_length |
+| `resposta_correta divergente` | 5 | JSON do CORRIGIR não copia o gabarito original — alucina |
+| `nota_final` PDF vs JSON | 5 | PDF gerado mostra 1.43, JSON do mesmo aluno mostra 10 |
+| Limite iterações de tools | ~10 | Modelo esgota retries tentando consertar reportlab |
+
+**Causa-raiz**: a etapa CORRIGIR exige **JSON + PDF gerado via `execute_python_code` com reportlab**. O modelo escreve código reportlab quebrado consistentemente (API errada), grava em paths fora do sandbox, retorna campos curtos demais, e quando consegue produzir os 2 artefatos eles **divergem entre si** (PDF tem nota calculada, JSON tem nota alucinada).
+
+**O fix de stubs vazios resolveu o sintoma "doc de 85 bytes" mas o pipeline continua quebrado** — agora falha em vez de saber salvar lixo.
+
+---
+
+## Tarefas pendentes (atualizado 2026-06-01 17:38 BRT)
 
 ### T1. Paralelismo ✅ FEITO
 Commit `7fc6833`. 12 workers (env var `PARALLEL_WORKERS`). Confirmado: 12 alunos simultâneos.
@@ -102,6 +130,18 @@ Registry in-memory. 404 intermitentes observados durante polling do teste (Rende
 | **P7** | **ENUNCIADO + GABARITO PERDIDOS → RESTAURADOS 2026-05-27** | DB tinha 0 enunciado, 0 gabarito (perdidos no incidente 2026-05-20). PDFs físicos sobreviveram no Storage com paths sanitizados (sem acentos). Restaurados via `_restore_enunciado_gabarito.py` | **TODA pipeline antes da restauração rodava sem input real** — providers inventavam questões e gabarito. **Após restauração**: Gemini extraiu 7 questões REAIS (polinômio interpolador, sistema linear da Asdrúbal, matriz B 4x4) e gabarito HONESTO (Q5 com resposta real + Q1-Q4/Q6-Q7 marcadas MISSING_CONTENT com "documento contém apenas gabarito do Exercício 5"). |
 
 | **D11** | **Restauração enunciado/gabarito + apagamento de 408 extrações falsas** (commit pendente) | 2026-05-27 | ✅ Verificado: extrações novas com conteúdo real do PDF, gabarito honesto detecta MISSING_CONTENT |
+| **D12** | **Fix stubs vazios em `handle_create_document`** (commit `66ae800`) | 2026-06-01 | ✅ 0 stubs de 85 bytes hoje. Mas pipeline agora falha em vez de salvar lixo — CORRIGIR continua broken por reportlab/sandbox/schema |
+
+### T8. Reescrever pipeline CORRIGIR — sem reportlab em E2B — PENDENTE
+
+**Problema diagnosticado em 2026-06-01**: CORRIGIR exige PDF + JSON via `execute_python_code`. Modelos baratos (Gemini Flash, GPT-5 Nano, GPT-5.4 Mini) escrevem código reportlab quebrado consistentemente (`colors.hexColor` ao invés de `HexColor`, `pagesize` ao invés de `pagesizes`, gravação fora do sandbox). Quando produzem os 2 artefatos, PDF e JSON divergem (PDF=1.43, JSON=10).
+
+**Opções de fix (pra decidir):**
+1. **Drop PDF da CORRIGIR**: salvar só JSON. PDF é gerado depois por código (pre-built template). Pipeline mais barata e confiável.
+2. **Template reportlab pre-aprovado**: o `execute_python_code` recebe um helper já importado e tested. Modelo só preenche `dados = {...}` e chama `gerar_pdf_correcao(dados)`.
+3. **Pre-build TUDO em código**: pipeline assembla a CORRECAO completa a partir das extrações (gabarito + respostas) e pede ao modelo APENAS feedback textual por questão. Sem código gerado.
+
+**Recomendação minha: opção 3** — modelo escreve menos, gera menos lixo, custos despencam, e os erros de divergência some.
 
 ---
 
@@ -117,6 +157,11 @@ Registry in-memory. 404 intermitentes observados durante polling do teste (Rende
 6. DEPOIS de pipeline: custos reais em 03_custos_reais.md.
 7. NUNCA declarar pronto sem verificação end-to-end no nível do usuário.
 8. NUNCA estimar custos — usar tokens reais × rates.
+9. Em loop ATIVO, NUNCA terminar output pedindo permissão para commit, push, deploy, dispatch de pipeline na UI, ou outras ações operacionais já contempladas pelo escopo do loop. Commit + push + deploy + teste online são PARTE do ciclo, não decisões gated. Pedir permissão = quebrar o loop.
+10. Todo output em loop encerra com "Agora vou X" (arquivo/comando/etapa concreta) e EXECUTA imediatamente. Sem "Posso prosseguir?", "Quer que eu...?", "Devo...?".
+11. Loop só termina quando: (a) verificação end-to-end completa, com resultado relatado no formato da regra 12; (b) bloqueio externo real e demonstrado (créditos esgotados, decisão estratégica genuína entre opções com tradeoffs documentados — NÃO entre "fix A vs fix B" do mesmo loop, isso eu decido); (c) Otávio pediu pausa explícita.
+12. Cada output em loop deve mostrar nesta ordem: (1) o que diagnostiquei/fiz neste ciclo (com file:line ou doc citado); (2) qual doc de longo prazo atualizei; (3) próximo passo concreto que estou executando agora ("Agora vou X"). Sem o item 3 EXECUTADO, o loop está parado.
+13. Plan mode NÃO é exceção da regra 12 — uso AskUserQuestion na UI para clarificar escopo/prioridade antes de escrever o plano. Nunca plano grande sem perguntas.
 
 ---
 

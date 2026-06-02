@@ -448,6 +448,260 @@ def _narrative_reportlab_fallback(md_text: str, title: str) -> bytes:
         return text.encode('utf-8')
 
 
+def generate_pipeline_pdf(
+    tipo: str,
+    json_data: Dict[str, Any],
+    header: Optional[Dict[str, str]] = None,
+) -> bytes:
+    """Server-side PDF generation for pipeline artifacts (CORRECAO, ANALISE_HABILIDADES, RELATORIO_FINAL).
+
+    Uses the exact field names from the pipeline JSON schema (`nota_final`,
+    `questoes`, `feedback_geral`, etc.) and renders text in the labels the
+    cross-check validator expects ("Nota final: X", "Questão N - Nota: M",
+    "Feedback Geral: ..."). Replaces the model-generated PDF that the
+    pipeline used to require via execute_python_code.
+    """
+    from reportlab.lib.pagesizes import A4
+    from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, PageBreak
+    from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+    from reportlab.lib.units import cm
+    from reportlab.lib import colors
+    from reportlab.lib.enums import TA_LEFT, TA_CENTER
+
+    header = header or {}
+    buffer = io.BytesIO()
+    doc = SimpleDocTemplate(
+        buffer, pagesize=A4,
+        leftMargin=2 * cm, rightMargin=2 * cm,
+        topMargin=2 * cm, bottomMargin=2 * cm,
+    )
+    styles = getSampleStyleSheet()
+    title_style = ParagraphStyle(
+        "PipelineTitle", parent=styles["Heading1"], fontSize=18,
+        spaceAfter=14, alignment=TA_CENTER, textColor=colors.HexColor("#2c3e50"),
+    )
+    heading_style = ParagraphStyle(
+        "PipelineHeading", parent=styles["Heading2"], fontSize=13,
+        spaceBefore=12, spaceAfter=8, textColor=colors.HexColor("#34495e"),
+    )
+    body_style = ParagraphStyle(
+        "PipelineBody", parent=styles["Normal"], fontSize=11, leading=15, spaceAfter=6,
+    )
+    label_style = ParagraphStyle(
+        "PipelineLabel", parent=styles["Normal"], fontSize=11, leading=15,
+        spaceAfter=4, textColor=colors.HexColor("#2c3e50"),
+    )
+
+    story: List[Any] = []
+    titles = {
+        "correcao": "Correção da Atividade",
+        "analise_habilidades": "Análise de Habilidades",
+        "relatorio_final": "Relatório Final do Aluno",
+    }
+    story.append(Paragraph(titles.get(tipo, "Documento"), title_style))
+
+    def _hdr(label: str, value: Optional[str]) -> None:
+        if value:
+            story.append(Paragraph(f"<b>{label}:</b> {value}", label_style))
+
+    _hdr("Aluno", header.get("aluno_nome"))
+    _hdr("Matéria", header.get("materia_nome"))
+    _hdr("Atividade", header.get("atividade_nome"))
+    _hdr("Data", header.get("data") or datetime.now().strftime("%d/%m/%Y"))
+    story.append(Spacer(1, 10))
+
+    if tipo == "correcao":
+        story.extend(_build_pipeline_correcao(json_data, heading_style, body_style))
+    elif tipo == "analise_habilidades":
+        story.extend(_build_pipeline_analise(json_data, heading_style, body_style))
+    elif tipo == "relatorio_final":
+        story.extend(_build_pipeline_relatorio(json_data, heading_style, body_style))
+    else:
+        story.extend(_build_generic_pdf(json_data, styles, heading_style, body_style))
+
+    story.append(Spacer(1, 18))
+    footer_style = ParagraphStyle(
+        "PipelineFooter", parent=styles["Normal"], fontSize=8, textColor=colors.gray,
+    )
+    story.append(Paragraph(
+        f"Gerado em {datetime.now().strftime('%d/%m/%Y %H:%M')} (auto-render server-side)",
+        footer_style,
+    ))
+    doc.build(story)
+    buffer.seek(0)
+    return buffer.read()
+
+
+def _fmt_num(v: Any) -> str:
+    try:
+        f = float(v)
+    except (TypeError, ValueError):
+        return str(v) if v is not None else "—"
+    return str(int(f)) if f.is_integer() else f"{f:.2f}".rstrip("0").rstrip(".")
+
+
+def _escape(text: Any) -> str:
+    if text is None:
+        return ""
+    s = str(text)
+    return s.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
+
+
+def _build_pipeline_correcao(data: Dict, heading_style, body_style) -> List:
+    from reportlab.platypus import Paragraph, Spacer
+    story = []
+    nota_final = data.get("nota_final")
+    if nota_final is not None:
+        story.append(Paragraph(f"<b>Nota final:</b> {_fmt_num(nota_final)}", body_style))
+    total_a = data.get("total_acertos")
+    total_e = data.get("total_erros")
+    if total_a is not None or total_e is not None:
+        story.append(Paragraph(
+            f"Acertos: {_fmt_num(total_a or 0)} | Erros: {_fmt_num(total_e or 0)}",
+            body_style,
+        ))
+    story.append(Spacer(1, 8))
+
+    questoes = data.get("questoes") or []
+    if questoes:
+        story.append(Paragraph("Questões", heading_style))
+        for q in questoes:
+            if not isinstance(q, dict):
+                continue
+            numero = q.get("numero", "?")
+            rc = str(q.get("resposta_correta") or "").strip().upper()
+            uncorrectable = rc in ("", "MISSING_CONTENT", "N/A", "NULL", "NONE")
+            if uncorrectable:
+                header_line = f"<b>Questão {numero}</b> — Sem gabarito disponível"
+            else:
+                nota = q.get("nota")
+                nota_max = q.get("nota_maxima")
+                acerto = q.get("acerto")
+                ac_label = "✓" if acerto else ("✗" if acerto is False else "?")
+                header_line = (
+                    f"<b>Questão {numero}</b> {ac_label} — Nota: {_fmt_num(nota)} / "
+                    f"{_fmt_num(nota_max) if nota_max is not None else '10'}"
+                )
+            story.append(Paragraph(header_line, body_style))
+            ra = q.get("resposta_aluno")
+            if ra:
+                story.append(Paragraph(f"<i>Resposta do aluno:</i> {_escape(ra)}", body_style))
+            if not uncorrectable and q.get("resposta_correta"):
+                story.append(Paragraph(
+                    f"<i>Resposta correta:</i> {_escape(q.get('resposta_correta'))}", body_style,
+                ))
+            if q.get("feedback"):
+                story.append(Paragraph(f"<i>Feedback:</i> {_escape(q.get('feedback'))}", body_style))
+            story.append(Spacer(1, 6))
+
+    feedback_geral = data.get("feedback_geral")
+    if feedback_geral:
+        story.append(Paragraph("Feedback Geral", heading_style))
+        story.append(Paragraph(_escape(feedback_geral), body_style))
+
+    avisos = data.get("_avisos_documento") or []
+    if avisos:
+        story.append(Spacer(1, 8))
+        story.append(Paragraph("Avisos", heading_style))
+        for a in avisos:
+            if isinstance(a, dict):
+                story.append(Paragraph(
+                    f"• [{a.get('codigo','?')}] {_escape(a.get('explicacao',''))}", body_style,
+                ))
+    return story
+
+
+def _build_pipeline_analise(data: Dict, heading_style, body_style) -> List:
+    from reportlab.platypus import Paragraph, Spacer
+    story = []
+    habilidades = data.get("habilidades") or []
+    if habilidades:
+        story.append(Paragraph("Habilidades Avaliadas", heading_style))
+        for h in habilidades:
+            if not isinstance(h, dict):
+                continue
+            nome = h.get("nome", "—")
+            nivel = h.get("nivel", "—")
+            nota = h.get("nota")
+            nota_label = f" — Nota: {_fmt_num(nota)}" if nota is not None else ""
+            story.append(Paragraph(
+                f"<b>{_escape(nome)}</b> — Nível: {_escape(nivel)}{nota_label}", body_style,
+            ))
+            evidencias = h.get("evidencias") or []
+            for e in evidencias:
+                story.append(Paragraph(f"  • {_escape(e)}", body_style))
+            story.append(Spacer(1, 4))
+
+    indicadores = data.get("indicadores") or {}
+    if isinstance(indicadores, dict) and indicadores:
+        story.append(Paragraph("Indicadores", heading_style))
+        prof = indicadores.get("proficiencia_geral")
+        if prof is not None:
+            story.append(Paragraph(f"Proficiência geral: {_fmt_num(prof)}", body_style))
+        for label_key, sec_label in (
+            ("areas_destaque", "Áreas de destaque"),
+            ("areas_atencao", "Áreas de atenção"),
+        ):
+            items = indicadores.get(label_key) or []
+            if items:
+                story.append(Paragraph(f"<b>{sec_label}:</b>", body_style))
+                for it in items:
+                    story.append(Paragraph(f"  • {_escape(it)}", body_style))
+
+    recomendacoes = data.get("recomendacoes") or []
+    if recomendacoes:
+        story.append(Paragraph("Recomendações", heading_style))
+        for r in recomendacoes:
+            if isinstance(r, dict):
+                line = f"[{_escape(r.get('prioridade','?'))}] {_escape(r.get('tipo',''))}: {_escape(r.get('descricao',''))}"
+            else:
+                line = f"• {_escape(r)}"
+            story.append(Paragraph(line, body_style))
+    return story
+
+
+def _build_pipeline_relatorio(data: Dict, heading_style, body_style) -> List:
+    from reportlab.platypus import Paragraph, Spacer
+    story = []
+    nota_final = data.get("nota_final")
+    if nota_final is not None:
+        story.append(Paragraph(f"<b>Nota final:</b> {_fmt_num(nota_final)}", body_style))
+        story.append(Spacer(1, 6))
+
+    resumo = data.get("resumo_geral")
+    if resumo:
+        story.append(Paragraph("Resumo Geral", heading_style))
+        story.append(Paragraph(_escape(resumo), body_style))
+
+    fortes = data.get("pontos_fortes") or []
+    if fortes:
+        story.append(Paragraph("Pontos Fortes", heading_style))
+        for p in fortes:
+            story.append(Paragraph(f"• {_escape(p)}", body_style))
+
+    melhorias = data.get("areas_melhoria") or []
+    if melhorias:
+        story.append(Paragraph("Áreas para Melhoria", heading_style))
+        for m in melhorias:
+            story.append(Paragraph(f"• {_escape(m)}", body_style))
+
+    recomendacoes = data.get("recomendacoes") or []
+    if recomendacoes:
+        story.append(Paragraph("Recomendações", heading_style))
+        for r in recomendacoes:
+            if isinstance(r, dict):
+                line = f"[{_escape(r.get('prioridade','?'))}] {_escape(r.get('tipo',''))}: {_escape(r.get('descricao',''))}"
+            else:
+                line = f"• {_escape(r)}"
+            story.append(Paragraph(line, body_style))
+
+    detalhamento = data.get("detalhamento")
+    if detalhamento:
+        story.append(Paragraph("Detalhamento", heading_style))
+        story.append(Paragraph(_escape(detalhamento), body_style))
+    return story
+
+
 def _generate_text_fallback(data: Dict, title: str) -> str:
     """Fallback para texto quando reportlab não está disponível"""
     lines = [f"{'='*50}", f" {title}", f"{'='*50}", ""]
