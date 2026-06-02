@@ -882,13 +882,28 @@ async def handle_create_document(
                 # empty {} into a 85-byte ghost doc with just defaults,
                 # which the cascade treats as a successful artifact.
                 if context and context.expected_document_type:
+                    # Full schema gate (post-D13). The downstream validator
+                    # checks the same things — but rejecting here gives the
+                    # model an immediate retry signal instead of leaving a
+                    # half-broken doc and a "FALHA DEFINITIVA" with no retry.
                     _PIPELINE_REQUIRED_FIELDS = {
                         TipoDocumento.EXTRACAO_QUESTOES: ("questoes",),
                         TipoDocumento.EXTRACAO_GABARITO: ("respostas",),
                         TipoDocumento.EXTRACAO_RESPOSTAS: ("respostas",),
-                        TipoDocumento.CORRECAO: ("questoes", "nota_final", "feedback_geral"),
-                        TipoDocumento.ANALISE_HABILIDADES: ("habilidades",),
-                        TipoDocumento.RELATORIO_FINAL: ("feedback_geral",),
+                        TipoDocumento.CORRECAO: (
+                            "questoes", "nota_final", "feedback_geral",
+                            "total_acertos", "total_erros",
+                            "_avisos_documento", "_avisos_questao",
+                        ),
+                        TipoDocumento.ANALISE_HABILIDADES: (
+                            "habilidades", "indicadores", "recomendacoes",
+                            "_avisos_documento", "_avisos_questao",
+                        ),
+                        TipoDocumento.RELATORIO_FINAL: (
+                            "feedback_geral", "nota_final", "pontos_fortes",
+                            "areas_melhoria", "recomendacoes",
+                            "_avisos_documento", "_avisos_questao",
+                        ),
                     }
                     required = _PIPELINE_REQUIRED_FIELDS.get(tipo)
                     if required:
@@ -907,9 +922,9 @@ async def handle_create_document(
                                 "filename": filename,
                                 "error": (
                                     f"Pipeline {tipo.value} payload is missing required "
-                                    f"fields: {', '.join(missing)}. Returning an empty/stub "
-                                    "JSON is not accepted. Produce the full schema before "
-                                    "calling create_document."
+                                    f"fields: {', '.join(missing)}. Produce the full schema "
+                                    "before calling create_document. _avisos_documento and "
+                                    "_avisos_questao must be JSON arrays (use [] if no avisos)."
                                 ),
                             })
                             continue
@@ -931,6 +946,74 @@ async def handle_create_document(
                                 ),
                             })
                             continue
+                        # _avisos_documento / _avisos_questao must be lists (not null, not dict).
+                        for aviso_field in ("_avisos_documento", "_avisos_questao"):
+                            if aviso_field in required and not isinstance(parsed_content.get(aviso_field), list):
+                                errors.append({
+                                    "filename": filename,
+                                    "error": (
+                                        f"Pipeline {tipo.value} requires '{aviso_field}' as a JSON array "
+                                        f"(use [] if no avisos). Got {type(parsed_content.get(aviso_field)).__name__}."
+                                    ),
+                                })
+                                break
+                        else:
+                            # Type & math checks for CORRECAO: total_acertos/total_erros numeric,
+                            # nota_final must equal the sum of correctable questoes[].nota
+                            # (matches the downstream cross-check validator).
+                            if tipo == TipoDocumento.CORRECAO:
+                                _corr_type_errs = []
+                                for nfield in ("nota_final", "total_acertos", "total_erros"):
+                                    val = parsed_content.get(nfield)
+                                    if not isinstance(val, (int, float)):
+                                        _corr_type_errs.append(
+                                            f"'{nfield}' must be numeric; got {type(val).__name__}"
+                                        )
+                                # feedback_geral non-empty
+                                fg = parsed_content.get("feedback_geral")
+                                if not isinstance(fg, str) or len(fg.strip()) < 30:
+                                    _corr_type_errs.append(
+                                        "'feedback_geral' must be a non-empty string with >= 30 chars"
+                                    )
+                                # Per-question schema: MISSING_CONTENT requires feedback
+                                _q_errs = []
+                                _correctable_sum = 0.0
+                                for q in parsed_content.get("questoes") or []:
+                                    if not isinstance(q, dict):
+                                        continue
+                                    numero = q.get("numero")
+                                    rc = str(q.get("resposta_correta") or "").strip().upper()
+                                    uncorrectable = rc in ("", "MISSING_CONTENT", "N/A", "NULL", "NONE")
+                                    if uncorrectable:
+                                        fb = q.get("feedback")
+                                        if not isinstance(fb, str) or len(fb.strip()) < 10:
+                                            _q_errs.append(
+                                                f"Q{numero} marked MISSING_CONTENT must have a 'feedback' string "
+                                                "explaining (e.g. 'Sem gabarito do professor')."
+                                            )
+                                    else:
+                                        nval = q.get("nota")
+                                        if isinstance(nval, (int, float)):
+                                            _correctable_sum += float(nval)
+                                # nota_final consistency with sum
+                                nf = parsed_content.get("nota_final")
+                                if isinstance(nf, (int, float)):
+                                    if abs(float(nf) - _correctable_sum) > 0.05:
+                                        _corr_type_errs.append(
+                                            f"'nota_final' ({nf}) does not equal sum of questoes[].nota "
+                                            f"for correctable questions ({_correctable_sum:.2f}). "
+                                            "Recompute nota_final = sum of all numeric notas (skipping MISSING_CONTENT questions)."
+                                        )
+                                all_corr_errs = _corr_type_errs + _q_errs
+                                if all_corr_errs:
+                                    errors.append({
+                                        "filename": filename,
+                                        "error": (
+                                            f"Pipeline {tipo.value} schema/math issues:\n  - "
+                                            + "\n  - ".join(all_corr_errs)
+                                        ),
+                                    })
+                                    continue
 
                 with open(temp_path, 'w', encoding='utf-8') as f:
                     json.dump(parsed_content, f, ensure_ascii=False, indent=2)
