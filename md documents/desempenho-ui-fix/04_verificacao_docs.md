@@ -149,11 +149,43 @@ Verificação de conteúdo pendente até ter relatorio_final.
 **Veredicto**: ✅ **PIPELINE FUNCIONA END-TO-END com Gemini Flash pós-D13**. Primeiro relatório CIENTIFICAMENTE VÁLIDO de todo o loop (D11 restaurou inputs reais, D13 destravou CORRIGIR).
 
 **Próximos testes pendentes**:
-- Replicar para 38 alunos (via pipeline-desempenho-turma)
-- Replicar com GPT-5 Nano (mesmo fix se aplica)
-- Anthropic continua bloqueado (sem créditos)
-- Marcar relatórios pré-D11 como **INVALIDADOS** (input enunciado/gabarito faltava)
+- Replicar para 38 alunos (via pipeline-desempenho-turma) — EM CURSO (task_da1c78d83aa2)
+- Replicar com GPT-5 Nano (mesmo fix se aplica) — PENDENTE
+- Replicar com Anthropic Haiku — créditos VOLTARAM 2026-06-02 (verificado via API direct)
 - Marcar relatórios pré-D13 com PDF gerado pelo modelo como **POTENCIALMENTE INCONSISTENTES** (PDF vs JSON divergence)
+
+---
+
+## Auditoria forense: 18 relatorio_final Anthropic pré-D11 (2026-05-25)
+
+**Status**: ❌ **CIENTIFICAMENTE INVÁLIDOS** — gabarito alucinado, mas conteúdo do aluno parcialmente real.
+
+**Evidência (doc `a7f1bec364819192`, Ana Beatriz)**:
+- `nota_final`: 5.29 (parece plausível, mas contra gabarito FICTÍCIO)
+- `resumo_geral`: 1059 chars de texto pedagogicamente válido
+- `detalhamento`: 7110 chars descrevendo "4 de 7 questões respondidas"
+
+**Markers do enunciado REAL (NÃO aparecem nos docs pré-D11)**:
+
+| Marker | Esperado se input real | Presente no doc pré-D11? |
+|---|---|---|
+| "Asdrúbal" (Q2 — sistema linear com nomes próprios) | ✓ | ❌ |
+| "polinômio interpolador" (Q1) | ✓ | ❌ |
+| "Corpo Z3" / "matriz B 4x4" (Q4-5) | ✓ | ❌ |
+| "numpy" / "interpolação" / "lapack" (genéricos de Álgebra Linear) | possível | ✓ (do aluno) |
+
+**Diagnóstico**: pre-D11 a pipeline rodou com:
+- EXTRACAO_RESPOSTAS: ✅ leu prova_respondida.pdf real → conteúdo real do aluno
+- EXTRACAO_QUESTOES: ❌ sem enunciado.pdf → modelo INVENTOU questões
+- EXTRACAO_GABARITO: ❌ sem gabarito.pdf → modelo INVENTOU respostas
+- CORRIGIR: comparou respostas reais vs gabarito alucinado → notas SEM VALIDADE EDUCACIONAL
+
+**Confronto com nota REAL do Alvaro pós-D13 (gabarito de verdade)**:
+- Pre-D11 Anthropic Alvaro: relatorio_final com nota 6.35 (alucinada vs gabarito fictício de Q1-Q7)
+- Pós-D13 Gemini Alvaro: nota_final = 2.86 (Q4=1.43 + Q5=1.43, soma real contra Q5+Q4 cobertas)
+- Diferença reflete o gap: nota "fictícia" cobre 7 questões inventadas; nota real cobre só 2 com gabarito real
+
+**Veredicto**: 18 relatórios pré-D11 (10 alunos × 2 versões × 2 formatos = 18 docs) devem ser tratados como histórico do incidente, NÃO como avaliações válidas. Não foram deletados ainda — aguardando decisão do Otávio sobre cleanup.
 
 ---
 
