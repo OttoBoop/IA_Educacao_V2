@@ -964,6 +964,51 @@ async def handle_create_document(
                             })
                             continue
 
+                        # EXTRACAO_RESPOSTAS: enforce no judgment/speculation words in
+                        # raciocinio_parcial — same regex the downstream validator uses.
+                        # This converts the model's drift into an immediate retry signal
+                        # instead of a FALHA DEFINITIVA after persistence.
+                        if tipo == TipoDocumento.EXTRACAO_RESPOSTAS:
+                            import re as _re_check
+                            _julg_pat = _re_check.compile(
+                                r"\b(corret[oa]s?|incorret[oa]s?|errad[oa]s?|"
+                                r"acertou|errou|deveria(?:\s+ser)?|esperad[oa]s?)\b",
+                                _re_check.IGNORECASE,
+                            )
+                            _espec_pat = _re_check.compile(
+                                r"\b(provavelmente|possivelmente|talvez|aparentemente|"
+                                r"deve\s+ter|parece\s+que)\b",
+                                _re_check.IGNORECASE,
+                            )
+                            _rp_errs = []
+                            for q in parsed_content.get("respostas") or []:
+                                if not isinstance(q, dict):
+                                    continue
+                                numero = q.get("questao_numero")
+                                rp = str(q.get("raciocinio_parcial") or "").strip()
+                                if not rp:
+                                    continue
+                                julg = _julg_pat.findall(rp)
+                                espec = _espec_pat.findall(rp)
+                                if julg or espec:
+                                    bad_words = sorted(set(w.lower() for w in (julg + espec)))
+                                    _rp_errs.append(
+                                        f"Q{numero} raciocinio_parcial contains forbidden words "
+                                        f"{bad_words}. Use only neutral descriptive verbs "
+                                        "(escreveu, registrou, deixou) and nouns (rascunho, "
+                                        "fórmula, passos). For incomplete answers say "
+                                        "'incompleta' or 'interrompida', never 'errada'."
+                                    )
+                            if _rp_errs:
+                                errors.append({
+                                    "filename": filename,
+                                    "error": (
+                                        f"Pipeline {tipo.value} judgement/speculation in raciocinio_parcial:\n  - "
+                                        + "\n  - ".join(_rp_errs)
+                                    ),
+                                })
+                                continue
+
                         # Type & math checks for CORRECAO: total_acertos/total_erros numeric,
                         # nota_final must equal the sum of correctable questoes[].nota
                         # (matches the downstream cross-check validator).
