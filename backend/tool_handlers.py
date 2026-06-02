@@ -1066,6 +1066,80 @@ async def handle_create_document(
                                 })
                                 continue
 
+                            # CORRECAO upstream-trace check: resposta_correta for each
+                            # correctable question must match the most-recent
+                            # EXTRACAO_GABARITO doc for this atividade. Catches the
+                            # case where the model rewrites resposta_correta instead of
+                            # copying from upstream (frequent with Anthropic Haiku).
+                            if atividade_id:
+                                try:
+                                    import re as _re_norm
+                                    import unicodedata as _ud
+                                    def _norm_ans(v):
+                                        t = str(v or "").strip().lower()
+                                        t = _ud.normalize("NFKD", t)
+                                        t = "".join(c for c in t if not _ud.combining(c))
+                                        t = t.replace("²", "2")
+                                        t = _re_norm.sub(r"\s+", "", t)
+                                        t = _re_norm.sub(r"[\.;]+$", "", t)
+                                        return t
+
+                                    gab_docs = storage.listar_documentos(
+                                        atividade_id, None, TipoDocumento.EXTRACAO_GABARITO,
+                                    )
+                                    gab_docs = [
+                                        d for d in gab_docs
+                                        if (getattr(d, "extensao", "") or "").lower() == ".json"
+                                    ]
+                                    if gab_docs:
+                                        gab_doc = gab_docs[0]  # already sorted desc by criado_em
+                                        gab_path = storage.resolver_caminho_documento(gab_doc)
+                                        if gab_path and gab_path.exists():
+                                            with open(gab_path, "r", encoding="utf-8") as fh:
+                                                gab_data = json.load(fh)
+                                            gab_by_num = {}
+                                            for g in gab_data.get("respostas") or []:
+                                                if isinstance(g, dict):
+                                                    gn = g.get("questao_numero") or g.get("numero")
+                                                    if gn is not None:
+                                                        gab_by_num[gn] = g.get("resposta_correta")
+                                            _trace_errs = []
+                                            for q in parsed_content.get("questoes") or []:
+                                                if not isinstance(q, dict):
+                                                    continue
+                                                numero = q.get("numero")
+                                                rc = q.get("resposta_correta")
+                                                up = gab_by_num.get(numero)
+                                                if up is None:
+                                                    continue
+                                                up_str = str(up).strip().upper()
+                                                rc_str = str(rc).strip().upper() if rc is not None else ""
+                                                # Both MISSING_CONTENT — OK
+                                                if up_str in ("", "MISSING_CONTENT", "N/A", "NULL", "NONE") and \
+                                                   rc_str in ("", "MISSING_CONTENT", "N/A", "NULL", "NONE"):
+                                                    continue
+                                                if _norm_ans(rc) != _norm_ans(up):
+                                                    _trace_errs.append(
+                                                        f"Q{numero}: resposta_correta='{str(rc)[:80]}' "
+                                                        f"differs from EXTRACAO_GABARITO ({gab_doc.id})='{str(up)[:80]}'. "
+                                                        "Copy resposta_correta EXACTLY from the gabarito doc."
+                                                    )
+                                            if _trace_errs:
+                                                errors.append({
+                                                    "filename": filename,
+                                                    "error": (
+                                                        f"Pipeline {tipo.value} resposta_correta "
+                                                        f"divergent from EXTRACAO_GABARITO:\n  - "
+                                                        + "\n  - ".join(_trace_errs)
+                                                    ),
+                                                })
+                                                continue
+                                except Exception as _trace_e:
+                                    logger.warning(
+                                        "[create_document] upstream gabarito trace check failed: %s",
+                                        _trace_e,
+                                    )
+
                 with open(temp_path, 'w', encoding='utf-8') as f:
                     json.dump(parsed_content, f, ensure_ascii=False, indent=2)
 
