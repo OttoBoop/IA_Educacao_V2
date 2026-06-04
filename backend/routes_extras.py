@@ -1431,18 +1431,30 @@ def _doc_to_dict(doc):
 
 
 def _check_has_atividades(level: str, entity_id: str) -> bool:
-    """Check if graded work (RELATORIO_FINAL docs) exists for the entity."""
-    narrativo_tipo = TipoDocumento.RELATORIO_FINAL
+    """Check if any graded work exists for the entity.
+
+    Returns True if either CORRECAO (per-student) or RELATORIO_FINAL
+    (per-student) docs exist. Previously only RELATORIO_FINAL was
+    checked, which caused the desempenho tab to show "Nenhuma
+    atividade corrigida ainda" even when many students had completed
+    correcao docs ready to be aggregated.
+    """
+    def _ativ_has_graded_work(ativ_id: str) -> bool:
+        for tipo in (TipoDocumento.CORRECAO, TipoDocumento.RELATORIO_FINAL):
+            if len(storage.listar_documentos(ativ_id, tipo=tipo)) > 0:
+                return True
+        return False
+
     if level == "tarefa":
-        return len(storage.listar_documentos(entity_id, tipo=narrativo_tipo)) > 0
+        return _ativ_has_graded_work(entity_id)
     elif level == "turma":
         for ativ in storage.listar_atividades(entity_id):
-            if len(storage.listar_documentos(ativ.id, tipo=narrativo_tipo)) > 0:
+            if _ativ_has_graded_work(ativ.id):
                 return True
     elif level == "materia":
         for turma in storage.listar_turmas(entity_id):
             for ativ in storage.listar_atividades(turma.id):
-                if len(storage.listar_documentos(ativ.id, tipo=narrativo_tipo)) > 0:
+                if _ativ_has_graded_work(ativ.id):
                     return True
     return False
 

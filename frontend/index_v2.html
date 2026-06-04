@@ -9308,7 +9308,7 @@
                     <div class="card">
                         <div class="card-header"><h3 class="card-title">👥 Provas dos Alunos</h3><button class="btn btn-primary btn-sm" onclick="openModalUpload('${atividadeId}', 'aluno')">+ Upload Prova</button></div>
                         <div class="table-container"><table><thead><tr><th>Aluno</th><th>Prova</th><th>Correção</th><th>Relatório</th><th>Ações</th></tr></thead><tbody>
-                            ${data.alunos.detalhes.map(a => `<tr class="aluno-row" data-aluno-id="${a.aluno_id}" data-aluno-nome="${escapeHtml(a.aluno_nome || '')}"><td><strong>${a.aluno_nome}</strong></td><td>${a.tem_prova ? '<span class="badge badge-success">✓</span>' : '<span class="badge badge-danger">Falta</span>'}</td><td>${a.tem_correcao ? '<span class="badge badge-success">✓</span>' : '<span class="badge badge-warning">Pendente</span>'}</td><td>${a.tem_relatorio ? '<span class="badge badge-success">✓</span>' : '<span class="badge badge-warning">Pendente</span>'}</td><td><button class="btn btn-sm" onclick="showResultadoAluno('${atividadeId}', '${a.aluno_id}', ${jsString(a.aluno_nome || '')}, ${jsString(data.atividade.nome || '')})">Ver Resultado</button></td></tr>`).join('')}
+                            ${data.alunos.detalhes.map(a => `<tr class="aluno-row" data-aluno-id="${a.aluno_id}" data-aluno-nome="${escapeHtml(a.aluno_nome || '')}"><td><strong>${a.aluno_nome}</strong></td><td>${a.tem_prova ? '<span class="badge badge-success">✓</span>' : '<span class="badge badge-danger">Falta</span>'}</td><td>${renderPipelineStatusBadge(a.tem_correcao, a.correcao_criado_em, a.correcao_provider)}</td><td>${renderPipelineStatusBadge(a.tem_relatorio, a.relatorio_criado_em, a.relatorio_provider)}</td><td><button class="btn btn-sm" onclick="showResultadoAluno('${atividadeId}', '${a.aluno_id}', ${jsString(a.aluno_nome || '')}, ${jsString(data.atividade.nome || '')})">Ver Resultado</button></td></tr>`).join('')}
                         </tbody></table></div>
                     </div>
                     </div>
@@ -9567,6 +9567,22 @@
                     ${itens}
                 </div>
             `;
+        }
+
+        // D11 cutoff: docs created before 2026-05-27 ran without the restored
+        // enunciado/gabarito PDFs and are scientifically invalid (hallucinated
+        // gabarito). Show an "⚠️ Antigo" badge instead of green ✓ so the user
+        // can tell at a glance which rows still need a fresh pipeline run.
+        const _PIPELINE_FRESH_CUTOFF = "2026-05-27T00:00:00";
+
+        function renderPipelineStatusBadge(present, criadoEm, _provider) {
+            if (!present) {
+                return '<span class="badge badge-warning">Pendente</span>';
+            }
+            if (criadoEm && criadoEm < _PIPELINE_FRESH_CUTOFF) {
+                return '<span class="badge badge-warning" title="Gerado antes da restauração do enunciado/gabarito (2026-05-27). Re-rode a pipeline para um resultado válido.">⚠️ Antigo</span>';
+            }
+            return '<span class="badge badge-success">✓</span>';
         }
 
         function renderDocsBase(existentes, atividadeId, detalhes = {}) {

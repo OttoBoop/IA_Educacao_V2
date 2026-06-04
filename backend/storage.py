@@ -1810,18 +1810,39 @@ class StorageManager:
         for aluno in alunos:
             docs_aluno = [d for d in documentos if d.aluno_id == aluno.id]
             tipos_aluno = [d.tipo for d in docs_aluno]
-            
+
             tem_prova = TipoDocumento.PROVA_RESPONDIDA in tipos_aluno
             tem_correcao = TipoDocumento.CORRECAO in tipos_aluno
             tem_relatorio = TipoDocumento.RELATORIO_FINAL in tipos_aluno
-            
+
+            # Surface provider + criado_em for the latest correcao/relatorio so the
+            # frontend can distinguish a fresh run from a stale artifact (e.g. a
+            # report generated before a content-affecting fix). Picks the most
+            # recent doc of each tipo by criado_em desc.
+            def _latest(tipo: TipoDocumento):
+                matches = [d for d in docs_aluno if d.tipo == tipo]
+                if not matches:
+                    return None, None
+                latest = max(matches, key=lambda d: d.criado_em)
+                return (
+                    getattr(latest, "ia_provider", None),
+                    latest.criado_em.isoformat() if latest.criado_em else None,
+                )
+
+            corr_prov, corr_em = _latest(TipoDocumento.CORRECAO)
+            rel_prov, rel_em = _latest(TipoDocumento.RELATORIO_FINAL)
+
             alunos_status.append({
                 "aluno_id": aluno.id,
                 "aluno_nome": aluno.nome,
                 "tem_prova": tem_prova,
                 "tem_correcao": tem_correcao,
                 "tem_relatorio": tem_relatorio,
-                "documentos": len(docs_aluno)
+                "correcao_provider": corr_prov,
+                "correcao_criado_em": corr_em,
+                "relatorio_provider": rel_prov,
+                "relatorio_criado_em": rel_em,
+                "documentos": len(docs_aluno),
             })
         
         return {
