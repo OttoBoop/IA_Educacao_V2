@@ -6678,10 +6678,17 @@ Crie UM documento separado para cada aluno, nomeando como "relatorio_[nome_aluno
             if force_rerun:
                 return True, "force_rerun ativado"
 
-            existing_doc = next((d for d in docs_list if d.tipo == doc_type), None)
+            # Skip docs in ERRO status — they represent failed attempts, not
+            # successful artifacts. Cascade `_documentos_da_ultima_execucao`
+            # may still return them; rerun the stage to produce a clean doc.
+            existing_doc = next(
+                (d for d in docs_list
+                 if d.tipo == doc_type and not self._documento_em_erro(d)),
+                None,
+            )
             if existing_doc:
                 return False, f"documento já existe (id={existing_doc.id}, tipo={doc_type.value})"
-            return True, "documento não existe, executando"
+            return True, "documento não existe (ou último é ERRO), executando"
 
         async def _executar_com_retry(
             stage: EtapaProcessamento,
