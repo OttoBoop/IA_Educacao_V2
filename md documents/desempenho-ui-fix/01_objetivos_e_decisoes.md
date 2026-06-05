@@ -147,6 +147,29 @@ Registry in-memory. 404 intermitentes observados durante polling do teste (Rende
 
 **Reconfirmado 2026-06-02**: dispatcher script aborta com 404 ×9 quando registry vacia. Cascade pode continuar mas script não consegue acompanhar. Workaround: poll Supabase direto em vez de `/api/task-progress/`.
 
+### P11. Google AI account-wide rate limit / quota exhaustion — BLOQUEIO EXTERNO 2026-06-05
+
+**Sintoma 2026-06-05 09:30 BRT**: HTTP 429 sistemático em TODOS os modelos Google (testado `gemini-3-flash-preview` E `gemini-2.5-flash` em sequência — ambos retornam 429). Mesmo dispatch sequencial (1 aluno por vez, 15s cooldown) falha imediatamente em EXTRACAO_QUESTOES.
+
+**Histórico de retries acumulados (que provavelmente esgotaram quota)**:
+- Batch direto 30 alunos (paralelo): rate limits após primeiros 9 alunos
+- Cleanup 143 docs erro + re-dispatch staggered com `--force-rerun` (FALHA: re-extraiu 30× a EXTRACAO_QUESTOES atividade-level = surto de calls)
+- Staggered sem force-rerun: 11 failed corrigir + 19 lost
+- Sequential strict: idem
+- Fallback gemini-2.5-flash: HTTP 429 também
+
+**Diagnóstico**: quota Google AI shared entre todos os modelos da conta. Foi consumida pelos retries.
+
+**Reset esperado**: quota diária reseta em 00:00 UTC do dia seguinte (típico Google AI). Para retomar:
+1. Aguardar reset (próximo dia UTC)
+2. Re-rodar `_dispatch_staggered.py --provider-id gem3flash001 --alunos-file /tmp/need_stag.txt --delay 60` SEM `--force-rerun`
+3. Audit via `_audit_turma_run.py --since 2026-06-XX`
+
+**Estado parcial do loop (snapshot 2026-06-05 09:32)**:
+- 8/38 alunos com relatorio_final REAL pós-D13 (Gemini Flash, 2026-06-02)
+- 0 alunos novos completados neste loop (apenas dispatches falhos)
+- Cleanup pré-D11 e fixes UI/backend (Passos 1-4 do plan) ENTREGUES e em produção
+
 ### T8. Reescrever pipeline CORRIGIR — sem reportlab em E2B — ✅ FEITO (D13)
 
 **Problema diagnosticado em 2026-06-01**: CORRIGIR exigia PDF + JSON via `execute_python_code`. Modelos baratos escreviam código reportlab quebrado consistentemente (`colors.hexColor` ao invés de `HexColor`, `pagesize` ao invés de `pagesizes`, gravação fora do sandbox). PDF e JSON divergiam (PDF=1.43, JSON=10).

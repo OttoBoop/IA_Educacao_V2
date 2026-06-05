@@ -187,6 +187,34 @@ Após sequência de fixes D13/be5496d/fb9c74d/3001e2f/e7deb21 (PDF server-side +
 
 ---
 
+## Loop 2 snapshot (2026-06-05 09:32 BRT)
+
+**Cleanup pré-D11 entregue** (DB-only, Storage preservado):
+- 262 docs gerados pré-D11 deletados (cf. P1 do plan)
+- Distribuição: 142 correcao + 82 extracao_respostas + 20 analise_habilidades + 18 relatorio_final
+- Por provider: 253 Anthropic + 7 OpenAI + 2 Google
+- Comando: `python3 "md documents/desempenho-ui-fix/_cleanup_pre_d11.py"` (idempotente)
+
+**Backend + Frontend** (commit `545a4a4`, deploy live):
+- `get_status_atividade` agora retorna `correcao_provider`/`relatorio_provider`/`*_criado_em` por aluno
+- `_check_has_atividades` conta CORRECAO (não só RELATORIO_FINAL agregado) — desempenho tab deixa de exibir "Nenhuma corrigida" falsa
+- `renderPipelineStatusBadge` no frontend: ✓ verde (post-D11), ⚠️ Antigo (pre-D11), Pendente (missing). Aplica nas colunas Correção+Relatório
+- Cutoff frontend: `2026-05-27T00:00:00` (data da restauração D11)
+
+**Dispatch turma — BLOQUEADO por Google rate limit (P11)**:
+- 4 tentativas (batch direto, staggered v1 force-rerun, staggered v2 sem force-rerun, sequential 1-a-1) — TODAS hit 429
+- Fallback gemini-2.5-flash GA também 429 → quota é account-wide
+- Estado final: 8/38 alunos com relatorio_final REAL (todos do Loop 1 — 2026-06-02 Gemini Flash)
+- 30 alunos restantes aguardam reset de quota Google AI (típico ~00:00 UTC)
+
+**Retomada** (próximo loop):
+1. Aguardar reset quota (próximo dia UTC)
+2. `python3 "md documents/desempenho-ui-fix/_dispatch_staggered.py" --provider-id gem3flash001 --alunos-file /tmp/need_stag.txt --delay 60`
+3. Audit: `python3 "md documents/desempenho-ui-fix/_audit_turma_run.py" --since 2026-06-XX`
+4. Screenshot Playwright via `_ui_health_check.py` para verificar 38/38 ✓ verde
+
+---
+
 ## Auditoria forense: 18 relatorio_final Anthropic pré-D11 (2026-05-25)
 
 **Status**: ❌ **CIENTIFICAMENTE INVÁLIDOS** — gabarito alucinado, mas conteúdo do aluno parcialmente real.

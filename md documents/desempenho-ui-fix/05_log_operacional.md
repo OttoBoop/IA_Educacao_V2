@@ -53,3 +53,15 @@ Timeline de ações reais deste loop. Sem interpretação. Cada entry = ação �
 | 2026-06-02 19:48 | Fix prompt + validator EXTRAIR_RESPOSTAS (commit `3001e2f`) + deploy | Anthropic Haiku passa EXTRAIR_RESPOSTAS, falha em CORRIGIR (resposta_correta divergente). |
 | 2026-06-02 20:03 | Fix trace-check CORRIGIR vs gabarito (commit `e7deb21`) + deploy | GPT-5 Nano: extracao_questoes/gabarito/respostas + CORRIGIR ✅ todos completed. Falha em ANALISE (JSON sintaxe). Anthropic falha EXTRACAO_GABARITO "Falha após 3 tentativas" (API). |
 | 2026-06-02 20:15 | Obj 5 comparativo finalizado em 04: Gemini end-to-end OK, GPT-5 Nano até CORRIGIR, Anthropic instável. | — |
+| 2026-06-05 ~08:45 | **Loop 2 (Otávio aprovou plan combo obj 4 + UI accuracy + cleanup pré-D11)** | — |
+| 2026-06-05 08:46 | `_cleanup_pre_d11.py`: 262 docs gerados pré-D11 apagados (253 Anthropic + 7 OpenAI + 2 Google), Storage preservado | DB limpo de docs alucinados, todos os atividade-level extracao_questoes/gabarito remanescentes são post-D11 |
+| 2026-06-05 ~08:50 | Backend: `storage.get_status_atividade` expõe `correcao_provider`/`correcao_criado_em`/`relatorio_provider`/`relatorio_criado_em` por aluno | — |
+| 2026-06-05 ~08:51 | Backend: `routes_extras._check_has_atividades` conta CORRECAO per-aluno (não só RELATORIO_FINAL atividade-level) | Mensagem "Nenhuma atividade corrigida" deixa de mentir para alunos com correcao mas sem relatorio |
+| 2026-06-05 ~08:52 | Frontend: helper `renderPipelineStatusBadge` retorna 3 estados (✓ verde post-D11, ⚠️ Antigo pre-D11, Pendente missing). Aplicado às colunas Correção+Relatório. | — |
+| 2026-06-05 08:53 | Commit `545a4a4` + push + deploy live (build 1.5min + update 1.5min) | — |
+| 2026-06-05 08:55 | Batch direto 30 alunos → 1 OK, rate limits crescentes | Apaga 143 erro docs para tentar limpar slate |
+| 2026-06-05 09:00 | Staggered 30 alunos delay=30s `--force-rerun` → 0/30 (Google 429 burst em extrair_questoes — force_rerun forçou re-extração 30×) | Aprendizado: NÃO usar `--force-rerun` em batch — só usa em isolado |
+| 2026-06-05 09:13 | Staggered v2 SEM force-rerun → 1 completed, 18 failed (429), 11 lost (task_registry) | Quota estava sendo consumida ainda |
+| 2026-06-05 09:25 | `_dispatch_sequential.py`: 1 aluno por vez, 12min timeout, 15s cooldown → 0 completed, 11 failed CORRIGIR, 19 lost (cascade falha em <15s) | Quota esgotada — cascade rejeitada na primeira chamada |
+| 2026-06-05 09:30 | Teste Alvaro com `gem25flash001` (Gemini 2.5 Flash GA) → 429 também | Confirmado: quota é Google-wide, não por modelo |
+| 2026-06-05 09:32 | P11 documentado em 01: BLOQUEIO EXTERNO Google rate limit. Aguardar reset (próximo 00:00 UTC). | Loop 2 fecha com 8/38 alunos válidos + cleanup + UI accuracy entregues, dispatch turma adiado por bloqueio externo |
