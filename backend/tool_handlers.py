@@ -1059,6 +1059,14 @@ async def handle_create_document(
                                                 resps_by_num[rn] = r.get("resposta_aluno")
 
                                 questoes_list = parsed_content.get("questoes") or []
+                                logger.info(
+                                    "[create_document] CORRECAO normalize start: atv=%s aluno=%s gab_by_num_keys=%s resps_by_num_keys=%s questoes_count=%s nota_final_pre=%s",
+                                    atividade_id, aluno_id,
+                                    sorted(gab_by_num.keys()) if gab_by_num else [],
+                                    sorted(resps_by_num.keys()) if resps_by_num else [],
+                                    len(questoes_list) if isinstance(questoes_list, list) else "not-list",
+                                    parsed_content.get("nota_final"),
+                                )
                                 if isinstance(questoes_list, list) and (gab_by_num or resps_by_num):
                                     for q in questoes_list:
                                         if not isinstance(q, dict):
@@ -1107,6 +1115,17 @@ async def handle_create_document(
                                         parsed_content["_avisos_documento"] = []
                                     if not isinstance(parsed_content.get("_avisos_questao"), list):
                                         parsed_content["_avisos_questao"] = []
+                                    logger.info(
+                                        "[create_document] CORRECAO normalize done: nota_final=%s total_acertos=%s total_erros=%s avisos_doc=%s avisos_q=%s",
+                                        parsed_content["nota_final"], acertos, erros,
+                                        type(parsed_content.get("_avisos_documento")).__name__,
+                                        type(parsed_content.get("_avisos_questao")).__name__,
+                                    )
+                                else:
+                                    logger.warning(
+                                        "[create_document] CORRECAO normalize SKIPPED recompute: questoes_is_list=%s has_gab=%s has_resps=%s",
+                                        isinstance(questoes_list, list), bool(gab_by_num), bool(resps_by_num),
+                                    )
                             except Exception as _norm_e:
                                 logger.warning(
                                     "[create_document] CORRECAO normalize failed: %s", _norm_e,
