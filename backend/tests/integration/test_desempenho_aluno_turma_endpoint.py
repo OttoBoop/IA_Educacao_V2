@@ -1,5 +1,6 @@
 import os
 import sys
+from types import SimpleNamespace
 
 from fastapi.testclient import TestClient
 import pytest
@@ -81,9 +82,37 @@ def desempenho_aluno_turma_env(monkeypatch, temp_data_dir):
     import routes_extras
     import routes_prompts
 
+    class FakeAlunoTurmaProvider:
+        async def analyze_document(self, file_path, instruction):
+            assert file_path.endswith(".pdf")
+            assert "Relatorio Maria 2021" not in instruction
+            assert "Maria Silva" in instruction
+            assert "Turma 2021" in instruction
+            assert "Prova 1" in instruction
+            return SimpleNamespace(
+                content=(
+                    "## Sintese pedagogica\n"
+                    "Maria demonstra dominio consistente de funcoes e precisa "
+                    "revisar justificativas formais.\n\n"
+                    "## Recomendacoes\n"
+                    "- Resolver dois exercicios de verificacao por semana."
+                ),
+                provider="fake-modern-api",
+                model="fake-doc-reader",
+                tokens_used=123,
+                input_tokens=80,
+                output_tokens=43,
+                latency_ms=456.0,
+            )
+
     monkeypatch.setattr(main_v2, "storage", storage)
     monkeypatch.setattr(routes_extras, "storage", storage)
     monkeypatch.setattr(routes_prompts, "storage", storage)
+    monkeypatch.setattr(
+        routes_prompts,
+        "_get_aluno_turma_provider",
+        lambda provider_id=None: FakeAlunoTurmaProvider(),
+    )
 
     return {
         "client": TestClient(main_v2.app),
@@ -224,6 +253,8 @@ def test_pipeline_desempenho_aluno_turma_salva_documento(desempenho_aluno_turma_
     assert data["metadata"]["turma_id"] == env["turma_2021"].id
     assert data["metadata"]["materia_id"] == env["materia"].id
     assert data["metadata"]["atividade_ids"] == [env["atividade_1"].id]
+    assert data["metadata"]["geracao"] == "provider_document_read_v1"
+    assert data["metadata"]["leituras"][0]["provider"] == "fake-modern-api"
 
     from models import TipoDocumento
 
@@ -235,6 +266,15 @@ def test_pipeline_desempenho_aluno_turma_salva_documento(desempenho_aluno_turma_
     assert len(docs) == 1
     assert docs[0].tipo == TipoDocumento.RELATORIO_DESEMPENHO_ALUNO_TURMA
     assert docs[0].metadata["scope"] == "aluno_turma"
+    assert docs[0].metadata["geracao"] == "provider_document_read_v1"
+    assert docs[0].ia_provider == "fake-modern-api"
+    assert docs[0].ia_modelo == "fake-doc-reader"
+    assert docs[0].tokens_usados == 123
+
+    conteudo = env["storage"].resolver_caminho_documento(docs[0]).read_text(encoding="utf-8")
+    assert "Maria demonstra dominio consistente" in conteudo
+    assert "conteudo nao extraido automaticamente" not in conteudo
+    assert "Documento disponivel" not in conteudo
 
 
 def test_pipeline_desempenho_aluno_turma_nao_duplica_sem_force(desempenho_aluno_turma_env):

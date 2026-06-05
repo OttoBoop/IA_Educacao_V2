@@ -100,21 +100,6 @@ def _is_error_doc(doc: Documento) -> bool:
     return _status_value(doc) == "erro"
 
 
-def _read_report_text(doc: Documento) -> str:
-    try:
-        path = storage.resolver_caminho_documento(doc)
-        if not path.exists():
-            return f"[Arquivo nao encontrado: {doc.nome_arquivo}]"
-        ext = (doc.extensao or path.suffix or "").lower()
-        if ext in {".md", ".txt", ".csv"}:
-            return path.read_text(encoding="utf-8")
-        if ext == ".json":
-            return json.dumps(json.loads(path.read_text(encoding="utf-8")), ensure_ascii=False, indent=2)
-        return f"[Documento {doc.display_name or doc.nome_arquivo or doc.id} disponivel em {ext or 'arquivo'}; conteudo nao extraido automaticamente.]"
-    except Exception as exc:
-        return f"[Erro ao ler documento {doc.id}: {exc}]"
-
-
 def _latest_student_doc(atividade_id: str, aluno_id: str, tipo: TipoDocumento) -> Optional[Documento]:
     docs = storage.listar_documentos(atividade_id, aluno_id=aluno_id, tipo=tipo)
     for doc in docs:
@@ -132,9 +117,127 @@ def _existing_aluno_turma_report(aluno_id: str, turma_id: str) -> Optional[Docum
         )
         for doc in docs:
             metadata = doc.metadata if isinstance(doc.metadata, dict) else {}
-            if getattr(doc, "aluno_id", None) == aluno_id and metadata.get("turma_id") == turma_id and not _is_error_doc(doc):
+            if (
+                getattr(doc, "aluno_id", None) == aluno_id
+                and metadata.get("turma_id") == turma_id
+                and metadata.get("geracao") == "provider_document_read_v1"
+                and not _is_error_doc(doc)
+            ):
                 return doc
     return None
+
+
+def _get_aluno_turma_provider(provider_id: Optional[str]):
+    try:
+        from ai_providers import ai_registry
+
+        if provider_id:
+            return ai_registry.get(provider_id)
+        return ai_registry.get_default()
+    except Exception as exc:
+        raise HTTPException(
+            status_code=400,
+            detail={
+                "mensagem": "Provider de IA indisponivel para relatorio aluno-turma",
+                "provider_id": provider_id,
+                "erro": str(exc),
+            },
+        )
+
+
+def _looks_like_failed_document_read(content: str) -> bool:
+    text = (content or "").strip()
+    if not text:
+        return True
+
+    lowered = text.casefold()
+    failure_markers = (
+        "falha_leitura_documento",
+        "conteudo nao extraido",
+        "conteúdo não extraído",
+        "não consigo acessar",
+        "nao consigo acessar",
+        "não posso acessar",
+        "nao posso acessar",
+        "não foi possível ler",
+        "nao foi possivel ler",
+        "unable to read",
+        "cannot access",
+        "can't access",
+    )
+    return any(marker in lowered for marker in failure_markers)
+
+
+def _aluno_turma_document_instruction(aluno, turma, materia, atividade) -> str:
+    return f"""
+Voce esta gerando um relatorio de desempenho individual aluno-turma.
+
+Leia o documento anexado. Ele e um RELATORIO_FINAL individual ja gerado para uma
+atividade do aluno. Use o conteudo real do documento; nao escreva placeholder e
+nao diga que o conteudo nao foi extraido.
+
+Escopo obrigatorio:
+- Aluno: {aluno.nome}
+- Turma: {turma.nome}
+- Materia: {materia.nome if materia else 'N/A'}
+- Atividade: {atividade.nome}
+
+Responda em Markdown com:
+- uma sintese pedagogica concreta da atividade;
+- nota ou resultado, se aparecer no documento;
+- pontos fortes;
+- areas de melhoria;
+- recomendacoes acionaveis;
+- evidencias do proprio documento.
+
+Se voce nao conseguir ler o documento anexado, responda exatamente:
+FALHA_LEITURA_DOCUMENTO: <motivo>
+""".strip()
+
+
+async def _analyze_aluno_turma_report_doc(provider, doc: Documento, aluno, turma, materia, atividade) -> Dict[str, Any]:
+    path = storage.resolver_caminho_documento(doc)
+    if not path.exists():
+        raise HTTPException(
+            status_code=500,
+            detail={
+                "mensagem": "Documento base nao encontrado para relatorio aluno-turma",
+                "documento_id": doc.id,
+                "nome_arquivo": doc.nome_arquivo,
+            },
+        )
+
+    response = await provider.analyze_document(
+        str(path),
+        _aluno_turma_document_instruction(aluno, turma, materia, atividade),
+    )
+    content = (getattr(response, "content", "") or "").strip()
+    if _looks_like_failed_document_read(content):
+        raise HTTPException(
+            status_code=502,
+            detail={
+                "mensagem": "Provider nao leu o documento base; relatorio aluno-turma nao foi gerado",
+                "documento_id": doc.id,
+                "provider": getattr(response, "provider", None),
+                "modelo": getattr(response, "model", None),
+                "resposta": content[:1000],
+            },
+        )
+
+    return {
+        "atividade_id": atividade.id,
+        "atividade_nome": atividade.nome,
+        "documento_id": doc.id,
+        "documento_nome": doc.nome_arquivo,
+        "criado_em": doc.criado_em.isoformat() if doc.criado_em else None,
+        "conteudo": content,
+        "provider": getattr(response, "provider", None),
+        "modelo": getattr(response, "model", None),
+        "tokens_usados": int(getattr(response, "tokens_used", 0) or 0),
+        "input_tokens": int(getattr(response, "input_tokens", 0) or 0),
+        "output_tokens": int(getattr(response, "output_tokens", 0) or 0),
+        "latency_ms": float(getattr(response, "latency_ms", 0) or 0),
+    }
 
 
 def _build_aluno_turma_report(aluno, turma, materia, entradas: List[Dict[str, Any]]) -> str:
@@ -146,14 +249,15 @@ def _build_aluno_turma_report(aluno, turma, materia, entradas: List[Dict[str, An
         f"**Materia:** {materia.nome if materia else 'N/A'}",
         f"**Atividades com relatorio final:** {len(entradas)}",
         "",
-        "## Sintese automatica",
+        "## Sintese",
         "",
         (
-            "Este relatorio consolida somente documentos do aluno nesta turma. "
-            "Ele nao mistura outras turmas da mesma materia nem documentos de outros alunos."
+            "Este relatorio foi gerado a partir da leitura por IA dos relatorios "
+            "finais individuais deste aluno nesta turma. O escopo e aluno + turma; "
+            "nao mistura outras turmas da mesma materia nem documentos de outros alunos."
         ),
         "",
-        "## Evidencias por atividade",
+        "## Leituras Por Atividade",
     ]
     for entrada in entradas:
         linhas.extend([
@@ -161,9 +265,11 @@ def _build_aluno_turma_report(aluno, turma, materia, entradas: List[Dict[str, An
             f"### {entrada['atividade_nome']}",
             "",
             f"- Documento base: `{entrada['documento_id']}`",
+            f"- Arquivo base: `{entrada.get('documento_nome') or 'N/A'}`",
             f"- Criado em: {entrada.get('criado_em') or 'N/A'}",
+            f"- Provider leitor: {entrada.get('provider') or 'N/A'} / {entrada.get('modelo') or 'N/A'}",
             "",
-            entrada["conteudo"][:4000],
+            entrada["conteudo"].strip(),
         ])
     linhas.extend([
         "",
@@ -1323,13 +1429,14 @@ async def redirect_legacy_pipeline_todos_os_alunos():
 async def executar_pipeline_desempenho_aluno_turma(
     aluno_id: str = Form(...),
     turma_id: str = Form(...),
+    provider_id: Optional[str] = Form(None),
     force_reexec: bool = Form(False),
 ):
     """Gera um relatorio de desempenho individual para aluno + turma.
 
-    Implementacao inicial sem provider: consolida os RELATORIO_FINAL existentes
-    daquele aluno naquela turma e salva um documento Markdown com metadata de
-    escopo. A geracao LLM pode substituir este corpo mantendo o mesmo contrato.
+    Le os RELATORIO_FINAL daquele aluno naquela turma com um provider de IA e
+    salva um Markdown consolidado. Se o provider nao conseguir ler o documento,
+    a execucao falha em vez de criar placeholder.
     """
     aluno = storage.get_aluno(aluno_id)
     if not aluno:
@@ -1358,6 +1465,16 @@ async def executar_pipeline_desempenho_aluno_turma(
         return {"task_id": task_id, "status": "completed", **result}
 
     materia = storage.get_materia(turma.materia_id) if turma.materia_id else None
+    provider = _get_aluno_turma_provider(provider_id)
+    if not provider:
+        raise HTTPException(
+            status_code=400,
+            detail={
+                "mensagem": "Provider de IA obrigatorio para relatorio aluno-turma",
+                "provider_id": provider_id,
+            },
+        )
+
     atividades = storage.listar_atividades(turma_id)
     entradas = []
 
@@ -1365,13 +1482,9 @@ async def executar_pipeline_desempenho_aluno_turma(
         doc = _latest_student_doc(atividade.id, aluno_id, TipoDocumento.RELATORIO_FINAL)
         if not doc:
             continue
-        entradas.append({
-            "atividade_id": atividade.id,
-            "atividade_nome": atividade.nome,
-            "documento_id": doc.id,
-            "criado_em": doc.criado_em.isoformat() if doc.criado_em else None,
-            "conteudo": _read_report_text(doc),
-        })
+        entradas.append(
+            await _analyze_aluno_turma_report_doc(provider, doc, aluno, turma, materia, atividade)
+        )
 
     if not entradas:
         raise HTTPException(
@@ -1404,9 +1517,26 @@ async def executar_pipeline_desempenho_aluno_turma(
         "materia_id": turma.materia_id,
         "atividade_ids": [entrada["atividade_id"] for entrada in entradas],
         "documento_origem_ids": [entrada["documento_id"] for entrada in entradas],
-        "geracao": "deterministica_v1",
+        "geracao": "provider_document_read_v1",
+        "provider_id": provider_id,
+        "leituras": [
+            {
+                "atividade_id": entrada["atividade_id"],
+                "documento_id": entrada["documento_id"],
+                "provider": entrada.get("provider"),
+                "modelo": entrada.get("modelo"),
+                "tokens_usados": entrada.get("tokens_usados", 0),
+                "input_tokens": entrada.get("input_tokens", 0),
+                "output_tokens": entrada.get("output_tokens", 0),
+            }
+            for entrada in entradas
+        ],
     }
     report_text = _build_aluno_turma_report(aluno, turma, materia, entradas)
+    tokens_usados = sum(entrada.get("tokens_usados", 0) for entrada in entradas)
+    tempo_processamento_ms = sum(entrada.get("latency_ms", 0) for entrada in entradas)
+    provider_nome = next((entrada.get("provider") for entrada in entradas if entrada.get("provider")), None)
+    provider_modelo = next((entrada.get("modelo") for entrada in entradas if entrada.get("modelo")), None)
 
     tmp_path = None
     try:
@@ -1421,6 +1551,10 @@ async def executar_pipeline_desempenho_aluno_turma(
             aluno_id=aluno_id,
             display_name=f"Desempenho aluno-turma - {aluno.nome} - {turma.nome}",
             metadata=metadata,
+            ia_provider=provider_nome,
+            ia_modelo=provider_modelo,
+            tokens_usados=tokens_usados,
+            tempo_processamento_ms=tempo_processamento_ms,
             criado_por="sistema",
         )
     finally:
