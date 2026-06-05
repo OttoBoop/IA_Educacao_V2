@@ -83,6 +83,7 @@ _TIPO_LABELS: Dict[str, str] = {
     "relatorio_desempenho_tarefa": "Relatório de Desempenho (Tarefa)",
     "relatorio_desempenho_turma": "Relatório de Desempenho (Turma)",
     "relatorio_desempenho_materia": "Relatório de Desempenho (Matéria)",
+    "relatorio_desempenho_aluno_turma": "Relatório de Desempenho (Aluno-Turma)",
 }
 
 # Characters unsafe for filesystems (/, \, :, *, ?, <, >, |)
@@ -1118,6 +1119,106 @@ class StorageManager:
             {"total_turmas": len(turmas)},
         )
         return payload
+
+    def get_visao_aluno(self, aluno_id: str) -> Optional[Dict[str, Any]]:
+        """Monta a visão aluno > matéria > turma > atividade.
+
+        A unidade de recorte é aluno + turma. Matéria só agrupa turmas; duas
+        turmas da mesma matéria permanecem separadas para preservar repetência.
+        """
+        started_at = time.perf_counter()
+        aluno = self.get_aluno(aluno_id)
+        if not aluno:
+            return None
+
+        turmas = self.get_turmas_do_aluno(aluno_id, apenas_ativas=False)
+        materias_por_id: Dict[str, Dict[str, Any]] = {}
+
+        tipos_status = {
+            "prova_respondida": TipoDocumento.PROVA_RESPONDIDA,
+            "correcao": TipoDocumento.CORRECAO,
+            "analise_habilidades": TipoDocumento.ANALISE_HABILIDADES,
+            "relatorio_final": TipoDocumento.RELATORIO_FINAL,
+        }
+
+        def _status_value(documento: Documento) -> str:
+            status = getattr(documento, "status", "")
+            return getattr(status, "value", status) or ""
+
+        def _doc_resumo(documento: Documento) -> Dict[str, Any]:
+            return {
+                "id": documento.id,
+                "tipo": documento.tipo.value,
+                "display_name": documento.display_name,
+                "nome_arquivo": documento.nome_arquivo,
+                "status": _status_value(documento),
+                "criado_em": documento.criado_em.isoformat() if documento.criado_em else None,
+            }
+
+        for turma_info in turmas:
+            turma_id = turma_info["id"]
+            materia_id = turma_info.get("materia_id") or ""
+            materia_nome = turma_info.get("materia_nome") or ""
+            materia_payload = materias_por_id.setdefault(
+                materia_id,
+                {
+                    "materia_id": materia_id,
+                    "materia_nome": materia_nome,
+                    "turmas": [],
+                },
+            )
+
+            atividades_payload = []
+            for atividade in self.listar_atividades(turma_id):
+                documentos_contexto = self.listar_documentos(atividade.id, aluno_id)
+                docs_aluno = [
+                    doc for doc in documentos_contexto
+                    if getattr(doc, "aluno_id", None) == aluno_id
+                ]
+                tipos_presentes = {doc.tipo for doc in docs_aluno}
+
+                atividades_payload.append({
+                    "atividade_id": atividade.id,
+                    "atividade_nome": atividade.nome,
+                    "tipo": atividade.tipo,
+                    "data_aplicacao": atividade.data_aplicacao.isoformat() if atividade.data_aplicacao else None,
+                    "nota_maxima": atividade.nota_maxima,
+                    "status_aluno": {
+                        f"tem_{chave}": tipo_doc in tipos_presentes
+                        for chave, tipo_doc in tipos_status.items()
+                    },
+                    "total_documentos_aluno": len(docs_aluno),
+                    "documentos_aluno": [_doc_resumo(doc) for doc in docs_aluno],
+                })
+
+            materia_payload["turmas"].append({
+                "turma_id": turma_id,
+                "turma_nome": turma_info.get("nome") or "",
+                "ano_letivo": turma_info.get("ano_letivo"),
+                "periodo": turma_info.get("periodo"),
+                "observacoes": turma_info.get("observacoes"),
+                "data_entrada": turma_info.get("data_entrada"),
+                "atividades": atividades_payload,
+                "total_atividades": len(atividades_payload),
+            })
+
+        materias = list(materias_por_id.values())
+        self._log_hot_endpoint_profile(
+            "/api/alunos/{id}/visao",
+            started_at,
+            {
+                "alunos": 1,
+                "turmas": len(turmas),
+                "materias": len(materias),
+            },
+            {"total_turmas": len(turmas), "total_materias": len(materias)},
+        )
+        return {
+            "aluno": aluno.to_dict(),
+            "materias": materias,
+            "total_materias": len(materias),
+            "total_turmas": len(turmas),
+        }
     
     # ============================================================
     # CRUD: ATIVIDADES

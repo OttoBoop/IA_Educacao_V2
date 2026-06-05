@@ -19,6 +19,7 @@ import asyncio
 import inspect
 import json
 import logging
+import tempfile
 import threading
 
 from prompts import PromptManager, PromptTemplate, EtapaProcessamento, prompt_manager
@@ -88,6 +89,90 @@ def _start_detached_task(func, *args, **kwargs):
     )
     thread.start()
     return thread
+
+
+def _status_value(doc: Documento) -> str:
+    status = getattr(doc, "status", "") or ""
+    return str(getattr(status, "value", status) or "")
+
+
+def _is_error_doc(doc: Documento) -> bool:
+    return _status_value(doc) == "erro"
+
+
+def _read_report_text(doc: Documento) -> str:
+    try:
+        path = storage.resolver_caminho_documento(doc)
+        if not path.exists():
+            return f"[Arquivo nao encontrado: {doc.nome_arquivo}]"
+        ext = (doc.extensao or path.suffix or "").lower()
+        if ext in {".md", ".txt", ".csv"}:
+            return path.read_text(encoding="utf-8")
+        if ext == ".json":
+            return json.dumps(json.loads(path.read_text(encoding="utf-8")), ensure_ascii=False, indent=2)
+        return f"[Documento {doc.display_name or doc.nome_arquivo or doc.id} disponivel em {ext or 'arquivo'}; conteudo nao extraido automaticamente.]"
+    except Exception as exc:
+        return f"[Erro ao ler documento {doc.id}: {exc}]"
+
+
+def _latest_student_doc(atividade_id: str, aluno_id: str, tipo: TipoDocumento) -> Optional[Documento]:
+    docs = storage.listar_documentos(atividade_id, aluno_id=aluno_id, tipo=tipo)
+    for doc in docs:
+        if getattr(doc, "aluno_id", None) == aluno_id and not _is_error_doc(doc):
+            return doc
+    return None
+
+
+def _existing_aluno_turma_report(aluno_id: str, turma_id: str) -> Optional[Documento]:
+    for atividade in storage.listar_atividades(turma_id):
+        docs = storage.listar_documentos(
+            atividade.id,
+            aluno_id=aluno_id,
+            tipo=TipoDocumento.RELATORIO_DESEMPENHO_ALUNO_TURMA,
+        )
+        for doc in docs:
+            metadata = doc.metadata if isinstance(doc.metadata, dict) else {}
+            if getattr(doc, "aluno_id", None) == aluno_id and metadata.get("turma_id") == turma_id and not _is_error_doc(doc):
+                return doc
+    return None
+
+
+def _build_aluno_turma_report(aluno, turma, materia, entradas: List[Dict[str, Any]]) -> str:
+    linhas = [
+        f"# Relatorio de Desempenho Aluno-Turma",
+        "",
+        f"**Aluno:** {aluno.nome}",
+        f"**Turma:** {turma.nome}",
+        f"**Materia:** {materia.nome if materia else 'N/A'}",
+        f"**Atividades com relatorio final:** {len(entradas)}",
+        "",
+        "## Sintese automatica",
+        "",
+        (
+            "Este relatorio consolida somente documentos do aluno nesta turma. "
+            "Ele nao mistura outras turmas da mesma materia nem documentos de outros alunos."
+        ),
+        "",
+        "## Evidencias por atividade",
+    ]
+    for entrada in entradas:
+        linhas.extend([
+            "",
+            f"### {entrada['atividade_nome']}",
+            "",
+            f"- Documento base: `{entrada['documento_id']}`",
+            f"- Criado em: {entrada.get('criado_em') or 'N/A'}",
+            "",
+            entrada["conteudo"][:4000],
+        ])
+    linhas.extend([
+        "",
+        "## Proximos usos",
+        "",
+        "- Usar este documento como insumo para o relatorio longitudinal do aluno.",
+        "- Regerar quando novos `relatorio_final` forem adicionados nesta turma.",
+    ])
+    return "\n".join(linhas).strip() + "\n"
 
 # Importar novo sistema de chat/models
 try:
@@ -1233,6 +1318,123 @@ async def redirect_legacy_pipeline_todos_os_alunos():
 # ============================================================
 # RELATÓRIO DE DESEMPENHO — aggregate synthesis endpoints
 # ============================================================
+
+@router.post("/api/executar/pipeline-desempenho-aluno-turma", tags=["Execução"])
+async def executar_pipeline_desempenho_aluno_turma(
+    aluno_id: str = Form(...),
+    turma_id: str = Form(...),
+    force_reexec: bool = Form(False),
+):
+    """Gera um relatorio de desempenho individual para aluno + turma.
+
+    Implementacao inicial sem provider: consolida os RELATORIO_FINAL existentes
+    daquele aluno naquela turma e salva um documento Markdown com metadata de
+    escopo. A geracao LLM pode substituir este corpo mantendo o mesmo contrato.
+    """
+    aluno = storage.get_aluno(aluno_id)
+    if not aluno:
+        raise HTTPException(404, "Aluno não encontrado")
+
+    turma = storage.get_turma(turma_id)
+    if not turma:
+        raise HTTPException(404, "Turma não encontrada")
+
+    turmas_do_aluno = storage.get_turmas_do_aluno(aluno_id, apenas_ativas=False)
+    if not any(item.get("id") == turma_id for item in turmas_do_aluno):
+        raise HTTPException(404, "Aluno não vinculado a esta turma")
+
+    existente = _existing_aluno_turma_report(aluno_id, turma_id)
+    if existente and not force_reexec:
+        task_id = register_pipeline_task(
+            task_type="pipeline_desempenho_aluno_turma",
+            atividade_id=existente.atividade_id,
+            aluno_ids=[],
+            turma_id=turma_id,
+            student_names={aluno_id: aluno.nome},
+            turma_nome=turma.nome,
+        )
+        result = {"documento": existente.to_dict(), "skipped": True}
+        complete_pipeline_task(task_id, "completed", result=result)
+        return {"task_id": task_id, "status": "completed", **result}
+
+    materia = storage.get_materia(turma.materia_id) if turma.materia_id else None
+    atividades = storage.listar_atividades(turma_id)
+    entradas = []
+
+    for atividade in atividades:
+        doc = _latest_student_doc(atividade.id, aluno_id, TipoDocumento.RELATORIO_FINAL)
+        if not doc:
+            continue
+        entradas.append({
+            "atividade_id": atividade.id,
+            "atividade_nome": atividade.nome,
+            "documento_id": doc.id,
+            "criado_em": doc.criado_em.isoformat() if doc.criado_em else None,
+            "conteudo": _read_report_text(doc),
+        })
+
+    if not entradas:
+        raise HTTPException(
+            status_code=400,
+            detail={
+                "mensagem": "Base minima insuficiente para relatorio aluno-turma",
+                "scope": "aluno_turma",
+                "aluno_id": aluno_id,
+                "turma_id": turma_id,
+                "faltando": ["relatorio_final_do_aluno"],
+            },
+        )
+
+    atividade_ref = entradas[0]["atividade_id"]
+    task_id = register_pipeline_task(
+        task_type="pipeline_desempenho_aluno_turma",
+        atividade_id=atividade_ref,
+        aluno_ids=[],
+        turma_id=turma_id,
+        materia_id=turma.materia_id,
+        materia_nome=materia.nome if materia else None,
+        turma_nome=turma.nome,
+        student_names={aluno_id: aluno.nome},
+    )
+
+    metadata = {
+        "scope": "aluno_turma",
+        "aluno_id": aluno_id,
+        "turma_id": turma_id,
+        "materia_id": turma.materia_id,
+        "atividade_ids": [entrada["atividade_id"] for entrada in entradas],
+        "documento_origem_ids": [entrada["documento_id"] for entrada in entradas],
+        "geracao": "deterministica_v1",
+    }
+    report_text = _build_aluno_turma_report(aluno, turma, materia, entradas)
+
+    tmp_path = None
+    try:
+        with tempfile.NamedTemporaryFile("w", suffix=".md", delete=False, encoding="utf-8") as tmp:
+            tmp.write(report_text)
+            tmp_path = Path(tmp.name)
+
+        documento = storage.salvar_documento(
+            str(tmp_path),
+            TipoDocumento.RELATORIO_DESEMPENHO_ALUNO_TURMA,
+            atividade_ref,
+            aluno_id=aluno_id,
+            display_name=f"Desempenho aluno-turma - {aluno.nome} - {turma.nome}",
+            metadata=metadata,
+            criado_por="sistema",
+        )
+    finally:
+        if tmp_path and tmp_path.exists():
+            tmp_path.unlink()
+
+    result = {
+        "documento": documento.to_dict() if documento else None,
+        "metadata": metadata,
+        "atividades_usadas": len(entradas),
+    }
+    complete_pipeline_task(task_id, "completed", result=result)
+    return {"task_id": task_id, "status": "completed", **result}
+
 
 @router.post("/api/executar/pipeline-desempenho-tarefa", tags=["Execução"])
 async def executar_pipeline_desempenho_tarefa(

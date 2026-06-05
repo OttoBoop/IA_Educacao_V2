@@ -10210,9 +10210,136 @@
             }
         }
 
+        function getAlunoVisaoTotals(data) {
+            const materias = Array.isArray(data?.materias) ? data.materias : [];
+            let totalTurmas = 0;
+            let totalAtividades = 0;
+            let totalDocumentosAluno = 0;
+
+            materias.forEach(materia => {
+                const turmas = Array.isArray(materia.turmas) ? materia.turmas : [];
+                totalTurmas += turmas.length;
+                turmas.forEach(turma => {
+                    const atividades = Array.isArray(turma.atividades) ? turma.atividades : [];
+                    totalAtividades += atividades.length;
+                    atividades.forEach(atividade => {
+                        totalDocumentosAluno += Number(atividade.total_documentos_aluno || 0);
+                    });
+                });
+            });
+
+            return {
+                totalMaterias: data?.total_materias ?? materias.length,
+                totalTurmas: data?.total_turmas ?? totalTurmas,
+                totalAtividades,
+                totalDocumentosAluno
+            };
+        }
+
+        function renderAlunoVisaoStatus(status = {}) {
+            const itens = [
+                { key: 'tem_prova_respondida', label: 'Prova' },
+                { key: 'tem_correcao', label: 'Correção' },
+                { key: 'tem_analise_habilidades', label: 'Análise' },
+                { key: 'tem_relatorio_final', label: 'Relatório' }
+            ];
+
+            return `
+                <div style="display: flex; gap: 6px; flex-wrap: wrap;">
+                    ${itens.map(item => {
+                        const ok = Boolean(status[item.key]);
+                        return `<span class="badge badge-${ok ? 'success' : 'warning'}">${ok ? '✓' : 'Pendente'} ${item.label}</span>`;
+                    }).join('')}
+                </div>
+            `;
+        }
+
+        function renderAlunoVisaoAtividades(turma, aluno) {
+            const atividades = Array.isArray(turma.atividades) ? turma.atividades : [];
+            if (atividades.length === 0) {
+                return '<div class="empty-state" style="padding: 24px 12px;"><div class="empty-icon" style="font-size: 2rem;">📝</div><div class="empty-title">Nenhuma atividade nesta turma</div></div>';
+            }
+
+            return `
+                <div class="table-container">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Atividade</th>
+                                <th>Docs do aluno</th>
+                                <th>Status individual</th>
+                                <th>Ações</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${atividades.map(atividade => `
+                                <tr>
+                                    <td>
+                                        <strong>${escapeHtml(atividade.atividade_nome || 'Atividade')}</strong>
+                                        <div style="margin-top: 4px; color: var(--text-muted); font-size: 0.8rem;">
+                                            ${escapeHtml(atividade.tipo || 'atividade')} ${atividade.data_aplicacao ? `• ${escapeHtml(formatDateTime(atividade.data_aplicacao))}` : ''}
+                                        </div>
+                                    </td>
+                                    <td>${Number(atividade.total_documentos_aluno || 0)}</td>
+                                    <td>${renderAlunoVisaoStatus(atividade.status_aluno || {})}</td>
+                                    <td>
+                                        <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+                                            <button class="btn btn-sm" onclick="showAtividade('${atividade.atividade_id}')">Ver Atividade</button>
+                                            <button class="btn btn-sm btn-primary" onclick="showResultadoAluno('${atividade.atividade_id}', '${aluno.id}', ${jsString(aluno.nome || '')}, ${jsString(atividade.atividade_nome || '')})">Ver Resultado</button>
+                                        </div>
+                                    </td>
+                                </tr>
+                            `).join('')}
+                        </tbody>
+                    </table>
+                </div>
+            `;
+        }
+
+        function renderAlunoVisaoMateria(materia, aluno) {
+            const turmas = Array.isArray(materia.turmas) ? materia.turmas : [];
+            const totalAtividades = turmas.reduce((acc, turma) => acc + (Array.isArray(turma.atividades) ? turma.atividades.length : 0), 0);
+
+            return `
+                <div class="card">
+                    <div class="card-header" style="align-items: flex-start; gap: 12px;">
+                        <div>
+                            <h3 class="card-title">${escapeHtml(materia.materia_nome || 'Matéria')}</h3>
+                            <div style="color: var(--text-muted); font-size: 0.9rem; margin-top: 4px;">
+                                ${turmas.length} turma(s) • ${totalAtividades} atividade(s)
+                            </div>
+                        </div>
+                    </div>
+                    ${turmas.length === 0 ? '<div class="empty-state"><div class="empty-icon">👥</div><div class="empty-title">Nenhuma turma nesta matéria</div></div>' : turmas.map(turma => `
+                        <div style="padding: 16px 20px; border-top: 1px solid var(--border);">
+                            <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; flex-wrap: wrap; margin-bottom: 12px;">
+                                <div>
+                                    <div style="font-weight: 600;">${escapeHtml(turma.turma_nome || 'Turma')}</div>
+                                    <div style="color: var(--text-muted); font-size: 0.85rem; margin-top: 4px;">
+                                        ${turma.ano_letivo || '-'}${turma.periodo ? ` • ${escapeHtml(turma.periodo)}` : ''}${turma.observacoes ? ` • ${escapeHtml(turma.observacoes)}` : ''}
+                                    </div>
+                                </div>
+                                <button class="btn btn-sm" onclick="showTurma('${turma.turma_id}')">Ver Turma</button>
+                            </div>
+                            ${renderAlunoVisaoAtividades(turma, aluno)}
+                        </div>
+                    `).join('')}
+                </div>
+            `;
+        }
+
+        function renderAlunoVisaoMaterias(data) {
+            const materias = Array.isArray(data?.materias) ? data.materias : [];
+            if (materias.length === 0) {
+                return '<div class="card"><div class="empty-state"><div class="empty-icon">📚</div><div class="empty-title">Nenhuma participação encontrada</div><div class="empty-text">Este aluno ainda não está vinculado a turmas com atividades.</div></div></div>';
+            }
+            return materias.map(materia => renderAlunoVisaoMateria(materia, data.aluno || {})).join('');
+        }
+
         async function showAluno(alunoId, alunoNome = '', matricula = '') {
             currentView = 'aluno';
             currentAluno = alunoId;
+            currentMateria = currentTurma = currentAtividade = null;
             const requestId = beginContentRequest('aluno');
             const hint = getAlunoHint(alunoId, alunoNome, matricula);
             const retryAction = `showAluno('${alunoId}', ${jsString(hint.nome)}, ${jsString(hint.matricula)})`;
@@ -10227,20 +10354,21 @@
                 requestId,
                 view: 'aluno',
                 title: hint.nome || 'Carregando aluno...',
-                subtitle: hint.matricula ? `Matrícula: ${hint.matricula}` : 'Buscando turmas e dados do aluno...',
-                loadingMessage: 'Buscando turmas e dados do aluno...',
+                subtitle: hint.matricula ? `Matrícula: ${hint.matricula}` : 'Buscando matérias, turmas e atividades do aluno...',
+                loadingMessage: 'Buscando matérias, turmas e atividades do aluno...',
                 retryAction,
                 sections: [
                     {
-                        title: 'Turmas do Aluno',
-                        body: renderLoadingTablePlaceholder(['Matéria', 'Turma', 'Ano', 'Ações'])
+                        title: 'Visão do Aluno',
+                        body: renderLoadingTablePlaceholder(['Atividade', 'Docs do aluno', 'Status individual', 'Ações'])
                     }
                 ]
             });
             try {
-                const data = await api(`/alunos/${alunoId}`);
+                const data = await api(`/alunos/${alunoId}/visao`);
                 if (!isContentRequestActive(requestId, 'aluno')) return;
                 window._alunoDetailData = data;
+                const totals = getAlunoVisaoTotals(data);
                 setBreadcrumb([
                     { nome: 'Início', onclick: 'showDashboard()' },
                     { nome: 'Alunos', onclick: 'showAlunos()' },
@@ -10252,14 +10380,13 @@
                     <div style="display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 16px;">
                         <button class="btn" onclick="showDashboardAluno('${alunoId}', ${jsString(data.aluno.nome)}, ${jsString(data.aluno.matricula || '')})">📊 Dashboard do Aluno</button>
                     </div>
-                    <div class="card">
-                        <div class="card-header"><h3 class="card-title">Turmas do Aluno (${data.total_turmas})</h3></div>
-                        ${data.turmas.length === 0 ? `<div class="empty-state"><div class="empty-icon">👥</div><div class="empty-title">Nenhuma turma</div></div>` : `
-                            <div class="table-container"><table><thead><tr><th>Matéria</th><th>Turma</th><th>Ano</th><th>Ações</th></tr></thead><tbody>
-                                ${data.turmas.map(t => `<tr><td><strong>${t.materia_nome}</strong></td><td>${t.nome}</td><td>${t.ano_letivo || '-'}</td><td><button class="btn btn-sm" onclick="showTurma('${t.id}')">Ver Turma</button></td></tr>`).join('')}
-                            </tbody></table></div>
-                        `}
+                    <div class="stats-grid">
+                        <div class="stat-card"><div class="stat-value">${totals.totalMaterias}</div><div class="stat-label">Matérias</div></div>
+                        <div class="stat-card"><div class="stat-value">${totals.totalTurmas}</div><div class="stat-label">Turmas</div></div>
+                        <div class="stat-card"><div class="stat-value">${totals.totalAtividades}</div><div class="stat-label">Atividades</div></div>
+                        <div class="stat-card"><div class="stat-value">${totals.totalDocumentosAluno}</div><div class="stat-label">Docs do aluno</div></div>
                     </div>
+                    ${renderAlunoVisaoMaterias(data)}
                 `;
             } catch (e) {
                 if (!isContentRequestActive(requestId, 'aluno')) return;

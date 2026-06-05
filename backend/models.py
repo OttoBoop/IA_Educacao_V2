@@ -70,6 +70,7 @@ class TipoDocumento(Enum):
     RELATORIO_DESEMPENHO_TAREFA = "relatorio_desempenho_tarefa"        # Análise agregada de uma atividade
     RELATORIO_DESEMPENHO_TURMA = "relatorio_desempenho_turma"          # Análise holística de uma turma
     RELATORIO_DESEMPENHO_MATERIA = "relatorio_desempenho_materia"      # Análise cross-turma de uma matéria
+    RELATORIO_DESEMPENHO_ALUNO_TURMA = "relatorio_desempenho_aluno_turma"  # Análise individual do aluno em uma turma
 
     @classmethod
     def documentos_base(cls) -> List['TipoDocumento']:
@@ -104,6 +105,7 @@ class TipoDocumento(Enum):
             cls.CORRECAO, cls.ANALISE_HABILIDADES, cls.RELATORIO_FINAL,
             cls.CORRECAO_NARRATIVA, cls.ANALISE_HABILIDADES_NARRATIVA, cls.RELATORIO_NARRATIVO,
             cls.RELATORIO_DESEMPENHO_TAREFA, cls.RELATORIO_DESEMPENHO_TURMA, cls.RELATORIO_DESEMPENHO_MATERIA,
+            cls.RELATORIO_DESEMPENHO_ALUNO_TURMA,
         ]
 
 
@@ -631,6 +633,12 @@ DEPENDENCIAS_DOCUMENTOS = {
 
     # Para relatório de desempenho por matéria: precisa dos relatórios finais de todas as turmas
     TipoDocumento.RELATORIO_DESEMPENHO_MATERIA: {
+        "obrigatorios": [TipoDocumento.RELATORIO_FINAL],
+        "opcionais": []
+    },
+
+    # Para relatório de desempenho aluno-turma: precisa dos relatórios finais daquele aluno na turma
+    TipoDocumento.RELATORIO_DESEMPENHO_ALUNO_TURMA: {
         "obrigatorios": [TipoDocumento.RELATORIO_FINAL],
         "opcionais": []
     },

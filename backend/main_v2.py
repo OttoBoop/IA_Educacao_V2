@@ -593,6 +593,15 @@ async def get_aluno(aluno_id: str):
     return data
 
 
+@app.get("/api/alunos/{aluno_id}/visao", tags=["Alunos"])
+async def get_visao_aluno(aluno_id: str):
+    """Visão aluno > matéria > turma > atividade."""
+    data = storage.get_visao_aluno(aluno_id)
+    if not data:
+        raise HTTPException(404, "Aluno não encontrado")
+    return data
+
+
 @app.delete("/api/alunos/{aluno_id}", tags=["Alunos"])
 async def deletar_aluno(aluno_id: str):
     """Deleta um aluno"""

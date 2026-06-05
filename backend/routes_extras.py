@@ -1459,6 +1459,110 @@ def _check_has_atividades(level: str, entity_id: str) -> bool:
     return False
 
 
+def _doc_to_aluno_turma_dict(doc):
+    payload = _doc_to_dict(doc)
+    payload.update({
+        "aluno_id": getattr(doc, "aluno_id", None),
+        "display_name": getattr(doc, "display_name", None),
+        "ia_provider": getattr(doc, "ia_provider", None),
+        "ia_modelo": getattr(doc, "ia_modelo", None),
+    })
+    return payload
+
+
+def _aluno_doc_status(docs_aluno: List[Any]) -> Dict[str, bool]:
+    docs_validos = [doc for doc in docs_aluno if not _doc_is_error(doc)]
+    tipos_presentes = {doc.tipo for doc in docs_validos}
+    return {
+        "tem_prova_respondida": TipoDocumento.PROVA_RESPONDIDA in tipos_presentes,
+        "tem_correcao": TipoDocumento.CORRECAO in tipos_presentes,
+        "tem_analise_habilidades": TipoDocumento.ANALISE_HABILIDADES in tipos_presentes,
+        "tem_relatorio_final": TipoDocumento.RELATORIO_FINAL in tipos_presentes,
+    }
+
+
+@router.get("/api/desempenho/aluno/{aluno_id}/turma/{turma_id}", tags=["Desempenho"])
+async def get_desempenho_aluno_turma(aluno_id: str, turma_id: str):
+    """Base de desempenho individual de um aluno em uma turma especifica.
+
+    Este endpoint ainda nao gera relatorio. Ele prepara o recorte correto
+    aluno + turma, lista atividades e documentos individuais, e informa se ha
+    base minima para uma futura geracao aluno-turma.
+    """
+    aluno = storage.get_aluno(aluno_id)
+    if not aluno:
+        raise HTTPException(status_code=404, detail="Aluno não encontrado")
+
+    turma = storage.get_turma(turma_id)
+    if not turma:
+        raise HTTPException(status_code=404, detail="Turma não encontrada")
+
+    turmas_do_aluno = storage.get_turmas_do_aluno(aluno_id, apenas_ativas=False)
+    turma_info = next((item for item in turmas_do_aluno if item.get("id") == turma_id), None)
+    if not turma_info:
+        raise HTTPException(status_code=404, detail="Aluno não vinculado a esta turma")
+
+    materia = storage.get_materia(turma.materia_id) if getattr(turma, "materia_id", None) else None
+    atividades_payload = []
+    atividades_com_correcao = 0
+    atividades_com_relatorio = 0
+    total_documentos_aluno = 0
+
+    for atividade in storage.listar_atividades(turma_id):
+        documentos_contexto = storage.listar_documentos(atividade.id, aluno_id)
+        docs_aluno = [
+            doc for doc in documentos_contexto
+            if getattr(doc, "aluno_id", None) == aluno_id
+        ]
+        status_aluno = _aluno_doc_status(docs_aluno)
+        if status_aluno["tem_correcao"]:
+            atividades_com_correcao += 1
+        if status_aluno["tem_relatorio_final"]:
+            atividades_com_relatorio += 1
+        total_documentos_aluno += len(docs_aluno)
+
+        atividades_payload.append({
+            "atividade_id": atividade.id,
+            "atividade_nome": atividade.nome,
+            "tipo": atividade.tipo,
+            "data_aplicacao": atividade.data_aplicacao.isoformat() if atividade.data_aplicacao else None,
+            "nota_maxima": atividade.nota_maxima,
+            "status_aluno": status_aluno,
+            "total_documentos_aluno": len(docs_aluno),
+            "documentos_aluno": [_doc_to_aluno_turma_dict(doc) for doc in docs_aluno],
+        })
+
+    faltando = []
+    if not atividades_payload:
+        faltando.append("atividades_da_turma")
+    if atividades_payload and atividades_com_relatorio == 0:
+        faltando.append("relatorio_final_do_aluno")
+
+    pode_gerar = len(faltando) == 0
+    return {
+        "aluno": aluno.to_dict(),
+        "turma": turma.to_dict(),
+        "materia": materia.to_dict() if materia else None,
+        "atividades": atividades_payload,
+        "base_minima": {
+            "scope": "aluno_turma",
+            "pode_gerar_relatorio": pode_gerar,
+            "faltando": faltando,
+            "atividades_com_correcao": atividades_com_correcao,
+            "atividades_com_relatorio_final": atividades_com_relatorio,
+            "total_atividades": len(atividades_payload),
+            "total_documentos_aluno": total_documentos_aluno,
+        },
+        "meta": {
+            "scope": "aluno_turma",
+            "aluno_id": aluno_id,
+            "turma_id": turma_id,
+            "materia_id": getattr(turma, "materia_id", None),
+            "tipo_documento_futuro": "relatorio_desempenho_aluno_turma",
+        },
+    }
+
+
 @router.get("/api/desempenho/{level}/{entity_id}", tags=["Desempenho"])
 async def get_desempenho(level: str, entity_id: str):
     """Returns desempenho data for a given entity, grouped by pipeline run.
