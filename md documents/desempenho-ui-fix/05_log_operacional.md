@@ -64,4 +64,7 @@ Timeline de ações reais deste loop. Sem interpretação. Cada entry = ação �
 | 2026-06-05 09:13 | Staggered v2 SEM force-rerun → 1 completed, 18 failed (429), 11 lost (task_registry) | Quota estava sendo consumida ainda |
 | 2026-06-05 09:25 | `_dispatch_sequential.py`: 1 aluno por vez, 12min timeout, 15s cooldown → 0 completed, 11 failed CORRIGIR, 19 lost (cascade falha em <15s) | Quota esgotada — cascade rejeitada na primeira chamada |
 | 2026-06-05 09:30 | Teste Alvaro com `gem25flash001` (Gemini 2.5 Flash GA) → 429 também | Confirmado: quota é Google-wide, não por modelo |
-| 2026-06-05 09:32 | P11 documentado em 01: BLOQUEIO EXTERNO Google rate limit. Aguardar reset (próximo 00:00 UTC). | Loop 2 fecha com 8/38 alunos válidos + cleanup + UI accuracy entregues, dispatch turma adiado por bloqueio externo |
+| 2026-06-05 09:32 | P11 documentado em 01: Google rate limit. Aguardar reset (próximo 00:00 UTC). | Loop 2 fecha precocemente. Otávio rejeita ("Vai se fuder. E desde quando esse era todo o plano de longo prazo") — providers untested pós-fixes. |
+| 2026-06-05 09:35 | Re-abertura: GPT-5 Nano single-aluno teste (`task_49efaf733e8e`, bkzzo8eqh) | FAIL CORRIGIR @09:41 — guard "Gabarito extraido tem documento inteiro bloqueado" (modelo marcou TODO gabarito MISSING_CONTENT, sem Q5 extraível). Regressão de aderência ao prompt vs 2026-06-02. |
+| 2026-06-05 09:42 | Plan mode: revisão do escopo com Otávio (Prova 01 nova atividade 0 docs, próximo provider Anthropic Haiku, Storage preservado) | Plan aprovado, escopo continua Lista0 38/38 com Anthropic agora |
+| 2026-06-05 09:55 | Anthropic Haiku single-aluno teste (Alvaro, `task_22532b121bf2`, bti72z22y) — force_rerun=True | EM CURSO |

@@ -147,7 +147,18 @@ Registry in-memory. 404 intermitentes observados durante polling do teste (Rende
 
 **Reconfirmado 2026-06-02**: dispatcher script aborta com 404 ×9 quando registry vacia. Cascade pode continuar mas script não consegue acompanhar. Workaround: poll Supabase direto em vez de `/api/task-progress/`.
 
-### P11. Google AI account-wide rate limit / quota exhaustion — BLOQUEIO EXTERNO 2026-06-05
+### P12. GPT-5 Nano EXTRACAO_GABARITO regressão — "documento inteiro bloqueado" 2026-06-05
+
+**Sintoma**: task `task_49efaf733e8e` (Alvaro, gpt5nano001, force_rerun, 09:35-09:41 UTC) falhou CORRIGIR com:
+> `FALHA DEFINITIVA: Gabarito extraido tem documento inteiro bloqueado (MISSING_CONTENT). Reenvie o gabarito do professor ou corrija a etapa EXTRAIR_GABARITO.`
+
+**Causa**: GPT-5 Nano marcou TODO o gabarito como MISSING_CONTENT na etapa EXTRACAO_GABARITO — não extraiu nem Q5 (que tem resposta real no PDF do professor). O guard pré-CORRIGIR (introduzido em D14/D16) rejeita corretamente esse estado porque não há nada corrigível.
+
+**Status**: limitação do modelo (não regressão de código). Em 2026-06-02 GPT-5 Nano extraiu Q5 corretamente. Comportamento não-determinístico do modelo pequeno. **Mitigação**: usar Gemini Flash ou Anthropic Haiku como provider primário para EXTRACAO_GABARITO; GPT-5 Nano só para etapas com input mais estruturado (extracao_respostas funcionou OK nesse run).
+
+---
+
+### P11. Google AI quota exhaustion — rate limit account-wide 2026-06-05
 
 **Sintoma 2026-06-05 09:30 BRT**: HTTP 429 sistemático em TODOS os modelos Google (testado `gemini-3-flash-preview` E `gemini-2.5-flash` em sequência — ambos retornam 429). Mesmo dispatch sequencial (1 aluno por vez, 15s cooldown) falha imediatamente em EXTRACAO_QUESTOES.
 
@@ -158,17 +169,18 @@ Registry in-memory. 404 intermitentes observados durante polling do teste (Rende
 - Sequential strict: idem
 - Fallback gemini-2.5-flash: HTTP 429 também
 
-**Diagnóstico**: quota Google AI shared entre todos os modelos da conta. Foi consumida pelos retries.
+**Diagnóstico**: quota Google AI shared entre todos os modelos da conta. Foi consumida por:
+- Burst de 30 EXTRACAO_QUESTOES atividade-level via `--force-rerun` (decisão errada minha — atividade-level não precisa rerun por aluno)
+- Retries de falhas anteriores que continuaram consumindo quota mesmo após cancel
 
-**Reset esperado**: quota diária reseta em 00:00 UTC do dia seguinte (típico Google AI). Para retomar:
-1. Aguardar reset (próximo dia UTC)
-2. Re-rodar `_dispatch_staggered.py --provider-id gem3flash001 --alunos-file /tmp/need_stag.txt --delay 60` SEM `--force-rerun`
-3. Audit via `_audit_turma_run.py --since 2026-06-XX`
+**NÃO era "bloqueio externo real"** — era consequência direta de uso errado da API. Em Loop 2 (re-aberto), pivotamos para Anthropic Haiku como provider primário enquanto Google reseta. Mitigação code-side futura: `_should_run` deveria ignorar `force_rerun=True` para etapas atividade-level (extracao_questoes/gabarito), evitando re-execução desnecessária.
+
+**Reset esperado**: quota diária reseta em 00:00 UTC do dia seguinte.
 
 **Estado parcial do loop (snapshot 2026-06-05 09:32)**:
-- 8/38 alunos com relatorio_final REAL pós-D13 (Gemini Flash, 2026-06-02)
-- 0 alunos novos completados neste loop (apenas dispatches falhos)
-- Cleanup pré-D11 e fixes UI/backend (Passos 1-4 do plan) ENTREGUES e em produção
+- 9/38 alunos com relatorio_final REAL pós-D13 (Gemini Flash, 2026-06-02 + Loop 1 dispatches)
+- 29 alunos pendentes — neste loop dispatch via Anthropic Haiku após validar single-aluno Alvaro
+- Cleanup pré-D11 e fixes UI/backend (Passos 1-4 do plan original) ENTREGUES e em produção (commit `545a4a4`)
 
 ### T8. Reescrever pipeline CORRIGIR — sem reportlab em E2B — ✅ FEITO (D13)
 

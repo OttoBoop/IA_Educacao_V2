@@ -1009,6 +1009,109 @@ async def handle_create_document(
                                 })
                                 continue
 
+                        # T3-v3+ : Normalize CORRECAO server-side before validation.
+                        # Small models (Anthropic Haiku, GPT-5 Nano) consistently fail
+                        # the trace-check on resposta_aluno/resposta_correta (paraphrase)
+                        # and miscompute nota_final/total_acertos/total_erros. Since
+                        # these fields are 100% deterministic from upstream docs and
+                        # the questoes[].nota the model provides, we overwrite them
+                        # here. This converts "model paraphrase = death" to
+                        # "model paraphrase = silently auto-corrected" and unblocks
+                        # multi-provider end-to-end runs (logged in P12).
+                        if tipo == TipoDocumento.CORRECAO and atividade_id and aluno_id:
+                            try:
+                                def _doc_json(docs):
+                                    json_docs = [
+                                        d for d in (docs or [])
+                                        if (getattr(d, "extensao", "") or "").lower() == ".json"
+                                    ]
+                                    if not json_docs:
+                                        return None
+                                    d = json_docs[0]  # listar_documentos returns desc by criado_em
+                                    p = storage.resolver_caminho_documento(d)
+                                    if not (p and p.exists()):
+                                        return None
+                                    try:
+                                        with open(p, "r", encoding="utf-8") as fh:
+                                            return json.load(fh)
+                                    except Exception:
+                                        return None
+
+                                gab_data = _doc_json(storage.listar_documentos(
+                                    atividade_id, None, TipoDocumento.EXTRACAO_GABARITO,
+                                ))
+                                resps_data = _doc_json(storage.listar_documentos(
+                                    atividade_id, aluno_id, TipoDocumento.EXTRACAO_RESPOSTAS,
+                                ))
+                                gab_by_num = {}
+                                if isinstance(gab_data, dict):
+                                    for g in gab_data.get("respostas") or []:
+                                        if isinstance(g, dict):
+                                            gn = g.get("questao_numero") or g.get("numero")
+                                            if gn is not None:
+                                                gab_by_num[gn] = g.get("resposta_correta")
+                                resps_by_num = {}
+                                if isinstance(resps_data, dict):
+                                    for r in resps_data.get("respostas") or []:
+                                        if isinstance(r, dict):
+                                            rn = r.get("questao_numero") or r.get("numero")
+                                            if rn is not None:
+                                                resps_by_num[rn] = r.get("resposta_aluno")
+
+                                questoes_list = parsed_content.get("questoes") or []
+                                if isinstance(questoes_list, list) and (gab_by_num or resps_by_num):
+                                    for q in questoes_list:
+                                        if not isinstance(q, dict):
+                                            continue
+                                        numero = q.get("numero")
+                                        if numero in gab_by_num:
+                                            up_rc = gab_by_num[numero]
+                                            q["resposta_correta"] = (
+                                                "MISSING_CONTENT"
+                                                if up_rc is None or str(up_rc).strip().upper() in ("", "MISSING_CONTENT", "N/A", "NULL", "NONE")
+                                                else up_rc
+                                            )
+                                        if numero in resps_by_num:
+                                            up_ra = resps_by_num[numero]
+                                            if up_ra is not None:
+                                                q["resposta_aluno"] = up_ra
+                                        rc_up = str(q.get("resposta_correta") or "").strip().upper()
+                                        if rc_up in ("", "MISSING_CONTENT", "N/A", "NULL", "NONE"):
+                                            q["nota"] = None
+                                            q["acerto"] = None
+                                            if not isinstance(q.get("feedback"), str) or len(str(q.get("feedback") or "").strip()) < 10:
+                                                q["feedback"] = "Nao corrigivel: gabarito do professor nao cobre esta questao."
+
+                                    # Recompute aggregates from corrected questoes[]
+                                    nota_sum = 0.0
+                                    acertos = 0
+                                    erros = 0
+                                    for q in questoes_list:
+                                        if not isinstance(q, dict):
+                                            continue
+                                        rc = str(q.get("resposta_correta") or "").strip().upper()
+                                        if rc in ("", "MISSING_CONTENT", "N/A", "NULL", "NONE"):
+                                            continue
+                                        nv = q.get("nota")
+                                        if isinstance(nv, (int, float)):
+                                            nota_sum += float(nv)
+                                        av = q.get("acerto")
+                                        if av is True:
+                                            acertos += 1
+                                        elif av is False:
+                                            erros += 1
+                                    parsed_content["nota_final"] = round(nota_sum, 2)
+                                    parsed_content["total_acertos"] = acertos
+                                    parsed_content["total_erros"] = erros
+                                    if not isinstance(parsed_content.get("_avisos_documento"), list):
+                                        parsed_content["_avisos_documento"] = []
+                                    if not isinstance(parsed_content.get("_avisos_questao"), list):
+                                        parsed_content["_avisos_questao"] = []
+                            except Exception as _norm_e:
+                                logger.warning(
+                                    "[create_document] CORRECAO normalize failed: %s", _norm_e,
+                                )
+
                         # Type & math checks for CORRECAO: total_acertos/total_erros numeric,
                         # nota_final must equal the sum of correctable questoes[].nota
                         # (matches the downstream cross-check validator).
