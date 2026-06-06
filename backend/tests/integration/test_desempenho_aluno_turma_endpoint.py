@@ -108,11 +108,13 @@ def desempenho_aluno_turma_env(monkeypatch, temp_data_dir):
     monkeypatch.setattr(main_v2, "storage", storage)
     monkeypatch.setattr(routes_extras, "storage", storage)
     monkeypatch.setattr(routes_prompts, "storage", storage)
-    monkeypatch.setattr(
-        routes_prompts,
-        "_get_aluno_turma_provider",
-        lambda provider_id=None: FakeAlunoTurmaProvider(),
-    )
+    provider_calls = []
+
+    def fake_get_aluno_turma_provider(model_id=None, provider_id=None):
+        provider_calls.append({"model_id": model_id, "provider_id": provider_id})
+        return FakeAlunoTurmaProvider()
+
+    monkeypatch.setattr(routes_prompts, "_get_aluno_turma_provider", fake_get_aluno_turma_provider)
 
     return {
         "client": TestClient(main_v2.app),
@@ -126,6 +128,7 @@ def desempenho_aluno_turma_env(monkeypatch, temp_data_dir):
         "atividade_1": atividade_1,
         "atividade_2": atividade_2,
         "atividade_outra_turma": atividade_outra_turma,
+        "provider_calls": provider_calls,
     }
 
 
@@ -275,6 +278,29 @@ def test_pipeline_desempenho_aluno_turma_salva_documento(desempenho_aluno_turma_
     assert "Maria demonstra dominio consistente" in conteudo
     assert "conteudo nao extraido automaticamente" not in conteudo
     assert "Documento disponivel" not in conteudo
+
+
+def test_pipeline_desempenho_aluno_turma_aceita_model_id(desempenho_aluno_turma_env):
+    env = desempenho_aluno_turma_env
+    response = env["client"].post(
+        "/api/executar/pipeline-desempenho-aluno-turma",
+        data={
+            "aluno_id": env["aluno"].id,
+            "turma_id": env["turma_2021"].id,
+            "model_id": "modelo-novo-cadastrado",
+        },
+    )
+
+    assert response.status_code == 200, response.text
+    data = response.json()
+
+    assert env["provider_calls"][0] == {
+        "model_id": "modelo-novo-cadastrado",
+        "provider_id": None,
+    }
+    assert data["metadata"]["model_id"] == "modelo-novo-cadastrado"
+    assert data["metadata"]["provider_id"] is None
+    assert data["metadata"]["provider_ref"] == "modelo-novo-cadastrado"
 
 
 def test_pipeline_desempenho_aluno_turma_nao_duplica_sem_force(desempenho_aluno_turma_env):

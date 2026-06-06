@@ -127,7 +127,10 @@ def _existing_aluno_turma_report(aluno_id: str, turma_id: str) -> Optional[Docum
     return None
 
 
-def _get_aluno_turma_provider(provider_id: Optional[str]):
+def _get_aluno_turma_provider(
+    model_id: Optional[str] = None,
+    provider_id: Optional[str] = None,
+):
     def _from_chat_service_config(model_id: Optional[str]):
         from chat_service import resolve_provider_config
         from ai_providers import AnthropicProvider, GeminiProvider, LocalLLMProvider, OpenAIProvider
@@ -154,6 +157,9 @@ def _get_aluno_turma_provider(provider_id: Optional[str]):
     try:
         from ai_providers import ai_registry
 
+        if model_id:
+            return _from_chat_service_config(model_id)
+
         if provider_id:
             try:
                 return ai_registry.get(provider_id)
@@ -166,6 +172,7 @@ def _get_aluno_turma_provider(provider_id: Optional[str]):
             status_code=400,
             detail={
                 "mensagem": "Provider de IA indisponivel para relatorio aluno-turma",
+                "model_id": model_id,
                 "provider_id": provider_id,
                 "erro": str(exc),
             },
@@ -1470,6 +1477,7 @@ async def redirect_legacy_pipeline_todos_os_alunos():
 async def executar_pipeline_desempenho_aluno_turma(
     aluno_id: str = Form(...),
     turma_id: str = Form(...),
+    model_id: Optional[str] = Form(None),
     provider_id: Optional[str] = Form(None),
     force_reexec: bool = Form(False),
 ):
@@ -1506,12 +1514,14 @@ async def executar_pipeline_desempenho_aluno_turma(
         return {"task_id": task_id, "status": "completed", **result}
 
     materia = storage.get_materia(turma.materia_id) if turma.materia_id else None
-    provider = _get_aluno_turma_provider(provider_id)
+    provider_ref = model_id or provider_id
+    provider = _get_aluno_turma_provider(model_id=model_id, provider_id=provider_id)
     if not provider:
         raise HTTPException(
             status_code=400,
             detail={
                 "mensagem": "Provider de IA obrigatorio para relatorio aluno-turma",
+                "model_id": model_id,
                 "provider_id": provider_id,
             },
         )
@@ -1559,7 +1569,9 @@ async def executar_pipeline_desempenho_aluno_turma(
         "atividade_ids": [entrada["atividade_id"] for entrada in entradas],
         "documento_origem_ids": [entrada["documento_id"] for entrada in entradas],
         "geracao": "provider_document_read_v1",
+        "model_id": model_id,
         "provider_id": provider_id,
+        "provider_ref": provider_ref,
         "leituras": [
             {
                 "atividade_id": entrada["atividade_id"],
