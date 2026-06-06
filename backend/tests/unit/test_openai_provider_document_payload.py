@@ -45,7 +45,7 @@ async def test_openai_analyze_document_reasoning_usa_max_completion_tokens(tmp_p
 
     assert payload["model"] == "gpt-5.4-mini"
     assert payload["max_completion_tokens"] == 4096
-    assert payload["reasoning_effort"] == "minimal"
+    assert payload["reasoning_effort"] == "low"
     assert "max_tokens" not in payload
     assert result.content == "analise"
     assert result.metadata["is_reasoning_model"] is True

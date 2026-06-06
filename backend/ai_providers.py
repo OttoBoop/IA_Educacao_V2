@@ -168,10 +168,10 @@ class OpenAIProvider(AIProvider):
         if self._is_reasoning_model():
             # Reasoning models usam max_completion_tokens, não max_tokens
             payload["max_completion_tokens"] = max_tokens
-            # Definir reasoning_effort - usar "minimal" por padrão para evitar respostas vazias
+            # Definir reasoning_effort baixo por padrão para evitar respostas vazias
             # Ref: https://community.openai.com/t/gpt-5-mini-api-unstable-and-slow-repeated-timeout-and-empty-responses/1355041
             # Modelos GPT-5 podem consumir todos tokens em raciocínio se effort for alto demais
-            effort = reasoning_effort if reasoning_effort in ['minimal', 'low', 'medium', 'high'] else 'minimal'
+            effort = reasoning_effort if reasoning_effort in ['none', 'low', 'medium', 'high', 'xhigh'] else 'low'
             payload["reasoning_effort"] = effort
         else:
             # Modelos normais: usar temperature e max_tokens
@@ -291,7 +291,7 @@ class OpenAIProvider(AIProvider):
         }
         if self._is_reasoning_model():
             payload["max_completion_tokens"] = 4096
-            payload["reasoning_effort"] = "minimal"
+            payload["reasoning_effort"] = "low"
         else:
             payload["max_tokens"] = 4096
 
