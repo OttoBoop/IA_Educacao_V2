@@ -234,10 +234,24 @@ async def _analyze_aluno_turma_report_doc(provider, doc: Documento, aluno, turma
             },
         )
 
-    response = await provider.analyze_document(
-        str(path),
-        _aluno_turma_document_instruction(aluno, turma, materia, atividade),
-    )
+    try:
+        response = await provider.analyze_document(
+            str(path),
+            _aluno_turma_document_instruction(aluno, turma, materia, atividade),
+        )
+    except HTTPException:
+        raise
+    except Exception as exc:
+        raise HTTPException(
+            status_code=502,
+            detail={
+                "mensagem": "Provider falhou ao ler documento base; relatorio aluno-turma nao foi gerado",
+                "documento_id": doc.id,
+                "provider": getattr(provider, "name", None),
+                "modelo": getattr(provider, "model", None),
+                "erro": str(exc)[:2000],
+            },
+        )
     content = (getattr(response, "content", "") or "").strip()
     if _looks_like_failed_document_read(content):
         raise HTTPException(
