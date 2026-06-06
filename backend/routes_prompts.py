@@ -1775,6 +1775,19 @@ async def executar_pipeline_desempenho_aluno_turma(
                 "status": "failed",
                 "erro": exc.detail,
             })
+        except Exception as exc:
+            erro = {
+                "mensagem": "Falha ao gerar relatorio aluno-turma para o modelo solicitado",
+                "erro": str(exc)[:2000],
+            }
+            if len(requests) == 1:
+                raise HTTPException(502, erro) from exc
+            falhas.append({
+                "model_id": request.get("model_id"),
+                "provider_id": request.get("provider_id"),
+                "status": "failed",
+                "erro": erro,
+            })
 
     if not resultados and falhas:
         complete_pipeline_task(task_id, "failed", error=json.dumps(falhas, ensure_ascii=False))
@@ -1896,6 +1909,16 @@ async def executar_documento_multi_ia(
                 "model_id": request.get("model_id"),
                 "provider_id": request.get("provider_id"),
                 "erro": exc.detail,
+            })
+        except Exception as exc:
+            resultados.append({
+                "status": "failed",
+                "model_id": request.get("model_id"),
+                "provider_id": request.get("provider_id"),
+                "erro": {
+                    "mensagem": "Provider falhou ao analisar documento",
+                    "erro": str(exc)[:2000],
+                },
             })
 
     ok = [item for item in resultados if item.get("status") == "completed"]

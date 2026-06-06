@@ -421,6 +421,85 @@ def test_documento_multi_ia_salva_um_documento_por_modelo(desempenho_aluno_turma
     assert {doc.metadata["selection_mode"] for doc in docs} == {"explicit"}
 
 
+def test_documento_multi_ia_falha_de_um_modelo_nao_apaga_sucesso(
+    desempenho_aluno_turma_env,
+    monkeypatch,
+):
+    env = desempenho_aluno_turma_env
+    from models import TipoDocumento
+    import routes_prompts
+
+    origem = env["storage"].listar_documentos(
+        env["atividade_1"].id,
+        aluno_id=env["aluno"].id,
+        tipo=TipoDocumento.RELATORIO_FINAL,
+    )[0]
+
+    class FakeResolution:
+        def __init__(self, model_id):
+            self.requested_model_id = model_id
+            self.legacy_provider_id = None
+            self.resolved_model_id = model_id
+            self.provider_type = "fake-modern-api"
+            self.model_name = model_id
+
+        def metadata(self):
+            return {
+                "requested_model_id": self.requested_model_id,
+                "legacy_provider_id": None,
+                "resolved_model_id": self.resolved_model_id,
+                "resolved_provider": self.provider_type,
+                "resolved_model": self.model_name,
+                "provider_resolution_source": "test",
+            }
+
+    class PartiallyFailingProvider:
+        def __init__(self, model_id):
+            self.model_id = model_id
+
+        async def analyze_document(self, file_path, instruction):
+            if self.model_id == "modelo-b":
+                raise RuntimeError("falha simulada")
+            return SimpleNamespace(
+                content="Analise objetiva do documento.",
+                provider="fake-modern-api",
+                model=self.model_id,
+                tokens_used=11,
+                input_tokens=7,
+                output_tokens=4,
+                latency_ms=12.0,
+            )
+
+    def resolver(model_id=None, provider_id=None):
+        resolution = FakeResolution(model_id)
+        return resolution, PartiallyFailingProvider(model_id)
+
+    monkeypatch.setattr(routes_prompts, "_resolve_document_read_provider", resolver)
+
+    response = env["client"].post(
+        "/api/executar/documento-multi-ia",
+        data={
+            "documento_id": origem.id,
+            "model_ids": '["modelo-a", "modelo-b"]',
+        },
+    )
+
+    assert response.status_code == 200, response.text
+    data = response.json()
+
+    assert data["status"] == "completed"
+    assert [item["status"] for item in data["resultados"]] == ["completed", "failed"]
+    assert data["resultados"][1]["model_id"] == "modelo-b"
+    assert "falha simulada" in data["resultados"][1]["erro"]["erro"]
+
+    docs = env["storage"].listar_documentos(
+        env["atividade_1"].id,
+        tipo=TipoDocumento.ANALISE_DOCUMENTO_IA,
+    )
+    assert len(docs) == 1
+    assert docs[0].metadata["requested_model_id"] == "modelo-a"
+
+
 def test_pipeline_desempenho_aluno_turma_nao_duplica_sem_force(desempenho_aluno_turma_env):
     env = desempenho_aluno_turma_env
     payload = {

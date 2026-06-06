@@ -23,7 +23,7 @@ Timeline viva da frente.
 | 2026-06-05 18:15 BRT | Hotfix de leitura real publicado | Commit `0e0d38e` removeu a geracao deterministica/placeholder e passou a exigir `provider.analyze_document(...)`; deploy `dep-d8hjmps8aovs73dendtg` ficou `live`. |
 | 2026-06-05 18:15 BRT | Novo smoke remoto aprovado | `force_reexec=true` gerou doc `8f1c49f009189df1` com `ia_provider=openai`, `ia_modelo=gpt-4o`, `tokens_usados=3203`, metadata `geracao=provider_document_read_v1` e conteudo pedagogico real. Download salvo em `logs/downloads/relatorio_desempenho_aluno_turma_8f1c49f009189df1.md`. |
 | 2026-06-06 18:16 BRT | Comparativo remoto de providers base | OpenAI GPT-4o, OpenAI GPT-4o Mini, Claude Haiku e Claude Sonnet geraram relatorios aluno-turma e foram baixados. Gemini Pro/Flash/Flash Lite/3 Flash falharam por HTTP 429 `RESOURCE_EXHAUSTED` nos creditos prepay do Google. Tabela em `logs/provider-comparison-2026-06-06/tabela_resultados.md`. |
-| 2026-06-06 18:55 BRT | Contrato multi-IA implementado no backend | `model_id` virou canonico, `provider_id` ficou legado, `model_ids` gera comparativo multi-IA, `source_document_ids` escolhe documentos de origem, e `POST /api/executar/documento-multi-ia` salva `analise_documento_ia` por modelo. Validacao focada: 76 testes passaram. |
+| 2026-06-06 18:55 BRT | Contrato multi-IA implementado no backend | `model_id` virou canonico, `provider_id` ficou legado, `model_ids` gera comparativo multi-IA, `source_document_ids` escolhe documentos de origem, e `POST /api/executar/documento-multi-ia` salva `analise_documento_ia` por modelo. Validacao focada: 77 testes passaram. |
 
 ## Regra Do Log
 
