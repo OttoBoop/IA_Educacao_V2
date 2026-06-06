@@ -285,6 +285,16 @@ class OpenAIProvider(AIProvider):
                 "content": f"{instruction}\n\n---\nConteúdo do documento:\n{content}"
             }]
         
+        payload = {
+            "model": self.model,
+            "messages": messages,
+        }
+        if self._is_reasoning_model():
+            payload["max_completion_tokens"] = 4096
+            payload["reasoning_effort"] = "minimal"
+        else:
+            payload["max_tokens"] = 4096
+
         async with httpx.AsyncClient() as client:
             try:
                 response = await client.post(
@@ -293,11 +303,7 @@ class OpenAIProvider(AIProvider):
                         "Authorization": f"Bearer {self.api_key}",
                         "Content-Type": "application/json"
                     },
-                    json={
-                        "model": self.model,
-                        "messages": messages,
-                        "max_tokens": 4096
-                    },
+                    json=payload,
                     timeout=120.0
                 )
                 response.raise_for_status()
@@ -308,7 +314,7 @@ class OpenAIProvider(AIProvider):
         latency = (time.time() - start) * 1000
         
         return AIResponse(
-            content=data["choices"][0]["message"]["content"],
+            content=data["choices"][0]["message"].get("content") or "",
             provider="openai",
             model=self.model,
             tokens_used=data["usage"]["total_tokens"],
@@ -317,7 +323,9 @@ class OpenAIProvider(AIProvider):
             latency_ms=latency,
             metadata={
                 "file_analyzed": file_path,
-                "finish_reason": data["choices"][0]["finish_reason"]
+                "finish_reason": data["choices"][0]["finish_reason"],
+                "is_reasoning_model": self._is_reasoning_model(),
+                "reasoning_tokens": data["usage"].get("completion_tokens_details", {}).get("reasoning_tokens", 0)
             }
         )
     
