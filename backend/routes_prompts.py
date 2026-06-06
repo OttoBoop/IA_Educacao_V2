@@ -128,12 +128,39 @@ def _existing_aluno_turma_report(aluno_id: str, turma_id: str) -> Optional[Docum
 
 
 def _get_aluno_turma_provider(provider_id: Optional[str]):
+    def _from_chat_service_config(model_id: Optional[str]):
+        from chat_service import resolve_provider_config
+        from ai_providers import AnthropicProvider, GeminiProvider, LocalLLMProvider, OpenAIProvider
+
+        config = resolve_provider_config(model_id)
+        tipo = (config.get("tipo") or "").lower()
+        modelo = config.get("modelo") or ""
+        api_key = config.get("api_key") or ""
+
+        if tipo in {"openai", "openaiprovider"}:
+            return OpenAIProvider(api_key=api_key, model=modelo)
+        if tipo in {"anthropic", "anthropicprovider"}:
+            return AnthropicProvider(api_key=api_key, model=modelo)
+        if tipo in {"google", "gemini", "geminiprovider"}:
+            return GeminiProvider(api_key=api_key, model=modelo)
+        if tipo in {"ollama", "localllmprovider"}:
+            return LocalLLMProvider(
+                base_url=config.get("base_url") or "http://localhost:11434",
+                model=modelo or "llama3",
+            )
+
+        raise ValueError(f"Provider '{tipo}' nao suportado para leitura aluno-turma")
+
     try:
         from ai_providers import ai_registry
 
         if provider_id:
-            return ai_registry.get(provider_id)
-        return ai_registry.get_default()
+            try:
+                return ai_registry.get(provider_id)
+            except Exception:
+                return _from_chat_service_config(provider_id)
+
+        return ai_registry.get_default() or _from_chat_service_config(None)
     except Exception as exc:
         raise HTTPException(
             status_code=400,
