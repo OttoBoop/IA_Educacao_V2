@@ -34,6 +34,7 @@ from models import (
 from prompts import PromptManager, PromptTemplate, EtapaProcessamento, prompt_manager
 from storage import StorageManager, storage
 from ai_providers import ai_registry, AIResponse
+from ai_execution import CAPABILITY_MULTIMODAL, create_document_provider, resolve_ai_model
 from token_usage import record_token_usage
 
 # Import do sistema multimodal
@@ -419,6 +420,9 @@ Você DEVE usar as ferramentas disponíveis para produzir dois outputs:
 _provider_filter_ctx: contextvars.ContextVar[Optional[str]] = contextvars.ContextVar(
     "provider_filter", default=None
 )
+_source_document_ids_ctx: contextvars.ContextVar[Dict[str, str]] = contextvars.ContextVar(
+    "source_document_ids", default={}
+)
 
 
 class PipelineExecutor:
@@ -687,8 +691,12 @@ class PipelineExecutor:
         Obtém configuração do provider para uso com ClienteAPIMultimodal.
         Usa a função unificada resolve_provider_config do chat_service.
         """
-        from chat_service import resolve_provider_config
-        config = resolve_provider_config(provider_id)
+        resolution = resolve_ai_model(
+            model_id=provider_id,
+            required_capability=CAPABILITY_MULTIMODAL,
+        )
+        config = dict(resolution.config)
+        config["_resolution"] = resolution.metadata()
         print(f"[DEBUG] Provider config: tipo={config['tipo']}, modelo={config['modelo']}")
         return config
     
@@ -697,26 +705,8 @@ class PipelineExecutor:
         Obtém provider para uso legado (modo texto).
         Usa a função unificada resolve_provider_config e converte para objeto Provider.
         """
-        from ai_providers import OpenAIProvider, AnthropicProvider, GeminiProvider
-        from chat_service import resolve_provider_config
-
-        # Usar função unificada para obter config
-        config = resolve_provider_config(provider_name)
-
-        # Converter config para objeto Provider
-        tipo = config["tipo"]
-        api_key = config["api_key"]
-        modelo = config["modelo"]
-        base_url = config.get("base_url")
-
-        if tipo == "openai":
-            return OpenAIProvider(api_key=api_key, model=modelo, base_url=base_url)
-        elif tipo == "anthropic":
-            return AnthropicProvider(api_key=api_key, model=modelo)
-        elif tipo == "google":
-            return GeminiProvider(api_key=api_key, model=modelo)
-        else:
-            raise ValueError(f"Tipo de provider não suportado para modo legado: {tipo}")
+        resolution = resolve_ai_model(model_id=provider_name)
+        return create_document_provider(resolution)
     
     # ============================================================
     # MÉTODO PRINCIPAL - EXECUTAR ETAPA (LEGADO + MULTIMODAL)
@@ -1720,6 +1710,56 @@ PROMPT ORIGINAL DE REFERENCIA, APENAS PARA TAREFA E SCHEMA:
                 return doc
         return None
 
+    def _source_doc_id_for(
+        self,
+        source_document_ids: Optional[Dict[str, str]],
+        tipo: TipoDocumento,
+        chave: str,
+        atividade_id: Optional[str] = None,
+    ) -> Optional[str]:
+        source_document_ids = source_document_ids or {}
+        keys = [chave, tipo.value]
+        if atividade_id:
+            keys.extend([
+                str(atividade_id),
+                f"{chave}:{atividade_id}",
+                f"{tipo.value}:{atividade_id}",
+            ])
+        for key in keys:
+            doc_id = source_document_ids.get(key)
+            if doc_id:
+                return str(doc_id)
+        return None
+
+    def _source_override_doc(
+        self,
+        source_document_ids: Optional[Dict[str, str]],
+        tipo: TipoDocumento,
+        chave: str,
+        atividade_id: str,
+        aluno_id: Optional[str],
+    ) -> Tuple[Optional[Any], bool, Optional[str]]:
+        doc_id = self._source_doc_id_for(source_document_ids, tipo, chave, atividade_id)
+        if not doc_id:
+            return None, False, None
+
+        doc = self.storage.get_documento(doc_id)
+        if not doc:
+            return None, True, f"{chave} explicito nao encontrado: {doc_id}"
+        if doc.tipo != tipo:
+            return None, True, (
+                f"{chave} explicito tem tipo {doc.tipo.value}; esperado {tipo.value}"
+            )
+        if getattr(doc, "atividade_id", None) != atividade_id:
+            return None, True, (
+                f"{chave} explicito pertence a outra atividade: {doc_id}"
+            )
+        if aluno_id and getattr(doc, "aluno_id", None) not in (None, aluno_id):
+            return None, True, (
+                f"{chave} explicito pertence a outro aluno: {doc_id}"
+            )
+        return doc, True, None
+
     def _coletar_arquivos_para_etapa(
         self,
         etapa: EtapaProcessamento,
@@ -1778,7 +1818,18 @@ PROMPT ORIGINAL DE REFERENCIA, APENAS PARA TAREFA E SCHEMA:
             if caminho:
                 arquivos.append(caminho)
 
-        def _adicionar_json_mais_recente(docs, tipo: TipoDocumento) -> None:
+        source_document_ids = _source_document_ids_ctx.get() or {}
+
+        def _adicionar_json_mais_recente(docs, tipo: TipoDocumento, chave: str) -> None:
+            explicit_doc, has_override, erro = self._source_override_doc(
+                source_document_ids, tipo, chave, atividade_id, aluno_id
+            )
+            if has_override:
+                if erro:
+                    logger.warning("Source document explicito invalido: %s", erro)
+                    return
+                _adicionar_documento(explicit_doc)
+                return
             _adicionar_documento(self._documento_json_da_ultima_execucao(docs, tipo))
 
         # Mapa de quais documentos cada etapa precisa
@@ -1793,14 +1844,14 @@ PROMPT ORIGINAL DE REFERENCIA, APENAS PARA TAREFA E SCHEMA:
             for doc in docs_base:
                 if doc.tipo == TipoDocumento.GABARITO:
                     _adicionar_documento(doc)
-            _adicionar_json_mais_recente(docs_base, TipoDocumento.EXTRACAO_QUESTOES)
+            _adicionar_json_mais_recente(docs_base, TipoDocumento.EXTRACAO_QUESTOES, "questoes_extraidas")
 
         elif etapa == EtapaProcessamento.EXTRAIR_RESPOSTAS:
             # Precisa da prova respondida + questões extraídas (JSON)
             for doc in docs_aluno:
                 if doc.tipo == TipoDocumento.PROVA_RESPONDIDA:
                     _adicionar_documento(doc)
-            _adicionar_json_mais_recente(docs_base, TipoDocumento.EXTRACAO_QUESTOES)
+            _adicionar_json_mais_recente(docs_base, TipoDocumento.EXTRACAO_QUESTOES, "questoes_extraidas")
 
         elif etapa == EtapaProcessamento.CORRIGIR:
             # Arquivos originais para referência visual
@@ -1810,23 +1861,23 @@ PROMPT ORIGINAL DE REFERENCIA, APENAS PARA TAREFA E SCHEMA:
             for doc in docs_base:
                 if doc.tipo == TipoDocumento.GABARITO:
                     _adicionar_documento(doc)
-            _adicionar_json_mais_recente(docs_base, TipoDocumento.EXTRACAO_QUESTOES)
-            _adicionar_json_mais_recente(docs_base, TipoDocumento.EXTRACAO_GABARITO)
-            _adicionar_json_mais_recente(docs_aluno, TipoDocumento.EXTRACAO_RESPOSTAS)
+            _adicionar_json_mais_recente(docs_base, TipoDocumento.EXTRACAO_QUESTOES, "questoes_extraidas")
+            _adicionar_json_mais_recente(docs_base, TipoDocumento.EXTRACAO_GABARITO, "gabarito_extraido")
+            _adicionar_json_mais_recente(docs_aluno, TipoDocumento.EXTRACAO_RESPOSTAS, "respostas_aluno")
 
         elif etapa == EtapaProcessamento.ANALISAR_HABILIDADES:
             # Prova do aluno para referência visual
             for doc in docs_aluno:
                 if doc.tipo == TipoDocumento.PROVA_RESPONDIDA:
                     _adicionar_documento(doc)
-            _adicionar_json_mais_recente(docs_base, TipoDocumento.EXTRACAO_QUESTOES)
-            _adicionar_json_mais_recente(docs_aluno, TipoDocumento.EXTRACAO_RESPOSTAS)
-            _adicionar_json_mais_recente(docs_aluno, TipoDocumento.CORRECAO)
+            _adicionar_json_mais_recente(docs_base, TipoDocumento.EXTRACAO_QUESTOES, "questoes_extraidas")
+            _adicionar_json_mais_recente(docs_aluno, TipoDocumento.EXTRACAO_RESPOSTAS, "respostas_aluno")
+            _adicionar_json_mais_recente(docs_aluno, TipoDocumento.CORRECAO, "correcoes")
 
         elif etapa == EtapaProcessamento.GERAR_RELATORIO:
-            _adicionar_json_mais_recente(docs_base, TipoDocumento.EXTRACAO_QUESTOES)
-            _adicionar_json_mais_recente(docs_aluno, TipoDocumento.CORRECAO)
-            _adicionar_json_mais_recente(docs_aluno, TipoDocumento.ANALISE_HABILIDADES)
+            _adicionar_json_mais_recente(docs_base, TipoDocumento.EXTRACAO_QUESTOES, "questoes_extraidas")
+            _adicionar_json_mais_recente(docs_aluno, TipoDocumento.CORRECAO, "correcoes")
+            _adicionar_json_mais_recente(docs_aluno, TipoDocumento.ANALISE_HABILIDADES, "analise_habilidades")
 
         logger.info(f"Arquivos coletados para {etapa.value}: {len(arquivos)} - tipos: {[Path(a).suffix for a in arquivos]}")
         if not arquivos:
@@ -1851,6 +1902,7 @@ PROMPT ORIGINAL DE REFERENCIA, APENAS PARA TAREFA E SCHEMA:
         """
         if provider_filter is None:
             provider_filter = _provider_filter_ctx.get()
+        source_document_ids = _source_document_ids_ctx.get() or {}
 
         contexto = {}
         documentos_faltantes = []
@@ -1897,6 +1949,14 @@ PROMPT ORIGINAL DE REFERENCIA, APENAS PARA TAREFA E SCHEMA:
             return False
 
         def _carregar_json_mais_recente(docs, tipo: TipoDocumento, chave: str) -> bool:
+            explicit_doc, has_override, erro = self._source_override_doc(
+                source_document_ids, tipo, chave, atividade_id, aluno_id
+            )
+            if has_override:
+                if erro:
+                    documentos_faltantes.append(erro)
+                    return False
+                return _carregar_json(explicit_doc, chave)
             doc = self._documento_json_da_ultima_execucao(docs, tipo, provider_filter=provider_filter)
             if not doc:
                 return False
@@ -6490,6 +6550,7 @@ Crie UM documento separado para cada aluno, nomeando como "relatorio_[nome_aluno
         level: str,
         entity_id: str,
         provider_id: Optional[str] = None,
+        models_per_stage: Optional[Dict[str, str]] = None,
         force_reexec: bool = False,
         task_id: Optional[str] = None,
         isolate_provider: bool = False,
@@ -6540,7 +6601,9 @@ Crie UM documento separado para cada aluno, nomeando como "relatorio_[nome_aluno
                     resultado = await self.executar_pipeline_completo(
                         entity_id,
                         aluno.id,
+                        model_id=provider_id,
                         provider_name=provider_id,
+                        models_per_stage=models_per_stage,
                         force_rerun=force_reexec,
                         task_id=task_id,
                         isolate_provider=isolate_provider,
@@ -6568,7 +6631,15 @@ Crie UM documento separado para cada aluno, nomeando como "relatorio_[nome_aluno
                 if not force_reexec and has_relatorio_final:
                     skipped.append(atividade.id)
                     continue
-                await self._cascade_prereqs("tarefa", atividade.id, provider_id, force_reexec, task_id=task_id, isolate_provider=isolate_provider)
+                await self._cascade_prereqs(
+                    "tarefa",
+                    atividade.id,
+                    provider_id,
+                    models_per_stage=models_per_stage,
+                    force_reexec=force_reexec,
+                    task_id=task_id,
+                    isolate_provider=isolate_provider,
+                )
                 resultado = await self.gerar_relatorio_desempenho_tarefa(atividade.id, provider_id)
                 if resultado.get("sucesso"):
                     created.append(atividade.id)
@@ -6590,7 +6661,15 @@ Crie UM documento separado para cada aluno, nomeando como "relatorio_[nome_aluno
                 if not force_reexec and has_relatorio_final:
                     skipped.append(turma.id)
                     continue
-                await self._cascade_prereqs("turma", turma.id, provider_id, force_reexec, task_id=task_id, isolate_provider=isolate_provider)
+                await self._cascade_prereqs(
+                    "turma",
+                    turma.id,
+                    provider_id,
+                    models_per_stage=models_per_stage,
+                    force_reexec=force_reexec,
+                    task_id=task_id,
+                    isolate_provider=isolate_provider,
+                )
                 resultado = await self.gerar_relatorio_desempenho_turma(turma.id, provider_id)
                 if resultado.get("sucesso"):
                     created.append(turma.id)
@@ -6610,6 +6689,8 @@ Crie UM documento separado para cada aluno, nomeando como "relatorio_[nome_aluno
         model_id: Optional[str] = None,
         provider_name: Optional[str] = None,
         providers_map: Optional[Dict[str, str]] = None,
+        models_per_stage: Optional[Dict[str, str]] = None,
+        source_document_ids: Optional[Dict[str, str]] = None,
         prompt_id: Optional[str] = None,
         prompts_map: Optional[Dict[str, str]] = None,
         usar_multimodal: bool = True,
@@ -6643,7 +6724,9 @@ Crie UM documento separado para cada aluno, nomeando como "relatorio_[nome_aluno
         resultados = {}
         etapas_puladas = {}  # Registra motivo de cada etapa pulada
         providers_map = providers_map or {}
+        models_per_stage = models_per_stage or {}
         prompts_map = prompts_map or {}
+        _source_document_ids_ctx.set(dict(source_document_ids or {}))
 
         logger.info(f"Pipeline iniciado: atividade={atividade_id}, aluno={aluno_id}, model={model_id or provider_name}")
 
@@ -6658,8 +6741,13 @@ Crie UM documento separado para cada aluno, nomeando como "relatorio_[nome_aluno
         logger.info(f"Etapas selecionadas: {steps_to_run}")
 
         def _resolve_provider(stage: EtapaProcessamento) -> Optional[str]:
-            # Prioridade: providers_map > model_id > provider_name
-            resolved = providers_map.get(stage.value) or model_id or provider_name
+            # Prioridade: models_per_stage > providers_map legado > model_id > provider_name legado
+            resolved = (
+                models_per_stage.get(stage.value)
+                or providers_map.get(stage.value)
+                or model_id
+                or provider_name
+            )
             if not resolved:
                 logger.warning(f"Nenhum provider definido para etapa {stage.value}")
             return resolved
@@ -6752,8 +6840,8 @@ Crie UM documento separado para cada aluno, nomeando como "relatorio_[nome_aluno
 
             return resultado
 
-        # Carregar documentos existentes
         try:
+            # Carregar documentos existentes
             docs = self.storage.listar_documentos(atividade_id)
             docs_aluno = self.storage.listar_documentos(atividade_id, aluno_id)
             logger.info(f"Documentos encontrados: base={len(docs)}, aluno={len(docs_aluno)}")

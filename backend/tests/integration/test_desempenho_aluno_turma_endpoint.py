@@ -82,13 +82,35 @@ def desempenho_aluno_turma_env(monkeypatch, temp_data_dir):
     import routes_extras
     import routes_prompts
 
+    class FakeResolution:
+        def __init__(self, model_id=None, provider_id=None):
+            self.requested_model_id = model_id
+            self.legacy_provider_id = provider_id
+            self.resolved_model_id = model_id or provider_id or "fake-default-model"
+            self.provider_type = "fake-modern-api"
+            self.model_name = model_id or provider_id or "fake-doc-reader"
+
+        def metadata(self):
+            return {
+                "requested_model_id": self.requested_model_id,
+                "legacy_provider_id": self.legacy_provider_id,
+                "resolved_model_id": self.resolved_model_id,
+                "resolved_provider": self.provider_type,
+                "resolved_model": self.model_name,
+                "provider_resolution_source": "test",
+            }
+
     class FakeAlunoTurmaProvider:
+        def __init__(self, model_id=None):
+            self.model_id = model_id or "fake-doc-reader"
+
         async def analyze_document(self, file_path, instruction):
             assert file_path.endswith(".pdf")
-            assert "Relatorio Maria 2021" not in instruction
-            assert "Maria Silva" in instruction
-            assert "Turma 2021" in instruction
-            assert "Prova 1" in instruction
+            if "aluno-turma" in instruction:
+                assert "Relatorio Maria 2021" not in instruction
+                assert "Maria Silva" in instruction
+                assert "Turma 2021" in instruction
+                assert "Prova 1" in instruction
             return SimpleNamespace(
                 content=(
                     "## Sintese pedagogica\n"
@@ -98,7 +120,7 @@ def desempenho_aluno_turma_env(monkeypatch, temp_data_dir):
                     "- Resolver dois exercicios de verificacao por semana."
                 ),
                 provider="fake-modern-api",
-                model="fake-doc-reader",
+                model=self.model_id,
                 tokens_used=123,
                 input_tokens=80,
                 output_tokens=43,
@@ -110,11 +132,12 @@ def desempenho_aluno_turma_env(monkeypatch, temp_data_dir):
     monkeypatch.setattr(routes_prompts, "storage", storage)
     provider_calls = []
 
-    def fake_get_aluno_turma_provider(model_id=None, provider_id=None):
+    def fake_resolve_document_read_provider(model_id=None, provider_id=None):
         provider_calls.append({"model_id": model_id, "provider_id": provider_id})
-        return FakeAlunoTurmaProvider()
+        resolution = FakeResolution(model_id=model_id, provider_id=provider_id)
+        return resolution, FakeAlunoTurmaProvider(resolution.model_name)
 
-    monkeypatch.setattr(routes_prompts, "_get_aluno_turma_provider", fake_get_aluno_turma_provider)
+    monkeypatch.setattr(routes_prompts, "_resolve_document_read_provider", fake_resolve_document_read_provider)
 
     return {
         "client": TestClient(main_v2.app),
@@ -270,6 +293,9 @@ def test_pipeline_desempenho_aluno_turma_salva_documento(desempenho_aluno_turma_
     assert docs[0].tipo == TipoDocumento.RELATORIO_DESEMPENHO_ALUNO_TURMA
     assert docs[0].metadata["scope"] == "aluno_turma"
     assert docs[0].metadata["geracao"] == "provider_document_read_v1"
+    assert docs[0].metadata["selection_mode"] == "latest_valid"
+    assert docs[0].metadata["requested_model_id"] is None
+    assert docs[0].metadata["resolved_model_id"] == "fake-default-model"
     assert docs[0].ia_provider == "fake-modern-api"
     assert docs[0].ia_modelo == "fake-doc-reader"
     assert docs[0].tokens_usados == 123
@@ -301,6 +327,98 @@ def test_pipeline_desempenho_aluno_turma_aceita_model_id(desempenho_aluno_turma_
     assert data["metadata"]["model_id"] == "modelo-novo-cadastrado"
     assert data["metadata"]["provider_id"] is None
     assert data["metadata"]["provider_ref"] == "modelo-novo-cadastrado"
+    assert data["metadata"]["requested_model_id"] == "modelo-novo-cadastrado"
+    assert data["metadata"]["resolved_model_id"] == "modelo-novo-cadastrado"
+
+
+def test_pipeline_desempenho_aluno_turma_aceita_multiplos_model_ids(desempenho_aluno_turma_env):
+    env = desempenho_aluno_turma_env
+    response = env["client"].post(
+        "/api/executar/pipeline-desempenho-aluno-turma",
+        data={
+            "aluno_id": env["aluno"].id,
+            "turma_id": env["turma_2021"].id,
+            "model_ids": '["modelo-a", "modelo-b"]',
+            "force_reexec": "true",
+        },
+    )
+
+    assert response.status_code == 200, response.text
+    data = response.json()
+
+    assert data["status"] == "completed"
+    assert [call["model_id"] for call in env["provider_calls"]] == ["modelo-a", "modelo-b"]
+    assert len(data["resultados"]) == 2
+    assert {item["metadata"]["requested_model_id"] for item in data["resultados"]} == {
+        "modelo-a",
+        "modelo-b",
+    }
+
+
+def test_pipeline_desempenho_aluno_turma_usa_source_document_explicitamente(desempenho_aluno_turma_env):
+    env = desempenho_aluno_turma_env
+    from models import TipoDocumento
+
+    docs = env["storage"].listar_documentos(
+        env["atividade_1"].id,
+        aluno_id=env["aluno"].id,
+        tipo=TipoDocumento.RELATORIO_FINAL,
+    )
+    relatorio_id = docs[0].id
+
+    response = env["client"].post(
+        "/api/executar/pipeline-desempenho-aluno-turma",
+        data={
+            "aluno_id": env["aluno"].id,
+            "turma_id": env["turma_2021"].id,
+            "model_id": "modelo-source",
+            "source_document_ids": f'{{"relatorio_final": "{relatorio_id}"}}',
+        },
+    )
+
+    assert response.status_code == 200, response.text
+    data = response.json()
+
+    assert data["metadata"]["selection_mode"] == "explicit"
+    assert data["metadata"]["source_document_ids"] == [relatorio_id]
+
+
+def test_documento_multi_ia_salva_um_documento_por_modelo(desempenho_aluno_turma_env):
+    env = desempenho_aluno_turma_env
+    from models import TipoDocumento
+
+    origem = env["storage"].listar_documentos(
+        env["atividade_1"].id,
+        aluno_id=env["aluno"].id,
+        tipo=TipoDocumento.RELATORIO_FINAL,
+    )[0]
+
+    response = env["client"].post(
+        "/api/executar/documento-multi-ia",
+        data={
+            "documento_id": origem.id,
+            "model_ids": '["modelo-a", "modelo-b"]',
+            "instruction": "Analise este relatorio.",
+        },
+    )
+
+    assert response.status_code == 200, response.text
+    data = response.json()
+
+    assert data["status"] == "completed"
+    assert len(data["resultados"]) == 2
+    assert {item["metadata"]["requested_model_id"] for item in data["resultados"]} == {
+        "modelo-a",
+        "modelo-b",
+    }
+
+    docs = env["storage"].listar_documentos(
+        env["atividade_1"].id,
+        tipo=TipoDocumento.ANALISE_DOCUMENTO_IA,
+    )
+    assert len(docs) == 2
+    assert {doc.metadata["documento_origem_id"] for doc in docs} == {origem.id}
+    assert {doc.metadata["selection_mode"] for doc in docs} == {"explicit"}
 
 
 def test_pipeline_desempenho_aluno_turma_nao_duplica_sem_force(desempenho_aluno_turma_env):

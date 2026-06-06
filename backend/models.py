@@ -71,6 +71,7 @@ class TipoDocumento(Enum):
     RELATORIO_DESEMPENHO_TURMA = "relatorio_desempenho_turma"          # Análise holística de uma turma
     RELATORIO_DESEMPENHO_MATERIA = "relatorio_desempenho_materia"      # Análise cross-turma de uma matéria
     RELATORIO_DESEMPENHO_ALUNO_TURMA = "relatorio_desempenho_aluno_turma"  # Análise individual do aluno em uma turma
+    ANALISE_DOCUMENTO_IA = "analise_documento_ia"                      # Análise genérica de um documento por IA
 
     @classmethod
     def documentos_base(cls) -> List['TipoDocumento']:
@@ -85,6 +86,7 @@ class TipoDocumento(Enum):
             cls.RELATORIO_DESEMPENHO_TAREFA,
             cls.RELATORIO_DESEMPENHO_TURMA,
             cls.RELATORIO_DESEMPENHO_MATERIA,
+            cls.ANALISE_DOCUMENTO_IA,
         ]
 
     @classmethod
@@ -105,7 +107,7 @@ class TipoDocumento(Enum):
             cls.CORRECAO, cls.ANALISE_HABILIDADES, cls.RELATORIO_FINAL,
             cls.CORRECAO_NARRATIVA, cls.ANALISE_HABILIDADES_NARRATIVA, cls.RELATORIO_NARRATIVO,
             cls.RELATORIO_DESEMPENHO_TAREFA, cls.RELATORIO_DESEMPENHO_TURMA, cls.RELATORIO_DESEMPENHO_MATERIA,
-            cls.RELATORIO_DESEMPENHO_ALUNO_TURMA,
+            cls.RELATORIO_DESEMPENHO_ALUNO_TURMA, cls.ANALISE_DOCUMENTO_IA,
         ]
 
 

@@ -8,8 +8,8 @@
 | Campo | Estado |
 |---|---|
 | Objetivo | Criar uma visao onde se escolhe um aluno e se ve apenas o que pertence a ele. |
-| Proximo passo | Loop 4: base longitudinal por aluno. |
-| Primeiro patch | Fechado: backend/UI da visao aluno + base/leitura/geracao aluno-turma + testes focados. |
+| Proximo passo | Loop 6: base longitudinal por aluno. |
+| Primeiro patch | Fechado: backend/UI da visao aluno + base/leitura/geracao aluno-turma por provider + deploy Render + smoke remoto. |
 | Nao fazer sem novo loop | Provider real caro, portal autenticado. |
 | Regra critica | A unidade e `aluno_id + turma_id`, nao `aluno_id + materia_id`. |
 
@@ -156,7 +156,101 @@ Ainda nao foi feito: provider LLM para aluno-turma e longitudinal automatico.
 
 ---
 
-## Loop 4: Longitudinal Por Aluno
+## Loop 4: Deploy Render E Smoke Remoto
+
+Status: **substituido em 2026-06-05**.
+
+Objetivo: colocar a visao do aluno e a geracao aluno-turma no Render e testar
+contra dados reais, sem servidor local.
+
+- [x] Commit `5297c45` publicado em `origin/main`.
+- [x] Render deploy `dep-d8hj5itckfvc73avqktg` ficou `live`.
+- [x] `/api/deploy-info` confirmou `commit=5297c45` e `source=RENDER_GIT_COMMIT`.
+- [x] `GET /api/alunos/{aluno_id}/visao` testado com Alvaro.
+- [x] `GET /api/desempenho/aluno/{aluno_id}/turma/{turma_id}` testado com Alvaro + turma `2026-1`.
+- [x] `POST /api/executar/pipeline-desempenho-aluno-turma` gerou doc `49b70d1dba0b8f22`.
+- [x] Segunda chamada do POST retornou `skipped: true`, sem duplicar.
+- [x] Smoke visual remoto com Playwright passou e gerou screenshot em `logs/render-visao-aluno-alvaro-clean-2026-06-05.png`.
+
+Revisao critica: o documento `49b70d1dba0b8f22` **nao e aceite de produto**.
+Ele continha a frase `conteudo nao extraido automaticamente`, portanto era
+apenas prova de persistencia/escopo, nao relatorio de desempenho.
+
+Evidencia principal:
+
+```text
+https://ia-educacao-v2.onrender.com/api/deploy-info
+commit=5297c45
+
+Aluno: ALVARO JOEL TICONA MOTTA
+Materia: Algebra Linear Avancada
+Turma: 2026-1
+Atividades: Lista0, Prova 01
+Docs do aluno: 33
+Relatorio aluno-turma: 49b70d1dba0b8f22
+```
+
+Ainda nao foi feito: longitudinal automatico.
+
+---
+
+## Loop 5: Hotfix Relatorio Aluno-Turma Com Leitura Real
+
+Status: **fechado em 2026-06-05** no site oficial.
+
+Objetivo: remover a geracao deterministica/placeholder e exigir leitura real do
+documento por provider de IA.
+
+- [x] Commit `0e0d38e` publicado em `origin/main`.
+- [x] Render deploy `dep-d8hjmps8aovs73dendtg` ficou `live`.
+- [x] `/api/deploy-info` confirmou `commit=0e0d38e`.
+- [x] `POST /api/executar/pipeline-desempenho-aluno-turma` agora usa provider `analyze_document`.
+- [x] Placeholder `conteudo nao extraido automaticamente` foi removido do caminho de sucesso.
+- [x] Se o provider nao ler o documento, o endpoint falha em vez de salvar relatorio falso.
+- [x] Relatorio antigo `deterministica_v1` nao bloqueia regeneracao.
+- [x] Smoke remoto com `force_reexec=true` gerou doc `8f1c49f009189df1`.
+- [x] Documento novo tem `ia_provider=openai`, `ia_modelo=gpt-4o`, `tokens_usados=3203`.
+- [x] Download novo salvo em `logs/downloads/relatorio_desempenho_aluno_turma_8f1c49f009189df1.md`.
+
+Evidencia principal:
+
+```text
+Relatorio aluno-turma: 8f1c49f009189df1
+Geracao: provider_document_read_v1
+Provider: openai / gpt-4o
+Tokens: 3203
+Conteudo: sintese pedagogica, nota 5.35/10, pontos fortes,
+areas de melhoria, recomendacoes e evidencias por questao.
+Frases proibidas: ausentes.
+```
+
+Ainda nao foi feito: longitudinal automatico.
+
+---
+
+## Loop 5.1: Contrato Multi-IA Para Aluno-Turma
+
+Status: **implementado em 2026-06-06**.
+
+Objetivo: alinhar a visao do aluno ao contrato geral do programa: qualquer
+documento pode ser processado por uma ou varias IAs escolhidas explicitamente,
+sem fallback silencioso.
+
+- `model_id` e o campo canonico.
+- `provider_id` continua aceito como legado.
+- `model_ids` permite gerar comparativo multi-IA no mesmo `aluno_id + turma_id`.
+- `source_document_ids` permite escolher quais `relatorio_final` do aluno entram
+  no relatorio aluno-turma.
+- Metadata nova registra `requested_model_id`, `resolved_provider`,
+  `resolved_model`, `source_document_ids` e `selection_mode`.
+- Novo endpoint generico: `POST /api/executar/documento-multi-ia`.
+
+Regra preservada: a unidade continua sendo `aluno_id + turma_id`, nunca
+`aluno_id + materia_id`.
+
+---
+
+## Loop 6: Longitudinal Por Aluno
 
 Objetivo: combinar relatorios aluno-turma anteriores do mesmo aluno em ordem
 temporal, respeitando repetencia e turmas diferentes na mesma materia.

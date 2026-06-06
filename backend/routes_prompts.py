@@ -26,6 +26,13 @@ from prompts import PromptManager, PromptTemplate, EtapaProcessamento, prompt_ma
 from storage import storage
 from models import TipoDocumento, Documento
 from routes_tasks import register_pipeline_task, complete_pipeline_task
+from ai_execution import (
+    CAPABILITY_DOCUMENT_READ,
+    create_document_provider,
+    parse_json_list,
+    parse_json_map,
+    resolve_ai_model,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -108,7 +115,12 @@ def _latest_student_doc(atividade_id: str, aluno_id: str, tipo: TipoDocumento) -
     return None
 
 
-def _existing_aluno_turma_report(aluno_id: str, turma_id: str) -> Optional[Documento]:
+def _existing_aluno_turma_report(
+    aluno_id: str,
+    turma_id: str,
+    requested_model_id: Optional[str] = None,
+    legacy_provider_id: Optional[str] = None,
+) -> Optional[Documento]:
     for atividade in storage.listar_atividades(turma_id):
         docs = storage.listar_documentos(
             atividade.id,
@@ -117,6 +129,18 @@ def _existing_aluno_turma_report(aluno_id: str, turma_id: str) -> Optional[Docum
         )
         for doc in docs:
             metadata = doc.metadata if isinstance(doc.metadata, dict) else {}
+            if requested_model_id and (
+                metadata.get("requested_model_id")
+                or metadata.get("model_id")
+                or metadata.get("provider_ref")
+            ) != requested_model_id:
+                continue
+            if legacy_provider_id and (
+                metadata.get("legacy_provider_id")
+                or metadata.get("provider_id")
+                or metadata.get("provider_ref")
+            ) != legacy_provider_id:
+                continue
             if (
                 getattr(doc, "aluno_id", None) == aluno_id
                 and metadata.get("turma_id") == turma_id
@@ -125,58 +149,6 @@ def _existing_aluno_turma_report(aluno_id: str, turma_id: str) -> Optional[Docum
             ):
                 return doc
     return None
-
-
-def _get_aluno_turma_provider(
-    model_id: Optional[str] = None,
-    provider_id: Optional[str] = None,
-):
-    def _from_chat_service_config(model_id: Optional[str]):
-        from chat_service import resolve_provider_config
-        from ai_providers import AnthropicProvider, GeminiProvider, LocalLLMProvider, OpenAIProvider
-
-        config = resolve_provider_config(model_id)
-        tipo = (config.get("tipo") or "").lower()
-        modelo = config.get("modelo") or ""
-        api_key = config.get("api_key") or ""
-
-        if tipo in {"openai", "openaiprovider"}:
-            return OpenAIProvider(api_key=api_key, model=modelo)
-        if tipo in {"anthropic", "anthropicprovider"}:
-            return AnthropicProvider(api_key=api_key, model=modelo)
-        if tipo in {"google", "gemini", "geminiprovider"}:
-            return GeminiProvider(api_key=api_key, model=modelo)
-        if tipo in {"ollama", "localllmprovider"}:
-            return LocalLLMProvider(
-                base_url=config.get("base_url") or "http://localhost:11434",
-                model=modelo or "llama3",
-            )
-
-        raise ValueError(f"Provider '{tipo}' nao suportado para leitura aluno-turma")
-
-    try:
-        from ai_providers import ai_registry
-
-        if model_id:
-            return _from_chat_service_config(model_id)
-
-        if provider_id:
-            try:
-                return ai_registry.get(provider_id)
-            except Exception:
-                return _from_chat_service_config(provider_id)
-
-        return ai_registry.get_default() or _from_chat_service_config(None)
-    except Exception as exc:
-        raise HTTPException(
-            status_code=400,
-            detail={
-                "mensagem": "Provider de IA indisponivel para relatorio aluno-turma",
-                "model_id": model_id,
-                "provider_id": provider_id,
-                "erro": str(exc),
-            },
-        )
 
 
 def _looks_like_failed_document_read(content: str) -> bool:
@@ -200,6 +172,54 @@ def _looks_like_failed_document_read(content: str) -> bool:
         "can't access",
     )
     return any(marker in lowered for marker in failure_markers)
+
+
+def _parse_form_map(raw: Optional[str], field_name: str) -> Dict[str, str]:
+    try:
+        return parse_json_map(raw, field_name)
+    except ValueError as exc:
+        raise HTTPException(400, str(exc)) from exc
+
+
+def _parse_form_list(raw: Optional[str], field_name: str) -> List[str]:
+    try:
+        return parse_json_list(raw, field_name)
+    except ValueError as exc:
+        raise HTTPException(400, str(exc)) from exc
+
+
+def _parse_models_per_stage(
+    models_per_stage: Optional[str] = None,
+    providers: Optional[str] = None,
+    phase_models: Optional[str] = None,
+) -> Dict[str, str]:
+    merged: Dict[str, str] = {}
+    if providers:
+        merged.update(_parse_form_map(providers, "providers"))
+    if phase_models:
+        merged.update(_parse_form_map(phase_models, "phase_models"))
+    if models_per_stage:
+        merged.update(_parse_form_map(models_per_stage, "models_per_stage"))
+    return merged
+
+
+def _model_requests(
+    model_id: Optional[str],
+    model_ids: Optional[str],
+    provider_id: Optional[str],
+) -> List[Dict[str, Optional[str]]]:
+    ids = _parse_form_list(model_ids, "model_ids") if model_ids else []
+    if ids:
+        return [{"model_id": item, "provider_id": None} for item in ids]
+    if model_id:
+        return [{"model_id": model_id, "provider_id": None}]
+    if provider_id:
+        return [{"model_id": None, "provider_id": provider_id}]
+    return [{"model_id": None, "provider_id": None}]
+
+
+def _source_selection_mode(source_document_ids: Dict[str, str]) -> str:
+    return "explicit" if source_document_ids else "latest_valid"
 
 
 def _aluno_turma_document_instruction(aluno, turma, materia, atividade) -> str:
@@ -285,6 +305,202 @@ async def _analyze_aluno_turma_report_doc(provider, doc: Documento, aluno, turma
         "input_tokens": int(getattr(response, "input_tokens", 0) or 0),
         "output_tokens": int(getattr(response, "output_tokens", 0) or 0),
         "latency_ms": float(getattr(response, "latency_ms", 0) or 0),
+    }
+
+
+def _resolve_document_read_provider(model_id: Optional[str] = None, provider_id: Optional[str] = None):
+    try:
+        resolution = resolve_ai_model(
+            model_id=model_id,
+            provider_id=provider_id,
+            required_capability=CAPABILITY_DOCUMENT_READ,
+        )
+        return resolution, create_document_provider(resolution)
+    except Exception as exc:
+        raise HTTPException(
+            status_code=400,
+            detail={
+                "mensagem": "Modelo de IA indisponivel para leitura de documento",
+                "model_id": model_id,
+                "provider_id": provider_id,
+                "erro": str(exc),
+            },
+        )
+
+
+def _resolve_source_doc_for_aluno_turma(
+    doc_id: str,
+    aluno_id: str,
+    turma_id: str,
+) -> Documento:
+    doc = storage.get_documento(doc_id)
+    if not doc:
+        raise HTTPException(400, f"source_document_ids referencia documento inexistente: {doc_id}")
+    if doc.tipo != TipoDocumento.RELATORIO_FINAL:
+        raise HTTPException(
+            400,
+            f"Documento {doc_id} tem tipo {doc.tipo.value}; esperado relatorio_final",
+        )
+    if getattr(doc, "aluno_id", None) != aluno_id:
+        raise HTTPException(400, f"Documento {doc_id} pertence a outro aluno")
+    atividade = storage.get_atividade(doc.atividade_id)
+    if not atividade or atividade.turma_id != turma_id:
+        raise HTTPException(400, f"Documento {doc_id} pertence a outra turma")
+    if _is_error_doc(doc):
+        raise HTTPException(400, f"Documento {doc_id} esta marcado como erro")
+    return doc
+
+
+def _collect_aluno_turma_report_docs(
+    aluno_id: str,
+    turma_id: str,
+    source_document_ids: Dict[str, str],
+) -> List[Documento]:
+    if source_document_ids:
+        selected: List[Documento] = []
+        seen = set()
+        for doc_id in source_document_ids.values():
+            doc = _resolve_source_doc_for_aluno_turma(doc_id, aluno_id, turma_id)
+            if doc.id not in seen:
+                selected.append(doc)
+                seen.add(doc.id)
+        return selected
+
+    docs: List[Documento] = []
+    for atividade in storage.listar_atividades(turma_id):
+        doc = _latest_student_doc(atividade.id, aluno_id, TipoDocumento.RELATORIO_FINAL)
+        if doc:
+            docs.append(doc)
+    return docs
+
+
+async def _gerar_aluno_turma_para_modelo(
+    aluno,
+    turma,
+    materia,
+    model_id: Optional[str],
+    provider_id: Optional[str],
+    force_reexec: bool,
+    source_document_ids: Dict[str, str],
+) -> Dict[str, Any]:
+    resolution, provider = _resolve_document_read_provider(model_id=model_id, provider_id=provider_id)
+
+    existente = _existing_aluno_turma_report(
+        aluno.id,
+        turma.id,
+        requested_model_id=resolution.requested_model_id,
+        legacy_provider_id=resolution.legacy_provider_id,
+    )
+    if existente and not force_reexec:
+        return {
+            "status": "completed",
+            "skipped": True,
+            "documento": existente.to_dict(),
+            "metadata": existente.metadata,
+            **resolution.metadata(),
+        }
+
+    docs_origem = _collect_aluno_turma_report_docs(aluno.id, turma.id, source_document_ids)
+    if not docs_origem:
+        raise HTTPException(
+            status_code=400,
+            detail={
+                "mensagem": "Base minima insuficiente para relatorio aluno-turma",
+                "scope": "aluno_turma",
+                "aluno_id": aluno.id,
+                "turma_id": turma.id,
+                "faltando": ["relatorio_final_do_aluno"],
+                "selection_mode": _source_selection_mode(source_document_ids),
+            },
+        )
+
+    entradas = []
+    for doc in docs_origem:
+        atividade = storage.get_atividade(doc.atividade_id)
+        if not atividade:
+            continue
+        entradas.append(
+            await _analyze_aluno_turma_report_doc(provider, doc, aluno, turma, materia, atividade)
+        )
+
+    if not entradas:
+        raise HTTPException(
+            status_code=400,
+            detail={
+                "mensagem": "Nenhum documento de origem valido para relatorio aluno-turma",
+                "aluno_id": aluno.id,
+                "turma_id": turma.id,
+            },
+        )
+
+    tokens_usados = sum(entrada.get("tokens_usados", 0) for entrada in entradas)
+    tempo_processamento_ms = sum(entrada.get("latency_ms", 0) for entrada in entradas)
+
+    metadata = {
+        "scope": "aluno_turma",
+        "aluno_id": aluno.id,
+        "turma_id": turma.id,
+        "materia_id": turma.materia_id,
+        "status": "completed",
+        "atividade_ids": [entrada["atividade_id"] for entrada in entradas],
+        "documento_origem_ids": [entrada["documento_id"] for entrada in entradas],
+        "source_document_ids": [entrada["documento_id"] for entrada in entradas],
+        "selection_mode": _source_selection_mode(source_document_ids),
+        "geracao": "provider_document_read_v1",
+        "model_id": model_id,
+        "provider_id": provider_id,
+        "provider_ref": model_id or provider_id or resolution.resolved_model_id,
+        "tokens_usados": tokens_usados,
+        "tempo_processamento_ms": tempo_processamento_ms,
+        **resolution.metadata(),
+        "leituras": [
+            {
+                "atividade_id": entrada["atividade_id"],
+                "documento_id": entrada["documento_id"],
+                "provider": entrada.get("provider"),
+                "modelo": entrada.get("modelo"),
+                "tokens_usados": entrada.get("tokens_usados", 0),
+                "input_tokens": entrada.get("input_tokens", 0),
+                "output_tokens": entrada.get("output_tokens", 0),
+            }
+            for entrada in entradas
+        ],
+    }
+
+    report_text = _build_aluno_turma_report(aluno, turma, materia, entradas)
+    provider_nome = next((entrada.get("provider") for entrada in entradas if entrada.get("provider")), None)
+    provider_modelo = next((entrada.get("modelo") for entrada in entradas if entrada.get("modelo")), None)
+
+    tmp_path = None
+    try:
+        with tempfile.NamedTemporaryFile("w", suffix=".md", delete=False, encoding="utf-8") as tmp:
+            tmp.write(report_text)
+            tmp_path = Path(tmp.name)
+
+        documento = storage.salvar_documento(
+            str(tmp_path),
+            TipoDocumento.RELATORIO_DESEMPENHO_ALUNO_TURMA,
+            entradas[0]["atividade_id"],
+            aluno_id=aluno.id,
+            display_name=f"Desempenho aluno-turma - {aluno.nome} - {turma.nome}",
+            metadata=metadata,
+            ia_provider=provider_nome or resolution.provider_type,
+            ia_modelo=provider_modelo or resolution.model_name,
+            tokens_usados=tokens_usados,
+            tempo_processamento_ms=tempo_processamento_ms,
+            criado_por="sistema",
+        )
+    finally:
+        if tmp_path and tmp_path.exists():
+            tmp_path.unlink()
+
+    return {
+        "status": "completed",
+        "skipped": False,
+        "documento": documento.to_dict() if documento else None,
+        "metadata": metadata,
+        "atividades_usadas": len(entradas),
+        **resolution.metadata(),
     }
 
 
@@ -1057,6 +1273,8 @@ async def executar_pipeline_completo(
     model_id: Optional[str] = Form(None),
     provider: Optional[str] = Form(None),
     providers: Optional[str] = Form(None),
+    models_per_stage: Optional[str] = Form(None),
+    source_document_ids: Optional[str] = Form(None),
     prompt_id: Optional[str] = Form(None),
     prompts_per_stage: Optional[str] = Form(None),
     selected_steps: Optional[str] = Form(None),
@@ -1071,12 +1289,12 @@ async def executar_pipeline_completo(
     """
     from executor import executor
 
-    providers_map = None
-    if providers:
-        try:
-            providers_map = json.loads(providers)
-        except json.JSONDecodeError:
-            raise HTTPException(400, "Formato inválido para providers. Use JSON.")
+    providers_map = _parse_form_map(providers, "providers")
+    models_stage_map = _parse_models_per_stage(
+        models_per_stage=models_per_stage,
+        providers=None,
+    )
+    source_map = _parse_form_map(source_document_ids, "source_document_ids")
 
     prompts_map = None
     if prompts_per_stage:
@@ -1112,6 +1330,8 @@ async def executar_pipeline_completo(
         model_id=model_id,
         provider_name=provider,
         providers_map=providers_map,
+        models_per_stage=models_stage_map,
+        source_document_ids=source_map,
         prompt_id=prompt_id,
         prompts_map=prompts_map,
         selected_steps=steps_list,
@@ -1254,7 +1474,9 @@ async def executar_lote(
     aluno_ids: str = Form(...),  # IDs separados por vírgula
     model_id: Optional[str] = Form(None),
     provider: Optional[str] = Form(None),
-    providers: Optional[str] = Form(None)
+    providers: Optional[str] = Form(None),
+    models_per_stage: Optional[str] = Form(None),
+    source_document_ids: Optional[str] = Form(None),
 ):
     """
     Executa o pipeline completo para múltiplos alunos.
@@ -1263,12 +1485,9 @@ async def executar_lote(
     
     ids = [id.strip() for id in aluno_ids.split(',') if id.strip()]
     
-    providers_map = None
-    if providers:
-        try:
-            providers_map = json.loads(providers)
-        except json.JSONDecodeError:
-            raise HTTPException(400, "Formato inválido para providers. Use JSON.")
+    providers_map = _parse_form_map(providers, "providers")
+    models_stage_map = _parse_models_per_stage(models_per_stage=models_per_stage)
+    source_map = _parse_form_map(source_document_ids, "source_document_ids")
     
     resultados_por_aluno = {}
     for aluno_id in ids:
@@ -1278,8 +1497,11 @@ async def executar_lote(
         resultados = await executor.executar_pipeline_completo(
             atividade_id=atividade_id,
             aluno_id=aluno_id,
+            model_id=model_id,
             provider_name=provider,
-            providers_map=providers_map
+            providers_map=providers_map,
+            models_per_stage=models_stage_map,
+            source_document_ids=source_map,
         )
         
         sucesso = all(r.sucesso for r in resultados.values())
@@ -1304,6 +1526,8 @@ async def _executar_pipeline_todos_os_alunos_background(
     model_id,
     provider: str,
     providers_map,
+    models_per_stage,
+    source_document_ids,
     prompt_id,
     prompts_map,
     steps_list,
@@ -1322,6 +1546,8 @@ async def _executar_pipeline_todos_os_alunos_background(
                 model_id=model_id,
                 provider_name=provider,
                 providers_map=providers_map,
+                models_per_stage=models_per_stage,
+                source_document_ids=source_document_ids,
                 prompt_id=prompt_id,
                 prompts_map=prompts_map,
                 selected_steps=steps_list,
@@ -1359,6 +1585,8 @@ async def executar_pipeline_todos_os_alunos(
     model_id: Optional[str] = Form(None),
     provider: Optional[str] = Form(None),  # [LEGACY - MARK FOR DELETION] Provider de IA a usar (opcional, legacy)
     providers: Optional[str] = Form(None),
+    models_per_stage: Optional[str] = Form(None),
+    source_document_ids: Optional[str] = Form(None),
     prompt_id: Optional[str] = Form(None),
     prompts_per_stage: Optional[str] = Form(None),
     selected_steps: Optional[str] = Form(None),
@@ -1401,12 +1629,9 @@ async def executar_pipeline_todos_os_alunos(
             "resultados": {}
         }
 
-    providers_map = None
-    if providers:
-        try:
-            providers_map = json.loads(providers)
-        except json.JSONDecodeError:
-            raise HTTPException(400, "Formato inválido para providers. Use JSON.")
+    providers_map = _parse_form_map(providers, "providers")
+    models_stage_map = _parse_models_per_stage(models_per_stage=models_per_stage)
+    source_map = _parse_form_map(source_document_ids, "source_document_ids")
 
     prompts_map = None
     if prompts_per_stage:
@@ -1443,6 +1668,8 @@ async def executar_pipeline_todos_os_alunos(
         model_id=model_id,
         provider=provider,
         providers_map=providers_map,
+        models_per_stage=models_stage_map,
+        source_document_ids=source_map,
         prompt_id=prompt_id,
         prompts_map=prompts_map,
         steps_list=steps_list,
@@ -1478,7 +1705,9 @@ async def executar_pipeline_desempenho_aluno_turma(
     aluno_id: str = Form(...),
     turma_id: str = Form(...),
     model_id: Optional[str] = Form(None),
+    model_ids: Optional[str] = Form(None),
     provider_id: Optional[str] = Form(None),
+    source_document_ids: Optional[str] = Form(None),
     force_reexec: bool = Form(False),
 ):
     """Gera um relatorio de desempenho individual para aluno + turma.
@@ -1499,57 +1728,18 @@ async def executar_pipeline_desempenho_aluno_turma(
     if not any(item.get("id") == turma_id for item in turmas_do_aluno):
         raise HTTPException(404, "Aluno não vinculado a esta turma")
 
-    existente = _existing_aluno_turma_report(aluno_id, turma_id)
-    if existente and not force_reexec:
-        task_id = register_pipeline_task(
-            task_type="pipeline_desempenho_aluno_turma",
-            atividade_id=existente.atividade_id,
-            aluno_ids=[],
-            turma_id=turma_id,
-            student_names={aluno_id: aluno.nome},
-            turma_nome=turma.nome,
-        )
-        result = {"documento": existente.to_dict(), "skipped": True}
-        complete_pipeline_task(task_id, "completed", result=result)
-        return {"task_id": task_id, "status": "completed", **result}
-
     materia = storage.get_materia(turma.materia_id) if turma.materia_id else None
-    provider_ref = model_id or provider_id
-    provider = _get_aluno_turma_provider(model_id=model_id, provider_id=provider_id)
-    if not provider:
-        raise HTTPException(
-            status_code=400,
-            detail={
-                "mensagem": "Provider de IA obrigatorio para relatorio aluno-turma",
-                "model_id": model_id,
-                "provider_id": provider_id,
-            },
-        )
+    source_map = _parse_form_map(source_document_ids, "source_document_ids")
+    requests = _model_requests(model_id, model_ids, provider_id)
 
-    atividades = storage.listar_atividades(turma_id)
-    entradas = []
+    atividade_ref = None
+    for doc in _collect_aluno_turma_report_docs(aluno_id, turma_id, source_map):
+        atividade_ref = doc.atividade_id
+        break
+    if atividade_ref is None:
+        atividades = storage.listar_atividades(turma_id)
+        atividade_ref = atividades[0].id if atividades else turma_id
 
-    for atividade in atividades:
-        doc = _latest_student_doc(atividade.id, aluno_id, TipoDocumento.RELATORIO_FINAL)
-        if not doc:
-            continue
-        entradas.append(
-            await _analyze_aluno_turma_report_doc(provider, doc, aluno, turma, materia, atividade)
-        )
-
-    if not entradas:
-        raise HTTPException(
-            status_code=400,
-            detail={
-                "mensagem": "Base minima insuficiente para relatorio aluno-turma",
-                "scope": "aluno_turma",
-                "aluno_id": aluno_id,
-                "turma_id": turma_id,
-                "faltando": ["relatorio_final_do_aluno"],
-            },
-        )
-
-    atividade_ref = entradas[0]["atividade_id"]
     task_id = register_pipeline_task(
         task_type="pipeline_desempenho_aluno_turma",
         atividade_id=atividade_ref,
@@ -1561,73 +1751,170 @@ async def executar_pipeline_desempenho_aluno_turma(
         student_names={aluno_id: aluno.nome},
     )
 
-    metadata = {
-        "scope": "aluno_turma",
-        "aluno_id": aluno_id,
-        "turma_id": turma_id,
-        "materia_id": turma.materia_id,
-        "atividade_ids": [entrada["atividade_id"] for entrada in entradas],
-        "documento_origem_ids": [entrada["documento_id"] for entrada in entradas],
-        "geracao": "provider_document_read_v1",
-        "model_id": model_id,
-        "provider_id": provider_id,
-        "provider_ref": provider_ref,
-        "leituras": [
-            {
-                "atividade_id": entrada["atividade_id"],
-                "documento_id": entrada["documento_id"],
-                "provider": entrada.get("provider"),
-                "modelo": entrada.get("modelo"),
-                "tokens_usados": entrada.get("tokens_usados", 0),
-                "input_tokens": entrada.get("input_tokens", 0),
-                "output_tokens": entrada.get("output_tokens", 0),
-            }
-            for entrada in entradas
-        ],
-    }
-    report_text = _build_aluno_turma_report(aluno, turma, materia, entradas)
-    tokens_usados = sum(entrada.get("tokens_usados", 0) for entrada in entradas)
-    tempo_processamento_ms = sum(entrada.get("latency_ms", 0) for entrada in entradas)
-    provider_nome = next((entrada.get("provider") for entrada in entradas if entrada.get("provider")), None)
-    provider_modelo = next((entrada.get("modelo") for entrada in entradas if entrada.get("modelo")), None)
+    resultados = []
+    falhas = []
+    for request in requests:
+        try:
+            resultados.append(
+                await _gerar_aluno_turma_para_modelo(
+                    aluno=aluno,
+                    turma=turma,
+                    materia=materia,
+                    model_id=request.get("model_id"),
+                    provider_id=request.get("provider_id"),
+                    force_reexec=force_reexec,
+                    source_document_ids=source_map,
+                )
+            )
+        except HTTPException as exc:
+            if len(requests) == 1:
+                raise
+            falhas.append({
+                "model_id": request.get("model_id"),
+                "provider_id": request.get("provider_id"),
+                "status": "failed",
+                "erro": exc.detail,
+            })
 
-    tmp_path = None
-    try:
-        with tempfile.NamedTemporaryFile("w", suffix=".md", delete=False, encoding="utf-8") as tmp:
-            tmp.write(report_text)
-            tmp_path = Path(tmp.name)
+    if not resultados and falhas:
+        complete_pipeline_task(task_id, "failed", error=json.dumps(falhas, ensure_ascii=False))
+        return {"task_id": task_id, "status": "failed", "resultados": falhas}
 
-        documento = storage.salvar_documento(
-            str(tmp_path),
-            TipoDocumento.RELATORIO_DESEMPENHO_ALUNO_TURMA,
-            atividade_ref,
-            aluno_id=aluno_id,
-            display_name=f"Desempenho aluno-turma - {aluno.nome} - {turma.nome}",
-            metadata=metadata,
-            ia_provider=provider_nome,
-            ia_modelo=provider_modelo,
-            tokens_usados=tokens_usados,
-            tempo_processamento_ms=tempo_processamento_ms,
-            criado_por="sistema",
-        )
-    finally:
-        if tmp_path and tmp_path.exists():
-            tmp_path.unlink()
+    if len(requests) == 1 and resultados:
+        result = resultados[0]
+        complete_pipeline_task(task_id, "completed", result=result)
+        return {"task_id": task_id, **result}
 
     result = {
-        "documento": documento.to_dict() if documento else None,
-        "metadata": metadata,
-        "atividades_usadas": len(entradas),
+        "resultados": resultados + falhas,
+        "documentos": [r.get("documento") for r in resultados if r.get("documento")],
+        "falhas": falhas,
+        "selection_mode": _source_selection_mode(source_map),
     }
     complete_pipeline_task(task_id, "completed", result=result)
     return {"task_id": task_id, "status": "completed", **result}
+
+
+@router.post("/api/executar/documento-multi-ia", tags=["Execução"])
+async def executar_documento_multi_ia(
+    documento_id: str = Form(...),
+    model_id: Optional[str] = Form(None),
+    model_ids: Optional[str] = Form(None),
+    provider_id: Optional[str] = Form(None),
+    instruction: Optional[str] = Form(None),
+):
+    """Analisa um documento existente com uma ou varias IAs.
+
+    Contrato: cada modelo solicitado roda ou falha explicitamente. Sucessos
+    salvam `analise_documento_ia`; falhas ficam no retorno, sem fallback para
+    outro modelo.
+    """
+    doc = storage.get_documento(documento_id)
+    if not doc:
+        raise HTTPException(404, "Documento não encontrado")
+
+    path = storage.resolver_caminho_documento(doc)
+    if not path.exists():
+        raise HTTPException(404, "Arquivo do documento não encontrado")
+
+    requests = _model_requests(model_id, model_ids, provider_id)
+    prompt = (instruction or "").strip() or (
+        "Leia o documento anexado e produza uma analise objetiva em Markdown. "
+        "Use apenas o conteudo real do documento. Se nao conseguir ler, responda "
+        "FALHA_LEITURA_DOCUMENTO: <motivo>."
+    )
+
+    resultados = []
+    for request in requests:
+        try:
+            resolution, provider = _resolve_document_read_provider(
+                model_id=request.get("model_id"),
+                provider_id=request.get("provider_id"),
+            )
+            response = await provider.analyze_document(str(path), prompt)
+            content = (getattr(response, "content", "") or "").strip()
+            if _looks_like_failed_document_read(content):
+                raise HTTPException(
+                    502,
+                    {
+                        "mensagem": "Provider nao leu o documento",
+                        "documento_id": documento_id,
+                        "resposta": content[:1000],
+                    },
+                )
+
+            tokens_usados = int(getattr(response, "tokens_used", 0) or 0)
+            tempo_processamento_ms = float(getattr(response, "latency_ms", 0) or 0)
+
+            metadata = {
+                "scope": "documento_multi_ia",
+                "source_document_ids": [documento_id],
+                "documento_origem_id": documento_id,
+                "selection_mode": "explicit",
+                "status": "completed",
+                "tokens_usados": tokens_usados,
+                "tempo_processamento_ms": tempo_processamento_ms,
+                "instruction": prompt,
+                **resolution.metadata(),
+            }
+
+            tmp_path = None
+            try:
+                with tempfile.NamedTemporaryFile("w", suffix=".md", delete=False, encoding="utf-8") as tmp:
+                    tmp.write(content + "\n")
+                    tmp_path = Path(tmp.name)
+
+                saved = storage.salvar_documento(
+                    str(tmp_path),
+                    TipoDocumento.ANALISE_DOCUMENTO_IA,
+                    doc.atividade_id,
+                    aluno_id=doc.aluno_id,
+                    display_name=f"Analise multi-IA - {doc.display_name or doc.nome_arquivo}",
+                    metadata=metadata,
+                    ia_provider=getattr(response, "provider", None) or resolution.provider_type,
+                    ia_modelo=getattr(response, "model", None) or resolution.model_name,
+                    tokens_usados=tokens_usados,
+                    tempo_processamento_ms=tempo_processamento_ms,
+                    criado_por="sistema",
+                    documento_origem_id=documento_id,
+                )
+            finally:
+                if tmp_path and tmp_path.exists():
+                    tmp_path.unlink()
+
+            resultados.append({
+                "status": "completed",
+                "documento": saved.to_dict() if saved else None,
+                "metadata": metadata,
+                "tokens_usados": tokens_usados,
+                "tempo_processamento_ms": tempo_processamento_ms,
+                **resolution.metadata(),
+            })
+        except HTTPException as exc:
+            resultados.append({
+                "status": "failed",
+                "model_id": request.get("model_id"),
+                "provider_id": request.get("provider_id"),
+                "erro": exc.detail,
+            })
+
+    ok = [item for item in resultados if item.get("status") == "completed"]
+    return {
+        "status": "completed" if ok else "failed",
+        "documento_id": documento_id,
+        "resultados": resultados,
+        "documentos": [item.get("documento") for item in ok if item.get("documento")],
+    }
 
 
 @router.post("/api/executar/pipeline-desempenho-tarefa", tags=["Execução"])
 async def executar_pipeline_desempenho_tarefa(
     background_tasks: BackgroundTasks,
     atividade_id: str = Form(...),
+    model_id: Optional[str] = Form(None),
     provider_id: Optional[str] = Form(None),
+    models_per_stage: Optional[str] = Form(None),
+    phase_models: Optional[str] = Form(None),
     force_reexec: bool = Form(False),
     etapas_selecionadas: Optional[str] = Form(None),
     isolate_provider: bool = Form(False),
@@ -1643,6 +1930,11 @@ async def executar_pipeline_desempenho_tarefa(
     if not atividade:
         raise HTTPException(404, "Atividade não encontrada")
 
+    model_ref = model_id or provider_id
+    models_stage_map = _parse_models_per_stage(
+        models_per_stage=models_per_stage,
+        phase_models=phase_models,
+    )
     names = _resolve_names_from_atividade(atividade_id)
     task_id = register_pipeline_task(
         task_type="pipeline_desempenho_tarefa",
@@ -1655,7 +1947,9 @@ async def executar_pipeline_desempenho_tarefa(
         _executar_desempenho_tarefa_background,
         task_id=task_id,
         atividade_id=atividade_id,
+        model_id=model_ref,
         provider_id=provider_id,
+        models_per_stage=models_stage_map,
         force_reexec=force_reexec,
         isolate_provider=isolate_provider,
     )
@@ -1666,7 +1960,9 @@ async def executar_pipeline_desempenho_tarefa(
 async def _executar_desempenho_tarefa_background(
     task_id: str,
     atividade_id: str,
+    model_id: Optional[str],
     provider_id: Optional[str],
+    models_per_stage: Optional[Dict[str, str]],
     force_reexec: bool = False,
     isolate_provider: bool = False,
 ):
@@ -1693,14 +1989,15 @@ async def _executar_desempenho_tarefa_background(
         await executor._cascade_prereqs(
             level="tarefa",
             entity_id=atividade_id,
-            provider_id=provider_id,
+            provider_id=model_id or provider_id,
+            models_per_stage=models_per_stage,
             force_reexec=force_reexec,
             task_id=task_id,
             isolate_provider=isolate_provider,
         )
         resultado = await executor.gerar_relatorio_desempenho_tarefa(
             atividade_id=atividade_id,
-            provider_id=provider_id,
+            provider_id=model_id or provider_id,
         )
         if resultado.get("sucesso"):
             complete_pipeline_task(task_id, "completed", result=resultado)
@@ -1714,7 +2011,10 @@ async def _executar_desempenho_tarefa_background(
 async def executar_pipeline_desempenho_turma(
     background_tasks: BackgroundTasks,
     turma_id: str = Form(...),
+    model_id: Optional[str] = Form(None),
     provider_id: Optional[str] = Form(None),
+    models_per_stage: Optional[str] = Form(None),
+    phase_models: Optional[str] = Form(None),
     force_reexec: bool = Form(False),
     etapas_selecionadas: Optional[str] = Form(None),
     isolate_provider: bool = Form(False),
@@ -1731,6 +2031,11 @@ async def executar_pipeline_desempenho_turma(
     if not turma:
         raise HTTPException(404, "Turma não encontrada")
 
+    model_ref = model_id or provider_id
+    models_stage_map = _parse_models_per_stage(
+        models_per_stage=models_per_stage,
+        phase_models=phase_models,
+    )
     materia = storage.get_materia(turma.materia_id) if turma else None
     task_id = register_pipeline_task(
         task_type="pipeline_desempenho_turma",
@@ -1745,7 +2050,9 @@ async def executar_pipeline_desempenho_turma(
         _executar_desempenho_turma_background,
         task_id=task_id,
         turma_id=turma_id,
+        model_id=model_ref,
         provider_id=provider_id,
+        models_per_stage=models_stage_map,
         force_reexec=force_reexec,
         isolate_provider=isolate_provider,
     )
@@ -1756,7 +2063,9 @@ async def executar_pipeline_desempenho_turma(
 async def _executar_desempenho_turma_background(
     task_id: str,
     turma_id: str,
+    model_id: Optional[str],
     provider_id: Optional[str],
+    models_per_stage: Optional[Dict[str, str]],
     force_reexec: bool = False,
     isolate_provider: bool = False,
 ):
@@ -1784,14 +2093,15 @@ async def _executar_desempenho_turma_background(
         await executor._cascade_prereqs(
             level="turma",
             entity_id=turma_id,
-            provider_id=provider_id,
+            provider_id=model_id or provider_id,
+            models_per_stage=models_per_stage,
             force_reexec=force_reexec,
             task_id=task_id,
             isolate_provider=isolate_provider,
         )
         resultado = await executor.gerar_relatorio_desempenho_turma(
             turma_id=turma_id,
-            provider_id=provider_id,
+            provider_id=model_id or provider_id,
         )
         if resultado.get("sucesso"):
             complete_pipeline_task(task_id, "completed", result=resultado)
@@ -1805,7 +2115,10 @@ async def _executar_desempenho_turma_background(
 async def executar_pipeline_desempenho_materia(
     background_tasks: BackgroundTasks,
     materia_id: str = Form(...),
+    model_id: Optional[str] = Form(None),
     provider_id: Optional[str] = Form(None),
+    models_per_stage: Optional[str] = Form(None),
+    phase_models: Optional[str] = Form(None),
     force_reexec: bool = Form(False),
     etapas_selecionadas: Optional[str] = Form(None),
     isolate_provider: bool = Form(False),
@@ -1821,6 +2134,11 @@ async def executar_pipeline_desempenho_materia(
     if not materia:
         raise HTTPException(404, "Matéria não encontrada")
 
+    model_ref = model_id or provider_id
+    models_stage_map = _parse_models_per_stage(
+        models_per_stage=models_per_stage,
+        phase_models=phase_models,
+    )
     task_id = register_pipeline_task(
         task_type="pipeline_desempenho_materia",
         atividade_id=materia_id,
@@ -1833,7 +2151,9 @@ async def executar_pipeline_desempenho_materia(
         _executar_desempenho_materia_background,
         task_id=task_id,
         materia_id=materia_id,
+        model_id=model_ref,
         provider_id=provider_id,
+        models_per_stage=models_stage_map,
         force_reexec=force_reexec,
         isolate_provider=isolate_provider,
     )
@@ -1844,7 +2164,9 @@ async def executar_pipeline_desempenho_materia(
 async def _executar_desempenho_materia_background(
     task_id: str,
     materia_id: str,
+    model_id: Optional[str],
     provider_id: Optional[str],
+    models_per_stage: Optional[Dict[str, str]],
     force_reexec: bool = False,
     isolate_provider: bool = False,
 ):
@@ -1853,14 +2175,15 @@ async def _executar_desempenho_materia_background(
         await executor._cascade_prereqs(
             level="materia",
             entity_id=materia_id,
-            provider_id=provider_id,
+            provider_id=model_id or provider_id,
+            models_per_stage=models_per_stage,
             force_reexec=force_reexec,
             task_id=task_id,
             isolate_provider=isolate_provider,
         )
         resultado = await executor.gerar_relatorio_desempenho_materia(
             materia_id=materia_id,
-            provider_id=provider_id,
+            provider_id=model_id or provider_id,
         )
         if resultado.get("sucesso"):
             complete_pipeline_task(task_id, "completed", result=resultado)

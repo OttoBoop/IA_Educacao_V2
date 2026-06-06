@@ -187,3 +187,39 @@ Todos os providers extraem corretamente: `_avisos_questao: [{codigo: "MISSING_CO
 | [backend/storage.py](../../backend/storage.py) | Supabase storage, `salvar_documento`, `listar_documentos` |
 | [backend/data/model_catalog.json](../../backend/data/model_catalog.json) | IDs e rates de modelos |
 | [frontend/index_v2.html](../../frontend/index_v2.html) | Painel de progresso, modal desempenho, botão Gerar Relatório |
+
+---
+
+## 8. Contrato Multi-IA Canonico (2026-06-06)
+
+Decisao: `model_id` e a referencia publica canonica. `provider_id` permanece
+apenas como compatibilidade legada e deve ser registrado como legado quando
+usado.
+
+Regras:
+
+- Nenhum endpoint pode trocar modelo em silencio. Modelo inexistente falha alto.
+- `model_ids[]` permite comparar o mesmo documento em varias IAs; sucesso de
+  uma IA nao apaga falha de outra.
+- `models_per_stage` e o mapa canonico por etapa. `providers` e `phase_models`
+  sao aliases aceitos temporariamente.
+- `source_document_ids` permite escolher documentos anteriores explicitamente.
+  Quando ausente, o sistema usa `selection_mode=latest_valid`.
+- Todo documento gerado deve registrar `requested_model_id`, `resolved_provider`,
+  `resolved_model`, `source_document_ids`, tokens e tempo quando disponiveis.
+
+Novo tipo generico:
+
+```text
+analise_documento_ia
+```
+
+Novo endpoint generico:
+
+```text
+POST /api/executar/documento-multi-ia
+```
+
+Uso esperado: analisar qualquer documento existente com um ou mais `model_id`,
+salvando uma saida por IA sem fingir que a analise e `relatorio_final` ou
+desempenho agregado.
