@@ -24,7 +24,7 @@ import threading
 
 from prompts import PromptManager, PromptTemplate, EtapaProcessamento, prompt_manager
 from storage import storage
-from models import TipoDocumento, Documento
+from models import TipoDocumento, Documento, StatusProcessamento
 from routes_tasks import register_pipeline_task, complete_pipeline_task
 from ai_execution import (
     CAPABILITY_DOCUMENT_READ,
@@ -220,6 +220,53 @@ def _model_requests(
 
 def _source_selection_mode(source_document_ids: Dict[str, str]) -> str:
     return "explicit" if source_document_ids else "latest_valid"
+
+
+def _salvar_documento_erro_ia(
+    tipo: TipoDocumento,
+    atividade_id: str,
+    aluno_id: Optional[str],
+    display_name: str,
+    metadata: Dict[str, Any],
+    documento_origem_id: Optional[str] = None,
+) -> Optional[Documento]:
+    erro = metadata.get("erro")
+    body = {
+        "status": "failed",
+        "erro": erro,
+        "metadata": metadata,
+    }
+    tmp_path = None
+    try:
+        with tempfile.NamedTemporaryFile("w", suffix=".md", delete=False, encoding="utf-8") as tmp:
+            tmp.write("# Falha de execucao de IA\n\n")
+            tmp.write("Esta tentativa foi registrada como erro; nao e um relatorio valido.\n\n")
+            tmp.write("```json\n")
+            tmp.write(json.dumps(body, ensure_ascii=False, indent=2, default=str))
+            tmp.write("\n```\n")
+            tmp_path = Path(tmp.name)
+
+        return storage.salvar_documento(
+            str(tmp_path),
+            tipo,
+            atividade_id,
+            aluno_id=aluno_id,
+            display_name=display_name,
+            metadata=metadata,
+            ia_provider=metadata.get("resolved_provider"),
+            ia_modelo=metadata.get("resolved_model"),
+            tokens_usados=int(metadata.get("tokens_usados", 0) or 0),
+            tempo_processamento_ms=float(metadata.get("tempo_processamento_ms", 0) or 0),
+            status=StatusProcessamento.ERRO,
+            criado_por="sistema",
+            documento_origem_id=documento_origem_id,
+        )
+    except Exception:
+        logger.exception("Falha ao persistir documento de erro de IA")
+        return None
+    finally:
+        if tmp_path and tmp_path.exists():
+            tmp_path.unlink()
 
 
 def _aluno_turma_document_instruction(aluno, turma, materia, atividade) -> str:
@@ -1767,6 +1814,27 @@ async def executar_pipeline_desempenho_aluno_turma(
                 )
             )
         except HTTPException as exc:
+            saved_error = None
+            if exc.status_code >= 500:
+                error_metadata = {
+                    "scope": "aluno_turma",
+                    "status": "failed",
+                    "aluno_id": aluno.id,
+                    "turma_id": turma.id,
+                    "materia_id": turma.materia_id,
+                    "source_document_ids": list(source_map.values()),
+                    "selection_mode": _source_selection_mode(source_map),
+                    "requested_model_id": request.get("model_id"),
+                    "legacy_provider_id": request.get("provider_id"),
+                    "erro": exc.detail,
+                }
+                saved_error = _salvar_documento_erro_ia(
+                    TipoDocumento.RELATORIO_DESEMPENHO_ALUNO_TURMA,
+                    atividade_ref,
+                    aluno.id,
+                    f"Erro desempenho aluno-turma - {aluno.nome} - {turma.nome}",
+                    error_metadata,
+                )
             if len(requests) == 1:
                 raise
             falhas.append({
@@ -1774,12 +1842,32 @@ async def executar_pipeline_desempenho_aluno_turma(
                 "provider_id": request.get("provider_id"),
                 "status": "failed",
                 "erro": exc.detail,
+                "documento": saved_error.to_dict() if saved_error else None,
             })
         except Exception as exc:
             erro = {
                 "mensagem": "Falha ao gerar relatorio aluno-turma para o modelo solicitado",
                 "erro": str(exc)[:2000],
             }
+            error_metadata = {
+                "scope": "aluno_turma",
+                "status": "failed",
+                "aluno_id": aluno.id,
+                "turma_id": turma.id,
+                "materia_id": turma.materia_id,
+                "source_document_ids": list(source_map.values()),
+                "selection_mode": _source_selection_mode(source_map),
+                "requested_model_id": request.get("model_id"),
+                "legacy_provider_id": request.get("provider_id"),
+                "erro": erro,
+            }
+            saved_error = _salvar_documento_erro_ia(
+                TipoDocumento.RELATORIO_DESEMPENHO_ALUNO_TURMA,
+                atividade_ref,
+                aluno.id,
+                f"Erro desempenho aluno-turma - {aluno.nome} - {turma.nome}",
+                error_metadata,
+            )
             if len(requests) == 1:
                 raise HTTPException(502, erro) from exc
             falhas.append({
@@ -1787,6 +1875,7 @@ async def executar_pipeline_desempenho_aluno_turma(
                 "provider_id": request.get("provider_id"),
                 "status": "failed",
                 "erro": erro,
+                "documento": saved_error.to_dict() if saved_error else None,
             })
 
     if not resultados and falhas:
@@ -1839,11 +1928,16 @@ async def executar_documento_multi_ia(
 
     resultados = []
     for request in requests:
+        resolution_metadata = {
+            "requested_model_id": request.get("model_id"),
+            "legacy_provider_id": request.get("provider_id"),
+        }
         try:
             resolution, provider = _resolve_document_read_provider(
                 model_id=request.get("model_id"),
                 provider_id=request.get("provider_id"),
             )
+            resolution_metadata = resolution.metadata()
             response = await provider.analyze_document(str(path), prompt)
             content = (getattr(response, "content", "") or "").strip()
             if _looks_like_failed_document_read(content):
@@ -1904,21 +1998,66 @@ async def executar_documento_multi_ia(
                 **resolution.metadata(),
             })
         except HTTPException as exc:
+            metadata = {
+                "scope": "documento_multi_ia",
+                "source_document_ids": [documento_id],
+                "documento_origem_id": documento_id,
+                "selection_mode": "explicit",
+                "status": "failed",
+                "tokens_usados": 0,
+                "tempo_processamento_ms": 0,
+                "instruction": prompt,
+                **resolution_metadata,
+                "erro": exc.detail,
+            }
+            saved_error = _salvar_documento_erro_ia(
+                TipoDocumento.ANALISE_DOCUMENTO_IA,
+                doc.atividade_id,
+                doc.aluno_id,
+                f"Erro analise multi-IA - {doc.display_name or doc.nome_arquivo}",
+                metadata,
+                documento_origem_id=documento_id,
+            )
             resultados.append({
                 "status": "failed",
                 "model_id": request.get("model_id"),
                 "provider_id": request.get("provider_id"),
                 "erro": exc.detail,
+                "documento": saved_error.to_dict() if saved_error else None,
+                "metadata": metadata,
             })
         except Exception as exc:
+            erro = {
+                "mensagem": "Provider falhou ao analisar documento",
+                "erro": str(exc)[:2000],
+            }
+            metadata = {
+                "scope": "documento_multi_ia",
+                "source_document_ids": [documento_id],
+                "documento_origem_id": documento_id,
+                "selection_mode": "explicit",
+                "status": "failed",
+                "tokens_usados": 0,
+                "tempo_processamento_ms": 0,
+                "instruction": prompt,
+                **resolution_metadata,
+                "erro": erro,
+            }
+            saved_error = _salvar_documento_erro_ia(
+                TipoDocumento.ANALISE_DOCUMENTO_IA,
+                doc.atividade_id,
+                doc.aluno_id,
+                f"Erro analise multi-IA - {doc.display_name or doc.nome_arquivo}",
+                metadata,
+                documento_origem_id=documento_id,
+            )
             resultados.append({
                 "status": "failed",
                 "model_id": request.get("model_id"),
                 "provider_id": request.get("provider_id"),
-                "erro": {
-                    "mensagem": "Provider falhou ao analisar documento",
-                    "erro": str(exc)[:2000],
-                },
+                "erro": erro,
+                "documento": saved_error.to_dict() if saved_error else None,
+                "metadata": metadata,
             })
 
     ok = [item for item in resultados if item.get("status") == "completed"]
@@ -1926,7 +2065,7 @@ async def executar_documento_multi_ia(
         "status": "completed" if ok else "failed",
         "documento_id": documento_id,
         "resultados": resultados,
-        "documentos": [item.get("documento") for item in ok if item.get("documento")],
+        "documentos": [item.get("documento") for item in resultados if item.get("documento")],
     }
 
 

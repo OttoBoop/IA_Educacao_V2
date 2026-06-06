@@ -496,8 +496,11 @@ def test_documento_multi_ia_falha_de_um_modelo_nao_apaga_sucesso(
         env["atividade_1"].id,
         tipo=TipoDocumento.ANALISE_DOCUMENTO_IA,
     )
-    assert len(docs) == 1
-    assert docs[0].metadata["requested_model_id"] == "modelo-a"
+    assert len(docs) == 2
+    by_model = {doc.metadata["requested_model_id"]: doc for doc in docs}
+    assert by_model["modelo-a"].status.value == "concluido"
+    assert by_model["modelo-b"].status.value == "erro"
+    assert by_model["modelo-b"].metadata["erro"]["erro"] == "falha simulada"
 
 
 def test_pipeline_desempenho_aluno_turma_nao_duplica_sem_force(desempenho_aluno_turma_env):
