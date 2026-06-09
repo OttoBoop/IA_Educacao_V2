@@ -33,8 +33,8 @@
 
 **Estimativa de ~40–50 mil alunos** somando as principais instituições federais com atuação na cidade/região metropolitana. 🟡
 - **Colégio Pedro II (CPII):** **> 12.000 alunos**, 14 campi (12 no município do Rio, 1 Niterói, 1 Duque de Caxias); Ed. Infantil ao Ensino Médio + alguns cursos superiores. 🟢
-- **IFRJ (Instituto Federal do RJ):** reitoria + **15 campi** no estado (vários na cidade e região metropolitana); ordem de **~20 mil** alunos (técnico médio, graduação, pós). 🟡
-- **CEFET/RJ:** instituição federal com múltiplos campi (Maracanã e outros); ordem de **~14–16 mil** alunos (técnico + graduação + pós). 🟡
+- **IFRJ (Instituto Federal do RJ):** **>18 mil alunos** (oficial, fev/2024; 15 campi; expandindo para ~21 mil com novos campi, ~1.400 alunos/unidade). 🟢
+- **CEFET/RJ:** instituição federal com múltiplos campi (Maracanã e outros); ordem de **~14–16 mil** alunos (número no Relatório de Gestão 2023, mas o PDF bloqueia leitura automática — estimativa). 🟡
 - **Colégios de aplicação federais** (ex.: CAp-UFRJ, CAp-UERJ é estadual) e outras unidades acrescentam alguns milhares.
 - Fontes: portal.redefederal.org.br (CPII), portal.ifrj.edu.br, cefet-rj.br.
 
@@ -53,11 +53,13 @@
 
 | Recorte | Dados | Flag |
 |---|---|---|
-| **No estado do RJ** (marcas cariocas) | **Pensi: ~21 unidades**, **pH: ~12 unidades**, **Elite: ~22 unidades** → ~55 unidades concentradas no RJ | 🟢 (unidades) |
-| **Fora do RJ** | Grupo presente em **~16 estados + DF**; das **>170 unidades** totais, o restante (~115+ unidades) está fora do RJ | 🟡 |
-| **Alunos por recorte** | Não há split público oficial de alunos Rio vs fora. **Estimativa:** as marcas cariocas (pH/Pensi/Elite) historicamente concentram parcela grande da base — ordem de **40–60 mil alunos no RJ**, restante (~55–75 mil) fora. | 🟡 (estimativa) |
+| **No estado do RJ** (marcas cariocas) | **Pensi: ~21 unidades**, **pH: ~12 unidades** (todas no RJ); **Elite: 50+ unidades, mas majoritariamente NACIONAL** (não todas no RJ) | 🟢 (unidades) |
+| **Fora do RJ** | Grupo presente em **~16 estados + DF**; das **>170 unidades** totais, a maioria está fora do RJ | 🟡 |
+| **Alunos por marca/recorte** | **NÃO é divulgado** (empresa privada, sem RI desagregado por marca). **Estimativa por unidades:** pH (12) + Pensi (21) ≈ 33 unidades claramente no RJ × ~1.000–1.500 alunos/unidade = **~35–50 mil alunos no RJ** das marcas cariocas. | 🟡 (estimativa) |
 
-> **Importante:** o número de alunos por marca/estado não é divulgado de forma desagregada. O split acima é estimativa a partir da contagem de unidades. Para precisão, seria necessário relatório de RI do Grupo Salta.
+> **Limite real:** o número de alunos por marca/estado **não é público** — o Grupo Salta não divulga RI desagregado. O split é estimativa pela contagem de unidades. Para cravar, só com o próprio grupo (via sócio do Otavio) ou um RI/pregão.
+> **Nota:** a marca **Elite é principalmente nacional** (50+ unidades pelo Brasil), não concentrada no RJ — correção vs versão anterior que assumia 22 unidades Elite no RJ.
+> **Sinal relevante:** notícia (Diário do Rio) indica que **Jorge Paulo Lemann quer vender sua participação** em pH/Pensi/Elite — observar para a "conexão Lemann" do pitch.
 
 ### 1.5 Escolas estaduais (SEEDUC-RJ)
 

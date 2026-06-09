@@ -155,11 +155,11 @@ O custo de IA **não é o gargalo** — o gargalo é venda (contrato-âncora) e 
 |---|---|---|---|
 | **1** | **Grupo Salta** (pH/Pensi/Elite) | 117 mil (~50k RJ) | Privado, **sócio dá acesso**, decisor central. Ensino médio + vestibular = dor máxima. **Melhor beachhead.** |
 | **1** | **FGV** | 9 mil | Privado, prestígio, marca de pitch. Processo mais lento, mas alto valor. |
-| **2** | **Federais RJ** (CPII, IFRJ, CEFET) | 40–50 mil | Provas sérias, prestígio (vira case). Compra federal é burocrática. |
+| **2** | **Federais RJ** (CPII ~12k + **IFRJ 18k** + CEFET ~15k) | ~45 mil | Provas sérias, prestígio (vira case). Compra federal é burocrática. |
+| **2** ⬆️ | **Municipal Rio** (✅ subido pelo Otavio) | 650 mil | Infantil+Fundamental (dor menor por aluno, mas **volume enorme de provas**). **Otavio tem contatos na Prefeitura.** Porta de entrada = **piloto GEC/GET** (11–30k) → licitação municipal. |
 | **3** | **Estadual SEEDUC** | 600–750 mil (estado) | **Aqui está o Ensino Médio** (6,5 mi no BR). Dor máxima + escala, mas **licitação lenta**. |
-| **3** | **Municipal Rio** | 650 mil | Infantil+Fundamental (dor menor). **Porta de entrada = GEC/GET** (11–30k) como piloto-vitrine → licitação. |
 
-**Leitura:** o plano do Otavio já está certo na sequência — **privado primeiro (Salta/FGV)**, onde a dor é alta e a venda é rápida; **público depois** (GEC piloto → estadual/municipal via licitação), onde está a escala mas a venda é lenta. O município (650 mil) não é o alvo nº 1 apesar de ser o maior número — porque é fundamental e licitação.
+**Leitura (ajustada pelo Otavio):** sequência = **privado primeiro (Salta/FGV)** pela dor alta + venda rápida; **município do Rio subiu** porque o Otavio tem acesso à Prefeitura e o volume de provas é gigante (mesmo no fundamental), com o piloto GEC/GET como porta de entrada → licitação; **estadual depois** pela escala mas com licitação mais lenta. O número bruto (650 mil municipal) deixa de ser só "grande mas inacessível" e vira **alvo de Tier 2 por causa do relacionamento.**
 
 ---
 
