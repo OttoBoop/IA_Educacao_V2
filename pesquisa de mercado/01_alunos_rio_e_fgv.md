@@ -34,7 +34,7 @@
 **Estimativa de ~40–50 mil alunos** somando as principais instituições federais com atuação na cidade/região metropolitana. 🟡
 - **Colégio Pedro II (CPII):** **> 12.000 alunos**, 14 campi (12 no município do Rio, 1 Niterói, 1 Duque de Caxias); Ed. Infantil ao Ensino Médio + alguns cursos superiores. 🟢
 - **IFRJ (Instituto Federal do RJ):** **>18 mil alunos** (oficial, fev/2024; 15 campi; expandindo para ~21 mil com novos campi, ~1.400 alunos/unidade). 🟢
-- **CEFET/RJ:** instituição federal com múltiplos campi (Maracanã e outros); ordem de **~14–16 mil** alunos (número no Relatório de Gestão 2023, mas o PDF bloqueia leitura automática — estimativa). 🟡
+- **CEFET/RJ:** **~15–17 mil** alunos (CEFET/RJ + CEFET-MG juntos somam **>34 mil**; CEFET/RJ tem **8 campi** no estado — Maracanã, Maria da Graça, Nova Iguaçu (1.151), Petrópolis, Itaguaí, Angra, Nova Friburgo, Valença). 🟡 (estimativa por metade do combinado RJ+MG) — *obs.: Senado discute transformar os CEFETs em Universidades Tecnológicas (2026)*
 - **Colégios de aplicação federais** (ex.: CAp-UFRJ, CAp-UERJ é estadual) e outras unidades acrescentam alguns milhares.
 - Fontes: portal.redefederal.org.br (CPII), portal.ifrj.edu.br, cefet-rj.br.
 
@@ -77,10 +77,14 @@
 
 | Categoria | Nº de alunos/participantes | Flag |
 |---|---|---|
-| **Graduação** | **> 5.000** alunos | 🟢 |
+| **Graduação** | **5.980** alunos (2022) | 🟢 |
+| **Mestrado** | **2.749** | 🟢 |
+| **Doutorado** | **600** | 🟢 |
+| **Subtotal — programas de grau** | **~9.329 alunos** | 🟢 |
 | **Educação continuada / executiva (MBA, pós lato sensu, cursos)** | **101.057** participantes | 🟢 |
-| **Stricto sensu (mestrado/doutorado)** | Alguns milhares (não desagregado na busca) | 🟡 |
 | **Portfólio** | **> 100 cursos** (graduação, especialização, MBA, mestrado, doutorado; presencial, híbrido, EAD) | 🟢 |
+
+> **Cravado (2022):** os ~9 mil alunos da FGV que o Otavio cita = **graduação (5.980) + mestrado (2.749) + doutorado (600)**. É esse o pool endereçável para correção de prova (os 101 mil de educação continuada são cursos curtos/executivos, menos aderentes).
 
 - **Escolas da FGV:** EAESP (Adm. SP), EBAPE (Adm. RJ), EPGE (Economia/Finanças RJ), Direito Rio, Direito SP (FGV Law), EESP (Economia SP), ECMI/IDP e FGV Educação Executiva, além de cursos online gratuitos (FGV milhões de inscritos em cursos abertos).
 - Fonte: portal.fgv.br (Institucional / Relatório Anual), Wikipedia FGV.
