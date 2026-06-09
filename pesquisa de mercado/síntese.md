@@ -181,10 +181,12 @@ O custo de IA **não é o gargalo** — o gargalo é venda (contrato-âncora) e 
 2. Motion dupla: redes privadas (Pueri Domus/Bahema/SESI = decisor central, como o Salta) + público via piloto gratuito.
 3. "Professor valida a IA" — mesma filosofia do pipeline transparente do NOVO CR.
 
-**Onde a Letrus é vulnerável (sua abertura):**
-1. **Só corrige redação.** Prova de matemática, ciências, múltipla escolha + discursiva mista — fora do alcance dela.
-2. Aluno **digita** o texto — a Letrus não lê prova manuscrita/escaneada (o NOVO CR lê).
-3. Com R$ 96 mi captados, ela tem pressão de crescer em escala nacional — pouco incentivo para customizar para uma rede como o Salta.
+**Onde a Letrus é vulnerável (sua abertura) — ✅ as 3 validadas pelo Otavio como diferencial do NOVO CR:**
+1. **Só corrige redação.** Prova de matemática, ciências, múltipla escolha + discursiva mista — fora do alcance dela. NOVO CR corrige prova inteira, qualquer matéria.
+2. Aluno **digita** o texto — a Letrus não lê prova manuscrita/escaneada. **O NOVO CR lê foto/scan de prova feita no papel** (como as escolas realmente aplicam) — diferença operacional grande.
+3. Com R$ 96 mi captados, pressão de escala nacional padronizada — **pouco incentivo para virar fornecedor dedicado** de uma rede (Salta) ou da FGV. O NOVO CR pode ser o parceiro sob medida.
+
+> **Ressalva honesta:** nenhuma dessas é um fosso tecnológico permanente — uma equipe de R$ 96 mi copia features. O fosso real precisa vir de **relacionamento (sócio no Salta, contatos na Prefeitura) + foco/customização**, não só de produto.
 
 **Régua de benchmark:** Letrus levou ~7 anos e R$ 96 mi para chegar a 680 escolas / 450 mil alunos. Os alvos do Otavio: **Grupo Salta inteiro (>117 mil alunos)** + **FGV (~9 mil alunos)** + setor público RJ na sequência — ou seja, o plano mira ~28% da escala da Letrus já nos dois primeiros contratos-âncora, com fração do capital dela.
 
@@ -199,7 +201,8 @@ O custo de IA **não é o gargalo** — o gargalo é venda (contrato-âncora) e 
 
 | Item | Estimativa | Flag |
 |---|---|---|
-| Tamanho do piloto | 5.000 alunos (ex.: GEC/GET ou escolas técnicas especializadas) | — |
+| Tamanho do piloto | 5.000 alunos — **✅ decisão Otavio: rodar nos GEC/GET** (Ginásios Experimentais, vitrine de inovação da prefeitura) | — |
+| Preço do contrato | **✅ decisão Otavio: definir após o piloto** (em função do impacto/economia comprovada) | — |
 | Custo de IA | 5.000 × ~10 provas/ano × ~R$ 0,30 = **~R$ 15 mil/ano** | 🟡 |
 | Suporte + onboarding (tempo de equipe) | ~R$ 20–35 mil/ano | 🟡 |
 | **Custo total de "doar"** | **~R$ 35–50 mil** por ~6–12 meses | 🟡 |
