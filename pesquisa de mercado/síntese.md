@@ -171,7 +171,7 @@ O custo de IA **não é o gargalo** — o gargalo é venda (contrato-âncora) e 
 | **Captação total** | **R$ 96 milhões** desde 2017; última rodada **R$ 36 mi** (Crescera Capital + Owl Ventures; com BID Lab, **Fundação Lemann**, VélezReyez+ (David Vélez/Nubank), Altitude/Península) | 🟢 |
 | **Modelo de negócio** | **Mensalidade por aluno atendido** (B2B) — valida o modelo "por aluno" no Brasil | 🟢 |
 | Clientes privados | Pueri Domus, Bahema, **SESI**; **630–680 escolas** no total | 🟢 |
-| Escala | ~450 mil alunos impactados; meta declarada: 1 milhão em 2 anos | 🟢 |
+| Escala | **~450 mil alunos já impactados** (atingido, cumulativo — inclui pilotos públicos gratuitos, ≠ base pagante); **meta declarada: 1 milhão em 2 anos** | 🟢 |
 | Setor público | Entra **de graça** (MS: 48 mil alunos), depois converte em política pública (GO, ES, MT) | 🟢 |
 | Produto | Só **redação/escrita** (gêneros de vestibular); professor escolhe tema, aluno digita, IA corrige na hora, professor valida | 🟢 |
 | Reconhecimento | Prêmio UNESCO de melhor tecnologia educacional | 🟢 |
@@ -186,7 +186,59 @@ O custo de IA **não é o gargalo** — o gargalo é venda (contrato-âncora) e 
 2. Aluno **digita** o texto — a Letrus não lê prova manuscrita/escaneada (o NOVO CR lê).
 3. Com R$ 96 mi captados, ela tem pressão de crescer em escala nacional — pouco incentivo para customizar para uma rede como o Salta.
 
-**Régua de benchmark:** Letrus levou ~7 anos e R$ 96 mi para chegar a 680 escolas / 450 mil alunos. Isso calibra qualquer projeção sua: chegar a 50 mil alunos (marcas RJ do Salta) já seria ~11% da escala da Letrus com uma fração do capital.
+**Régua de benchmark:** Letrus levou ~7 anos e R$ 96 mi para chegar a 680 escolas / 450 mil alunos. Os alvos do Otavio: **Grupo Salta inteiro (>117 mil alunos)** + **FGV (~9 mil alunos)** + setor público RJ na sequência — ou seja, o plano mira ~28% da escala da Letrus já nos dois primeiros contratos-âncora, com fração do capital dela.
+
+---
+
+## Funil de conversão no setor público (motion "doar → contrato")
+
+> A jogada da Letrus, aplicada ao NOVO CR no Rio. Otavio tem contatos na **Prefeitura do Rio**.
+> Sequência: **doar piloto pequeno → provar impacto → converter via licitação em contrato grande.**
+
+### Etapa 1 — Doar o piloto (custo de aquisição)
+
+| Item | Estimativa | Flag |
+|---|---|---|
+| Tamanho do piloto | 5.000 alunos (ex.: GEC/GET ou escolas técnicas especializadas) | — |
+| Custo de IA | 5.000 × ~10 provas/ano × ~R$ 0,30 = **~R$ 15 mil/ano** | 🟡 |
+| Suporte + onboarding (tempo de equipe) | ~R$ 20–35 mil/ano | 🟡 |
+| **Custo total de "doar"** | **~R$ 35–50 mil** por ~6–12 meses | 🟡 |
+
+> Ou seja: doar para 5 mil alunos custa o equivalente a **~1 mês de folha**. É marketing barato, não filantropia cara.
+
+### Etapa 2 — Provar impacto (a moeda da conversão)
+
+Métricas que viram case: nota média ↑, **horas de professor economizadas**, % de provas corrigidas no prazo, engajamento. Esse case é o que destrava a licitação e serve de marketing para o privado também.
+
+### Etapa 3 — Converter em contrato grande (o retorno)
+
+**Quanto vale um contrato público de 100 mil alunos?** Faixa por preço/aluno/ano:
+
+| Preço/aluno/ano | 100 mil alunos | Referência |
+|---|---|---|
+| R$ 5 (piso público) | **R$ 500 mil/ano** | abaixo de Turnitin público (US$ 1,79 ≈ R$ 9,5) |
+| R$ 10 | **R$ 1,0 mi/ano** | ~Turnitin público (US$ 2 ≈ R$ 10) |
+| R$ 15 | **R$ 1,5 mi/ano** | meio da faixa Turnitin |
+| R$ 20 (nível privado) | **R$ 2,0 mi/ano** | teto otimista p/ público |
+
+**Retorno sobre o piloto:** custo de aquisição ~R$ 35–50 mil → contrato de **R$ 500 mil – R$ 2 mi/ano** = **ROI de 10x a 40x** sobre o piloto, recorrente. 🟡
+
+### Âncoras reais de gasto público em edtech (mostram que o governo paga)
+
+| Contrato | Valor | Por aluno | Observação |
+|---|---|---|---|
+| MS — cursos técnicos (12 mil alunos) | R$ 94,1 mi | ~R$ 7.840 | Pacote completo de cursos (não comparável, mas mostra escala) |
+| Amazonas — rede estadual inteira | R$ 1,35 **bilhão** | — | Pacote total (material+pedagogia+portal+avaliação) |
+| MG — livros didáticos (3 anos) | R$ 848 mi | — | Mostra apetite de gasto |
+
+> Leitura: uma ferramenta **só de correção** é uma linha pequena perto desses pacotes — **mais fácil de aprovar** e cabe em qualquer orçamento. R$ 5–15/aluno é realista para escopo estreito.
+
+### Riscos do funil público (declarar no pitch)
+
+- **Licitação é lenta** (12–24 meses) e formal — exige LGPD, servidor nacional, edital.
+- **Risco eleitoral/político** — troca de gestão pode esfriar o contrato.
+- **Governo paga atrasado** — fluxo de caixa exige colchão.
+- **Conversão não é garantida** — por isso o piloto tem que ter custo baixo (etapa 1) e métricas fortes (etapa 2).
 
 ---
 
