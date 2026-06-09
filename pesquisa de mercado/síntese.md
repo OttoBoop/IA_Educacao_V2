@@ -149,33 +149,44 @@ O custo de IA **não é o gargalo** — o gargalo é venda (contrato-âncora) e 
 > aluno paga **R$ 200/mês** por todos os serviços, dos quais **R$ 20/mês vão para o NOVO CR**.
 > Isso é **R$ 240/aluno/ano** (12 meses) — ~R$ 200 se considerar ano letivo de 10 meses. 🟡
 
-**Economia por aluno/mês:**
-- Receita NOVO CR: **R$ 20/aluno/mês**
-- Custo de IA: ~R$ 1–2/aluno/mês (mesmo com uso intenso — centavos por prova)
-- **Margem de contribuição: ~R$ 18/aluno/mês** (margem ~85–90%)
-- Burn de equipe (designer + backend pleno + founder, CLT carregado): **~R$ 40 mil/mês**
+**Premissas:** lucro do NOVO CR varia de **R$ 5 a R$ 20 por aluno/mês** (já líquido do custo de IA, que é centavos). Burn de equipe (designer + backend pleno + founder, CLT carregado): **~R$ 40 mil/mês**.
 
-**Breakeven operacional:** R$ 40.000 ÷ R$ 18 ≈ **~2.200 alunos pagantes** cobrem a operação inteira.
+### A) Receita anual do NOVO CR (lucro/aluno/mês × nº de alunos)
 
-### Tempo para recuperar o investimento × nº de alunos
+| N alunos | R$ 5/mês | R$ 10/mês | R$ 15/mês | R$ 20/mês |
+|---|---|---|---|---|
+| **5.000** (piloto) | R$ 300 mil | R$ 600 mil | R$ 900 mil | R$ 1,2 mi |
+| **9.000** (FGV) | R$ 540 mil | R$ 1,08 mi | R$ 1,62 mi | R$ 2,16 mi |
+| **10.000** | R$ 600 mil | R$ 1,2 mi | R$ 1,8 mi | R$ 2,4 mi |
+| **50.000** (Salta-RJ) | R$ 3,0 mi | R$ 6,0 mi | R$ 9,0 mi | R$ 12 mi |
+| **100.000** (Salta total) | R$ 6,0 mi | R$ 12 mi | R$ 18 mi | R$ 24 mi |
 
-> `Net/mês = R$ 18 × N − R$ 40.000`. Payback = Investimento ÷ Net/mês (em regime, com N alunos ativos).
+### B) Breakeven operacional (alunos para cobrir o burn de R$ 40 mil/mês)
 
-| N alunos ativos | Receita/mês | Net/mês (após burn) | Recuperar R$ 500 mil | Recuperar R$ 300 mil | Receita/ano |
-|---|---|---|---|---|---|
-| 2.200 | R$ 44 mil | ~R$ 0 (breakeven) | — | — | ~R$ 528 mil |
-| **5.000** | R$ 100 mil | **+R$ 50 mil** | **~10 meses** | ~6 meses | R$ 1,2 mi |
-| **10.000** | R$ 200 mil | **+R$ 140 mil** | **~3,6 meses** | ~2,1 meses | R$ 2,4 mi |
-| 25.000 | R$ 500 mil | +R$ 410 mil | ~1,2 mês | <1 mês | R$ 6,0 mi |
-| **50.000** (Salta RJ) | R$ 1,0 mi | **+R$ 860 mil** | **<1 mês** | <1 mês | **R$ 12 mi** |
-| 100.000 (Salta total) | R$ 2,0 mi | +R$ 1,76 mi | <1 mês | <1 mês | R$ 24 mi |
-| 9.000 (FGV) | R$ 180 mil | +R$ 122 mil | ~4,1 meses | ~2,5 meses | R$ 2,2 mi |
+| Lucro/aluno/mês | Alunos p/ breakeven |
+|---|---|
+| R$ 5 | **8.000** |
+| R$ 10 | **4.000** |
+| R$ 15 | **2.667** |
+| R$ 20 | **2.000** |
+
+### C) Caixa mensal para pagar o investimento (Net/mês = lucro×N − R$ 40 mil)
+
+| N alunos | R$ 5/mês | R$ 10/mês | R$ 15/mês | R$ 20/mês |
+|---|---|---|---|---|
+| 5.000 | −R$ 15 mil | +R$ 10 mil | +R$ 35 mil | +R$ 60 mil |
+| 10.000 | +R$ 10 mil | +R$ 60 mil | +R$ 110 mil | +R$ 160 mil |
+| 50.000 | +R$ 210 mil | +R$ 460 mil | +R$ 710 mil | +R$ 960 mil |
+| 100.000 | +R$ 460 mil | +R$ 960 mil | +R$ 1,46 mi | +R$ 1,96 mi |
+
+> **Payback (meses) = Investimento ÷ Net/mês.** Ex.: round de R$ 400 mil, 10 mil alunos a R$ 10/mês → 400÷60 ≈ **~7 meses**. A R$ 20/mês → 400÷160 ≈ **~2,5 meses**.
 
 **Leituras:**
-- Com **~5.000 alunos** (tamanho do piloto Pensi/GEC) o investimento de R$ 500 mil volta em **~10 meses** de operação em regime — dentro da sua janela de "ROI em 6 meses" se o round for menor (~R$ 300 mil) ou se o piloto for um pouco maior.
-- O **Grupo Salta inteiro (100 mil alunos)** a R$ 20/mês = **R$ 24 mi/ano de receita** para o NOVO CR. A **FGV (9 mil)** = R$ 2,2 mi/ano. Só esses dois alvos = **~R$ 26 mi/ano de receita potencial**.
-- **Ressalva 1:** o relógio do payback começa quando os alunos estão *ativos*. Chegar a N alunos leva ciclo de venda — a rampa adiciona meses na frente.
-- **Ressalva 2:** R$ 20/aluno/**mês** é agressivo para um módulo de correção (12× o benchmark institucional de ~R$ 20/ano da Turnitin). Só se sustenta se o NOVO CR for vendido **embutido numa mensalidade** (R$ 20 ≈ 1–2% de uma mensalidade de escola particular de R$ 1.000–3.000). É a premissa que você escolheu — defensável nesse enquadramento, a validar com o Pensi.
+- O **piso (R$ 5/mês)** ainda é um bom negócio: 50 mil alunos (Salta-RJ) = **R$ 3 mi/ano**; 100 mil = **R$ 6 mi/ano**.
+- O **breakeven** é o número que importa no curto prazo: a R$ 10/mês bastam **4.000 alunos** para a operação se pagar. Um piloto Pensi de 5–10 mil já passa disso.
+- **Só Salta + FGV** (≈ 109 mil alunos): de **R$ 6,5 mi/ano** (a R$ 5) a **R$ 26 mi/ano** (a R$ 20).
+- **Ressalva 1:** o relógio do payback só começa quando os alunos estão *ativos*; a rampa de venda adiciona meses na frente.
+- **Ressalva 2:** R$ 20/mês só se sustenta vendido **embutido numa mensalidade** (≈ 1–2% de uma mensalidade de R$ 1.000–3.000). O piso de R$ 5/mês é mais conservador e ainda fecha a conta.
 
 ---
 
@@ -308,6 +319,47 @@ Métricas que viram case: nota média ↑, **horas de professor economizadas**, 
 - **Risco eleitoral/político** — troca de gestão pode esfriar o contrato.
 - **Governo paga atrasado** — fluxo de caixa exige colchão.
 - **Conversão não é garantida** — por isso o piloto tem que ter custo baixo (etapa 1) e métricas fortes (etapa 2).
+
+---
+
+## Market share — quanto os concorrentes têm e quanto dá pra tomar
+
+### O mercado total (Censo Escolar 2024, INEP)
+
+| Recorte | Alunos | Escolas |
+|---|---|---|
+| **Educação básica (total Brasil)** | **47,1 milhões** | **179,3 mil** |
+| Ensino médio (onde prova é mais intensa) | 7,8 milhões | — |
+| — estadual | 6,5 mi (83%) | — |
+| — privada | ~1,0 mi (13%) | — |
+| — federal | 243,6 mil (3%) | — |
+| EJA | 2,4 milhões | — |
+
+### O que os concorrentes (de correção por IA) realmente detêm
+
+| Player | Base de alunos | Instituições | Foco | Observação |
+|---|---|---|---|---|
+| **Imaginie** | ~**3 mi cadastrados** (downloads do app) | **800** | só redação | "cadastrado" ≠ pagante; 800 escolas é o proxy B2B real; ~40 mil redações/mês |
+| **Letrus** | ~450 mil impactados | 680 | só redação | inclui pilotos públicos gratuitos |
+| **Cria** | 240 mil | 120 | só redação (ENEM) | freemium |
+| **Soma (redação BR)** | — | **~1.600 escolas** | **100% redação** | **≈ 0,9% das 179,3 mil escolas do país** |
+
+### O insight de share
+
+- O mercado de **correção por IA no Brasil é 100% redação** e penetra **<1% das escolas** (~1.600 de 179,3 mil). Mesmo a líder (Imaginie, 800 escolas) tem **<0,5%** das escolas.
+- **O espaço do NOVO CR (prova inteira, multimatéria) tem 0 player relevante.** Não é dividir o bolo da redação — é abrir o bolo dos **outros 99%** (provas de todas as matérias, todas as séries).
+- **Tamanho do espaço vazio (ilustrativo):** capturar só **1% das escolas do país** (~1.790 escolas × ~500 alunos = ~900 mil alunos) a R$ 10/aluno/mês = **~R$ 108 mi/ano**. O TAM é gigante porque ninguém atende.
+
+### Quanto dá pra tomar no curto prazo (SAM realista do Otavio)
+
+| Beachhead | Alunos | Receita/ano a R$ 5–20/mês |
+|---|---|---|
+| Grupo Salta (privado, sócio) | 117 mil | R$ 7–28 mi |
+| FGV | 9 mil | R$ 0,5–2,2 mi |
+| Federais RJ (CPII, IFRJ, CEFET — prestígio) | 40–50 mil | R$ 2,4–12 mi |
+| Público RJ via piloto GEC → licitação | 100 mil+ | R$ 6–24 mi |
+
+> Nenhum desses está "tomado" por um concorrente de **prova inteira** — porque ele não existe. A disputa, quando houver, é contra correção manual do professor (status quo), não contra Letrus/Imaginie (que só fazem redação).
 
 ---
 
