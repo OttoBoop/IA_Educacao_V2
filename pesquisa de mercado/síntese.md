@@ -143,6 +143,26 @@ O custo de IA **não é o gargalo** — o gargalo é venda (contrato-âncora) e 
 
 ---
 
+## Bloco 1 — Alunos: leitura estratégica (quem é endereçável de verdade)
+
+> O número bruto engana. O que importa para o NOVO CR é **onde a dor de correção é maior** (provas longas/discursivas/vestibular) e **quão fácil é vender** (decisor central vs licitação).
+
+**A nuance-chave:** o maior pool único — **rede municipal do Rio (650 mil)** — é **Educação Infantil + Fundamental** (não tem Ensino Médio regular). Provas existem (Fundamental II), mas são mais simples. **A dor de correção pesada (prova longa, discursiva, vestibular/ENEM) está no Ensino Médio** → que está na **rede estadual, federal e privada**, não na municipal.
+
+### Ranking de endereçabilidade (beachheads)
+
+| Tier | Pool | Alunos | Por que / dificuldade de venda |
+|---|---|---|---|
+| **1** | **Grupo Salta** (pH/Pensi/Elite) | 117 mil (~50k RJ) | Privado, **sócio dá acesso**, decisor central. Ensino médio + vestibular = dor máxima. **Melhor beachhead.** |
+| **1** | **FGV** | 9 mil | Privado, prestígio, marca de pitch. Processo mais lento, mas alto valor. |
+| **2** | **Federais RJ** (CPII, IFRJ, CEFET) | 40–50 mil | Provas sérias, prestígio (vira case). Compra federal é burocrática. |
+| **3** | **Estadual SEEDUC** | 600–750 mil (estado) | **Aqui está o Ensino Médio** (6,5 mi no BR). Dor máxima + escala, mas **licitação lenta**. |
+| **3** | **Municipal Rio** | 650 mil | Infantil+Fundamental (dor menor). **Porta de entrada = GEC/GET** (11–30k) como piloto-vitrine → licitação. |
+
+**Leitura:** o plano do Otavio já está certo na sequência — **privado primeiro (Salta/FGV)**, onde a dor é alta e a venda é rápida; **público depois** (GEC piloto → estadual/municipal via licitação), onde está a escala mas a venda é lenta. O município (650 mil) não é o alvo nº 1 apesar de ser o maior número — porque é fundamental e licitação.
+
+---
+
 ## Modelo de ROI — premissa R$ 20/aluno/mês (escolhida pelo Otavio)
 
 > Premissa de trabalho (não é o modelo de negócio fechado, é a régua para dimensionar reais e tempo de retorno):
