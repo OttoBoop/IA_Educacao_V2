@@ -1046,6 +1046,7 @@ async def listar_niveis_ensino():
 from supabase_db import supabase_db
 
 DEPLOY_SHA_PATH = Path(__file__).parent / "deploy_sha.txt"
+# Marker for Render rootDir deploys when UI-only changes need a runtime rebuild.
 
 
 def _normalizar_sha_deploy(valor: Optional[str]) -> Optional[str]:
