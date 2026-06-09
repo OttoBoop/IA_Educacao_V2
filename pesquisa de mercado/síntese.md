@@ -177,11 +177,34 @@ O custo de IA **não é o gargalo** — o gargalo é venda (contrato-âncora) e 
 
 **Custo via API (modelo barato):** **~R$ 0,30/prova** (gpt-5-mini/Gemini Flash), zero capex, escala elástica, melhor qualidade.
 
-**Crossover (quando o GPU se paga):**
-- GPU de R$ 19.000 (3090) ÷ R$ 0,30/prova = **~63.000 provas** para empatar — **só o hardware**, sem contar luz, manutenção, ops, e o fato de que um modelo local **roda mais lento e geralmente entrega qualidade inferior** ao gpt-5-mini/Gemini para correção.
-- A 50 mil alunos × 10 provas/ano = 500 mil provas/ano → API custa **~R$ 150 mil/ano**. Um A6000 (R$ 48k) rodando 70B *poderia* ser mais barato em volume — **se** a qualidade do modelo local segurar e o throughput der conta.
+**Crossover detalhado (com luz + amortização + manutenção):**
 
-> **Recomendação:** **usar API agora** (modelo barato, R$ 0,30/prova, zero capex, melhor qualidade, escala sob demanda). **Rodar local só faz sentido depois**, com **volume alto e constante (>100 mil provas/ano)** E **se um modelo open-source atingir a qualidade necessária** — ou por exigência de **privacidade/LGPD** (dado de aluno não sair para terceiros), que pode ser o gatilho real no setor público. Até lá, capex em GPU é dinheiro parado.
+O custo local é quase todo **fixo** (capex amortizado + energia 24/7), independente do volume até o teto de throughput. Custo de energia no Brasil ~R$ 0,90/kWh (comercial). Amortização do hardware em 3 anos.
+
+| Setup local | Capex | Amortização/ano | Energia/ano (24/7) | **Custo fixo/ano** | Modelo que roda |
+|---|---|---|---|---|---|
+| RTX 3090 (usada ~R$ 6k) | R$ 6.000 | R$ 2.000 | ~R$ 4.700 (rig ~600W) | **~R$ 6.800/ano** | até ~30B (qualidade < gpt-5-mini) |
+| A6000 48GB | R$ 48.000 | R$ 16.000 | ~R$ 7.000 (rig ~800W) | **~R$ 23.000/ano** | 70B (mais perto de frontier) |
+
+**Comparação API × local por volume:**
+
+| Provas/ano (≈ alunos) | API (R$ 0,30/prova) | Local 3090 (~R$ 6,8k fixo) | Local A6000 (~R$ 23k fixo) |
+|---|---|---|---|
+| 23 mil (~2.300 alunos) | R$ 6,9k | **R$ 6,8k (empata)** | R$ 23k |
+| 77 mil (~7.700 alunos) | R$ 23k | R$ 6,8k | **R$ 23k (empata)** |
+| 500 mil (~50 mil alunos) | **R$ 150k** | R$ 6,8k* | R$ 23k* |
+| 1 milhão (~100 mil alunos) | **R$ 300k** | — | R$ 23–94k (multi-GPU) |
+
+\* uma GPU só **pode não dar conta do throughput** nesse volume — precisaria de várias.
+
+**Conclusão honesta do crossover:**
+- **< ~2.300 alunos:** API ganha claramente (capex parado não compensa).
+- **2.300–50.000 alunos:** o local "empata ou ganha no papel", **mas a economia é de poucos milhares de reais** e você herda **ops + risco de qualidade inferior** do modelo open-source. **API ainda recomendado** por simplicidade e qualidade.
+- **50.000+ alunos (Salta/público):** aí o local pode economizar **R$ 100 mil+/ano** — vale o projeto de validar um modelo open-source dedicado. É o estágio em que faz sentido investir na GPU, provavelmente combinado com o gatilho de privacidade.
+
+> **Recomendação:** **API agora**; reabrir a conta do GPU local **só ao cruzar ~50 mil alunos** (ou se a privacidade exigir antes).
+>
+> **Nota LGPD/jurídico:** mandar prova de aluno para API de terceiro tem implicação legal — **fica para o advogado do investidor resolver depois do aporte** (decisão do Otavio: não é prioridade de pesquisa agora).
 
 ### Equipe (compõe o burn de R$ 40 mil/mês)
 
