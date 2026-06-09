@@ -163,6 +163,41 @@ O custo de IA **não é o gargalo** — o gargalo é venda (contrato-âncora) e 
 
 ---
 
+## Bloco 3 — Custos: GPU local vs API + equipe
+
+### A decisão central: rodar modelo local (GPU) ou usar API?
+
+**Preço das GPUs para rodar open-source local (em BRL):**
+
+| Modelo open-source | VRAM | GPU | Preço (one-off) |
+|---|---|---|---|
+| 7–8B (Llama 3 8B, Mistral) | ~6 GB | RTX 3060 12GB | ~R$ 2.400 |
+| 30–34B | ~24 GB | **RTX 3090 24GB** | ~R$ 5.000–19.000 |
+| 70B (qualidade frontier-ish) | ~42 GB | 2× RTX 4090 ou **A6000 48GB** | ~R$ 40.000–48.000 |
+
+**Custo via API (modelo barato):** **~R$ 0,30/prova** (gpt-5-mini/Gemini Flash), zero capex, escala elástica, melhor qualidade.
+
+**Crossover (quando o GPU se paga):**
+- GPU de R$ 19.000 (3090) ÷ R$ 0,30/prova = **~63.000 provas** para empatar — **só o hardware**, sem contar luz, manutenção, ops, e o fato de que um modelo local **roda mais lento e geralmente entrega qualidade inferior** ao gpt-5-mini/Gemini para correção.
+- A 50 mil alunos × 10 provas/ano = 500 mil provas/ano → API custa **~R$ 150 mil/ano**. Um A6000 (R$ 48k) rodando 70B *poderia* ser mais barato em volume — **se** a qualidade do modelo local segurar e o throughput der conta.
+
+> **Recomendação:** **usar API agora** (modelo barato, R$ 0,30/prova, zero capex, melhor qualidade, escala sob demanda). **Rodar local só faz sentido depois**, com **volume alto e constante (>100 mil provas/ano)** E **se um modelo open-source atingir a qualidade necessária** — ou por exigência de **privacidade/LGPD** (dado de aluno não sair para terceiros), que pode ser o gatilho real no setor público. Até lá, capex em GPU é dinheiro parado.
+
+### Equipe (compõe o burn de R$ 40 mil/mês)
+
+| Cargo | Base/mês | Carregado CLT (~80% encargos) |
+|---|---|---|
+| Backend pleno | R$ 7.800 | ~R$ 14.000 |
+| Designer pleno (UI/UX) | R$ 5.500–6.000 | ~R$ 10.000 |
+| Founder (pró-labore) | R$ 10.000 | R$ 10.000 |
+| Infra + contador + ferramentas | — | ~R$ 5.000 |
+| **Total burn** | — | **~R$ 39–40 mil/mês** |
+
+- Júnior/sênior para referência: designer júnior ~R$ 3–3,5k, sênior ~R$ 9–12k; backend júnior ~R$ 3,4–4,5k, sênior ~R$ 12,4–20,9k. PJ costuma ficar ~20–40% acima do CLT-base.
+- **A IA (R$ 0,30/prova) é ~1% do custo;** o burn é **97% equipe**. O gargalo de custo é gente, não modelo.
+
+---
+
 ## Modelo de ROI — premissa R$ 20/aluno/mês (escolhida pelo Otavio)
 
 > Premissa de trabalho (não é o modelo de negócio fechado, é a régua para dimensionar reais e tempo de retorno):
