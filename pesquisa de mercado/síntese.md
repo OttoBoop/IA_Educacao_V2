@@ -143,6 +143,53 @@ O custo de IA **não é o gargalo** — o gargalo é venda (contrato-âncora) e 
 
 ---
 
+## Comparação dos 3 modelos de negócio — quanto cada um paga
+
+> Premissas: aluno faz **~10 provas/ano**; custo de API ~R$ 0,30/prova; Pensi/Salta RJ ≈ 55 unidades.
+> Preços-base por modelo: **A)** R$ 3/prova corrigida (conservador — Imaginie cobra R$ 7–10 por *redação*),
+> **B)** R$ 20/aluno/ano (faixa Turnitin), **C)** R$ 20 mil/escola/ano (referência MagicSchool US$ 3.999). 🟡
+
+| Cenário | A) Por correção (R$ 3/prova) | B) Por aluno/ano (R$ 20) | C) Por escola/ano (R$ 20 mil) |
+|---|---|---|---|
+| **Piloto Pensi** (10 mil alunos ≈ 10 escolas) | **R$ 300 mil** | R$ 200 mil | R$ 200 mil |
+| **Marcas RJ inteiras** (50 mil alunos ≈ 55 unidades) | **R$ 1,5 mi** | R$ 1,0 mi | R$ 1,1 mi |
+| **SEEDUC** (600 mil alunos ≈ 1.200 escolas) | R$ 18 mi nominal (negociado ~R$ 6 mi a R$ 1/prova) | R$ 12 mi | R$ 24 mi nominal (negociado) |
+
+**Trade-offs:**
+- **A) Por correção** — paga mais SE o uso for alto; risco de receita baixa se a escola usar pouco; exige medir/cobrar por volume. Melhor alinhamento custo-receita (custo também é por prova).
+- **B) Por aluno/ano** — receita previsível (ARR limpo para pitch de investimento); risco de "all-you-can-eat" se usarem muito (mitigado: custo é centavos). **Validado no BR: é o modelo da Letrus ("mensalidade por aluno atendido").**
+- **C) Por escola/ano** — o mais simples de aprovar numa controladoria (1 número × 55 unidades); perde granularidade (escola grande paga igual à pequena).
+- Os três convergem em ordem de grandeza (~R$ 200–300 mil no piloto; ~R$ 1–1,5 mi nas marcas RJ). **A escolha é mais sobre facilidade de venda e previsibilidade do que sobre o tamanho do cheque.**
+
+---
+
+## Dossiê 1/3 — Letrus (o concorrente a copiar e a evitar)
+
+| Dimensão | Dado | Flag |
+|---|---|---|
+| Fundação | 2017 — Luis Junqueira + Thiago Rached | 🟢 |
+| **Captação total** | **R$ 96 milhões** desde 2017; última rodada **R$ 36 mi** (Crescera Capital + Owl Ventures; com BID Lab, **Fundação Lemann**, VélezReyez+ (David Vélez/Nubank), Altitude/Península) | 🟢 |
+| **Modelo de negócio** | **Mensalidade por aluno atendido** (B2B) — valida o modelo "por aluno" no Brasil | 🟢 |
+| Clientes privados | Pueri Domus, Bahema, **SESI**; **630–680 escolas** no total | 🟢 |
+| Escala | ~450 mil alunos impactados; meta declarada: 1 milhão em 2 anos | 🟢 |
+| Setor público | Entra **de graça** (MS: 48 mil alunos), depois converte em política pública (GO, ES, MT) | 🟢 |
+| Produto | Só **redação/escrita** (gêneros de vestibular); professor escolhe tema, aluno digita, IA corrige na hora, professor valida | 🟢 |
+| Reconhecimento | Prêmio UNESCO de melhor tecnologia educacional | 🟢 |
+
+**O que copiar da Letrus:**
+1. Modelo "mensalidade por aluno" — investidores brasileiros já validaram com R$ 96 mi.
+2. Motion dupla: redes privadas (Pueri Domus/Bahema/SESI = decisor central, como o Salta) + público via piloto gratuito.
+3. "Professor valida a IA" — mesma filosofia do pipeline transparente do NOVO CR.
+
+**Onde a Letrus é vulnerável (sua abertura):**
+1. **Só corrige redação.** Prova de matemática, ciências, múltipla escolha + discursiva mista — fora do alcance dela.
+2. Aluno **digita** o texto — a Letrus não lê prova manuscrita/escaneada (o NOVO CR lê).
+3. Com R$ 96 mi captados, ela tem pressão de crescer em escala nacional — pouco incentivo para customizar para uma rede como o Salta.
+
+**Régua de benchmark:** Letrus levou ~7 anos e R$ 96 mi para chegar a 680 escolas / 450 mil alunos. Isso calibra qualquer projeção sua: chegar a 50 mil alunos (marcas RJ do Salta) já seria ~11% da escala da Letrus com uma fração do capital.
+
+---
+
 ## Os 3 fatos que mudam a conversa (achados das pesquisas)
 
 1. **O preço da categoria é baixo e por volume.** Turnitin cobra US$2–6/aluno/ano de universidades americanas. Isso significa: ninguém fica rico com 1 escola — o jogo é **contrato-âncora com rede** (Salta, SEEDUC). Por isso o split 1.4.1 (Rio vs fora) importa: o Salta dá acesso a 117 mil alunos com **um** decisor.
