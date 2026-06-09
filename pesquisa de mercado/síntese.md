@@ -192,6 +192,31 @@ O custo de IA **não é o gargalo** — o gargalo é venda (contrato-âncora) e 
 
 ---
 
+## Dossiê 2/3 — Imaginie (a maior em volume, mas híbrida e lenta)
+
+| Dimensão | Dado | Flag |
+|---|---|---|
+| Posição | **Maior empresa de correção de redação do Brasil**, ~10 anos de operação | 🟢 |
+| **Modelo de correção** | **Híbrido: IA + corretores humanos** (voluntários) — prazo de **15 dias** para nota final | 🟢 |
+| **Modelo de negócio** | **Crédito por correção** (1 crédito = 1 redação): R$ 9,90 avulso, R$ 69,90 o pacote de 10 (R$ 7/un); planos escola a partir de R$ 69/mês; "redes compram **milhares de créditos/ano**" | 🟢 |
+| Produto p/ aluno | ENEM 900+ 12× R$ 21; pacotes; relatórios por competência do ENEM | 🟢 |
+| Setor público | **MG: +142 mil redações** corrigidas (IA + revisão humana) — atua no público como a Letrus | 🟢 |
+| Capital | Plataforma desenvolvida com **+R$ 1 milhão** (modesto vs Letrus R$ 96 mi) | 🟢 |
+
+**O que a Imaginie valida para você:**
+1. **O modelo "por correção" funciona e escala** — redes compram milhares de créditos/ano a ~R$ 7/correção. Isso prova o seu **Modelo A** (por prova).
+2. O mercado paga **R$ 7–10 por redação corrigida** — e seu custo com IA pura é ~R$ 0,30. Margem enorme.
+3. Dá para atender público E privado com o mesmo produto.
+
+**Onde a Imaginie é vulnerável (sua abertura):**
+1. **Híbrido = lento e caro.** Depende de corretor humano → **15 dias** de prazo e custo de mão de obra por correção. O NOVO CR é **IA pura: instantâneo e com margem muito maior** (não paga corretor).
+2. **Só redação** (mesma limitação da Letrus) — não corrige prova inteira/multimatéria.
+3. Plataforma de **+R$ 1 mi** (não é gigante de capital) — concorrente "batível" em tecnologia, ao contrário da Letrus.
+
+> **Leitura combinada Letrus + Imaginie:** as duas maiores do BR **só fazem redação** e a maior em volume **ainda depende de humano**. O espaço de "**prova completa, multimatéria, 100% IA, instantânea, em PT-BR**" segue vazio.
+
+---
+
 ## Funil de conversão no setor público (motion "doar → contrato")
 
 > A jogada da Letrus, aplicada ao NOVO CR no Rio. Otavio tem contatos na **Prefeitura do Rio**.
