@@ -174,6 +174,17 @@ O custo de IA **não é o gargalo** — o gargalo é venda (contrato-âncora) e 
 | 7–8B (Llama 3 8B, Mistral) | ~6 GB | RTX 3060 12GB | ~R$ 2.400 |
 | 30–34B | ~24 GB | **RTX 3090 24GB** | ~R$ 5.000–19.000 |
 | 70B (qualidade frontier-ish) | ~42 GB | 2× RTX 4090 ou **A6000 48GB** | ~R$ 40.000–48.000 |
+| **405B / 671B (nível Opus, fronteira)** | **~640 GB–1 TB** (FP8) | **8× NVIDIA H100 80GB** (servidor DGX-class) | **~R$ 1,1–1,7 milhões** |
+
+**Para rodar um modelo nível Opus localmente (a pergunta do Otavio):**
+- **Llama 3.1 405B** (maior Llama 3) precisa de ~810 GB em FP16 / ~640 GB em FP8 → roda num nó de **8× H100 (640 GB)**. DeepSeek 671B precisa ainda mais.
+- **Custo do hardware:** H100 80GB = **US$ 25–40 mil/placa**; servidor **8× H100 = US$ 200–320 mil ≈ R$ 1,1–1,7 milhões** (one-off). + **luz ~R$ 78 mil/ano** (rig ~10 kW, 24/7) + refrigeração + ops.
+- **Alternativa nuvem:** alugar 8× H100 a ~US$ 2,7–10/GPU/h → **~R$ 80–230 mil/MÊS** rodando 24/7.
+
+**Crossover do nível Opus:**
+- 8× H100 (R$ 1,4 mi) amortizado em 3 anos + luz = **~R$ 550 mil/ano fixo**. Vs API de qualidade Opus/Sonnet (~R$ 1,43/prova) → break-even em **~385 mil provas/ano (~38 mil alunos)**.
+
+> **Mas o ponto-chave:** **corrigir prova NÃO precisa de modelo nível Opus.** Os modelos baratos (gpt-5-mini, Gemini Flash, Haiku) já fazem a correção bem a R$ 0,15–0,50/prova. Comprar 8× H100 para corrigir prova é **Ferrari para entregar pizza** — overkill que só se paga em escala gigante (~40 mil+ alunos) E se a qualidade de fronteira fosse realmente necessária (não é). **Recomendação: nem considerar hardware de fronteira;** se um dia quiser qualidade Opus, é mais barato chamar a API do Opus/Sonnet do que amortizar R$ 1,5 mi de GPU.
 
 **Custo via API (modelo barato):** **~R$ 0,30/prova** (gpt-5-mini/Gemini Flash), zero capex, escala elástica, melhor qualidade.
 
