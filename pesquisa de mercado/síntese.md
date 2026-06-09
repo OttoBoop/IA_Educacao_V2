@@ -17,12 +17,17 @@
 
 **Concorrência (uma frase):** *"Quem corrige por IA no Brasil hoje corrige só redação (Letrus, Cria). Quem corrige prova inteira (Gradescope) é gringo, inglês-first e universitário. Ninguém faz prova completa, multi-questão, em português."*
 
-**Preços de referência da categoria (o achado mais importante desta rodada):**
-- **Gradescope:** US$1–3/aluno/curso (individual); institucional ~**US$4/aluno/curso/ano** (caso real: Univ. da Geórgia) 🟢
-- **Turnitin:** **US$1,79–6,50/aluno/ano** (California State pagou US$2,59 em 2024 — registros de compras públicas) 🟢
-- **CoGrader:** **US$19/professor/mês** 🟢
-- **Letrus:** preço não público; em MS a parceria foi **gratuita** (estratégia de prova social/filantropia para depois vender) 🟢
-- Em reais: a categoria cobra algo como **R$ 10–35 por aluno/ano** (B2B institucional) ou **R$ 100–150/professor/mês** (B2C professor). 🟡 (conversão ~R$5,3/US$)
+**Preços de referência da categoria — as 4 lógicas do mercado (detalhe em `02_concorrentes.md`):**
+
+| Lógica de preço | Exemplos | Valor |
+|---|---|---|
+| **Por correção** (BR redação) | Imaginie R$ 7–9,90/redação; Redação Online R$ 17–38 (humana) | **R$ 5–10/correção IA** |
+| **Por aluno/ano** (global institucional) | Turnitin US$ 1,79–6,50; Gradescope ~US$ 4/aluno/curso (UGA) | **~R$ 10–35/aluno/ano** |
+| **Por professor/mês** | EssayGrader US$ 6,99–14,99; CoGrader US$ 19; MagicSchool US$ 11,99 | **~R$ 37–100/mês** |
+| **Por escola/ano** | MagicSchool District US$ 3.999/escola | **~R$ 21 mil/escola/ano** |
+
+- **Letrus:** preço não público; entra **de graça** (MS, 48 mil alunos) e depois vira política pública paga. 🟢
+- **Insight central:** o mercado BR paga **R$ 5–10 por correção de IA** de redação — e o custo real com LLM é **centavos** (~R$ 0,15–0,50/prova, ver seção de custo). Quem define a lógica de cobrança certa para prova completa multi-questão captura essa diferença.
 
 ---
 

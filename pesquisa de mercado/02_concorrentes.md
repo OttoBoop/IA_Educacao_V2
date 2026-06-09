@@ -24,7 +24,25 @@ Dois grupos:
 | **Pod (Plataforma Otimizadora de Correção de Provas)** | Otimiza correção de provas; startup de engenheiros da **Poli/USP** | Piloto em 4 instituições (médio/superior) em SP | 🟢 |
 | **Plataforma NEES (UFAL)** | Correção de textos a partir da avaliação do professor; **gratuita**, acadêmica | Pesquisa universitária | 🟢 |
 | **Gomining** | IA para correção automática de produções textuais (graduação) | Comercial, nicho | 🟡 |
+| **Imaginie** | Correção de redação ENEM/vestibular (humana + IA), vende créditos para alunos E redes de escolas | Player consolidado; "redes compram milhares de créditos por ano" | 🟢 |
+| **Redação Online** | Correção humana de redação por pacote | R$ 17–38 por correção | 🟢 |
+| **coRedação** | Correção de redação por IA, ilimitada, assinatura | ~R$ 12,90/mês (B2C) | 🟢 |
+| **CorrigeAi, Glau, Super Professor** | Correção de redação IA embutida em plataformas de estudo/questões | Cauda longa | 🟡 |
 | **Soluções internas/AWS** | Escolas montando correção própria com LLMs (ex.: tutoriais AWS Brasil) | Pulverizado | 🟡 |
+
+### Quanto cada um cobra (benchmark de preços — coração da pesquisa)
+
+O mercado pratica **4 lógicas de preço diferentes**:
+
+| Lógica | Quem usa | Preço observado | Equivalente por aluno/ano |
+|---|---|---|---|
+| **Por correção** (BR, redação) | Imaginie (R$ 9,90 avulso; R$ 7/un no pacote de 10; menos em volume p/ redes), Redação Online (R$ 17,49–38,18 humana) | **R$ 5–10/redação (IA)**, R$ 17–38 (humana) | ~R$ 50–100 (10 redações/ano) |
+| **Licença por aluno/ano** (global, institucional) | Turnitin (**US$ 1,79–6,50/aluno/ano**, registros públicos CA), Gradescope (US$ 1–3/aluno/curso; caso real UGA US$ 4) | US$ 2–6 | **~R$ 10–35** |
+| **Por professor/mês** | EssayGrader (US$ 6,99–14,99/mês), CoGrader (US$ 19/mês), MagicSchool Plus (US$ 11,99/mês) | US$ 7–19/mês | depende de alunos/professor |
+| **Por escola/ano** | MagicSchool District (**US$ 3.999/escola/ano** ≈ R$ 21 mil) | R$ 21 mil/escola | escola de 1.000 alunos → ~R$ 21/aluno/ano |
+| **Grátis → política pública** | Letrus (entrou de graça no MS; contratos estaduais não públicos) | — | — |
+
+**Leitura-chave:** no Brasil, o mercado de redação aceita pagar **R$ 5–10 por correção de IA** — enquanto o custo real de corrigir com LLM é centavos. Já o modelo institucional global converge para **R$ 10–35/aluno/ano**. O MagicSchool dá um terceiro caminho: **R$ ~21 mil por escola/ano**, que numa escola de 1.000 alunos dá os mesmos ~R$ 21/aluno.
 
 ### Global
 
