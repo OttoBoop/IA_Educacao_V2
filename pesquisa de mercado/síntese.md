@@ -175,6 +175,14 @@ O custo de IA **não é o gargalo** — o gargalo é venda (contrato-âncora) e 
 | 30–34B | ~24 GB | **RTX 3090 24GB** | ~R$ 5.000–19.000 |
 | 70B (qualidade frontier-ish) | ~42 GB | 2× RTX 4090 ou **A6000 48GB** | ~R$ 40.000–48.000 |
 | **405B / 671B (nível Opus, fronteira)** | **~640 GB–1 TB** (FP8) | **8× NVIDIA H100 80GB** (servidor DGX-class) | **~R$ 1,1–1,7 milhões** |
+| **671B full / topo Blackwell** | ~700 GB–1,4 TB | **4× B200** (DeepSeek 671B FP8) → **DGX B200 (8×)** → **rack GB200 NVL72 (72 GPUs)** | **R$ 0,6–1,1 mi → R$ 2,7 mi → ~R$ 16 mi** |
+
+**Teto absoluto do mercado (geração Blackwell, 2026):**
+- **B200** (SXM, 180–192 GB): US$ 30–50 mil/placa. **GB200 Superchip:** US$ 60–70 mil.
+- **4× B200** rodam o **DeepSeek 671B** completo em FP8 (720 GB) → ~**R$ 0,6–1,1 milhão**.
+- **DGX B200** (8× B200, 1,44 TB): **US$ 515 mil ≈ R$ 2,7 milhões**.
+- **Rack GB200 NVL72** (72 GPUs — o topo, para treinar/servir em escala): **~US$ 3 milhões ≈ R$ 16 milhões**.
+- Aluguel nuvem: B200 ~US$ 2,25–16/GPU/h; GB200 ~US$ 10–20/GPU/h.
 
 **Para rodar um modelo nível Opus localmente (a pergunta do Otavio):**
 - **Llama 3.1 405B** (maior Llama 3) precisa de ~810 GB em FP16 / ~640 GB em FP8 → roda num nó de **8× H100 (640 GB)**. DeepSeek 671B precisa ainda mais.
