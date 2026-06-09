@@ -269,6 +269,41 @@ O custo de IA **não é o gargalo** — o gargalo é venda (contrato-âncora) e 
 
 ---
 
+## Dossiê 3/3 — Gradescope/Turnitin (o único que faz prova inteira — e a real ameaça de entrada)
+
+| Dimensão | Dado | Flag |
+|---|---|---|
+| Dono | **Turnitin** (adquirida por ~US$ 1,75 bi em 2019) | 🟢 |
+| Escala | **110–140 mil instrutores, ~2,7–3,2 mi alunos, 2.600 instituições** | 🟢 |
+| Foco | **Universidade** (EUA), com uso secundário em ensino médio | 🟢 |
+| Produto | Lê **prova manuscrita** (inglês + notação matemática), múltipla escolha, código; **agrupa respostas semelhantes** (answer groups) | 🟢 |
+| **Tipo de IA** | **NÃO é IA generativa** — usa OCR + algoritmos de **clustering/reconhecimento**. "A IA sugere agrupamentos; o instrutor revisa, ajusta e aplica a rubrica. Nota e feedback finais = humano." | 🟢 |
+| Preço | US$ 1–3/aluno/curso; institucional ~US$ 4/aluno (caso UGA) | 🟢 |
+| **Português** | ⚠️ **Disponível em português (BR) desde maio/2022** (+ japonês, coreano, espanhol, turco) | 🟢 |
+
+**Por que o Gradescope importa — é o concorrente mais perigoso (a real ameaça de entrada):**
+- É o **único** que já faz "prova inteira / manuscrito / multimatéria" — exatamente o espaço do NOVO CR.
+- **Já está em português** e tem o capital da Turnitin (US$ 1,75 bi) atrás.
+
+**Mas é fundamentalmente diferente do NOVO CR (suas aberturas):**
+1. **Clustering, não IA generativa.** O Gradescope **agrupa respostas parecidas** para o professor corrigir um lote de uma vez — ele **não lê, entende e dá nota+feedback por aluno** numa resposta discursiva aberta. O NOVO CR (LLMs multi-provider) **faz a correção substantiva** e gera feedback individual. Em prova discursiva aberta, o Gradescope só organiza; o NOVO CR corrige.
+2. **Exige template rígido** (resposta em uma linha, caixa demarcada). O NOVO CR lê a prova **como ela é aplicada** no papel.
+3. **Universitário e americano.** Interface em PT, mas **sem contexto pedagógico brasileiro** (ENEM, BNCC, vestibular) e sem foco em educação básica.
+
+> **Confirma a filosofia do NOVO CR:** o líder global também é **human-in-the-loop** ("nota e feedback finais = humano"). Logo, "o professor revisa" não é fraqueza — é o padrão da categoria.
+
+> **Ameaça a declarar no pitch (honestidade):** se a Turnitin resolver plugar IA generativa no Gradescope e empurrar para o K-12 brasileiro, é o concorrente a observar. A defesa do NOVO CR: **velocidade de execução, foco em educação básica BR e relacionamento (Salta, FGV, Prefeitura)** — antes que um gigante americano olhe para cá.
+
+---
+
+## Tese central do posicionamento (✅ decisão Otavio: "oceano azul / categoria nova")
+
+> **"O mercado de correção por IA no Brasil é 100% redação e penetra <1% das escolas. O NOVO CR abre uma categoria nova — prova inteira, multimatéria — que nenhum player relevante atende. Não disputo o bolo da redação; abro o bolo dos outros 99%."**
+>
+> Lastro: Letrus/Imaginie/Cria só fazem redação (~1.600 escolas, <1% das 179 mil do país); o único que faz prova inteira (Gradescope) é clustering americano universitário, não correção generativa de educação básica BR.
+
+---
+
 ## Funil de conversão no setor público (motion "doar → contrato")
 
 > A jogada da Letrus, aplicada ao NOVO CR no Rio. Otavio tem contatos na **Prefeitura do Rio**.
