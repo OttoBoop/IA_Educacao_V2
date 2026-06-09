@@ -4721,28 +4721,34 @@
                     <div class="tree-section-header">
                         <span>Navegação</span>
                     </div>
-                    <div class="tree-item active" onclick="showDashboard()"
+                    <div class="tree-item active" data-nav-view="dashboard" onclick="showDashboard()"
                         data-tooltip="Página inicial com visão geral do sistema" data-tooltip-pos="right">
                         <span class="tree-item-icon">🏠</span>
                         <span class="tree-item-name">Início</span>
                     </div>
-                    <div class="tree-item" onclick="showChat()"
+                    <div class="tree-item" data-nav-view="chat_geral" onclick="showChat()"
                         data-tooltip="Converse com a IA sobre seus documentos e provas" data-tooltip-pos="right">
                         <span class="tree-item-icon">💬</span>
                         <span class="tree-item-name">Chat com IA</span>
                     </div>
-                    <div class="tree-item" onclick="showAlunos()"
+                    <div class="tree-item" data-nav-view="alunos" onclick="showAlunos()"
                         data-tooltip="Lista de todos os alunos cadastrados no sistema" data-tooltip-pos="right">
                         <span class="tree-item-icon">👥</span>
                         <span class="tree-item-name">Todos os Alunos</span>
                     </div>
-                    <div class="tree-item" onclick="showPrompts()"
+                    <div class="tree-item" data-nav-view="visao_aluno_selector" onclick="showVisaoAlunoSelector()"
+                        data-tooltip="Escolha um aluno e veja apenas matérias, turmas e atividades em que ele participou"
+                        data-tooltip-pos="right">
+                        <span class="tree-item-icon">🎓</span>
+                        <span class="tree-item-name">Visão do Aluno</span>
+                    </div>
+                    <div class="tree-item" data-nav-view="prompts" onclick="showPrompts()"
                         data-tooltip="Gerencie os prompts que controlam o comportamento da IA em cada etapa"
                         data-tooltip-pos="right">
                         <span class="tree-item-icon">🧠</span>
                         <span class="tree-item-name">Prompts</span>
                     </div>
-                    <div class="tree-item technical-item" onclick="showProviders()"
+                    <div class="tree-item technical-item" data-nav-view="providers" onclick="showProviders()"
                         data-tooltip="⚠️ Área técnica: modelos de IA configurados (GPT, Claude, Gemini)"
                         data-tooltip-pos="right">
                         <span class="tree-item-icon">🤖</span>
@@ -6063,6 +6069,24 @@
         let currentAtividade = null;
         let currentAluno = null;
 
+        function setSidebarActive(view) {
+            const navMap = {
+                dashboard: 'dashboard',
+                chat_geral: 'chat_geral',
+                alunos: 'alunos',
+                visao_aluno_selector: 'visao_aluno_selector',
+                aluno: 'visao_aluno_selector',
+                dashboard_aluno: 'visao_aluno_selector',
+                resultado_aluno: 'visao_aluno_selector',
+                prompts: 'prompts',
+                providers: 'providers'
+            };
+            const targetView = navMap[view] || null;
+            document.querySelectorAll('.nav-tree .tree-item[data-nav-view]').forEach(item => {
+                item.classList.toggle('active', Boolean(targetView) && item.dataset.navView === targetView);
+            });
+        }
+
         // ============================================================
         // SPA HISTORY NAVIGATION
         // ============================================================
@@ -6070,6 +6094,7 @@
         let _popstateThrottled = false;
 
         function pushNavState() {
+            setSidebarActive(currentView);
             if (_isRestoringFromHistory) return;
             const state = {
                 view: currentView,
@@ -6106,6 +6131,7 @@
                     case 'turma': if (state.turmaId) await showTurma(state.turmaId); break;
                     case 'atividade': if (state.atividadeId) await showAtividade(state.atividadeId); break;
                     case 'alunos': await showAlunos(); break;
+                    case 'visao_aluno_selector': await showVisaoAlunoSelector(); break;
                     case 'prompts': await showPrompts(); break;
                     case 'providers': await showProviders(); break;
                     case 'chat_geral': await showChatGeral(state.atividadeId, state.alunoId); break;
@@ -9626,12 +9652,96 @@
                         <div class="card-header"><h3 class="card-title">Lista de Alunos</h3><button class="btn btn-primary btn-sm" onclick="openModal('modal-aluno')">+ Novo</button></div>
                         ${data.alunos.length === 0 ? `<div class="empty-state"><div class="empty-icon">👥</div><div class="empty-title">Nenhum aluno</div></div>` : `
                             <div class="table-container"><table><thead><tr><th>Nome</th><th>Matrícula</th><th>Email</th><th>Ações</th></tr></thead><tbody>
-                                ${data.alunos.map(a => `<tr><td><strong>${a.nome}</strong></td><td>${a.matricula || '-'}</td><td>${a.email || '-'}</td><td><button class="btn btn-sm" onclick="showAluno('${a.id}', ${jsString(a.nome)}, ${jsString(a.matricula || '')})">Ver Turmas</button> <button class="btn btn-sm btn-danger" onclick="excluirAluno('${a.id}')">🗑️</button></td></tr>`).join('')}
+                                ${data.alunos.map(a => `<tr><td><strong>${a.nome}</strong></td><td>${a.matricula || '-'}</td><td>${a.email || '-'}</td><td><button class="btn btn-sm" onclick="showAluno('${a.id}', ${jsString(a.nome)}, ${jsString(a.matricula || '')})">Abrir Visão</button> <button class="btn btn-sm btn-danger" onclick="excluirAluno('${a.id}')">🗑️</button></td></tr>`).join('')}
                             </tbody></table></div>
                         `}
                     </div>
                 `;
             } catch (e) { showToast('Erro ao carregar alunos', 'error'); }
+        }
+
+        function filterVisaoAlunoList(term = '') {
+            const query = String(term || '').trim().toLowerCase();
+            document.querySelectorAll('.visao-aluno-row').forEach(row => {
+                const matches = !query || (row.dataset.search || '').includes(query);
+                row.style.display = matches ? '' : 'none';
+            });
+        }
+
+        async function showVisaoAlunoSelector() {
+            currentView = 'visao_aluno_selector';
+            currentMateria = currentTurma = currentAtividade = currentAluno = null;
+            const requestId = beginContentRequest('visao_aluno_selector');
+            pushNavState();
+            clearHelpPanels();
+            setBreadcrumb([
+                { nome: 'Início', onclick: 'showDashboard()' },
+                { nome: 'Visão do Aluno', onclick: 'showVisaoAlunoSelector()' }
+            ]);
+
+            document.getElementById('content').innerHTML = `
+                <div class="page-header">
+                    <h1 class="page-title">Visão do Aluno</h1>
+                    <p class="page-subtitle">Escolha um aluno para ver apenas matérias, turmas e atividades em que ele participou.</p>
+                </div>
+                <div class="card">
+                    <div class="card-header">
+                        <h3 class="card-title">Selecionar aluno</h3>
+                    </div>
+                    ${renderLoadingNotice('Carregando alunos...')}
+                </div>
+            `;
+
+            try {
+                const data = await api('/alunos');
+                if (!isContentRequestActive(requestId, 'visao_aluno_selector')) return;
+                const alunos = Array.isArray(data?.alunos) ? data.alunos : [];
+                document.getElementById('content').innerHTML = `
+                    <div class="page-header">
+                        <h1 class="page-title">Visão do Aluno</h1>
+                        <p class="page-subtitle">Escolha um aluno para ver apenas matérias, turmas e atividades em que ele participou.</p>
+                    </div>
+                    <div class="card">
+                        <div class="card-header" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px;">
+                            <h3 class="card-title" style="margin: 0;">Selecionar aluno</h3>
+                            <span style="color: var(--text-muted); font-size: 0.9rem;">${alunos.length} aluno(s)</span>
+                        </div>
+                        <div style="margin-bottom: 16px;">
+                            <input type="text" class="form-input" id="input-visao-aluno-search" placeholder="Buscar por nome, matrícula ou email..." oninput="filterVisaoAlunoList(this.value)">
+                        </div>
+                        ${alunos.length === 0 ? `
+                            <div class="empty-state">
+                                <div class="empty-icon">🎓</div>
+                                <div class="empty-title">Nenhum aluno encontrado</div>
+                                <div class="empty-text">Cadastre alunos para abrir a visão individual.</div>
+                            </div>
+                        ` : `
+                            <div class="table-container">
+                                <table>
+                                    <thead>
+                                        <tr><th>Nome</th><th>Matrícula</th><th>Email</th><th>Ação</th></tr>
+                                    </thead>
+                                    <tbody>
+                                        ${alunos.map(a => {
+                                            const searchText = [a.nome, a.matricula, a.email].filter(Boolean).join(' ').toLowerCase();
+                                            return `<tr class="visao-aluno-row" data-search="${escapeHtml(searchText)}">
+                                                <td><strong>${escapeHtml(a.nome || 'Aluno sem nome')}</strong></td>
+                                                <td>${escapeHtml(a.matricula || '-')}</td>
+                                                <td>${escapeHtml(a.email || '-')}</td>
+                                                <td><button class="btn btn-sm btn-primary" onclick="showAluno(${jsString(a.id)}, ${jsString(a.nome)}, ${jsString(a.matricula || '')})">Abrir Visão</button></td>
+                                            </tr>`;
+                                        }).join('')}
+                                    </tbody>
+                                </table>
+                            </div>
+                        `}
+                    </div>
+                `;
+            } catch (e) {
+                if (!isContentRequestActive(requestId, 'visao_aluno_selector')) return;
+                renderStudentErrorShell('Visão do Aluno', 'Seleção de aluno', 'showVisaoAlunoSelector()');
+                showToast('Erro ao carregar alunos', 'error');
+            }
         }
 
         async function showPrompts() {
@@ -10347,7 +10457,7 @@
             clearHelpPanels();
             setBreadcrumb([
                 { nome: 'Início', onclick: 'showDashboard()' },
-                { nome: 'Alunos', onclick: 'showAlunos()' },
+                { nome: 'Visão do Aluno', onclick: 'showVisaoAlunoSelector()' },
                 { nome: hint.nome || 'Carregando aluno...' }
             ]);
             renderReassuringLoadingShell({
@@ -10371,7 +10481,7 @@
                 const totals = getAlunoVisaoTotals(data);
                 setBreadcrumb([
                     { nome: 'Início', onclick: 'showDashboard()' },
-                    { nome: 'Alunos', onclick: 'showAlunos()' },
+                    { nome: 'Visão do Aluno', onclick: 'showVisaoAlunoSelector()' },
                     { nome: data.aluno.nome, onclick: `showAluno('${alunoId}', ${jsString(data.aluno.nome)}, ${jsString(data.aluno.matricula || '')})` }
                 ]);
 
@@ -10920,6 +11030,10 @@
             }
             if (currentView === 'turma' && currentTurma) {
                 showTurma(currentTurma);
+                return;
+            }
+            if (currentView === 'visao_aluno_selector') {
+                showVisaoAlunoSelector();
                 return;
             }
             if (currentView === 'alunos') {
@@ -13239,7 +13353,7 @@
                 clearHelpPanels();
                 setBreadcrumb([
                     { nome: 'Início', onclick: 'showDashboard()' },
-                    { nome: 'Alunos', onclick: 'showAlunos()' },
+                    { nome: 'Visão do Aluno', onclick: 'showVisaoAlunoSelector()' },
                     { nome: hint.nome || 'Carregando aluno...' },
                     { nome: 'Dashboard do Aluno' }
                 ]);
@@ -13267,7 +13381,7 @@
                 if (!isContentRequestActive(requestId, 'dashboard_aluno')) return;
                 setBreadcrumb([
                     { nome: 'Início', onclick: 'showDashboard()' },
-                    { nome: 'Alunos', onclick: 'showAlunos()' },
+                    { nome: 'Visão do Aluno', onclick: 'showVisaoAlunoSelector()' },
                     { nome: data.aluno.nome, onclick: `showAluno('${alunoId}', ${jsString(data.aluno.nome)}, ${jsString(data.aluno.matricula || '')})` },
                     { nome: 'Dashboard do Aluno', onclick: `showDashboardAluno('${alunoId}', ${jsString(data.aluno.nome)}, ${jsString(data.aluno.matricula || '')})` }
                 ]);

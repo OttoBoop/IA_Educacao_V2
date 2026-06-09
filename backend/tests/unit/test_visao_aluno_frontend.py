@@ -15,6 +15,62 @@ def _show_aluno_body(html):
     return html[start:end]
 
 
+def _show_alunos_body(html):
+    start = html.find("async function showAlunos()")
+    assert start != -1, "showAlunos() not found"
+    end = html.find("function filterVisaoAlunoList(", start)
+    assert end != -1, "Could not find end of showAlunos() section"
+    return html[start:end]
+
+
+def _show_visao_aluno_selector_body(html):
+    start = html.find("async function showVisaoAlunoSelector()")
+    assert start != -1, "showVisaoAlunoSelector() not found"
+    end = html.find("async function showPrompts()", start)
+    assert end != -1, "Could not find end of showVisaoAlunoSelector() section"
+    return html[start:end]
+
+
+def test_sidebar_has_visao_aluno_entry():
+    html = _frontend_html()
+
+    assert 'data-nav-view="visao_aluno_selector"' in html
+    assert 'onclick="showVisaoAlunoSelector()"' in html
+    assert "🎓" in html
+    assert "Visão do Aluno" in html
+    assert "Escolha um aluno e veja apenas matérias, turmas e atividades em que ele participou" in html
+
+
+def test_visao_aluno_selector_fetches_alunos():
+    body = _show_visao_aluno_selector_body(_frontend_html())
+
+    assert "currentView = 'visao_aluno_selector'" in body
+    assert "currentMateria = currentTurma = currentAtividade = currentAluno = null" in body
+    assert "api('/alunos')" in body
+    assert "input-visao-aluno-search" in body
+    assert "filterVisaoAlunoList(this.value)" in body
+
+
+def test_visao_aluno_selector_opens_show_aluno():
+    body = _show_visao_aluno_selector_body(_frontend_html())
+
+    assert "Abrir Visão" in body
+    assert "showAluno(${jsString(a.id)}, ${jsString(a.nome)}, ${jsString(a.matricula || '')})" in body
+
+
+def test_popstate_restores_visao_aluno_selector():
+    html = _frontend_html()
+
+    assert "case 'visao_aluno_selector': await showVisaoAlunoSelector(); break;" in html
+
+
+def test_show_alunos_button_opens_visao_label():
+    body = _show_alunos_body(_frontend_html())
+
+    assert "Abrir Visão" in body
+    assert "Ver Turmas" not in body
+
+
 def test_show_aluno_uses_student_view_endpoint():
     body = _show_aluno_body(_frontend_html())
 
