@@ -57,10 +57,84 @@
 
 **Modelo alternativo (por professor):** 500 professores pagantes × R$120/mês = **R$ 720 mil/ano** — mais rápido de testar (self-service), churn maior. CoGrader e EssayGrader provam que professores pagam do próprio bolso.
 
-### Custos vs ganhos (margem)
-- Equipe-núcleo: ~R$ 13–14 mil/mês base (designer pleno + backend pleno) → **~R$ 160–340 mil/ano** com encargos 🟢
-- Infra: APIs de IA (variável por correção, centavos por prova) ou GPU local R$ 5–19 mil one-off
-- **Breakeven do Cenário 1-2:** entre R$ 300–500 mil ARR a operação se paga com equipe mínima. 🟡
+### Custo por prova (token economics) — o número que prova a margem
+
+> Premissas de UMA prova (multi-questão, ~3–5 páginas escaneadas, pipeline de 6 estágios do NOVO CR):
+> **~40.000 tokens de input** (prompts + imagens de visão + re-feed de contexto entre estágios) e
+> **~10.000 tokens de output** (JSONs estruturados somados). Câmbio usado: **~R$ 5,30/US$**. 🟡
+
+| Modelo | US$/1M (in/out) | Custo/prova (US$) | Custo/prova (BRL) |
+|---|---|---|---|
+| **gpt-5-mini** | 0,25 / 2,00 | $0,030 | **~R$ 0,16** |
+| **Gemini 3 Flash** | 0,50 / 3,00 | $0,050 | **~R$ 0,27** |
+| **Haiku 4.5** | 1,00 / 5,00 | $0,090 | **~R$ 0,48** |
+| **Sonnet 4.6** (premium) | 3,00 / 15,00 | $0,270 | **~R$ 1,43** |
+
+- Com **prompt caching** (os prompts de sistema repetem a cada prova), o custo de input cai ~50–90% → operação real com modelo barato fica em **~R$ 0,15–0,30/prova**. 🟡
+- **Custo de API por aluno/ano:** se cada aluno tem ~8–12 provas corrigidas/ano → **~R$ 1,50–5,00/aluno/ano** (modelo barato).
+
+### Margem (software-like)
+
+A R$ 20/aluno/ano de preço e ~R$ 1,5–5 de custo de API → **margem bruta de ~75–90%**.
+O custo de IA **não é o gargalo** — o gargalo é venda (contrato-âncora) e folha de equipe.
+
+| Item | Valor | Flag |
+|---|---|---|
+| Custo de IA por aluno/ano | R$ 1,50–5,00 | 🟡 |
+| Preço por aluno/ano (base) | R$ 20 (faixa R$ 20–40) | 🟡 |
+| **Margem bruta** | **~75–90%** | 🟡 |
+| Equipe-núcleo (designer + backend pleno) | R$ 13–14 mil/mês base; **~R$ 24 mil/mês carregado CLT** (encargos ~80%) ou ~R$ 16–20 mil PJ | 🟢 |
+| **Breakeven** | **~R$ 300–500 mil ARR** paga a operação enxuta | 🟡 |
+
+---
+
+## Plano de 1 ano (curto prazo) — tese FGV → Pensi
+
+> Premissa do Otavio: round FGV fecha em **novembro/2026** (Mário/CTAE) → montar time →
+> primeiro cliente = **controladoria do Pensi (Grupo Salta)** via sócio → **ROI em ~6 meses**.
+
+### Linha do tempo
+
+| Período | Fase | O que acontece |
+|---|---|---|
+| **Jun–Out/2026** | Pré-venda + produto | Bootstrap (founder). Conversas com Pensi/Salta via sócio; refinar produto e demo. |
+| **Nov/2026** | 💰 Round FGV fecha | Capital entra. Contratar time. |
+| **Nov–Dez/2026** | Montar time + 1ª venda | 1 backend pleno + 1 designer pleno. Fechar **piloto pago com Pensi**. |
+| **Q1/2027** | Faturamento | Primeiro contrato rodando. ROI dentro de ~6 meses do aporte. |
+
+### Custos mensais após o aporte (regime CLT carregado)
+
+| Item | R$/mês |
+|---|---|
+| Backend pleno (carregado ~80%) | ~14.000 |
+| Designer pleno (carregado ~80%) | ~10.000 |
+| Pró-labore founder | ~10.000 |
+| API/infra (baixo no início) | ~1.000–3.000 |
+| Contador, ferramentas, nuvem | ~2.000–3.000 |
+| **Burn total** | **~R$ 37.000–40.000/mês** (PJ: ~R$ 28–32 mil) |
+
+- **Runway de 12 meses** ≈ **R$ 450–480 mil** → **sugestão de round: ~R$ 500 mil** (12 meses + folga). 🟡
+- **6 meses de runway** (Nov–Abr) ≈ **R$ 220–240 mil**.
+
+### Primeira venda (piloto Pensi) e ROI
+
+| Cenário de piloto | Alunos | Receita/ano (R$ 20/aluno) |
+|---|---|---|
+| Piloto pequeno (1 marca/subconjunto) | 5.000 | **R$ 100 mil** |
+| Piloto médio (pH **ou** Pensi parcial) | 10.000 | **R$ 200 mil** |
+| Marcas RJ inteiras (pH+Pensi+Elite) | ~50.000 | **R$ 1,0 mi** |
+
+- Um **piloto de R$ 100–200 mil ARR** fechado em ~6 meses cobre o burn do mesmo período → **ROI ~6 meses**, batendo a tese. ✅
+- Se subir o ticket para **R$ 30–40/aluno** (defensável: Turnitin cobra US$2–6 = R$ 10–32, e Pensi é premium), o mesmo piloto vira **R$ 150–400 mil ARR**.
+
+### Sensibilidade do preço (piloto de 10.000 alunos)
+
+| Preço/aluno/ano | ARR do piloto |
+|---|---|
+| R$ 15 | R$ 150 mil |
+| R$ 20 (base) | R$ 200 mil |
+| R$ 30 | R$ 300 mil |
+| R$ 40 | R$ 400 mil |
 
 ---
 
@@ -78,7 +152,7 @@
 
 - [ ] Valor real dos contratos Letrus (exige garimpar portais de transparência estaduais — GO/ES/MT)
 - [ ] Split de alunos (não unidades) do Salta Rio vs fora — relatório de RI
-- [ ] Quanto custa por prova corrigida via API hoje no NOVO CR? (dado interno — define margem)
+- [x] Quanto custa por prova corrigida via API hoje no NOVO CR? → **estimado em ~R$ 0,15–0,50/prova** (ver seção "Custo por prova"). Confirmar com tokens reais de um run do pipeline.
 - [ ] Ticket que escolas privadas pagam por sistemas de ensino (benchmark de orçamento disponível)
 - [ ] Processo de licitação SEEDUC: o que exige (segurança, LGPD, servidor nacional?)
 
