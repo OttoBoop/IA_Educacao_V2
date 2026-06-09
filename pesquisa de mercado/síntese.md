@@ -143,6 +143,42 @@ O custo de IA **não é o gargalo** — o gargalo é venda (contrato-âncora) e 
 
 ---
 
+## Modelo de ROI — premissa R$ 20/aluno/mês (escolhida pelo Otavio)
+
+> Premissa de trabalho (não é o modelo de negócio fechado, é a régua para dimensionar reais e tempo de retorno):
+> aluno paga **R$ 200/mês** por todos os serviços, dos quais **R$ 20/mês vão para o NOVO CR**.
+> Isso é **R$ 240/aluno/ano** (12 meses) — ~R$ 200 se considerar ano letivo de 10 meses. 🟡
+
+**Economia por aluno/mês:**
+- Receita NOVO CR: **R$ 20/aluno/mês**
+- Custo de IA: ~R$ 1–2/aluno/mês (mesmo com uso intenso — centavos por prova)
+- **Margem de contribuição: ~R$ 18/aluno/mês** (margem ~85–90%)
+- Burn de equipe (designer + backend pleno + founder, CLT carregado): **~R$ 40 mil/mês**
+
+**Breakeven operacional:** R$ 40.000 ÷ R$ 18 ≈ **~2.200 alunos pagantes** cobrem a operação inteira.
+
+### Tempo para recuperar o investimento × nº de alunos
+
+> `Net/mês = R$ 18 × N − R$ 40.000`. Payback = Investimento ÷ Net/mês (em regime, com N alunos ativos).
+
+| N alunos ativos | Receita/mês | Net/mês (após burn) | Recuperar R$ 500 mil | Recuperar R$ 300 mil | Receita/ano |
+|---|---|---|---|---|---|
+| 2.200 | R$ 44 mil | ~R$ 0 (breakeven) | — | — | ~R$ 528 mil |
+| **5.000** | R$ 100 mil | **+R$ 50 mil** | **~10 meses** | ~6 meses | R$ 1,2 mi |
+| **10.000** | R$ 200 mil | **+R$ 140 mil** | **~3,6 meses** | ~2,1 meses | R$ 2,4 mi |
+| 25.000 | R$ 500 mil | +R$ 410 mil | ~1,2 mês | <1 mês | R$ 6,0 mi |
+| **50.000** (Salta RJ) | R$ 1,0 mi | **+R$ 860 mil** | **<1 mês** | <1 mês | **R$ 12 mi** |
+| 100.000 (Salta total) | R$ 2,0 mi | +R$ 1,76 mi | <1 mês | <1 mês | R$ 24 mi |
+| 9.000 (FGV) | R$ 180 mil | +R$ 122 mil | ~4,1 meses | ~2,5 meses | R$ 2,2 mi |
+
+**Leituras:**
+- Com **~5.000 alunos** (tamanho do piloto Pensi/GEC) o investimento de R$ 500 mil volta em **~10 meses** de operação em regime — dentro da sua janela de "ROI em 6 meses" se o round for menor (~R$ 300 mil) ou se o piloto for um pouco maior.
+- O **Grupo Salta inteiro (100 mil alunos)** a R$ 20/mês = **R$ 24 mi/ano de receita** para o NOVO CR. A **FGV (9 mil)** = R$ 2,2 mi/ano. Só esses dois alvos = **~R$ 26 mi/ano de receita potencial**.
+- **Ressalva 1:** o relógio do payback começa quando os alunos estão *ativos*. Chegar a N alunos leva ciclo de venda — a rampa adiciona meses na frente.
+- **Ressalva 2:** R$ 20/aluno/**mês** é agressivo para um módulo de correção (12× o benchmark institucional de ~R$ 20/ano da Turnitin). Só se sustenta se o NOVO CR for vendido **embutido numa mensalidade** (R$ 20 ≈ 1–2% de uma mensalidade de escola particular de R$ 1.000–3.000). É a premissa que você escolheu — defensável nesse enquadramento, a validar com o Pensi.
+
+---
+
 ## Comparação dos 3 modelos de negócio — quanto cada um paga
 
 > Premissas: aluno faz **~10 provas/ano**; custo de API ~R$ 0,30/prova; Pensi/Salta RJ ≈ 55 unidades.
@@ -208,10 +244,15 @@ O custo de IA **não é o gargalo** — o gargalo é venda (contrato-âncora) e 
 2. O mercado paga **R$ 7–10 por redação corrigida** — e seu custo com IA pura é ~R$ 0,30. Margem enorme.
 3. Dá para atender público E privado com o mesmo produto.
 
-**Onde a Imaginie é vulnerável (sua abertura):**
-1. **Híbrido = lento e caro.** Depende de corretor humano → **15 dias** de prazo e custo de mão de obra por correção. O NOVO CR é **IA pura: instantâneo e com margem muito maior** (não paga corretor).
+**Onde a Imaginie é vulnerável (sua abertura) — ⚠️ reframe importante:**
+
+> **O NOVO CR NÃO é "IA sem humano".** Ele é um **assistente do professor**: gera o rascunho de correção na hora, o professor **revisa e dá a nota final** gastando uma fração do tempo. O pitch certo é *"o professor corrige 5× mais rápido com output melhor"*, não *"trocamos o professor por IA"*.
+
+1. **Imaginie usa corretores SEPARADOS (voluntários) → 15 dias de prazo.** Depende da disponibilidade desses voluntários. O NOVO CR usa **o professor que já ia corrigir** — rascunho instantâneo + revisão dele = sem fila, sem terceiro.
 2. **Só redação** (mesma limitação da Letrus) — não corrige prova inteira/multimatéria.
-3. Plataforma de **+R$ 1 mi** (não é gigante de capital) — concorrente "batível" em tecnologia, ao contrário da Letrus.
+3. Plataforma de **+R$ 1 mi** (capital modesto) — concorrente "batível" em tecnologia.
+
+> **A revisão humana é uma FORÇA, não defeito** (tanto da Imaginie quanto do NOVO CR) — é o que dá confiança ao resultado. A diferença é que no NOVO CR o revisor é o próprio professor, no fluxo dele, sem prazo de 15 dias.
 
 > **Leitura combinada Letrus + Imaginie:** as duas maiores do BR **só fazem redação** e a maior em volume **ainda depende de humano**. O espaço de "**prova completa, multimatéria, 100% IA, instantânea, em PT-BR**" segue vazio.
 
