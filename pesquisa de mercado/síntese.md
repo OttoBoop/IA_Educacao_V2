@@ -182,6 +182,7 @@ O custo de IA **não é o gargalo** — o gargalo é venda (contrato-âncora) e 
 - **4× B200** rodam o **DeepSeek 671B** completo em FP8 (720 GB) → ~**R$ 0,6–1,1 milhão**.
 - **DGX B200** (8× B200, 1,44 TB): **US$ 515 mil ≈ R$ 2,7 milhões**.
 - **Rack GB200 NVL72** (72 GPUs — o topo, para treinar/servir em escala): **~US$ 3 milhões ≈ R$ 16 milhões**.
+- **Rack GB300 NVL72 (Blackwell Ultra, 2026 — o MAIS CARO do mercado):** 72 GPUs Blackwell Ultra + 36 CPUs Grace, **US$ 3,7–4 milhões ≈ R$ 20–21 milhões**. É o teto absoluto da NVIDIA — feito para hyperscalers, não para corrigir prova.
 - Aluguel nuvem: B200 ~US$ 2,25–16/GPU/h; GB200 ~US$ 10–20/GPU/h.
 
 **Para rodar um modelo nível Opus localmente (a pergunta do Otavio):**
