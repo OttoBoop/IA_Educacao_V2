@@ -167,6 +167,23 @@ O custo de IA **não é o gargalo** — o gargalo é venda (contrato-âncora) e 
 
 ### A decisão central: rodar modelo local (GPU) ou usar API?
 
+### 🪜 Guia: melhor GPU por faixa de preço (2026, atualizado)
+
+> Princípio: **a melhor GPU é a que tem VRAM suficiente para o seu modelo** — VRAM decide se roda; velocidade é secundário. Preços BR de varejo (câmbio ~R$ 5,3/US$).
+
+| Faixa de preço (BRL) | Melhor escolha | VRAM | Roda até | Para quem |
+|---|---|---|---|---|
+| **Até R$ 2.500** | **RTX 3060 12GB** | 12 GB | 7–8B (13B no limite) | Entrada — melhor custo-benefício |
+| **R$ 2.500–4.000** | RTX 4060 Ti 16GB | 16 GB | 14B | Econômico com folga |
+| **R$ 5.000–10.000** | **RTX 3090 24GB (usada)** | 24 GB | 30–34B | **Melhor VRAM por real** |
+| **R$ 20.000–27.000** | **RTX 5090 32GB** | 32 GB | 70B (Q4 agressivo) | **Única consumer que roda 70B** |
+| **R$ 45.000–70.000** | RTX PRO 6000 Blackwell 96GB (ou A6000 48GB ~R$ 48k) | 96 GB | 70B+ com folga e contexto grande | Workstation top |
+| **R$ 130.000–210.000** | H100 80GB (1 placa) | 80 GB | 70–120B | Datacenter de entrada |
+| **R$ 0,6–2,7 milhões** | 4× B200 / 8× H100 / DGX B200 | 640 GB–1,4 TB | **405B / 671B (nível Opus)** | Nó de fronteira |
+| **R$ 16–21 milhões** | Rack GB200 / **GB300 NVL72** | múltiplos TB | tudo, em escala industrial | Hyperscaler (topo absoluto) |
+
+> **Ponto doce para o NOVO CR, SE um dia rodar local:** **RTX 5090 32GB (~R$ 22 mil)** — única placa consumer única que roda um 70B, ou **RTX PRO 6000 / A6000** para folga. Mas, como mostra o crossover abaixo, **API continua sendo o caminho** até dezenas de milhares de alunos.
+
 **Preço das GPUs para rodar open-source local (em BRL):**
 
 | Modelo open-source | VRAM | GPU | Preço (one-off) |
